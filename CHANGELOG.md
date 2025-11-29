@@ -1,0 +1,111 @@
+# Changelog
+
+## 1.2.3 — Unreleased
+
+### Changes
+- **Same-phone mode (self-messaging):** warelay now supports running on the same phone number you message from. This enables setups where you chat with yourself to control an AI assistant. Same-phone mode (`from === to`) is always allowed, even without configuring `allowFrom`. Echo detection prevents infinite loops by tracking recently sent message text and skipping auto-replies when incoming messages match.
+- **Echo detection:** The `fromMe` filter in `inbound.ts` is deliberately removed for same-phone setups; instead, text-based echo detection in `auto-reply.ts` tracks sent messages in a bounded Set (max 100 entries) and skips processing when a match is found.
+- **Same-phone detection logging:** Verbose mode now logs `📱 Same-phone mode detected` when `from === to`.
+- **Configurable same-phone marker:** New `inbound.samePhoneMarker` config option to customize the prefix added to messages in same-phone mode (default: `[same-phone]`). Set it to something cute like `[🦞 same-phone]` to help distinguish bot replies.
+
+## 1.2.2 — 2025-11-28
+
+### Changes
+- **Manual heartbeat sends:** `warelay heartbeat` accepts `--message/--body` with `--provider web|twilio` to push real outbound messages through the same plumbing; `--dry-run` previews payloads without sending.
+
+## 1.2.1 — 2025-11-28
+
+### Changes
+- **Media MIME-first handling:** Media loading now sniffs magic bytes/header before trusting extensions for both providers; local files with the wrong suffix still get correct MIME and image recompression.
+- **Hosted media extensions:** Saved/hosted media (web inbound, webhook hosting, Twilio hosting) now writes files with an extension derived from detected MIME (e.g., `.jpg`, `.png`, `.mp4`), so downstream CLI sends carry the right Content-Type. Added tests covering inbound Baileys downloads and buffer saves.
+
+### Planned / in progress
+- **Heartbeat targeting quality:** Allow `warelay heartbeat --provider web --all` to fall back to `inbound.allowFrom` when no sessions exist, and surface a clear error when neither sessions nor allow-list entries are present. Add verbose log lines that state exactly which recipients were chosen and why.
+- **Heartbeat delivery preview (Claude path):** Add a dry-run mode that resolves the heartbeat reply (text/media) and prints it without sending, to help test Claude prompt changes safely.
+- **Simulated inbound hook (debug):** Optional local-only endpoint to inject synthetic inbound messages into the web relay loop, sharing the same command queue and reply path. Useful for testing auto-replies and heartbeats without WhatsApp.
+
+## 1.2.0 — 2025-11-27
+
+### Changes
+- **Heartbeat UX:** Default heartbeat interval is now 10 minutes for command mode. Heartbeat prompt is `HEARTBEAT ultrathink`; replies of exactly `HEARTBEAT_OK` suppress outbound messages but still log. Fallback heartbeats no longer start fresh sessions when none exist, and skipped heartbeats do not refresh session `updatedAt` (so idle expiry still works). Session-level `heartbeatIdleMinutes` is supported.
+- **Heartbeat tooling:** `warelay heartbeat` accepts `--session-id` to force resume a specific Claude session. Added `--heartbeat-now` to relay startup, plus helper scripts `warelay relay:heartbeat` and `warelay relay:heartbeat:tmux` to fire a heartbeat immediately when the relay launches.
+- **Prompt structure for Claude:** Introduced one-time `sessionIntro` (system prompt) with per-message `bodyPrefix` of `ultrathink`, so the full prompt is sent only on the first turn; later turns only prepend `ultrathink`. Session idle extended to 7 days (configurable).
+- **Robustness:** Added WebSocket error guards for Baileys sessions; global `unhandledRejection`/`uncaughtException` handlers log and exit cleanly. Web inbound now resolves WhatsApp Linked IDs (`@lid`) using Baileys reverse mapping. Media hosting during Twilio webhooks uses the shared host module and is covered by tests.
+- **Docs:** README now highlights the Clawd setup with links, and `docs/claude-config.md` contains the live personal config (home folder, prompts, heartbeat behavior, and session settings).
+
+## 1.1.0 — 2025-11-26
+
+### Changes
+- Web auto-replies now resize/recompress media and honor `inbound.reply.mediaMaxMb` in `~/.warelay/warelay.json` (default 5 MB) to avoid provider/API limits.
+- Web provider now detects media kind (image/audio/video/document), logs the source path, and enforces provider caps: images ≤6 MB, audio/video ≤16 MB, documents ≤100 MB; images still target the configurable cap above with resize + JPEG recompress.
+- Sessions can now send the system prompt only once: set `inbound.reply.session.sendSystemOnce` (optional `sessionIntro` for the first turn) to avoid re-sending large prompts every message.
+- While commands run, typing indicators refresh every 30s by default (tune with `inbound.reply.typingIntervalSeconds`); helps keep WhatsApp “composing” visible during longer Claude runs.
+- Optional voice-note transcription: set `inbound.transcribeAudio.command` (e.g., OpenAI Whisper CLI) to turn inbound audio into text before templating/Claude; verbose logs surface when transcription runs. Prompts now include the original media path plus a `Transcript:` block so models see both.
+- Auto-reply command replies now return structured `{ payload, meta }`, respect `mediaMaxMb` for local media, log Claude metadata, and include the command `cwd` in timeout messages for easier debugging.
+- Added unit coverage for command helper edge cases (Claude flags, session args, media tokens, timeouts) and transcription download/command invocation.
+- Split the monolithic web provider into focused modules under `src/web/` plus a barrel; added logout command, no-fallback relay behavior, and web-only relay start helper.
+- Introduced structured reconnect/heartbeat logging (`web-reconnect`, `web-heartbeat`), bounded exponential backoff with CLI and config knobs, and a troubleshooting guide at `docs/refactor/web-relay-troubleshooting.md`.
+- Relay help now prints effective heartbeat/backoff settings when running in web mode for quick triage.
+
+## 1.0.4 — 2025-11-25
+
+### Changes
+- Auto-replies now send a WhatsApp fallback message when a command/Claude run hits the timeout, including up to 800 chars of partial stdout so the user still sees progress.
+- Added tests covering the new timeout fallback behavior and partial-output truncation.
+- Web relay auto-reconnects after Baileys/WebSocket drops (with log-out detection) and exposes close events for monitoring; added tests for close propagation and reconnect loop.
+
+## 0.1.3 — 2025-11-25
+
+### Features
+- Added `cwd` option to command reply config for setting the working directory where commands execute. Essential for Claude Code to have proper project context.
+- Added configurable file-based logging (default `/tmp/warelay/warelay.log`) with log level set via `logging.level` in `~/.warelay/warelay.json`; verbose still forces debug.
+
+### Developer notes
+- Command auto-replies now pass `{ timeoutMs, cwd }` into the command runner; custom runners/tests that stub `runCommandWithTimeout` should accept the options object as well as the legacy numeric timeout.
+
+## 0.1.2 — 2025-11-25
+
+### CI/build fix
+- Fixed commander help configuration (`subcommandTerm`) so TypeScript builds pass in CI.
+
+## 0.1.1 — 2025-11-25
+
+### CLI polish
+- Added a proper executable shim so `npx warelay@0.1.x --help` runs the CLI directly.
+- Help/version banner now uses the README tagline with color, and the help footer includes colored examples with short explanations.
+- `send` and `status` gained a `--verbose` flag for consistent noisy output when debugging.
+- Lowercased branding in docs/UA; web provider UA is `warelay/cli/0.1.1`.
+
+
+## 0.1.0 — 2025-11-25
+
+### CLI & Providers
+- Bundles a single `warelay` CLI with commands for `send`, `relay`, `status`, `webhook`, `login`, and tmux helpers `relay:tmux` / `relay:tmux:attach` (see `src/cli/program.ts`); `webhook` accepts `--ingress tailscale|none`.
+- Supports two messaging backends: **Twilio** (default) and **personal WhatsApp Web**; `relay --provider auto` selects Web when a cached login exists, otherwise falls back to Twilio polling (`provider-web.ts`, `cli/program.ts`).
+- `send` can target either provider, optionally wait for delivery status (Twilio only), output JSON, dry-run payloads, and attach media (`commands/send.ts`).
+- `status` merges inbound + outbound Twilio traffic with formatted lines or JSON output (`commands/status.ts`, `twilio/messages.ts`).
+
+### Webhook, Funnel & Port Management
+- `webhook` starts an Express server for inbound Twilio callbacks, logs requests, and optionally auto-replies with static text or config-driven replies (`twilio/webhook.ts`, `commands/webhook.ts`).
+- `webhook --ingress tailscale` automates end-to-end webhook setup: ensures required binaries, enables Tailscale Funnel, starts the webhook on the chosen port/path, discovers the WhatsApp sender SID, and updates Twilio webhook URLs with multiple fallbacks (`commands/up.ts`, `infra/tailscale.ts`, `twilio/update-webhook.ts`, `twilio/senders.ts`).
+- Guardrails detect busy ports with helpful diagnostics and aborts when conflicts are found (`infra/ports.ts`).
+
+### Auto-Reply Engine
+- Configurable via `~/.warelay/warelay.json` (JSON5) with allowlist support, text or command-driven replies, templating (`{{Body}}`, `{{From}}`, `{{MediaPath}}`, etc.), optional body prefixes, and per-sender or global conversation sessions with `/new` resets and idle expiry (`auto-reply/reply.ts`, `config/config.ts`, `config/sessions.ts`, `auto-reply/templating.ts`).
+- Command replies run through a process-wide FIFO queue to avoid concurrent executions across webhook, poller, and web listener flows (`process/command-queue.ts`); verbose mode surfaces wait times.
+- Claude CLI integration auto-injects identity, output-format flags, session args, and parses JSON output while preserving metadata (`auto-reply/claude.ts`, `auto-reply/reply.ts`).
+- Typing indicators fire before replies for Twilio, and Web provider sends “composing/available” presence when possible (`twilio/typing.ts`, `provider-web.ts`).
+
+### Media Pipeline
+- `send --media` works on both providers: Web accepts local paths or URLs; Twilio requires HTTPS and transparently hosts local files (≤5 MB) via the Funnel/webhook media endpoint, auto-spawning a short-lived media server when `--serve-media` is requested (`commands/send.ts`, `media/host.ts`, `media/server.ts`).
+- Auto-replies may include `mediaUrl` from config or command output (`MEDIA:` token extraction) and will host local media when needed before sending (`auto-reply/reply.ts`, `media/parse.ts`, `media/host.ts`).
+- Inbound media from Twilio or Web is downloaded to `~/.warelay/media` with TTL cleanup and passed to commands via `MediaPath`/`MediaType` for richer prompts (`twilio/webhook.ts`, `provider-web.ts`, `media/store.ts`).
+
+### Relay & Monitoring
+- `relay` polls Twilio on an interval with exponential-backoff resilience, auto-replying to inbound messages, or listens live via WhatsApp Web with automatic read receipts and presence updates (`cli/program.ts`, `twilio/monitor.ts`, `provider-web.ts`).
+- `send` + `waitForFinalStatus` polls Twilio until a terminal delivery state (delivered/read) or timeout, with clear failure surfaces (`twilio/send.ts`).
+
+### Developer & Ops Ergonomics
+- `relay:tmux` helper restarts/attaches to a dedicated `warelay-relay` tmux session for long-running relays (`cli/relay_tmux.ts`).
+- Environment validation enforces Twilio credentials early and supports either auth token or API key/secret pairs (`env.ts`).
+- Shared logging utilities, binary checks, and runtime abstractions keep CLI output consistent (`globals.ts`, `logger.ts`, `infra/binaries.ts`).

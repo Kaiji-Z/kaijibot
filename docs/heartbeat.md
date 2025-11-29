@@ -1,0 +1,45 @@
+# Heartbeat polling plan (2025-11-26)
+
+Goal: add a simple heartbeat poll for command-based auto-replies (Claude-driven) that only notifies users when something matters, using the `HEARTBEAT_OK` sentinel. The heartbeat body we send is `HEARTBEAT ultrathink` so the model can easily spot it.
+
+## Prompt contract
+- Extend the Claude system/identity text to explain: “If this is a heartbeat poll and nothing needs attention, reply exactly `HEARTBEAT_OK` and nothing else. For any alert, do **not** include `HEARTBEAT_OK`; just return the alert text.” Heartbeat prompt body is `HEARTBEAT ultrathink`.
+- Keep existing WhatsApp length guidance; forbid burying the sentinel inside alerts.
+
+## Config & defaults
+- New config key: `inbound.reply.heartbeatMinutes` (number of minutes; `0` or undefined disables).
+- Default: 30 minutes when a command-mode reply is configured.
+- New optional idle override for heartbeats: `inbound.reply.session.heartbeatIdleMinutes` (defaults to `idleMinutes`). Heartbeat skips do **not** update the session `updatedAt` so idle expiry still works.
+
+## Poller behavior
+- When relay runs with command-mode auto-reply, start a timer with the resolved heartbeat interval.
+- Each tick invokes the configured command with a short heartbeat body (e.g., “(heartbeat) summarize any important changes since last turn”) while reusing the active session args so Claude context stays warm.
+- Heartbeats never create a new session implicitly: if there’s no stored session for the target (fallback path), the heartbeat is skipped instead of starting a fresh Claude session.
+- Abort timer on SIGINT/abort of the relay.
+
+## Sentinel handling
+- Trim output. If the trimmed text equals `HEARTBEAT_OK` (case-sensitive) -> skip outbound message.
+- Otherwise, send the text/media as normal, stripping the sentinel if it somehow appears.
+- Treat empty output as `HEARTBEAT_OK` to avoid spurious pings.
+
+## Logging requirements
+- Normal mode: single info line per tick, e.g., `heartbeat: ok (skipped)` or `heartbeat: alert sent (32ms)`.
+- `--verbose`: log start/end, command argv, duration, and whether it was skipped/sent/error; include session ID and connection/run IDs via `getChildLogger` for correlation.
+- On command failure: warn-level one-liner in normal mode; verbose log includes stdout/stderr snippets.
+
+## Failure/backoff
+- If a heartbeat command errors, log it and retry on the next scheduled tick (no exponential backoff unless command repeatedly fails; keep it simple for now).
+
+## Tests to add
+- Unit: sentinel detection (`HEARTBEAT_OK`, empty output, mixed text), skip vs send decision, default interval resolver (30m, override, disable).
+- Unit/integration: verbose logger emits start/end lines; normal logger emits a single line.
+
+## Documentation
+- Add a short README snippet under configuration showing `heartbeatMinutes` and the sentinel rule.
+- Expose CLI triggers:
+  - `warelay heartbeat` (web provider, defaults to first `allowFrom`; optional `--to` override)
+    - `--session-id <uuid>` forces resuming a specific session for that heartbeat
+  - `warelay relay:heartbeat` to run the relay loop with an immediate heartbeat (no tmux)
+  - `warelay relay:heartbeat:tmux` to run the same in tmux (detached, attachable)
+  - Relay supports `--heartbeat-now` to fire once at startup (including the tmux helper).
+  - When multiple sessions are active or `allowFrom` is only `"*"`, require `--to <E.164>` or `--all` for manual heartbeats to avoid ambiguous targets.
