@@ -1,0 +1,247 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../agents/pi-embedded.js", () => ({
+  runEmbeddedPiAgent: vi.fn(),
+  queueEmbeddedPiMessage: vi.fn().mockReturnValue(false),
+}));
+
+import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
+import {
+  loadSessionStore,
+  resolveSessionKey,
+  saveSessionStore,
+} from "../config/sessions.js";
+import {
+  extractThinkDirective,
+  extractVerboseDirective,
+  getReplyFromConfig,
+} from "./reply.js";
+
+async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
+  const base = await fs.mkdtemp(path.join(os.tmpdir(), "clawdis-reply-"));
+  const previousHome = process.env.HOME;
+  process.env.HOME = base;
+  try {
+    return await fn(base);
+  } finally {
+    process.env.HOME = previousHome;
+    await fs.rm(base, { recursive: true, force: true });
+  }
+}
+
+describe("directive parsing", () => {
+  beforeEach(() => {
+    vi.mocked(runEmbeddedPiAgent).mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("ignores verbose directive inside URL", () => {
+    const body = "https://x.com/verioussmith/status/1997066835133669687";
+    const res = extractVerboseDirective(body);
+    expect(res.hasDirective).toBe(false);
+    expect(res.cleaned).toBe(body);
+  });
+
+  it("ignores typoed /verioussmith", () => {
+    const body = "/verioussmith";
+    const res = extractVerboseDirective(body);
+    expect(res.hasDirective).toBe(false);
+    expect(res.cleaned).toBe(body.trim());
+  });
+
+  it("ignores think directive inside URL", () => {
+    const body = "see https://example.com/path/thinkstuff";
+    const res = extractThinkDirective(body);
+    expect(res.hasDirective).toBe(false);
+  });
+
+  it("matches verbose with leading space", () => {
+    const res = extractVerboseDirective(" please /verbose on now");
+    expect(res.hasDirective).toBe(true);
+    expect(res.verboseLevel).toBe("on");
+  });
+
+  it("matches think at start of line", () => {
+    const res = extractThinkDirective("/think:high run slow");
+    expect(res.hasDirective).toBe(true);
+    expect(res.thinkLevel).toBe("high");
+  });
+
+  it("applies inline think and still runs agent content", async () => {
+    await withTempHome(async (home) => {
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [{ text: "done" }],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await getReplyFromConfig(
+        {
+          Body: "please sync /think:high now",
+          From: "+1004",
+          To: "+2000",
+        },
+        {},
+        {
+          inbound: {
+            allowFrom: ["*"],
+            workspace: path.join(home, "clawd"),
+            agent: { provider: "anthropic", model: "claude-opus-4-5" },
+            session: { store: path.join(home, "sessions.json") },
+          },
+        },
+      );
+
+      const texts = (Array.isArray(res) ? res : [res])
+        .map((entry) => entry?.text)
+        .filter(Boolean);
+      expect(texts).toContain("done");
+      expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("acks verbose directive immediately with system marker", async () => {
+    await withTempHome(async (home) => {
+      vi.mocked(runEmbeddedPiAgent).mockReset();
+
+      const res = await getReplyFromConfig(
+        { Body: "/verbose on", From: "+1222", To: "+1222" },
+        {},
+        {
+          inbound: {
+            workspace: path.join(home, "clawd"),
+            agent: { provider: "anthropic", model: "claude-opus-4-5" },
+            session: { store: path.join(home, "sessions.json") },
+          },
+        },
+      );
+
+      const text = Array.isArray(res) ? res[0]?.text : res?.text;
+      expect(text).toMatch(/^⚙️ Verbose logging enabled\./);
+      expect(runEmbeddedPiAgent).not.toHaveBeenCalled();
+    });
+  });
+
+  it("updates tool verbose during an in-flight run (toggle on)", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      const ctx = { Body: "please do the thing", From: "+1004", To: "+2000" };
+      const sessionKey = resolveSessionKey(
+        "per-sender",
+        { From: ctx.From, To: ctx.To, Body: ctx.Body },
+        "main",
+      );
+
+      vi.mocked(runEmbeddedPiAgent).mockImplementation(async (params) => {
+        const shouldEmit = params.shouldEmitToolResult;
+        expect(shouldEmit?.()).toBe(false);
+        const store = loadSessionStore(storePath);
+        const entry = store[sessionKey] ?? {
+          sessionId: "s",
+          updatedAt: Date.now(),
+        };
+        store[sessionKey] = {
+          ...entry,
+          verboseLevel: "on",
+          updatedAt: Date.now(),
+        };
+        await saveSessionStore(storePath, store);
+        expect(shouldEmit?.()).toBe(true);
+        return {
+          payloads: [{ text: "done" }],
+          meta: {
+            durationMs: 5,
+            agentMeta: { sessionId: "s", provider: "p", model: "m" },
+          },
+        };
+      });
+
+      const res = await getReplyFromConfig(
+        ctx,
+        {},
+        {
+          inbound: {
+            allowFrom: ["*"],
+            workspace: path.join(home, "clawd"),
+            agent: { provider: "anthropic", model: "claude-opus-4-5" },
+            session: { store: storePath },
+          },
+        },
+      );
+
+      const texts = (Array.isArray(res) ? res : [res])
+        .map((entry) => entry?.text)
+        .filter(Boolean);
+      expect(texts).toContain("done");
+      expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("updates tool verbose during an in-flight run (toggle off)", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      const ctx = {
+        Body: "please do the thing /verbose on",
+        From: "+1004",
+        To: "+2000",
+      };
+      const sessionKey = resolveSessionKey(
+        "per-sender",
+        { From: ctx.From, To: ctx.To, Body: ctx.Body },
+        "main",
+      );
+
+      vi.mocked(runEmbeddedPiAgent).mockImplementation(async (params) => {
+        const shouldEmit = params.shouldEmitToolResult;
+        expect(shouldEmit?.()).toBe(true);
+        const store = loadSessionStore(storePath);
+        const entry = store[sessionKey] ?? {
+          sessionId: "s",
+          updatedAt: Date.now(),
+        };
+        store[sessionKey] = {
+          ...entry,
+          verboseLevel: "off",
+          updatedAt: Date.now(),
+        };
+        await saveSessionStore(storePath, store);
+        expect(shouldEmit?.()).toBe(false);
+        return {
+          payloads: [{ text: "done" }],
+          meta: {
+            durationMs: 5,
+            agentMeta: { sessionId: "s", provider: "p", model: "m" },
+          },
+        };
+      });
+
+      const res = await getReplyFromConfig(
+        ctx,
+        {},
+        {
+          inbound: {
+            allowFrom: ["*"],
+            workspace: path.join(home, "clawd"),
+            agent: { provider: "anthropic", model: "claude-opus-4-5" },
+            session: { store: storePath },
+          },
+        },
+      );
+
+      const texts = (Array.isArray(res) ? res : [res])
+        .map((entry) => entry?.text)
+        .filter(Boolean);
+      expect(texts).toContain("done");
+      expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
+    });
+  });
+});
