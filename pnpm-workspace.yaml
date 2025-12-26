@@ -1,0 +1,10 @@
+packages:
+  - "."
+  - "ui"
+
+onlyBuiltDependencies:
+  - '@whiskeysockets/baileys'
+  - authenticate-pam
+  - esbuild
+  - protobufjs
+  - sharp
