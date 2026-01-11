@@ -1,0 +1,146 @@
+import { resolveTalkApiKey } from "./talk.js";
+import type { ClawdbotConfig } from "./types.js";
+
+type WarnState = { warned: boolean };
+
+let defaultWarnState: WarnState = { warned: false };
+
+const DEFAULT_MODEL_ALIASES: Readonly<Record<string, string>> = {
+  // Anthropic (pi-ai catalog uses "latest" ids without date suffix)
+  opus: "anthropic/claude-opus-4-5",
+  sonnet: "anthropic/claude-sonnet-4-5",
+
+  // OpenAI
+  gpt: "openai/gpt-5.2",
+  "gpt-mini": "openai/gpt-5-mini",
+
+  // Google Gemini (3.x are preview ids in the catalog)
+  gemini: "google/gemini-3-pro-preview",
+  "gemini-flash": "google/gemini-3-flash-preview",
+};
+
+export type SessionDefaultsOptions = {
+  warn?: (message: string) => void;
+  warnState?: WarnState;
+};
+
+export function applyMessageDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+  const messages = cfg.messages;
+  const hasAckScope = messages?.ackReactionScope !== undefined;
+  if (hasAckScope) return cfg;
+
+  const nextMessages = messages ? { ...messages } : {};
+  nextMessages.ackReactionScope = "group-mentions";
+  return {
+    ...cfg,
+    messages: nextMessages,
+  };
+}
+
+export function applySessionDefaults(
+  cfg: ClawdbotConfig,
+  options: SessionDefaultsOptions = {},
+): ClawdbotConfig {
+  const session = cfg.session;
+  if (!session || session.mainKey === undefined) return cfg;
+
+  const trimmed = session.mainKey.trim();
+  const warn = options.warn ?? console.warn;
+  const warnState = options.warnState ?? defaultWarnState;
+
+  const next: ClawdbotConfig = {
+    ...cfg,
+    session: { ...session, mainKey: "main" },
+  };
+
+  if (trimmed && trimmed !== "main" && !warnState.warned) {
+    warnState.warned = true;
+    warn('session.mainKey is ignored; main session is always "main".');
+  }
+
+  return next;
+}
+
+export function applyTalkApiKey(config: ClawdbotConfig): ClawdbotConfig {
+  const resolved = resolveTalkApiKey();
+  if (!resolved) return config;
+  const existing = config.talk?.apiKey?.trim();
+  if (existing) return config;
+  return {
+    ...config,
+    talk: {
+      ...config.talk,
+      apiKey: resolved,
+    },
+  };
+}
+
+export function applyModelDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+  const existingAgent = cfg.agents?.defaults;
+  if (!existingAgent) return cfg;
+  const existingModels = existingAgent.models ?? {};
+  if (Object.keys(existingModels).length === 0) return cfg;
+
+  let mutated = false;
+  const nextModels: Record<string, { alias?: string }> = {
+    ...existingModels,
+  };
+
+  for (const [alias, target] of Object.entries(DEFAULT_MODEL_ALIASES)) {
+    const entry = nextModels[target];
+    if (!entry) continue;
+    if (entry.alias !== undefined) continue;
+    nextModels[target] = { ...entry, alias };
+    mutated = true;
+  }
+
+  if (!mutated) return cfg;
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: { ...existingAgent, models: nextModels },
+    },
+  };
+}
+
+export function applyLoggingDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+  const logging = cfg.logging;
+  if (!logging) return cfg;
+  if (logging.redactSensitive) return cfg;
+  return {
+    ...cfg,
+    logging: {
+      ...logging,
+      redactSensitive: "tools",
+    },
+  };
+}
+
+export function applyContextPruningDefaults(
+  cfg: ClawdbotConfig,
+): ClawdbotConfig {
+  const defaults = cfg.agents?.defaults;
+  if (!defaults) return cfg;
+  const contextPruning = defaults?.contextPruning;
+  if (contextPruning?.mode) return cfg;
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...defaults,
+        contextPruning: {
+          ...contextPruning,
+          mode: "adaptive",
+        },
+      },
+    },
+  };
+}
+
+export function resetSessionDefaultsWarningForTests() {
+  defaultWarnState = { warned: false };
+}
