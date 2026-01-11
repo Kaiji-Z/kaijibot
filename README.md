@@ -1,0 +1,475 @@
+# 🦞 Clawdbot — Personal AI Assistant
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/clawdbot/clawdbot/main/docs/whatsapp-clawd.jpg" alt="Clawdbot" width="400">
+</p>
+
+<p align="center">
+  <strong>EXFOLIATE! EXFOLIATE!</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/clawdbot/clawdbot/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/clawdbot/clawdbot/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
+  <a href="https://github.com/clawdbot/clawdbot/releases"><img src="https://img.shields.io/github/v/release/clawdbot/clawdbot?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
+  <a href="https://discord.gg/clawd"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
+</p>
+
+**Clawdbot** is a *personal AI assistant* you run on your own devices.
+It answers you on the providers you already use (WhatsApp, Telegram, Slack, Discord, Signal, iMessage, WebChat), can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
+
+If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.
+
+[Website](https://clawdbot.com) · [Docs](https://docs.clawd.bot) · [Getting Started](https://docs.clawd.bot/getting-started) · [Updating](https://docs.clawd.bot/updating) · [Showcase](https://docs.clawd.bot/showcase) · [FAQ](https://docs.clawd.bot/faq) · [Wizard](https://docs.clawd.bot/wizard) · [Nix](https://github.com/clawdbot/nix-clawdbot) · [Docker](https://docs.clawd.bot/docker) · [Discord](https://discord.gg/clawd)
+
+Preferred setup: run the onboarding wizard (`clawdbot onboard`). It walks through gateway, workspace, providers, and skills. The CLI wizard is the recommended path and works on **macOS, Linux, and Windows (via WSL2; strongly recommended)**.
+Works with npm, pnpm, or bun.
+New install? Start here: [Getting started](https://docs.clawd.bot/getting-started)
+
+**Subscriptions (OAuth):**
+- **[Anthropic](https://www.anthropic.com/)** (Claude Pro/Max)
+- **[OpenAI](https://openai.com/)** (ChatGPT/Codex)
+
+Model note: while any model is supported, I strongly recommend **Anthropic Pro/Max (100/200) + Opus 4.5** for long‑context strength and better prompt‑injection resistance. See [Onboarding](https://docs.clawd.bot/onboarding).
+
+## Models (selection + auth)
+
+- Models config + CLI: [Models](https://docs.clawd.bot/models)
+- Auth profile rotation (OAuth vs API keys) + fallbacks: [Model failover](https://docs.clawd.bot/model-failover)
+
+## Install (recommended)
+
+Runtime: **Node ≥22**.
+
+```bash
+npm install -g clawdbot@latest
+# or: pnpm add -g clawdbot@latest
+
+clawdbot onboard --install-daemon
+```
+
+The wizard installs the Gateway daemon (launchd/systemd user service) so it stays running.
+
+## Quick start (TL;DR)
+
+Runtime: **Node ≥22**.
+
+Full beginner guide (auth, pairing, providers): [Getting started](https://docs.clawd.bot/getting-started)
+
+```bash
+clawdbot onboard --install-daemon
+
+clawdbot gateway --port 18789 --verbose
+
+# Send a message
+clawdbot message send --to +1234567890 --message "Hello from Clawdbot"
+
+# Talk to the assistant (optionally deliver back to WhatsApp/Telegram/Slack/Discord)
+clawdbot agent --message "Ship checklist" --thinking high
+```
+
+Upgrading? [Updating guide](https://docs.clawd.bot/updating) (and run `clawdbot doctor`).
+
+## From source (development)
+
+Prefer `pnpm` for builds from source. Bun is optional for running TypeScript directly.
+
+```bash
+git clone https://github.com/clawdbot/clawdbot.git
+cd clawdbot
+
+pnpm install
+pnpm ui:build # auto-installs UI deps on first run
+pnpm build
+
+pnpm clawdbot onboard --install-daemon
+
+# Dev loop (auto-reload on TS changes)
+pnpm gateway:watch
+```
+
+Note: `pnpm clawdbot ...` runs TypeScript directly (via `tsx`). `pnpm build` produces `dist/` for running via Node / the packaged `clawdbot` binary.
+
+## Security defaults (DM access)
+
+Clawdbot connects to real messaging surfaces. Treat inbound DMs as **untrusted input**.
+
+Full security guide: [Security](https://docs.clawd.bot/security)
+
+Default behavior on Telegram/WhatsApp/Signal/iMessage/Discord/Slack:
+- **DM pairing** (`dmPolicy="pairing"` / `discord.dm.policy="pairing"` / `slack.dm.policy="pairing"`): unknown senders receive a short pairing code and the bot does not process their message.
+- Approve with: `clawdbot pairing approve <provider> <code>` (then the sender is added to a local allowlist store).
+- Public inbound DMs require an explicit opt-in: set `dmPolicy="open"` and include `"*"` in the provider allowlist (`allowFrom` / `discord.dm.allowFrom` / `slack.dm.allowFrom`).
+
+Run `clawdbot doctor` to surface risky/misconfigured DM policies.
+
+## Highlights
+
+- **[Local-first Gateway](https://docs.clawd.bot/gateway)** — single control plane for sessions, providers, tools, and events.
+- **[Multi-provider inbox](https://docs.clawd.bot/surface)** — WhatsApp, Telegram, Slack, Discord, Signal, iMessage, WebChat, macOS, iOS/Android.
+- **[Multi-agent routing](https://docs.clawd.bot/configuration)** — route inbound providers/accounts/peers to isolated agents (workspaces + per-agent sessions).
+- **[Voice Wake](https://docs.clawd.bot/voicewake) + [Talk Mode](https://docs.clawd.bot/talk)** — always-on speech for macOS/iOS/Android with ElevenLabs.
+- **[Live Canvas](https://docs.clawd.bot/mac/canvas)** — agent-driven visual workspace with [A2UI](https://docs.clawd.bot/mac/canvas#canvas-a2ui).
+- **[First-class tools](https://docs.clawd.bot/tools)** — browser, canvas, nodes, cron, sessions, and Discord/Slack actions.
+- **[Companion apps](https://docs.clawd.bot/macos)** — macOS menu bar app + iOS/Android [nodes](https://docs.clawd.bot/nodes).
+- **[Onboarding](https://docs.clawd.bot/wizard) + [skills](https://docs.clawd.bot/skills)** — wizard-driven setup with bundled/managed/workspace skills.
+
+## Everything we built so far
+
+### Core platform
+- [Gateway WS control plane](https://docs.clawd.bot/gateway) with sessions, presence, config, cron, webhooks, [Control UI](https://docs.clawd.bot/web), and [Canvas host](https://docs.clawd.bot/mac/canvas#canvas-a2ui).
+- [CLI surface](https://docs.clawd.bot/agent-send): gateway, agent, send, [wizard](https://docs.clawd.bot/wizard), and [doctor](https://docs.clawd.bot/doctor).
+- [Pi agent runtime](https://docs.clawd.bot/agent) in RPC mode with tool streaming and block streaming.
+- [Session model](https://docs.clawd.bot/session): `main` for direct chats, group isolation, activation modes, queue modes, reply-back. Group rules: [Groups](https://docs.clawd.bot/groups).
+- [Media pipeline](https://docs.clawd.bot/images): images/audio/video, transcription hooks, size caps, temp file lifecycle. Audio details: [Audio](https://docs.clawd.bot/audio).
+
+### Providers
+- [Providers](https://docs.clawd.bot/surface): [WhatsApp](https://docs.clawd.bot/whatsapp) (Baileys), [Telegram](https://docs.clawd.bot/telegram) (grammY), [Slack](https://docs.clawd.bot/slack) (Bolt), [Discord](https://docs.clawd.bot/discord) (discord.js), [Signal](https://docs.clawd.bot/signal) (signal-cli), [iMessage](https://docs.clawd.bot/imessage) (imsg), [WebChat](https://docs.clawd.bot/webchat).
+- [Group routing](https://docs.clawd.bot/group-messages): mention gating, reply tags, per-provider chunking and routing. Provider rules: [Providers](https://docs.clawd.bot/surface).
+
+### Apps + nodes
+- [macOS app](https://docs.clawd.bot/macos): menu bar control plane, [Voice Wake](https://docs.clawd.bot/voicewake)/PTT, [Talk Mode](https://docs.clawd.bot/talk) overlay, [WebChat](https://docs.clawd.bot/webchat), debug tools, [remote gateway](https://docs.clawd.bot/remote) control.
+- [iOS node](https://docs.clawd.bot/ios): [Canvas](https://docs.clawd.bot/mac/canvas), [Voice Wake](https://docs.clawd.bot/voicewake), [Talk Mode](https://docs.clawd.bot/talk), camera, screen recording, Bonjour pairing.
+- [Android node](https://docs.clawd.bot/android): [Canvas](https://docs.clawd.bot/mac/canvas), [Talk Mode](https://docs.clawd.bot/talk), camera, screen recording, optional SMS.
+- [macOS node mode](https://docs.clawd.bot/nodes): system.run/notify + canvas/camera exposure.
+
+### Tools + automation
+- [Browser control](https://docs.clawd.bot/browser): dedicated clawd Chrome/Chromium, snapshots, actions, uploads, profiles.
+- [Canvas](https://docs.clawd.bot/mac/canvas): [A2UI](https://docs.clawd.bot/mac/canvas#canvas-a2ui) push/reset, eval, snapshot.
+- [Nodes](https://docs.clawd.bot/nodes): camera snap/clip, screen record, [location.get](https://docs.clawd.bot/location-command), notifications.
+- [Cron + wakeups](https://docs.clawd.bot/cron); [webhooks](https://docs.clawd.bot/webhook); [Gmail Pub/Sub](https://docs.clawd.bot/gmail-pubsub).
+- [Skills platform](https://docs.clawd.bot/skills): bundled, managed, and workspace skills with install gating + UI.
+
+### Runtime + safety
+- [Provider routing](https://docs.clawd.bot/provider-routing), [retry policy](https://docs.clawd.bot/retry), and [streaming/chunking](https://docs.clawd.bot/streaming).
+- [Presence](https://docs.clawd.bot/presence), [typing indicators](https://docs.clawd.bot/typing-indicators), and [usage tracking](https://docs.clawd.bot/usage-tracking).
+- [Models](https://docs.clawd.bot/models), [model failover](https://docs.clawd.bot/model-failover), and [session pruning](https://docs.clawd.bot/session-pruning).
+- [Security](https://docs.clawd.bot/security) and [troubleshooting](https://docs.clawd.bot/troubleshooting).
+
+### Ops + packaging
+- [Control UI](https://docs.clawd.bot/web) + [WebChat](https://docs.clawd.bot/webchat) served directly from the Gateway.
+- [Tailscale Serve/Funnel](https://docs.clawd.bot/tailscale) or [SSH tunnels](https://docs.clawd.bot/remote) with token/password auth.
+- [Nix mode](https://docs.clawd.bot/nix) for declarative config; [Docker](https://docs.clawd.bot/docker)-based installs.
+- [Doctor](https://docs.clawd.bot/doctor) migrations, [logging](https://docs.clawd.bot/logging).
+
+## How it works (short)
+
+```
+WhatsApp / Telegram / Slack / Discord / Signal / iMessage / WebChat
+               │
+               ▼
+┌───────────────────────────────┐
+│            Gateway            │  ws://127.0.0.1:18789
+│       (control plane)         │  bridge: tcp://0.0.0.0:18790
+└──────────────┬────────────────┘
+               │
+               ├─ Pi agent (RPC)
+               ├─ CLI (clawdbot …)
+               ├─ WebChat UI
+               ├─ macOS app
+               └─ iOS/Android nodes
+```
+
+## Key subsystems
+
+- **[Gateway WebSocket network](https://docs.clawd.bot/architecture)** — single WS control plane for clients, tools, and events (plus ops: [Gateway runbook](https://docs.clawd.bot/gateway)).
+- **[Tailscale exposure](https://docs.clawd.bot/tailscale)** — Serve/Funnel for the Gateway dashboard + WS (remote access: [Remote](https://docs.clawd.bot/remote)).
+- **[Browser control](https://docs.clawd.bot/browser)** — clawd‑managed Chrome/Chromium with CDP control.
+- **[Canvas + A2UI](https://docs.clawd.bot/mac/canvas)** — agent‑driven visual workspace (A2UI host: [Canvas/A2UI](https://docs.clawd.bot/mac/canvas#canvas-a2ui)).
+- **[Voice Wake](https://docs.clawd.bot/voicewake) + [Talk Mode](https://docs.clawd.bot/talk)** — always‑on speech and continuous conversation.
+- **[Nodes](https://docs.clawd.bot/nodes)** — Canvas, camera snap/clip, screen record, `location.get`, notifications, plus macOS‑only `system.run`/`system.notify`.
+
+## Tailscale access (Gateway dashboard)
+
+Clawdbot can auto-configure Tailscale **Serve** (tailnet-only) or **Funnel** (public) while the Gateway stays bound to loopback. Configure `gateway.tailscale.mode`:
+
+- `off`: no Tailscale automation (default).
+- `serve`: tailnet-only HTTPS via `tailscale serve` (uses Tailscale identity headers by default).
+- `funnel`: public HTTPS via `tailscale funnel` (requires shared password auth).
+
+Notes:
+- `gateway.bind` must stay `loopback` when Serve/Funnel is enabled (Clawdbot enforces this).
+- Serve can be forced to require a password by setting `gateway.auth.mode: "password"` or `gateway.auth.allowTailscale: false`.
+- Funnel refuses to start unless `gateway.auth.mode: "password"` is set.
+- Optional: `gateway.tailscale.resetOnExit` to undo Serve/Funnel on shutdown.
+
+Details: [Tailscale guide](https://docs.clawd.bot/tailscale) · [Web surfaces](https://docs.clawd.bot/web)
+
+## Remote Gateway (Linux is great)
+
+It’s perfectly fine to run the Gateway on a small Linux instance. Clients (macOS app, CLI, WebChat) can connect over **Tailscale Serve/Funnel** or **SSH tunnels**, and you can still pair device nodes (macOS/iOS/Android) to execute device‑local actions when needed.
+
+- **Gateway host** runs the bash tool and provider connections by default.
+- **Device nodes** run device‑local actions (`system.run`, camera, screen recording, notifications) via `node.invoke`.
+In short: bash runs where the Gateway lives; device actions run where the device lives.
+
+Details: [Remote access](https://docs.clawd.bot/remote) · [Nodes](https://docs.clawd.bot/nodes) · [Security](https://docs.clawd.bot/security)
+
+## macOS permissions via the Gateway protocol
+
+The macOS app can run in **node mode** and advertises its capabilities + permission map over the Gateway WebSocket (`node.list` / `node.describe`). Clients can then execute local actions via `node.invoke`:
+
+- `system.run` runs a local command and returns stdout/stderr/exit code; set `needsScreenRecording: true` to require screen-recording permission (otherwise you’ll get `PERMISSION_MISSING`).
+- `system.notify` posts a user notification and fails if notifications are denied.
+- `canvas.*`, `camera.*`, `screen.record`, and `location.get` are also routed via `node.invoke` and follow TCC permission status.
+
+Elevated bash (host permissions) is separate from macOS TCC:
+
+- Use `/elevated on|off` to toggle per‑session elevated access when enabled + allowlisted.
+- Gateway persists the per‑session toggle via `sessions.patch` (WS method) alongside `thinkingLevel`, `verboseLevel`, `model`, `sendPolicy`, and `groupActivation`.
+
+Details: [Nodes](https://docs.clawd.bot/nodes) · [macOS app](https://docs.clawd.bot/macos) · [Gateway protocol](https://docs.clawd.bot/architecture)
+
+## Agent to Agent (sessions_* tools)
+
+- Use these to coordinate work across sessions without jumping between chat surfaces.
+- `sessions_list` — discover active sessions (agents) and their metadata.
+- `sessions_history` — fetch transcript logs for a session.
+- `sessions_send` — message another session; optional reply‑back ping‑pong + announce step (`REPLY_SKIP`, `ANNOUNCE_SKIP`).
+
+Details: [Session tools](https://docs.clawd.bot/session-tool)
+
+## Skills registry (ClawdHub)
+
+ClawdHub is a minimal skill registry. With ClawdHub enabled, the agent can search for skills automatically and pull in new ones as needed.
+
+[ClawdHub](https://ClawdHub.com)
+
+## Chat commands
+
+Send these in WhatsApp/Telegram/Slack/WebChat (group commands are owner-only):
+
+- `/status` — compact session status (model + tokens, cost when available)
+- `/new` or `/reset` — reset the session
+- `/compact` — compact session context (summary)
+- `/think <level>` — off|minimal|low|medium|high
+- `/verbose on|off`
+- `/cost on|off` — append per-response token/cost usage lines
+- `/restart` — restart the gateway (owner-only in groups)
+- `/activation mention|always` — group activation toggle (groups only)
+
+## macOS app (optional)
+
+The Gateway alone delivers a great experience. All apps are optional and add extra features.
+
+If you plan to build/run companion apps, initialize submodules first:
+
+```bash
+git submodule update --init --recursive
+./scripts/restart-mac.sh
+```
+
+### macOS (Clawdbot.app) (optional)
+
+- Menu bar control for the Gateway and health.
+- Voice Wake + push-to-talk overlay.
+- WebChat + debug tools.
+- Remote gateway control over SSH.
+
+Note: signed builds required for macOS permissions to stick across rebuilds (see `docs/mac/permissions.md`).
+
+### iOS node (optional)
+
+- Pairs as a node via the Bridge.
+- Voice trigger forwarding + Canvas surface.
+- Controlled via `clawdbot nodes …`.
+
+Runbook: [iOS connect](https://docs.clawd.bot/ios).
+
+### Android node (optional)
+
+- Pairs via the same Bridge + pairing flow as iOS.
+- Exposes Canvas, Camera, and Screen capture commands.
+- Runbook: [Android connect](https://docs.clawd.bot/android).
+
+## Agent workspace + skills
+
+- Workspace root: `~/clawd` (configurable via `agents.defaults.workspace`).
+- Injected prompt files: `AGENTS.md`, `SOUL.md`, `TOOLS.md`.
+- Skills: `~/clawd/skills/<skill>/SKILL.md`.
+
+## Configuration
+
+Minimal `~/.clawdbot/clawdbot.json` (model + defaults):
+
+```json5
+{
+  agent: {
+    model: "anthropic/claude-opus-4-5"
+  }
+}
+```
+
+[Full configuration reference (all keys + examples).](https://docs.clawd.bot/configuration)
+
+## Security model (important)
+
+- **Default:** tools run on the host for the **main** session, so the agent has full access when it’s just you.
+- **Group/channel safety:** set `agents.defaults.sandbox.mode: "non-main"` to run **non‑main sessions** (groups/channels) inside per‑session Docker sandboxes; bash then runs in Docker for those sessions.
+- **Sandbox defaults:** allowlist `bash`, `process`, `read`, `write`, `edit`, `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`; denylist `browser`, `canvas`, `nodes`, `cron`, `discord`, `gateway`.
+
+Details: [Security guide](https://docs.clawd.bot/security) · [Docker + sandboxing](https://docs.clawd.bot/docker) · [Sandbox config](https://docs.clawd.bot/configuration)
+
+### [WhatsApp](https://docs.clawd.bot/whatsapp)
+
+- Link the device: `pnpm clawdbot providers login` (stores creds in `~/.clawdbot/credentials`).
+- Allowlist who can talk to the assistant via `whatsapp.allowFrom`.
+- If `whatsapp.groups` is set, it becomes a group allowlist; include `"*"` to allow all.
+
+### [Telegram](https://docs.clawd.bot/telegram)
+
+- Set `TELEGRAM_BOT_TOKEN` or `telegram.botToken` (env wins).
+- Optional: set `telegram.groups` (with `telegram.groups."*".requireMention`); when set, it is a group allowlist (include `"*"` to allow all). Also `telegram.allowFrom` or `telegram.webhookUrl` as needed.
+
+```json5
+{
+  telegram: {
+    botToken: "123456:ABCDEF"
+  }
+}
+```
+
+### [Slack](https://docs.clawd.bot/slack)
+
+- Set `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN` (or `slack.botToken` + `slack.appToken`).
+
+### [Discord](https://docs.clawd.bot/discord)
+
+- Set `DISCORD_BOT_TOKEN` or `discord.token` (env wins).
+- Optional: set `commands.native`, `commands.text`, or `commands.useAccessGroups`, plus `discord.dm.allowFrom`, `discord.guilds`, or `discord.mediaMaxMb` as needed.
+
+```json5
+{
+  discord: {
+    token: "1234abcd"
+  }
+}
+```
+
+### [Signal](https://docs.clawd.bot/signal)
+
+- Requires `signal-cli` and a `signal` config section.
+
+### [iMessage](https://docs.clawd.bot/imessage)
+
+- macOS only; Messages must be signed in.
+- If `imessage.groups` is set, it becomes a group allowlist; include `"*"` to allow all.
+
+### [WebChat](https://docs.clawd.bot/webchat)
+
+- Uses the Gateway WebSocket; no separate WebChat port/config.
+
+Browser control (optional):
+
+```json5
+{
+  browser: {
+    enabled: true,
+    controlUrl: "http://127.0.0.1:18791",
+    color: "#FF4500"
+  }
+}
+```
+
+## Docs
+
+Use these when you’re past the onboarding flow and want the deeper reference.
+- [Start with the docs index for navigation and “what’s where.”](https://docs.clawd.bot)
+- [Read the architecture overview for the gateway + protocol model.](https://docs.clawd.bot/architecture)
+- [Use the full configuration reference when you need every key and example.](https://docs.clawd.bot/configuration)
+- [Run the Gateway by the book with the operational runbook.](https://docs.clawd.bot/gateway)
+- [Learn how the Control UI/Web surfaces work and how to expose them safely.](https://docs.clawd.bot/web)
+- [Understand remote access over SSH tunnels or tailnets.](https://docs.clawd.bot/remote)
+- [Follow the onboarding wizard flow for a guided setup.](https://docs.clawd.bot/wizard)
+- [Wire external triggers via the webhook surface.](https://docs.clawd.bot/webhook)
+- [Set up Gmail Pub/Sub triggers.](https://docs.clawd.bot/gmail-pubsub)
+- [Learn the macOS menu bar companion details.](https://docs.clawd.bot/mac/menu-bar)
+- [Platform guides: Windows (WSL2)](https://docs.clawd.bot/windows), [Linux](https://docs.clawd.bot/linux), [macOS](https://docs.clawd.bot/macos), [iOS](https://docs.clawd.bot/ios), [Android](https://docs.clawd.bot/android)
+- [Debug common failures with the troubleshooting guide.](https://docs.clawd.bot/troubleshooting)
+- [Review security guidance before exposing anything.](https://docs.clawd.bot/security)
+
+## Advanced docs (discovery + control)
+
+- [Discovery + transports](https://docs.clawd.bot/discovery)
+- [Bonjour/mDNS](https://docs.clawd.bot/bonjour)
+- [Gateway pairing](https://docs.clawd.bot/gateway/pairing)
+- [Remote gateway README](https://docs.clawd.bot/remote-gateway-readme)
+- [Control UI](https://docs.clawd.bot/control-ui)
+- [Dashboard](https://docs.clawd.bot/dashboard)
+
+## Operations & troubleshooting
+
+- [Health checks](https://docs.clawd.bot/health)
+- [Gateway lock](https://docs.clawd.bot/gateway-lock)
+- [Background process](https://docs.clawd.bot/background-process)
+- [Browser troubleshooting (Linux)](https://docs.clawd.bot/browser-linux-troubleshooting)
+- [Logging](https://docs.clawd.bot/logging)
+
+## Deep dives
+
+- [Agent loop](https://docs.clawd.bot/agent-loop)
+- [Presence](https://docs.clawd.bot/presence)
+- [TypeBox schemas](https://docs.clawd.bot/typebox)
+- [RPC adapters](https://docs.clawd.bot/rpc)
+- [Queue](https://docs.clawd.bot/queue)
+
+## Workspace & skills
+
+- [Skills config](https://docs.clawd.bot/skills-config)
+- [Default AGENTS](https://docs.clawd.bot/AGENTS.default)
+- [Templates: AGENTS](https://docs.clawd.bot/templates/AGENTS)
+- [Templates: BOOTSTRAP](https://docs.clawd.bot/templates/BOOTSTRAP)
+- [Templates: IDENTITY](https://docs.clawd.bot/templates/IDENTITY)
+- [Templates: SOUL](https://docs.clawd.bot/templates/SOUL)
+- [Templates: TOOLS](https://docs.clawd.bot/templates/TOOLS)
+- [Templates: USER](https://docs.clawd.bot/templates/USER)
+
+## Platform internals
+
+- [macOS dev setup](https://docs.clawd.bot/mac/dev-setup)
+- [macOS menu bar](https://docs.clawd.bot/mac/menu-bar)
+- [macOS voice wake](https://docs.clawd.bot/mac/voicewake)
+- [iOS node](https://docs.clawd.bot/ios)
+- [Android node](https://docs.clawd.bot/android)
+- [Windows (WSL2)](https://docs.clawd.bot/windows)
+- [Linux app](https://docs.clawd.bot/linux)
+
+## Email hooks (Gmail)
+
+- [docs.clawd.bot/gmail-pubsub](https://docs.clawd.bot/gmail-pubsub)
+
+## Clawd
+
+Clawdbot was built for **Clawd**, a space lobster AI assistant. 🦞  
+by Peter Steinberger and the community.
+
+- [clawd.me](https://clawd.me)
+- [soul.md](https://soul.md)
+- [steipete.me](https://steipete.me)
+
+## Community
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, maintainers, and how to submit PRs.  
+AI/vibe-coded PRs welcome! 🤖
+
+Special thanks to @andrewting19 for the Anthropic OAuth tool-name fix.
+
+Thanks to all clawtributors:
+
+<p align="left">
+  <a href="https://github.com/steipete"><img src="https://avatars.githubusercontent.com/u/58493?v=4&s=48" width="48" height="48" alt="steipete" title="steipete"/></a> <a href="https://github.com/joaohlisboa"><img src="https://avatars.githubusercontent.com/u/8200873?v=4&s=48" width="48" height="48" alt="joaohlisboa" title="joaohlisboa"/></a> <a href="https://github.com/mneves75"><img src="https://avatars.githubusercontent.com/u/2423436?v=4&s=48" width="48" height="48" alt="mneves75" title="mneves75"/></a> <a href="https://github.com/rahthakor"><img src="https://avatars.githubusercontent.com/u/8470553?v=4&s=48" width="48" height="48" alt="rahthakor" title="rahthakor"/></a> <a href="https://github.com/joshp123"><img src="https://avatars.githubusercontent.com/u/1497361?v=4&s=48" width="48" height="48" alt="joshp123" title="joshp123"/></a> <a href="https://github.com/mukhtharcm"><img src="https://avatars.githubusercontent.com/u/56378562?v=4&s=48" width="48" height="48" alt="mukhtharcm" title="mukhtharcm"/></a> <a href="https://github.com/maxsumrall"><img src="https://avatars.githubusercontent.com/u/628843?v=4&s=48" width="48" height="48" alt="maxsumrall" title="maxsumrall"/></a> <a href="https://github.com/xadenryan"><img src="https://avatars.githubusercontent.com/u/165437834?v=4&s=48" width="48" height="48" alt="xadenryan" title="xadenryan"/></a> <a href="https://github.com/tobiasbischoff"><img src="https://avatars.githubusercontent.com/u/711564?v=4&s=48" width="48" height="48" alt="Tobias Bischoff" title="Tobias Bischoff"/></a> <a href="https://github.com/hsrvc"><img src="https://avatars.githubusercontent.com/u/129702169?v=4&s=48" width="48" height="48" alt="hsrvc" title="hsrvc"/></a>
+  <a href="https://github.com/magimetal"><img src="https://avatars.githubusercontent.com/u/36491250?v=4&s=48" width="48" height="48" alt="magimetal" title="magimetal"/></a> <a href="https://github.com/jamesgroat"><img src="https://avatars.githubusercontent.com/u/2634024?v=4&s=48" width="48" height="48" alt="jamesgroat" title="jamesgroat"/></a> <a href="https://github.com/NicholasSpisak"><img src="https://avatars.githubusercontent.com/u/129075147?v=4&s=48" width="48" height="48" alt="NicholasSpisak" title="NicholasSpisak"/></a> <a href="https://github.com/dantelex"><img src="https://avatars.githubusercontent.com/u/631543?v=4&s=48" width="48" height="48" alt="dantelex" title="dantelex"/></a> <a href="https://github.com/daveonkels"><img src="https://avatars.githubusercontent.com/u/533642?v=4&s=48" width="48" height="48" alt="daveonkels" title="daveonkels"/></a> <a href="https://github.com/radek-paclt"><img src="https://avatars.githubusercontent.com/u/50451445?v=4&s=48" width="48" height="48" alt="radek-paclt" title="radek-paclt"/></a> <a href="https://github.com/omniwired"><img src="https://avatars.githubusercontent.com/u/322761?v=4&s=48" width="48" height="48" alt="Eng. Juan Combetto" title="Eng. Juan Combetto"/></a> <a href="https://github.com/mbelinky"><img src="https://avatars.githubusercontent.com/u/132747814?v=4&s=48" width="48" height="48" alt="Mariano Belinky" title="Mariano Belinky"/></a> <a href="https://github.com/julianengel"><img src="https://avatars.githubusercontent.com/u/10634231?v=4&s=48" width="48" height="48" alt="julianengel" title="julianengel"/></a> <a href="https://github.com/claude"><img src="https://avatars.githubusercontent.com/u/81847?v=4&s=48" width="48" height="48" alt="claude" title="claude"/></a>
+  <a href="https://github.com/jeffersonwarrior"><img src="https://avatars.githubusercontent.com/u/89030989?v=4&s=48" width="48" height="48" alt="jeffersonwarrior" title="jeffersonwarrior"/></a> <a href="https://github.com/sreekaransrinath"><img src="https://avatars.githubusercontent.com/u/50989977?v=4&s=48" width="48" height="48" alt="sreekaransrinath" title="sreekaransrinath"/></a> <a href="https://github.com/dbhurley"><img src="https://avatars.githubusercontent.com/u/5251425?v=4&s=48" width="48" height="48" alt="dbhurley" title="dbhurley"/></a> <a href="https://github.com/gupsammy"><img src="https://avatars.githubusercontent.com/u/20296019?v=4&s=48" width="48" height="48" alt="gupsammy" title="gupsammy"/></a> <a href="https://github.com/nachoiacovino"><img src="https://avatars.githubusercontent.com/u/50103937?v=4&s=48" width="48" height="48" alt="nachoiacovino" title="nachoiacovino"/></a> <a href="https://github.com/vsabavat"><img src="https://avatars.githubusercontent.com/u/50385532?v=4&s=48" width="48" height="48" alt="Vasanth Rao Naik Sabavat" title="Vasanth Rao Naik Sabavat"/></a> <a href="https://github.com/lc0rp"><img src="https://avatars.githubusercontent.com/u/2609441?v=4&s=48" width="48" height="48" alt="lc0rp" title="lc0rp"/></a> <a href="https://github.com/scald"><img src="https://avatars.githubusercontent.com/u/1215913?v=4&s=48" width="48" height="48" alt="scald" title="scald"/></a> <a href="https://github.com/andranik-sahakyan"><img src="https://avatars.githubusercontent.com/u/8908029?v=4&s=48" width="48" height="48" alt="andranik-sahakyan" title="andranik-sahakyan"/></a> <a href="https://github.com/Nachx639"><img src="https://avatars.githubusercontent.com/u/71144023?v=4&s=48" width="48" height="48" alt="nachx639" title="nachx639"/></a>
+  <a href="https://github.com/sircrumpet"><img src="https://avatars.githubusercontent.com/u/4436535?v=4&s=48" width="48" height="48" alt="sircrumpet" title="sircrumpet"/></a> <a href="https://github.com/rafaelreis-r"><img src="https://avatars.githubusercontent.com/u/57492577?v=4&s=48" width="48" height="48" alt="rafaelreis-r" title="rafaelreis-r"/></a> <a href="https://github.com/meaningfool"><img src="https://avatars.githubusercontent.com/u/2862331?v=4&s=48" width="48" height="48" alt="meaningfool" title="meaningfool"/></a> <a href="https://github.com/ratulsarna"><img src="https://avatars.githubusercontent.com/u/105903728?v=4&s=48" width="48" height="48" alt="ratulsarna" title="ratulsarna"/></a> <a href="https://github.com/lutr0"><img src="https://avatars.githubusercontent.com/u/76906369?v=4&s=48" width="48" height="48" alt="lutr0" title="lutr0"/></a> <a href="https://github.com/AbhisekBasu1"><img src="https://avatars.githubusercontent.com/u/40645221?v=4&s=48" width="48" height="48" alt="abhisekbasu1" title="abhisekbasu1"/></a> <a href="https://github.com/emanuelst"><img src="https://avatars.githubusercontent.com/u/9994339?v=4&s=48" width="48" height="48" alt="emanuelst" title="emanuelst"/></a> <a href="https://github.com/thewilloftheshadow"><img src="https://avatars.githubusercontent.com/u/35580099?v=4&s=48" width="48" height="48" alt="thewilloftheshadow" title="thewilloftheshadow"/></a> <a href="https://github.com/KristijanJovanovski"><img src="https://avatars.githubusercontent.com/u/8942284?v=4&s=48" width="48" height="48" alt="KristijanJovanovski" title="KristijanJovanovski"/></a> <a href="https://github.com/osolmaz"><img src="https://avatars.githubusercontent.com/u/2453968?v=4&s=48" width="48" height="48" alt="osolmaz" title="osolmaz"/></a>
+  <a href="https://github.com/kiranjd"><img src="https://avatars.githubusercontent.com/u/25822851?v=4&s=48" width="48" height="48" alt="kiranjd" title="kiranjd"/></a> <a href="https://github.com/sebslight"><img src="https://avatars.githubusercontent.com/u/19554889?v=4&s=48" width="48" height="48" alt="sebslight" title="sebslight"/></a> <a href="https://github.com/onutc"><img src="https://avatars.githubusercontent.com/u/152018508?v=4&s=48" width="48" height="48" alt="onutc" title="onutc"/></a> <a href="https://github.com/CashWilliams"><img src="https://avatars.githubusercontent.com/u/613573?v=4&s=48" width="48" height="48" alt="CashWilliams" title="CashWilliams"/></a> <a href="https://github.com/search?q=sheeek"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="sheeek" title="sheeek"/></a> <a href="https://github.com/ManuelHettich"><img src="https://avatars.githubusercontent.com/u/17690367?v=4&s=48" width="48" height="48" alt="manuelhettich" title="manuelhettich"/></a> <a href="https://github.com/minghinmatthewlam"><img src="https://avatars.githubusercontent.com/u/14224566?v=4&s=48" width="48" height="48" alt="minghinmatthewlam" title="minghinmatthewlam"/></a> <a href="https://github.com/buddyh"><img src="https://avatars.githubusercontent.com/u/31752869?v=4&s=48" width="48" height="48" alt="buddyh" title="buddyh"/></a> <a href="https://github.com/mcinteerj"><img src="https://avatars.githubusercontent.com/u/3613653?v=4&s=48" width="48" height="48" alt="mcinteerj" title="mcinteerj"/></a> <a href="https://github.com/timkrase"><img src="https://avatars.githubusercontent.com/u/38947626?v=4&s=48" width="48" height="48" alt="timkrase" title="timkrase"/></a>
+  <a href="https://github.com/azade-c"><img src="https://avatars.githubusercontent.com/u/252790079?v=4&s=48" width="48" height="48" alt="azade-c" title="azade-c"/></a> <a href="https://github.com/search?q=Yurii%20Chukhlib"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Yurii Chukhlib" title="Yurii Chukhlib"/></a> <a href="https://github.com/austinm911"><img src="https://avatars.githubusercontent.com/u/31991302?v=4&s=48" width="48" height="48" alt="austinm911" title="austinm911"/></a> <a href="https://github.com/apps/blacksmith-sh"><img src="https://avatars.githubusercontent.com/in/807020?v=4&s=48" width="48" height="48" alt="blacksmith-sh[bot]" title="blacksmith-sh[bot]"/></a> <a href="https://github.com/imfing"><img src="https://avatars.githubusercontent.com/u/5097752?v=4&s=48" width="48" height="48" alt="imfing" title="imfing"/></a> <a href="https://github.com/jarvis-medmatic"><img src="https://avatars.githubusercontent.com/u/252428873?v=4&s=48" width="48" height="48" alt="jarvis-medmatic" title="jarvis-medmatic"/></a> <a href="https://github.com/mahmoudashraf93"><img src="https://avatars.githubusercontent.com/u/9130129?v=4&s=48" width="48" height="48" alt="mahmoudashraf93" title="mahmoudashraf93"/></a> <a href="https://github.com/petter-b"><img src="https://avatars.githubusercontent.com/u/62076402?v=4&s=48" width="48" height="48" alt="petter-b" title="petter-b"/></a> <a href="https://github.com/RandyVentures"><img src="https://avatars.githubusercontent.com/u/149904821?v=4&s=48" width="48" height="48" alt="RandyVentures" title="RandyVentures"/></a> <a href="https://github.com/jalehman"><img src="https://avatars.githubusercontent.com/u/550978?v=4&s=48" width="48" height="48" alt="jalehman" title="jalehman"/></a>
+  <a href="https://github.com/jonasjancarik"><img src="https://avatars.githubusercontent.com/u/2459191?v=4&s=48" width="48" height="48" alt="jonasjancarik" title="jonasjancarik"/></a> <a href="https://github.com/obviyus"><img src="https://avatars.githubusercontent.com/u/22031114?v=4&s=48" width="48" height="48" alt="obviyus" title="obviyus"/></a> <a href="https://github.com/dan-dr"><img src="https://avatars.githubusercontent.com/u/6669808?v=4&s=48" width="48" height="48" alt="dan-dr" title="dan-dr"/></a> <a href="https://github.com/Iamadig"><img src="https://avatars.githubusercontent.com/u/102129234?v=4&s=48" width="48" height="48" alt="iamadig" title="iamadig"/></a> <a href="https://github.com/koala73"><img src="https://avatars.githubusercontent.com/u/996596?v=4&s=48" width="48" height="48" alt="koala73" title="koala73"/></a> <a href="https://github.com/manmal"><img src="https://avatars.githubusercontent.com/u/142797?v=4&s=48" width="48" height="48" alt="manmal" title="manmal"/></a> <a href="https://github.com/neist"><img src="https://avatars.githubusercontent.com/u/1029724?v=4&s=48" width="48" height="48" alt="neist" title="neist"/></a> <a href="https://github.com/ogulcancelik"><img src="https://avatars.githubusercontent.com/u/7064011?v=4&s=48" width="48" height="48" alt="ogulcancelik" title="ogulcancelik"/></a> <a href="https://github.com/pasogott"><img src="https://avatars.githubusercontent.com/u/23458152?v=4&s=48" width="48" height="48" alt="pasogott" title="pasogott"/></a> <a href="https://github.com/VACInc"><img src="https://avatars.githubusercontent.com/u/3279061?v=4&s=48" width="48" height="48" alt="VACInc" title="VACInc"/></a>
+  <a href="https://github.com/zats"><img src="https://avatars.githubusercontent.com/u/2688806?v=4&s=48" width="48" height="48" alt="zats" title="zats"/></a> <a href="https://github.com/antons"><img src="https://avatars.githubusercontent.com/u/129705?v=4&s=48" width="48" height="48" alt="antons" title="antons"/></a> <a href="https://github.com/djangonavarro220"><img src="https://avatars.githubusercontent.com/u/251162586?v=4&s=48" width="48" height="48" alt="Django Navarro" title="Django Navarro"/></a> <a href="https://github.com/search?q=L36%20Server"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="L36 Server" title="L36 Server"/></a> <a href="https://github.com/pcty-nextgen-service-account"><img src="https://avatars.githubusercontent.com/u/112553441?v=4&s=48" width="48" height="48" alt="pcty-nextgen-service-account" title="pcty-nextgen-service-account"/></a> <a href="https://github.com/Syhids"><img src="https://avatars.githubusercontent.com/u/671202?v=4&s=48" width="48" height="48" alt="Syhids" title="Syhids"/></a> <a href="https://github.com/erik-agens"><img src="https://avatars.githubusercontent.com/u/80908960?v=4&s=48" width="48" height="48" alt="erik-agens" title="erik-agens"/></a> <a href="https://github.com/erikpr1994"><img src="https://avatars.githubusercontent.com/u/6299331?v=4&s=48" width="48" height="48" alt="erikpr1994" title="erikpr1994"/></a> <a href="https://github.com/fcatuhe"><img src="https://avatars.githubusercontent.com/u/17382215?v=4&s=48" width="48" height="48" alt="fcatuhe" title="fcatuhe"/></a> <a href="https://github.com/HeimdallStrategy"><img src="https://avatars.githubusercontent.com/u/223014405?v=4&s=48" width="48" height="48" alt="HeimdallStrategy" title="HeimdallStrategy"/></a>
+  <a href="https://github.com/henrino3"><img src="https://avatars.githubusercontent.com/u/4260288?v=4&s=48" width="48" height="48" alt="henrino3" title="henrino3"/></a> <a href="https://github.com/jayhickey"><img src="https://avatars.githubusercontent.com/u/1676460?v=4&s=48" width="48" height="48" alt="jayhickey" title="jayhickey"/></a> <a href="https://github.com/jdrhyne"><img src="https://avatars.githubusercontent.com/u/7828464?v=4&s=48" width="48" height="48" alt="Jonathan D. Rhyne (DJ-D)" title="Jonathan D. Rhyne (DJ-D)"/></a> <a href="https://github.com/jverdi"><img src="https://avatars.githubusercontent.com/u/345050?v=4&s=48" width="48" height="48" alt="jverdi" title="jverdi"/></a> <a href="https://github.com/search?q=Keith%20the%20Silly%20Goose"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Keith the Silly Goose" title="Keith the Silly Goose"/></a> <a href="https://github.com/search?q=Kit"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Kit" title="Kit"/></a> <a href="https://github.com/mitschabaude-bot"><img src="https://avatars.githubusercontent.com/u/247582884?v=4&s=48" width="48" height="48" alt="mitschabaude-bot" title="mitschabaude-bot"/></a> <a href="https://github.com/ngutman"><img src="https://avatars.githubusercontent.com/u/1540134?v=4&s=48" width="48" height="48" alt="ngutman" title="ngutman"/></a> <a href="https://github.com/oswalpalash"><img src="https://avatars.githubusercontent.com/u/6431196?v=4&s=48" width="48" height="48" alt="oswalpalash" title="oswalpalash"/></a> <a href="https://github.com/p6l-richard"><img src="https://avatars.githubusercontent.com/u/18185649?v=4&s=48" width="48" height="48" alt="p6l-richard" title="p6l-richard"/></a>
+  <a href="https://github.com/philipp-spiess"><img src="https://avatars.githubusercontent.com/u/458591?v=4&s=48" width="48" height="48" alt="philipp-spiess" title="philipp-spiess"/></a> <a href="https://github.com/pkrmf"><img src="https://avatars.githubusercontent.com/u/1714267?v=4&s=48" width="48" height="48" alt="pkrmf" title="pkrmf"/></a> <a href="https://github.com/search?q=Sash%20Catanzarite"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Sash Catanzarite" title="Sash Catanzarite"/></a> <a href="https://github.com/search?q=VAC"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="VAC" title="VAC"/></a> <a href="https://github.com/adam91holt"><img src="https://avatars.githubusercontent.com/u/9592417?v=4&s=48" width="48" height="48" alt="adam91holt" title="adam91holt"/></a> <a href="https://github.com/search?q=alejandro%20maza"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="alejandro maza" title="alejandro maza"/></a> <a href="https://github.com/andrewting19"><img src="https://avatars.githubusercontent.com/u/10536704?v=4&s=48" width="48" height="48" alt="andrewting19" title="andrewting19"/></a> <a href="https://github.com/Asleep123"><img src="https://avatars.githubusercontent.com/u/122379135?v=4&s=48" width="48" height="48" alt="Asleep123" title="Asleep123"/></a> <a href="https://github.com/bjesuiter"><img src="https://avatars.githubusercontent.com/u/2365676?v=4&s=48" width="48" height="48" alt="bjesuiter" title="bjesuiter"/></a> <a href="https://github.com/bolismauro"><img src="https://avatars.githubusercontent.com/u/771999?v=4&s=48" width="48" height="48" alt="bolismauro" title="bolismauro"/></a>
+  <a href="https://github.com/cash-echo-bot"><img src="https://avatars.githubusercontent.com/u/252747386?v=4&s=48" width="48" height="48" alt="cash-echo-bot" title="cash-echo-bot"/></a> <a href="https://github.com/search?q=Clawd"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Clawd" title="Clawd"/></a> <a href="https://github.com/conhecendocontato"><img src="https://avatars.githubusercontent.com/u/82890727?v=4&s=48" width="48" height="48" alt="conhecendocontato" title="conhecendocontato"/></a> <a href="https://github.com/gtsifrikas"><img src="https://avatars.githubusercontent.com/u/8904378?v=4&s=48" width="48" height="48" alt="gtsifrikas" title="gtsifrikas"/></a> <a href="https://github.com/HazAT"><img src="https://avatars.githubusercontent.com/u/363802?v=4&s=48" width="48" height="48" alt="HazAT" title="HazAT"/></a> <a href="https://github.com/hrdwdmrbl"><img src="https://avatars.githubusercontent.com/u/554881?v=4&s=48" width="48" height="48" alt="hrdwdmrbl" title="hrdwdmrbl"/></a> <a href="https://github.com/hugobarauna"><img src="https://avatars.githubusercontent.com/u/2719?v=4&s=48" width="48" height="48" alt="hugobarauna" title="hugobarauna"/></a> <a href="https://github.com/search?q=Jarvis"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Jarvis" title="Jarvis"/></a> <a href="https://github.com/kitze"><img src="https://avatars.githubusercontent.com/u/1160594?v=4&s=48" width="48" height="48" alt="kitze" title="kitze"/></a> <a href="https://github.com/kkarimi"><img src="https://avatars.githubusercontent.com/u/875218?v=4&s=48" width="48" height="48" alt="kkarimi" title="kkarimi"/></a>
+  <a href="https://github.com/levifig"><img src="https://avatars.githubusercontent.com/u/1605?v=4&s=48" width="48" height="48" alt="levifig" title="levifig"/></a> <a href="https://github.com/search?q=Lloyd"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Lloyd" title="Lloyd"/></a> <a href="https://github.com/loukotal"><img src="https://avatars.githubusercontent.com/u/18210858?v=4&s=48" width="48" height="48" alt="loukotal" title="loukotal"/></a> <a href="https://github.com/martinpucik"><img src="https://avatars.githubusercontent.com/u/5503097?v=4&s=48" width="48" height="48" alt="martinpucik" title="martinpucik"/></a> <a href="https://github.com/mickahouan"><img src="https://avatars.githubusercontent.com/u/31423109?v=4&s=48" width="48" height="48" alt="mickahouan" title="mickahouan"/></a> <a href="https://github.com/search?q=Miles"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Miles" title="Miles"/></a> <a href="https://github.com/mrdbstn"><img src="https://avatars.githubusercontent.com/u/58957632?v=4&s=48" width="48" height="48" alt="mrdbstn" title="mrdbstn"/></a> <a href="https://github.com/MSch"><img src="https://avatars.githubusercontent.com/u/7475?v=4&s=48" width="48" height="48" alt="MSch" title="MSch"/></a> <a href="https://github.com/nexty5870"><img src="https://avatars.githubusercontent.com/u/3869659?v=4&s=48" width="48" height="48" alt="nexty5870" title="nexty5870"/></a> <a href="https://github.com/prathamdby"><img src="https://avatars.githubusercontent.com/u/134331217?v=4&s=48" width="48" height="48" alt="prathamdby" title="prathamdby"/></a>
+  <a href="https://github.com/reeltimeapps"><img src="https://avatars.githubusercontent.com/u/637338?v=4&s=48" width="48" height="48" alt="reeltimeapps" title="reeltimeapps"/></a> <a href="https://github.com/RLTCmpe"><img src="https://avatars.githubusercontent.com/u/10762242?v=4&s=48" width="48" height="48" alt="RLTCmpe" title="RLTCmpe"/></a> <a href="https://github.com/search?q=Rolf%20Fredheim"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Rolf Fredheim" title="Rolf Fredheim"/></a> <a href="https://github.com/rubyrunsstuff"><img src="https://avatars.githubusercontent.com/u/246602379?v=4&s=48" width="48" height="48" alt="rubyrunsstuff" title="rubyrunsstuff"/></a> <a href="https://github.com/search?q=Samrat%20Jha"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Samrat Jha" title="Samrat Jha"/></a> <a href="https://github.com/snopoke"><img src="https://avatars.githubusercontent.com/u/249606?v=4&s=48" width="48" height="48" alt="snopoke" title="snopoke"/></a> <a href="https://github.com/wes-davis"><img src="https://avatars.githubusercontent.com/u/16506720?v=4&s=48" width="48" height="48" alt="wes-davis" title="wes-davis"/></a> <a href="https://github.com/wstock"><img src="https://avatars.githubusercontent.com/u/1394687?v=4&s=48" width="48" height="48" alt="wstock" title="wstock"/></a> <a href="https://github.com/YuriNachos"><img src="https://avatars.githubusercontent.com/u/19365375?v=4&s=48" width="48" height="48" alt="YuriNachos" title="YuriNachos"/></a> <a href="https://github.com/search?q=Zach%20Knickerbocker"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Zach Knickerbocker" title="Zach Knickerbocker"/></a>
+  <a href="https://github.com/zknicker"><img src="https://avatars.githubusercontent.com/u/1164085?v=4&s=48" width="48" height="48" alt="zknicker" title="zknicker"/></a> <a href="https://github.com/search?q=Azade"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Azade" title="Azade"/></a> <a href="https://github.com/search?q=ddyo"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="ddyo" title="ddyo"/></a> <a href="https://github.com/search?q=Erik"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Erik" title="Erik"/></a> <a href="https://github.com/latitudeki5223"><img src="https://avatars.githubusercontent.com/u/119656367?v=4&s=48" width="48" height="48" alt="latitudeki5223" title="latitudeki5223"/></a> <a href="https://github.com/search?q=Manuel%20Maly"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Manuel Maly" title="Manuel Maly"/></a> <a href="https://github.com/search?q=Mourad%20Boustani"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Mourad Boustani" title="Mourad Boustani"/></a> <a href="https://github.com/pcty-nextgen-ios-builder"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="pcty-nextgen-ios-builder" title="pcty-nextgen-ios-builder"/></a> <a href="https://github.com/search?q=Quentin"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Quentin" title="Quentin"/></a> <a href="https://github.com/search?q=Randy%20Torres"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="Randy Torres" title="Randy Torres"/></a>
+  <a href="https://github.com/search?q=William%20Stock"><img src="assets/avatar-placeholder.svg" width="48" height="48" alt="William Stock" title="William Stock"/></a>
+</p>
