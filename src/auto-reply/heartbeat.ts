@@ -1,0 +1,109 @@
+import { HEARTBEAT_TOKEN } from "./tokens.js";
+
+export const HEARTBEAT_PROMPT =
+  "Consider outstanding tasks and HEARTBEAT.md guidance from the workspace context (if present). Checkup sometimes on your human during (user local) day time.";
+export const DEFAULT_HEARTBEAT_EVERY = "30m";
+export const DEFAULT_HEARTBEAT_ACK_MAX_CHARS = 30;
+
+export function resolveHeartbeatPrompt(raw?: string): string {
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  return trimmed || HEARTBEAT_PROMPT;
+}
+
+export type StripHeartbeatMode = "heartbeat" | "message";
+
+function stripTokenAtEdges(raw: string): { text: string; didStrip: boolean } {
+  let text = raw.trim();
+  if (!text) return { text: "", didStrip: false };
+
+  const token = HEARTBEAT_TOKEN;
+  if (!text.includes(token)) return { text, didStrip: false };
+
+  let didStrip = false;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const next = text.trim();
+    if (next.startsWith(token)) {
+      const after = next.slice(token.length).trimStart();
+      text = after;
+      didStrip = true;
+      changed = true;
+      continue;
+    }
+    if (next.endsWith(token)) {
+      const before = next.slice(0, Math.max(0, next.length - token.length));
+      text = before.trimEnd();
+      didStrip = true;
+      changed = true;
+    }
+  }
+
+  const collapsed = text.replace(/\s+/g, " ").trim();
+  return { text: collapsed, didStrip };
+}
+
+export function stripHeartbeatToken(
+  raw?: string,
+  opts: { mode?: StripHeartbeatMode; maxAckChars?: number } = {},
+) {
+  if (!raw) return { shouldSkip: true, text: "", didStrip: false };
+  const trimmed = raw.trim();
+  if (!trimmed) return { shouldSkip: true, text: "", didStrip: false };
+
+  const mode: StripHeartbeatMode = opts.mode ?? "message";
+  const maxAckCharsRaw = opts.maxAckChars;
+  const parsedAckChars =
+    typeof maxAckCharsRaw === "string"
+      ? Number(maxAckCharsRaw)
+      : maxAckCharsRaw;
+  const maxAckChars = Math.max(
+    0,
+    typeof parsedAckChars === "number" && Number.isFinite(parsedAckChars)
+      ? parsedAckChars
+      : DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
+  );
+
+  // Normalize lightweight markup so HEARTBEAT_OK wrapped in HTML/Markdown
+  // (e.g., <b>HEARTBEAT_OK</b> or **HEARTBEAT_OK**) still strips.
+  const stripMarkup = (text: string) =>
+    text
+      // Drop HTML tags.
+      .replace(/<[^>]*>/g, " ")
+      // Decode common nbsp variant.
+      .replace(/&nbsp;/gi, " ")
+      // Remove markdown-ish wrappers at the edges.
+      .replace(/^[*`~_]+/, "")
+      .replace(/[*`~_]+$/, "");
+
+  const trimmedNormalized = stripMarkup(trimmed);
+  const hasToken =
+    trimmed.includes(HEARTBEAT_TOKEN) ||
+    trimmedNormalized.includes(HEARTBEAT_TOKEN);
+  if (!hasToken) {
+    return { shouldSkip: false, text: trimmed, didStrip: false };
+  }
+
+  const strippedOriginal = stripTokenAtEdges(trimmed);
+  const strippedNormalized = stripTokenAtEdges(trimmedNormalized);
+  const picked =
+    strippedOriginal.didStrip && strippedOriginal.text
+      ? strippedOriginal
+      : strippedNormalized;
+  if (!picked.didStrip) {
+    return { shouldSkip: false, text: trimmed, didStrip: false };
+  }
+
+  if (!picked.text) {
+    return { shouldSkip: true, text: "", didStrip: true };
+  }
+
+  const rest = picked.text.trim();
+  if (mode === "heartbeat") {
+    if (rest.length <= maxAckChars) {
+      return { shouldSkip: true, text: "", didStrip: true };
+    }
+  }
+
+  return { shouldSkip: false, text: rest, didStrip: true };
+}

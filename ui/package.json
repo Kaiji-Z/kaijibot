@@ -1,0 +1,26 @@
+{
+  "name": "clawdbot-control-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "dompurify": "^3.3.1",
+    "lit": "^3.3.2",
+    "marked": "^17.0.1",
+    "vite": "7.3.1"
+  },
+  "devDependencies": {
+    "@vitest/browser-playwright": "4.0.16",
+    "playwright": "^1.57.0",
+    "typescript": "^5.9.3",
+    "vitest": "4.0.16"
+  },
+  "pnpm": {
+    "minimumReleaseAge": 2880
+  }
+}

@@ -1,0 +1,210 @@
+import { type Api, getEnvApiKey, type Model } from "@mariozechner/pi-ai";
+import type { ClawdbotConfig } from "../config/config.js";
+import type { ModelProviderConfig } from "../config/types.js";
+import { getShellEnvAppliedKeys } from "../infra/shell-env.js";
+import {
+  type AuthProfileStore,
+  ensureAuthProfileStore,
+  listProfilesForProvider,
+  resolveApiKeyForProfile,
+  resolveAuthProfileOrder,
+} from "./auth-profiles.js";
+import { normalizeProviderId } from "./model-selection.js";
+
+export {
+  ensureAuthProfileStore,
+  resolveAuthProfileOrder,
+} from "./auth-profiles.js";
+
+export function getCustomProviderApiKey(
+  cfg: ClawdbotConfig | undefined,
+  provider: string,
+): string | undefined {
+  const providers = cfg?.models?.providers ?? {};
+  const entry = providers[provider] as ModelProviderConfig | undefined;
+  const key = entry?.apiKey?.trim();
+  return key || undefined;
+}
+
+export async function resolveApiKeyForProvider(params: {
+  provider: string;
+  cfg?: ClawdbotConfig;
+  profileId?: string;
+  preferredProfile?: string;
+  store?: AuthProfileStore;
+  agentDir?: string;
+}): Promise<{ apiKey: string; profileId?: string; source: string }> {
+  const { provider, cfg, profileId, preferredProfile } = params;
+  const store = params.store ?? ensureAuthProfileStore(params.agentDir);
+
+  if (profileId) {
+    const resolved = await resolveApiKeyForProfile({
+      cfg,
+      store,
+      profileId,
+      agentDir: params.agentDir,
+    });
+    if (!resolved) {
+      throw new Error(`No credentials found for profile "${profileId}".`);
+    }
+    return {
+      apiKey: resolved.apiKey,
+      profileId,
+      source: `profile:${profileId}`,
+    };
+  }
+
+  const order = resolveAuthProfileOrder({
+    cfg,
+    store,
+    provider,
+    preferredProfile,
+  });
+  for (const candidate of order) {
+    try {
+      const resolved = await resolveApiKeyForProfile({
+        cfg,
+        store,
+        profileId: candidate,
+        agentDir: params.agentDir,
+      });
+      if (resolved) {
+        return {
+          apiKey: resolved.apiKey,
+          profileId: candidate,
+          source: `profile:${candidate}`,
+        };
+      }
+    } catch {}
+  }
+
+  const envResolved = resolveEnvApiKey(provider);
+  if (envResolved) {
+    return { apiKey: envResolved.apiKey, source: envResolved.source };
+  }
+
+  const customKey = getCustomProviderApiKey(cfg, provider);
+  if (customKey) {
+    return { apiKey: customKey, source: "models.json" };
+  }
+
+  if (provider === "openai") {
+    const hasCodex = listProfilesForProvider(store, "openai-codex").length > 0;
+    if (hasCodex) {
+      throw new Error(
+        'No API key found for provider "openai". You are authenticated with OpenAI Codex OAuth. Use openai-codex/gpt-5.2 (ChatGPT OAuth) or set OPENAI_API_KEY for openai/gpt-5.2.',
+      );
+    }
+  }
+
+  throw new Error(`No API key found for provider "${provider}".`);
+}
+
+export type EnvApiKeyResult = { apiKey: string; source: string };
+export type ModelAuthMode = "api-key" | "oauth" | "token" | "mixed" | "unknown";
+
+export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
+  const normalized = normalizeProviderId(provider);
+  const applied = new Set(getShellEnvAppliedKeys());
+  const pick = (envVar: string): EnvApiKeyResult | null => {
+    const value = process.env[envVar]?.trim();
+    if (!value) return null;
+    const source = applied.has(envVar)
+      ? `shell env: ${envVar}`
+      : `env: ${envVar}`;
+    return { apiKey: value, source };
+  };
+
+  if (normalized === "github-copilot") {
+    return (
+      pick("COPILOT_GITHUB_TOKEN") ?? pick("GH_TOKEN") ?? pick("GITHUB_TOKEN")
+    );
+  }
+
+  if (normalized === "anthropic") {
+    return pick("ANTHROPIC_OAUTH_TOKEN") ?? pick("ANTHROPIC_API_KEY");
+  }
+
+  if (normalized === "zai") {
+    return pick("ZAI_API_KEY") ?? pick("Z_AI_API_KEY");
+  }
+
+  if (normalized === "google-vertex") {
+    const envKey = getEnvApiKey(normalized);
+    if (!envKey) return null;
+    return { apiKey: envKey, source: "gcloud adc" };
+  }
+
+  if (normalized === "opencode") {
+    return pick("OPENCODE_API_KEY") ?? pick("OPENCODE_ZEN_API_KEY");
+  }
+
+  const envMap: Record<string, string> = {
+    openai: "OPENAI_API_KEY",
+    google: "GEMINI_API_KEY",
+    groq: "GROQ_API_KEY",
+    cerebras: "CEREBRAS_API_KEY",
+    xai: "XAI_API_KEY",
+    openrouter: "OPENROUTER_API_KEY",
+    moonshot: "MOONSHOT_API_KEY",
+    minimax: "MINIMAX_API_KEY",
+    mistral: "MISTRAL_API_KEY",
+    opencode: "OPENCODE_API_KEY",
+  };
+  const envVar = envMap[normalized];
+  if (!envVar) return null;
+  return pick(envVar);
+}
+
+export function resolveModelAuthMode(
+  provider?: string,
+  cfg?: ClawdbotConfig,
+  store?: AuthProfileStore,
+): ModelAuthMode | undefined {
+  const resolved = provider?.trim();
+  if (!resolved) return undefined;
+
+  const authStore = store ?? ensureAuthProfileStore();
+  const profiles = listProfilesForProvider(authStore, resolved);
+  if (profiles.length > 0) {
+    const modes = new Set(
+      profiles
+        .map((id) => authStore.profiles[id]?.type)
+        .filter((mode): mode is "api_key" | "oauth" | "token" => Boolean(mode)),
+    );
+    const distinct = ["oauth", "token", "api_key"].filter((k) =>
+      modes.has(k as "oauth" | "token" | "api_key"),
+    );
+    if (distinct.length >= 2) return "mixed";
+    if (modes.has("oauth")) return "oauth";
+    if (modes.has("token")) return "token";
+    if (modes.has("api_key")) return "api-key";
+  }
+
+  const envKey = resolveEnvApiKey(resolved);
+  if (envKey?.apiKey) {
+    return envKey.source.includes("OAUTH_TOKEN") ? "oauth" : "api-key";
+  }
+
+  if (getCustomProviderApiKey(cfg, resolved)) return "api-key";
+
+  return "unknown";
+}
+
+export async function getApiKeyForModel(params: {
+  model: Model<Api>;
+  cfg?: ClawdbotConfig;
+  profileId?: string;
+  preferredProfile?: string;
+  store?: AuthProfileStore;
+  agentDir?: string;
+}): Promise<{ apiKey: string; profileId?: string; source: string }> {
+  return resolveApiKeyForProvider({
+    provider: params.model.provider,
+    cfg: params.cfg,
+    profileId: params.profileId,
+    preferredProfile: params.preferredProfile,
+    store: params.store,
+    agentDir: params.agentDir,
+  });
+}
