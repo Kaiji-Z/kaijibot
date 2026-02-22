@@ -1,0 +1,380 @@
+/* ===========================================
+   Mobile Layout
+   =========================================== */
+
+/* Tablet: keep side nav vertical, narrow sidebar */
+@media (max-width: 1100px) {
+  .shell {
+    --shell-nav-width: 200px;
+  }
+}
+
+/* Mobile-specific styles */
+@media (max-width: 600px) {
+  .shell {
+    --shell-pad: 8px;
+    --shell-gap: 8px;
+    --shell-nav-width: 180px;
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sidebar-brand__title {
+    font-size: 14px;
+  }
+
+  .dashboard-header__breadcrumb-link,
+  .dashboard-header__breadcrumb-sep {
+    display: none;
+  }
+
+  .topbar-search {
+    min-width: 0;
+    max-width: none;
+    flex: 1;
+  }
+
+  .topbar-search__label {
+    display: none;
+  }
+
+  .topbar-search__kbd {
+    display: none;
+  }
+
+  .topbar-connection__label {
+    display: none;
+  }
+
+  .topbar-divider {
+    display: none;
+  }
+
+  .topbar-status {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  /* Nav */
+  .sidebar-nav {
+    padding: 8px 10px;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-group {
+    display: contents;
+  }
+
+  .nav-group__label {
+    display: none;
+  }
+
+  .nav-item {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Content — compact header on chat, hide on other tabs */
+  .content-header {
+    height: 64px;
+    min-height: 64px;
+    padding: 12px 0;
+    /* This controls the height of the content header on mobile */
+    max-height: 64px;
+    margin-top: 24px;
+  }
+
+  .content:not(.content--chat) .content-header {
+    display: none;
+  }
+
+  .content--chat .page-title {
+    font-size: 16px;
+  }
+
+  .content--chat .page-sub {
+    display: none;
+  }
+
+  .content {
+    padding: 4px 6px 12px;
+    gap: 10px;
+  }
+
+  /* Cards */
+  .card {
+    padding: 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .card-title {
+    font-size: 13px;
+  }
+
+  /* Stats */
+  .stat-grid {
+    gap: 8px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat {
+    padding: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  /* Notes */
+  .note-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* Forms */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .field input,
+  .field textarea,
+  .field select {
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  /* Pills */
+  .pill {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* Chat */
+  .chat-agent-bar {
+    padding: 2px 6px;
+  }
+
+  .chat-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .chat-header__left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-header__right {
+    justify-content: space-between;
+  }
+
+  .chat-session {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .chat-thread {
+    margin-top: 6px;
+    padding: 10px 6px;
+  }
+
+  .chat-msg {
+    max-width: 92%;
+  }
+
+  .chat-bubble {
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .chat-compose {
+    gap: 6px;
+  }
+
+  .chat-compose__field textarea {
+    min-height: 52px;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+  }
+
+  .agent-chat__input {
+    margin: 0 8px 10px;
+  }
+
+  .agent-chat__toolbar {
+    padding: 4px 8px;
+  }
+
+  .agent-chat__input-btn,
+  .agent-chat__toolbar .btn-ghost {
+    width: 28px;
+    height: 28px;
+  }
+
+  .agent-chat__input-btn svg,
+  .agent-chat__toolbar .btn-ghost svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Log stream */
+  .log-stream {
+    border-radius: var(--radius-md);
+    max-height: 320px;
+  }
+
+  .log-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .log-time {
+    font-size: 10px;
+  }
+
+  .log-level {
+    font-size: 9px;
+  }
+
+  .log-subsystem {
+    font-size: 11px;
+  }
+
+  .log-message {
+    font-size: 11px;
+    word-break: break-word;
+  }
+
+  .ov-log-tail-content {
+    max-height: 200px;
+    font-size: 10px;
+    padding: 8px;
+    line-height: 1.5;
+  }
+
+  /* Lists */
+  .list-item {
+    padding: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .list-title {
+    font-size: 13px;
+  }
+
+  .list-sub {
+    font-size: 11px;
+  }
+
+  /* Code blocks */
+  .code-block {
+    padding: 8px;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+  }
+
+  .theme-select {
+    height: 26px;
+    min-width: 78px;
+    font-size: 11px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 400px) {
+  .shell {
+    --shell-pad: 4px;
+  }
+
+  .topbar {
+    padding: 8px 10px;
+  }
+
+  .sidebar-brand__title {
+    font-size: 13px;
+  }
+
+  .sidebar-nav {
+    padding: 6px 8px;
+  }
+
+  .nav-item {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .content {
+    padding: 4px 4px 12px;
+    gap: 10px;
+  }
+
+  .card {
+    padding: 10px;
+  }
+
+  .stat {
+    padding: 8px;
+  }
+
+  .stat-value {
+    font-size: 16px;
+  }
+
+  .chat-bubble {
+    padding: 8px 10px;
+  }
+
+  .chat-compose__field textarea {
+    min-height: 52px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .topbar-connection {
+    padding: 3px 6px;
+  }
+
+  .theme-select {
+    height: 24px;
+    min-width: 72px;
+    font-size: 10px;
+  }
+}
