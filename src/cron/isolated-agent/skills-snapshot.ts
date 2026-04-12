@@ -1,0 +1,49 @@
+import { canExecRequestNode } from "../../agents/exec-defaults.js";
+import type { SkillSnapshot } from "../../agents/skills.js";
+import { matchesSkillFilter } from "../../agents/skills/filter.js";
+import type { KaijiBotConfig } from "../../config/config.js";
+import {
+  buildWorkspaceSkillSnapshot,
+  getRemoteSkillEligibility,
+  getSkillsSnapshotVersion,
+  resolveAgentSkillsFilter,
+} from "./run.runtime.js";
+
+export function resolveCronSkillsSnapshot(params: {
+  workspaceDir: string;
+  config: KaijiBotConfig;
+  agentId: string;
+  existingSnapshot?: SkillSnapshot;
+  isFastTestEnv: boolean;
+}): SkillSnapshot {
+  if (params.isFastTestEnv) {
+    // Fast unit-test mode skips filesystem scans and snapshot refresh writes.
+    return params.existingSnapshot ?? { prompt: "", skills: [] };
+  }
+
+  const snapshotVersion = getSkillsSnapshotVersion(params.workspaceDir);
+  const skillFilter = resolveAgentSkillsFilter(params.config, params.agentId);
+  const existingSnapshot = params.existingSnapshot;
+  const shouldRefresh =
+    !existingSnapshot ||
+    existingSnapshot.version !== snapshotVersion ||
+    !matchesSkillFilter(existingSnapshot.skillFilter, skillFilter);
+  if (!shouldRefresh) {
+    return existingSnapshot;
+  }
+
+  return buildWorkspaceSkillSnapshot(params.workspaceDir, {
+    config: params.config,
+    agentId: params.agentId,
+    skillFilter,
+    eligibility: {
+      remote: getRemoteSkillEligibility({
+        advertiseExecNode: canExecRequestNode({
+          cfg: params.config,
+          agentId: params.agentId,
+        }),
+      }),
+    },
+    snapshotVersion,
+  });
+}

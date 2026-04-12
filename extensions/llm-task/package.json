@@ -1,0 +1,19 @@
+{
+  "name": "@kaijibot/llm-task",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot JSON-only LLM task plugin",
+  "type": "module",
+  "dependencies": {
+    "@sinclair/typebox": "0.34.49",
+    "ajv": "^8.18.0"
+  },
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@kaijibot/media-understanding-core",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot media understanding runtime package",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  }
+}

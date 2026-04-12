@@ -1,0 +1,206 @@
+import { complete, type Api, type Model } from "@mariozechner/pi-ai";
+import { randomUUID } from "node:crypto";
+import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
+import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
+import type { KaijiBotConfig } from "../../config/config.js";
+import type { PersonaTree } from "../types.js";
+import { generateInsightCandidates } from "./engine.js";
+import type { InsightCandidate, InsightEngineInput } from "./types.js";
+
+/**
+ * Injected dependencies for LLM insight generation.
+ * All external side-effects go through this interface for testability.
+ */
+export type LlmInsightDeps = {
+  complete: typeof complete;
+  prepareModel: (
+    cfg: KaijiBotConfig,
+    modelRef?: string,
+  ) => Promise<
+    | { model: Model<Api>; auth: ResolvedProviderAuth }
+    | { error: string }
+  >;
+};
+
+export type LlmInsightOptions = {
+  /** Override the model used for insight generation. */
+  modelRef?: string;
+  /** Timeout in milliseconds for the LLM call (default 8 000). */
+  timeout?: number;
+  /** Max tokens for the LLM response (default 500). */
+  maxTokens?: number;
+  /** Maximum number of candidates to return (default 3). */
+  maxCandidates?: number;
+};
+
+/**
+ * Build the default deps that hit real infrastructure.
+ * Import and call this in production code.
+ */
+export function createDefaultInsightDeps(): LlmInsightDeps {
+  return {
+    complete,
+    prepareModel: async (cfg, modelRef) => {
+      const extractionModel = cfg.cognitive?.persona?.extractionModel;
+      const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5.1";
+      const [provider, ...modelParts] = modelRefToUse.split("/");
+      const modelId = modelParts.join("/") || "glm-5.1";
+      return prepareSimpleCompletionModel({ cfg, provider, modelId });
+    },
+  };
+}
+
+/**
+ * LLM-based insight generation with template fallback.
+ *
+ * Sends persona + domain knowledge to the LLM and asks it to produce
+ * personalised insight candidates.  Falls back to the deterministic
+ * template engine whenever the LLM call fails, times out, or returns
+ * unparseable output.
+ *
+ * This function **never throws**.
+ */
+export async function generateInsightCandidatesLLM(
+  persona: PersonaTree,
+  input: InsightEngineInput,
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  options?: LlmInsightOptions,
+): Promise<InsightCandidate[]> {
+  const prompt = buildInsightPrompt(persona, input);
+  const maxCandidates = options?.maxCandidates ?? 3;
+
+  try {
+    const modelRef =
+      options?.modelRef ?? config.cognitive?.insight?.sources?.webSearchProvider;
+    const prepared = await deps.prepareModel(config, modelRef);
+
+    if ("error" in prepared) {
+      return generateInsightCandidates(persona, input, { maxCandidates });
+    }
+
+    const result = await deps.complete(
+      prepared.model,
+      {
+        messages: [
+          { role: "user", content: prompt, timestamp: Date.now() },
+        ],
+      },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: options?.maxTokens ?? 500,
+        temperature: 0.7,
+        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+      },
+    );
+
+    const text = result.content
+      .filter(
+        (block): block is { type: "text"; text: string } =>
+          block.type === "text",
+      )
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    if (!text) {
+      return generateInsightCandidates(persona, input, { maxCandidates });
+    }
+
+    const candidates = parseLLMInsights(text, maxCandidates);
+    if (candidates.length === 0) {
+      return generateInsightCandidates(persona, input, { maxCandidates });
+    }
+    return candidates;
+  } catch {
+    return generateInsightCandidates(persona, input, { maxCandidates });
+  }
+}
+
+function buildInsightPrompt(
+  persona: PersonaTree,
+  input: InsightEngineInput,
+): string {
+  const userDomains = Object.entries(persona.domains)
+    .map(
+      ([name, d]) =>
+        `${name} (depth: ${d.depth}, insights: ${d.keyInsights.slice(0, 2).join(", ")})`,
+    )
+    .join("\n");
+
+  const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
+  const pendingQuestions = persona.pendingQuestions.slice(0, 3).join("; ");
+  const recentInsightIds = input.recentInsightIds.slice(0, 5).join(", ");
+
+  return `You are a personalized insight generator. Based on the user's cognitive profile, generate 1-3 insightful observations that could spark new thinking.
+
+USER PROFILE:
+Domains of expertise:
+${userDomains || "Not yet established"}
+
+Recent focus: ${recentFocus || "None"}
+Pending questions: ${pendingQuestions || "None"}
+Trust level: ${persona.rapport.trustScore.toFixed(2)} / 1.0
+Already-delivered insight IDs (avoid repeating): ${recentInsightIds || "None"}
+
+Generate insights that:
+1. Connect the user's different knowledge domains in unexpected ways
+2. Relate to their pending questions or recent focus
+3. Are thought-provoking but not preachy
+4. Feel personalized, not generic
+5. Are in Chinese (matching user's language)
+
+Respond with ONLY a JSON array (no markdown, no code fences):
+[
+  {
+    "content": "The insight text in Chinese, conversational tone",
+    "rationale": "Why this insight is relevant to this user",
+    "targetDomains": ["domain1"],
+    "sourceDomains": ["domain2"],
+    "relevanceScore": 0.8,
+    "surpriseScore": 0.6
+  }
+]
+
+Keep insights concise (1-3 sentences each). Quality over quantity.`;
+}
+
+function parseLLMInsights(
+  text: string,
+  maxCandidates: number,
+): InsightCandidate[] {
+  try {
+    const cleaned = text
+      .replace(/^```(?:json)?\s*/m, "")
+      .replace(/\s*```$/m, "")
+      .trim();
+    const parsed = JSON.parse(cleaned);
+    const items = Array.isArray(parsed) ? parsed : [];
+
+    return items
+      .slice(0, maxCandidates)
+      .map((item: Record<string, unknown>) => ({
+        id: randomUUID(),
+        content: String(item.content ?? ""),
+        rationale: String(item.rationale ?? ""),
+        targetDomains: Array.isArray(item.targetDomains)
+          ? item.targetDomains.map(String)
+          : [],
+        sourceDomains: Array.isArray(item.sourceDomains)
+          ? item.sourceDomains.map(String)
+          : [],
+        relevanceScore: clamp01(Number(item.relevanceScore ?? 0.5)),
+        surpriseScore: clamp01(Number(item.surpriseScore ?? 0.5)),
+        compositeScore: 0,
+        sources: [],
+        verificationStatus: "unverified" as const,
+      }))
+      .filter((c: InsightCandidate) => c.content.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}

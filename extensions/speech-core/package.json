@@ -1,0 +1,10 @@
+{
+  "name": "@kaijibot/speech-core",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot speech runtime package",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  }
+}

@@ -1,0 +1,33 @@
+packages:
+  - .
+  - ui
+  - packages/*
+  - extensions/*
+
+minimumReleaseAge: 2880
+
+minimumReleaseAgeExclude:
+  - "acpx"
+  - "basic-ftp"
+  - "hono"
+  - "kaijibot"
+  - "vite"
+  - "@cloudflare/workers-types"
+  - "@hono/node-server"
+  - "@mariozechner/*"
+  - "@typescript/native-preview*"
+  - "@oxlint/*"
+  - "@oxfmt/*"
+  - "sqlite-vec"
+  - "sqlite-vec-*"
+
+onlyBuiltDependencies:
+  - "@lydell/node-pty"
+  - "@napi-rs/canvas"
+  - esbuild
+  - node-llama-cpp
+  - protobufjs
+  - sharp
+
+ignoredBuiltDependencies:
+  - koffi

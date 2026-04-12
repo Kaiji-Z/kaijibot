@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/zai-provider",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot Z.AI provider plugin",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@kaijibot/webhooks",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot webhook bridge plugin",
+  "type": "module",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "bundle": {
+      "stageRuntimeDependencies": true
+    },
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+import type { KaijiBotPluginApi } from "kaijibot/plugin-sdk/plugin-runtime";
+
+type TestPluginApiInput = Partial<KaijiBotPluginApi>;
+
+export function createTestPluginApi(api: TestPluginApiInput = {}): KaijiBotPluginApi {
+  return {
+    id: "test-plugin",
+    name: "test-plugin",
+    source: "test",
+    registrationMode: "full",
+    config: {},
+    runtime: {} as KaijiBotPluginApi["runtime"],
+    logger: { info() {}, warn() {}, error() {}, debug() {} },
+    registerTool() {},
+    registerHook() {},
+    registerHttpRoute() {},
+    registerChannel() {},
+    registerGatewayMethod() {},
+    registerCli() {},
+    registerCliBackend() {},
+    registerService() {},
+    registerReload() {},
+    registerNodeHostCommand() {},
+    registerSecurityAuditCollector() {},
+    registerConfigMigration() {},
+    registerAutoEnableProbe() {},
+    registerProvider() {},
+    registerSpeechProvider() {},
+    registerRealtimeTranscriptionProvider() {},
+    registerRealtimeVoiceProvider() {},
+    registerMediaUnderstandingProvider() {},
+    registerImageGenerationProvider() {},
+    registerMusicGenerationProvider() {},
+    registerVideoGenerationProvider() {},
+    registerWebFetchProvider() {},
+    registerWebSearchProvider() {},
+    registerInteractiveHandler() {},
+    onConversationBindingResolved() {},
+    registerCommand() {},
+    registerContextEngine() {},
+    registerCompactionProvider() {},
+    registerMemoryCapability() {},
+    registerMemoryPromptSection() {},
+    registerMemoryPromptSupplement() {},
+    registerMemoryCorpusSupplement() {},
+    registerMemoryFlushPlan() {},
+    registerMemoryRuntime() {},
+    registerMemoryEmbeddingProvider() {},
+    resolvePath(input: string) {
+      return input;
+    },
+    on() {},
+    ...api,
+  };
+}

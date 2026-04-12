@@ -1,0 +1,101 @@
+import fs from "node:fs";
+import path from "node:path";
+import { clearPluginDiscoveryCache } from "../plugins/discovery.js";
+import {
+  clearPluginManifestRegistryCache,
+  type PluginManifestRegistry,
+} from "../plugins/manifest-registry.js";
+import { clearPluginSetupRegistryCache } from "../plugins/setup-registry.js";
+import {
+  cleanupTrackedTempDirs,
+  makeTrackedTempDir,
+  mkdirSafeDir,
+} from "../plugins/test-helpers/fs-fixtures.js";
+
+const tempDirs: string[] = [];
+
+export function resetPluginAutoEnableTestState(): void {
+  clearPluginDiscoveryCache();
+  clearPluginManifestRegistryCache();
+  clearPluginSetupRegistryCache();
+  cleanupTrackedTempDirs(tempDirs);
+}
+
+export function makeTempDir(): string {
+  return makeTrackedTempDir("kaijibot-plugin-auto-enable", tempDirs);
+}
+
+export function makeIsolatedEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const rootDir = makeTempDir();
+  return {
+    KAIJIBOT_STATE_DIR: path.join(rootDir, "state"),
+    ...overrides,
+  };
+}
+
+export function writePluginManifestFixture(params: {
+  rootDir: string;
+  id: string;
+  channels: string[];
+}): void {
+  mkdirSafeDir(params.rootDir);
+  fs.writeFileSync(
+    path.join(params.rootDir, "kaijibot.plugin.json"),
+    JSON.stringify(
+      {
+        id: params.id,
+        channels: params.channels,
+        configSchema: { type: "object" },
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+  fs.writeFileSync(path.join(params.rootDir, "index.ts"), "export default {}", "utf-8");
+}
+
+export function makeRegistry(
+  plugins: Array<{
+    id: string;
+    channels: string[];
+    autoEnableWhenConfiguredProviders?: string[];
+    modelSupport?: { modelPrefixes?: string[]; modelPatterns?: string[] };
+    contracts?: { webSearchProviders?: string[]; webFetchProviders?: string[]; tools?: string[] };
+    providers?: string[];
+    configSchema?: Record<string, unknown>;
+    channelConfigs?: Record<string, { schema: Record<string, unknown>; preferOver?: string[] }>;
+  }>,
+): PluginManifestRegistry {
+  return {
+    plugins: plugins.map((plugin) => ({
+      id: plugin.id,
+      channels: plugin.channels,
+      autoEnableWhenConfiguredProviders: plugin.autoEnableWhenConfiguredProviders,
+      modelSupport: plugin.modelSupport,
+      contracts: plugin.contracts,
+      configSchema: plugin.configSchema,
+      channelConfigs: plugin.channelConfigs,
+      providers: plugin.providers ?? [],
+      cliBackends: [],
+      skills: [],
+      hooks: [],
+      origin: "config" as const,
+      rootDir: `/fake/${plugin.id}`,
+      source: `/fake/${plugin.id}/index.js`,
+      manifestPath: `/fake/${plugin.id}/kaijibot.plugin.json`,
+    })),
+    diagnostics: [],
+  };
+}
+
+export function makeApnChannelConfig() {
+  return { channels: { apn: { someKey: "value" } } };
+}
+
+export function makeBluebubblesAndImessageChannels() {
+  return {
+    bluebubbles: { serverUrl: "http://localhost:1234", password: "x" },
+    imessage: { cliPath: "/usr/local/bin/imsg" },
+  };
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@kaijibot/image-generation-core",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot image generation runtime package",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  }
+}
