@@ -16,7 +16,6 @@ type ToolResult = {
   details?: Record<string, unknown>;
 };
 
-const PREVIEW_LINES = 12;
 
 function formatArgs(toolName: string, args: unknown): string {
   const display = resolveToolDisplay({ name: toolName, args });
@@ -117,21 +116,21 @@ export class ToolExecutionComponent extends Container {
       name: this.toolName,
       args: this.args,
     });
-    const title = `${display.emoji} ${display.label}${this.isPartial ? " (running)" : ""}`;
+    const status = this.isPartial ? " (running)" : this.isError ? " (error)" : " ✓";
+    const title = `${display.emoji} ${display.label}${status}`;
     this.header.setText(theme.toolTitle(theme.bold(title)));
+
+    if (!this.expanded) {
+      this.argsLine.setText("");
+      this.output.setText("");
+      return;
+    }
 
     const argLine = formatArgs(this.toolName, this.args);
     this.argsLine.setText(argLine ? theme.dim(argLine) : theme.dim(" "));
 
     const raw = extractText(this.result);
     const text = raw || (this.isPartial ? "…" : "");
-    if (!this.expanded && text) {
-      const lines = text.split("\n");
-      const preview =
-        lines.length > PREVIEW_LINES ? `${lines.slice(0, PREVIEW_LINES).join("\n")}\n…` : text;
-      this.output.setText(preview);
-    } else {
-      this.output.setText(text);
-    }
+    this.output.setText(text);
   }
 }

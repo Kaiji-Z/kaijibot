@@ -433,6 +433,7 @@ export async function runTui(opts: TuiOptions) {
   const statusContainer = new Container();
   const footer = new Text("", 1, 0);
   const chatLog = new ChatLog();
+  chatLog.setTuiRef(tui);
   const editor = new CustomEditor(tui, editorTheme);
   const root = new Container();
   root.addChild(header);
@@ -753,6 +754,7 @@ export async function runTui(opts: TuiOptions) {
     }
     exitRequested = true;
     client.stop();
+    process.stdout.write("\x1b[?1000l\x1b[?1006l");
     void drainAndStopTuiSafely(tui).then(() => {
       process.exit(0);
     });
@@ -790,12 +792,16 @@ export async function runTui(opts: TuiOptions) {
     closeOverlay,
   });
   updateAutocompleteProvider();
-  const submitHandler = createEditorSubmitHandler({
+  const rawSubmitHandler = createEditorSubmitHandler({
     editor,
     handleCommand,
     sendMessage,
     handleBangLine: runLocalShellLine,
   });
+  const submitHandler = (text: string) => {
+    chatLog.scrollToBottom();
+    return rawSubmitHandler(text);
+  };
   editor.onSubmit = createSubmitBurstCoalescer({
     submit: submitHandler,
     enabled: shouldEnableWindowsGitBashPasteFallback(),
@@ -871,6 +877,21 @@ export async function runTui(opts: TuiOptions) {
     return undefined;
   });
 
+  const SGR_MOUSE_WHEEL = /^\x1b\[<(64|65);\d+;\d+[Mm]$/;
+  tui.addInputListener((data) => {
+    const match = data.match(SGR_MOUSE_WHEEL);
+    if (!match) {
+      return undefined;
+    }
+    const button = parseInt(match[1]!, 10);
+    if (button === 64) {
+      chatLog.scrollUp();
+    } else if (button === 65) {
+      chatLog.scrollDown();
+    }
+    return { consume: true };
+  });
+
   client.onEvent = (evt) => {
     if (evt.event === "chat") {
       handleChatEvent(evt.payload);
@@ -908,6 +929,8 @@ export async function runTui(opts: TuiOptions) {
     isConnected = false;
     wasDisconnected = true;
     historyLoaded = false;
+    state.activeChatRunId = null;
+    chatLog.scrollToBottom();
     const disconnectState = resolveGatewayDisconnectState(reason);
     setConnectionStatus(disconnectState.connectionStatus, 5000);
     setActivityStatus(disconnectState.activityStatus);
@@ -936,6 +959,8 @@ export async function runTui(opts: TuiOptions) {
   process.on("SIGINT", sigintHandler);
   process.on("SIGTERM", sigtermHandler);
   tui.start();
+  // SGR extended mode + basic button tracking (1000h, NOT 1003h which blocks text selection)
+  process.stdout.write("\x1b[?1006h\x1b[?1000h");
   client.start();
   await new Promise<void>((resolve) => {
     const finish = () => {

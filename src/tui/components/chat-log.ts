@@ -8,6 +8,11 @@ import { UserMessageComponent } from "./user-message.js";
 
 const PENDING_HISTORY_CLOCK_SKEW_TOLERANCE_MS = 60_000;
 
+/** Lines reserved for header, status bar, footer, and editor (outside chat log) */
+const RESERVED_TERMINAL_LINES = 5;
+
+const SCROLL_STEP = 3;
+
 export class ChatLog extends Container {
   private readonly maxComponents: number;
   private toolById = new Map<string, ToolExecutionComponent>();
@@ -23,9 +28,45 @@ export class ChatLog extends Container {
   private btwMessage: BtwInlineMessage | null = null;
   private toolsExpanded = false;
 
+  // Scroll state: scrollOffset = lines scrolled UP from bottom (0 = at bottom/latest)
+  private scrollOffset = 0;
+  private userScrolled = false;
+  private tuiRef: { terminal: { rows: number }; requestRender: () => void } | null = null;
+
   constructor(maxComponents = 180) {
     super();
     this.maxComponents = Math.max(20, Math.floor(maxComponents));
+  }
+
+  setTuiRef(ref: { terminal: { rows: number }; requestRender: () => void }) {
+    this.tuiRef = ref;
+  }
+
+  scrollUp(lines = SCROLL_STEP): void {
+    this.scrollOffset += lines;
+    this.userScrolled = true;
+    this.tuiRef?.requestRender();
+  }
+
+  scrollDown(lines = SCROLL_STEP): void {
+    this.scrollOffset = Math.max(0, this.scrollOffset - lines);
+    if (this.scrollOffset === 0) {
+      this.userScrolled = false;
+    }
+    this.tuiRef?.requestRender();
+  }
+
+  scrollToBottom(): void {
+    this.scrollOffset = 0;
+    this.userScrolled = false;
+  }
+
+  isUserScrolled(): boolean {
+    return this.userScrolled;
+  }
+
+  getScrollOffset(): number {
+    return this.scrollOffset;
   }
 
   private dropComponentReferences(component: Component) {
@@ -63,6 +104,41 @@ export class ChatLog extends Container {
   private append(component: Component) {
     this.addChild(component);
     this.pruneOverflow();
+  }
+
+  override render(width: number): string[] {
+    const allLines = super.render(width);
+    const totalLines = allLines.length;
+
+    if (!this.tuiRef) {
+      return allLines;
+    }
+    const termRows = this.tuiRef.terminal.rows;
+    const maxVisibleLines = Math.max(SCROLL_STEP, termRows - RESERVED_TERMINAL_LINES);
+
+    if (totalLines <= maxVisibleLines) {
+      if (this.scrollOffset !== 0 || this.userScrolled) {
+        this.scrollOffset = 0;
+        this.userScrolled = false;
+      }
+      return allLines;
+    }
+
+    if (!this.userScrolled) {
+      this.scrollOffset = 0;
+      return allLines.slice(Math.max(0, totalLines - maxVisibleLines));
+    }
+
+    const effectiveOffset = Math.min(this.scrollOffset, totalLines - maxVisibleLines);
+    this.scrollOffset = effectiveOffset;
+
+    if (effectiveOffset === 0) {
+      this.userScrolled = false;
+      return allLines.slice(Math.max(0, totalLines - maxVisibleLines));
+    }
+
+    const startIdx = Math.max(0, totalLines - maxVisibleLines - effectiveOffset);
+    return allLines.slice(startIdx, startIdx + maxVisibleLines);
   }
 
   clearAll(opts?: { preservePendingUsers?: boolean }) {
