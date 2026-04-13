@@ -147,7 +147,7 @@ describe("ProactiveScheduler", () => {
       savePersona: async () => {},
     });
 
-    expect(() => scheduler.start("user1", 60000)).not.toThrow();
+    expect(() => scheduler.start(async () => ["user1"], 60000)).not.toThrow();
     expect(() => scheduler.stop()).not.toThrow();
   });
 
@@ -160,6 +160,74 @@ describe("ProactiveScheduler", () => {
 
     scheduler.stop();
     scheduler.stop();
+  });
+
+  it("start iterates all discovered users on tick", async () => {
+    const processedUsers: string[] = [];
+    let allProcessed: () => void;
+    const allProcessedPromise = new Promise<void>((resolve) => {
+      allProcessed = resolve;
+    });
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async (userId) => {
+        processedUsers.push(userId);
+        if (processedUsers.length >= 3) allProcessed!();
+        return personaWithDomains();
+      },
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    });
+
+    const userIds = ["user-a", "user-b", "user-c"];
+    scheduler.start(async () => userIds, 10);
+
+    await Promise.race([allProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
+    scheduler.stop();
+    expect(processedUsers.sort()).toEqual(["user-a", "user-b", "user-c"].sort());
+  });
+
+  it("start isolates errors per user", async () => {
+    const processedUsers: string[] = [];
+    let goodProcessed: () => void;
+    const goodProcessedPromise = new Promise<void>((resolve) => {
+      goodProcessed = resolve;
+    });
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async (userId) => {
+        if (userId === "bad-user") throw new Error("load failed");
+        processedUsers.push(userId);
+        goodProcessed!();
+        return personaWithDomains();
+      },
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    });
+
+    const userIds = ["bad-user", "good-user"];
+    scheduler.start(async () => userIds, 10);
+
+    await Promise.race([goodProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
+    scheduler.stop();
+    expect(processedUsers).toEqual(["good-user"]);
+  });
+
+  it("start handles empty user list gracefully", async () => {
+    const processedUsers: string[] = [];
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async (userId) => {
+        processedUsers.push(userId);
+        return personaWithDomains();
+      },
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    });
+
+    scheduler.start(async () => [], 10);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    scheduler.stop();
+    expect(processedUsers).toEqual([]);
   });
 
   it("generates insight on persona_change event", async () => {

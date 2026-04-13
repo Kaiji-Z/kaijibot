@@ -156,4 +156,39 @@ describe("PersonaStore", () => {
     expect(loaded!.rapport.trustScore).toBe(0.7);
     expect(loaded!.rapport.selfDisclosureLevel).toBe(0.5);
   });
+
+  describe("listUserIds", () => {
+    it("returns empty array when persona directory does not exist", async () => {
+      const result = await store.listUserIds();
+      expect(result).toEqual([]);
+    });
+
+    it("returns sorted user IDs from .json filenames", async () => {
+      await store.save("charlie", createDefaultPersona());
+      await store.save("alice", createDefaultPersona());
+      await store.save("bob", createDefaultPersona());
+
+      const result = await store.listUserIds();
+      expect(result).toEqual(["alice", "bob", "charlie"]);
+    });
+
+    it("ignores non-.json files in persona directory", async () => {
+      const dir = join(tempDir, "cognitive", "persona");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "user1.json"), "{}", "utf-8");
+      writeFileSync(join(dir, "readme.txt"), "ignore me", "utf-8");
+      writeFileSync(join(dir, ".gitkeep"), "", "utf-8");
+
+      const result = await store.listUserIds();
+      expect(result).toEqual(["user1"]);
+    });
+
+    it("returns empty array when directory is empty", async () => {
+      const dir = join(tempDir, "cognitive", "persona");
+      mkdirSync(dir, { recursive: true });
+
+      const result = await store.listUserIds();
+      expect(result).toEqual([]);
+    });
+  });
 });

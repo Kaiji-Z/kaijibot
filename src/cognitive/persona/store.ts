@@ -1,5 +1,5 @@
 import type { PersonaTree } from "../types.js";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { safeParsePersona } from "./persona-schema.js";
@@ -43,6 +43,19 @@ export class PersonaStore {
     const existing = await this.load(userId);
     if (existing) return existing;
     return createDefaultPersona();
+  }
+
+  async listUserIds(): Promise<string[]> {
+    const dir = join(this.configDir, COGNITIVE_DIR, PERSONA_DIR);
+    try {
+      const entries = await readdir(dir);
+      return entries
+        .filter((name) => name.endsWith(".json"))
+        .map((name) => name.slice(0, -5))
+        .sort();
+    } catch {
+      return [];
+    }
   }
 }
 

@@ -25,6 +25,7 @@ import { formatConfigIssueLines } from "../config/issue-format.js";
 import { applyPluginAutoEnable } from "../config/plugin-auto-enable.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
 import { clearAgentRunContext, onAgentEvent } from "../infra/agent-events.js";
+import type { SchedulerEvent } from "../cognitive/scheduler/types.js";
 import {
   ensureControlUiAssetsBuilt,
   isPackageProvenControlUiRootSync,
@@ -1293,14 +1294,19 @@ export async function startGatewayServer(
               try {
                 const { enqueueSystemEvent } = await import("../infra/system-events.js");
                 const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
+                const { findSessionKeyForUserId } = await import("./cognitive-delivery.js");
 
-                const sessionKey = `agent:main:${userId}`;
+                const resolvedKey = findSessionKeyForUserId(cfgAtStart, userId);
+                if (!resolvedKey) {
+                  log.info(`cognitive insight: no session found for ${userId}, skipping delivery`);
+                  return;
+                }
                 enqueueSystemEvent(
                   `[认知洞察] ${candidate.content}\n来源领域: ${candidate.sourceDomains.length > 0 ? candidate.sourceDomains.join(", ") : "综合分析"}`,
-                  { sessionKey, contextKey: "cognitive-insight" },
+                  { sessionKey: resolvedKey, contextKey: "cognitive-insight" },
                 );
-                requestHeartbeatNow({ reason: "cognitive-insight" });
-                log.info(`cognitive insight queued for delivery to ${userId}`);
+                requestHeartbeatNow({ reason: "cognitive-insight", sessionKey: resolvedKey });
+                log.info(`cognitive insight queued for delivery to ${userId} via ${resolvedKey}`);
               } catch (err) {
                 log.warn(`cognitive insight delivery failed: ${String(err)}`);
               }
@@ -1315,11 +1321,21 @@ export async function startGatewayServer(
           },
         );
 
-        personaChangeSource.onEvent((event) => proactiveScheduler.processEvent("default", event));
-        infoScanSource.onEvent((event) => proactiveScheduler.processEvent("default", event));
+        const handleEventForAllUsers = async (event: SchedulerEvent) => {
+          const userIds = await cognitiveStore.listUserIds();
+          for (const userId of userIds) {
+            try {
+              await proactiveScheduler.processEvent(userId, event);
+            } catch (e) {
+              log.warn(`cognitive event failed for ${userId}: ${String(e)}`);
+            }
+          }
+        };
+        personaChangeSource.onEvent(handleEventForAllUsers);
+        infoScanSource.onEvent(handleEventForAllUsers);
         infoScanSource.start();
-        proactiveScheduler.start("default", (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4) * 3600_000);
-        log.info("cognitive proactive scheduler started (timer + info-scan + persona-change)");
+        proactiveScheduler.start(() => cognitiveStore.listUserIds(), (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4) * 3600_000);
+        log.info("cognitive proactive scheduler started (multi-user timer + info-scan + persona-change)");
       } catch (err) {
         log.warn(`cognitive scheduler skipped: ${String(err)}`);
       }

@@ -118,15 +118,22 @@ export class ProactiveScheduler {
     return insight;
   }
 
-  start(userId: string, intervalMs?: number): void {
+  start(listUserIds: () => Promise<string[]>, intervalMs?: number): void {
     const interval =
       intervalMs ?? this.config.minIntervalHours * 60 * 60 * 1000;
 
     const tick = async (): Promise<void> => {
-      await this.processEvent(userId, {
-        type: "timer",
-        timestamp: Date.now(),
-      });
+      const userIds = await listUserIds();
+      for (const userId of userIds) {
+        try {
+          await this.processEvent(userId, {
+            type: "timer",
+            timestamp: Date.now(),
+          });
+        } catch (err) {
+          console.warn(`[ProactiveScheduler] tick failed for ${userId}: ${String(err)}`);
+        }
+      }
 
       this.timerHandle = setTimeout(tick, interval);
       this.timerHandle?.unref?.();
