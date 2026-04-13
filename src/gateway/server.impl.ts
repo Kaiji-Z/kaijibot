@@ -1269,7 +1269,28 @@ export async function startGatewayServer(
         const { resolveConfigDir } = await import("../utils.js");
         const { generateInsightCandidatesLLM, createDefaultInsightDeps } = await import("../cognitive/insight/llm-engine.js");
         const cognitiveStore = new PersonaStore(resolveConfigDir());
-        const insightDeps = createDefaultInsightDeps();
+        const baseInsightDeps = createDefaultInsightDeps();
+
+        const insightDeps = {
+          ...baseInsightDeps,
+          webSearch: async (query: string) => {
+            try {
+              const { runWebSearch } = await import("../web-search/runtime.js");
+              const { result } = await runWebSearch({
+                config: cfgAtStart,
+                args: { query, count: 3 },
+              });
+              const results = (result as Record<string, unknown>).results as Array<{ title: string; url: string; snippet?: string; description?: string }> | undefined;
+              return (results ?? []).map((r) => ({
+                title: String(r.title ?? ""),
+                url: String(r.url ?? ""),
+                snippet: String(r.snippet ?? r.description ?? ""),
+              }));
+            } catch {
+              return [];
+            }
+          },
+        };
 
         const personaChangeSource = new PersonaChangeSource();
         const scanIntervalMs = (cfgAtStart.cognitive?.insight?.sources?.scanIntervalHours ?? 6) * 3600_000;

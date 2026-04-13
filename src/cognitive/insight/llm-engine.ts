@@ -7,6 +7,13 @@ import type { PersonaTree } from "../types.js";
 import { generateInsightCandidates } from "./engine.js";
 import type { InsightCandidate, InsightEngineInput } from "./types.js";
 
+/** A single web search result item. */
+export type WebSearchResult = {
+  title: string;
+  url: string;
+  snippet: string;
+};
+
 /**
  * Injected dependencies for LLM insight generation.
  * All external side-effects go through this interface for testability.
@@ -20,6 +27,13 @@ export type LlmInsightDeps = {
     | { model: Model<Api>; auth: ResolvedProviderAuth }
     | { error: string }
   >;
+  /**
+   * Optional web search function. When provided the insight generator
+   * will query recent web results before calling the LLM, producing
+   * time-relevant insights.  Returns an empty array when unavailable
+   * (e.g. no API key configured).
+   */
+  webSearch?: (query: string) => Promise<WebSearchResult[]>;
 };
 
 export type LlmInsightOptions = {
@@ -67,12 +81,25 @@ export async function generateInsightCandidatesLLM(
   deps: LlmInsightDeps,
   options?: LlmInsightOptions,
 ): Promise<InsightCandidate[]> {
-  const prompt = buildInsightPrompt(persona, input);
   const maxCandidates = options?.maxCandidates ?? 3;
+
+  let webResults: WebSearchResult[] = [];
+  if (deps.webSearch) {
+    const query = buildSearchQuery(input);
+    if (query) {
+      try {
+        webResults = await deps.webSearch(query);
+      } catch {
+        webResults = [];
+      }
+    }
+  }
+
+  const prompt = buildInsightPrompt(persona, input, webResults);
 
   try {
     const modelRef =
-      options?.modelRef ?? config.cognitive?.insight?.sources?.webSearchProvider;
+      options?.modelRef ?? config.cognitive?.persona?.extractionModel;
     const prepared = await deps.prepareModel(config, modelRef);
 
     if ("error" in prepared) {
@@ -111,15 +138,45 @@ export async function generateInsightCandidatesLLM(
     if (candidates.length === 0) {
       return generateInsightCandidates(persona, input, { maxCandidates });
     }
-    return candidates;
+    return candidates.map((c) => enrichWithWebSources(c, webResults));
   } catch {
     return generateInsightCandidates(persona, input, { maxCandidates });
   }
 }
 
+function buildSearchQuery(input: InsightEngineInput): string {
+  const parts: string[] = [];
+  if (input.targetDomains.length > 0) {
+    parts.push(input.targetDomains.slice(0, 2).join(" "));
+  }
+  if (input.pendingQuestions.length > 0) {
+    parts.push(input.pendingQuestions[0]);
+  }
+  if (input.recentFocus.length > 0) {
+    parts.push(input.recentFocus[0]);
+  }
+  return parts.join(" ").slice(0, 120);
+}
+
+function enrichWithWebSources(
+  candidate: InsightCandidate,
+  webResults: WebSearchResult[],
+): InsightCandidate {
+  if (webResults.length === 0) return candidate;
+  return {
+    ...candidate,
+    sources: webResults.map((r) => ({
+      url: r.url,
+      title: r.title,
+      credibility: 0.5,
+    })),
+  };
+}
+
 function buildInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
+  webResults: WebSearchResult[] = [],
 ): string {
   const userDomains = Object.entries(persona.domains)
     .map(
@@ -142,13 +199,14 @@ Recent focus: ${recentFocus || "None"}
 Pending questions: ${pendingQuestions || "None"}
 Trust level: ${persona.rapport.trustScore.toFixed(2)} / 1.0
 Already-delivered insight IDs (avoid repeating): ${recentInsightIds || "None"}
-
+${webResults.length > 0 ? `\nRECENT WEB CONTEXT (use these to make insights timely and specific):\n${webResults.map((r, i) => `${i + 1}. ${r.title}: ${r.snippet}`).join("\n")}` : ""}
 Generate insights that:
 1. Connect the user's different knowledge domains in unexpected ways
 2. Relate to their pending questions or recent focus
 3. Are thought-provoking but not preachy
 4. Feel personalized, not generic
 5. Are in Chinese (matching user's language)
+${webResults.length > 0 ? "6. Reference specific facts from the RECENT WEB CONTEXT when relevant — this makes the insight current and grounded" : ""}
 
 Respond with ONLY a JSON array (no markdown, no code fences):
 [
