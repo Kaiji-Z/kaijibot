@@ -444,8 +444,11 @@ async function resolveHeartbeatPreflight(params: {
   const hasTaggedCronEvents = pendingEventEntries.some((event) =>
     event.contextKey?.startsWith("cron:"),
   );
+  const hasCognitiveEvents = pendingEventEntries.some((event) =>
+    event.contextKey?.startsWith("cognitive-"),
+  );
   const shouldInspectPendingEvents =
-    reasonFlags.isExecEventReason || reasonFlags.isCronEventReason || hasTaggedCronEvents;
+    reasonFlags.isExecEventReason || reasonFlags.isCronEventReason || hasTaggedCronEvents || hasCognitiveEvents;
   const shouldBypassFileGates =
     reasonFlags.isExecEventReason ||
     reasonFlags.isCronEventReason ||
