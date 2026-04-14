@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/stepfun-provider",
+  "version": "2026.4.12",
+  "private": true,
+  "description": "OpenClaw StepFun provider plugin",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

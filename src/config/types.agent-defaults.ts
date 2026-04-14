@@ -306,6 +306,8 @@ export type AgentDefaultsConfig = {
      * Default: false (only the final heartbeat payload is delivered).
      */
     includeReasoning?: boolean;
+    /** Run timeout in seconds for heartbeat agent turns. */
+    timeoutSeconds?: number;
   };
   /** Max concurrent agent runs across all conversations. Default: 1 (sequential). */
   maxConcurrent?: number;

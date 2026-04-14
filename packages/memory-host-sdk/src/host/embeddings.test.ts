@@ -6,6 +6,12 @@ import { createEmbeddingProvider, DEFAULT_LOCAL_MODEL } from "./embeddings.js";
 import * as nodeLlamaModule from "./node-llama.js";
 import { mockPublicPinnedHostname } from "./test-helpers/ssrf.js";
 
+const { createOllamaEmbeddingProviderMock } = vi.hoisted(() => ({
+  createOllamaEmbeddingProviderMock: vi.fn(async () => {
+    throw new Error("Unexpected ollama provider in embeddings.test.ts");
+  }),
+}));
+
 const { hasAwsCredentialsMock } = vi.hoisted(() => ({
   hasAwsCredentialsMock: vi.fn(async () => false),
 }));
@@ -27,6 +33,10 @@ vi.mock("../../../../src/infra/net/fetch-guard.js", () => ({
       release: async () => {},
     };
   },
+}));
+
+vi.mock("./embeddings-ollama.js", () => ({
+  createOllamaEmbeddingProvider: createOllamaEmbeddingProviderMock,
 }));
 
 vi.mock("./embeddings-bedrock.js", async () => {
@@ -254,6 +264,8 @@ describe("embedding provider remote overrides", () => {
   });
 
   it("fails fast when Gemini remote apiKey is an unresolved SecretRef", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
+
     await expect(
       createEmbeddingProvider({
         config: {} as never,

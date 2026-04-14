@@ -57,6 +57,8 @@ export type VideoGenerationRequest = {
   watermark?: boolean;
   inputImages?: VideoGenerationSourceAsset[];
   inputVideos?: VideoGenerationSourceAsset[];
+  inputAudios?: VideoGenerationSourceAsset[];
+  providerOptions?: Record<string, unknown>;
 };
 
 export type VideoGenerationResult = {
@@ -67,10 +69,13 @@ export type VideoGenerationResult = {
 
 export type VideoGenerationMode = "generate" | "imageToVideo" | "videoToVideo";
 
+export type VideoGenerationProviderOptionType = "number" | "boolean" | "string";
+
 export type VideoGenerationModeCapabilities = {
   maxVideos?: number;
   maxInputImages?: number;
   maxInputVideos?: number;
+  maxInputAudios?: number;
   maxDurationSeconds?: number;
   supportedDurationSeconds?: readonly number[];
   supportedDurationSecondsByModel?: Readonly<Record<string, readonly number[]>>;
@@ -82,6 +87,7 @@ export type VideoGenerationModeCapabilities = {
   supportsResolution?: boolean;
   supportsAudio?: boolean;
   supportsWatermark?: boolean;
+  providerOptions?: Readonly<Record<string, VideoGenerationProviderOptionType>>;
 };
 
 export type VideoGenerationTransformCapabilities = VideoGenerationModeCapabilities & {

@@ -158,7 +158,7 @@ describe("QmdMemoryManager slugified path resolution", () => {
     workspaceDir = path.join(tmpRoot, "workspace");
     stateDir = path.join(tmpRoot, "state");
     await fs.mkdir(workspaceDir, { recursive: true });
-    process.env.KAIJIBOT_STATE_DIR = stateDir;
+    process.env.OPENCLAW_STATE_DIR = stateDir;
 
     cfg = {
       agents: {
@@ -183,7 +183,7 @@ describe("QmdMemoryManager slugified path resolution", () => {
     );
     openManagers.clear();
     await fs.rm(tmpRoot, { recursive: true, force: true });
-    delete process.env.KAIJIBOT_STATE_DIR;
+    delete process.env.OPENCLAW_STATE_DIR;
   });
 
   it("maps slugified workspace qmd URIs back to the indexed filesystem path", async () => {

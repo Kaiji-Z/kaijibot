@@ -1,6 +1,6 @@
 {
   "name": "@kaijibot/memory-core",
-  "version": "2026.4.10",
+  "version": "2026.4.12",
   "private": true,
   "description": "KaijiBot core memory search plugin",
   "type": "module",
@@ -9,7 +9,7 @@
     "kaijibot": "workspace:*"
   },
   "peerDependencies": {
-    "kaijibot": ">=2026.4.10"
+    "kaijibot": ">=2026.4.12"
   },
   "peerDependenciesMeta": {
     "kaijibot": {

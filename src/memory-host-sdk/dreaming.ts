@@ -1,6 +1,6 @@
 import path from "node:path";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
-import type { KaijiBotConfig } from "../config/config.js";
+import type { KaijiBotConfig } from "../config/types.kaijibot.js";
 import { asNullableRecord } from "../shared/record-coerce.js";
 import {
   lowercasePreservingWhitespace,

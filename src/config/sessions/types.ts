@@ -113,6 +113,11 @@ export type SessionEntry = {
   lastHeartbeatSentAt?: number;
   /** Heartbeat task state (task name -> last run timestamp ms). */
   heartbeatTaskState?: Record<string, number>;
+  /**
+   * Stored base session key for the heartbeat isolated session.
+   * Used to collapse repeated `:heartbeat` suffixes on wake-triggered re-entry.
+   */
+  heartbeatIsolatedBaseSessionKey?: string;
   sessionId: string;
   updatedAt: number;
   sessionFile?: string;

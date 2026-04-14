@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveAgentWorkspaceDir } from "../../agents/agent-scope.js";
 import { resolveMemorySearchConfig } from "../../agents/memory-search.js";
-import type { KaijiBotConfig } from "../../config/config.js";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { isFileMissingError, statRegularFile } from "./fs-utils.js";
 import { isMemoryPath, normalizeExtraMemoryPaths } from "./internal.js";
 

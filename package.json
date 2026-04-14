@@ -341,6 +341,22 @@
       "types": "./dist/plugin-sdk/temp-path.d.ts",
       "default": "./dist/plugin-sdk/temp-path.js"
     },
+    "./plugin-sdk/ollama-runtime": {
+      "types": "./dist/plugin-sdk/ollama-runtime.d.ts",
+      "default": "./dist/plugin-sdk/ollama-runtime.js"
+    },
+    "./plugin-sdk/lmstudio-runtime": {
+      "types": "./dist/plugin-sdk/lmstudio-runtime.d.ts",
+      "default": "./dist/plugin-sdk/lmstudio-runtime.js"
+    },
+    "./plugin-sdk/media-mime": {
+      "types": "./dist/plugin-sdk/media-mime.d.ts",
+      "default": "./dist/plugin-sdk/media-mime.js"
+    },
+    "./plugin-sdk/proxy-capture": {
+      "types": "./dist/plugin-sdk/proxy-capture.d.ts",
+      "default": "./dist/plugin-sdk/proxy-capture.js"
+    },
     "./plugin-sdk/logging-core": {
       "types": "./dist/plugin-sdk/logging-core.d.ts",
       "default": "./dist/plugin-sdk/logging-core.js"

@@ -1,11 +1,11 @@
 import type { MemorySearchResult } from "kaijibot/plugin-sdk/memory-core-host-runtime-files";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { KaijiBotConfig } from "../api.js";
 import {
   resetMemoryToolMockState,
   setMemoryBackend,
   setMemorySearchImpl,
-} from "../../../test/helpers/memory-tool-manager-mock.js";
-import type { KaijiBotConfig } from "../api.js";
+} from "./memory-tool-manager-mock.js";
 import { createMemorySearchTool } from "./tools.js";
 
 type RecordShortTermRecallsFn = (params: {

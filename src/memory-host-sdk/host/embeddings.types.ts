@@ -1,4 +1,4 @@
-import type { KaijiBotConfig } from "../../config/config.js";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import type { SecretInput } from "../../config/types.secrets.js";
 import type { EmbeddingInput } from "./embedding-inputs.js";
 
@@ -17,6 +17,7 @@ export type EmbeddingProviderId =
   | "gemini"
   | "voyage"
   | "mistral"
+  | "lmstudio"
   | "ollama"
   | "bedrock";
 

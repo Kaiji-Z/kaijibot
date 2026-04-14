@@ -9,7 +9,8 @@ const loadProviderAuthLoginRuntime = createLazyRuntimeModule(
 );
 const bindProviderAuthLoginRuntime = createLazyRuntimeMethodBinder(loadProviderAuthLoginRuntime);
 
-// [fork-removed] githubCopilotLoginCommand removed
+export const githubCopilotLoginCommand: ProviderAuthLoginRuntime["githubCopilotLoginCommand"] =
+  bindProviderAuthLoginRuntime((runtime) => runtime.githubCopilotLoginCommand);
 export const loginChutes: ProviderAuthLoginRuntime["loginChutes"] = bindProviderAuthLoginRuntime(
   (runtime) => runtime.loginChutes,
 );

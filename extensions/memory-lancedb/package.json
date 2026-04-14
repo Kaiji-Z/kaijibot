@@ -1,12 +1,12 @@
 {
   "name": "@kaijibot/memory-lancedb",
-  "version": "2026.4.10",
+  "version": "2026.4.12",
   "description": "KaijiBot LanceDB-backed long-term memory plugin with auto-recall/capture",
   "type": "module",
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",
     "@sinclair/typebox": "0.34.49",
-    "openai": "^6.33.0"
+    "openai": "^6.34.0"
   },
   "devDependencies": {
     "@kaijibot/plugin-sdk": "workspace:*"
@@ -21,10 +21,10 @@
       "minHostVersion": ">=2026.4.10"
     },
     "compat": {
-      "pluginApi": ">=2026.4.10"
+      "pluginApi": ">=2026.4.12"
     },
     "build": {
-      "kaijibotVersion": "2026.4.10"
+      "kaijibotVersion": "2026.4.12"
     },
     "release": {
       "publishToClawHub": true,

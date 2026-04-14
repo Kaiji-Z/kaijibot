@@ -17,17 +17,24 @@ import {
   type GeminiTaskType,
 } from "./embeddings-gemini.js";
 import {
+  createLmstudioEmbeddingProvider,
+  type LmstudioEmbeddingClient,
+} from "./embeddings-lmstudio.js";
+import {
   createMistralEmbeddingProvider,
   type MistralEmbeddingClient,
 } from "./embeddings-mistral.js";
+import { createOllamaEmbeddingProvider, type OllamaEmbeddingClient } from "./embeddings-ollama.js";
 import { createOpenAiEmbeddingProvider, type OpenAiEmbeddingClient } from "./embeddings-openai.js";
 import { createVoyageEmbeddingProvider, type VoyageEmbeddingClient } from "./embeddings-voyage.js";
 import { importNodeLlamaCpp } from "./node-llama.js";
 
 export type { GeminiEmbeddingClient } from "./embeddings-gemini.js";
+export type { LmstudioEmbeddingClient } from "./embeddings-lmstudio.js";
 export type { MistralEmbeddingClient } from "./embeddings-mistral.js";
 export type { OpenAiEmbeddingClient } from "./embeddings-openai.js";
 export type { VoyageEmbeddingClient } from "./embeddings-voyage.js";
+export type { OllamaEmbeddingClient } from "./embeddings-ollama.js";
 export type { BedrockEmbeddingClient } from "./embeddings-bedrock.js";
 
 export type EmbeddingProvider = {
@@ -45,12 +52,16 @@ export type EmbeddingProviderId =
   | "gemini"
   | "voyage"
   | "mistral"
-  | "bedrock";
+  | "bedrock"
+  | "lmstudio"
+  | "ollama";
 export type EmbeddingProviderRequest = EmbeddingProviderId | "auto";
 export type EmbeddingProviderFallback = EmbeddingProviderId | "none";
 
 // Remote providers considered for auto-selection when provider === "auto".
-// Bedrock is included when AWS credentials are detected.
+// LM Studio and Ollama are intentionally excluded here so that "auto" mode does not
+// implicitly assume either instance is available.
+// Bedrock is handled separately when AWS credentials are detected.
 const REMOTE_EMBEDDING_PROVIDER_IDS = ["openai", "gemini", "voyage", "mistral"] as const;
 
 export type EmbeddingProviderResult = {
@@ -64,6 +75,8 @@ export type EmbeddingProviderResult = {
   voyage?: VoyageEmbeddingClient;
   mistral?: MistralEmbeddingClient;
   bedrock?: BedrockEmbeddingClient;
+  lmstudio?: LmstudioEmbeddingClient;
+  ollama?: OllamaEmbeddingClient;
 };
 
 export type EmbeddingProviderOptions = {
@@ -185,6 +198,14 @@ export async function createEmbeddingProvider(
       const provider = await createLocalEmbeddingProvider(options);
       return { provider };
     }
+    if (id === "lmstudio") {
+      const { provider, client } = await createLmstudioEmbeddingProvider(options);
+      return { provider, lmstudio: client };
+    }
+    if (id === "ollama") {
+      const { provider, client } = await createOllamaEmbeddingProvider(options);
+      return { provider, ollama: client };
+    }
     if (id === "gemini") {
       const { provider, client } = await createGeminiEmbeddingProvider(options);
       return { provider, gemini: client };
@@ -294,7 +315,9 @@ export async function createEmbeddingProvider(
           };
         }
         // Non-auth errors are still fatal
-        const wrapped = new Error(combinedReason) as Error & { cause?: unknown };
+        const wrapped = new Error(combinedReason) as Error & {
+          cause?: unknown;
+        };
         wrapped.cause = fallbackErr;
         throw wrapped;
       }

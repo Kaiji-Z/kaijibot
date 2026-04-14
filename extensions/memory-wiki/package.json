@@ -1,6 +1,6 @@
 {
   "name": "@kaijibot/memory-wiki",
-  "version": "2026.4.10",
+  "version": "2026.4.12",
   "private": true,
   "description": "KaijiBot persistent wiki plugin",
   "type": "module",
@@ -12,7 +12,7 @@
     "kaijibot": "workspace:*"
   },
   "peerDependencies": {
-    "kaijibot": ">=2026.4.10"
+    "kaijibot": ">=2026.4.12"
   },
   "peerDependenciesMeta": {
     "kaijibot": {

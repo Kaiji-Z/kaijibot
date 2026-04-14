@@ -140,7 +140,7 @@ describe("memory index", () => {
   beforeEach(async () => {
     // Perf: most suites don't need atomic swap behavior for full reindexes.
     // Keep atomic reindex tests on the safe path.
-    vi.stubEnv("KAIJIBOT_TEST_MEMORY_UNSAFE_REINDEX", "1");
+    vi.stubEnv("OPENCLAW_TEST_MEMORY_UNSAFE_REINDEX", "1");
     clearRegistry();
     registerBuiltInMemoryEmbeddingProviders({ registerMemoryEmbeddingProvider: registerAdapter });
     embedBatchCalls = 0;
@@ -382,7 +382,7 @@ describe("memory index", () => {
   it("prefers exact session transcript hits in FTS-only mode", async () => {
     forceNoProvider = true;
     const stateDir = path.join(workspaceDir, ".state-session-ranking");
-    vi.stubEnv("KAIJIBOT_STATE_DIR", stateDir);
+    vi.stubEnv("OPENCLAW_STATE_DIR", stateDir);
     try {
       const cfg = createCfg({
         storePath: path.join(workspaceDir, "index-fts-session-ranking.sqlite"),
@@ -449,7 +449,7 @@ describe("memory index", () => {
   it("bootstraps an empty index on first search so session transcript hits are available", async () => {
     forceNoProvider = true;
     const stateDir = path.join(workspaceDir, ".state-session-bootstrap");
-    vi.stubEnv("KAIJIBOT_STATE_DIR", stateDir);
+    vi.stubEnv("OPENCLAW_STATE_DIR", stateDir);
     try {
       const cfg = createCfg({
         storePath: path.join(workspaceDir, "index-fts-session-bootstrap.sqlite"),

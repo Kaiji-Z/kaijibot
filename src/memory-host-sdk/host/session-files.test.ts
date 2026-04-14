@@ -9,15 +9,15 @@ let originalStateDir: string | undefined;
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "session-entry-test-"));
-  originalStateDir = process.env.KAIJIBOT_STATE_DIR;
-  process.env.KAIJIBOT_STATE_DIR = tmpDir;
+  originalStateDir = process.env.OPENCLAW_STATE_DIR;
+  process.env.OPENCLAW_STATE_DIR = tmpDir;
 });
 
 afterEach(async () => {
   if (originalStateDir === undefined) {
-    delete process.env.KAIJIBOT_STATE_DIR;
+    delete process.env.OPENCLAW_STATE_DIR;
   } else {
-    process.env.KAIJIBOT_STATE_DIR = originalStateDir;
+    process.env.OPENCLAW_STATE_DIR = originalStateDir;
   }
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
@@ -149,5 +149,29 @@ describe("buildSessionEntry", () => {
       Date.parse("2026-04-05T10:00:00.000Z"),
       Date.parse("2026-04-05T10:01:00.000Z"),
     ]);
+  });
+
+  it("flags dreaming narrative transcripts from bootstrap metadata", async () => {
+    const jsonlLines = [
+      JSON.stringify({
+        type: "custom",
+        customType: "kaijibot:bootstrap-context:full",
+        data: {
+          runId: "dreaming-narrative-light-1775894400455",
+          sessionId: "sid-1",
+        },
+      }),
+      JSON.stringify({
+        type: "message",
+        message: { role: "user", content: "Write a dream diary entry from these memory fragments" },
+      }),
+    ];
+    const filePath = path.join(tmpDir, "dreaming-session.jsonl");
+    await fs.writeFile(filePath, jsonlLines.join("\n"));
+
+    const entry = await buildSessionEntry(filePath);
+
+    expect(entry).not.toBeNull();
+    expect(entry?.generatedByDreamingNarrative).toBe(true);
   });
 });

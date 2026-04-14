@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
 const HAS_OPENAI_KEY = Boolean(process.env.OPENAI_API_KEY);
-const liveEnabled = HAS_OPENAI_KEY && process.env.KAIJIBOT_LIVE_TEST === "1";
+const liveEnabled = HAS_OPENAI_KEY && process.env.OPENCLAW_LIVE_TEST === "1";
 const describeLive = liveEnabled ? describe : describe.skip;
 
 function installTmpDirHarness(params: { prefix: string }) {
