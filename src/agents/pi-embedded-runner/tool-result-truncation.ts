@@ -148,8 +148,7 @@ export function truncateToolResultText(
  */
 export function calculateMaxToolResultChars(contextWindowTokens: number): number {
   const maxTokens = Math.floor(contextWindowTokens * MAX_TOOL_RESULT_CONTEXT_SHARE);
-  // Rough conversion: ~4 chars per token on average
-  const maxChars = maxTokens * 4;
+  const maxChars = maxTokens * 2;
   return Math.min(maxChars, DEFAULT_MAX_LIVE_TOOL_RESULT_CHARS);
 }
 

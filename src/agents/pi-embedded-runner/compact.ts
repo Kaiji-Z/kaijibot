@@ -4,9 +4,9 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import {
   createAgentSession,
   DefaultResourceLoader,
-  estimateTokens,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
+import { estimateMessageTokens as estimateTokens } from "../token-estimation.js";
 import type { ReasoningLevel, ThinkLevel } from "../../auto-reply/thinking.js";
 import { resolveChannelCapabilities } from "../../config/channel-capabilities.js";
 import type { KaijiBotConfig } from "../../config/config.js";
