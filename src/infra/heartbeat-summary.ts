@@ -22,7 +22,8 @@ export type HeartbeatSummary = {
   ackMaxChars: number;
 };
 
-const DEFAULT_HEARTBEAT_TARGET = "none";
+// KaijiBot fork: matches the delivery default in targets.ts (rawTarget===undefined → "last").
+const DEFAULT_HEARTBEAT_TARGET = "last";
 
 function hasExplicitHeartbeatAgents(cfg: KaijiBotConfig) {
   const list = cfg.agents?.list ?? [];

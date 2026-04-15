@@ -90,7 +90,10 @@ export function resolveHeartbeatDeliveryTarget(params: {
   const { cfg, entry } = params;
   const heartbeat = params.heartbeat ?? cfg.agents?.defaults?.heartbeat;
   const rawTarget = heartbeat?.target;
-  let target: HeartbeatTarget = "none";
+  // KaijiBot fork: upstream defaults to "none" (no delivery unless explicitly
+  // configured). We default to "last" so cognitive insights reach the user's
+  // last known channel without requiring heartbeat.target in config.
+  let target: HeartbeatTarget = rawTarget === undefined ? "last" : "none";
   if (rawTarget === "none" || rawTarget === "last") {
     target = rawTarget;
   } else if (typeof rawTarget === "string") {

@@ -998,6 +998,11 @@ export async function runHeartbeatOnce(opts: {
       payloads: [{ text: heartbeatOkText }],
       session: outboundSession,
       deps: opts.deps,
+      mirror: {
+        sessionKey,
+        agentId,
+        text: heartbeatOkText,
+      },
     });
     return true;
   };
@@ -1210,6 +1215,12 @@ export async function runHeartbeatOnce(opts: {
             ]),
       ],
       deps: opts.deps,
+      mirror: {
+        sessionKey,
+        agentId,
+        text: normalized.text,
+        mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+      },
     });
 
     // Record last delivered heartbeat payload for dedupe.

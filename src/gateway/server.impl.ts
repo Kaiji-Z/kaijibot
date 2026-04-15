@@ -1313,21 +1313,38 @@ export async function startGatewayServer(
             },
             async onInsightReady(userId: string, candidate) {
               try {
-                const { enqueueSystemEvent } = await import("../infra/system-events.js");
-                const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
-                const { findSessionKeyForUserId } = await import("./cognitive-delivery.js");
+                const { resolveCognitiveDeliveryTarget } = await import("./cognitive-delivery.js");
+                const { deliverOutboundPayloads } = await import("../infra/outbound/deliver.js");
+                const { buildOutboundSessionContext } = await import("../infra/outbound/session-context.js");
 
-                const resolvedKey = findSessionKeyForUserId(cfgAtStart, userId);
-                if (!resolvedKey) {
-                  log.info(`cognitive insight: no session found for ${userId}, skipping delivery`);
+                const target = resolveCognitiveDeliveryTarget(cfgAtStart, userId);
+                if (!target) {
+                  log.info(`cognitive insight: no routable session for ${userId}, skipping delivery`);
                   return;
                 }
-                enqueueSystemEvent(
-                  `[认知洞察] ${candidate.content}\n来源领域: ${candidate.sourceDomains.length > 0 ? candidate.sourceDomains.join(", ") : "综合分析"}`,
-                  { sessionKey: resolvedKey, contextKey: "cognitive-insight" },
-                );
-                requestHeartbeatNow({ reason: "cognitive-insight", sessionKey: resolvedKey });
-                log.info(`cognitive insight queued for delivery to ${userId} via ${resolvedKey}`);
+
+                const insightText = `[认知洞察] ${candidate.content}\n来源领域: ${candidate.sourceDomains.length > 0 ? candidate.sourceDomains.join(", ") : "综合分析"}`;
+                const session = buildOutboundSessionContext({
+                  cfg: cfgAtStart,
+                  sessionKey: target.sessionKey,
+                });
+
+                await deliverOutboundPayloads({
+                  cfg: cfgAtStart,
+                  channel: target.channel,
+                  to: target.to,
+                  accountId: target.accountId,
+                  payloads: [{ text: insightText }],
+                  session,
+                  mirror: {
+                    sessionKey: target.sessionKey,
+                    agentId: "main",
+                    text: insightText,
+                    idempotencyKey: `cognitive-insight-${Date.now()}`,
+                  },
+                  bestEffort: true,
+                });
+                log.info(`cognitive insight delivered to ${userId} via ${target.channel}`);
               } catch (err) {
                 log.warn(`cognitive insight delivery failed: ${String(err)}`);
               }
@@ -1355,8 +1372,11 @@ export async function startGatewayServer(
         personaChangeSource.onEvent(handleEventForAllUsers);
         infoScanSource.onEvent(handleEventForAllUsers);
         infoScanSource.start();
-        proactiveScheduler.start(() => cognitiveStore.listUserIds(), (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4) * 3600_000);
-        log.info("cognitive proactive scheduler started (multi-user timer + info-scan + persona-change)");
+        const schedulerIntervalMs = process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS
+          ? Number(process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS)
+          : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4) * 3600_000;
+        proactiveScheduler.start(() => cognitiveStore.listUserIds(), schedulerIntervalMs);
+        log.info(`cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`);
       } catch (err) {
         log.warn(`cognitive scheduler skipped: ${String(err)}`);
       }

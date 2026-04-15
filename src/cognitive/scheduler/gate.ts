@@ -9,7 +9,7 @@ import type {
 
 // ── PRISM cost defaults ──────────────────────────────────────────────
 
-const DEFAULT_C_FN = 3.0;
+const DEFAULT_C_FN = 5.0;
 const DEFAULT_C_FA = 1.0;
 const BASE_NEED = 0.5;
 const SIGMOID_K = 0.5;

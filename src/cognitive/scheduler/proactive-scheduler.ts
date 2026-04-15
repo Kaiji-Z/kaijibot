@@ -4,6 +4,9 @@ import { computeGradedGate } from "./gate.js";
 import type { InsightCandidate, InsightEngineInput } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections } from "../insight/cross-domain-mapper.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+
+const log = createSubsystemLogger("cognitive/scheduler");
 
 export type InsightGeneratorFn = (persona: PersonaTree, input: InsightEngineInput, options?: { verificationLevel?: "basic" | "strict" | "paranoid"; maxCandidates?: number }) => Promise<InsightCandidate[]>;
 
@@ -101,11 +104,20 @@ export class ProactiveScheduler {
       config: this.config,
     };
     const gateResult = computeGradedGate(gateContext);
-    if (!gateResult.decision) return undefined;
+    if (!gateResult.decision) {
+      log.info("gate vetoed", { userId, pNeed: gateResult.pNeed, pAct: gateResult.pNeed * gateResult.pAccept, reasons: gateResult.reasons });
+      return undefined;
+    }
+    log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pNeed * gateResult.pAccept });
 
     const opportunities = this.search(persona, event);
+    log.info("search found opportunities", { userId, count: opportunities.length });
     const selected = this.identify(opportunities);
-    if (!selected) return undefined;
+    if (!selected) {
+      log.info("identify selected nothing", { userId });
+      return undefined;
+    }
+    log.info("identify selected", { userId, type: selected.type, targetDomains: selected.targetDomains, pAct: selected.pAct });
 
     const insight = await this.resolve(persona, selected);
     if (!insight) return undefined;
@@ -124,14 +136,16 @@ export class ProactiveScheduler {
 
     const tick = async (): Promise<void> => {
       const userIds = await listUserIds();
+      log.info("timer tick", { userCount: userIds.length, interval });
       for (const userId of userIds) {
         try {
-          await this.processEvent(userId, {
+          const result = await this.processEvent(userId, {
             type: "timer",
             timestamp: Date.now(),
           });
+          log.info("processEvent done", { userId, result: result ? "insight generated" : "no insight" });
         } catch (err) {
-          console.warn(`[ProactiveScheduler] tick failed for ${userId}: ${String(err)}`);
+          log.warn("tick failed", { userId, error: String(err) });
         }
       }
 
