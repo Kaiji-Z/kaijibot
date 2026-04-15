@@ -256,8 +256,7 @@ function buildDocsSection(params: { docsPath?: string; isMinimal: boolean; readT
     "## Documentation",
     `KaijiBot docs: ${docsPath}`,
     "Mirror: https://docs.kaijibot.ai",
-    "Source: https://github.com/kaijibot/kaijibot",
-    "Community: https://discord.com/invite/clawd",
+    "Source: https://github.com/Kaiji-Z/kaijibot",
     "Find new skills: https://clawhub.ai",
     "For KaijiBot behavior, commands, config, or architecture: consult local docs first.",
     "When diagnosing issues, run `kaijibot status` yourself when possible; only ask the user if you lack access (e.g., sandboxed).",
@@ -567,7 +566,7 @@ export function buildAgentSystemPrompt(params: {
     ...(acpHarnessSpawnAllowed
       ? [
           'For requests like "do this in codex/claude code/cursor/gemini" or similar ACP harnesses, treat it as ACP harness intent and call `sessions_spawn` with `runtime: "acp"`.',
-          'On Discord, default ACP harness requests to thread-bound persistent sessions (`thread: true`, `mode: "session"`) unless the user asks otherwise.',
+          'On channels that support threads/topics, default ACP harness requests to thread-bound persistent sessions (`thread: true`, `mode: "session"`) unless the user asks otherwise.',
           "Set `agentId` explicitly unless `acp.defaultAgent` is configured, and do not route ACP harness requests through `subagents`/`agents_list` or local PTY exec flows.",
           'For ACP harness thread spawns, do not call `message` with `action=thread-create`; use `sessions_spawn` (`runtime: "acp"`, `thread: true`) as the single thread creation path.',
         ]

@@ -66,7 +66,7 @@ ${formatHelpExamples([
   ],
   ['kaijibot agent --to +15555550123 --message "Summon reply" --deliver', "Deliver reply."],
   [
-    'kaijibot agent --agent ops --message "Generate report" --deliver --reply-channel slack --reply-to "#reports"',
+    'kaijibot agent --agent ops --message "Generate report" --deliver --reply-channel feishu --reply-to ou_xxx',
     "Send reply to a different channel/target.",
   ],
 ])}

@@ -78,7 +78,7 @@ const CONFIG_SET_EXAMPLE_VALUE = formatCliCommand(
   "kaijibot config set gateway.port 19001 --strict-json",
 );
 const CONFIG_SET_EXAMPLE_REF = formatCliCommand(
-  "kaijibot config set channels.discord.token --ref-provider default --ref-source env --ref-id DISCORD_BOT_TOKEN",
+  "kaijibot config set channels.feishu.appId --ref-provider default --ref-source env --ref-id FEISHU_APP_ID",
 );
 const CONFIG_SET_EXAMPLE_PROVIDER = formatCliCommand(
   "kaijibot config set secrets.providers.vault --provider-source file --provider-path /etc/kaijibot/secrets.json --provider-mode json",

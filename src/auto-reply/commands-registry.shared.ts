@@ -379,7 +379,7 @@ export function buildBuiltinChatCommands(): ChatCommandDefinition[] {
       key: "focus",
       nativeName: "focus",
       description:
-        "Bind this thread (Discord) or topic/conversation (Telegram) to a session target.",
+        "Bind this thread or group chat to a session target.",
       textAlias: "/focus",
       category: "management",
       args: [
@@ -394,7 +394,7 @@ export function buildBuiltinChatCommands(): ChatCommandDefinition[] {
     defineChatCommand({
       key: "unfocus",
       nativeName: "unfocus",
-      description: "Remove the current thread (Discord) or topic/conversation (Telegram) binding.",
+      description: "Remove the current thread or group chat session binding.",
       textAlias: "/unfocus",
       category: "management",
     }),

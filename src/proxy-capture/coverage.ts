@@ -40,40 +40,6 @@ const DEBUG_PROXY_COVERAGE_ENTRIES: readonly DebugProxyCoverageEntry[] = [
       "Central OpenAI websocket path records open/frame/close/error events with proxy agent support.",
   },
   {
-    id: "discord-rest",
-    label: "Discord REST monitor fetch",
-    modulePath: "extensions/discord/monitor/rest-fetch.ts",
-    protocols: ["http", "https"],
-    status: "captured",
-    notes: "Discord monitor REST calls inherit the debug proxy and record HTTP exchanges.",
-  },
-  {
-    id: "discord-gateway",
-    label: "Discord gateway monitor",
-    modulePath: "extensions/discord/monitor/gateway-plugin.ts",
-    protocols: ["https", "wss"],
-    status: "captured",
-    notes:
-      "Gateway metadata fetches and websocket lifecycle events are captured for monitor traffic.",
-  },
-  {
-    id: "telegram-fetch",
-    label: "Telegram fetch resolver",
-    modulePath: "extensions/telegram/fetch.ts",
-    protocols: ["http", "https"],
-    status: "captured",
-    notes:
-      "Telegram API fetch fallback picks up debug proxy env and records outbound/inbound exchanges.",
-  },
-  {
-    id: "mattermost-ws",
-    label: "Mattermost monitor websocket",
-    modulePath: "extensions/mattermost/mattermost/monitor-websocket.ts",
-    protocols: ["ws", "wss"],
-    status: "captured",
-    notes: "Mattermost websocket monitor uses the debug proxy agent and records frame activity.",
-  },
-  {
     id: "openai-realtime-voice",
     label: "OpenAI realtime voice bridge",
     modulePath: "extensions/openai/realtime-voice-provider.ts",
@@ -99,15 +65,6 @@ const DEBUG_PROXY_COVERAGE_ENTRIES: readonly DebugProxyCoverageEntry[] = [
     status: "captured",
     notes:
       "Direct OpenAI TTS fetches record request/response payloads while inheriting proxy env routing.",
-  },
-  {
-    id: "microsoft-voices",
-    label: "Microsoft voice discovery",
-    modulePath: "extensions/microsoft/speech-provider.ts",
-    protocols: ["https"],
-    status: "captured",
-    notes:
-      "Microsoft voice listing fetches record HTTP exchanges and follow process-wide proxy routing.",
   },
   {
     id: "feishu-client-http",

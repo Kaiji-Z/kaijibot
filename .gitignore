@@ -1,0 +1,58 @@
+node_modules
+**/node_modules/
+.env
+docker-compose.override.yml
+docker-compose.extra.yml
+dist
+dist-runtime/
+bun.lock
+bun.lockb
+coverage
+__kaijibot_vitest__/
+__pycache__/
+*.pyc
+.tsbuildinfo
+.pnpm-store
+.worktrees/
+.DS_Store
+**/.DS_Store
+ui/src/ui/__screenshots__/
+ui/playwright-report/
+ui/test-results/
+packages/dashboard-next/.next/
+packages/dashboard-next/out/
+
+# Mise configuration files
+mise.toml
+
+# Bun build artifacts
+*.bun-build
+**/ModuleCache/
+bin/
+vendor/
+
+# Vendor build artifacts
+vendor/a2ui/renderers/lit/dist/
+
+# Local untracked files
+.local/
+docs/.local/
+docs/internal/
+tmp/
+IDENTITY.md
+USER.md
+.tgz
+.idea
+
+# local tooling
+.serena/
+
+# Agent credentials and memory (NEVER COMMIT)
+/memory/
+.agent/*.json
+!.agent/workflows/
+/local/
+package-lock.json
+.claude/
+.agent/
+skills-lock.json

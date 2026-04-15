@@ -13,18 +13,18 @@ steps:
     stdin: $fetch.stdout
 
   - id: post_business
-    command: slack-route --bucket business
+    command: feishu-route --bucket business
     stdin: $classify.stdout
     condition: $classify.json.items[0].route == "business"
 
   - id: wait_for_business_reply
-    command: echo '{"status":"waiting","reason":"slack_reply"}'
+    command: echo '{"status":"waiting","reason":"feishu_reply"}'
     condition: $classify.json.items[0].route == "business"
 
   - id: notify_personal
     command: >-
       kaijibot.invoke --tool message --action send --args-json
-      '{"provider":"telegram","to":"owner-thread","content":"Personal inbox item needs attention."}'
+      '{"provider":"feishu","to":"owner-thread","content":"Personal inbox item needs attention."}'
     condition: $classify.json.items[0].route == "personal"
 
   - id: stash_for_eod

@@ -72,10 +72,10 @@ export function registerChannelsCli(program: Command) {
           ["kaijibot channels list", "List configured channels and auth profiles."],
           ["kaijibot channels status --probe", "Run channel status checks and probes."],
           [
-            "kaijibot channels add --channel telegram --token <token>",
+            "kaijibot channels add --channel feishu --app-id <app-id>",
             "Add or update a channel account non-interactively.",
           ],
-          ["kaijibot channels login --channel whatsapp", "Link a WhatsApp Web account."],
+          ["kaijibot channels login --channel feishu", "Link a Feishu account."],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/channels",
           "docs.kaijibot.ai/cli/channels",
@@ -165,7 +165,7 @@ export function registerChannelsCli(program: Command) {
     .option("--channel <name>", `Channel (${channelNames})`)
     .option("--account <id>", "Account id (default when omitted)")
     .option("--name <name>", "Display name for this account")
-    .option("--token <token>", "Bot token (Telegram/Discord)")
+    .option("--app-id <app-id>", "Bot token (Telegram/Discord)")
     .option("--private-key <key>", "Nostr private key (nsec... or hex)")
     .option("--token-file <path>", "Bot token file (Telegram)")
     .option("--bot-token <token>", "Slack bot token (xoxb-...)")

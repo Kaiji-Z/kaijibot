@@ -98,7 +98,6 @@ RUN pnpm build:docker
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV KAIJIBOT_PREFER_PNPM=1
 RUN pnpm ui:build
-RUN pnpm qa:lab:build
 
 # Prune dev dependencies and strip build-only metadata before copying
 # runtime assets into the final image.

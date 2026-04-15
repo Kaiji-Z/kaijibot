@@ -39,7 +39,7 @@ const EXAMPLES = [
     "Talk directly to the agent using the Gateway; optionally send the WhatsApp reply.",
   ],
   [
-    'kaijibot message send --channel telegram --target @mychat --message "Hi"',
+    'kaijibot message send --channel feishu --target ou_xxx --message "Hi"',
     "Send via your Telegram bot.",
   ],
 ] as const;

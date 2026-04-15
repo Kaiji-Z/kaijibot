@@ -1,17 +1,17 @@
 {
   "name": "kaijibot",
   "version": "2026.4.10",
-  "description": "Multi-channel AI gateway with extensible messaging integrations",
-  "keywords": [],
-  "homepage": "https://github.com/kaijibot/kaijibot#readme",
+  "description": "Proactive AI assistant gateway for Chinese users — Feishu + Z.AI (智谱 GLM) with cognitive insight system",
+  "keywords": ["ai", "feishu", "lark", "zhipu", "glm", "ollama", "lmstudio", "chatbot", "proactive-ai", "cognitive"],
+  "homepage": "https://github.com/Kaiji-Z/kaijibot#readme",
   "bugs": {
-    "url": "https://github.com/kaijibot/kaijibot/issues"
+    "url": "https://github.com/Kaiji-Z/kaijibot/issues"
   },
   "license": "MIT",
-  "author": "",
+  "author": "KaijiBot Contributors",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kaijibot/kaijibot.git"
+    "url": "git+https://github.com/Kaiji-Z/kaijibot.git"
   },
   "bin": {
     "kaijibot": "kaijibot.mjs"

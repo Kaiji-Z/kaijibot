@@ -76,14 +76,14 @@ export function registerDirectoryCli(program: Command) {
       "after",
       () =>
         `\n${theme.heading("Examples:")}\n${formatHelpExamples([
-          ["kaijibot directory self --channel slack", "Show the connected account identity."],
+          ["kaijibot directory self --channel feishu", "Show the connected account identity."],
           [
-            'kaijibot directory peers list --channel slack --query "alice"',
+            'kaijibot directory peers list --channel feishu --query "kaiji"',
             "Search contact/user IDs by name.",
           ],
-          ["kaijibot directory groups list --channel discord", "List available groups/channels."],
+          ["kaijibot directory groups list --channel feishu", "List available group chats."],
           [
-            "kaijibot directory groups members --channel discord --group-id <id>",
+            "kaijibot directory groups members --channel feishu --group-id <chat-id>",
             "List members for a specific group.",
           ],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
@@ -266,7 +266,7 @@ export function registerDirectoryCli(program: Command) {
     groups
       .command("members")
       .description("List group members")
-      .requiredOption("--group-id <id>", "Group id"),
+      .requiredOption("--group-id <chat-id>", "Group id"),
   )
     .option("--limit <n>", "Limit results")
     .action(async (opts) => {

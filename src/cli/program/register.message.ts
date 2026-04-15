@@ -5,7 +5,6 @@ import { formatHelpExamples } from "../help-format.js";
 import type { ProgramContext } from "./context.js";
 import { createMessageCliHelpers } from "./message/helpers.js";
 import { registerMessageBroadcastCommand } from "./message/register.broadcast.js";
-import { registerMessageDiscordAdminCommands } from "./message/register.discord-admin.js";
 import {
   registerMessageEmojiCommands,
   registerMessageStickerCommands,
@@ -37,11 +36,11 @@ ${formatHelpExamples([
     "Send a message with media.",
   ],
   [
-    'kaijibot message poll --channel discord --target channel:123 --poll-question "Snack?" --poll-option Pizza --poll-option Sushi',
+    'kaijibot message poll --channel feishu --target ou_xxx --poll-question "Snack?" --poll-option Pizza --poll-option Sushi',
     "Create a Discord poll.",
   ],
   [
-    'kaijibot message react --channel discord --target 123 --message-id 456 --emoji "✅"',
+    'kaijibot message react --channel feishu --target ou_xxx --message-id 456 --emoji "✅"',
     "React to a message.",
   ],
 ])}
@@ -64,5 +63,4 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "docs.kaijibot.ai/cli/m
   registerMessageThreadCommands(message, helpers);
   registerMessageEmojiCommands(message, helpers);
   registerMessageStickerCommands(message, helpers);
-  registerMessageDiscordAdminCommands(message, helpers);
 }

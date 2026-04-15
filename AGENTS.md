@@ -15,11 +15,11 @@ This is a simplified fork of [OpenClaw](https://github.com/openclaw/openclaw), e
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
-- **`extensions/`** — 18 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks, shared
-- **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk, clawdbot, moltbot
+- **`extensions/`** — 21 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks, shared
+- **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk
 - **`skills/`** — 21 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts)
 - **`ui/`** — web control UI
-- **`docs/`** — documentation (built output in `dist/`)
+- **`docs/`** — documentation
 - Tests: colocated `*.test.ts`; e2e: `*.e2e.test.ts`
 
 ## Build, Test, and Development Commands
@@ -113,7 +113,7 @@ Key integration points:
 - For scoped debugging: `pnpm test <path-or-filter>` (not raw `pnpm vitest run ...`).
 - `KAIJIBOT_VITEST_MAX_WORKERS=1 pnpm test` for memory-constrained runs.
 - Do not modify baseline, snapshot, or expected-failure files to silence failing checks without explicit approval.
-- Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` are missing; tests in `src/infra/` and `src/gateway/` (excluding explicitly configured paths) cannot run via `pnpm test`. Use `pnpm tsgo` for type verification.
+- Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
 
 ## Commit Guidelines
 

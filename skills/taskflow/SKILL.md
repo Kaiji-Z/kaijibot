@@ -92,14 +92,14 @@ const waiting = taskFlow.setWaiting({
   expectedRevision: created.revision,
   currentStep: "await_business_reply",
   stateJson: {
-    businessThreads: ["slack:thread-1"],
+    businessThreads: ["feishu:thread-1"],
     personalItems: [],
     eodSummary: [],
   },
   waitJson: {
     kind: "reply",
     channel: "slack",
-    threadKey: "slack:thread-1",
+    threadKey: "feishu:thread-1",
   },
 });
 

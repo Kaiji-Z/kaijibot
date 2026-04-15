@@ -6,7 +6,7 @@ import module from "node:module";
 import { fileURLToPath } from "node:url";
 
 const MIN_NODE_MAJOR = 22;
-const MIN_NODE_MINOR = 12;
+const MIN_NODE_MINOR = 14;
 const MIN_NODE_VERSION = `${MIN_NODE_MAJOR}.${MIN_NODE_MINOR}`;
 
 const parseNodeVersion = (rawVersion) => {
