@@ -68,6 +68,7 @@ export type PersonaTree = {
     expertDomains: string[];
     interestDomains: string[];
     curiosityDomains: string[];
+    userId?: string; // channel-specific user ID for traceability
   };
   domains: Record<string, DomainNode>;
   recentFocus: string[];

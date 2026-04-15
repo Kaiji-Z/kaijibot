@@ -1305,9 +1305,9 @@ export async function startGatewayServer(
             timezone: cfgAtStart.cognitive?.proactive?.activeHours?.timezone,
           },
           {
-            loadPersona: async (userId) => cognitiveStore.load(userId),
+            loadPersona: async (userId) => cognitiveStore.load("main", userId),
             savePersona: async (userId, persona) => {
-              await cognitiveStore.save(userId, persona);
+              await cognitiveStore.save("main", userId, persona);
               const domainKeys = Object.keys(persona.domains);
               personaChangeSource.checkPersonaUpdate(domainKeys.length, []);
             },
@@ -1360,7 +1360,7 @@ export async function startGatewayServer(
         );
 
         const handleEventForAllUsers = async (event: SchedulerEvent) => {
-          const userIds = await cognitiveStore.listUserIds();
+          const userIds = await cognitiveStore.listUserIds("main");
           for (const userId of userIds) {
             try {
               await proactiveScheduler.processEvent(userId, event);
@@ -1375,7 +1375,7 @@ export async function startGatewayServer(
         const schedulerIntervalMs = process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS
           ? Number(process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS)
           : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4) * 3600_000;
-        proactiveScheduler.start(() => cognitiveStore.listUserIds(), schedulerIntervalMs);
+        proactiveScheduler.start(() => cognitiveStore.listUserIds("main"), schedulerIntervalMs);
         log.info(`cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`);
       } catch (err) {
         log.warn(`cognitive scheduler skipped: ${String(err)}`);

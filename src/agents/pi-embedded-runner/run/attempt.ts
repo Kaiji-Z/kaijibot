@@ -1794,12 +1794,34 @@ export async function runEmbeddedAttempt(
 
           const reserveTokens = settingsManager.getCompactionReserveTokens();
           const contextTokenBudget = params.contextTokenBudget ?? DEFAULT_CONTEXT_TOKENS;
+          let lastUsageTokens: number | undefined;
+          try {
+            for (let i = activeSession.messages.length - 1; i >= 0; i--) {
+              const msg = activeSession.messages[i] as unknown as Record<string, unknown>;
+              if (msg.role === "assistant") {
+                const usage = (msg as { usage?: Record<string, unknown> }).usage;
+                const stopReason = (msg as { stopReason?: string }).stopReason;
+                if (usage && typeof usage === "object" && stopReason !== "aborted" && stopReason !== "error") {
+                  const input = typeof usage.input === "number" ? usage.input : 0;
+                  const output = typeof usage.output === "number" ? usage.output : 0;
+                  const cacheRead = typeof usage.cacheRead === "number" ? usage.cacheRead : 0;
+                  const cacheWrite = typeof usage.cacheWrite === "number" ? usage.cacheWrite : 0;
+                  const total = typeof usage.totalTokens === "number" ? usage.totalTokens : 0;
+                  lastUsageTokens = total || (input + output + cacheRead + cacheWrite);
+                  break;
+                }
+              }
+            }
+          } catch {
+            // If extraction fails, fall back to pure estimation
+          }
           const preemptiveCompaction = shouldPreemptivelyCompactBeforePrompt({
             messages: activeSession.messages,
             systemPrompt: systemPromptText,
             prompt: effectivePrompt,
             contextTokenBudget,
             reserveTokens,
+            lastUsageTokens,
           });
           if (preemptiveCompaction.route === "truncate_tool_results_only") {
             const truncationResult = truncateOversizedToolResultsInSessionManager({
@@ -2177,8 +2199,8 @@ export async function runEmbeddedAttempt(
 
               const configDir = resolveConfigDir();
               const store = new PersonaStore(configDir);
-              // Prefer explicit senderId; fall back to extracting from sessionKey (format: "agent:main:user-<id>")
-              const userId = senderId ?? sessionKey.split(":").slice(-1)[0];
+              // TUI/admin sessions have no senderId → skip persona extraction entirely
+              const userId = senderId;
               if (!userId) return;
 
               const extractText = (content: unknown): string => {
@@ -2203,7 +2225,7 @@ export async function runEmbeddedAttempt(
                 .join(" ")
                 .slice(-2000);
 
-              const persona = await store.loadOrCreate(userId);
+              const persona = await store.loadOrCreate("main", userId);
               const deps = createDefaultDeps();
               if (!params.config) return;
               const extraction = await extractFromMessageLLM(userText, assistantText, persona, params.config, deps);
@@ -2212,7 +2234,7 @@ export async function runEmbeddedAttempt(
 
               const signals = extractImplicitSignals(userText, undefined, undefined);
               const feedbackUpdated = processImplicitFeedback(pruned, signals);
-              await store.save(userId, feedbackUpdated);
+              await store.save("main", userId, feedbackUpdated);
             } catch (err) {
               log.debug(`cognitive write-path skipped: ${String(err)}`);
             }

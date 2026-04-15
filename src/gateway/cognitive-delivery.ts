@@ -29,11 +29,6 @@ export function findSessionKeyForUserId(
     if (key.endsWith(`:${userId}`)) return key;
   }
 
-  // Fallback: use the default main session if no user-specific session exists.
-  // Feishu DMs route to "agent:main:main" rather than "agent:main:<open_id>".
-  const mainKey = "agent:main:main";
-  if (store[mainKey]) return mainKey;
-
   return undefined;
 }
 

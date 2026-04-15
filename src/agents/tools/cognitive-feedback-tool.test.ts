@@ -101,7 +101,7 @@ describe("createCognitiveFeedbackTool", () => {
       expect(payload.status).toBe("recorded");
       expect(payload.sentiment).toBe("positive");
       expect(payload.trustScore).toBe("0.45");
-      expect(mockSave).toHaveBeenCalledWith("user-abc", updated);
+      expect(mockSave).toHaveBeenCalledWith("main", "user-abc", updated);
     });
 
     it("records negative feedback and updates persona", async () => {
@@ -121,7 +121,7 @@ describe("createCognitiveFeedbackTool", () => {
       const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
       expect(payload.status).toBe("recorded");
       expect(payload.sentiment).toBe("negative");
-      expect(mockSave).toHaveBeenCalledWith("user-xyz", updated);
+      expect(mockSave).toHaveBeenCalledWith("main", "user-xyz", updated);
     });
 
     it("returns graceful message when persona not found", async () => {
@@ -138,6 +138,21 @@ describe("createCognitiveFeedbackTool", () => {
 
       const text = (result.content as Array<{ text: string }>)[0].text;
       expect(text).toContain("No user profile found");
+    });
+
+    it("returns graceful message when sessionKey has no real user (TUI/admin)", async () => {
+      const tool = createCognitiveFeedbackTool({
+        sessionKey: "agent:main:main",
+      })!;
+
+      const result = await tool.execute("call-5", {
+        targetId: "msg-005",
+        sentiment: "neutral",
+      });
+
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("No user profile found");
+      expect(mockSave).not.toHaveBeenCalled();
     });
 
     it("returns error message when store.save fails without throwing", async () => {

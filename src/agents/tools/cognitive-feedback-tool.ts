@@ -37,9 +37,16 @@ export function createCognitiveFeedbackTool(deps: {
         const { resolveConfigDir } = await import("../../utils.js");
 
         const store = new PersonaStore(resolveConfigDir());
-        const userId = deps.sessionKey?.split(":").pop() ?? "default";
+        // TUI/admin sessions have no senderId → skip persona extraction
+        const userId = deps.sessionKey?.split(":").pop();
+        if (!userId || userId === "main") {
+          return textResult(
+            "No user profile found; feedback stored but not applied to profile.",
+            { status: "no_profile", sentiment: params.sentiment, topic: params.topic },
+          );
+        }
 
-        const persona = await store.load(userId);
+        const persona = await store.load("main", userId);
         if (!persona) {
           return textResult(
             "No user profile found; feedback stored but not applied to profile.",
@@ -61,7 +68,7 @@ export function createCognitiveFeedbackTool(deps: {
         };
 
         const updated = processFeedback(persona, feedback);
-        await store.save(userId, updated);
+        await store.save("main", userId, updated);
 
         return jsonResult({
           status: "recorded",

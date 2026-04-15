@@ -277,7 +277,7 @@ export async function runPreparedReply(
     let persona;
     if (userId) {
       const store = new PersonaStore(resolveConfigDir());
-      persona = await store.load(userId);
+      persona = await store.load("main", userId);
     }
     const { prompt: cognitivePrompt } = buildCognitiveModePrompt({
       message: rawBodyTrimmed,
