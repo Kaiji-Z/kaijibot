@@ -1,5 +1,8 @@
 import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
@@ -48,6 +51,8 @@ export type LlmInsightOptions = {
   maxTokens?: number;
   /** Maximum number of candidates to return (default 3). */
   maxCandidates?: number;
+  /** System context injected before the insight prompt (e.g. SOUL.md + IDENTITY.md). */
+  systemContext?: string;
 };
 
 /**
@@ -111,13 +116,15 @@ export async function generateInsightCandidatesLLM(
     }
 
     const timeoutMs = options?.timeout ?? 20_000;
+    const messages: Array<{ role: "system" | "user"; content: string; timestamp?: number }> = [];
+    if (options?.systemContext) {
+      messages.push({ role: "system", content: options.systemContext });
+    }
+    messages.push({ role: "user", content: prompt, timestamp: Date.now() });
+
     const result = await deps.complete(
       prepared.model,
-      {
-        messages: [
-          { role: "user", content: prompt, timestamp: Date.now() },
-        ],
-      },
+      { messages },
       {
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 500,
@@ -296,4 +303,24 @@ function parseLLMInsights(
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+const PERSONA_WORKSPACE_FILES = ["SOUL.md", "IDENTITY.md"] as const;
+
+export async function loadWorkspacePersonaContext(
+  workspaceDir?: string,
+): Promise<string> {
+  const dir = workspaceDir ?? path.join(os.homedir(), ".kaijibot", "workspace");
+  const parts: string[] = [];
+  for (const filename of PERSONA_WORKSPACE_FILES) {
+    try {
+      const content = await fs.readFile(path.join(dir, filename), "utf-8");
+      const trimmed = content.trim();
+      if (trimmed) {
+        parts.push(`## ${filename}\n${trimmed}`);
+      }
+    } catch {
+    }
+  }
+  return parts.join("\n\n");
 }

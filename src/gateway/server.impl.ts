@@ -1287,10 +1287,11 @@ export async function startGatewayServer(
         const { PersonaChangeSource } = await import("../cognitive/scheduler/event-sources/persona-change-source.js");
         const { PersonaStore } = await import("../cognitive/persona/store.js");
         const { resolveConfigDir } = await import("../utils.js");
-        const { generateInsightCandidatesLLM, createDefaultInsightDeps } = await import("../cognitive/insight/llm-engine.js");
+        const { generateInsightCandidatesLLM, createDefaultInsightDeps, loadWorkspacePersonaContext } = await import("../cognitive/insight/llm-engine.js");
         const cognitiveStore = new PersonaStore(resolveConfigDir());
         await cognitiveStore.migrateFromFlatLayout();
         const baseInsightDeps = createDefaultInsightDeps();
+        const workspacePersonaContext = await loadWorkspacePersonaContext(defaultWorkspaceDir);
 
         const insightDeps = {
           ...baseInsightDeps,
@@ -1376,6 +1377,7 @@ export async function startGatewayServer(
               generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
                 maxCandidates: options?.maxCandidates,
                 timeout: 20_000,
+                systemContext: workspacePersonaContext || undefined,
               }),
           },
         );
