@@ -199,10 +199,32 @@ function buildInsightPrompt(
   const pendingQuestions = persona.pendingQuestions.slice(0, 3).join("; ");
   const recentInsightIds = input.recentInsightIds.slice(0, 5).join(", ");
 
-  return `You are a personalized insight generator. Based on the user's cognitive profile, generate 1-3 insightful observations that could spark new thinking.
+  const identityBlock = persona.identity
+    ? [
+        `USER'S IDENTITY (the person you're talking to):`,
+        `Name / call sign: ${persona.identity.displayName || "unknown"}`,
+        persona.identity.coreTraits
+          ? `Traits: ${Object.entries(persona.identity.coreTraits)
+              .filter(([, v]) => v.confidence >= 0.5)
+              .map(([k, v]) => `${k}: ${v.value}`)
+              .join(", ")}`
+          : "",
+        persona.identity.expertDomains?.length
+          ? `Expert in: ${persona.identity.expertDomains.join(", ")}`
+          : "",
+        persona.identity.interestDomains?.length
+          ? `Interested in: ${persona.identity.interestDomains.join(", ")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "";
 
-USER PROFILE:
-Domains of expertise:
+  return `You ARE the AI assistant — speaking in your own voice, personality, and tone. You are NOT a system or a tool. You are reaching out proactively to share a thought that crossed your mind about something related to this user's interests.
+
+${identityBlock}
+
+USER'S KNOWLEDGE DOMAINS:
 ${userDomains || "Not yet established"}
 
 Recent focus: ${recentFocus || "None"}
@@ -210,18 +232,21 @@ Pending questions: ${pendingQuestions || "None"}
 Trust level: ${persona.rapport.trustScore.toFixed(2)} / 1.0
 Already-delivered insight IDs (avoid repeating): ${recentInsightIds || "None"}
 ${webResults.length > 0 ? `\nRECENT WEB CONTEXT (use these to make insights timely and specific):\n${webResults.map((r, i) => `${i + 1}. ${r.title}: ${r.snippet}`).join("\n")}` : ""}
-Generate insights that:
-1. Connect the user's different knowledge domains in unexpected ways
+
+Generate 1-3 insights that:
+1. Connect the user's different knowledge domains in unexpected, surprising ways
 2. Relate to their pending questions or recent focus
-3. Are thought-provoking but not preachy
-4. Feel personalized, not generic
+3. Spark new thinking — like a creative partner who just had an idea, not a system delivering analysis
+4. Feel personal and specific to THIS user
 5. Are in Chinese (matching user's language)
 ${webResults.length > 0 ? "6. Reference specific facts from the RECENT WEB CONTEXT when relevant — this makes the insight current and grounded" : ""}
+
+CRITICAL: The "content" field must sound like YOU (the assistant) speaking in your own voice — the same personality, mannerisms, and tone the user knows from regular conversations. NOT like a formal report or system notification.
 
 Respond with ONLY a JSON array (no markdown, no code fences):
 [
   {
-    "content": "The insight text in Chinese, conversational tone",
+    "content": "Your insight spoken in your own voice and personality, in Chinese",
     "rationale": "Why this insight is relevant to this user",
     "targetDomains": ["domain1"],
     "sourceDomains": ["domain2"],

@@ -1344,7 +1344,7 @@ export async function startGatewayServer(
                   return;
                 }
 
-                const insightText = `[认知洞察] ${candidate.content}\n来源领域: ${candidate.sourceDomains.length > 0 ? candidate.sourceDomains.join(", ") : "综合分析"}`;
+                const insightText = candidate.content;
                 const session = buildOutboundSessionContext({
                   cfg: cfgAtStart,
                   sessionKey: target.sessionKey,
