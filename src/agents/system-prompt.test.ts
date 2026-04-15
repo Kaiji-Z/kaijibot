@@ -142,6 +142,40 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("Subagent details");
   });
 
+  it("includes Capabilities section in full prompt mode", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/kaijibot",
+      promptMode: "full",
+      toolNames: ["exec", "read", "message"],
+    });
+
+    expect(prompt).toContain("## Capabilities");
+    expect(prompt).toContain("### Core Abilities");
+    expect(prompt).toContain("### Proactive Intelligence (Unique to KaijiBot)");
+    expect(prompt).toContain("### How to Introduce Yourself");
+    expect(prompt).toContain("/help");
+    expect(prompt).toContain("/tools");
+    // Capabilities must appear before Tooling section
+    expect(prompt.indexOf("## Capabilities")).toBeLessThan(
+      prompt.indexOf("## Tooling"),
+    );
+    // Capabilities must appear above cache boundary
+    expect(prompt.indexOf("## Capabilities")).toBeLessThan(
+      prompt.indexOf(SYSTEM_PROMPT_CACHE_BOUNDARY),
+    );
+  });
+
+  it("omits Capabilities section in minimal prompt mode", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/kaijibot",
+      promptMode: "minimal",
+      toolNames: ["exec"],
+    });
+
+    expect(prompt).not.toContain("## Capabilities");
+    expect(prompt).not.toContain("Proactive Intelligence");
+  });
+
   it("includes skills in minimal prompt mode when skillsPrompt is provided (cron regression)", () => {
     // Isolated cron sessions use promptMode="minimal" but must still receive skills.
     const skillsPrompt =
