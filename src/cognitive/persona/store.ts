@@ -1,7 +1,9 @@
 import type { PersonaTree } from "../types.js";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { safeParsePersona } from "./persona-schema.js";
 
 const COGNITIVE_DIR = "cognitive";
@@ -101,7 +103,10 @@ export class PersonaStore {
   async save(agentId: string, userId: string, persona: PersonaTree): Promise<void> {
     const dir = join(this.configDir, COGNITIVE_DIR, PERSONA_DIR, agentId);
     await mkdir(dir, { recursive: true });
-    await writeFile(this.personaPath(agentId, userId), JSON.stringify(persona, null, 2), "utf-8");
+    const targetPath = this.personaPath(agentId, userId);
+    const tmpPath = join(tmpdir(), `kaijibot-persona-${randomUUID()}.json`);
+    await writeFile(tmpPath, JSON.stringify(persona, null, 2), "utf-8");
+    await rename(tmpPath, targetPath);
   }
 
   async loadOrCreate(agentId: string, userId: string): Promise<PersonaTree> {
@@ -159,6 +164,7 @@ export function createDefaultPersona(): PersonaTree {
       preferredStyle: "observation",
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
+      recentInsightIds: [],
     },
     rapport: {
       trustScore: 0.1,

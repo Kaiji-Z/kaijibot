@@ -69,7 +69,7 @@ export class ProactiveScheduler {
   }
 
   async resolve(persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
-    const recentInsightIds: string[] = [];
+    const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const candidates = await this.generateInsights(
       persona,
       {

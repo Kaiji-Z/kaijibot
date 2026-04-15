@@ -1,6 +1,9 @@
 import type { PersonaTree, ConfidenceValue, DomainNode, RapportMetrics } from "../types.js";
 import type { ExtractionResult, ExtractedAttribute } from "./types.js";
-import { observeCoOccurrence, seedDomainGraph } from "../insight/cross-domain-mapper.js";
+import { observeCoOccurrence, seedDomainGraph, decayEdges } from "../insight/cross-domain-mapper.js";
+
+const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
+const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
 
 /**
  * Merge extraction results into an existing PersonaTree.
@@ -32,8 +35,22 @@ export function mergeExtraction(
     }
   }
 
-  // Merge domains
+  const extractionDomainNames = new Set(extraction.domains.map((d) => d.name));
   const newDomains = { ...persona.domains };
+
+  for (const [name, node] of Object.entries(newDomains)) {
+    if (!extractionDomainNames.has(name)) {
+      const ageMs = now - node.lastMentioned;
+      const decayFactor = Math.exp((-Math.LN2 * ageMs) / DOMAIN_DEPTH_HALF_LIFE_MS);
+      const decayedDepth = node.depth * decayFactor;
+      if (decayedDepth < 0.5) {
+        delete newDomains[name];
+      } else {
+        newDomains[name] = { ...node, depth: Math.round(decayedDepth * 10) / 10 };
+      }
+    }
+  }
+
   for (const domain of extraction.domains) {
     const existing = newDomains[domain.name];
     if (existing) {
@@ -75,9 +92,11 @@ export function mergeExtraction(
   };
 
   const mentionedDomains = extraction.domains.map((d) => d.name);
-  const updatedGraph = mentionedDomains.length >= 2
-    ? observeCoOccurrence(persona.domainGraph ?? seedDomainGraph(), mentionedDomains, now)
-    : persona.domainGraph;
+  const baseGraph = persona.domainGraph ?? seedDomainGraph();
+  const coOccurrenceGraph = mentionedDomains.length >= 2
+    ? observeCoOccurrence(baseGraph, mentionedDomains, now)
+    : baseGraph;
+  const updatedGraph = decayEdges(coOccurrenceGraph, now, EDGE_DECAY_HALF_LIFE_MS);
 
   return {
     ...persona,

@@ -1367,6 +1367,16 @@ export async function startGatewayServer(
                   bestEffort: true,
                 });
                 log.info(`cognitive insight delivered to ${userId} via ${target.channel}`);
+
+                const { PersonaStore: PStore } = await import("../cognitive/persona/store.js");
+                const { resolveConfigDir: rcd } = await import("../utils.js");
+                const pStore = new PStore(rcd());
+                const persona = await pStore.load("main", userId);
+                if (persona) {
+                  const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), candidate.id].slice(-20);
+                  persona.feedbackProfile.recentInsightIds = ids;
+                  await pStore.save("main", userId, persona);
+                }
               } catch (err) {
                 log.warn(`cognitive insight delivery failed: ${String(err)}`);
               }

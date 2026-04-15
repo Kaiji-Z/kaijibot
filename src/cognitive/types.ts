@@ -48,6 +48,7 @@ export type FeedbackProfile = {
   optimalFrequencyHours: number;
   lastProactiveAt: number;
   suppressUntil?: number;
+  recentInsightIds: string[];
 };
 
 // Trust/rapport metrics

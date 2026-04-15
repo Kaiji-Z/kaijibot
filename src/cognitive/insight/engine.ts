@@ -55,11 +55,17 @@ export function generateInsightCandidates(
       .filter((d) => semanticDistance(d, c.targetDomains[0] ?? "") < 1)
       .length;
 
+    const primaryDomain = c.targetDomains[0] ?? "";
+    const domainNode = primaryDomain ? persona.domains[primaryDomain] : undefined;
+    const topicRecency = domainNode
+      ? Math.min(1, (Date.now() - domainNode.lastMentioned) / (7 * 24 * 60 * 60 * 1000))
+      : 0.5;
+
     const score = scoreSerendipity({
       domainRelevance: c.relevanceScore,
       userConnectingDomains,
       isRepeat: input.recentInsightIds.includes(c.id),
-      topicRecency: 0.5,
+      topicRecency,
       trustScore: persona.rapport.trustScore,
     });
 
