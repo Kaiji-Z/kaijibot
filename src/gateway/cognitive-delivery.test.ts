@@ -76,7 +76,7 @@ describe("findSessionKeyForUserId", () => {
 
   it("skips subagent session keys", () => {
     const storePath = writeSessionStore({
-      "agent:main:sub:ou_abc123": { lastChannel: "feishu" },
+      "agent:main:subagent:ou_abc123": { lastChannel: "feishu" },
     });
     const result = findSessionKeyForUserId(makeCfg(storePath), "ou_abc123");
     expect(result).toBeUndefined();

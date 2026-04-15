@@ -17,6 +17,8 @@ export const rootVitestProjects = [
   "vitest.plugins.config.ts",
   "vitest.shared-core.config.ts",
   "vitest.extensions.config.ts",
+  "vitest.gateway.config.ts",
+  "vitest.infra.config.ts",
 ] as const;
 
 export default defineConfig({
