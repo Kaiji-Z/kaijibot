@@ -137,9 +137,11 @@ describe("resolveCognitiveDeliveryTarget", () => {
         lastAccountId: "default",
       },
     });
-    const result = resolveCognitiveDeliveryTarget(makeCfg(storePath), "main");
+    // Store migration moves agent:main:main with feishu delivery to
+    // agent:main:feishu:direct:ou_test123 — query must use the open ID.
+    const result = resolveCognitiveDeliveryTarget(makeCfg(storePath), "ou_test123");
     expect(result).toEqual({
-      sessionKey: "agent:main:main",
+      sessionKey: "agent:main:feishu:direct:ou_test123",
       channel: "feishu",
       to: "user:ou_test123",
       accountId: "default",
@@ -207,7 +209,7 @@ describe("resolveCognitiveDeliveryTarget", () => {
     expect(result).toBeUndefined();
   });
 
-  it("falls back to main session when no user-specific session exists", () => {
+  it("returns undefined when querying non-existent user after migration", () => {
     const storePath = writeSessionStore({
       "agent:main:main": {
         sessionId: "main",
@@ -216,13 +218,10 @@ describe("resolveCognitiveDeliveryTarget", () => {
         lastTo: "user:ou_real_user",
       },
     });
+    // Migration moves agent:main:main → agent:main:feishu:direct:ou_real_user;
+    // querying for a different user yields nothing.
     const result = resolveCognitiveDeliveryTarget(makeCfg(storePath), "ou_nonexistent");
-    expect(result).toEqual({
-      sessionKey: "agent:main:main",
-      channel: "feishu",
-      to: "user:ou_real_user",
-      accountId: undefined,
-    });
+    expect(result).toBeUndefined();
   });
 
   it("returns undefined when config is undefined", () => {

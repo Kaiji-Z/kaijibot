@@ -570,6 +570,26 @@ export async function startGatewayServer(
         log,
       });
   cfgAtStart = controlUiSeed.config;
+
+  // KaijiBot default: isolate DM sessions per channel+peer so Feishu users get
+  // dedicated session keys (agent:main:feishu:direct:ou_xxx).  This enables
+  // per-user persona and cognitive insight delivery.  Explicit config wins.
+  // Persist to disk so all config consumers (channel routing, getReply, etc.)
+  // see the default — runtime-only mutation would not reach loadConfig() readers.
+  if (cfgAtStart.session?.dmScope === undefined) {
+    cfgAtStart = {
+      ...cfgAtStart,
+      session: { ...cfgAtStart.session, dmScope: "per-channel-peer" },
+    };
+    try {
+      await writeConfigFile(cfgAtStart);
+      configSnapshot = await readConfigFileSnapshot();
+      startupInternalWriteHash = configSnapshot.hash ?? null;
+    } catch (err) {
+      log.warn(`gateway: failed to persist dmScope default: ${String(err)}`);
+    }
+  }
+
   if (authBootstrap.persistedGeneratedToken || controlUiSeed.persistedAllowedOriginsSeed) {
     const startupSnapshot = await readConfigFileSnapshot();
     startupInternalWriteHash = startupSnapshot.hash ?? null;
