@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { PersonaStore, createDefaultPersona } from "./store.js";
@@ -238,6 +238,61 @@ describe("PersonaStore", () => {
       const agentBUsers = await store.listUserIds("agent-b");
       expect(agentAUsers).toEqual(["alice", "bob"]);
       expect(agentBUsers).toEqual(["charlie"]);
+    });
+  });
+
+  describe("migrateFromFlatLayout", () => {
+    it("migrates Feishu open_id persona to main/ subdirectory", async () => {
+      const persona = createDefaultPersona();
+      persona.domains["AI"] = { depth: 1, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] };
+      persona.rapport.totalExchanges = 5;
+
+      const flatDir = join(tempDir, "cognitive", "persona");
+      mkdirSync(flatDir, { recursive: true });
+      writeFileSync(join(flatDir, "ou_abc123.json"), JSON.stringify(persona), "utf-8");
+
+      const result = await store.migrateFromFlatLayout();
+
+      expect(result.migrated).toEqual(["ou_abc123"]);
+      expect(existsSync(join(flatDir, "ou_abc123.json"))).toBe(false);
+      expect(existsSync(join(flatDir, "main", "ou_abc123.json"))).toBe(true);
+
+      const loaded = await store.load("main", "ou_abc123");
+      expect(loaded).toBeDefined();
+      expect(loaded!.domains["AI"]).toBeDefined();
+    });
+
+    it("skips phantom TUI personas", async () => {
+      const flatDir = join(tempDir, "cognitive", "persona");
+      mkdirSync(flatDir, { recursive: true });
+      writeFileSync(join(flatDir, "main.json"), JSON.stringify(createDefaultPersona()), "utf-8");
+      writeFileSync(join(flatDir, "kaijibot-tui.json"), JSON.stringify(createDefaultPersona()), "utf-8");
+
+      const result = await store.migrateFromFlatLayout();
+
+      expect(result.migrated).toEqual([]);
+      expect(result.skipped).toContain("main");
+      expect(result.skipped).toContain("kaijibot-tui");
+    });
+
+    it("is idempotent — no-ops on second call", async () => {
+      const persona = createDefaultPersona();
+      persona.domains["Rust"] = { depth: 2, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] };
+
+      const flatDir = join(tempDir, "cognitive", "persona");
+      mkdirSync(flatDir, { recursive: true });
+      writeFileSync(join(flatDir, "ou_xyz.json"), JSON.stringify(persona), "utf-8");
+
+      const result1 = await store.migrateFromFlatLayout();
+      expect(result1.migrated).toEqual(["ou_xyz"]);
+
+      const result2 = await store.migrateFromFlatLayout();
+      expect(result2.migrated).toEqual([]);
+    });
+
+    it("returns empty when persona directory does not exist", async () => {
+      const result = await store.migrateFromFlatLayout();
+      expect(result).toEqual({ migrated: [], skipped: [] });
     });
   });
 });

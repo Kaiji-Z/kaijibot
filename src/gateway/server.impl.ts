@@ -1269,6 +1269,7 @@ export async function startGatewayServer(
         const { resolveConfigDir } = await import("../utils.js");
         const { generateInsightCandidatesLLM, createDefaultInsightDeps } = await import("../cognitive/insight/llm-engine.js");
         const cognitiveStore = new PersonaStore(resolveConfigDir());
+        await cognitiveStore.migrateFromFlatLayout();
         const baseInsightDeps = createDefaultInsightDeps();
 
         const insightDeps = {
