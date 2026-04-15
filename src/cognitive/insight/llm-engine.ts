@@ -6,6 +6,9 @@ import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
 import { generateInsightCandidates } from "./engine.js";
 import type { InsightCandidate, InsightEngineInput } from "./types.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+
+const log = createSubsystemLogger("cognitive/insight-llm");
 
 /** A single web search result item. */
 export type WebSearchResult = {
@@ -56,9 +59,9 @@ export function createDefaultInsightDeps(): LlmInsightDeps {
     complete,
     prepareModel: async (cfg, modelRef) => {
       const extractionModel = cfg.cognitive?.persona?.extractionModel;
-      const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5.1";
+      const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5-turbo";
       const [provider, ...modelParts] = modelRefToUse.split("/");
-      const modelId = modelParts.join("/") || "glm-5.1";
+      const modelId = modelParts.join("/") || "glm-5-turbo";
       return prepareSimpleCompletionModel({ cfg, provider, modelId });
     },
   };
@@ -103,9 +106,11 @@ export async function generateInsightCandidatesLLM(
     const prepared = await deps.prepareModel(config, modelRef);
 
     if ("error" in prepared) {
+      log.warn(`LLM model preparation failed: ${prepared.error}, falling back to template`);
       return generateInsightCandidates(persona, input, { maxCandidates });
     }
 
+    const timeoutMs = options?.timeout ?? 20_000;
     const result = await deps.complete(
       prepared.model,
       {
@@ -117,7 +122,7 @@ export async function generateInsightCandidatesLLM(
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 500,
         temperature: 0.7,
-        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+        signal: AbortSignal.timeout(timeoutMs),
       },
     );
 
@@ -131,15 +136,20 @@ export async function generateInsightCandidatesLLM(
       .trim();
 
     if (!text) {
+      log.warn("LLM returned empty response, falling back to template");
       return generateInsightCandidates(persona, input, { maxCandidates });
     }
 
     const candidates = parseLLMInsights(text, maxCandidates);
     if (candidates.length === 0) {
+      log.warn(`LLM response could not be parsed as insights, falling back to template (raw: ${text.slice(0, 200)})`);
       return generateInsightCandidates(persona, input, { maxCandidates });
     }
+    log.info(`LLM generated ${candidates.length} insight candidate(s)`);
     return candidates.map((c) => enrichWithWebSources(c, webResults));
-  } catch {
+  } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+    log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, falling back to template`);
     return generateInsightCandidates(persona, input, { maxCandidates });
   }
 }

@@ -352,4 +352,59 @@ describe("generateInsightCandidatesLLM", () => {
 
     expect(Array.isArray(result)).toBe(true);
   });
+
+  it("LLM insight content differs from template fallback content", async () => {
+    const llmResult = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(JSON.stringify([
+        {
+          content: "TypeScript 的类型体操与 Rust 所有权模型共享'编译期保证运行时安全'的哲学，但实现路径截然不同。",
+          rationale: "Cross-domain insight",
+          targetDomains: ["typescript"],
+          sourceDomains: ["rust"],
+          relevanceScore: 0.9,
+          surpriseScore: 0.8,
+        },
+      ])),
+    );
+
+    expect(llmResult.length).toBeGreaterThanOrEqual(1);
+    const llmContent = llmResult[0]!.content;
+
+    const templateResult = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      fallbackDeps,
+    );
+    const templateContent = templateResult[0]!.content;
+
+    expect(llmContent).not.toBe(templateContent);
+    expect(llmContent).toContain("TypeScript");
+    expect(llmContent).toContain("Rust");
+    expect(llmContent).toContain("编译期");
+  });
+
+  it("enriches candidates with web search sources", async () => {
+    const depsWithSearch: LlmInsightDeps = {
+      complete: async () => assistantMessage(validLLMResponse()),
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+      webSearch: async () => [
+        { title: "TypeScript 5.5 Release", url: "https://example.com/ts55", snippet: "New type predicates" },
+      ],
+    };
+
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      depsWithSearch,
+    );
+
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.sources.length).toBe(1);
+    expect(result[0]!.sources[0]!.url).toBe("https://example.com/ts55");
+  });
 });

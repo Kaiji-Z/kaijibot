@@ -1354,7 +1354,7 @@ export async function startGatewayServer(
             insightGenerator: async (persona, input, options) =>
               generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
                 maxCandidates: options?.maxCandidates,
-                timeout: 8_000,
+                timeout: 20_000,
               }),
           },
         );
