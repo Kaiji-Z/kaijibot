@@ -142,6 +142,7 @@ describe("PersonaStore", () => {
       lastProactiveAt: Date.now(),
       suppressUntil: Date.now() + 86400000,
       recentInsightIds: [],
+      recentInsightContents: [],
     };
     persona.rapport = {
       trustScore: 0.7,

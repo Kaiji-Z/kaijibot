@@ -39,6 +39,7 @@ const feedbackProfileSchema = z.object({
   lastProactiveAt: z.number(),
   suppressUntil: z.number().optional(),
   recentInsightIds: z.array(z.string()).optional().default([]),
+  recentInsightContents: z.array(z.string()).optional().default([]),
 });
 
 const rapportMetricsSchema = z.object({

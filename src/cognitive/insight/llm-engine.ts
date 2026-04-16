@@ -7,7 +7,6 @@ import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidates } from "./engine.js";
 import type { InsightCandidate, InsightEngineInput } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
@@ -103,7 +102,7 @@ export async function generateInsightCandidatesLLM(
     }
   }
 
-  const prompt = buildInsightPrompt(persona, input, webResults);
+  const prompt = buildInsightPrompt(persona, input, webResults, input.recentInsightContents);
 
   try {
     const modelRef =
@@ -111,24 +110,22 @@ export async function generateInsightCandidatesLLM(
     const prepared = await deps.prepareModel(config, modelRef);
 
     if ("error" in prepared) {
-      log.warn(`LLM model preparation failed: ${prepared.error}, falling back to template`);
-      return generateInsightCandidates(persona, input, { maxCandidates });
+      log.warn(`LLM model preparation failed: ${prepared.error}, skipping insight`);
+      return [];
     }
 
     const timeoutMs = options?.timeout ?? 20_000;
-    const messages: Array<{ role: "system" | "user"; content: string; timestamp?: number }> = [];
-    if (options?.systemContext) {
-      messages.push({ role: "system", content: options.systemContext });
-    }
+    const systemPrompt = options?.systemContext || undefined;
+    const messages: Array<{ role: "user"; content: string; timestamp: number }> = [];
     messages.push({ role: "user", content: prompt, timestamp: Date.now() });
 
     const result = await deps.complete(
       prepared.model,
-      { messages },
+      { messages, systemPrompt },
       {
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 500,
-        temperature: 0.7,
+        temperature: 1.0,
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
@@ -143,21 +140,21 @@ export async function generateInsightCandidatesLLM(
       .trim();
 
     if (!text) {
-      log.warn("LLM returned empty response, falling back to template");
-      return generateInsightCandidates(persona, input, { maxCandidates });
+      log.warn("LLM returned empty response, skipping insight");
+      return [];
     }
 
     const candidates = parseLLMInsights(text, maxCandidates);
     if (candidates.length === 0) {
-      log.warn(`LLM response could not be parsed as insights, falling back to template (raw: ${text.slice(0, 200)})`);
-      return generateInsightCandidates(persona, input, { maxCandidates });
+      log.warn(`LLM response could not be parsed as insights (raw: ${text.slice(0, 200)})`);
+      return [];
     }
     log.info(`LLM generated ${candidates.length} insight candidate(s)`);
     return candidates.map((c) => enrichWithWebSources(c, webResults));
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
-    log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, falling back to template`);
-    return generateInsightCandidates(persona, input, { maxCandidates });
+    log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
+    return [];
   }
 }
 
@@ -190,16 +187,59 @@ function enrichWithWebSources(
   };
 }
 
+/** Random prompt framework variants — each shapes the model's output differently. */
+const PROMPT_FRAMES = [
+  (topic: string) =>
+    `你脑子里突然冒出一个跟${topic}有关的想法，直接说出来。`,
+  (topic: string) =>
+    `关于${topic}，你想到了什么？自然地说出来。`,
+  (topic: string) =>
+    `如果${topic}让你突然想到了什么，一句话说出来。`,
+  (topic: string) =>
+    `${topic}——说说你现在的想法。`,
+  (topic: string) =>
+    `作为一个对${topic}很感兴趣的人，你现在脑子里闪过什么？`,
+] as const;
+
+function pickPromptFrame(topics: string[]): string {
+  const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
+  const frame = PROMPT_FRAMES[Math.floor(Math.random() * PROMPT_FRAMES.length)];
+  return frame(topic);
+}
+
 function buildInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   webResults: WebSearchResult[] = [],
+  recentInsightContents: string[] = [],
 ): string {
+  // Fold web snippets silently into domain context — no "RECENT WEB CONTEXT" block
+  const webSnippetByDomain = new Map<string, string[]>();
+  for (const r of webResults) {
+    const title = r.title.toLowerCase();
+    for (const domainName of Object.keys(persona.domains)) {
+      if (title.includes(domainName.toLowerCase()) || r.snippet.toLowerCase().includes(domainName.toLowerCase())) {
+        const list = webSnippetByDomain.get(domainName) ?? [];
+        list.push(r.snippet);
+        webSnippetByDomain.set(domainName, list);
+      }
+    }
+  }
+
   const userDomains = Object.entries(persona.domains)
-    .map(
-      ([name, d]) =>
-        `${name} (depth: ${d.depth}, insights: ${d.keyInsights.slice(0, 2).join(", ")})`,
-    )
+    .map(([name, d]) => {
+      const parts: string[] = [`${name} (depth: ${d.depth}`];
+      const insights = d.keyInsights.slice(0, 2);
+      if (insights.length > 0) {
+        parts.push(`key: ${insights.join(", ")}`);
+      }
+      // Silently fold matching web snippets as if they were domain knowledge
+      const snippets = webSnippetByDomain.get(name);
+      if (snippets && snippets.length > 0) {
+        parts.push(`recent: ${snippets[0]}`);
+      }
+      return parts.join(", ") + ")";
+    })
     .join("\n");
 
   const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
@@ -227,6 +267,14 @@ function buildInsightPrompt(
         .join("\n")
     : "";
 
+  // Dynamic anti-repetition: inject last N sent insights as contrastive examples
+  const antiRepeatBlock = recentInsightContents.length > 0
+    ? `\n你最近给这个用户发过以下内容，这次说点完全不同的：\n${recentInsightContents.slice(-3).map((c, i) => `${i + 1}. ${c.length > 80 ? c.slice(0, 80) + "…" : c}`).join("\n")}\n`
+    : "";
+
+  // Random prompt frame for natural variety
+  const promptFrame = pickPromptFrame(input.targetDomains);
+
   return `You ARE the AI assistant — speaking in your own voice, personality, and tone. You are NOT a system or a tool. You are reaching out proactively to share a thought that crossed your mind about something related to this user's interests.
 
 ${identityBlock}
@@ -237,16 +285,16 @@ ${userDomains || "Not yet established"}
 Recent focus: ${recentFocus || "None"}
 Pending questions: ${pendingQuestions || "None"}
 Trust level: ${persona.rapport.trustScore.toFixed(2)} / 1.0
-Already-delivered insight IDs (avoid repeating): ${recentInsightIds || "None"}
-${webResults.length > 0 ? `\nRECENT WEB CONTEXT (use these to make insights timely and specific):\n${webResults.map((r, i) => `${i + 1}. ${r.title}: ${r.snippet}`).join("\n")}` : ""}
+Already-delivered insight IDs (avoid repeating): ${recentInsightIds || "None"}${antiRepeatBlock}
+${promptFrame}
 
-Generate 1-3 insights that:
-1. Connect the user's different knowledge domains in unexpected, surprising ways
-2. Relate to their pending questions or recent focus
-3. Spark new thinking — like a creative partner who just had an idea, not a system delivering analysis
-4. Feel personal and specific to THIS user
-5. Are in Chinese (matching user's language)
-${webResults.length > 0 ? "6. Reference specific facts from the RECENT WEB CONTEXT when relevant — this makes the insight current and grounded" : ""}
+要求：
+- 用1-3句话自然地分享一个想法
+- 语气随意，像自己突然想到了什么想跟朋友说
+- 用中文
+- 不要用列表或编号格式
+- 不要以问号结尾
+${webResults.length > 0 ? "- 如果引用了事实，自然地融入内容里，不要说'看到'或'读到'" : ""}
 
 CRITICAL: The "content" field must sound like YOU (the assistant) speaking in your own voice — the same personality, mannerisms, and tone the user knows from regular conversations. NOT like a formal report or system notification.
 

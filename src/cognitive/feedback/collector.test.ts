@@ -23,6 +23,7 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
       recentInsightIds: [],
+      recentInsightContents: [],
       ...overrides,
     },
     rapport: {

@@ -39,6 +39,7 @@ function baseInput(): InsightEngineInput {
     pendingQuestions: [],
     trustScore: 0.5,
     recentInsightIds: [],
+    recentInsightContents: [],
   };
 }
 

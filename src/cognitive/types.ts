@@ -66,6 +66,7 @@ export type FeedbackProfile = {
   lastProactiveAt: number;
   suppressUntil?: number;
   recentInsightIds: string[];
+  recentInsightContents: string[];
 };
 
 // Trust/rapport metrics
@@ -113,6 +114,7 @@ export type ContradictionRecord = {
 // The full user cognitive model (PersonaTree)
 export type PersonaTree = {
   identity: {
+    displayName?: string;
     coreTraits: Record<string, ConfidenceValue>;
     communicationStyle?: CommunicationStyle;
     timezone?: string;

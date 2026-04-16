@@ -81,6 +81,7 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
       recentInsightIds: [],
+      recentInsightContents: [],
     },
     rapport: {
       trustScore: 0.75,
@@ -104,6 +105,7 @@ function makeInput(overrides?: Partial<InsightEngineInput>): InsightEngineInput 
     pendingQuestions: ["How to combine Rust and TypeScript via wasm?"],
     trustScore: 0.75,
     recentInsightIds: ["id-1", "id-2"],
+    recentInsightContents: [],
     ...overrides,
   };
 }
@@ -177,7 +179,7 @@ describe("generateInsightCandidatesLLM", () => {
     expect(result[0]!.content).toContain("TypeScript");
   });
 
-  it("falls back to template engine on LLM timeout", async () => {
+  it("returns empty array on LLM timeout", async () => {
     const deps: LlmInsightDeps = {
       complete: async () => {
         throw new DOMException("The operation was aborted", "AbortError");
@@ -192,10 +194,10 @@ describe("generateInsightCandidatesLLM", () => {
       deps,
     );
 
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual([]);
   });
 
-  it("falls back when prepareModel returns error", async () => {
+  it("returns empty array when prepareModel returns error", async () => {
     const result = await generateInsightCandidatesLLM(
       makePersona(),
       makeInput(),
@@ -203,10 +205,10 @@ describe("generateInsightCandidatesLLM", () => {
       fallbackDeps,
     );
 
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual([]);
   });
 
-  it("falls back when LLM returns empty text", async () => {
+  it("returns empty array when LLM returns empty text", async () => {
     const result = await generateInsightCandidatesLLM(
       makePersona(),
       makeInput(),
@@ -214,10 +216,10 @@ describe("generateInsightCandidatesLLM", () => {
       successDeps(""),
     );
 
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual([]);
   });
 
-  it("falls back when LLM returns malformed JSON", async () => {
+  it("returns empty array when LLM returns malformed JSON", async () => {
     const result = await generateInsightCandidatesLLM(
       makePersona(),
       makeInput(),
@@ -225,7 +227,7 @@ describe("generateInsightCandidatesLLM", () => {
       successDeps("this is not json at all {{{"),
     );
 
-    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual([]);
   });
 
   it("injects persona domains into the prompt via complete call", async () => {
@@ -358,41 +360,7 @@ describe("generateInsightCandidatesLLM", () => {
       bombDeps,
     );
 
-    expect(Array.isArray(result)).toBe(true);
-  });
-
-  it("LLM insight content differs from template fallback content", async () => {
-    const llmResult = await generateInsightCandidatesLLM(
-      makePersona(),
-      makeInput(),
-      makeConfig(),
-      successDeps(JSON.stringify([
-        {
-          content: "TypeScript 的类型体操与 Rust 所有权模型共享'编译期保证运行时安全'的哲学，但实现路径截然不同。",
-          rationale: "Cross-domain insight",
-          targetDomains: ["typescript"],
-          sourceDomains: ["rust"],
-          relevanceScore: 0.9,
-          surpriseScore: 0.8,
-        },
-      ])),
-    );
-
-    expect(llmResult.length).toBeGreaterThanOrEqual(1);
-    const llmContent = llmResult[0]!.content;
-
-    const templateResult = await generateInsightCandidatesLLM(
-      makePersona(),
-      makeInput(),
-      makeConfig(),
-      fallbackDeps,
-    );
-    const templateContent = templateResult[0]!.content;
-
-    expect(llmContent).not.toBe(templateContent);
-    expect(llmContent).toContain("TypeScript");
-    expect(llmContent).toContain("Rust");
-    expect(llmContent).toContain("编译期");
+    expect(result).toEqual([]);
   });
 
   it("enriches candidates with web search sources", async () => {

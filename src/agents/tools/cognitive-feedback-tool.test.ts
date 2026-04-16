@@ -19,6 +19,7 @@ const mockPersona: PersonaTree = {
     optimalFrequencyHours: 4,
     lastProactiveAt: 0,
     recentInsightIds: [],
+    recentInsightContents: [],
   },
   rapport: {
     trustScore: 0.1,

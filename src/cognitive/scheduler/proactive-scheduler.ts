@@ -72,6 +72,7 @@ export class ProactiveScheduler {
 
   async resolve(persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
+    const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const candidates = await this.generateInsights(
       persona,
       {
@@ -82,6 +83,7 @@ export class ProactiveScheduler {
         pendingQuestions: persona.pendingQuestions,
         trustScore: persona.rapport.trustScore,
         recentInsightIds,
+        recentInsightContents,
       },
       {
         verificationLevel: "basic",
@@ -127,6 +129,10 @@ export class ProactiveScheduler {
     await this.callbacks.onInsightReady(userId, insight);
 
     persona.feedbackProfile.lastProactiveAt = event.timestamp;
+    const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);
+    persona.feedbackProfile.recentInsightIds = ids;
+    const contents = [...(persona.feedbackProfile.recentInsightContents ?? []), insight.content].slice(-5);
+    persona.feedbackProfile.recentInsightContents = contents;
     await this.callbacks.savePersona(userId, persona);
 
     return insight;
