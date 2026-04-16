@@ -53,6 +53,20 @@ export function mergeExtraction(
 
   for (const domain of extraction.domains) {
     const existing = newDomains[domain.name];
+
+    if (domain.negated) {
+      if (existing) {
+        const reducedDepth = Math.max(0.5, existing.depth * 0.7);
+        newDomains[domain.name] = {
+          ...existing,
+          depth: reducedDepth,
+          negationSignals: (existing.negationSignals ?? 0) + 1,
+          lastNegatedAt: now,
+        };
+      }
+      continue;
+    }
+
     if (existing) {
       newDomains[domain.name] = {
         ...existing,
@@ -171,6 +185,7 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
   const prunedDomains: Record<string, DomainNode> = {};
   for (const [name, domain] of Object.entries(persona.domains)) {
     if (now - domain.lastMentioned > THIRTY_DAYS && domain.recurrence < 3) continue;
+    if ((domain.negationSignals ?? 0) >= 3 && domain.depth < 2) continue;
     prunedDomains[name] = domain;
   }
 

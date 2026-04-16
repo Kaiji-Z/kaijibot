@@ -60,5 +60,23 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
     lines.push("Building rapport. Be helpful first, curious second.");
   }
 
+  const latestMood = persona.moodHistory?.slice(-1)[0];
+  if (latestMood?.sentiment.label === "frustrated") {
+    lines.push("### Mood Note");
+    lines.push("User may be frustrated. Be patient, concise, and solution-focused.");
+  } else if (latestMood?.sentiment.label === "confused") {
+    lines.push("### Mood Note");
+    lines.push("User seems uncertain. Prefer clear explanations with examples.");
+  } else if (latestMood?.sentiment.label === "excited") {
+    lines.push("### Mood Note");
+    lines.push("User is enthusiastic. Match their energy; explore the topic together.");
+  }
+
+  if (persona.identity.communicationStyle) {
+    const cs = persona.identity.communicationStyle;
+    lines.push("### Communication Style");
+    lines.push(`Formality: ${cs.formality}, Verbosity: ${cs.verbosity}, Technical: ${cs.technicalLevel}, Language: ${cs.preferredLanguage}`);
+  }
+
   return lines.join("\n");
 }
