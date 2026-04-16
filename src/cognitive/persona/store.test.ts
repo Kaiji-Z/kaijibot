@@ -128,6 +128,7 @@ describe("PersonaStore", () => {
       keyInsights: ["偏好 CAP 定理分析"],
       activeQuestions: ["CQRS 在高并发下的瓶颈?"],
       connections: ["微服务", "事件驱动"],
+      negationSignals: 0,
     };
     persona.recentFocus = ["Kubernetes", "eBPF"];
     persona.activeProjects = ["Sidecar Proxy"];
@@ -140,6 +141,7 @@ describe("PersonaStore", () => {
       optimalFrequencyHours: 6,
       lastProactiveAt: Date.now(),
       suppressUntil: Date.now() + 86400000,
+      recentInsightIds: [],
     };
     persona.rapport = {
       trustScore: 0.7,
@@ -245,7 +247,7 @@ describe("PersonaStore", () => {
   describe("migrateFromFlatLayout", () => {
     it("migrates Feishu open_id persona to main/ subdirectory", async () => {
       const persona = createDefaultPersona();
-      persona.domains["AI"] = { depth: 1, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] };
+      persona.domains["AI"] = { depth: 1, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 };
       persona.rapport.totalExchanges = 5;
 
       const flatDir = join(tempDir, "cognitive", "persona");
@@ -278,7 +280,7 @@ describe("PersonaStore", () => {
 
     it("is idempotent — no-ops on second call", async () => {
       const persona = createDefaultPersona();
-      persona.domains["Rust"] = { depth: 2, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] };
+      persona.domains["Rust"] = { depth: 2, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 };
 
       const flatDir = join(tempDir, "cognitive", "persona");
       mkdirSync(flatDir, { recursive: true });

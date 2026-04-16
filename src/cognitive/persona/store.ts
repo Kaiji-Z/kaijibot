@@ -173,5 +173,15 @@ export function createDefaultPersona(): PersonaTree {
       avgResponseLength: 0,
       selfDisclosureLevel: 0,
     },
+    domainBlacklist: [],
+    lifecycle: {
+      stage: "new",
+      lastActiveAt: 0,
+      lastStageTransitionAt: 0,
+      consecutiveSilentDays: 0,
+      totalActiveDays: 0,
+    },
+    calibrationHistory: [],
+    contradictionLog: [],
   };
 }

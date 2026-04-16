@@ -76,6 +76,40 @@ export type RapportMetrics = {
   selfDisclosureLevel: number;
 };
 
+// User lifecycle stage
+export type UserLifecycleStage = "new" | "active" | "dormant" | "lapsed";
+
+export type UserLifecycle = {
+  stage: UserLifecycleStage;
+  lastActiveAt: number;
+  lastStageTransitionAt: number;
+  consecutiveSilentDays: number;
+  totalActiveDays: number;
+};
+
+// Calibration record
+export type CalibrationRecord = {
+  insightId: string;
+  predictedPAccept: number;
+  actualOutcome: "positive" | "negative" | "neutral" | "engaged" | "no_response";
+  timestamp: number;
+};
+
+// Contradiction log
+export type ContradictionStatus = "resolved_new" | "resolved_old" | "resolved_merge";
+
+export type ContradictionRecord = {
+  field: string;
+  oldValue: string;
+  newValue: string;
+  oldConfidence: number;
+  newConfidence: number;
+  oldSource: "explicit" | "inferred" | "observed";
+  newSource: "explicit" | "inferred" | "observed";
+  resolution: ContradictionStatus;
+  resolvedAt: number;
+};
+
 // The full user cognitive model (PersonaTree)
 export type PersonaTree = {
   identity: {
@@ -96,6 +130,10 @@ export type PersonaTree = {
   rapport: RapportMetrics;
   domainGraph?: LearnedDomainGraph;
   moodHistory: MoodSnapshot[];
+  domainBlacklist: string[];
+  lifecycle: UserLifecycle;
+  calibrationHistory: CalibrationRecord[];
+  contradictionLog: ContradictionRecord[];
 };
 
 // Weighted edge in a learned domain co-occurrence graph

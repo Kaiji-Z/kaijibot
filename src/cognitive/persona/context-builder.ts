@@ -1,4 +1,4 @@
-import type { PersonaTree } from "../types.js";
+import type { PersonaTree, UserLifecycleStage } from "../types.js";
 
 /**
  * Build a concise persona context section for system prompt injection.
@@ -70,6 +70,22 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   } else if (latestMood?.sentiment.label === "excited") {
     lines.push("### Mood Note");
     lines.push("User is enthusiastic. Match their energy; explore the topic together.");
+  }
+
+  if (persona.domainBlacklist && persona.domainBlacklist.length > 0) {
+    lines.push("### Blacklisted Topics");
+    lines.push(`Never proactively suggest: ${persona.domainBlacklist.join(", ")}`);
+  }
+
+  if (persona.lifecycle.stage !== "active") {
+    const stageLabels: Record<UserLifecycleStage, string> = {
+      new: "New user — be conservative with proactive suggestions",
+      dormant: "Dormant user — re-engagement appropriate",
+      lapsed: "Lapsed user — minimal outreach",
+      active: "",
+    };
+    lines.push("### Lifecycle Note");
+    lines.push(stageLabels[persona.lifecycle.stage]);
   }
 
   if (persona.identity.communicationStyle) {

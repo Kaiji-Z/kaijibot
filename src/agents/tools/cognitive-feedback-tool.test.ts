@@ -18,6 +18,7 @@ const mockPersona: PersonaTree = {
     preferredStyle: "observation",
     optimalFrequencyHours: 4,
     lastProactiveAt: 0,
+    recentInsightIds: [],
   },
   rapport: {
     trustScore: 0.1,
@@ -25,6 +26,11 @@ const mockPersona: PersonaTree = {
     avgResponseLength: 0,
     selfDisclosureLevel: 0,
   },
+  domainBlacklist: [],
+  lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 0 },
+  calibrationHistory: [],
+  contradictionLog: [],
+  moodHistory: [],
 };
 
 function makeUpdatedPersona(overrides?: Partial<PersonaTree["rapport"]>): PersonaTree {

@@ -6,6 +6,8 @@ import type {
   SchedulerConfig,
   SchedulerEvent,
 } from "./types.js";
+import { getProactiveFrequencyFactor } from "../persona/lifecycle.js";
+import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
 
 // ── PRISM cost defaults ──────────────────────────────────────────────
 
@@ -121,9 +123,11 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
   }
 
   if (persona.feedbackProfile.suppressUntil && persona.feedbackProfile.suppressUntil > now) {
-    const remaining = persona.feedbackProfile.suppressUntil - now;
-    reasons.push(`Suppressed for ${Math.round(remaining / 3600000)}h`);
-    suggestedDelayMs = remaining;
+    if (persona.lifecycle.stage !== "dormant") {
+      const remaining = persona.feedbackProfile.suppressUntil - now;
+      reasons.push(`Suppressed for ${Math.round(remaining / 3600000)}h`);
+      suggestedDelayMs = remaining;
+    }
   }
 
   if (persona.rapport.totalExchanges < 5) {
@@ -144,8 +148,12 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
     };
   }
 
-  const pNeed = computePNeed(persona, event, config, now);
-  const pAccept = computePAccept(persona);
+  let pNeed = computePNeed(persona, event, config, now);
+  const lifecycleFactor = getProactiveFrequencyFactor(persona.lifecycle);
+  pNeed = clamp01(pNeed / lifecycleFactor);
+  let pAccept = computePAccept(persona);
+  const calibrationSlope = computeCalibrationSlope(persona.calibrationHistory);
+  pAccept = applyCalibrationCorrection(pAccept, calibrationSlope);
   const pAct = pNeed * pAccept;
 
   // Cost-sensitive threshold: τ = C_FA / (C_FN + C_FA)

@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { generateInsightCandidates } from "./engine.js";
+import { generateInsightCandidates, isCandidateBlacklisted } from "./engine.js";
 import { createDefaultPersona } from "../persona/store.js";
 import type { PersonaTree } from "../types.js";
-import type { InsightEngineInput } from "./types.js";
+import type { InsightEngineInput, InsightCandidate } from "./types.js";
 
 function personaWithDomains(): PersonaTree {
   const persona = createDefaultPersona();
@@ -16,6 +16,7 @@ function personaWithDomains(): PersonaTree {
       keyInsights: ["Transformer架构", "注意力机制"],
       activeQuestions: ["如何优化推理速度？"],
       connections: [],
+      negationSignals: 0,
     },
     "软件架构": {
       depth: 3,
@@ -24,6 +25,7 @@ function personaWithDomains(): PersonaTree {
       keyInsights: ["微服务", "事件驱动"],
       activeQuestions: [],
       connections: [],
+      negationSignals: 0,
     },
   };
   persona.pendingQuestions = ["如何将AI模型部署到边缘设备？"];
@@ -88,5 +90,63 @@ describe("generateInsightCandidates", () => {
         candidates[i - 1].compositeScore,
       );
     }
+  });
+
+  it("filters out candidates targeting blacklisted domains", () => {
+    const persona = personaWithDomains();
+    persona.domainBlacklist = ["AI/机器学习"];
+    const candidates = generateInsightCandidates(persona, baseInput(), { maxCandidates: 10 });
+    for (const c of candidates) {
+      expect(c.targetDomains).not.toContain("AI/机器学习");
+      expect(c.sourceDomains).not.toContain("AI/机器学习");
+    }
+  });
+
+  it("never returns candidates referencing blacklisted domains", () => {
+    const persona = personaWithDomains();
+    persona.domains["软件架构"].depth = 5;
+    persona.domainBlacklist = ["AI/机器学习"];
+    const candidates = generateInsightCandidates(persona, baseInput(), { maxCandidates: 10 });
+    for (const c of candidates) {
+      expect(c.targetDomains).not.toContain("AI/机器学习");
+      expect(c.sourceDomains).not.toContain("AI/机器学习");
+    }
+  });
+});
+
+describe("isCandidateBlacklisted", () => {
+  function makeCandidate(targetDomains: string[], sourceDomains: string[] = []): InsightCandidate {
+    return {
+      id: "test",
+      content: "test",
+      rationale: "test",
+      targetDomains,
+      sourceDomains,
+      relevanceScore: 0.5,
+      surpriseScore: 0.5,
+      compositeScore: 0.5,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+  }
+
+  it("returns false when blacklist is empty", () => {
+    const candidate = makeCandidate(["AI"]);
+    expect(isCandidateBlacklisted(candidate, [])).toBe(false);
+  });
+
+  it("returns true when target domain is blacklisted", () => {
+    const candidate = makeCandidate(["AI/机器学习"]);
+    expect(isCandidateBlacklisted(candidate, ["AI/机器学习"])).toBe(true);
+  });
+
+  it("returns true when source domain is blacklisted", () => {
+    const candidate = makeCandidate(["软件架构"], ["AI/机器学习"]);
+    expect(isCandidateBlacklisted(candidate, ["AI/机器学习"])).toBe(true);
+  });
+
+  it("returns false when no domains match blacklist", () => {
+    const candidate = makeCandidate(["软件架构"], ["编程语言"]);
+    expect(isCandidateBlacklisted(candidate, ["AI/机器学习"])).toBe(false);
   });
 });

@@ -114,6 +114,7 @@ describe("prunePersona", () => {
         keyInsights: [],
         activeQuestions: [],
         connections: [],
+        negationSignals: 0,
       },
       活跃领域: {
         depth: 5,
@@ -122,10 +123,186 @@ describe("prunePersona", () => {
         keyInsights: [],
         activeQuestions: [],
         connections: [],
+        negationSignals: 0,
       },
     };
     const result = prunePersona(persona);
     expect(result.domains["过时领域"]).toBeUndefined();
     expect(result.domains["活跃领域"]).toBeDefined();
+  });
+});
+
+describe("mergeExtraction — domainBlacklist", () => {
+  it("adds explicit blacklist requests to domainBlacklist", () => {
+    const persona = createDefaultPersona();
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+      blacklistRequests: ["数据科学", "区块链"],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.domainBlacklist).toContain("数据科学");
+    expect(result.domainBlacklist).toContain("区块链");
+  });
+
+  it("deduplicates blacklist entries", () => {
+    const persona = createDefaultPersona();
+    persona.domainBlacklist = ["数据科学"];
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+      blacklistRequests: ["数据科学", "区块链"],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.domainBlacklist.filter((d) => d === "数据科学")).toHaveLength(1);
+    expect(result.domainBlacklist).toContain("区块链");
+  });
+
+  it("auto-blacklists domains with 3+ negation signals within 30 days", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "数据科学": {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: now,
+        keyInsights: [],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 3,
+        lastNegatedAt: now,
+      },
+    };
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction, now);
+    expect(result.domainBlacklist).toContain("数据科学");
+    expect(result.domains["数据科学"]).toBeUndefined();
+  });
+
+  it("does not auto-blacklist domains with < 3 negation signals", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "数据科学": {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: now,
+        keyInsights: [],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 2,
+        lastNegatedAt: now,
+      },
+    };
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction, now);
+    expect(result.domainBlacklist).not.toContain("数据科学");
+    expect(result.domains["数据科学"]).toBeDefined();
+  });
+
+  it("does not auto-blacklist domains with old negation signals (> 30 days)", () => {
+    const now = Date.now();
+    const thirtyOneDaysAgo = now - 31 * 24 * 60 * 60 * 1000;
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "数据科学": {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: now,
+        keyInsights: [],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 5,
+        lastNegatedAt: thirtyOneDaysAgo,
+      },
+    };
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction, now);
+    expect(result.domainBlacklist).not.toContain("数据科学");
+  });
+
+  it("removes blacklisted domains from the result", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domainBlacklist = ["AI/机器学习"];
+    persona.domains = {
+      "AI/机器学习": {
+        depth: 5,
+        recurrence: 10,
+        lastMentioned: now,
+        keyInsights: [],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 0,
+      },
+      "软件架构": {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: now,
+        keyInsights: [],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 0,
+      },
+    };
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction, now);
+    expect(result.domains["AI/机器学习"]).toBeUndefined();
+    expect(result.domains["软件架构"]).toBeDefined();
+  });
+
+  it("does not merge extraction domains that match blacklist", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domainBlacklist = ["AI/机器学习"];
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [
+        { name: "AI/机器学习", depth: 5, insights: [], questions: [] },
+        { name: "软件架构", depth: 3, insights: [], questions: [] },
+      ],
+      recentFocus: [],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction, now);
+    expect(result.domains["AI/机器学习"]).toBeUndefined();
+    expect(result.domains["软件架构"]).toBeDefined();
+  });
+
+  it("preserves existing domainBlacklist when no new requests", () => {
+    const persona = createDefaultPersona();
+    persona.domainBlacklist = ["数据科学"];
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.domainBlacklist).toContain("数据科学");
   });
 });

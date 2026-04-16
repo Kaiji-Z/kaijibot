@@ -53,7 +53,7 @@ export class ProactiveScheduler {
 
     opportunities.push(...scanExploration(persona, event));
 
-    return opportunities;
+    return filterBlacklistedOpportunities(opportunities, persona.domainBlacklist);
   }
 
   identify(opportunities: Opportunity[]): Opportunity | null {
@@ -359,4 +359,17 @@ function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportuni
     pAccept,
     pAct: pNeed * pAccept,
   }];
+}
+
+export function filterBlacklistedOpportunities(
+  opportunities: Opportunity[],
+  domainBlacklist: string[] | undefined,
+): Opportunity[] {
+  if (!domainBlacklist || domainBlacklist.length === 0) return opportunities;
+  const blacklistSet = new Set(domainBlacklist);
+  return opportunities.filter((opp) => {
+    const hasBlacklistedTarget = opp.targetDomains.some((d) => blacklistSet.has(d));
+    const hasBlacklistedSource = opp.sourceDomains.some((d) => blacklistSet.has(d));
+    return !hasBlacklistedTarget && !hasBlacklistedSource;
+  });
 }

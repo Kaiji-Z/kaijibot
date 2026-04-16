@@ -48,6 +48,33 @@ const rapportMetricsSchema = z.object({
   selfDisclosureLevel: z.number().min(0).max(1),
 });
 
+const userLifecycleSchema = z.object({
+  stage: z.enum(["new", "active", "dormant", "lapsed"]).optional().default("new"),
+  lastActiveAt: z.number().optional().default(0),
+  lastStageTransitionAt: z.number().optional().default(0),
+  consecutiveSilentDays: z.number().optional().default(0),
+  totalActiveDays: z.number().optional().default(0),
+});
+
+const calibrationRecordSchema = z.object({
+  insightId: z.string(),
+  predictedPAccept: z.number(),
+  actualOutcome: z.enum(["positive", "negative", "neutral", "engaged", "no_response"]),
+  timestamp: z.number(),
+});
+
+const contradictionRecordSchema = z.object({
+  field: z.string(),
+  oldValue: z.string(),
+  newValue: z.string(),
+  oldConfidence: z.number(),
+  newConfidence: z.number(),
+  oldSource: z.enum(["explicit", "inferred", "observed"]),
+  newSource: z.enum(["explicit", "inferred", "observed"]),
+  resolution: z.enum(["resolved_new", "resolved_old", "resolved_merge"]),
+  resolvedAt: z.number(),
+});
+
 const personaTreeSchema = z.object({
   identity: z.object({
     coreTraits: z.record(z.string(), confidenceValueSchema),
@@ -64,6 +91,16 @@ const personaTreeSchema = z.object({
   pendingQuestions: z.array(z.string()),
   feedbackProfile: feedbackProfileSchema,
   rapport: rapportMetricsSchema,
+  domainBlacklist: z.array(z.string()).optional().default([]),
+  lifecycle: userLifecycleSchema.optional().default({
+    stage: "new",
+    lastActiveAt: 0,
+    lastStageTransitionAt: 0,
+    consecutiveSilentDays: 0,
+    totalActiveDays: 0,
+  }),
+  calibrationHistory: z.array(calibrationRecordSchema).optional().default([]),
+  contradictionLog: z.array(contradictionRecordSchema).optional().default([]),
 }).passthrough();
 
 export function safeParsePersona(json: unknown): PersonaTree | null {

@@ -60,6 +60,7 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
         keyInsights: ["type narrowing", "template literal types"],
         activeQuestions: [],
         connections: ["javascript"],
+        negationSignals: 0,
       },
       rust: {
         depth: 3,
@@ -68,6 +69,7 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
         keyInsights: ["ownership model"],
         activeQuestions: [],
         connections: ["systems-programming"],
+        negationSignals: 0,
       },
     },
     recentFocus: ["wasm", "type-systems"],
@@ -78,6 +80,7 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
       preferredStyle: "observation",
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
+      recentInsightIds: [],
     },
     rapport: {
       trustScore: 0.75,
@@ -85,6 +88,11 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
       avgResponseLength: 120,
       selfDisclosureLevel: 0.4,
     },
+    domainBlacklist: [],
+    lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 0 },
+    calibrationHistory: [],
+    contradictionLog: [],
+    moodHistory: [],
     ...overrides,
   };
 }

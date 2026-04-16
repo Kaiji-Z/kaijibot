@@ -22,6 +22,7 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
       preferredStyle: "observation",
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
+      recentInsightIds: [],
       ...overrides,
     },
     rapport: {
@@ -30,6 +31,11 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
       avgResponseLength: 50,
       selfDisclosureLevel: 0.3,
     },
+    domainBlacklist: [],
+    lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 0 },
+    calibrationHistory: [],
+    contradictionLog: [],
+    moodHistory: [],
   };
 }
 

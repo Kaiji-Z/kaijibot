@@ -114,9 +114,9 @@ function makeGateContext(overrides?: Partial<GateContext>): GateContext {
   persona.rapport.totalExchanges = 10;
   persona.feedbackProfile.lastProactiveAt = 0;
   persona.domains = {
-    "AI/ML": { depth: 5, recurrence: 10, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-    "Rust": { depth: 4, recurrence: 8, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-    "Design": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+    "AI/ML": { depth: 5, recurrence: 10, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+    "Rust": { depth: 4, recurrence: 8, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+    "Design": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
   };
   persona.feedbackProfile.topicBandits = {
     "AI/ML": { alpha: 5, beta: 1 },
@@ -162,7 +162,7 @@ describe("computeGradedGate", () => {
         p.rapport.trustScore = 0.7;
         p.rapport.totalExchanges = 10;
         p.feedbackProfile.lastProactiveAt = now - 1 * 3600_000; // 1 hour ago
-        p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [] } };
+        p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 } };
         return p;
       })(),
       event: { type: "timer", timestamp: now },
@@ -174,7 +174,7 @@ describe("computeGradedGate", () => {
         p.rapport.trustScore = 0.7;
         p.rapport.totalExchanges = 10;
         p.feedbackProfile.lastProactiveAt = now - 24 * 3600_000; // 24 hours ago
-        p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [] } };
+        p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 } };
         return p;
       })(),
       event: { type: "timer", timestamp: now },
@@ -193,7 +193,7 @@ describe("computeGradedGate", () => {
       p.rapport.trustScore = 0.7;
       p.rapport.totalExchanges = 10;
       p.feedbackProfile.lastProactiveAt = now - 10 * 3600_000;
-      p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [] } };
+      p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 } };
       return p;
     };
 

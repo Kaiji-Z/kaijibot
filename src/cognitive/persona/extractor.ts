@@ -36,6 +36,32 @@ const DOUBLE_NEGATION_PATTERNS: ReadonlyArray<RegExp> = [
   /不是.{0,10}不(?:喜欢|感兴趣|想|需要|关心|关注)/,
 ];
 
+const BLACKLIST_PATTERNS: ReadonlyArray<{ pattern: RegExp }> = [
+  { pattern: /永远不要跟我提(.{1,30}?)(?:了|吧|了啊)?$/ },
+  { pattern: /别再跟我说(.{1,30}?)(?:了|吧|了啊)?$/ },
+  { pattern: /以后别提(.{1,30}?)(?:了|吧|了啊)?$/ },
+  { pattern: /我受够了(.{1,30}?)(?:了|吧|了啊)?$/ },
+  { pattern: /不想再听到(.{1,30}?)(?:了|吧|了啊)?$/ },
+  { pattern: /拉黑(.{1,30}?)(?:了|吧|了啊)?$/ },
+  { pattern: /never mention (?:about )?(.{1,40}?) again/i },
+  { pattern: /stop talking about (.+?)$/i },
+  { pattern: /don'?t ever mention (.+?)$/i },
+  { pattern: /i'?m sick of (.+?)$/i },
+  { pattern: /blacklist (.+?)$/i },
+  { pattern: /ban (.+?)$/i },
+];
+
+export function detectBlacklistIntent(userMessage: string): string[] {
+  const results: string[] = [];
+  for (const { pattern } of BLACKLIST_PATTERNS) {
+    const match = userMessage.match(pattern);
+    if (match?.[1]) {
+      results.push(match[1].trim());
+    }
+  }
+  return results;
+}
+
 const CLAUSE_DELIMITERS = /[,，。！？!?\n\r;；]/;
 
 function getClauseContaining(text: string, index: number): string {
@@ -249,8 +275,17 @@ export function extractFromMessage(
   recentFocus.push(...nouns.slice(0, 5));
 
   const sentiment = detectSentiment(userMessage);
+  const blacklistRequests = detectBlacklistIntent(userMessage);
 
-  return { attributes, domains, recentFocus, pendingQuestions, sentiment };
+  const result: ExtractionResult = {
+    attributes,
+    domains,
+    recentFocus,
+    pendingQuestions,
+    blacklistRequests: blacklistRequests.length > 0 ? blacklistRequests : undefined,
+    sentiment,
+  };
+  return result;
 }
 
 /**

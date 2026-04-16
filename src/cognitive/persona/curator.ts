@@ -1,9 +1,13 @@
 import type { PersonaTree, ConfidenceValue, DomainNode, RapportMetrics } from "../types.js";
 import type { ExtractionResult, ExtractedAttribute } from "./types.js";
 import { observeCoOccurrence, seedDomainGraph, decayEdges } from "../insight/cross-domain-mapper.js";
+import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
+import { detectContradictions, pruneContradictionLog } from "./contradiction-resolver.js";
 
 const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
 const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
+const AUTO_BLACKLIST_NEGATION_THRESHOLD = 3;
+const AUTO_BLACKLIST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Merge extraction results into an existing PersonaTree.
@@ -16,11 +20,18 @@ export function mergeExtraction(
 ): PersonaTree {
   const now = nowMs ?? Date.now();
 
-  // Merge attributes into identity
+  const coreTraitAttrs = extraction.attributes.filter(a => a.field.startsWith("identity.coreTraits."));
+  const { records: contradictions, resolvedTraits } = detectContradictions(
+    persona.identity.coreTraits,
+    coreTraitAttrs,
+    now,
+  );
+
   const newCoreTraits = { ...persona.identity.coreTraits };
   for (const attr of extraction.attributes) {
     if (attr.field.startsWith("identity.coreTraits.")) {
       const traitName = attr.field.replace("identity.coreTraits.", "");
+      if (resolvedTraits[traitName]?.resolution === "resolved_old") continue;
       newCoreTraits[traitName] = mergeConfidenceValue(
         newCoreTraits[traitName],
         {
@@ -38,10 +49,11 @@ export function mergeExtraction(
   const extractionDomainNames = new Set(extraction.domains.map((d) => d.name));
   const newDomains = { ...persona.domains };
 
+  const decayMultiplier = getDecayMultiplier(persona.lifecycle);
   for (const [name, node] of Object.entries(newDomains)) {
     if (!extractionDomainNames.has(name)) {
       const ageMs = now - node.lastMentioned;
-      const decayFactor = Math.exp((-Math.LN2 * ageMs) / DOMAIN_DEPTH_HALF_LIFE_MS);
+      const decayFactor = Math.exp((-Math.LN2 * ageMs) / (DOMAIN_DEPTH_HALF_LIFE_MS / decayMultiplier));
       const decayedDepth = node.depth * decayFactor;
       if (decayedDepth < 0.5) {
         delete newDomains[name];
@@ -90,7 +102,28 @@ export function mergeExtraction(
     }
   }
 
-  // Merge recent focus (keep last 10)
+  const newBlacklist = [...(persona.domainBlacklist ?? [])];
+  for (const domain of extraction.blacklistRequests ?? []) {
+    if (!newBlacklist.includes(domain)) {
+      newBlacklist.push(domain);
+    }
+  }
+
+  for (const [name, node] of Object.entries(newDomains)) {
+    if (newBlacklist.includes(name)) continue;
+    if (
+      node.negationSignals >= AUTO_BLACKLIST_NEGATION_THRESHOLD &&
+      node.lastNegatedAt !== undefined &&
+      (now - node.lastNegatedAt) <= AUTO_BLACKLIST_WINDOW_MS
+    ) {
+      newBlacklist.push(name);
+    }
+  }
+
+  for (const blacklisted of newBlacklist) {
+    delete newDomains[blacklisted];
+  }
+
   const newRecentFocus = [...new Set([...extraction.recentFocus, ...persona.recentFocus])].slice(
     0,
     10,
@@ -124,6 +157,22 @@ export function mergeExtraction(
     newMoodHistory.push({ sentiment: extraction.sentiment, timestamp: now, trend });
   }
 
+  const newLifecycle = { ...persona.lifecycle, lastActiveAt: now };
+  const prevActiveDate = new Date(persona.lifecycle.lastActiveAt).toDateString();
+  const currActiveDate = new Date(now).toDateString();
+  if (prevActiveDate !== currActiveDate) {
+    newLifecycle.totalActiveDays += 1;
+  }
+  const prevStage = newLifecycle.stage;
+  if (prevStage === "dormant" || prevStage === "lapsed") {
+    newLifecycle.stage = "active";
+  }
+  const nextStage = computeLifecycleStage(newLifecycle, newRapport.totalExchanges, now);
+  if (nextStage !== newLifecycle.stage) {
+    newLifecycle.stage = nextStage;
+    newLifecycle.lastStageTransitionAt = now;
+  }
+
   return {
     ...persona,
     identity: { ...persona.identity, coreTraits: newCoreTraits },
@@ -133,6 +182,9 @@ export function mergeExtraction(
     rapport: newRapport,
     domainGraph: updatedGraph,
     moodHistory: newMoodHistory.slice(-10),
+    domainBlacklist: newBlacklist,
+    lifecycle: newLifecycle,
+    contradictionLog: pruneContradictionLog([...persona.contradictionLog, ...contradictions]),
   };
 }
 

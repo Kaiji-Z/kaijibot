@@ -2,6 +2,7 @@ import type { PersonaTree, InsightRecord } from "../types.js";
 import type { FeedbackEvent, ImplicitFeedbackSignal } from "./types.js";
 import { updateBanditFromFeedback, adaptFrequency } from "./preference-learner.js";
 import { updateTrustFromFeedback, updateTrustFromImplicit } from "./trust-calculator.js";
+import { recordCalibration } from "./calibration.js";
 
 /**
  * Process a feedback event and return an updated PersonaTree.
@@ -144,6 +145,8 @@ export function processInsightFeedback(
     ? Math.max(persona.feedbackProfile.lastProactiveAt, insight.deliveredAt)
     : persona.feedbackProfile.lastProactiveAt;
 
+  const calRecord = recordCalibration(insight.id, 0.5, feedback);
+
   return {
     ...persona,
     rapport: {
@@ -156,6 +159,7 @@ export function processInsightFeedback(
       optimalFrequencyHours: newFrequency,
       lastProactiveAt,
     },
+    calibrationHistory: [...persona.calibrationHistory, calRecord],
   };
 }
 

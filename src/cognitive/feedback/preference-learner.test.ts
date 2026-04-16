@@ -17,6 +17,7 @@ function makeProfile(bandits?: Record<string, TopicBandit>): FeedbackProfile {
     preferredStyle: "observation",
     optimalFrequencyHours: 4,
     lastProactiveAt: 0,
+    recentInsightIds: [],
   };
 }
 

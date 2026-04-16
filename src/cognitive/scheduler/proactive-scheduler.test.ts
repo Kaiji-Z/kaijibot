@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ProactiveScheduler } from "./proactive-scheduler.js";
+import { ProactiveScheduler, filterBlacklistedOpportunities } from "./proactive-scheduler.js";
 import { createDefaultPersona } from "../persona/store.js";
 import type { SchedulerConfig, Opportunity } from "./types.js";
 import type { PersonaTree } from "../types.js";
@@ -17,6 +17,7 @@ function personaWithDomains(): PersonaTree {
       keyInsights: ["Transformer架构"],
       activeQuestions: [],
       connections: [],
+      negationSignals: 0,
     },
     "Rust": {
       depth: 4,
@@ -25,6 +26,7 @@ function personaWithDomains(): PersonaTree {
       keyInsights: [],
       activeQuestions: [],
       connections: [],
+      negationSignals: 0,
     },
     "Design": {
       depth: 3,
@@ -33,12 +35,14 @@ function personaWithDomains(): PersonaTree {
       keyInsights: [],
       activeQuestions: [],
       connections: [],
+      negationSignals: 0,
     },
   };
   persona.feedbackProfile.topicBandits = {
     "AI/机器学习": { alpha: 5, beta: 1 },
     "Rust": { alpha: 4, beta: 2 },
   };
+  persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() };
   return persona;
 }
 
@@ -616,24 +620,24 @@ describe("scanExploration (20% fixed slot)", () => {
     const persona = createDefaultPersona();
     persona.rapport.trustScore = 0.7;
     persona.domains = {
-      "AI": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "architecture": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "programming": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "product": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "business": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "data science": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "security": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "cloud": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "blockchain": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "quantum computing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "digital art": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "biotech": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "psychology": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "philosophy": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "design thinking": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "project management": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "testing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
-      "DevSecOps": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "AI": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "architecture": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "programming": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "product": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "business": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "data science": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "security": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "cloud": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "blockchain": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "quantum computing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "digital art": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "biotech": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "psychology": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "philosophy": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "design thinking": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "project management": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "testing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
+      "DevSecOps": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
     };
     const scheduler = makeScheduler(config, persona);
 
@@ -698,5 +702,86 @@ describe("scanExploration (20% fixed slot)", () => {
     const ratio = explorationCount / total;
     expect(ratio).toBeGreaterThanOrEqual(0.18);
     expect(ratio).toBeLessThanOrEqual(0.22);
+  });
+});
+
+describe("filterBlacklistedOpportunities", () => {
+  const baseOpportunities: Opportunity[] = [
+    {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["软件架构"],
+      pNeed: 0.7,
+      pAccept: 0.5,
+      pAct: 0.35,
+    },
+    {
+      type: "domain_depth",
+      targetDomains: ["Rust"],
+      sourceDomains: [],
+      pNeed: 0.6,
+      pAccept: 0.5,
+      pAct: 0.3,
+    },
+    {
+      type: "pending_question",
+      targetDomains: ["Design"],
+      sourceDomains: ["AI/机器学习"],
+      pNeed: 0.5,
+      pAccept: 0.5,
+      pAct: 0.25,
+    },
+  ];
+
+  it("returns all opportunities when blacklist is empty", () => {
+    const result = filterBlacklistedOpportunities(baseOpportunities, []);
+    expect(result).toHaveLength(3);
+  });
+
+  it("filters opportunities with blacklisted target domains", () => {
+    const result = filterBlacklistedOpportunities(baseOpportunities, ["AI/机器学习"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].targetDomains).toContain("Rust");
+  });
+
+  it("filters opportunities with blacklisted source domains", () => {
+    const result = filterBlacklistedOpportunities(baseOpportunities, ["AI/机器学习"]);
+    expect(result.every((o) => !o.sourceDomains.includes("AI/机器学习"))).toBe(true);
+  });
+
+  it("returns empty when all opportunities are blacklisted", () => {
+    const result = filterBlacklistedOpportunities(baseOpportunities, [
+      "AI/机器学习", "Rust", "Design",
+    ]);
+    expect(result).toHaveLength(0);
+  });
+
+  it("does not modify original opportunities array", () => {
+    const original = [...baseOpportunities];
+    filterBlacklistedOpportunities(baseOpportunities, ["AI/机器学习"]);
+    expect(baseOpportunities).toHaveLength(original.length);
+  });
+});
+
+describe("ProactiveScheduler.search — blacklist integration", () => {
+  const config: SchedulerConfig = {
+    minIntervalHours: 4,
+    minTrustScore: 0.3,
+  };
+
+  it("search filters out blacklisted domains from opportunities", () => {
+    const persona = personaWithDomains();
+    persona.domainBlacklist = ["AI/机器学习"];
+
+    const scheduler = makeScheduler(config, persona);
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    for (const opp of opportunities) {
+      expect(opp.targetDomains).not.toContain("AI/机器学习");
+      expect(opp.sourceDomains).not.toContain("AI/机器学习");
+    }
   });
 });

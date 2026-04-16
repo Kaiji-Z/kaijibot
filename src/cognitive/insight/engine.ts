@@ -89,6 +89,7 @@ export function generateInsightCandidates(
 
   // Verify and return top candidates
   return scored
+    .filter((c) => !isCandidateBlacklisted(c, persona.domainBlacklist))
     .sort((a, b) => b.compositeScore - a.compositeScore)
     .slice(0, maxCandidates)
     .map((c) => {
@@ -181,4 +182,16 @@ function buildExplorationInsight(targetDomain: string): InsightCandidate {
     sources: [],
     verificationStatus: "unverified",
   };
+}
+
+export function isCandidateBlacklisted(
+  candidate: InsightCandidate,
+  domainBlacklist: string[] | undefined,
+): boolean {
+  if (!domainBlacklist || domainBlacklist.length === 0) return false;
+  const blacklistSet = new Set(domainBlacklist);
+  return (
+    candidate.targetDomains.some((d) => blacklistSet.has(d)) ||
+    candidate.sourceDomains.some((d) => blacklistSet.has(d))
+  );
 }

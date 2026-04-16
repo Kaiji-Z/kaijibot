@@ -30,5 +30,8 @@ export type ExtractionResult = {
   }>;
   recentFocus: string[];
   pendingQuestions: string[];
+  /** Domain names the user explicitly wants blacklisted */
+  blacklistRequests?: string[];
   sentiment?: import("../types.js").SentimentResult;
+  communicationStyle?: import("../types.js").CommunicationStyle;
 };
