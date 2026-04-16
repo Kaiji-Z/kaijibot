@@ -559,3 +559,144 @@ describe("ProactiveScheduler pipeline integration", () => {
     expect(result).toBeUndefined();
   });
 });
+
+describe("scanExploration (20% fixed slot)", () => {
+  it("produces exploration opportunity when timestamp % 5 === 0", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: 1000, // 1000 % 5 === 0
+    });
+
+    const exploration = opportunities.filter((o) => o.type === "exploration");
+    expect(exploration.length).toBe(1);
+    expect(exploration[0]!.pNeed).toBe(0.5);
+    expect(exploration[0]!.pAct).toBeCloseTo(0.5 * exploration[0]!.pAccept, 10);
+  });
+
+  it("does NOT produce exploration when timestamp % 5 !== 0", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: 1001, // 1001 % 5 === 1
+    });
+
+    const exploration = opportunities.filter((o) => o.type === "exploration");
+    expect(exploration.length).toBe(0);
+  });
+
+  it("target domain is always outside user's known graph", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+    const userDomainKeys = Object.keys(persona.domains);
+
+    for (let t = 0; t < 50; t += 5) {
+      const opportunities = scheduler.search(persona, {
+        type: "timer",
+        timestamp: t,
+      });
+      const exploration = opportunities.filter((o) => o.type === "exploration");
+      if (exploration.length > 0) {
+        for (const opp of exploration) {
+          for (const td of opp.targetDomains) {
+            for (const ud of userDomainKeys) {
+              expect(td.toLowerCase()).not.toBe(ud.toLowerCase());
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it("returns empty when all KNOWN_UNIVERSE domains are already known", () => {
+    const persona = createDefaultPersona();
+    persona.rapport.trustScore = 0.7;
+    persona.domains = {
+      "AI": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "architecture": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "programming": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "product": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "business": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "data science": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "security": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "cloud": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "blockchain": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "quantum computing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "digital art": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "biotech": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "psychology": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "philosophy": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "design thinking": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "project management": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "testing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+      "DevSecOps": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [] },
+    };
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: 1000,
+    });
+
+    const exploration = opportunities.filter((o) => o.type === "exploration");
+    expect(exploration).toEqual([]);
+  });
+
+  it("exploration type is correct", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: 500,
+    });
+
+    const exploration = opportunities.find((o) => o.type === "exploration");
+    expect(exploration).toBeDefined();
+    expect(exploration!.type).toBe("exploration");
+    expect(exploration!.pAccept).toBeLessThan(1);
+    expect(exploration!.pAct).toBeGreaterThan(0);
+  });
+
+  it("fires for ALL event types when slot is active", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+    const ts = 2000; // 2000 % 5 === 0
+
+    const eventTypes: Array<"timer" | "persona_change" | "info_scan" | "external"> = [
+      "timer", "persona_change", "info_scan", "external",
+    ];
+
+    for (const type of eventTypes) {
+      const opportunities = scheduler.search(persona, { type, timestamp: ts, payload: {} });
+      const hasExploration = opportunities.some((o) => o.type === "exploration");
+      expect(hasExploration).toBe(true);
+    }
+  });
+
+  it("~20% of events produce exploration opportunities", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    let explorationCount = 0;
+    const total = 1000;
+
+    for (let i = 0; i < total; i++) {
+      const opportunities = scheduler.search(persona, {
+        type: "timer",
+        timestamp: i,
+      });
+      if (opportunities.some((o) => o.type === "exploration")) {
+        explorationCount++;
+      }
+    }
+
+    const ratio = explorationCount / total;
+    expect(ratio).toBeGreaterThanOrEqual(0.18);
+    expect(ratio).toBeLessThanOrEqual(0.22);
+  });
+});

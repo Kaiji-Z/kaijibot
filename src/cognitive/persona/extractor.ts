@@ -1,5 +1,74 @@
 import type { PersonaTree } from "../types.js";
 import type { ExtractionResult } from "./types.js";
+import { detectSentiment } from "./sentiment-detector.js";
+
+/**
+ * Negation patterns that indicate the user is expressing disinterest.
+ * Checked in a window around keyword matches (±30 chars covers both
+ * Chinese compact clauses and English phrases like "not interested in [topic]").
+ */
+const NEGATION_PATTERNS: ReadonlyArray<RegExp> = [
+  // Chinese single negation
+  /不喜欢/,
+  /不感兴趣/,
+  /没兴趣/,
+  /不想搞/,
+  /不需要/,
+  /不关心/,
+  /不关注/,
+  /不是.{0,10}迷/,
+  /不是.{0,10}粉/,
+  // English negation
+  /not\s+interested/i,
+  /don'?t\s+like/i,
+  /do\s+not\s+like/i,
+  /don'?t\s+care/i,
+  /do\s+not\s+care/i,
+  /don'?t\s+want/i,
+  /do\s+not\s+want/i,
+  /don'?t\s+need/i,
+  /do\s+not\s+need/i,
+  /not\s+a\s+fan/i,
+];
+
+/** Double-negation patterns — if present nearby, the keyword is affirmed. */
+const DOUBLE_NEGATION_PATTERNS: ReadonlyArray<RegExp> = [
+  /不是.{0,10}不(?:喜欢|感兴趣|想|需要|关心|关注)/,
+];
+
+const CLAUSE_DELIMITERS = /[,，。！？!?\n\r;；]/;
+
+function getClauseContaining(text: string, index: number): string {
+  let start = 0;
+  for (let i = index; i >= 0; i--) {
+    if (CLAUSE_DELIMITERS.test(text[i] ?? "")) {
+      start = i + 1;
+      break;
+    }
+  }
+  let end = text.length;
+  for (let i = index; i < text.length; i++) {
+    if (CLAUSE_DELIMITERS.test(text[i] ?? "")) {
+      end = i;
+      break;
+    }
+  }
+  return text.slice(start, end);
+}
+
+function isKeywordNegated(text: string, keyword: string, index: number): boolean {
+  const clause = getClauseContaining(text, index);
+
+  for (const pattern of DOUBLE_NEGATION_PATTERNS) {
+    if (pattern.test(clause)) return false;
+  }
+
+  for (const pattern of NEGATION_PATTERNS) {
+    if (pattern.test(clause)) return true;
+  }
+
+  return false;
+}
 
 /**
  * Extract persona attributes from a conversation turn using rule-based analysis.
@@ -19,7 +88,8 @@ export function extractFromMessage(
   const recentFocus: string[] = [];
   const pendingQuestions: string[] = [];
 
-  const combined = `${userMessage} ${assistantMessage}`.toLowerCase();
+  const userLower = userMessage.toLowerCase();
+  const assistantLower = assistantMessage.toLowerCase();
 
   // Detect domain mentions
   const domainKeywords: Record<string, string[]> = {
@@ -82,13 +152,50 @@ export function extractFromMessage(
   };
 
   for (const [domain, keywords] of Object.entries(domainKeywords)) {
-    const matchCount = keywords.filter((kw) => combined.includes(kw)).length;
-    if (matchCount >= 1) {
+    const userMatches: Array<{ keyword: string; negated: boolean }> = [];
+    let assistantMatchCount = 0;
+
+    for (const kw of keywords) {
+      let userIndex = userLower.indexOf(kw);
+      while (userIndex !== -1) {
+        const negated = isKeywordNegated(userLower, kw, userIndex);
+        userMatches.push({ keyword: kw, negated });
+        userIndex = userLower.indexOf(kw, userIndex + kw.length);
+      }
+
+      if (assistantLower.includes(kw)) {
+        assistantMatchCount++;
+      }
+    }
+
+    const uniqueUserMatches = new Map<string, boolean>();
+    for (const m of userMatches) {
+      if (!uniqueUserMatches.has(m.keyword)) {
+        uniqueUserMatches.set(m.keyword, m.negated);
+      }
+    }
+
+    const userPositiveCount = [...uniqueUserMatches.values()].filter((n) => !n).length;
+    const userNegatedCount = [...uniqueUserMatches.values()].filter((n) => n).length;
+    const totalPositive = userPositiveCount + assistantMatchCount;
+
+    const allUserNegated = userNegatedCount > 0 && userPositiveCount === 0;
+    const hasOnlyNegatedUserKeywords = allUserNegated && assistantMatchCount === 0;
+
+    if (totalPositive >= 1) {
       domains.push({
         name: domain,
-        depth: matchCount >= 3 ? 5 : matchCount >= 2 ? 3 : 1,
+        depth: totalPositive >= 3 ? 5 : totalPositive >= 2 ? 3 : 1,
         insights: [],
         questions: [],
+      });
+    } else if (hasOnlyNegatedUserKeywords) {
+      domains.push({
+        name: domain,
+        depth: 1,
+        insights: [],
+        questions: [],
+        negated: true,
       });
     }
   }
@@ -141,7 +248,9 @@ export function extractFromMessage(
   const nouns = extractKeyPhrases(userMessage);
   recentFocus.push(...nouns.slice(0, 5));
 
-  return { attributes, domains, recentFocus, pendingQuestions };
+  const sentiment = detectSentiment(userMessage);
+
+  return { attributes, domains, recentFocus, pendingQuestions, sentiment };
 }
 
 /**

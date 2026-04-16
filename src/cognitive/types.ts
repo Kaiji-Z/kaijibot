@@ -33,12 +33,29 @@ export type DomainNode = {
   keyInsights: string[];
   activeQuestions: string[];
   connections: string[];
+  negationSignals: number;
+  lastNegatedAt?: number;
 };
 
 // Thompson Sampling arm for a topic
 export type TopicBandit = {
-  alpha: number; // positive feedback count
-  beta: number; // negative feedback count
+  alpha: number;
+  beta: number;
+  lastUpdated?: number;
+};
+
+export type SentimentLabel = "positive" | "negative" | "neutral" | "frustrated" | "excited" | "confused";
+
+export type SentimentResult = {
+  label: SentimentLabel;
+  confidence: number;
+  evidence: string;
+};
+
+export type MoodSnapshot = {
+  sentiment: SentimentResult;
+  timestamp: number;
+  trend: "improving" | "stable" | "declining";
 };
 
 // User's feedback profile
@@ -78,6 +95,7 @@ export type PersonaTree = {
   feedbackProfile: FeedbackProfile;
   rapport: RapportMetrics;
   domainGraph?: LearnedDomainGraph;
+  moodHistory: MoodSnapshot[];
 };
 
 // Weighted edge in a learned domain co-occurrence graph

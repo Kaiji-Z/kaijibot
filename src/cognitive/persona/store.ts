@@ -159,6 +159,7 @@ export function createDefaultPersona(): PersonaTree {
     recentFocus: [],
     activeProjects: [],
     pendingQuestions: [],
+    moodHistory: [],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",

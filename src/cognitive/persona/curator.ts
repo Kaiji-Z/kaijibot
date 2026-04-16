@@ -61,6 +61,7 @@ export function mergeExtraction(
         lastMentioned: now,
         keyInsights: [...new Set([...existing.keyInsights, ...domain.insights])].slice(-20),
         activeQuestions: [...new Set([...existing.activeQuestions, ...domain.questions])].slice(-10),
+        negationSignals: existing.negationSignals ?? 0,
       };
     } else {
       newDomains[domain.name] = {
@@ -70,6 +71,7 @@ export function mergeExtraction(
         keyInsights: domain.insights,
         activeQuestions: domain.questions,
         connections: [],
+        negationSignals: 0,
       } satisfies DomainNode;
     }
   }
@@ -98,6 +100,16 @@ export function mergeExtraction(
     : baseGraph;
   const updatedGraph = decayEdges(coOccurrenceGraph, now, EDGE_DECAY_HALF_LIFE_MS);
 
+  const newMoodHistory = [...(persona.moodHistory ?? [])];
+  if (extraction.sentiment) {
+    const prev = newMoodHistory.slice(-2);
+    const prevPositive = prev.some(s => s.sentiment.label === "excited" || s.sentiment.label === "positive");
+    const currNegative = extraction.sentiment.label === "frustrated" || extraction.sentiment.label === "negative";
+    const currPositive = extraction.sentiment.label === "excited" || extraction.sentiment.label === "positive";
+    const trend = prevPositive && currNegative ? "declining" : !prevPositive && currPositive ? "improving" : "stable";
+    newMoodHistory.push({ sentiment: extraction.sentiment, timestamp: now, trend });
+  }
+
   return {
     ...persona,
     identity: { ...persona.identity, coreTraits: newCoreTraits },
@@ -106,6 +118,7 @@ export function mergeExtraction(
     pendingQuestions: newPendingQuestions,
     rapport: newRapport,
     domainGraph: updatedGraph,
+    moodHistory: newMoodHistory.slice(-10),
   };
 }
 

@@ -58,6 +58,7 @@ describe("PersonaStore", () => {
       keyInsights: ["偏好 Rust 实现"],
       activeQuestions: ["如何优化推理延迟?"],
       connections: ["软件架构"],
+      negationSignals: 0,
     };
     await store.save("main", "user-123", persona);
     const loaded = await store.load("main", "user-123");

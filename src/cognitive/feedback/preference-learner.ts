@@ -14,6 +14,43 @@ import type { FeedbackEvent, TopicFeedbackSummary } from "./types.js";
 const OPTIMISTIC_ALPHA = 2;
 const OPTIMISTIC_BETA = 1;
 
+/** 90-day half-life for preference decay toward priors */
+export const DECAY_HALF_LIFE_MS = 90 * 24 * 60 * 60 * 1000;
+
+/**
+ * Exponential decay of a single bandit toward priors.
+ * Formula: decayed = prior + (current - prior) * exp(-ln2 * age / halfLife)
+ * Clamped so alpha/beta never drop below priors.
+ */
+export function decayBandit(
+  bandit: TopicBandit,
+  nowMs: number,
+  halfLifeMs: number = DECAY_HALF_LIFE_MS,
+): TopicBandit {
+  if (bandit.lastUpdated === undefined) return bandit;
+  const age = nowMs - bandit.lastUpdated;
+  if (age <= 0) return bandit;
+  const factor = Math.exp(-Math.LN2 * age / halfLifeMs);
+  const decayedAlpha = OPTIMISTIC_ALPHA + (bandit.alpha - OPTIMISTIC_ALPHA) * factor;
+  const decayedBeta = OPTIMISTIC_BETA + (bandit.beta - OPTIMISTIC_BETA) * factor;
+  return {
+    alpha: Math.max(OPTIMISTIC_ALPHA, decayedAlpha),
+    beta: Math.max(OPTIMISTIC_BETA, decayedBeta),
+    lastUpdated: bandit.lastUpdated,
+  };
+}
+
+export function decayAllBandits(
+  profile: FeedbackProfile,
+  nowMs: number,
+): FeedbackProfile {
+  const newBandits: Record<string, TopicBandit> = {};
+  for (const [topic, bandit] of Object.entries(profile.topicBandits)) {
+    newBandits[topic] = decayBandit(bandit, nowMs);
+  }
+  return { ...profile, topicBandits: newBandits };
+}
+
 /**
  * Update the bandit for a topic based on feedback.
  * Returns a new FeedbackProfile (does not mutate input).
@@ -23,7 +60,10 @@ export function updateBanditFromFeedback(
   feedback: FeedbackEvent,
 ): FeedbackProfile {
   const topic = feedback.topic ?? "general";
-  const bandit: TopicBandit = profile.topicBandits[topic] ?? { alpha: OPTIMISTIC_ALPHA, beta: OPTIMISTIC_BETA };
+  const rawBandit: TopicBandit = profile.topicBandits[topic] ?? { alpha: OPTIMISTIC_ALPHA, beta: OPTIMISTIC_BETA };
+
+  // Apply decay before update so stale bandits regress toward priors
+  const bandit = decayBandit(rawBandit, feedback.timestamp);
 
   let newAlpha = bandit.alpha;
   let newBeta = bandit.beta;
@@ -46,7 +86,7 @@ export function updateBanditFromFeedback(
     ...profile,
     topicBandits: {
       ...profile.topicBandits,
-      [topic]: { alpha: newAlpha, beta: newBeta },
+      [topic]: { alpha: newAlpha, beta: newBeta, lastUpdated: feedback.timestamp },
     },
   };
 }

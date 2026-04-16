@@ -51,6 +51,8 @@ export class ProactiveScheduler {
         break;
     }
 
+    opportunities.push(...scanExploration(persona, event));
+
     return opportunities;
   }
 
@@ -305,4 +307,56 @@ function computeBaselinePAccept(persona: PersonaTree): number {
 
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
+}
+
+/** Known universe of domains for exploration slot */
+const KNOWN_UNIVERSE = [
+  "AI",
+  "architecture",
+  "programming",
+  "product",
+  "business",
+  "data science",
+  "security",
+  "cloud",
+  "blockchain",
+  "quantum computing",
+  "digital art",
+  "biotech",
+  "psychology",
+  "philosophy",
+  "design thinking",
+  "project management",
+  "testing",
+  "DevSecOps",
+] as const;
+
+/** Deterministic 20% exploration slot: picks an unknown domain */
+function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
+  if ((event.timestamp % 5) !== 0) return [];
+
+  const userDomainKeys = Object.keys(persona.domains);
+  if (userDomainKeys.length === 0) return [];
+
+  const unknownDomains = KNOWN_UNIVERSE.filter(
+    (domain) => !userDomainKeys.some((ud) => ud.toLowerCase().includes(domain.toLowerCase())),
+  );
+
+  if (unknownDomains.length === 0) return [];
+
+  const index = Math.floor((event.timestamp / 7) % unknownDomains.length);
+  const targetDomain = unknownDomains[index];
+
+  const baseline = computeBaselinePAccept(persona);
+  const pNeed = 0.5;
+  const pAccept = baseline * 0.8;
+
+  return [{
+    type: "exploration" as const,
+    targetDomains: [targetDomain],
+    sourceDomains: [],
+    pNeed,
+    pAccept,
+    pAct: pNeed * pAccept,
+  }];
 }

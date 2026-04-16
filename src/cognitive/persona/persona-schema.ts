@@ -23,6 +23,8 @@ const domainNodeSchema = z.object({
   keyInsights: z.array(z.string()),
   activeQuestions: z.array(z.string()),
   connections: z.array(z.string()),
+  negationSignals: z.number().optional().default(0),
+  lastNegatedAt: z.number().optional(),
 });
 
 const topicBanditSchema = z.object({

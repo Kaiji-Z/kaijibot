@@ -49,6 +49,16 @@ export function generateInsightCandidates(
     if (candidate) candidates.push(candidate);
   }
 
+  // Strategy 4: Exploration — target domains outside user's known graph
+  const unknownTargets = input.targetDomains.filter(
+    (td) => !persona.domains[td],
+  );
+  if (userDomains.length > 0 && unknownTargets.length > 0) {
+    for (const targetDomain of unknownTargets.slice(0, 1)) {
+      candidates.push(buildExplorationInsight(targetDomain));
+    }
+  }
+
   // Score and rank all candidates
   const scored = candidates.map((c) => {
     const userConnectingDomains = Object.keys(persona.domains)
@@ -152,6 +162,21 @@ function buildDomainDepthInsight(domainName: string): InsightCandidate {
     sourceDomains: [],
     relevanceScore: 0.8,
     surpriseScore: 0.4,
+    compositeScore: 0,
+    sources: [],
+    verificationStatus: "unverified",
+  };
+}
+
+function buildExplorationInsight(targetDomain: string): InsightCandidate {
+  return {
+    id: randomUUID(),
+    content: `你可能对${targetDomain}领域感兴趣。这是一个与你现有兴趣有一定距离但可能带来全新视角的方向。探索未知领域有助于拓展思维边界。`,
+    rationale: `探索型洞察：目标领域不在用户已知图谱中，低相关性但高新颖度，旨在拓展用户视野。`,
+    targetDomains: [targetDomain],
+    sourceDomains: [],
+    relevanceScore: 0.3,
+    surpriseScore: 0.9,
     compositeScore: 0,
     sources: [],
     verificationStatus: "unverified",
