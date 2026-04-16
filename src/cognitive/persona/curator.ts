@@ -124,15 +124,56 @@ export function mergeExtraction(
     delete newDomains[blacklisted];
   }
 
-  const newRecentFocus = [...new Set([...extraction.recentFocus, ...persona.recentFocus])].slice(
-    0,
-    10,
-  );
+  const hasCJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test.bind(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u);
+  const TECH_DOMAIN_TERMS: ReadonlySet<string> = new Set([
+    "kubernetes", "docker", "typescript", "python", "javascript", "rust",
+    "react", "vue", "angular", "node", "deno", "bun", "go", "java",
+    "k8s", "api", "rest", "graphql", "sql", "redis", "mongodb",
+    "git", "github", "linux", "aws", "gcp", "azure", "devops",
+  ]);
+  const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
+    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+    "do", "does", "did", "will", "would", "can", "could", "should", "may",
+    "might", "shall", "to", "of", "in", "for", "on", "with", "at", "by",
+    "from", "as", "into", "about", "this", "that", "these", "those", "it",
+    "its", "or", "and", "but", "not", "no", "so", "than", "too", "very",
+    "if", "then", "else", "when", "where", "which", "who", "whom", "how",
+    "what", "why", "all", "each", "every", "both", "few", "more", "most",
+    "other", "some", "such", "only", "own", "same", "also", "just", "one",
+    "two", "here", "there", "now", "up", "out", "off", "over", "under",
+    "i", "me", "my", "we", "us", "our", "you", "your", "he", "him", "his",
+    "she", "her", "they", "them", "their", "has", "have", "had", "get",
+    "got", "make", "made", "go", "went", "come", "came", "take", "took",
+    "give", "gave", "see", "saw", "know", "knew", "think", "thought",
+    "say", "said", "tell", "told", "find", "found", "use", "used",
+    "mannerisms", "provided", "available", "following", "however",
+  ]);
+  const isPlausibleEnglishTopic = (s: string): boolean => {
+    const lower = s.toLowerCase().replace(/[^a-z0-9\s.-]/g, "").trim();
+    if (TECH_DOMAIN_TERMS.has(lower)) return true;
+    const words = lower.split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return false;
+    if (words.length === 1 && !TECH_DOMAIN_TERMS.has(words[0]!)) return false;
+    const contentWords = words.filter(w => !ENGLISH_STOPWORDS.has(w));
+    return contentWords.length >= 1;
+  };
+  const isValidFocus = (s: string) => {
+    if (s.length < 2 || s.length > 30 || /^```/.test(s) || /^[^\p{L}\p{N}]+$/u.test(s)) return false;
+    if (!hasCJK(s) && !isPlausibleEnglishTopic(s)) return false;
+    return true;
+  };
+  const isValidQuestion = (s: string) =>
+    s.length >= 4 && s.length <= 100 && !s.includes("\\n") && !/[#*_~`>|]{3,}/.test(s);
 
-  // Merge pending questions (keep last 10)
+  const newRecentFocus = [...new Set([...extraction.recentFocus, ...persona.recentFocus])]
+    .filter(isValidFocus)
+    .slice(0, 10);
+
   const newPendingQuestions = [
     ...new Set([...extraction.pendingQuestions, ...persona.pendingQuestions]),
-  ].slice(0, 10);
+  ]
+    .filter(isValidQuestion)
+    .slice(0, 10);
 
   // Update rapport
   const newRapport: RapportMetrics = {

@@ -263,10 +263,17 @@ export function extractFromMessage(
   }
 
   // Detect questions as pending questions
-  const questionMatches = userMessage.match(/[？?].*$/gm);
+  const questionMatches = userMessage.match(/[^。！？,.!?;；\n\r]{2,80}[？?]/g);
   if (questionMatches) {
     for (const q of questionMatches.slice(0, 3)) {
-      pendingQuestions.push(q.trim());
+      const cleaned = q
+        .replace(/\\n/g, " ")
+        .replace(/\\[\\"]/g, "")
+        .replace(/[#*_~`>|]/g, "")
+        .trim();
+      if (cleaned.length >= 4 && cleaned.length <= 100) {
+        pendingQuestions.push(cleaned);
+      }
     }
   }
 
@@ -288,14 +295,34 @@ export function extractFromMessage(
   return result;
 }
 
+const NOISE_PATTERNS: ReadonlyArray<RegExp> = [
+  /^```.*$/,
+  /^`[^`]+`$/,
+  /^\s*$/,
+  /^\d+$/,
+  /^(yes|no|ok|okay|好的|嗯|是|不是|对|不对|哈|啊|呢|吧|么|吗|哦|噢)$/i,
+  /^(if|the|a|an|is|are|was|were|be|been|being|do|does|did|will|would|can|could|should|may|might|shall|to|of|in|for|on|with|at|by|from|as|into|about|this|that|these|those|it|its|or|and|but|not|no|so|than|too|very)$/i,
+];
+
+function isNoisePhrase(s: string): boolean {
+  for (const pat of NOISE_PATTERNS) {
+    if (pat.test(s)) return true;
+  }
+  if (/^[\s\p{P}\p{S}\p{C}]+$/u.test(s)) return true;
+  if (/^[\d\s,.\-+/\\#@$%^&*(){}[\]|~`]+$/.test(s)) return true;
+  return false;
+}
+
 /**
  * Simple key phrase extraction — split on common delimiters and filter.
  */
 function extractKeyPhrases(text: string): string[] {
-  // Very simple: split on punctuation and take phrases 2-10 chars
-  const phrases = text
-    .split(/[，。！？,.!?\n\r]+/)
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "");
+  const phrases = cleaned
+    .split(/[，。！？,.!?\n\r;；:：\s—–\-_=+|/\\{}[\]()]+/)
     .map((s) => s.trim())
-    .filter((s) => s.length >= 2 && s.length <= 20);
+    .filter((s) => s.length >= 2 && s.length <= 30 && !isNoisePhrase(s));
   return [...new Set(phrases)].slice(0, 5);
 }

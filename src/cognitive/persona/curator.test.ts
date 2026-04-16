@@ -305,4 +305,73 @@ describe("mergeExtraction — domainBlacklist", () => {
     const result = mergeExtraction(persona, extraction);
     expect(result.domainBlacklist).toContain("数据科学");
   });
+
+  it("preserves pure-Chinese recentFocus entries through merge", () => {
+    const persona = createDefaultPersona();
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: ["机器学习", "深度学习", "人工智能"],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.recentFocus).toContain("机器学习");
+    expect(result.recentFocus).toContain("深度学习");
+    expect(result.recentFocus).toContain("人工智能");
+  });
+
+  it("filters garbage from recentFocus during merge", () => {
+    const persona = createDefaultPersona();
+    persona.recentFocus = ["```json", "```", "机器学习", "if one is provided", "mannerisms"];
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: ["数据科学"],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.recentFocus).not.toContain("```json");
+    expect(result.recentFocus).not.toContain("```");
+    expect(result.recentFocus).not.toContain("if one is provided");
+    expect(result.recentFocus).not.toContain("mannerisms");
+    expect(result.recentFocus).toContain("机器学习");
+    expect(result.recentFocus).toContain("数据科学");
+  });
+
+  it("filters long markdown dumps from pendingQuestions during merge", () => {
+    const persona = createDefaultPersona();
+    persona.pendingQuestions = [
+      "？\\n如果信任是一种认知状态" + "x".repeat(100),
+      "SARA信任框架怎么实现的？",
+    ];
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+      pendingQuestions: ["每次重启信任真的重置了吗？"],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.pendingQuestions).toContain("SARA信任框架怎么实现的？");
+    expect(result.pendingQuestions).toContain("每次重启信任真的重置了吗？");
+    expect(result.pendingQuestions.every(q => q.length <= 100)).toBe(true);
+  });
+
+  it("keeps valid English tech terms in recentFocus but rejects noise", () => {
+    const persona = createDefaultPersona();
+    persona.recentFocus = ["kubernetes", "machine learning", "the", "is not"];
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: ["docker", "if available", "typescript"],
+      pendingQuestions: [],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.recentFocus).toContain("kubernetes");
+    expect(result.recentFocus).toContain("machine learning");
+    expect(result.recentFocus).toContain("docker");
+    expect(result.recentFocus).toContain("typescript");
+    expect(result.recentFocus).not.toContain("the");
+    expect(result.recentFocus).not.toContain("is not");
+    expect(result.recentFocus).not.toContain("if available");
+  });
 });
