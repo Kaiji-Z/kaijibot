@@ -1,12 +1,17 @@
 services:
   kaijibot-gateway:
     image: ${KAIJIBOT_IMAGE:-kaijibot:local}
+    env_file:
+      - path: .env
+        required: false
     environment:
       HOME: /home/node
       TERM: xterm-256color
       KAIJIBOT_GATEWAY_TOKEN: ${KAIJIBOT_GATEWAY_TOKEN:-}
       KAIJIBOT_ALLOW_INSECURE_PRIVATE_WS: ${KAIJIBOT_ALLOW_INSECURE_PRIVATE_WS:-}
       ZAI_API_KEY: ${ZAI_API_KEY:-}
+      EXA_API_KEY: ${EXA_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
       TZ: ${KAIJIBOT_TZ:-Asia/Shanghai}
     volumes:
       - ${KAIJIBOT_CONFIG_DIR}:/home/node/.kaijibot
