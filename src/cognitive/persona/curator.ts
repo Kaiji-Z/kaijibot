@@ -9,6 +9,15 @@ const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
 const AUTO_BLACKLIST_NEGATION_THRESHOLD = 3;
 const AUTO_BLACKLIST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+const INSIGHT_ECHO_PATTERNS: ReadonlyArray<RegExp> = [
+  /receives?\s+(automated\s+)?cognitive\s+insight/i,
+  /最近出现了?一些值得关注的新方向/,
+  /结合你在这个领域的深度理解/,
+  /可能会影响你的技术决策/,
+  /cognitive insight (notifications?|alerts?)/i,
+  /new (trends|directions) in this (field|domain)/i,
+];
+
 /**
  * Merge extraction results into an existing PersonaTree.
  * Returns a new PersonaTree (does not mutate input).
@@ -49,6 +58,14 @@ export function mergeExtraction(
   const extractionDomainNames = new Set(extraction.domains.map((d) => d.name));
   const newDomains = { ...persona.domains };
 
+  const isPlausibleKeyInsight = (s: string): boolean => {
+    if (s.length < 4 || s.length > 200) return false;
+    for (const pat of INSIGHT_ECHO_PATTERNS) {
+      if (pat.test(s)) return false;
+    }
+    return true;
+  };
+
   const decayMultiplier = getDecayMultiplier(persona.lifecycle);
   for (const [name, node] of Object.entries(newDomains)) {
     if (!extractionDomainNames.has(name)) {
@@ -85,7 +102,7 @@ export function mergeExtraction(
         depth: Math.max(existing.depth, domain.depth),
         recurrence: existing.recurrence + 1,
         lastMentioned: now,
-        keyInsights: [...new Set([...existing.keyInsights, ...domain.insights])].slice(-20),
+        keyInsights: [...new Set([...existing.keyInsights, ...domain.insights.filter(isPlausibleKeyInsight)])].slice(-20),
         activeQuestions: [...new Set([...existing.activeQuestions, ...domain.questions])].slice(-10),
         negationSignals: existing.negationSignals ?? 0,
       };
@@ -94,7 +111,7 @@ export function mergeExtraction(
         depth: domain.depth,
         recurrence: 1,
         lastMentioned: now,
-        keyInsights: domain.insights,
+        keyInsights: domain.insights.filter(isPlausibleKeyInsight),
         activeQuestions: domain.questions,
         connections: [],
         negationSignals: 0,
@@ -297,7 +314,12 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
   for (const [name, domain] of Object.entries(persona.domains)) {
     if (now - domain.lastMentioned > THIRTY_DAYS && domain.recurrence < 3) continue;
     if ((domain.negationSignals ?? 0) >= 3 && domain.depth < 2) continue;
-    prunedDomains[name] = domain;
+    const cleanedInsights = domain.keyInsights.filter((s) => {
+      if (s.length < 4 || s.length > 200) return false;
+      for (const pat of INSIGHT_ECHO_PATTERNS) { if (pat.test(s)) return false; }
+      return true;
+    });
+    prunedDomains[name] = { ...domain, keyInsights: cleanedInsights };
   }
 
   return {

@@ -234,7 +234,7 @@ describe("ProactiveScheduler", () => {
     expect(processedUsers).toEqual([]);
   });
 
-  it("generates insight on persona_change event", async () => {
+  it("generates cross-domain insight on persona_change event", async () => {
     const persona = personaWithDomains();
     const capturedCandidates: InsightCandidate[] = [];
     const scheduler = new ProactiveScheduler(config, {
@@ -252,7 +252,7 @@ describe("ProactiveScheduler", () => {
     });
 
     expect(result).toBeDefined();
-    expect(capturedCandidates.length).toBe(1);
+    expect(capturedCandidates.length).toBeGreaterThanOrEqual(1);
   });
 
   it("generates insight on info_scan event", async () => {

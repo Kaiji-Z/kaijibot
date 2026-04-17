@@ -55,7 +55,8 @@ export function generateInsightCandidates(
   );
   if (userDomains.length > 0 && unknownTargets.length > 0) {
     for (const targetDomain of unknownTargets.slice(0, 1)) {
-      candidates.push(buildExplorationInsight(targetDomain));
+      const candidate = buildExplorationInsight(targetDomain);
+      if (candidate) candidates.push(candidate);
     }
   }
 
@@ -128,60 +129,18 @@ function buildCrossDomainCandidate(
 }
 
 function buildQuestionInsightCandidate(
-  question: string,
-  persona: PersonaTree,
-): InsightCandidate | undefined {
-  const domains = Object.entries(persona.domains);
-  if (domains.length === 0) return undefined;
-
-  // Find the most relevant domain for this question
-  const relevantDomain = domains.find(
-    ([name]) => question.includes(name.split("/")[0]) || question.includes(name),
-  );
-  const domainName = relevantDomain?.[0] ?? domains[0][0];
-
-  return {
-    id: randomUUID(),
-    content: `关于你的问题"${question.slice(0, 30)}..."——这个问题可以从${domainName}的延伸角度来看。`,
-    rationale: `用户有未解答的问题，可能适合从不同角度启发思考。`,
-    targetDomains: [domainName],
-    sourceDomains: [],
-    relevanceScore: 0.9,
-    surpriseScore: 0.3,
-    compositeScore: 0,
-    sources: [],
-    verificationStatus: "unverified",
-  };
+  _question: string,
+  _persona: PersonaTree,
+): undefined {
+  return undefined;
 }
 
-function buildDomainDepthInsight(domainName: string): InsightCandidate {
-  return {
-    id: randomUUID(),
-    content: `${domainName}领域最近出现了一些值得关注的新方向。结合你在这个领域的深度理解，这些变化可能会影响你的技术决策。`,
-    rationale: `用户在某领域有深度，适合推送该领域的最新动态和趋势。`,
-    targetDomains: [domainName],
-    sourceDomains: [],
-    relevanceScore: 0.8,
-    surpriseScore: 0.4,
-    compositeScore: 0,
-    sources: [],
-    verificationStatus: "unverified",
-  };
+function buildDomainDepthInsight(_domainName: string): undefined {
+  return undefined;
 }
 
-function buildExplorationInsight(targetDomain: string): InsightCandidate {
-  return {
-    id: randomUUID(),
-    content: `你可能对${targetDomain}领域感兴趣。这是一个与你现有兴趣有一定距离但可能带来全新视角的方向。探索未知领域有助于拓展思维边界。`,
-    rationale: `探索型洞察：目标领域不在用户已知图谱中，低相关性但高新颖度，旨在拓展用户视野。`,
-    targetDomains: [targetDomain],
-    sourceDomains: [],
-    relevanceScore: 0.3,
-    surpriseScore: 0.9,
-    compositeScore: 0,
-    sources: [],
-    verificationStatus: "unverified",
-  };
+function buildExplorationInsight(_targetDomain: string): undefined {
+  return undefined;
 }
 
 export function isCandidateBlacklisted(

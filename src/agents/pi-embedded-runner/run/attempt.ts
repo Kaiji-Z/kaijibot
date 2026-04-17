@@ -2183,7 +2183,9 @@ export async function runEmbeddedAttempt(
         }
 
         // Cognitive layer: fire-and-forget persona extraction (must not block response).
-        if (!aborted && !promptError && params.sessionKey) {
+        // Only extract from genuine user-initiated turns — heartbeat, cron, memory,
+        // and overflow turns contain system-internal content that pollutes the persona.
+        if (!aborted && !promptError && params.sessionKey && (params.trigger === "user" || params.trigger === "manual")) {
           const turnSnapshot = messagesSnapshot.slice(prePromptMessageCount);
           const senderId = params.senderId;
           const sessionKey = params.sessionKey;

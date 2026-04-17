@@ -375,10 +375,29 @@ function parseLLMInsights(
         sources: [],
         verificationStatus: "unverified" as const,
       }))
-      .filter((c: InsightCandidate) => c.content.length > 0);
+      .filter((c: InsightCandidate) => c.content.length > 0 && isSubstantiveContent(c.content));
   } catch {
     return [];
   }
+}
+
+const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [
+  /最近出现了?一些值得关注的新方向/,
+  /结合你在这个领域的深度理解/,
+  /可能会影响你的技术决策/,
+  /探索未知领域有助于拓展思维边界/,
+  /挺有意思的$/,
+  /值得关注/,
+  /^.{0,10}是一个.{2,10}的方向$/,
+];
+
+function isSubstantiveContent(content: string): boolean {
+  const trimmed = content.trim();
+  if (trimmed.length < 10) return false;
+  for (const pattern of GENERIC_INSIGHT_PATTERNS) {
+    if (pattern.test(trimmed)) return false;
+  }
+  return true;
 }
 
 function clamp01(value: number): number {

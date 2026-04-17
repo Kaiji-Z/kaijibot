@@ -6,7 +6,7 @@ Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 智谱 GLM 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6.svg)](https://www.typescriptlang.org/)
 [![Vitest 420+ tests](https://img.shields.io/badge/Vitest-420%2B%20tests-6DA55F.svg)](https://vitest.dev/)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-red.svg)]()
 
