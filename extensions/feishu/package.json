@@ -46,7 +46,7 @@
       "pluginApi": ">=2026.4.10"
     },
     "build": {
-      "kaijibotVersion": "2026.4.10"
+      "kaijibotVersion": "2026.4.17"
     },
     "bundle": {
       "stageRuntimeDependencies": true
