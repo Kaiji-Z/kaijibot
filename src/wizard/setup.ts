@@ -90,7 +90,6 @@ async function requireRiskAcknowledgement(params: {
       "安全提示：",
       "- 请勿在不可信的网络环境中暴露 Gateway",
       "- 不要把 API Key 或敏感信息放在 agent 可访问的路径下",
-      "- 多人共用时，使用 session.dmScope: per-channel-peer 隔离会话",
     ].join("\n"),
     "安全须知",
   );
