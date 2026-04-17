@@ -1,5 +1,5 @@
 ---
-summary: "KaijiBot is a multi-channel gateway for AI agents that runs on any OS."
+summary: "KaijiBot is a self-hosted proactive AI assistant for Feishu with a built-in cognitive layer."
 read_when:
   - Introducing KaijiBot to newcomers
 title: "KaijiBot"
@@ -25,8 +25,8 @@ title: "KaijiBot"
 > _"EXFOLIATE! EXFOLIATE!"_ — A space lobster, probably
 
 <p align="center">
-  <strong>Any OS gateway for AI agents across Discord, Google Chat, iMessage, Matrix, Microsoft Teams, Signal, Slack, Telegram, WhatsApp, Zalo, and more.</strong><br />
-  Send a message, get an agent response from your pocket. Run one Gateway across built-in channels, bundled channel plugins, WebChat, and mobile nodes.
+  <strong>Self-hosted proactive AI assistant for Feishu, powered by multi-provider LLM backends.</strong><br />
+  An AI that doesn't just wait for questions — it learns who you are, thinks about what might interest you, and reaches out proactively with cross-domain insights.
 </p>
 
 <Columns>
@@ -43,53 +43,52 @@ title: "KaijiBot"
 
 ## What is KaijiBot?
 
-KaijiBot is a **self-hosted gateway** that connects your favorite chat apps and channel surfaces — built-in channels plus bundled or external channel plugins such as Discord, Google Chat, iMessage, Matrix, Microsoft Teams, Signal, Slack, Telegram, WhatsApp, Zalo, and more — to AI coding agents like Pi. You run a single Gateway process on your own machine (or a server), and it becomes the bridge between your messaging apps and an always-available AI assistant.
+KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https://github.com/openclaw/openclaw), tailored for Chinese users with deep Feishu integration. It connects to LLM providers like Z.AI (智谱 GLM), OpenAI, Ollama, and LMStudio through a single Gateway — and adds a **cognitive AI layer** that makes the assistant genuinely proactive.
 
-**Who is it for?** Developers and power users who want a personal AI assistant they can message from anywhere — without giving up control of their data or relying on a hosted service.
+**Who is it for?** Developers and power users who want an AI partner that knows them, learns their interests, and initiates conversations with relevant insights — all running on their own hardware.
 
 **What makes it different?**
 
-- **Self-hosted**: runs on your hardware, your rules
-- **Multi-channel**: one Gateway serves built-in channels plus bundled or external channel plugins simultaneously
-- **Agent-native**: built for coding agents with tool use, sessions, memory, and multi-agent routing
-- **Open source**: MIT licensed, community-driven
+- **Proactive cognitive AI** — builds a per-user persona, generates cross-domain insights, and decides when to reach out based on learned trust and preferences
+- **Feishu-native** — deep integration with Feishu via WebSocket long-connection and event subscription (the only messaging channel)
+- **Multi-provider LLM** — primary support for Z.AI (GLM-5-turbo), with OpenAI-compatible, Ollama, and LMStudio backends
+- **Self-hosted**: runs on your hardware, your rules — no data leaves your machine unless you configure search providers
+- **Open source**: MIT licensed, based on the OpenClaw platform
 
-**What do you need?** Node 24 (recommended), or Node 22 LTS (`22.14+`) for compatibility, an API key from your chosen provider, and 5 minutes. For best quality and security, use the strongest latest-generation model available.
+**What do you need?** Node 22+ (Node 24 recommended), a Z.AI API key (or any supported provider), a Feishu bot app, and 5 minutes.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  A["Chat apps + plugins"] --> B["Gateway"]
-  B --> C["Pi agent"]
+  A["Feishu"] --> B["Gateway"]
+  B --> C["Agent + Cognitive Layer"]
   B --> D["CLI"]
   B --> E["Web Control UI"]
-  B --> F["macOS app"]
-  B --> G["iOS and Android nodes"]
 ```
 
-The Gateway is the single source of truth for sessions, routing, and channel connections.
+The Gateway is the single source of truth for sessions, routing, and channel connections. The cognitive layer runs alongside the agent loop, building user personas and generating proactive insights.
 
 ## Key capabilities
 
 <Columns>
-  <Card title="Multi-channel gateway" icon="network">
-    Discord, iMessage, Signal, Slack, Telegram, WhatsApp, WebChat, and more with a single Gateway process.
+  <Card title="Feishu Integration" icon="message-square">
+    Full Feishu channel with WebSocket long-connection, event subscription, rich messages, and media support.
   </Card>
-  <Card title="Plugin channels" icon="plug">
-    Bundled plugins add Matrix, Nostr, Twitch, Zalo, and more in normal current releases.
+  <Card title="Cognitive AI Layer" icon="brain">
+    Per-user persona learning, cross-domain insight generation, trust-aware proactive scheduling, and preference adaptation.
   </Card>
-  <Card title="Multi-agent routing" icon="route">
-    Isolated sessions per agent, workspace, or sender.
+  <Card title="Multi-Provider LLM" icon="cpu">
+    Z.AI (智谱 GLM) as primary, plus OpenAI, Ollama, and LMStudio — switch providers with a single config change.
   </Card>
-  <Card title="Media support" icon="image">
-    Send and receive images, audio, and documents.
+  <Card title="Media & Voice" icon="image">
+    Send and receive images, audio, and documents. Speech recognition and TTS synthesis built in.
   </Card>
   <Card title="Web Control UI" icon="monitor">
-    Browser dashboard for chat, config, sessions, and nodes.
+    Browser dashboard for chat, config, sessions, and monitoring.
   </Card>
-  <Card title="Mobile nodes" icon="smartphone">
-    Pair iOS and Android nodes for Canvas, camera, and voice-enabled workflows.
+  <Card title="Plugin & Skill System" icon="plug">
+    21 bundled extensions and 21 skills — memory, search, browser automation, and more. Extensible via SDK.
   </Card>
 </Columns>
 
@@ -101,19 +100,22 @@ The Gateway is the single source of truth for sessions, routing, and channel con
     npm install -g kaijibot@latest
     ```
   </Step>
-  <Step title="Onboard and install the service">
+  <Step title="Configure Feishu and LLM provider">
     ```bash
-    kaijibot onboard --install-daemon
+    # Set your LLM API key (Z.AI recommended)
+    export ZAI_API_KEY="your-api-key"
+
+    # Configure Feishu channel
+    kaijibot config set channels.feishu.appId "your-app-id"
+    kaijibot config set channels.feishu.appSecret "your-app-secret"
     ```
   </Step>
-  <Step title="Chat">
-    Open the Control UI in your browser and send a message:
-
+  <Step title="Start and chat">
     ```bash
-    kaijibot dashboard
+    kaijibot gateway --port 18789 --verbose
     ```
 
-    Or connect a channel ([Telegram](/channels/telegram) is fastest) and chat from your phone.
+    Open Feishu, find your bot, and send a message. KaijiBot will start building your cognitive persona automatically — after a few conversations it begins proactive outreach with tailored insights.
 
   </Step>
 </Steps>
@@ -127,28 +129,31 @@ Open the browser Control UI after the Gateway starts.
 - Local default: [http://127.0.0.1:18789/](http://127.0.0.1:18789/)
 - Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
 
-<p align="center">
-  <img src="/whatsapp-kaijibot.jpg" alt="KaijiBot" width="420" />
-</p>
-
 ## Configuration (optional)
 
 Config lives at `~/.kaijibot/kaijibot.json`.
 
-- If you **do nothing**, KaijiBot uses the bundled Pi binary in RPC mode with per-sender sessions.
-- If you want to lock it down, start with `channels.whatsapp.allowFrom` and (for groups) mention rules.
+- If you **do nothing**, KaijiBot uses Z.AI GLM-5-turbo with per-sender sessions and the cognitive layer enabled.
+- To customize, set Feishu access controls or cognitive parameters.
 
 Example:
 
 ```json5
 {
   channels: {
-    whatsapp: {
-      allowFrom: ["+15555550123"],
-      groups: { "*": { requireMention: true } },
+    feishu: {
+      appId: "cli_xxxx",
+      appSecret: "xxxx",
     },
   },
-  messages: { groupChat: { mentionPatterns: ["@kaijibot"] } },
+  cognitive: {
+    enabled: true,
+    proactive: {
+      enabled: true,
+      minIntervalHours: 4,
+      activeHours: { start: "09:00", end: "22:00" },
+    },
+  },
 }
 ```
 
@@ -164,11 +169,11 @@ Example:
   <Card title="Remote access" href="/gateway/remote" icon="globe">
     SSH and tailnet access patterns.
   </Card>
-  <Card title="Channels" href="/channels/telegram" icon="message-square">
-    Channel-specific setup for Feishu, Microsoft Teams, WhatsApp, Telegram, Discord, and more.
+  <Card title="Feishu Channel" href="/channels/feishu" icon="message-square">
+    Feishu bot setup, event subscription, and message handling.
   </Card>
-  <Card title="Nodes" href="/nodes" icon="smartphone">
-    iOS and Android nodes with pairing, Canvas, camera, and device actions.
+  <Card title="Cognitive Layer" href="/cognitive/overview" icon="brain">
+    Persona, insights, proactive scheduling, and trust models.
   </Card>
   <Card title="Help" href="/help" icon="life-buoy">
     Common fixes and troubleshooting entry point.

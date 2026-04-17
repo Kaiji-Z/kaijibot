@@ -5,6 +5,9 @@ read_when: "You want multiple isolated agents (workspaces + auth) in one gateway
 status: active
 ---
 
+> 💡 **KaijiBot 说明：** 此页面中的频道示例保留了上游 OpenClaw 的多频道说明。KaijiBot 仅支持飞书频道，但核心概念（会话、消息格式、路由等）完全适用。
+
+
 # Multi-Agent Routing
 
 Goal: multiple _isolated_ agents (separate workspace + `agentDir` + sessions), plus multiple channel accounts (e.g. two WhatsApps) in one running Gateway. Inbound is routed to an agent via bindings.

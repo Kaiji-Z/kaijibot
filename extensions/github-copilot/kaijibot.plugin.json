@@ -37,7 +37,7 @@
     },
     "discovery.enabled": {
       "label": "Enable Discovery",
-      "help": "When false, OpenClaw keeps the GitHub Copilot plugin available but skips implicit startup discovery from ambient Copilot credentials."
+      "help": "When false, KaijiBot keeps the GitHub Copilot plugin available but skips implicit startup discovery from ambient Copilot credentials."
     }
   }
 }

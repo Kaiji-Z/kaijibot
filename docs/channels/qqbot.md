@@ -7,6 +7,9 @@ read_when:
 title: QQ Bot
 ---
 
+> ⚠️ **KaijiBot 注意：此频道不可用。** KaijiBot 仅支持 [飞书（Feishu）](/channels/feishu) 频道。此页面保留自上游 OpenClaw 文档，仅供参考。
+
+
 # QQ Bot
 
 QQ Bot connects to KaijiBot via the official QQ Bot API (WebSocket gateway). The

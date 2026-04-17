@@ -16,8 +16,8 @@ For onboarding details, see [Onboarding (CLI)](/start/wizard).
 ## TL;DR
 
 - **Tailoring lives outside the repo:** `~/.kaijibot/workspace` (workspace) + `~/.kaijibot/kaijibot.json` (config).
-- **Stable workflow:** install the macOS app; let it run the bundled Gateway.
-- **Bleeding edge workflow:** run the Gateway yourself via `pnpm gateway:watch`, then let the macOS app attach in Local mode.
+- **Standard workflow:** run `kaijibot setup`, configure Feishu credentials, then start the Gateway.
+- **Bleeding edge workflow:** run the Gateway yourself via `pnpm gateway:watch` for hot-reload development.
 
 ## Prereqs (from source)
 
@@ -54,18 +54,31 @@ After `pnpm build`, you can run the packaged CLI directly:
 node kaijibot.mjs gateway --port 18789 --verbose
 ```
 
-## Stable workflow (macOS app first)
+## Standard workflow (Feishu channel)
 
-1. Install + launch **KaijiBot.app** (menu bar).
-2. Complete the onboarding/permissions checklist (TCC prompts).
-3. Ensure Gateway is **Local** and running (the app manages it).
-4. Link surfaces (example: WhatsApp):
+1. Run setup:
 
 ```bash
-kaijibot channels login
+kaijibot setup
 ```
 
-5. Sanity check:
+2. Configure Feishu credentials:
+
+```bash
+kaijibot config set channels.feishu.appId "your-app-id"
+kaijibot config set channels.feishu.appSecret "your-app-secret"
+```
+
+Create your Feishu app at [open.feishu.cn](https://open.feishu.cn/) and enable
+WebSocket events.
+
+3. Start the Gateway:
+
+```bash
+kaijibot gateway
+```
+
+4. Sanity check:
 
 ```bash
 kaijibot health
@@ -73,19 +86,11 @@ kaijibot health
 
 If onboarding is not available in your build:
 
-- Run `kaijibot setup`, then `kaijibot channels login`, then start the Gateway manually (`kaijibot gateway`).
+- Run `kaijibot setup`, then `kaijibot gateway` manually.
 
 ## Bleeding edge workflow (Gateway in a terminal)
 
-Goal: work on the TypeScript Gateway, get hot reload, keep the macOS app UI attached.
-
-### 0) (Optional) Run the macOS app from source too
-
-If you also want the macOS app on the bleeding edge:
-
-```bash
-./scripts/restart-mac.sh
-```
+Goal: work on the TypeScript Gateway, get hot reload.
 
 ### 1) Start the dev Gateway
 
@@ -104,17 +109,7 @@ bun install
 bun run gateway:watch
 ```
 
-### 2) Point the macOS app at your running Gateway
-
-In **KaijiBot.app**:
-
-- Connection Mode: **Local**
-  The app will attach to the running gateway on the configured port.
-
-### 3) Verify
-
-- In-app Gateway status should read **“Using existing gateway …”**
-- Or via CLI:
+### 2) Verify
 
 ```bash
 kaijibot health
@@ -133,10 +128,7 @@ kaijibot health
 
 Use this when debugging auth or deciding what to back up:
 
-- **WhatsApp**: `~/.kaijibot/credentials/whatsapp/<accountId>/creds.json`
-- **Telegram bot token**: config/env or `channels.telegram.tokenFile` (regular file only; symlinks rejected)
-- **Discord bot token**: config/env or SecretRef (env/file/exec providers)
-- **Slack tokens**: config/env (`channels.slack.*`)
+- **Feishu credentials**: `channels.feishu.appId` and `channels.feishu.appSecret` in config or env
 - **Pairing allowlists**:
   - `~/.kaijibot/credentials/<channel>-allowFrom.json` (default account)
   - `~/.kaijibot/credentials/<channel>-<accountId>-allowFrom.json` (non-default accounts)
@@ -167,6 +159,5 @@ user service (no lingering needed). See [Gateway runbook](/gateway) for the syst
 
 - [Gateway runbook](/gateway) (flags, supervision, ports)
 - [Gateway configuration](/gateway/configuration) (config schema + examples)
-- [Discord](/channels/discord) and [Telegram](/channels/telegram) (reply tags + replyToMode settings)
+- [Feishu](/channels/feishu) (App ID, App Secret, WebSocket event setup)
 - [KaijiBot assistant setup](/start/kaijibot)
-- [macOS app](/platforms/macos) (gateway lifecycle)

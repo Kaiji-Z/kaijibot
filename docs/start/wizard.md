@@ -55,7 +55,7 @@ Onboarding starts with **QuickStart** (defaults) vs **Advanced** (full control).
     - Tool policy default for new local setups: `tools.profile: "coding"` (existing explicit profile is preserved)
     - DM isolation default: local onboarding writes `session.dmScope: "per-channel-peer"` when unset. Details: [CLI Setup Reference](/start/wizard-cli-reference#outputs-and-internals)
     - Tailscale exposure **Off**
-    - Telegram + WhatsApp DMs default to **allowlist** (you'll be prompted for your phone number)
+    - Feishu channel configured as the primary messaging channel (App ID and App Secret)
   </Tab>
   <Tab title="Advanced (full control)">
     - Exposes every step (mode, workspace, gateway, channels, daemon, skills).
@@ -77,7 +77,7 @@ Onboarding starts with **QuickStart** (defaults) vs **Advanced** (full control).
 3. **Gateway** — Port, bind address, auth mode, Tailscale exposure.
    In interactive token mode, choose default plaintext token storage or opt into SecretRef.
    Non-interactive token SecretRef path: `--gateway-token-ref-env <ENV_VAR>`.
-4. **Channels** — built-in and bundled chat channels such as BlueBubbles, Discord, Feishu, Google Chat, Mattermost, Microsoft Teams, QQ Bot, Signal, Slack, Telegram, WhatsApp, and more.
+4. **Channels** — Feishu is the primary chat channel. Configure your Feishu App ID and App Secret from [open.feishu.cn](https://open.feishu.cn/).
 5. **Daemon** — Installs a LaunchAgent (macOS), systemd user unit (Linux/WSL2), or native Windows Scheduled Task with per-user Startup-folder fallback.
    If token auth requires a token and `gateway.auth.token` is SecretRef-managed, daemon install validates it but does not persist the resolved token into supervisor service environment metadata.
    If token auth requires a token and the configured token SecretRef is unresolved, daemon install is blocked with actionable guidance.
@@ -123,5 +123,4 @@ For the deeper technical reference, including RPC details, see
 
 - CLI command reference: [`kaijibot onboard`](/cli/onboard)
 - Onboarding overview: [Onboarding Overview](/start/onboarding-overview)
-- macOS app onboarding: [Onboarding](/start/onboarding)
 - Agent first-run ritual: [Agent Bootstrapping](/start/bootstrapping)

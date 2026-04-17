@@ -6,6 +6,9 @@ read_when:
 title: "Nostr"
 ---
 
+> ⚠️ **KaijiBot 注意：此频道不可用。** KaijiBot 仅支持 [飞书（Feishu）](/channels/feishu) 频道。此页面保留自上游 OpenClaw 文档，仅供参考。
+
+
 # Nostr
 
 **Status:** Optional bundled plugin (disabled by default until configured).

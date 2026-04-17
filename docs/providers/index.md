@@ -11,7 +11,9 @@ title: "Provider Directory"
 KaijiBot can use many LLM providers. Pick a provider, authenticate, then set the
 default model as `provider/model`.
 
-Looking for chat channel docs (WhatsApp/Telegram/Discord/Slack/Mattermost (plugin)/etc.)? See [Channels](/channels).
+> 💡 **KaijiBot 默认使用 Z.AI (智谱 GLM) 作为主要 LLM 提供商。** 以下所有提供商均通过 pi-ai 通用适配器支持，无需单独安装插件。
+
+Looking for chat channel docs? See [Channels](/channels).
 
 ## Quick start
 
@@ -20,7 +22,7 @@ Looking for chat channel docs (WhatsApp/Telegram/Discord/Slack/Mattermost (plugi
 
 ```json5
 {
-  agents: { defaults: { model: { primary: "anthropic/claude-opus-4-6" } } },
+  agents: { defaults: { model: { primary: "zai/glm-5-turbo" } } },
 }
 ```
 

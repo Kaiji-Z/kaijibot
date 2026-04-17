@@ -6,6 +6,9 @@ read_when:
 title: "Zalo Personal"
 ---
 
+> ⚠️ **KaijiBot 注意：此频道不可用。** KaijiBot 仅支持 [飞书（Feishu）](/channels/feishu) 频道。此页面保留自上游 OpenClaw 文档，仅供参考。
+
+
 # Zalo Personal (unofficial)
 
 Status: experimental. This integration automates a **personal Zalo account** via native `zca-js` inside KaijiBot.

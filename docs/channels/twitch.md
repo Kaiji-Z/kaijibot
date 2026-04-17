@@ -5,6 +5,9 @@ read_when:
 title: "Twitch"
 ---
 
+> ⚠️ **KaijiBot 注意：此频道不可用。** KaijiBot 仅支持 [飞书（Feishu）](/channels/feishu) 频道。此页面保留自上游 OpenClaw 文档，仅供参考。
+
+
 # Twitch
 
 Twitch chat support via IRC connection. KaijiBot connects as a Twitch user (bot account) to receive and send messages in channels.

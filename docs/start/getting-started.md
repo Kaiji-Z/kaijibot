@@ -81,9 +81,8 @@ Need to install Node? See [Node setup](/install/node).
   <Step title="Send your first message">
     Type a message in the Control UI chat and you should get an AI reply.
 
-    Want to chat from your phone instead? The fastest channel to set up is
-    [Telegram](/channels/telegram) (just a bot token). See [Channels](/channels)
-    for all options.
+    Want to chat from Feishu instead? See the [Feishu channel guide](/channels/feishu)
+    — you just need an App ID and App Secret from [open.feishu.cn](https://open.feishu.cn/).
 
   </Step>
 </Steps>
@@ -123,8 +122,8 @@ kaijibot dashboard
 ## What to do next
 
 <Columns>
-  <Card title="Connect a channel" href="/channels" icon="message-square">
-    Discord, Feishu, iMessage, Matrix, Microsoft Teams, Signal, Slack, Telegram, WhatsApp, Zalo, and more.
+  <Card title="Connect Feishu" href="/channels/feishu" icon="message-square">
+    KaijiBot's primary messaging channel. Create a Feishu app, configure App ID and App Secret, and chat directly in Feishu.
   </Card>
   <Card title="Pairing and safety" href="/channels/pairing" icon="shield">
     Control who can message your agent.

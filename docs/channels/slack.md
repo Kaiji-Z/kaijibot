@@ -5,6 +5,9 @@ read_when:
 title: "Slack"
 ---
 
+> ⚠️ **KaijiBot 注意：此频道不可用。** KaijiBot 仅支持 [飞书（Feishu）](/channels/feishu) 频道。此页面保留自上游 OpenClaw 文档，仅供参考。
+
+
 # Slack
 
 Status: production-ready for DMs + channels via Slack app integrations. Default mode is Socket Mode; HTTP Request URLs are also supported.

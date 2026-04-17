@@ -1,50 +1,29 @@
 ---
-summary: "Messaging platforms KaijiBot can connect to"
+summary: "KaijiBot 支持的聊天频道"
 read_when:
-  - You want to choose a chat channel for KaijiBot
-  - You need a quick overview of supported messaging platforms
+  - 你想了解 KaijiBot 支持哪些聊天平台
 title: "Chat Channels"
 ---
 
 # Chat Channels
 
-KaijiBot can talk to you on any chat app you already use. Each channel connects via the Gateway.
-Text is supported everywhere; media and reactions vary by channel.
+KaijiBot 通过飞书（Feishu/Lark）与用户交互。飞书频道通过 WebSocket 长连接接收消息和事件，支持私聊和群聊。
 
-## Supported channels
+## 支持的频道
 
-- [BlueBubbles](/channels/bluebubbles) — **Recommended for iMessage**; uses the BlueBubbles macOS server REST API with full feature support (bundled plugin; edit, unsend, effects, reactions, group management — edit currently broken on macOS 26 Tahoe).
-- [Discord](/channels/discord) — Discord Bot API + Gateway; supports servers, channels, and DMs.
-- [Feishu](/channels/feishu) — Feishu/Lark bot via WebSocket (bundled plugin).
-- [Google Chat](/channels/googlechat) — Google Chat API app via HTTP webhook.
-- [iMessage (legacy)](/channels/imessage) — Legacy macOS integration via imsg CLI (deprecated, use BlueBubbles for new setups).
-- [IRC](/channels/irc) — Classic IRC servers; channels + DMs with pairing/allowlist controls.
-- [LINE](/channels/line) — LINE Messaging API bot (bundled plugin).
-- [Matrix](/channels/matrix) — Matrix protocol (bundled plugin).
-- [Mattermost](/channels/mattermost) — Bot API + WebSocket; channels, groups, DMs (bundled plugin).
-- [Microsoft Teams](/channels/msteams) — Bot Framework; enterprise support (bundled plugin).
-- [Nextcloud Talk](/channels/nextcloud-talk) — Self-hosted chat via Nextcloud Talk (bundled plugin).
-- [Nostr](/channels/nostr) — Decentralized DMs via NIP-04 (bundled plugin).
-- [QQ Bot](/channels/qqbot) — QQ Bot API; private chat, group chat, and rich media (bundled plugin).
-- [Signal](/channels/signal) — signal-cli; privacy-focused.
-- [Slack](/channels/slack) — Bolt SDK; workspace apps.
-- [Synology Chat](/channels/synology-chat) — Synology NAS Chat via outgoing+incoming webhooks (bundled plugin).
-- [Telegram](/channels/telegram) — Bot API via grammY; supports groups.
-- [Tlon](/channels/tlon) — Urbit-based messenger (bundled plugin).
-- [Twitch](/channels/twitch) — Twitch chat via IRC connection (bundled plugin).
-- [Voice Call](/plugins/voice-call) — Telephony via Plivo or Twilio (plugin, installed separately).
-- [WebChat](/web/webchat) — Gateway WebChat UI over WebSocket.
-- [WeChat](https://www.npmjs.com/package/@tencent-weixin/kaijibot-weixin) — Tencent iLink Bot plugin via QR login; private chats only.
-- [WhatsApp](/channels/whatsapp) — Most popular; uses Baileys and requires QR pairing.
-- [Zalo](/channels/zalo) — Zalo Bot API; Vietnam's popular messenger (bundled plugin).
-- [Zalo Personal](/channels/zalouser) — Zalo personal account via QR login (bundled plugin).
+- [飞书 / Feishu](/channels/feishu) — 飞书/Lark 机器人，通过 WebSocket 连接（内置插件）。支持私聊、群聊、富文本消息、事件订阅。
 
-## Notes
+## 上游频道（仅供参考）
 
-- Channels can run simultaneously; configure multiple and KaijiBot will route per chat.
-- Fastest setup is usually **Telegram** (simple bot token). WhatsApp requires QR pairing and
-  stores more state on disk.
-- Group behavior varies by channel; see [Groups](/channels/groups).
-- DM pairing and allowlists are enforced for safety; see [Security](/gateway/security).
-- Troubleshooting: [Channel troubleshooting](/channels/troubleshooting).
-- Model providers are documented separately; see [Model Providers](/providers/models).
+以下频道来自上游 OpenClaw 项目，**KaijiBot 中不可用**。页面保留供参考：
+
+- BlueBubbles, Discord, Google Chat, iMessage, IRC, LINE, Matrix, Mattermost, Microsoft Teams, Nextcloud Talk, Nostr, QQ Bot, Signal, Slack, Synology Chat, Telegram, Tlon, Twitch, WhatsApp, Zalo
+
+如需使用这些频道，请参考 [OpenClaw 上游项目](https://github.com/openclaw/openclaw)。
+
+## 相关文档
+
+- 群聊行为：[Groups](/channels/groups)
+- 安全与权限：[Security](/gateway/security)
+- 故障排除：[Channel troubleshooting](/channels/troubleshooting)
+- 模型提供商：[Model Providers](/providers/models)

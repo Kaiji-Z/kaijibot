@@ -2,7 +2,7 @@
   "name": "@kaijibot/github-copilot-provider",
   "version": "2026.4.12",
   "private": true,
-  "description": "OpenClaw GitHub Copilot provider plugin",
+  "description": "KaijiBot GitHub Copilot provider plugin",
   "type": "module",
   "devDependencies": {
     "@kaijibot/plugin-sdk": "workspace:*"

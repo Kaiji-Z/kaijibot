@@ -1,5 +1,5 @@
 ---
-summary: "KaijiBot capabilities across channels, routing, media, and UX."
+summary: "KaijiBot capabilities: Feishu channel, cognitive AI, routing, media, and UX."
 read_when:
   - You want a full list of what KaijiBot supports
 title: "Features"
@@ -10,11 +10,11 @@ title: "Features"
 ## Highlights
 
 <Columns>
-  <Card title="Channels" icon="message-square">
-    Discord, iMessage, Signal, Slack, Telegram, WhatsApp, WebChat, and more with a single Gateway.
+  <Card title="Feishu Channel" icon="message-square">
+    Full Feishu integration via WebSocket — group chats, DMs, rich messages, and file sharing.
   </Card>
-  <Card title="Plugins" icon="plug">
-    Bundled plugins add Matrix, Nextcloud Talk, Nostr, Twitch, Zalo, and more without separate installs in normal current releases.
+  <Card title="Cognitive AI" icon="brain">
+    Proactive insights, persona learning, cross-domain mapping, and trust evolution.
   </Card>
   <Card title="Routing" icon="route">
     Multi-agent routing with isolated sessions.
@@ -22,24 +22,30 @@ title: "Features"
   <Card title="Media" icon="image">
     Images, audio, video, documents, and image/video generation.
   </Card>
-  <Card title="Apps and UI" icon="monitor">
-    Web Control UI and macOS companion app.
+  <Card title="Memory" icon="database">
+    Semantic memory with LanceDB vector store and Wiki knowledge base.
   </Card>
-  <Card title="Mobile nodes" icon="smartphone">
-    iOS and Android nodes with pairing, voice/chat, and rich device commands.
+  <Card title="Tools" icon="wrench">
+    Browser automation, web search, cron jobs, skills, and plugin ecosystem.
   </Card>
 </Columns>
 
 ## Full list
 
-**Channels:**
+**Channel:**
 
-- Built-in channels include Discord, Google Chat, iMessage (legacy), IRC, Signal, Slack, Telegram, WebChat, and WhatsApp
-- Bundled plugin channels include BlueBubbles for iMessage, Feishu, LINE, Matrix, Mattermost, Microsoft Teams, Nextcloud Talk, Nostr, QQ Bot, Synology Chat, Tlon, Twitch, Zalo, and Zalo Personal
-- Optional separately installed channel plugins include Voice Call and third-party packages such as WeChat
-- Third-party channel plugins can extend the Gateway further, such as WeChat
+- Feishu (飞书) — the sole messaging channel, with WebSocket long-connection and event subscription
 - Group chat support with mention-based activation
 - DM safety with allowlists and pairing
+- Rich message types: text, images, files, interactive cards
+
+**Cognitive AI (proactive layer):**
+
+- **Persona system** — per-user cognitive model that learns identity, domains, interests, and communication style over time; dual extraction (rule-based fast path + LLM deep path)
+- **Proactive insights** — cross-domain discovery, pending-question follow-ups, domain-depth nudges; serendipity-scored for optimal novelty
+- **Cost-sensitive gate** — PRISM-style graded gating weighs need (pNeed) × acceptance (pAccept) against disturbance cost before every proactive contact
+- **Trust evolution** — four-stage relationship model (orientation → exploration → rapport → partnership) with Thompson Sampling preference learning
+- **Feedback collection** — explicit and implicit signals (reply length, topic continuation, depth cues) continuously refine per-topic preference probabilities
 
 **Agent:**
 
@@ -50,9 +56,8 @@ title: "Features"
 
 **Auth and providers:**
 
-- 35+ model providers (Anthropic, OpenAI, Google, and more)
-- Subscription auth via OAuth (e.g. OpenAI Codex)
-- Custom and self-hosted provider support (vLLM, SGLang, Ollama, and any OpenAI-compatible or Anthropic-compatible endpoint)
+- Z.AI (智谱 GLM) as primary provider (14 models including GLM-5-turbo)
+- OpenAI-compatible provider support (vLLM, SGLang, Ollama, and any OpenAI-compatible or Anthropic-compatible endpoint)
 
 **Media:**
 
@@ -61,16 +66,14 @@ title: "Features"
 - Voice note transcription
 - Text-to-speech with multiple providers
 
-**Apps and interfaces:**
+**Interfaces:**
 
 - WebChat and browser Control UI
-- macOS menu bar companion app
-- iOS node with pairing, Canvas, camera, screen recording, location, and voice
-- Android node with pairing, chat, voice, Canvas, camera, and device commands
+- CLI and TUI terminal interfaces
 
 **Tools and automation:**
 
-- Browser automation, exec, sandboxing
-- Web search (Brave, DuckDuckGo, Exa, Firecrawl, Gemini, Grok, Kimi, MiniMax Search, Ollama Web Search, Perplexity, SearXNG, Tavily)
+- Browser automation (Playwright), exec, sandboxing
+- Web search (Exa, Tavily)
 - Cron jobs and heartbeat scheduling
-- Skills, plugins, and workflow pipelines (Lobster)
+- Skills (21 built-in, ClawHub marketplace) and plugin ecosystem

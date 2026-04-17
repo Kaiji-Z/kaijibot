@@ -5,6 +5,9 @@ read_when:
 title: "Google Chat"
 ---
 
+> ⚠️ **KaijiBot 注意：此频道不可用。** KaijiBot 仅支持 [飞书（Feishu）](/channels/feishu) 频道。此页面保留自上游 OpenClaw 文档，仅供参考。
+
+
 # Google Chat (Chat API)
 
 Status: ready for DMs + spaces via Google Chat API webhooks (HTTP only).

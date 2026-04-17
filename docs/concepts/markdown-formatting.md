@@ -7,6 +7,9 @@ read_when:
 title: "Markdown Formatting"
 ---
 
+> 💡 **KaijiBot 说明：** 此页面中的频道示例保留了上游 OpenClaw 的多频道说明。KaijiBot 仅支持飞书频道，但核心概念（会话、消息格式、路由等）完全适用。
+
+
 # Markdown formatting
 
 KaijiBot formats outbound Markdown by converting it into a shared intermediate

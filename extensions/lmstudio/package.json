@@ -2,7 +2,7 @@
   "name": "@kaijibot/lmstudio-provider",
   "version": "2026.4.6",
   "private": true,
-  "description": "OpenClaw LM Studio provider plugin",
+  "description": "KaijiBot LM Studio provider plugin",
   "type": "module",
   "kaijibot": {
     "extensions": [

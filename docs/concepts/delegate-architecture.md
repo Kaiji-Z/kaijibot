@@ -5,6 +5,9 @@ read_when: "You want an agent with its own identity that acts on behalf of human
 status: active
 ---
 
+> 💡 **KaijiBot 说明：** 此页面中的频道示例保留了上游 OpenClaw 的多频道说明。KaijiBot 仅支持飞书频道，但核心概念（会话、消息格式、路由等）完全适用。
+
+
 # Delegate Architecture
 
 Goal: run KaijiBot as a **named delegate** — an agent with its own identity that acts "on behalf of" people in an organization. The agent never impersonates a human. It sends, reads, and schedules under its own account with explicit delegation permissions.
