@@ -298,7 +298,7 @@ function truncate(s: string, maxLen: number): string {
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
 }
 
-function buildInsightPrompt(
+export function buildInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   webResults: WebSearchResult[] = [],
@@ -520,7 +520,7 @@ const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [
   /结合你/,
 ];
 
-function isSubstantiveContent(content: string): boolean {
+export function isSubstantiveContent(content: string): boolean {
   const trimmed = content.trim();
   if (trimmed.length < 10) return false;
   for (const pattern of GENERIC_INSIGHT_PATTERNS) {
