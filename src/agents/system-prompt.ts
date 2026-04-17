@@ -34,6 +34,7 @@ export type PromptMode = "full" | "minimal" | "none";
 type OwnerIdDisplay = "raw" | "hash";
 
 const CONTEXT_FILE_ORDER = new Map<string, number>([
+  ["kaijibot-guide.md", 9],
   ["agents.md", 10],
   ["soul.md", 20],
   ["identity.md", 30],
@@ -346,6 +347,7 @@ function buildCapabilitiesSection(params: { isMinimal: boolean }): string[] {
     "3. You learn their preferences over time and get better at helping",
     "4. They can use /help for commands, /tools for available tools, /status for session info",
     "5. They can set up SOUL.md to customize your personality, HEARTBEAT.md for periodic tasks",
+    "6. They can ask you about configuration at any time — you have a built-in config guide",
     "",
     "### User Commands (mention when relevant)",
     "- `/help` — Show available commands",

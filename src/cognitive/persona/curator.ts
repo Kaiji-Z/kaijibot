@@ -155,7 +155,7 @@ export function mergeExtraction(
     if (words.length === 0) return false;
     if (words.length === 1 && !TECH_DOMAIN_TERMS.has(words[0]!)) return false;
     const contentWords = words.filter(w => !ENGLISH_STOPWORDS.has(w));
-    return contentWords.length >= 1;
+    return contentWords.length >= 2;
   };
   const isValidFocus = (s: string) => {
     if (s.length < 2 || s.length > 30 || /^```/.test(s) || /^[^\p{L}\p{N}]+$/u.test(s)) return false;
@@ -163,7 +163,8 @@ export function mergeExtraction(
     return true;
   };
   const isValidQuestion = (s: string) =>
-    s.length >= 4 && s.length <= 100 && !s.includes("\\n") && !/[#*_~`>|]{3,}/.test(s);
+    s.length >= 4 && s.length <= 100 && !s.includes("\\n") && !/[#*_~`>|]{3,}/.test(s)
+    && !/^ou_[a-f0-9]{20,}/.test(s) && !/[\"\\]]$/.test(s.trim());
 
   const newRecentFocus = [...new Set([...extraction.recentFocus, ...persona.recentFocus])]
     .filter(isValidFocus)
@@ -214,9 +215,26 @@ export function mergeExtraction(
     newLifecycle.lastStageTransitionAt = now;
   }
 
+  const expertDomains: string[] = [];
+  const interestDomains: string[] = [];
+  const curiosityDomains: string[] = [];
+  for (const [name, node] of Object.entries(newDomains)) {
+    if (node.depth >= 4 && node.recurrence >= 10) expertDomains.push(name);
+    else if (node.depth >= 2) interestDomains.push(name);
+    else if (node.depth >= 1) curiosityDomains.push(name);
+  }
+
+  const newIdentity = {
+    ...persona.identity,
+    coreTraits: newCoreTraits,
+    expertDomains: expertDomains.length > 0 ? expertDomains : persona.identity.expertDomains,
+    interestDomains: interestDomains.length > 0 ? interestDomains : persona.identity.interestDomains,
+    curiosityDomains: curiosityDomains.length > 0 ? curiosityDomains : persona.identity.curiosityDomains,
+  };
+
   return {
     ...persona,
-    identity: { ...persona.identity, coreTraits: newCoreTraits },
+    identity: newIdentity,
     domains: newDomains,
     recentFocus: newRecentFocus,
     pendingQuestions: newPendingQuestions,

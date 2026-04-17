@@ -125,7 +125,7 @@ export async function generateInsightCandidatesLLM(
       {
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 500,
-        temperature: 1.0,
+        temperature: 0.85,
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
@@ -187,24 +187,36 @@ function enrichWithWebSources(
   };
 }
 
-/** Random prompt framework variants — each shapes the model's output differently. */
+/** Prompt framework variants — each guides the model to produce a specific TYPE of quality insight. */
 const PROMPT_FRAMES = [
-  (topic: string) =>
-    `你脑子里突然冒出一个跟${topic}有关的想法，直接说出来。`,
-  (topic: string) =>
-    `关于${topic}，你想到了什么？自然地说出来。`,
-  (topic: string) =>
-    `如果${topic}让你突然想到了什么，一句话说出来。`,
-  (topic: string) =>
-    `${topic}——说说你现在的想法。`,
-  (topic: string) =>
-    `作为一个对${topic}很感兴趣的人，你现在脑子里闪过什么？`,
+  (topic: string, extra: { pendingQuestions: string[]; domains: string[] }) => {
+    if (extra.pendingQuestions.length > 0) {
+      return `用户之前问过"${extra.pendingQuestions[0]!}"但没得到满意答案。你现在对这个问题的理解有进展了吗？用 1-2 句话分享你的思考。`;
+    }
+    return `关于${topic}，你观察到了一个用户可能还没注意到的趋势或细节。自然地说出来。`;
+  },
+  (topic: string, extra: { pendingQuestions: string[]; domains: string[] }) => {
+    if (extra.domains.length >= 2) {
+      return `${topic}和${extra.domains[1]!}之间有一个有趣的关联，你发现了什么？自然地聊聊。`;
+    }
+    return `你发现${topic}领域最近有个容易被忽略的变化，值得跟用户提一下。用 1-2 句话说说。`;
+  },
+  (topic: string, _extra: { pendingQuestions: string[]; domains: string[] }) =>
+    `你有一个关于${topic}的具体见解——不是泛泛而谈，而是一个明确的观察或判断。直接说出来。`,
+  (topic: string, extra: { pendingQuestions: string[]; domains: string[] }) => {
+    if (extra.domains.length >= 2) {
+      return `从${extra.domains[extra.domains.length - 1]!}的角度来看${topic}，有什么不一样的理解？分享你的看法。`;
+    }
+    return `关于${topic}，你有一个不同于常识的观点。自信地说出来。`;
+  },
+  (topic: string, _extra: { pendingQuestions: string[]; domains: string[] }) =>
+    `你在思考${topic}时，突然意识到一个实用的建议或行动方向。简洁地分享。`,
 ] as const;
 
-function pickPromptFrame(topics: string[]): string {
+function pickPromptFrame(topics: string[], pendingQuestions: string[], domainNames: string[]): string {
   const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
   const frame = PROMPT_FRAMES[Math.floor(Math.random() * PROMPT_FRAMES.length)];
-  return frame(topic);
+  return frame(topic, { pendingQuestions, domains: domainNames });
 }
 
 function buildInsightPrompt(
@@ -273,7 +285,18 @@ function buildInsightPrompt(
     : "";
 
   // Random prompt frame for natural variety
-  const promptFrame = pickPromptFrame(input.targetDomains);
+  const domainNames = Object.keys(persona.domains);
+  const promptFrame = pickPromptFrame(input.targetDomains, persona.pendingQuestions, domainNames);
+
+  // Inject strongest co-occurrence connections from learned domain graph
+  const coOccurrenceBlock = persona.domainGraph && persona.domainGraph.edges.length > 0
+    ? persona.domainGraph.edges
+        .filter(e => e.observations >= 3)
+        .sort((a, b) => b.observations - a.observations)
+        .slice(0, 5)
+        .map(e => `${e.source} ↔ ${e.target} (${e.observations}次共现)`)
+        .join("\n")
+    : "";
 
   return `You ARE the AI assistant — speaking in your own voice, personality, and tone. You are NOT a system or a tool. You are reaching out proactively to share a thought that crossed your mind about something related to this user's interests.
 
@@ -281,6 +304,7 @@ ${identityBlock}
 
 USER'S KNOWLEDGE DOMAINS:
 ${userDomains || "Not yet established"}
+${coOccurrenceBlock ? `\nSTRONGEST CROSS-DOMAIN CONNECTIONS (user often discusses these together):\n${coOccurrenceBlock}` : ""}
 
 Recent focus: ${recentFocus || "None"}
 Pending questions: ${pendingQuestions || "None"}
@@ -294,7 +318,15 @@ ${promptFrame}
 - 用中文
 - 不要用列表或编号格式
 - 不要以问号结尾
+- 不要泛泛而谈，要说具体的观察、判断或建议
+- 不要说"最近在关注"、"你有没有想过"、"挺有意思的"这类空洞开头
 ${webResults.length > 0 ? "- 如果引用了事实，自然地融入内容里，不要说'看到'或'读到'" : ""}
+
+好洞察的标准（满足至少一条）：
+- 跨领域连接：把用户不同兴趣领域的知识关联起来
+- 解答悬问：对用户之前问过但没得到答案的问题提供新视角
+- 实用建议：给一个明确的行动方向或具体建议
+- 反常识观点：挑战用户可能的固有认知
 
 CRITICAL: The "content" field must sound like YOU (the assistant) speaking in your own voice — the same personality, mannerisms, and tone the user knows from regular conversations. NOT like a formal report or system notification.
 
