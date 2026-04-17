@@ -23,7 +23,7 @@ describe("formatCliBannerLine", () => {
       richTty: false,
     });
 
-    expect(line).toBe("🦞 KaijiBot 2026.3.7 (abc1234)");
+    expect(line).toBe("🧠 KaijiBot 2026.3.7 (abc1234)");
   });
 
   it("uses default tagline when cli.banner.taglineMode is default", () => {
@@ -34,7 +34,7 @@ describe("formatCliBannerLine", () => {
       richTty: false,
     });
 
-    expect(line).toBe("🦞 KaijiBot 2026.3.7 (abc1234) — All your chats, one KaijiBot.");
+    expect(line).toBe("🧠 KaijiBot 2026.3.7 (abc1234) — 认知驱动，主动思考。");
   });
 
   it("prefers explicit tagline mode over config", () => {
@@ -46,6 +46,6 @@ describe("formatCliBannerLine", () => {
       mode: "default",
     });
 
-    expect(line).toBe("🦞 KaijiBot 2026.3.7 (abc1234) — All your chats, one KaijiBot.");
+    expect(line).toBe("🧠 KaijiBot 2026.3.7 (abc1234) — 认知驱动，主动思考。");
   });
 });

@@ -221,7 +221,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.kaijibot.ai/cli/age
         `
 ${theme.heading("Examples:")}
 ${formatHelpExamples([
-  ['kaijibot agents set-identity --agent main --name "KaijiBot" --emoji "🦞"', "Set name + emoji."],
+  ['kaijibot agents set-identity --agent main --name "KaijiBot" --emoji "🧠"', "Set name + emoji."],
   ["kaijibot agents set-identity --agent main --avatar avatars/kaijibot.png", "Set avatar path."],
   [
     "kaijibot agents set-identity --workspace ~/.kaijibot/workspace --from-identity",

@@ -1,6 +1,6 @@
 {
   "name": "kaijibot",
-  "version": "2026.4.10",
+  "version": "0.1.0",
   "description": "Proactive AI assistant gateway for Chinese users — Feishu + Z.AI (智谱 GLM) with cognitive insight system",
   "keywords": ["ai", "feishu", "lark", "zhipu", "glm", "ollama", "lmstudio", "chatbot", "proactive-ai", "cognitive"],
   "homepage": "https://github.com/Kaiji-Z/kaijibot#readme",

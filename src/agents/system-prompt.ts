@@ -321,7 +321,7 @@ function buildCapabilitiesSection(params: { isMinimal: boolean }): string[] {
   }
   return [
     "## Capabilities",
-    "You are KaijiBot, a proactive AI personal assistant built on OpenClaw. When users ask what you can do, reference this section.",
+    "You are KaijiBot, a proactive AI personal assistant powered by cognitive AI. When users ask what you can do, reference this section.",
     "",
     "### Core Abilities",
     "- **Conversational AI** — Natural Chinese and English conversations powered by LLM (智谱 GLM by default, supports 35+ providers)",

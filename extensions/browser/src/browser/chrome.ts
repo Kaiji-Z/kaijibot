@@ -377,7 +377,7 @@ export async function launchKaijiBotChrome(
         name: profile.name,
         color: profile.color,
       });
-      log.info(`🦞 kaijibot browser profile decorated (${profile.color})`);
+      log.info(`🧠 kaijibot browser profile decorated (${profile.color})`);
     } catch (err) {
       log.warn(`kaijibot browser profile decoration failed: ${String(err)}`);
     }
@@ -435,7 +435,7 @@ export async function launchKaijiBotChrome(
 
   const pid = proc.pid ?? -1;
   log.info(
-    `🦞 kaijibot browser started (${exe.kind}) profile "${profile.name}" on 127.0.0.1:${profile.cdpPort} (pid ${pid})`,
+    `🧠 kaijibot browser started (${exe.kind}) profile "${profile.name}" on 127.0.0.1:${profile.cdpPort} (pid ${pid})`,
   );
 
   return {
