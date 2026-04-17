@@ -15,7 +15,7 @@ and a working chat session.
 ## What you need
 
 - **Node.js** — Node 24 recommended (Node 22.14+ also supported)
-- **An API key** from a model provider (Anthropic, OpenAI, Google, etc.) — onboarding will prompt you
+- **An API key** from a model provider — 国内用户推荐 Z.AI（智谱 GLM）、DeepSeek、通义千问（Qwen）、Kimi（Moonshot），onboarding 向导会引导你完成配置
 
 <Tip>
 Check your Node version with `node --version`.
@@ -58,6 +58,14 @@ Need to install Node? See [Node setup](/install/node).
 
     The wizard walks you through choosing a model provider, setting an API key,
     and configuring the Gateway. It takes about 2 minutes.
+
+    <Tip>
+    KaijiBot 支持 40+ 个 LLM 提供商。国内用户推荐优先选择：
+    - **Z.AI（智谱 GLM）** — 默认选项，国内访问最快
+    - **DeepSeek** — 性价比极高
+    - **通义千问（Qwen）** — 阿里云，中文能力强
+    - **Kimi（Moonshot）** — 长上下文 200K
+    </Tip>
 
     See [Onboarding (CLI)](/start/wizard) for the full reference.
 

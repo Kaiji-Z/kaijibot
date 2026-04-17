@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/openshell-sandbox",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot OpenShell sandbox backend",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

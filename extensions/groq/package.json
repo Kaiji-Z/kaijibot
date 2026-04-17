@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/groq-provider",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot Groq media-understanding provider",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -43,7 +43,7 @@ title: "KaijiBot"
 
 ## What is KaijiBot?
 
-KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https://github.com/openclaw/openclaw), tailored for Chinese users with deep Feishu integration. It connects to LLM providers like Z.AI (智谱 GLM), OpenAI, Ollama, and LMStudio through a single Gateway — and adds a **cognitive AI layer** that makes the assistant genuinely proactive.
+KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https://github.com/openclaw/openclaw), tailored for Chinese users with deep Feishu integration. It connects to **40+ LLM providers** — Z.AI (智谱 GLM), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds a **cognitive AI layer** that makes the assistant genuinely proactive.
 
 **Who is it for?** Developers and power users who want an AI partner that knows them, learns their interests, and initiates conversations with relevant insights — all running on their own hardware.
 
@@ -51,11 +51,11 @@ KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https:/
 
 - **Proactive cognitive AI** — builds a per-user persona, generates cross-domain insights, and decides when to reach out based on learned trust and preferences
 - **Feishu-native** — deep integration with Feishu via WebSocket long-connection and event subscription (the only messaging channel)
-- **Multi-provider LLM** — primary support for Z.AI (GLM-5-turbo), with OpenAI-compatible, Ollama, and LMStudio backends
+- **Multi-provider LLM** — 40+ providers: Z.AI (GLM-5-turbo), DeepSeek, Qwen, Kimi, Anthropic Claude, Google Gemini, OpenRouter, LiteLLM, Ollama, and more
 - **Self-hosted**: runs on your hardware, your rules — no data leaves your machine unless you configure search providers
 - **Open source**: MIT licensed, based on the OpenClaw platform
 
-**What do you need?** Node 22+ (Node 24 recommended), a Z.AI API key (or any supported provider), a Feishu bot app, and 5 minutes.
+**What do you need?** Node 22+ (Node 24 recommended), an API key from any supported provider (Z.AI recommended), a Feishu bot app, and 5 minutes.
 
 ## How it works
 

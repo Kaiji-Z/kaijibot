@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/vercel-ai-gateway-provider",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot Vercel AI Gateway provider plugin",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

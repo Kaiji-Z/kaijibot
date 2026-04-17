@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/anthropic-vertex-provider",
+  "version": "2026.4.10",
+  "private": true,
+  "description": "KaijiBot Anthropic Vertex provider plugin",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
