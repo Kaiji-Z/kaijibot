@@ -80,40 +80,24 @@ async function requireRiskAcknowledgement(params: {
 
   await params.prompter.note(
     [
-      "Security warning — please read.",
+      "欢迎使用 KaijiBot 🧠",
       "",
-      "KaijiBot is a hobby project and still in beta. Expect sharp edges.",
-      "By default, KaijiBot is a personal agent: one trusted operator boundary.",
-      "This bot can read files and run actions if tools are enabled.",
-      "A bad prompt can trick it into doing unsafe things.",
+      "KaijiBot 是一个具备系统访问能力的 AI 助手：",
+      "- 可以读写文件、执行命令、搜索网络",
+      "- 会随对话逐渐学习你的偏好和兴趣（认知系统）",
+      "- 可能会主动联系你分享有价值的洞察",
       "",
-      "KaijiBot is not a hostile multi-tenant boundary by default.",
-      "If multiple users can message one tool-enabled agent, they share that delegated tool authority.",
-      "",
-      "If you’re not comfortable with security hardening and access control, don’t run KaijiBot.",
-      "Ask someone experienced to help before enabling tools or exposing it to the internet.",
-      "",
-      "Recommended baseline:",
-      "- Pairing/allowlists + mention gating.",
-      "- Multi-user/shared inbox: split trust boundaries (separate gateway/credentials, ideally separate OS users/hosts).",
-      "- Sandbox + least-privilege tools.",
-      "- Shared inboxes: isolate DM sessions (`session.dmScope: per-channel-peer`) and keep tool access minimal.",
-      "- Keep secrets out of the agent’s reachable filesystem.",
-      "- Use the strongest available model for any bot with tools or untrusted inboxes.",
-      "",
-      "Run regularly:",
-      "kaijibot security audit --deep",
-      "kaijibot security audit --fix",
-      "",
-      "Must read: https://docs.kaijibot.ai/gateway/security",
+      "安全提示：",
+      "- 请勿在不可信的网络环境中暴露 Gateway",
+      "- 不要把 API Key 或敏感信息放在 agent 可访问的路径下",
+      "- 多人共用时，使用 session.dmScope: per-channel-peer 隔离会话",
     ].join("\n"),
-    "Security",
+    "安全须知",
   );
 
   const ok = await params.prompter.confirm({
-    message:
-      "I understand this is personal-by-default and shared/multi-user use requires lock-down. Continue?",
-    initialValue: false,
+    message: "我已了解以上内容，继续配置？",
+    initialValue: true,
   });
   if (!ok) {
     throw new WizardCancelledError("risk not accepted");
@@ -144,7 +128,7 @@ export async function runSetupWizard(
         [
           ...snapshot.issues.map((iss) => `- ${iss.path}: ${iss.message}`),
           "",
-          "Docs: https://docs.kaijibot.ai/gateway/configuration",
+          "Docs: https://github.com/Kaiji-Z/kaijibot",
         ].join("\n"),
         "Config issues",
       );

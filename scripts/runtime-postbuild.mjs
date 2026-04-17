@@ -18,13 +18,6 @@ const ROOT_RUNTIME_ALIAS_PATTERN = /^(?<base>.+\.(?:runtime|contract))-[A-Za-z0-
  * Each entry: { src: repo-root-relative source, dest: dist-relative dest }
  */
 export const STATIC_EXTENSION_ASSETS = [
-  // acpx MCP proxy — co-deployed alongside the acpx index bundle so that
-  // `path.resolve(dirname(import.meta.url), "mcp-proxy.mjs")` resolves correctly
-  // at runtime from the built ACPX extension directory.
-  {
-    src: "extensions/acpx/src/runtime-internals/mcp-proxy.mjs",
-    dest: "dist/extensions/acpx/mcp-proxy.mjs",
-  },
   // diffs viewer runtime bundle — co-deployed inside the plugin package so the
   // built bundle can resolve `./assets/viewer-runtime.js` from dist.
   {
