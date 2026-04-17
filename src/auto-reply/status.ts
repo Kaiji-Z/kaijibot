@@ -788,7 +788,7 @@ export function buildStatusMessage(args: StatusArgs): string {
     return "channel override";
   })();
   const modelNote = channelModelNote ? ` · ${channelModelNote}` : "";
-  const modelLine = `🧠 Model: ${selectedModelLabel}${selectedAuthLabel}${modelNote}`;
+  const modelLine = `👾 Model: ${selectedModelLabel}${selectedAuthLabel}${modelNote}`;
 
   // Show configured fallback models (from agent model config)
   const configuredFallbacks = (() => {
@@ -809,7 +809,7 @@ export function buildStatusMessage(args: StatusArgs): string {
       } (${fallbackState.reason ?? "selected model unavailable"})`
     : null;
   const commit = resolveCommitHash({ moduleUrl: import.meta.url });
-  const versionLine = `🧠 KaijiBot ${VERSION}${commit ? ` (${commit})` : ""}`;
+  const versionLine = `👾 KaijiBot ${VERSION}${commit ? ` (${commit})` : ""}`;
   const usagePair = formatUsagePair(inputTokens, outputTokens);
   const cacheLine = formatCacheLine(inputTokens, cacheRead, cacheWrite);
   const costLine = costLabel ? `💵 Cost: ${costLabel}` : null;

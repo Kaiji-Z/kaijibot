@@ -329,7 +329,7 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       detailKeys: [],
     },
     memory_search: {
-      emoji: "🧠",
+      emoji: "👾",
       title: "Memory Search",
       detailKeys: ["query"],
     },

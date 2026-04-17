@@ -647,7 +647,7 @@ describe("doctor config flow", () => {
               enabled: true,
               reactions: {
                 queued: "⏳",
-                thinking: "🧠",
+                thinking: "👾",
                 tool: "🔧",
                 done: "✅",
                 error: "❌",
@@ -676,7 +676,7 @@ describe("doctor config flow", () => {
       enabled: true,
       reactions: {
         queued: "⏳",
-        thinking: "🧠",
+        thinking: "👾",
         tool: "🔧",
         done: "✅",
         error: "❌",

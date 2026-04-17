@@ -82,7 +82,7 @@ export async function buildContextReply(params: HandleCommandsParams): Promise<R
   if (!sub || sub === "help") {
     return {
       text: [
-        "🧠 /context",
+        "👾 /context",
         "",
         "What counts as context (high-level), plus a breakdown mode.",
         "",
@@ -253,7 +253,7 @@ export async function buildContextReply(params: HandleCommandsParams): Promise<R
 
     return {
       text: [
-        "🧠 Context breakdown (detailed)",
+        "👾 Context breakdown (detailed)",
         ...sharedContextLines,
         ...(perSkill.lines.length ? ["Top skills (prompt entry size):", ...perSkill.lines] : []),
         ...(perSkill.omitted ? [`… (+${perSkill.omitted} more skills)`] : []),
@@ -285,7 +285,7 @@ export async function buildContextReply(params: HandleCommandsParams): Promise<R
 
   return {
     text: [
-      "🧠 Context breakdown",
+      "👾 Context breakdown",
       ...sharedContextLines,
       toolListLine,
       toolSchemaLine,

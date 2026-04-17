@@ -18,7 +18,7 @@ export type StatusReactionAdapter = {
 
 export type StatusReactionEmojis = {
   queued?: string; // Default: uses initialEmoji param
-  thinking?: string; // Default: "🧠"
+  thinking?: string; // Default: "👾"
   tool?: string; // Default: "🛠️"
   coding?: string; // Default: "💻"
   web?: string; // Default: "🌐"

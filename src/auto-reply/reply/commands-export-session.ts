@@ -197,7 +197,7 @@ export async function buildExportSessionReply(params: HandleCommandsParams): Pro
       "",
       `📄 File: ${displayPath}`,
       `📊 Entries: ${entries.length}`,
-      `🧠 System prompt: ${systemPrompt.length.toLocaleString()} chars`,
+      `👾 System prompt: ${systemPrompt.length.toLocaleString()} chars`,
       `🔧 Tools: ${tools.length}`,
     ].join("\n"),
   };
