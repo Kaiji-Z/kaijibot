@@ -300,3 +300,130 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("insight quality (live LLM)", () => {
     expect(uniqueOpenings.size).toBeGreaterThan(results.length * 0.5);
   }, 60_000);
 });
+
+describe("insight pipeline validation (mock LLM)", () => {
+  const persona = makeFullStackDevPersona();
+  const input = makeInput(["认知系统设计"]);
+
+  const BAD_INSIGHTS = [
+    {
+      label: "被人X但换个角度 template",
+      content: "Python的GIL被人骂了这么多年，但换个角度看它其实做对了一件事——它让单线程的心智模型就能写出正确的并发代码。",
+      shouldFilter: true,
+    },
+    {
+      label: "值得关注 template",
+      content: "最近出现一些值得关注的新方向，结合你在这个领域的深度理解，可能会影响你的技术决策。",
+      shouldFilter: true,
+    },
+    {
+      label: "你有没有想过 template",
+      content: "你有没有想过，TypeScript的类型系统其实在很多方面已经超越了Java？挺有意思的。",
+      shouldFilter: true,
+    },
+    {
+      label: "换个角度来看 template",
+      content: "换个角度来看，Rust的借用检查器其实就是在做轻量级形式化验证，这是大多数语言不敢做的事。",
+      shouldFilter: true,
+    },
+    {
+      label: "generic '关于X' opener",
+      content: "关于认知系统设计，最近在关注一些新的方向，有趣的是PRISM门控和SIRI循环的结合。",
+      shouldFilter: true,
+    },
+    {
+      label: "generic '在X领域' opener",
+      content: "在认知系统设计领域，结合你在这个领域的深度理解，不得不说跨域洞察是最值得关注的方向。",
+      shouldFilter: true,
+    },
+  ];
+
+  const GOOD_INSIGHTS = [
+    {
+      label: "specific persona-anchored insight with keyInsight",
+      content: "PRISM门控的成本敏感设计让你可以用false alarm rate来控制推送频率——如果你把cFa降到0.2，洞察几乎不会被打扰，但sensitivity也会掉到0.4，这意味着你每10次SIRI循环只能抓到4个真正有价值的洞察。",
+      minScore: 7,
+    },
+    {
+      label: "cross-domain with concrete connection",
+      content: "Zod验证在插件SDK里解决的问题和你PRISM门控里的cost function是同一类问题——两者都是在做trust boundary的validation，只不过一个在类型层一个在决策层。",
+      minScore: 7,
+    },
+    {
+      label: "practical action tied to recentFocus",
+      content: "你最近在调Persona提取过滤器，可以试试把keyInsight的置信度阈值从0.5降到0.3——SIRI循环的resolve阶段会因为拿到更多锚点而生成更具体的洞察，代价是偶尔会有噪声。",
+      minScore: 7,
+    },
+  ];
+
+  for (const bad of BAD_INSIGHTS) {
+    it(`isSubstantiveContent filters out: ${bad.label}`, () => {
+      const result = isSubstantiveContent(bad.content);
+      expect(result).toBe(!bad.shouldFilter);
+    });
+  }
+
+  for (const good of GOOD_INSIGHTS) {
+    it(`evaluates "${good.label}" at ≥ ${good.minScore}/10`, () => {
+      const eval_ = evaluateQuality(good.content, persona);
+      expect(eval_.score).toBeGreaterThanOrEqual(good.minScore);
+    });
+  }
+
+  it("all GOOD insights pass isSubstantiveContent", () => {
+    for (const good of GOOD_INSIGHTS) {
+      expect(isSubstantiveContent(good.content)).toBe(true);
+    }
+  });
+
+  it("prompt contains enough context for the LLM to produce GOOD-style insights", () => {
+    const prompt = buildInsightPrompt(persona, input, [], persona.feedbackProfile.recentInsightContents);
+
+    // Must include specific facts that GOOD insights reference
+    expect(prompt).toContain("PRISM门控");
+    expect(prompt).toContain("SIRI循环");
+    expect(prompt).toContain("Zod验证");
+    expect(prompt).toContain("Persona双通道提取");
+    expect(prompt).toContain("认知层洞察质量优化");
+    expect(prompt).toContain("如何让洞察更个性化而非模板化");
+
+    // Must include anti-patterns
+    expect(prompt).toContain("被人X但换个角度");
+    expect(prompt).toContain("值得关注");
+
+    // Must include structure constraint
+    expect(prompt).toContain("STRUCTURE CONSTRAINT");
+  });
+
+  it("generates different prompt frames across multiple calls (structural variety)", () => {
+    const frames = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      const prompt = buildInsightPrompt(persona, input, [], []);
+      const taskMatch = prompt.match(/TASK:\n([\s\S]*?)\n\nSTRUCTURE/);
+      if (taskMatch) frames.add(taskMatch[1]!.trim());
+    }
+    // With 8 frames × random pick × random keyInsight, we should see variety
+    expect(frames.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("generates different structure seeds across multiple calls", () => {
+    const seeds = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      const prompt = buildInsightPrompt(persona, input, [], []);
+      const seedMatch = prompt.match(/STRUCTURE CONSTRAINT:\n(.*)/);
+      if (seedMatch) seeds.add(seedMatch[1]!.trim());
+    }
+    expect(seeds.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("banned patterns list covers all known template patterns from past insights", () => {
+    const pastTemplates = [
+      "Python的GIL被人骂了这么多年，但换个角度看",
+      "Rust的借用检查器被骂学习曲线陡，但它其实在做",
+      "Go的error处理被人吐槽写起来啰嗦，但它和Rust",
+    ];
+    for (const template of pastTemplates) {
+      expect(isSubstantiveContent(template)).toBe(false);
+    }
+  });
+});
