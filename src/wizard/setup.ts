@@ -80,7 +80,7 @@ async function requireRiskAcknowledgement(params: {
 
   await params.prompter.note(
     [
-      "欢迎使用 KaijiBot 🧠",
+      "欢迎使用 KaijiBot 👾",
       "",
       "KaijiBot 是一个具备系统访问能力的 AI 助手：",
       "- 可以读写文件、执行命令、搜索网络",

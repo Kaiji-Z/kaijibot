@@ -50,8 +50,8 @@ export function formatCliBannerLine(version: string, options: BannerOptions = {}
   const commitLabel = commit ?? "unknown";
   const tagline = pickTagline({ ...options, mode: resolveTaglineMode(options) });
   const rich = options.richTty ?? isRich();
-  const title = "🧠 KaijiBot";
-  const prefix = "🧠 ";
+  const title = "👾 KaijiBot";
+  const prefix = "👾 ";
   const columns = options.columns ?? process.stdout.columns ?? 120;
   const plainBaseLine = `${title} ${version} (${commitLabel})`;
   const plainFullLine = tagline ? `${plainBaseLine} — ${tagline}` : plainBaseLine;
@@ -86,12 +86,13 @@ export function formatCliBannerLine(version: string, options: BannerOptions = {}
 }
 
 const BANNER_ASCII = [
-  "  _  __    _    ___    _ ___ ____   ___ _____ ",
-  " | |/ /   / \\  |_ _|  | |_ _| __ ) / _ \\_   _|",
-  " | ' /   / _ \\  | |_  | || ||  _ \\| | | || |  ",
-  " | . \\  / ___ \\ | | |_| || || |_) | |_| || |  ",
-  " |_|\\_\\/_/   \\_\\___\\___/|___|____/ \\___/ |_|  ",
-  "                  🧠 KAIJIBOT 🧠                   ",
+  "██╗  ██╗ █████╗ ██╗     ██╗██╗██████╗  ██████╗ ████████╗",
+  "██║ ██╔╝██╔══██╗██║     ██║██║██╔══██╗██╔═══██╗╚══██╔══╝",
+  "█████╔╝ ███████║██║     ██║██║██████╔╝██║   ██║   ██║   ",
+  "██╔═██╗ ██╔══██║██║██   ██║██║██╔══██╗██║   ██║   ██║   ",
+  "██║  ██╗██║  ██║██║╚█████╔╝██║██████╔╝╚██████╔╝   ██║   ",
+  "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚════╝ ╚═╝╚═════╝  ╚═════╝    ╚═╝ ",
+  "                    👾 KAIJIBOT 👾                      ",
   " ",
 ];
 
@@ -102,11 +103,11 @@ export function formatCliBannerArt(options: BannerOptions = {}): string {
   }
 
   const colorChar = (ch: string) => {
-    if (ch === "|" || ch === "\\" || ch === "/") {
-      return theme.accent(ch);
-    }
-    if (ch === "_" || ch === "-") {
+    if (ch === "█" || ch === "╗" || ch === "╔" || ch === "║" || ch === "╚" || ch === "╝") {
       return theme.accentBright(ch);
+    }
+    if (ch === "═") {
+      return theme.accent(ch);
     }
     return theme.muted(ch);
   };
@@ -115,9 +116,9 @@ export function formatCliBannerArt(options: BannerOptions = {}): string {
     if (line.includes("KAIJIBOT")) {
       return (
         theme.muted("              ") +
-        theme.accent("🧠") +
+        theme.accent("👾") +
         theme.info(" KAIJIBOT ") +
-        theme.accent("🧠")
+        theme.accent("👾")
       );
     }
     return splitGraphemes(line).map(colorChar).join("");
