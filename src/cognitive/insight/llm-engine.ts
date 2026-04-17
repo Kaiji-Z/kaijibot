@@ -187,36 +187,115 @@ function enrichWithWebSources(
   };
 }
 
-/** Prompt framework variants — each guides the model to produce a specific TYPE of quality insight. */
+/** Extended context for prompt frame generation. */
+type PromptFrameExtra = {
+  pendingQuestions: string[];
+  domains: string[];
+  keyInsights: string[];
+  recentFocus: string[];
+  userName: string;
+};
+
+function pickRandom<T>(arr: readonly T[]): T | undefined {
+  return arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : undefined;
+}
+
+/** Prompt framework variants — each anchors on specific persona data to avoid generic output. */
 const PROMPT_FRAMES = [
-  (topic: string, extra: { pendingQuestions: string[]; domains: string[] }) => {
+  // 0: Extend a known keyInsight
+  (topic: string, extra: PromptFrameExtra) => {
+    const insight = pickRandom(extra.keyInsights);
+    if (insight) {
+      return `你了解到用户对"${insight}"有独到理解。从这个具体的认知出发，说出一个被大多数人忽略的延伸方向或实际应用场景。不要解释这个认知本身，直接说延伸的部分。`;
+    }
+    return `针对${topic}，你有一个具体的观察——不是泛泛的感受，而是能直接指导下一步行动的判断。直接说出来。`;
+  },
+  // 1: Cross-domain with concrete anchor
+  (topic: string, extra: PromptFrameExtra) => {
+    if (extra.domains.length >= 2 && extra.keyInsights.length >= 2) {
+      return `用户同时在${topic}和${extra.domains[extra.domains.length - 1]!}两个方向有积累。你看到了一条具体的关联线索——不是概念上的相似，而是实际的、可操作的交集。直接把这条线索说出来。`;
+    }
+    return `在${topic}方向上，用户目前的理解里有一个盲区。你看到了，直接指出来，不要铺垫。`;
+  },
+  // 2: Answer pending question concretely
+  (topic: string, extra: PromptFrameExtra) => {
     if (extra.pendingQuestions.length > 0) {
-      return `用户之前问过"${extra.pendingQuestions[0]!}"但没得到满意答案。你现在对这个问题的理解有进展了吗？用 1-2 句话分享你的思考。`;
+      return `之前的问题是"${extra.pendingQuestions[0]!}"。你现在的理解有了进展——不要复述问题，直接给出你最新的判断或发现。`;
     }
-    return `关于${topic}，你观察到了一个用户可能还没注意到的趋势或细节。自然地说出来。`;
+    return `你刚注意到${topic}领域一个具体的变化或案例，直接关系到用户之前提到的关注点。简洁地说出来。`;
   },
-  (topic: string, extra: { pendingQuestions: string[]; domains: string[] }) => {
+  // 3: Challenge assumption using a keyInsight
+  (topic: string, extra: PromptFrameExtra) => {
+    const insight = pickRandom(extra.keyInsights);
+    if (insight) {
+      return `基于"${insight}"这个认知，常见的做法里有一个效率或思路上的问题。你有一个更好的替代方案——说出来，说清楚为什么更好。`;
+    }
+    return `关于${topic}，你有一个来自实践的具体经验，跟大多数人的做法不一样。分享这个经验。`;
+  },
+  // 4: Practical recommendation tied to recentFocus
+  (topic: string, extra: PromptFrameExtra) => {
+    const focus = extra.recentFocus.length > 0 ? pickRandom(extra.recentFocus)! : topic;
+    return `用户最近在看${focus}相关的东西。你恰好知道一个具体的工具、方法或资源能直接帮上忙。推荐它，说清楚为什么适合现在的阶段。`;
+  },
+  // 5: Counter-intuitive fact
+  (topic: string, extra: PromptFrameExtra) => {
+    const insight = pickRandom(extra.keyInsights);
+    if (insight) {
+      return `关于"${insight}"，有一个反直觉的事实。你把它说出来，用事实本身说话，不要加"有趣的是"之类的评论。`;
+    }
+    return `在${topic}领域，你发现了一条被低估的技术路径或思路。说出它是什么，以及为什么被低估。`;
+  },
+  // 6: Hidden connection between topic and recentFocus
+  (topic: string, extra: PromptFrameExtra) => {
+    if (extra.recentFocus.length >= 1) {
+      const focus = extra.recentFocus[Math.min(extra.recentFocus.length - 1, 1)]!;
+      return `${topic}和${focus}之间有一条暗线——不是表面的关联，而是底层逻辑或设计理念的共通之处。直接说出这条暗线是什么。`;
+    }
+    return `你注意到${topic}领域有一个正在发生但还没被广泛讨论的变化。说出它是什么。`;
+  },
+  // 7: Cross-domain method transfer
+  (topic: string, extra: PromptFrameExtra) => {
     if (extra.domains.length >= 2) {
-      return `${topic}和${extra.domains[1]!}之间有一个有趣的关联，你发现了什么？自然地聊聊。`;
+      return `把${extra.domains[extra.domains.length - 1]!}里的一个成熟做法，迁移到${topic}的场景中。说出具体的迁移方案和预期效果。`;
     }
-    return `你发现${topic}领域最近有个容易被忽略的变化，值得跟用户提一下。用 1-2 句话说说。`;
+    return `给${topic}方向一个具体的下一步建议——不是方向性的，而是可以直接执行的那种。`;
   },
-  (topic: string, _extra: { pendingQuestions: string[]; domains: string[] }) =>
-    `你有一个关于${topic}的具体见解——不是泛泛而谈，而是一个明确的观察或判断。直接说出来。`,
-  (topic: string, extra: { pendingQuestions: string[]; domains: string[] }) => {
-    if (extra.domains.length >= 2) {
-      return `从${extra.domains[extra.domains.length - 1]!}的角度来看${topic}，有什么不一样的理解？分享你的看法。`;
-    }
-    return `关于${topic}，你有一个不同于常识的观点。自信地说出来。`;
-  },
-  (topic: string, _extra: { pendingQuestions: string[]; domains: string[] }) =>
-    `你在思考${topic}时，突然意识到一个实用的建议或行动方向。简洁地分享。`,
 ] as const;
 
-function pickPromptFrame(topics: string[], pendingQuestions: string[], domainNames: string[]): string {
+function pickPromptFrame(
+  topics: string[],
+  pendingQuestions: string[],
+  domainNames: string[],
+  keyInsights: string[],
+  recentFocus: string[],
+  userName: string,
+): string {
   const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
   const frame = PROMPT_FRAMES[Math.floor(Math.random() * PROMPT_FRAMES.length)];
-  return frame(topic, { pendingQuestions, domains: domainNames });
+  return frame(topic, { pendingQuestions, domains: domainNames, keyInsights, recentFocus, userName });
+}
+
+const STRUCTURE_SEEDS = [
+  "这次用一个具体的事实或数据点开头，不要用观点开头。",
+  "这次先说结论或判断，再说原因，不要反过来。",
+  "这次直接给一个可执行的建议，不要做分析。",
+  "这次说一个具体的案例或例子，不要抽象概括。",
+  "这次用一个反直觉的陈述开头。",
+  "这次提出一个具体的技术选择或方案，说明为什么选它。",
+  "这次指出一个常见的误区或错误做法，然后给出正确的方式。",
+  "这次说一条暗线——两个看似无关的东西之间的隐藏联系。",
+] as const;
+
+function getTimeTag(lastMentioned: number): string {
+  const hoursAgo = (Date.now() - lastMentioned) / (60 * 60 * 1000);
+  if (hoursAgo < 24) return "active-today";
+  if (hoursAgo < 72) return "recent";
+  if (hoursAgo < 168) return "this-week";
+  return "inactive";
+}
+
+function truncate(s: string, maxLen: number): string {
+  return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
 }
 
 function buildInsightPrompt(
@@ -225,7 +304,6 @@ function buildInsightPrompt(
   webResults: WebSearchResult[] = [],
   recentInsightContents: string[] = [],
 ): string {
-  // Fold web snippets silently into domain context — no "RECENT WEB CONTEXT" block
   const webSnippetByDomain = new Map<string, string[]>();
   for (const r of webResults) {
     const title = r.title.toLowerCase();
@@ -238,30 +316,40 @@ function buildInsightPrompt(
     }
   }
 
-  const userDomains = Object.entries(persona.domains)
+  const sortedDomainEntries = Object.entries(persona.domains)
+    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+
+  const userDomains = sortedDomainEntries
+    .slice(0, 8)
     .map(([name, d]) => {
-      const parts: string[] = [`${name} (depth: ${d.depth}`];
-      const insights = d.keyInsights.slice(0, 2);
-      if (insights.length > 0) {
-        parts.push(`key: ${insights.join(", ")}`);
+      const recencyTag = getTimeTag(d.lastMentioned);
+      const parts: string[] = [`${name} [${recencyTag}, depth: ${d.depth}]`];
+      if (d.keyInsights.length > 0) {
+        parts.push(`known: ${d.keyInsights.slice(0, 3).join("; ")}`);
       }
-      // Silently fold matching web snippets as if they were domain knowledge
       const snippets = webSnippetByDomain.get(name);
       if (snippets && snippets.length > 0) {
-        parts.push(`recent: ${snippets[0]}`);
+        parts.push(`news: ${snippets[0]}`);
       }
-      return parts.join(", ") + ")";
+      return parts.join(" | ");
     })
     .join("\n");
+
+  const anchorFacts = sortedDomainEntries
+    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .slice(0, 6);
+  const anchorBlock = anchorFacts.length > 0
+    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "  (not yet established)";
 
   const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
   const pendingQuestions = persona.pendingQuestions.slice(0, 3).join("; ");
   const recentInsightIds = input.recentInsightIds.slice(0, 5).join(", ");
 
+  const userName = persona.identity?.displayName || "";
   const identityBlock = persona.identity
     ? [
-        `USER'S IDENTITY (the person you're talking to):`,
-        `Name / call sign: ${persona.identity.displayName || "unknown"}`,
+        userName ? `Name: ${userName}` : "",
         persona.identity.coreTraits
           ? `Traits: ${Object.entries(persona.identity.coreTraits)
               .filter(([, v]) => v.confidence >= 0.5)
@@ -279,16 +367,15 @@ function buildInsightPrompt(
         .join("\n")
     : "";
 
-  // Dynamic anti-repetition: inject last N sent insights as contrastive examples
-  const antiRepeatBlock = recentInsightContents.length > 0
-    ? `\n你最近给这个用户发过以下内容，这次说点完全不同的：\n${recentInsightContents.slice(-3).map((c, i) => `${i + 1}. ${c.length > 80 ? c.slice(0, 80) + "…" : c}`).join("\n")}\n`
+  const pastInsightBlock = recentInsightContents.length > 0
+    ? recentInsightContents.slice(-3).map((c, i) => `${i + 1}. ${truncate(c, 80)}`).join("\n")
     : "";
 
-  // Random prompt frame for natural variety
-  const domainNames = Object.keys(persona.domains);
-  const promptFrame = pickPromptFrame(input.targetDomains, persona.pendingQuestions, domainNames);
+  const bannedOpenings = recentInsightContents
+    .slice(-3)
+    .map((c) => c.trim().slice(0, 8))
+    .filter((o) => o.length >= 4);
 
-  // Inject strongest co-occurrence connections from learned domain graph
   const coOccurrenceBlock = persona.domainGraph && persona.domainGraph.edges.length > 0
     ? persona.domainGraph.edges
         .filter(e => e.observations >= 3)
@@ -298,43 +385,71 @@ function buildInsightPrompt(
         .join("\n")
     : "";
 
-  return `You ARE the AI assistant — speaking in your own voice, personality, and tone. You are NOT a system or a tool. You are reaching out proactively to share a thought that crossed your mind about something related to this user's interests.
+  const domainNames = sortedDomainEntries.map(([name]) => name);
+  const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) => d.keyInsights.slice(0, 2));
+  const promptFrame = pickPromptFrame(
+    input.targetDomains, persona.pendingQuestions, domainNames,
+    flatKeyInsights, persona.recentFocus, userName,
+  );
 
-${identityBlock}
+  const structureSeed = STRUCTURE_SEEDS[Math.floor(Math.random() * STRUCTURE_SEEDS.length)]!;
+  const openingBans = bannedOpenings.length > 0
+    ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
+    : "";
 
-USER'S KNOWLEDGE DOMAINS:
+  return `You are the AI assistant speaking in your own voice and personality. You are proactively reaching out to share something that crossed your mind — genuinely useful or surprising for THIS specific user.
+
+${identityBlock ? `USER:\n${identityBlock}` : ""}
+
+USER'S DOMAINS (sorted by recency — most active first):
 ${userDomains || "Not yet established"}
-${coOccurrenceBlock ? `\nSTRONGEST CROSS-DOMAIN CONNECTIONS (user often discusses these together):\n${coOccurrenceBlock}` : ""}
+${coOccurrenceBlock ? `\nCROSS-DOMAIN CONNECTIONS:\n${coOccurrenceBlock}` : ""}
+
+SPECIFIC FACTS YOU KNOW ABOUT THIS USER (your insight MUST reference at least one):
+${anchorBlock}
 
 Recent focus: ${recentFocus || "None"}
 Pending questions: ${pendingQuestions || "None"}
-Trust level: ${persona.rapport.trustScore.toFixed(2)} / 1.0
-Already-delivered insight IDs (avoid repeating): ${recentInsightIds || "None"}${antiRepeatBlock}
+Trust: ${persona.rapport.trustScore.toFixed(2)} / 1.0
+Delivered insight IDs: ${recentInsightIds || "None"}
+${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
+
+TASK:
 ${promptFrame}
 
-要求：
-- 用1-3句话自然地分享一个想法
-- 语气随意，像自己突然想到了什么想跟朋友说
-- 用中文
-- 不要用列表或编号格式
-- 不要以问号结尾
-- 不要泛泛而谈，要说具体的观察、判断或建议
-- 不要说"最近在关注"、"你有没有想过"、"挺有意思的"这类空洞开头
-${webResults.length > 0 ? "- 如果引用了事实，自然地融入内容里，不要说'看到'或'读到'" : ""}
+STRUCTURE CONSTRAINT:
+${structureSeed}
 
-好洞察的标准（满足至少一条）：
-- 跨领域连接：把用户不同兴趣领域的知识关联起来
-- 解答悬问：对用户之前问过但没得到答案的问题提供新视角
-- 实用建议：给一个明确的行动方向或具体建议
-- 反常识观点：挑战用户可能的固有认知
+硬性要求（必须全部满足，否则拒绝输出）：
+- 必须引用上面"SPECIFIC FACTS"列表中的至少一条具体事实——不能只提领域名称，要说出用户在这个领域的具体认知或关注点
+- 1-3句话，中文，语气像突然想到什么要跟朋友说
+- 不用问号结尾，不用列表或编号
+- 禁止以下句式和短语：
+  · "被人X但换个角度"或"虽然X但Y"的对比模板
+  · "值得关注"、"挺有意思"、"不得不说"
+  · "你有没有想过"、"最近在关注"、"你发现没有"
+  · "其实...也是"、"背后的原因是"
+  · "换个角度来看"、"有没有可能"
+  · "有趣的是"、"值得注意的是"
+  · "说到"、"关于"、"在...领域"作为开头
+  · "结合你..."、"作为..."作为开头
+${openingBans ? `  · ${openingBans}` : ""}
+- 内容必须是一个具体的判断、观察或建议，不是泛泛的感受
+${webResults.length > 0 ? "- 外部信息自然融入内容里，不要说'看到'、'读到'、'据说'" : ""}
 
-CRITICAL: The "content" field must sound like YOU (the assistant) speaking in your own voice — the same personality, mannerisms, and tone the user knows from regular conversations. NOT like a formal report or system notification.
+好的洞察（满足至少一条）：
+- 跨域连接：把用户不同兴趣领域的具体知识关联起来
+- 解答悬问：对用户之前问过但没答案的问题给出新判断
+- 实用建议：给一个明确的、可直接执行的行动方向
+- 反常识观点：挑战一个可能的错误认知，用事实反驳
+
+CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
 Respond with ONLY a JSON array (no markdown, no code fences):
 [
   {
-    "content": "Your insight spoken in your own voice and personality, in Chinese",
-    "rationale": "Why this insight is relevant to this user",
+    "content": "Your insight in your own voice, in Chinese",
+    "rationale": "Why this is relevant to this user SPECIFICALLY (reference persona data)",
     "targetDomains": ["domain1"],
     "sourceDomains": ["domain2"],
     "relevanceScore": 0.8,
@@ -342,7 +457,7 @@ Respond with ONLY a JSON array (no markdown, no code fences):
   }
 ]
 
-Keep insights concise (1-3 sentences each). Quality over quantity.`;
+Keep insights concise (1-3 sentences). Quality over quantity.`;
 }
 
 function parseLLMInsights(
@@ -386,9 +501,23 @@ const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [
   /结合你在这个领域的深度理解/,
   /可能会影响你的技术决策/,
   /探索未知领域有助于拓展思维边界/,
-  /挺有意思的$/,
+  /挺有意思的/,
   /值得关注/,
   /^.{0,10}是一个.{2,10}的方向$/,
+  /被人.*但换个角度/,
+  /你有没有想过/,
+  /最近在关注/,
+  /不得不说/,
+  /其实.*也是$/,
+  /背后.*值得/,
+  /换个角度来看/,
+  /有没有可能/,
+  /有趣的是/,
+  /值得注意的是/,
+  /^关于.{2,6}[，,]/,
+  /^在.{2,8}领域/,
+  /^作为.{2,8}[，,]/,
+  /结合你/,
 ];
 
 function isSubstantiveContent(content: string): boolean {

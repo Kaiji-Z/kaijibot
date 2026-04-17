@@ -230,12 +230,20 @@ function scanPendingQuestions(persona: PersonaTree): Opportunity[] {
 
 function scanDomainDepth(persona: PersonaTree): Opportunity[] {
   const pAccept = computeBaselinePAccept(persona);
+  const now = Date.now();
 
   return Object.entries(persona.domains)
-    .filter(([, d]) => d.depth >= 4)
+    .filter(([, d]) => d.depth >= 3)
+    .sort(([, a], [, b]) => {
+      const recencyDelta = a.lastMentioned - b.lastMentioned;
+      if (Math.abs(recencyDelta) > 24 * 60 * 60 * 1000) return -recencyDelta;
+      return b.depth - a.depth;
+    })
     .slice(0, 2)
     .map(([domainName, domain]) => {
-      const pNeed = 0.4 + 0.1 * Math.min(domain.depth, 8);
+      const daysSinceMention = (now - domain.lastMentioned) / (24 * 60 * 60 * 1000);
+      const recencyBoost = Math.max(0, 1 - daysSinceMention / 7);
+      const pNeed = 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost;
 
       return {
         type: "domain_depth" as const,
