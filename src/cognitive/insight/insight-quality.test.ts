@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { buildInsightPrompt, isSubstantiveContent } from "./llm-engine.js";
+import { buildInsightPrompt, isSubstantiveContent, GENERIC_INSIGHT_PATTERNS } from "./llm-engine.js";
 import type { PersonaTree } from "../types.js";
 import type { InsightEngineInput } from "./types.js";
 
@@ -88,20 +88,6 @@ function makeInput(targetDomains: string[]): InsightEngineInput {
 
 // ─── Quality Evaluation ────────────────────────────────────────────────
 
-const BANNED_PATTERNS = [
-  /被人.*但换个角度/,
-  /值得关注/,
-  /挺有意思的/,
-  /你有没有想过/,
-  /最近在关注/,
-  /不得不说/,
-  /换个角度来看/,
-  /有趣的是/,
-  /值得注意的是/,
-  /^关于.{2,6}[，,]/,
-  /^在.{2,8}领域/,
-];
-
 function evaluateQuality(content: string, persona: PersonaTree): {
   score: number;
   issues: string[];
@@ -118,8 +104,8 @@ function evaluateQuality(content: string, persona: PersonaTree): {
   scores.relevance = (mentionedDomain || mentionedFocus) ? 8 : 3;
   if (!mentionedDomain && !mentionedFocus) issues.push("未提及用户领域或近期关注");
 
-  // Natural: no banned patterns
-  const bannedHits = BANNED_PATTERNS.filter(p => p.test(content)).length;
+  // Natural: no banned patterns (use production filter list)
+  const bannedHits = GENERIC_INSIGHT_PATTERNS.filter(p => p.test(content)).length;
   scores.natural = Math.max(2, 10 - bannedHits * 3);
   if (bannedHits > 0) issues.push(`检测到 ${bannedHits} 个模板句式`);
 

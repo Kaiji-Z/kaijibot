@@ -496,7 +496,7 @@ function parseLLMInsights(
   }
 }
 
-const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [
+export const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [
   /最近出现了?一些值得关注的新方向/,
   /结合你在这个领域的深度理解/,
   /可能会影响你的技术决策/,
