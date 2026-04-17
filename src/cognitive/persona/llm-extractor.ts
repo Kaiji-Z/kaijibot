@@ -142,12 +142,12 @@ function buildExtractionPrompt(
     ? `\n\nKnown persona:\n- Domains: ${Object.keys(persona.domains).join(", ") || "none"}\n- Focus: ${persona.recentFocus.slice(0, 5).join(", ") || "none"}\n- Questions: ${persona.pendingQuestions.slice(0, 3).join("; ") || "none"}`
     : "";
 
-  return `You are a persona extraction system. Analyze the conversation turn below and extract structured persona attributes.
+  return `You are a persona extraction system. Analyze the conversation turn below and extract structured persona attributes ABOUT THE HUMAN USER ONLY.
 
-USER MESSAGE:
+USER MESSAGE (from the human):
 ${userMessage.slice(-1000)}
 
-ASSISTANT MESSAGE:
+ASSISTANT MESSAGE (from the AI assistant, for context only):
 ${assistantMessage.slice(-500)}
 ${personaContext}
 
@@ -165,11 +165,14 @@ Extract and respond with ONLY a JSON object in this exact format (no markdown, n
 }
 
 Rules:
-- Only extract what is clearly stated or strongly implied
+- ONLY extract attributes about the HUMAN USER, never about the AI assistant
+- If the assistant says "I am an AI" or "I don't have consciousness", do NOT extract that as a user trait
+- The ASSISTANT MESSAGE is provided for conversational context only — it tells you what the user was responding to, but you must NOT extract the assistant's self-descriptions as user attributes
+- Only extract what the USER clearly states or strongly implies about THEMSELVES
 - confidence: 0-1, where 1 is absolutely certain
-- source: "explicit" (user stated it), "inferred" (strongly implied), "observed" (from behavior)
+- source: "explicit" (user stated it), "inferred" (strongly implied from user's words), "observed" (from user behavior)
 - domain depth: 1=mentioned, 3=familiar, 5=expert
-- Only include domains that are actually discussed
+- Only include domains that are actually discussed by the USER
 - If nothing meaningful can be extracted, return empty arrays
 - Respond with ONLY the JSON, nothing else`;
 }

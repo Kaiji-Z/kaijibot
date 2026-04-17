@@ -385,7 +385,7 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-const PERSONA_WORKSPACE_FILES = ["SOUL.md", "IDENTITY.md"] as const;
+const PERSONA_WORKSPACE_FILES = ["SOUL.md", "IDENTITY.md", "USER.md"] as const;
 
 export async function loadWorkspacePersonaContext(
   workspaceDir?: string,
