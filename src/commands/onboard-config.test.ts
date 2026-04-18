@@ -7,8 +7,8 @@ import {
 } from "./onboard-config.js";
 
 describe("applyLocalSetupWorkspaceConfig", () => {
-  it("defaults local setup tool profile to coding", () => {
-    expect(ONBOARDING_DEFAULT_TOOLS_PROFILE).toBe("coding");
+  it("defaults local setup tool profile to full", () => {
+    expect(ONBOARDING_DEFAULT_TOOLS_PROFILE).toBe("full");
   });
 
   it("sets secure dmScope default when unset", () => {

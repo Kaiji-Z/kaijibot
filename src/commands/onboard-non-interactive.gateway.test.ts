@@ -275,7 +275,7 @@ describe("onboard (non-interactive): gateway and remote auth", () => {
 
       expect(cfg?.agents?.defaults?.workspace).toBe(workspace);
       expect(cfg?.gateway?.mode).toBe("local");
-      expect(cfg?.tools?.profile).toBe("coding");
+      expect(cfg?.tools?.profile).toBe("full");
       expect(cfg?.gateway?.auth?.mode).toBe("token");
       expect(cfg?.gateway?.auth?.token).toBe(token);
     });
