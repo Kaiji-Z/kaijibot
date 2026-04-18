@@ -58,6 +58,17 @@ read_when:
 - 插件管理: `kaijibot plugins list` / `kaijibot plugins enable <name>`
 - 技能市场: 从 ClawHub 安装第三方技能
 
+## MCP 服务器管理
+
+使用 `mcp_config` 工具可编程管理 MCP 服务器：
+
+| 操作 | 说明 |
+|------|------|
+| `list` | 列出所有已配置的 MCP 服务器 |
+| `show` | 查看单个服务器详情 |
+| `set` | 添加或更新服务器（需提供 name 和 JSON 配置字符串） |
+| `unset` | 移除指定服务器 |
+
 ## 飞书频道
 
 1. open.feishu.cn 创建企业自建应用
