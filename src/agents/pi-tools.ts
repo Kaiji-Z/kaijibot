@@ -1,4 +1,6 @@
 import { codingTools, createReadTool, readTool } from "@mariozechner/pi-coding-agent";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ModelCompatConfig } from "../config/types.models.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
@@ -147,6 +149,22 @@ function isApplyPatchAllowedForModel(params: {
   });
 }
 
+/**
+ * Ensure the project's `node_modules/.bin` is in the PATH for exec commands.
+ * This makes `kaijibot` CLI and other pnpm-installed binaries discoverable
+ * when the gateway runs from a git-clone installation (not Docker or npm global).
+ */
+const _projectBinDir = path.join(process.cwd(), "node_modules", ".bin");
+const _projectBinDirExists = existsSync(_projectBinDir);
+
+function ensureProjectBinInPath(configured: string[] | undefined): string[] | undefined {
+  const result = configured ? [...configured] : [];
+  if (_projectBinDirExists && !result.includes(_projectBinDir)) {
+    result.unshift(_projectBinDir);
+  }
+  return result.length > 0 ? result : undefined;
+}
+
 function resolveExecConfig(params: { cfg?: KaijiBotConfig; agentId?: string }) {
   const cfg = params.cfg;
   const globalExec = cfg?.tools?.exec;
@@ -157,7 +175,7 @@ function resolveExecConfig(params: { cfg?: KaijiBotConfig; agentId?: string }) {
     security: agentExec?.security ?? globalExec?.security,
     ask: agentExec?.ask ?? globalExec?.ask,
     node: agentExec?.node ?? globalExec?.node,
-    pathPrepend: agentExec?.pathPrepend ?? globalExec?.pathPrepend,
+    pathPrepend: ensureProjectBinInPath(agentExec?.pathPrepend ?? globalExec?.pathPrepend),
     safeBins: agentExec?.safeBins ?? globalExec?.safeBins,
     strictInlineEval: agentExec?.strictInlineEval ?? globalExec?.strictInlineEval,
     safeBinTrustedDirs: agentExec?.safeBinTrustedDirs ?? globalExec?.safeBinTrustedDirs,
