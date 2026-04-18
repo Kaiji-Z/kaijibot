@@ -124,7 +124,7 @@ export async function generateInsightCandidatesLLM(
       { messages, systemPrompt },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: options?.maxTokens ?? 500,
+        maxTokens: options?.maxTokens ?? 2000,
         temperature: 0.85,
         signal: AbortSignal.timeout(timeoutMs),
       },

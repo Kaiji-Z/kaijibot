@@ -16,7 +16,7 @@ import type { InsightEngineInput } from "./types.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
-const API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+const API_URL = "https://api.z.ai/api/coding/paas/v4/chat/completions";
 const MODEL = "glm-5-turbo";
 
 // ─── Persona Factories ─────────────────────────────────────────────────
@@ -135,12 +135,12 @@ async function callLLM(prompt: string): Promise<string> {
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Authorization": `Bearer ${ZAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.85,
-      max_tokens: 500,
-    }),
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.85,
+        max_tokens: 2000,
+      }),
   });
   const data = await res.json() as { error?: { message: string }; choices?: Array<{ message: { content: string } }> };
   if (data.error) throw new Error(data.error.message);
@@ -284,7 +284,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("insight quality (live LLM)", () => {
     const openings = results.map(r => r.content.slice(0, 10));
     const uniqueOpenings = new Set(openings);
     expect(uniqueOpenings.size).toBeGreaterThan(results.length * 0.5);
-  }, 60_000);
+  }, 300_000);
 });
 
 describe("insight pipeline validation (mock LLM)", () => {
