@@ -29,6 +29,8 @@ export const DEFAULT_GATEWAY_HTTP_TOOL_DENY = [
   "cron",
   // Gateway control plane — prevents gateway reconfiguration via HTTP
   "gateway",
+  // MCP server management — config file mutation via HTTP
+  "mcp_config",
   // Node command relay can reach system.run on paired hosts
   "nodes",
 ] as const;

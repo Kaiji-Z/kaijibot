@@ -234,7 +234,15 @@ const CORE_TOOL_DEFINITIONS: CoreToolDefinition[] = [
     label: "gateway",
     description: "Gateway control",
     sectionId: "automation",
-    profiles: [],
+    profiles: ["coding"],
+    includeInKaijiBotGroup: true,
+  },
+  {
+    id: "mcp_config",
+    label: "mcp_config",
+    description: "Manage MCP server configurations",
+    sectionId: "automation",
+    profiles: ["coding"],
     includeInKaijiBotGroup: true,
   },
   {
