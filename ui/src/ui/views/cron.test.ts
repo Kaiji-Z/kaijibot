@@ -2,7 +2,7 @@ import { render } from "lit";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { DEFAULT_CRON_FORM } from "../app-defaults.ts";
 import type { CronJob } from "../types.ts";
-import { renderCron, resetCronViewStateForTests, type CronProps } from "./cron.ts";
+import { renderCron, type CronProps } from "./cron.ts";
 
 function createJob(id: string, overrides: Partial<CronJob> = {}): CronJob {
   return {
@@ -60,6 +60,8 @@ function createProps(overrides: Partial<CronProps> = {}): CronProps {
     deliveryToSuggestions: [],
     accountSuggestions: [],
     onFormChange: () => undefined,
+    formOpenForNew: false,
+    onSetFormOpenForNew: () => undefined,
     onRefresh: () => undefined,
     onAdd: () => undefined,
     onEdit: () => undefined,
@@ -79,10 +81,6 @@ function createProps(overrides: Partial<CronProps> = {}): CronProps {
 }
 
 describe("cron view", () => {
-  beforeEach(() => {
-    resetCronViewStateForTests();
-  });
-
   it("renders summary strip and empty state", () => {
     const container = document.createElement("div");
     render(renderCron(createProps({ status: { enabled: true, jobs: 0 } })), container);

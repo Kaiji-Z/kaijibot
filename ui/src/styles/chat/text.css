@@ -9,7 +9,7 @@
   border: 1px dashed rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
@@ -19,7 +19,7 @@
 }
 
 .chat-text {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -161,7 +161,7 @@
 @media (max-width: 640px) {
   .chat-text :where(pre) {
     padding: 8px 10px;
-    font-size: 12px;
+    font-size: 14px;
     border-radius: var(--radius-sm);
   }
 

@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 import { icons } from "../icons.ts";
 import { normalizeLowercaseStringOrEmpty } from "../string-coerce.ts";
 import type { ConfigUiHints } from "../types.ts";
@@ -275,54 +276,82 @@ const sectionIcons = {
   `,
 };
 
-// Section metadata
-export const SECTION_META: Record<string, { label: string; description: string }> = {
+// Section metadata — stores i18n keys; use resolveSectionMeta() for translated values
+const SECTION_META_RAW: Record<string, { label: string; description: string }> = {
   env: {
-    label: "Environment Variables",
-    description: "Environment variables passed to the gateway process",
+    label: "settings.sections.env",
+    description: "settings.sections.envDesc",
   },
-  update: { label: "Updates", description: "Auto-update settings and release channel" },
-  agents: { label: "Agents", description: "Agent configurations, models, and identities" },
-  auth: { label: "Authentication", description: "API keys and authentication profiles" },
+  update: { label: "settings.sections.updates", description: "settings.sections.updatesDesc" },
+  agents: { label: "settings.sections.agents", description: "settings.sections.agentsDesc" },
+  auth: { label: "settings.sections.auth", description: "settings.sections.authDesc" },
   channels: {
-    label: "Channels",
-    description: "Messaging channels (Telegram, Discord, Slack, etc.)",
+    label: "settings.sections.channels",
+    description: "settings.sections.channelsDesc",
   },
-  messages: { label: "Messages", description: "Message handling and routing settings" },
-  commands: { label: "Commands", description: "Custom slash commands" },
-  hooks: { label: "Hooks", description: "Webhooks and event hooks" },
-  skills: { label: "Skills", description: "Skill packs and capabilities" },
-  tools: { label: "Tools", description: "Tool configurations (browser, search, etc.)" },
-  gateway: { label: "Gateway", description: "Gateway server settings (port, auth, binding)" },
-  wizard: { label: "Setup Wizard", description: "Setup wizard state and history" },
+  messages: { label: "settings.sections.messages", description: "settings.sections.messagesDesc" },
+  commands: { label: "settings.sections.commands", description: "settings.sections.commandsDesc" },
+  hooks: { label: "settings.sections.hooks", description: "settings.sections.hooksDesc" },
+  skills: { label: "settings.sections.skills", description: "settings.sections.skillsDesc" },
+  tools: { label: "settings.sections.tools", description: "settings.sections.toolsDesc" },
+  gateway: { label: "settings.sections.gateway", description: "settings.sections.gatewayDesc" },
+  wizard: { label: "settings.sections.wizard", description: "settings.sections.wizardDesc" },
   // Additional sections
-  meta: { label: "Metadata", description: "Gateway metadata and version information" },
-  logging: { label: "Logging", description: "Log levels and output configuration" },
-  browser: { label: "Browser", description: "Browser automation settings" },
-  ui: { label: "UI", description: "User interface preferences" },
-  models: { label: "Models", description: "AI model configurations and providers" },
-  bindings: { label: "Bindings", description: "Key bindings and shortcuts" },
-  broadcast: { label: "Broadcast", description: "Broadcast and notification settings" },
-  audio: { label: "Audio", description: "Audio input/output settings" },
-  session: { label: "Session", description: "Session management and persistence" },
-  cron: { label: "Cron", description: "Scheduled tasks and automation" },
-  web: { label: "Web", description: "Web server and API settings" },
-  discovery: { label: "Discovery", description: "Service discovery and networking" },
-  canvasHost: { label: "Canvas Host", description: "Canvas rendering and display" },
-  talk: { label: "Talk", description: "Voice and speech settings" },
-  plugins: { label: "Plugins", description: "Plugin management and extensions" },
+  meta: { label: "settings.sections.meta", description: "settings.sections.metaDesc" },
+  logging: { label: "settings.sections.logging", description: "settings.sections.loggingDesc" },
+  browser: { label: "settings.sections.browser", description: "settings.sections.browserDesc" },
+  ui: { label: "settings.sections.ui", description: "settings.sections.uiDesc" },
+  models: { label: "settings.sections.models", description: "settings.sections.modelsDesc" },
+  bindings: { label: "settings.sections.bindings", description: "settings.sections.bindingsDesc" },
+  broadcast: { label: "settings.sections.broadcast", description: "settings.sections.broadcastDesc" },
+  audio: { label: "settings.sections.audio", description: "settings.sections.audioDesc" },
+  session: { label: "settings.sections.session", description: "settings.sections.sessionDesc" },
+  cron: { label: "settings.sections.cron", description: "settings.sections.cronDesc" },
+  web: { label: "settings.sections.web", description: "settings.sections.webDesc" },
+  discovery: { label: "settings.sections.discovery", description: "settings.sections.discoveryDesc" },
+  canvasHost: { label: "settings.sections.canvasHost", description: "settings.sections.canvasHostDesc" },
+  talk: { label: "settings.sections.talk", description: "settings.sections.talkDesc" },
+  plugins: { label: "settings.sections.plugins", description: "settings.sections.pluginsDesc" },
   diagnostics: {
-    label: "Diagnostics",
-    description: "Instrumentation, OpenTelemetry, and cache-trace settings",
+    label: "settings.sections.diagnostics",
+    description: "settings.sections.diagnosticsDesc",
   },
-  cli: { label: "CLI", description: "CLI banner and startup behavior" },
-  secrets: { label: "Secrets", description: "Secret provider configuration" },
+  cli: { label: "settings.sections.cli", description: "settings.sections.cliDesc" },
+  secrets: { label: "settings.sections.secrets", description: "settings.sections.secretsDesc" },
   acp: {
-    label: "ACP",
-    description: "Agent Communication Protocol runtime and streaming settings",
+    label: "settings.sections.acp",
+    description: "settings.sections.acpDesc",
   },
-  mcp: { label: "MCP", description: "Model Context Protocol server definitions" },
+  mcp: { label: "settings.sections.mcp", description: "settings.sections.mcpDesc" },
 };
+
+function resolveSectionMeta(key: string): { label: string; description: string } {
+  const raw = SECTION_META_RAW[key];
+  return raw
+    ? { label: t(raw.label), description: t(raw.description) }
+    : { label: key.charAt(0).toUpperCase() + key.slice(1), description: "" };
+}
+
+export const SECTION_META: Record<string, { label: string; description: string }> = new Proxy(
+  {},
+  {
+    get(_target, prop: string) {
+      return resolveSectionMeta(prop);
+    },
+    ownKeys() {
+      return Object.keys(SECTION_META_RAW);
+    },
+    has(_target, prop: string) {
+      return prop in SECTION_META_RAW;
+    },
+    getOwnPropertyDescriptor(_target, prop: string) {
+      if (prop in SECTION_META_RAW) {
+        return { configurable: true, enumerable: true, value: resolveSectionMeta(prop) };
+      }
+      return undefined;
+    },
+  },
+);
 
 function getSectionIcon(key: string) {
   return sectionIcons[key as keyof typeof sectionIcons] ?? sectionIcons.default;
@@ -362,12 +391,12 @@ function matchesSearch(params: {
 
 export function renderConfigForm(props: ConfigFormProps) {
   if (!props.schema) {
-    return html` <div class="muted">Schema unavailable.</div> `;
+    return html` <div class="muted">${t("settings.schemaUnavailable")}</div> `;
   }
   const schema = props.schema;
   const value = props.value ?? {};
   if (schemaType(schema) !== "object" || !schema.properties) {
-    return html` <div class="callout danger">Unsupported schema. Use Raw.</div> `;
+    return html` <div class="callout danger">${t("settings.unsupportedSchema")}</div> `;
   }
   const unsupported = new Set(props.unsupportedPaths ?? []);
   const properties = schema.properties;
@@ -427,7 +456,7 @@ export function renderConfigForm(props: ConfigFormProps) {
       <div class="config-empty">
         <div class="config-empty__icon">${icons.search}</div>
         <div class="config-empty__text">
-          ${searchQuery ? `No settings match "${searchQuery}"` : "No settings in this section"}
+          ${searchQuery ? t("settings.noMatchingSettings", { query: searchQuery }) : t("settings.noSettingsInSection")}
         </div>
       </div>
     `;

@@ -221,13 +221,7 @@ export function renderAgentChannels(params: {
                         ${summary.configured === 0
                           ? html`
                               <div>
-                                <a
-                                  href="https://docs.kaijibot.ai/channels"
-                                  target="_blank"
-                                  rel="noopener"
-                                  style="color: var(--accent); font-size: 12px"
-                                  >Setup guide</a
-                                >
+                                <span style="color: var(--muted); font-size: 12px">Configure a channel to get started</span>
                               </div>
                             `
                           : nothing}

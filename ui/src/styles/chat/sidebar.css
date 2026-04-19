@@ -61,14 +61,14 @@
 /* Smaller close button for sidebar */
 .sidebar-header .btn {
   padding: 4px 8px;
-  font-size: 14px;
+  font-size: 16px;
   min-width: auto;
   line-height: 1;
 }
 
 .sidebar-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .sidebar-content {
@@ -78,7 +78,7 @@
 }
 
 .sidebar-markdown {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--text);
 }
@@ -238,7 +238,7 @@
   margin-top: 0.75em;
   border-collapse: collapse;
   width: 100%;
-  font-size: 13px;
+  font-size: 15px;
   display: block;
   overflow-x: auto;
 }
@@ -252,7 +252,7 @@
 
 .sidebar-markdown :where(th) {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   background: var(--secondary);
   text-transform: uppercase;
@@ -307,7 +307,7 @@
   cursor: pointer;
   padding: 8px 12px;
   font-weight: 500;
-  font-size: 13px;
+  font-size: 15px;
   user-select: none;
   transition: background var(--duration-fast) ease;
 }

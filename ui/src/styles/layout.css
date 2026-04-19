@@ -3,8 +3,8 @@
    =========================================== */
 
 .shell {
-  --shell-pad: 16px;
-  --shell-gap: 16px;
+  --shell-pad: 20px;
+  --shell-gap: 20px;
   --shell-nav-width: 258px;
   --shell-nav-rail-width: 78px;
   --shell-topbar-height: 52px;
@@ -85,7 +85,7 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 28px;
   min-height: 58px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
   background: color-mix(in srgb, var(--bg) 82%, transparent);
@@ -152,7 +152,7 @@
   gap: 8px;
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .topnav-shell .dashboard-header__breadcrumb-link,
@@ -177,7 +177,7 @@
 .topbar-status .pill {
   padding: 6px 10px;
   gap: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   height: 32px;
   box-sizing: border-box;
@@ -198,7 +198,7 @@
 .topbar-status .theme-orb__trigger {
   width: 26px;
   height: 26px;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .topbar-search {
@@ -211,7 +211,7 @@
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
   transition:
     border-color var(--duration-fast) ease,
@@ -245,7 +245,7 @@
   border-radius: var(--radius-sm);
   background: var(--bg);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
   color: var(--muted);
 }
@@ -410,7 +410,7 @@
 }
 
 .sidebar-brand__title {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -522,7 +522,7 @@
 }
 
 .nav-section__label-text {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -557,7 +557,7 @@
   justify-content: flex-start;
   gap: 8px;
   min-height: 40px;
-  padding: 0 9px;
+  padding: 0 11px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   background: transparent;
@@ -595,7 +595,7 @@
 }
 
 .nav-item__text {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -740,7 +740,7 @@
 }
 
 .sidebar-version__label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -748,7 +748,7 @@
 }
 
 .sidebar-version__text {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text);
   font-weight: 600;
 }
@@ -853,7 +853,7 @@
 
 .content {
   grid-area: content;
-  padding: 16px 20px 32px;
+  padding: 20px 24px 36px;
   display: block;
   min-height: 0;
   overflow-y: auto;
@@ -915,7 +915,7 @@
 
 .page-sub {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 400;
   margin-top: 4px;
   letter-spacing: -0.005em;
@@ -950,7 +950,7 @@
   padding: 4px 10px;
   background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.2;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1092,8 +1092,8 @@
 
 @media (max-width: 1100px) {
   .shell {
-    --shell-pad: 12px;
-    --shell-gap: 12px;
+    --shell-pad: 16px;
+    --shell-gap: 16px;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
     grid-template-areas:
@@ -1109,7 +1109,7 @@
 
   .topbar {
     position: static;
-    padding: 12px 14px;
+    padding: 14px 16px;
     gap: 10px;
   }
 

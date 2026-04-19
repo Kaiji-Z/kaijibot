@@ -402,21 +402,6 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="sidebar-shell__footer">
               <div class="sidebar-utility-group">
-                <a
-                  class="nav-item nav-item--external sidebar-utility-link"
-                  href="https://docs.kaijibot.ai"
-                  target=${EXTERNAL_LINK_TARGET}
-                  rel=${buildExternalLinkRel()}
-                  title="${t("common.docs")} (opens in new tab)"
-                >
-                  <span class="nav-item__icon" aria-hidden="true">${icons.book}</span>
-                  ${!navCollapsed
-                    ? html`
-                        <span class="nav-item__text">${t("common.docs")}</span>
-                        <span class="nav-item__external-icon">${icons.externalLink}</span>
-                      `
-                    : nothing}
-                </a>
                 <div class="sidebar-mode-switch">${renderTopbarThemeModeToggle(state)}</div>
                 ${(() => {
                   const version = state.hello?.server?.version ?? "";
@@ -500,6 +485,7 @@ export function renderApp(state: AppViewState) {
                 jobsSortBy: state.cronJobsSortBy,
                 jobsSortDir: state.cronJobsSortDir,
                 editingJobId: state.cronEditingJobId,
+                formOpenForNew: state.cronFormOpenForNew,
                 error: state.cronError,
                 busy: state.cronBusy,
                 form: state.cronForm,
@@ -536,6 +522,7 @@ export function renderApp(state: AppViewState) {
                 onEdit: (job) => startCronEdit(state, job),
                 onClone: (job) => startCronClone(state, job),
                 onCancelEdit: () => cancelCronEdit(state),
+                onSetFormOpenForNew: (open: boolean) => { state.cronFormOpenForNew = open; },
                 onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
                 onRun: (job, mode) => runCronJob(state, job, mode ?? "force"),
                 onRemove: (job) => removeCronJob(state, job),
@@ -641,6 +628,7 @@ export function renderApp(state: AppViewState) {
                 runtimeSessionKey: state.sessionKey,
                 runtimeSessionMatchesSelectedAgent: toolsPanelUsesActiveSession,
                 modelCatalog: state.chatModelCatalog ?? [],
+                sessionsResult: state.sessionsResult,
                 onRefresh: async () => {
                   await loadAgents(state);
                   const agentIds = state.agentsList?.agents?.map((entry) => entry.id) ?? [];

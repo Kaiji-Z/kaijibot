@@ -149,7 +149,7 @@
     margin: 0;
     min-height: 40px;
     padding: 0 12px;
-    font-size: 13px;
+    font-size: 15px;
     border-radius: var(--radius-md);
     white-space: nowrap;
     flex: 0 0 auto;
@@ -371,7 +371,7 @@
   }
 
   .bottom-tab-bar__label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.01em;
     white-space: nowrap;
@@ -419,7 +419,7 @@
 
   .topbar-status .pill {
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: 13px;
     gap: 4px;
   }
 
@@ -483,7 +483,7 @@
 
   .chat-mobile-controls-wrapper .chat-controls-dropdown .chat-controls__session select {
     width: 100%;
-    font-size: 14px;
+    font-size: 16px;
     padding: 10px 12px;
   }
 
@@ -502,7 +502,7 @@
 
   .nav-item,
   .sidebar--collapsed .nav-item {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .card {
@@ -511,7 +511,7 @@
   }
 
   .card-title {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .stat-grid {
@@ -525,11 +525,11 @@
   }
 
   .stat-label {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .stat-value {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .note-grid {
@@ -547,17 +547,17 @@
   .field select {
     padding: 8px 10px;
     border-radius: var(--radius-md);
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .btn {
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .pill {
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .chat-header {
@@ -606,7 +606,7 @@
     min-height: 60px;
     padding: 8px 10px;
     border-radius: var(--radius-md);
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .agent-chat__input {
@@ -645,19 +645,19 @@
   }
 
   .log-time {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .log-level {
-    font-size: 9px;
-  }
-
-  .log-subsystem {
     font-size: 11px;
   }
 
+  .log-subsystem {
+    font-size: 13px;
+  }
+
   .log-message {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .list-item {
@@ -666,23 +666,23 @@
   }
 
   .list-title {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .list-sub {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .code-block {
     padding: 8px;
     border-radius: var(--radius-md);
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .theme-orb__trigger {
     width: 26px;
     height: 26px;
-    font-size: 13px;
+    font-size: 15px;
   }
 }
 
@@ -696,12 +696,12 @@
   }
 
   .brand-title {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .nav-item {
     padding: 6px 8px;
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .content {
@@ -718,7 +718,7 @@
   }
 
   .stat-value {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .chat-bubble {
@@ -728,27 +728,27 @@
   .chat-compose__field textarea {
     min-height: 52px;
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .btn {
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .topbar-status .pill {
     padding: 3px 6px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .theme-orb__trigger {
     width: 24px;
     height: 24px;
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .bottom-tab-bar__label {
-    font-size: 9px;
+    font-size: 11px;
   }
 }
 
@@ -797,7 +797,7 @@
   .data-table th,
   .data-table td {
     padding: 8px 6px;
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .data-table-pagination {
@@ -816,7 +816,7 @@
   }
 
   .data-table-search input {
-    font-size: 14px;
+    font-size: 16px;
     padding: 8px 10px;
   }
 
@@ -847,7 +847,7 @@
   .data-table th,
   .data-table td {
     padding: 6px 4px;
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .session-key-cell {

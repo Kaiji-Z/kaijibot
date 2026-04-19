@@ -242,6 +242,7 @@ export class KaijiBotApp extends LitElement {
   @state() cronForm: CronFormState = { ...DEFAULT_CRON_FORM };
   @state() cronFieldErrors: import("./controllers/cron.js").CronFieldErrors = {};
   @state() cronEditingJobId: string | null = null;
+  @state() cronFormOpenForNew = false;
   @state() cronRunsJobId: string | null = null;
   @state() cronRunsLoadingMore = false;
   @state() cronRuns: CronRunLogEntry[] = [];

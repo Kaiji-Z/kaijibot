@@ -1,53 +1,53 @@
 :root {
-  /* Background - Deep, rich dark with layered depth */
-  --bg: #0e1015;
-  --bg-accent: #13151b;
-  --bg-elevated: #191c24;
-  --bg-hover: #1f2330;
-  --bg-muted: #1f2330;
+  /* Background - OLED deep black with layered depth */
+  --bg: #020617;
+  --bg-accent: #0a0f1e;
+  --bg-elevated: #0f172a;
+  --bg-hover: #1a2236;
+  --bg-muted: #1a2236;
 
   /* Card / Surface - Clear hierarchy between levels */
-  --card: #161920;
-  --card-foreground: #f0f0f2;
+  --card: #0c1222;
+  --card-foreground: #f8fafc;
   --card-highlight: rgba(255, 255, 255, 0.04);
-  --popover: #191c24;
-  --popover-foreground: #f0f0f2;
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
 
   /* Panel */
-  --panel: #0e1015;
-  --panel-strong: #191c24;
-  --panel-hover: #1f2330;
-  --chrome: rgba(14, 16, 21, 0.96);
-  --chrome-strong: rgba(14, 16, 21, 0.98);
+  --panel: #020617;
+  --panel-strong: #0f172a;
+  --panel-hover: #1a2236;
+  --chrome: rgba(2, 6, 23, 0.96);
+  --chrome-strong: rgba(2, 6, 23, 0.98);
 
-  /* Text - Clean contrast */
-  --text: #d4d4d8;
-  --text-strong: #f4f4f5;
-  --chat-text: #d4d4d8;
-  --muted: #838387;
-  --muted-strong: #75757d;
-  --muted-foreground: #838387;
+  /* Text - High contrast on deep black */
+  --text: #cbd5e1;
+  --text-strong: #f8fafc;
+  --chat-text: #cbd5e1;
+  --muted: #64748b;
+  --muted-strong: #7a8ba5;
+  --muted-foreground: #64748b;
 
-  /* Border - Whisper-thin, barely there */
-  --border: #1e2028;
-  --border-strong: #2e3040;
-  --border-hover: #3e4050;
-  --input: #1e2028;
-  --ring: #ff5c5c;
+  /* Border - Subtle slate borders */
+  --border: #1e293b;
+  --border-strong: #334155;
+  --border-hover: #475569;
+  --input: #1e293b;
+  --ring: #22c55e;
 
-  /* Accent - Punchy signature red */
-  --accent: #ff5c5c;
-  --accent-hover: #ff7070;
-  --accent-muted: #ff5c5c;
-  --accent-subtle: rgba(255, 92, 92, 0.1);
-  --accent-foreground: #fafafa;
-  --accent-glow: rgba(255, 92, 92, 0.2);
-  --primary: #ff5c5c;
-  --primary-foreground: #ffffff;
+  /* Accent - KaijiBot signature green */
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-muted: #22c55e;
+  --accent-subtle: rgba(34, 197, 94, 0.1);
+  --accent-foreground: #020617;
+  --accent-glow: rgba(34, 197, 94, 0.15);
+  --primary: #22c55e;
+  --primary-foreground: #020617;
 
   /* Secondary */
-  --secondary: #161920;
-  --secondary-foreground: #f0f0f2;
+  --secondary: #0f172a;
+  --secondary-foreground: #f8fafc;
   --accent-2: #14b8a6;
   --accent-2-muted: rgba(20, 184, 166, 0.7);
   --accent-2-subtle: rgba(20, 184, 166, 0.1);
@@ -67,7 +67,7 @@
   --info: #3b82f6;
 
   /* Focus */
-  --focus: rgba(255, 92, 92, 0.2);
+  --focus: rgba(34, 197, 94, 0.2);
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 3px color-mix(in srgb, var(--ring) 80%, transparent);
   --focus-glow: 0 0 0 2px var(--bg), 0 0 0 3px var(--ring), 0 0 16px var(--accent-glow);
 
@@ -107,6 +107,15 @@
   --duration-normal: 180ms;
   --duration-slow: 300ms;
 
+  --shell-rail-width: 72px;
+  --shell-panel-width: 240px;
+  --topbar-height: 52px;
+  --shell-glass-bg: rgba(2, 6, 23, 0.65);
+  --shell-glass-blur: 24px;
+  --shell-glass-saturate: 1.8;
+  --shell-content-vignette: inset 0 0 60px -20px rgba(0, 0, 0, 0.4);
+  --shell-content-radius: 8px;
+
   color-scheme: dark;
 }
 
@@ -143,13 +152,13 @@
   --border-hover: #aeaeb2;
   --input: #e5e5ea;
 
-  --accent: #dc2626;
-  --accent-hover: #ef4444;
-  --accent-muted: #dc2626;
-  --accent-subtle: rgba(220, 38, 38, 0.08);
+  --accent: #16a34a;
+  --accent-hover: #15803d;
+  --accent-muted: #16a34a;
+  --accent-subtle: rgba(22, 163, 74, 0.08);
   --accent-foreground: #ffffff;
-  --accent-glow: rgba(220, 38, 38, 0.1);
-  --primary: #dc2626;
+  --accent-glow: rgba(22, 163, 74, 0.1);
+  --primary: #16a34a;
   --primary-foreground: #ffffff;
 
   --secondary: #f1f3f5;
@@ -171,18 +180,14 @@
   --danger-subtle: rgba(220, 38, 38, 0.08);
   --info: #2563eb;
 
-  --focus: rgba(220, 38, 38, 0.15);
+  --focus: rgba(22, 163, 74, 0.15);
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 3px color-mix(in srgb, var(--ring) 70%, transparent);
   --focus-glow: 0 0 0 2px var(--bg), 0 0 0 3px var(--ring), 0 0 12px var(--accent-glow);
 
   --grid-line: rgba(0, 0, 0, 0.04);
 
-  /* Light shadows - Subtle, clean */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.08);
-  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 20px var(--accent-glow);
+  --shell-glass-bg: rgba(248, 249, 250, 0.72);
+  --shell-content-vignette: inset 0 0 60px -20px rgba(0, 0, 0, 0.08);
 
   color-scheme: light;
 }
@@ -478,7 +483,7 @@ body {
 
 body {
   margin: 0;
-  font: 400 14px/1.55 var(--font-body);
+  font: 400 16px/1.55 var(--font-body);
   letter-spacing: -0.01em;
   background: var(--bg);
   color: var(--text);

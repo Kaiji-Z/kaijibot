@@ -49,7 +49,7 @@
 
 .login-gate__sub {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 16px;
   margin-top: 4px;
 }
 
@@ -80,7 +80,7 @@
   width: 100%;
   justify-content: center;
   padding: 10px 16px;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -92,7 +92,7 @@
 
 .login-gate__help-title {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 10px;
   color: var(--fg);
 }
@@ -100,7 +100,7 @@
 .login-gate__steps {
   margin: 0;
   padding-left: 20px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--muted);
 }
@@ -118,7 +118,7 @@
   margin: 4px 0 2px;
   padding: 5px 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -158,7 +158,7 @@
 
 .login-gate__docs {
   margin-top: 10px;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 /* ===========================================
@@ -182,7 +182,7 @@
   margin-left: 8px;
   border-color: var(--danger);
   color: var(--danger);
-  font-size: 12px;
+  font-size: 14px;
   padding: 4px 12px;
 }
 
@@ -240,7 +240,7 @@
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text-strong);
@@ -248,7 +248,7 @@
 
 .card-sub {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   margin-top: 6px;
   line-height: 1.5;
 }
@@ -273,7 +273,7 @@
 
 .stat-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -328,7 +328,7 @@
 
 .account-count {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--muted);
 }
@@ -364,13 +364,13 @@
 
 .account-card-id {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 
 .account-card-status {
   margin-top: 10px;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .account-card-status div {
@@ -380,7 +380,7 @@
 .account-card-error {
   margin-top: 8px;
   color: var(--danger);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* ===========================================
@@ -389,7 +389,7 @@
 
 .label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -401,7 +401,7 @@
   padding: 5px 11px;
   border-radius: var(--radius-full);
   background: var(--secondary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   transition: border-color var(--duration-fast) ease;
 }
@@ -436,7 +436,7 @@
   border: 1px solid var(--border);
   background: var(--card);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   padding: 0;
   transition:
@@ -494,7 +494,7 @@
   border: 1.5px solid transparent;
   background: transparent;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   padding: 0;
   transition:
@@ -627,9 +627,9 @@
   gap: 6px;
   border: 1px solid var(--border);
   background: var(--bg-elevated);
-  padding: 8px 14px;
+  padding: 10px 18px;
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.01em;
   cursor: pointer;
@@ -681,7 +681,7 @@
   margin-left: 6px;
   padding: 2px 5px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1;
   border-radius: var(--radius-sm);
@@ -719,20 +719,20 @@
 }
 
 .btn--sm {
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
 }
 
 .btn--xs {
-  padding: 4px 6px;
-  font-size: 12px;
+  padding: 6px 8px;
+  font-size: 14px;
   line-height: 1;
 }
 
 .btn--icon {
-  padding: 8px;
-  min-width: 36px;
-  height: 36px;
+  padding: 10px;
+  min-width: 40px;
+  height: 40px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.06);
 }
@@ -785,7 +785,7 @@
 
 .field span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -795,7 +795,7 @@
   border: 1px solid var(--input);
   background: var(--card);
   border-radius: var(--radius-md);
-  padding: 8px 12px;
+  padding: 10px 14px;
   outline: none;
   box-shadow: inset 0 1px 0 var(--card-highlight);
   transition:
@@ -886,7 +886,7 @@
 
 .cron-summary-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -894,7 +894,7 @@
 
 .cron-summary-value {
   color: var(--text-strong);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.3;
   display: flex;
@@ -947,7 +947,7 @@
 }
 
 .cron-form-section__title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-strong);
@@ -955,7 +955,7 @@
 
 .cron-form-section__sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -966,7 +966,7 @@
 
 .cron-help {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.45;
   margin-top: 2px;
 }
@@ -977,7 +977,7 @@
 
 .cron-required-legend {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
@@ -1015,7 +1015,7 @@
 
 .cron-form-status__title {
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -1033,7 +1033,7 @@
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   padding: 0;
   text-align: left;
@@ -1064,7 +1064,7 @@
 
 .cron-checkbox .field-checkbox__label {
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -1090,7 +1090,7 @@
 .cron-advanced__summary {
   cursor: pointer;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -1111,7 +1111,7 @@
 
 .cron-submit-reason {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
@@ -1195,7 +1195,7 @@
   gap: 8px;
   align-items: center;
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .cron-filter-dropdown__option input[type="checkbox"] {
@@ -1362,7 +1362,7 @@
   border-radius: var(--radius-md);
   background: var(--secondary);
   border: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   position: relative;
 }
@@ -1391,7 +1391,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.2;
   padding: 6px 14px;
   margin-bottom: 8px;
@@ -1451,7 +1451,7 @@
 
 .code-block {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   background: var(--secondary);
   padding: 12px;
@@ -1498,7 +1498,7 @@
   gap: 8px;
   padding: 4px 8px 4px 12px;
   background: rgba(0, 0, 0, 0.25);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -1509,7 +1509,7 @@
 .code-block-lang {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: lowercase;
   user-select: none;
 }
@@ -1519,7 +1519,7 @@
   border: none;
   background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-family: var(--font-body);
   cursor: pointer;
   padding: 2px 6px;
@@ -1557,7 +1557,7 @@
 
 .json-collapse summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   padding: 4px 8px;
   user-select: none;
@@ -1614,13 +1614,13 @@
 
 .list-sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .list-meta {
   text-align: right;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   display: grid;
   gap: 4px;
   min-width: 200px;
@@ -1661,7 +1661,7 @@
 
 .cron-job .list-title {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
@@ -1706,14 +1706,14 @@
 
 .cron-job-detail-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
 .cron-job-detail-value {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -1740,7 +1740,7 @@
 
 .cron-job-state-value {
   color: var(--text);
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1748,7 +1748,7 @@
 }
 
 .cron-job-status-pill {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
@@ -1827,7 +1827,7 @@
 }
 
 .chip {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
@@ -1886,7 +1886,7 @@
 }
 
 .table-head {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--muted);
   padding: 0 12px;
@@ -1941,7 +1941,7 @@
 }
 
 .session-key-display-name {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 /* ===========================================
@@ -1971,7 +1971,7 @@
 .data-table-search input {
   width: 100%;
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   background: var(--card);
   border: 1px solid var(--border);
@@ -1999,7 +1999,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .data-table th {
@@ -2009,7 +2009,7 @@
   padding: 10px 12px;
   text-align: left;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
@@ -2081,7 +2081,7 @@
 .data-table-badge {
   display: inline-block;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   border-radius: var(--radius-full);
   letter-spacing: 0.02em;
@@ -2174,7 +2174,7 @@ td.data-table-key-col {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--accent-subtle);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--text);
 }
@@ -2193,7 +2193,7 @@ td.data-table-key-col {
   padding: 10px 12px;
   border-top: 1px solid var(--border);
   background: var(--bg-elevated);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 
@@ -2205,7 +2205,7 @@ td.data-table-key-col {
 
 .data-table-pagination__controls button {
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: 15px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--card);
@@ -2231,7 +2231,7 @@ td.data-table-key-col {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
 }
 
@@ -2244,7 +2244,7 @@ td.data-table-key-col {
 .field-inline input[type="text"],
 .field-inline input:not([type]) {
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   background: var(--card);
   border: 1px solid var(--border);
@@ -2287,7 +2287,7 @@ td.data-table-key-col {
   align-items: start;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 14px;
   transition: background var(--duration-fast) ease;
 }
 
@@ -2305,7 +2305,7 @@ td.data-table-key-col {
 }
 
 .log-level {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -2423,7 +2423,7 @@ td.data-table-key-col {
 
 .chat-queue__title {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--muted);
 }
@@ -2446,7 +2446,7 @@ td.data-table-key-col {
 
 .chat-queue__text {
   color: var(--chat-text);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.45;
   white-space: pre-wrap;
   overflow: hidden;
@@ -2459,7 +2459,7 @@ td.data-table-key-col {
 .chat-queue__remove {
   align-self: start;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -2469,7 +2469,7 @@ td.data-table-key-col {
   margin: 8px auto 0;
   border-radius: var(--radius-full);
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -2681,7 +2681,7 @@ td.data-table-key-col {
 }
 
 .chat-text :where(pre code) {
-  font-size: 12px;
+  font-size: 14px;
   white-space: pre;
 }
 
@@ -2690,7 +2690,7 @@ td.data-table-key-col {
   border-collapse: collapse;
   width: 100%;
   max-width: 100%;
-  font-size: 13px;
+  font-size: 15px;
   display: block;
   overflow-x: auto;
 }
@@ -2725,14 +2725,14 @@ td.data-table-key-col {
 
 .chat-tool-card__title {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text);
 }
 
 .chat-tool-card__detail {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -2742,7 +2742,7 @@ td.data-table-key-col {
 
 .chat-tool-card__summary {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
   list-style: none;
@@ -2767,7 +2767,7 @@ td.data-table-key-col {
 .chat-tool-card__output {
   margin-top: 8px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
   color: var(--chat-text);
@@ -2782,7 +2782,7 @@ td.data-table-key-col {
 }
 
 .chat-stamp {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -2912,18 +2912,18 @@ td.data-table-key-col {
 }
 
 .exec-approval-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .exec-approval-sub {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   margin-top: 4px;
 }
 
 .exec-approval-queue {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--muted);
   border: 1px solid var(--border);
@@ -2940,14 +2940,14 @@ td.data-table-key-col {
   word-break: break-word;
   white-space: pre-wrap;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .exec-approval-meta {
   margin-top: 12px;
   display: grid;
   gap: 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 
@@ -2964,7 +2964,7 @@ td.data-table-key-col {
 
 .exec-approval-error {
   margin-top: 10px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--danger);
 }
 
@@ -3021,7 +3021,7 @@ td.data-table-key-col {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -3130,14 +3130,14 @@ td.data-table-key-col {
 
 .agent-sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .agent-pill {
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   background: var(--secondary);
   text-transform: uppercase;
@@ -3181,7 +3181,7 @@ td.data-table-key-col {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   background: transparent;
@@ -3242,7 +3242,7 @@ td.data-table-key-col {
 }
 
 .agent-kv-sub {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .agent-model-select {
@@ -3263,7 +3263,7 @@ td.data-table-key-col {
   background: transparent;
   color: var(--accent);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   padding: 2px 0;
   cursor: pointer;
   word-break: break-all;
@@ -3309,7 +3309,7 @@ td.data-table-key-col {
   background: transparent;
   outline: none;
   box-shadow: none;
-  font-size: 13px;
+  font-size: 15px;
   padding: 0;
 }
 
@@ -3342,7 +3342,7 @@ td.data-table-key-col {
 
 .agent-file-sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 4px;
 }
 
@@ -3419,7 +3419,7 @@ td.data-table-key-col {
   display: grid;
   place-items: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   flex-shrink: 0;
 }
 
@@ -3432,7 +3432,7 @@ td.data-table-key-col {
 
 .agent-card__name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3456,7 +3456,7 @@ td.data-table-key-col {
 
 .agent-card__sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3547,7 +3547,7 @@ td.data-table-key-col {
   border: none;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
@@ -3615,7 +3615,7 @@ td.data-table-key-col {
 
 .md-preview-dialog__title {
   min-width: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
@@ -3630,7 +3630,7 @@ td.data-table-key-col {
 }
 
 .md-preview-dialog__body.sidebar-markdown {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.7;
   color: var(--text);
 }
@@ -3820,12 +3820,12 @@ td.data-table-key-col {
 
 .agent-tool-title {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .agent-tool-sub {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   margin-top: 2px;
 }
 
@@ -3847,7 +3847,7 @@ td.data-table-key-col {
   display: flex;
   align-items: center;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
@@ -3869,7 +3869,7 @@ td.data-table-key-col {
 
 .agent-skills-header::after {
   content: "▸";
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   transition: transform var(--duration-fast) ease;
   margin-left: 8px;
@@ -3961,7 +3961,7 @@ td.data-table-key-col {
   border: none;
   border-bottom: 1px solid var(--border);
   color: var(--text);
-  font-size: 15px;
+  font-size: 17px;
   outline: none;
 }
 
@@ -3978,7 +3978,7 @@ td.data-table-key-col {
 .cmd-palette__group-label {
   padding: 8px 18px 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -3989,7 +3989,7 @@ td.data-table-key-col {
   align-items: center;
   gap: 10px;
   padding: 8px 18px;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   transition: background var(--duration-fast) ease;
 }
@@ -4012,7 +4012,7 @@ td.data-table-key-col {
 
 .cmd-palette__item-desc {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .cmd-palette__empty {
@@ -4021,7 +4021,7 @@ td.data-table-key-col {
   gap: 8px;
   padding: 16px 18px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .cmd-palette__footer {
@@ -4031,7 +4031,7 @@ td.data-table-key-col {
   gap: 12px;
   padding: 8px 18px;
   border-top: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -4086,7 +4086,7 @@ td.data-table-key-col {
 }
 
 .ov-card__label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -4102,7 +4102,7 @@ td.data-table-key-col {
 }
 
 .ov-card__hint {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.35;
 }
@@ -4190,12 +4190,12 @@ td.data-table-key-col {
 }
 
 .ov-attention-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
 }
 
 .ov-attention-link {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--accent, #3b82f6);
   text-decoration: none;
 }
@@ -4210,7 +4210,7 @@ td.data-table-key-col {
 }
 
 .ov-recent__title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -4234,7 +4234,7 @@ td.data-table-key-col {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--card);
-  font-size: 13px;
+  font-size: 15px;
   align-items: center;
   transition: border-color var(--duration-fast) ease;
 }
@@ -4253,13 +4253,13 @@ td.data-table-key-col {
 
 .ov-recent__model {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   font-family: var(--mono);
 }
 
 .ov-recent__time {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -4305,7 +4305,7 @@ td.data-table-key-col {
   gap: 8px;
   padding: 12px 16px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-strong);
   letter-spacing: -0.01em;
@@ -4350,7 +4350,7 @@ details[open] > .ov-expandable-toggle::after {
 }
 
 .ov-count-badge {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--muted);
   background: var(--bg-muted);
@@ -4371,7 +4371,7 @@ details[open] > .ov-expandable-toggle::after {
   align-items: baseline;
   gap: 10px;
   padding: 6px 16px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
   border-bottom: 1px solid var(--border);
 }
@@ -4386,7 +4386,7 @@ details[open] > .ov-expandable-toggle::after {
 
 .ov-event-log-ts {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   flex-shrink: 0;
   min-width: 72px;
@@ -4394,7 +4394,7 @@ details[open] > .ov-expandable-toggle::after {
 
 .ov-event-log-name {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text);
   white-space: nowrap;
@@ -4402,7 +4402,7 @@ details[open] > .ov-expandable-toggle::after {
 
 .ov-event-log-payload {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4416,7 +4416,7 @@ details[open] > .ov-expandable-toggle::after {
   padding: 12px 16px;
   border-top: 1px solid var(--border);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--text);
   max-height: 320px;
@@ -4464,7 +4464,7 @@ details[open] > .ov-expandable-toggle::after {
   }
 
   .ov-recent__model {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .ov-attention-item {
@@ -4513,7 +4513,7 @@ details[open] > .ov-expandable-toggle::after {
   }
 
   .exec-approval-command {
-    font-size: 12px;
+    font-size: 14px;
     padding: 8px 10px;
     max-height: 40dvh;
     overflow-y: auto;
@@ -4602,7 +4602,7 @@ details[open] > .ov-expandable-toggle::after {
 }
 
 .md-preview-dialog__title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.01em;

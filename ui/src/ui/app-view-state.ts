@@ -187,6 +187,7 @@ export type AppViewState = {
   | "cronForm"
   | "cronFieldErrors"
   | "cronEditingJobId"
+  | "cronFormOpenForNew"
   | "cronRunsJobId"
   | "cronRunsLoadingMore"
   | "cronRuns"

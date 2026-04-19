@@ -4,6 +4,7 @@ import {
   normalizeToolName,
   resolveToolProfilePolicy,
 } from "../../../../src/agents/tool-policy-shared.js";
+import { parseAgentSessionKey } from "../session-key.ts";
 import { normalizeLowercaseStringOrEmpty, normalizeOptionalString } from "../string-coerce.ts";
 import type {
   AgentIdentityResult,
@@ -705,4 +706,80 @@ export function matchesList(name: string, list?: string[]) {
 
 export function resolveToolProfile(profile: string) {
   return resolveToolProfilePolicy(profile) ?? undefined;
+}
+
+export type AgentStatusInfo = {
+  status: "running" | "active" | "idle";
+  statusLabel: string;
+  totalTokens: number;
+  sessionCount: number;
+  lastActiveAt: number | null;
+  model: string | null;
+  modelProvider: string | null;
+};
+
+export function deriveAgentStatusFromSessions(
+  sessions: Array<{ key: string; status?: string; updatedAt?: number | null; totalTokens?: number; model?: string; modelProvider?: string }>,
+  agentId: string,
+): AgentStatusInfo {
+  const now = Date.now();
+  const agentSessions = sessions.filter((s) => {
+    try {
+      const parsed = parseAgentSessionKey(s.key);
+      return parsed?.agentId === agentId;
+    } catch { return false; }
+  });
+
+  if (agentSessions.length === 0) {
+    return { status: "idle", statusLabel: "空闲", totalTokens: 0, sessionCount: 0, lastActiveAt: null, model: null, modelProvider: null };
+  }
+
+  const totalTokens = agentSessions.reduce((sum, s) => sum + (s.totalTokens ?? 0), 0);
+  const lastActiveAt = Math.max(...agentSessions.map((s) => s.updatedAt ?? 0));
+
+  const hasRunning = agentSessions.some((s) => s.status === "running");
+  const recentThreshold = 5 * 60 * 1000;
+
+  let status: AgentStatusInfo["status"];
+  let statusLabel: string;
+
+  if (hasRunning) {
+    status = "running";
+    statusLabel = "运行中";
+  } else if (lastActiveAt > 0 && now - lastActiveAt < recentThreshold) {
+    status = "active";
+    statusLabel = "活跃";
+  } else {
+    status = "idle";
+    statusLabel = "空闲";
+  }
+
+  const latestSession = agentSessions.reduce((a, b) =>
+    (b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a,
+  );
+
+  return {
+    status,
+    statusLabel,
+    totalTokens,
+    sessionCount: agentSessions.length,
+    lastActiveAt: lastActiveAt > 0 ? lastActiveAt : null,
+    model: latestSession.model ?? null,
+    modelProvider: latestSession.modelProvider ?? null,
+  };
+}
+
+export function formatTokenCount(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`;
+  return String(tokens);
+}
+
+export function formatRelativeTime(ts: number | null): string {
+  if (!ts) return "-";
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 60) return "刚刚";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟前`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}小时前`;
+  return `${Math.floor(seconds / 86400)}天前`;
 }

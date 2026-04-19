@@ -36,6 +36,7 @@ function createState(overrides: Partial<CronState> = {}): CronState {
     cronForm: { ...DEFAULT_CRON_FORM },
     cronFieldErrors: {},
     cronEditingJobId: null,
+    cronFormOpenForNew: false,
     cronRunsJobId: null,
     cronRunsLoadingMore: false,
     cronRuns: [],

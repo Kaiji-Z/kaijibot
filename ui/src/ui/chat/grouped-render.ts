@@ -96,7 +96,7 @@ export function renderReadingIndicatorGroup(assistant?: AssistantIdentity, baseP
     <div class="chat-group assistant">
       ${renderAvatar("assistant", assistant, basePath)}
       <div class="chat-group-messages">
-        <div class="chat-bubble chat-reading-indicator" aria-hidden="true">
+        <div class="chat-bubble chat-bubble--assistant chat-reading-indicator" aria-hidden="true">
           <span class="chat-reading-indicator__dots">
             <span></span><span></span><span></span>
           </span>
@@ -756,12 +756,17 @@ function renderGroupedMessage(
 
   const bubbleClasses = [
     "chat-bubble",
+    normalizedRole === "user" ? "chat-bubble--user" : "chat-bubble--assistant",
     opts.isStreaming ? "streaming" : "",
     "fade-in",
     canCopyMarkdown ? "has-copy" : "",
   ]
     .filter(Boolean)
     .join(" ");
+
+  const messageTimestamp = typeof m.timestamp === "number" && m.timestamp
+    ? new Date(m.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
 
   if (!markdown && hasToolCards && isToolResult) {
     return renderCollapsedToolCards(toolCards, onOpenSidebar);
@@ -850,6 +855,9 @@ function renderGroupedMessage(
                 : nothing}
             ${hasToolCards ? renderCollapsedToolCards(toolCards, onOpenSidebar) : nothing}
           `}
+      ${messageTimestamp && !opts.isStreaming
+        ? html`<span class="chat-bubble-timestamp">${messageTimestamp}</span>`
+        : nothing}
     </div>
   `;
 }

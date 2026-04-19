@@ -27,7 +27,7 @@
   background: transparent;
   color: var(--muted);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -111,21 +111,21 @@
 /* Z's originate from the lobster's head and float up-right at an angle.
    Use nth-of-type because Z's are <span> while stars/moon/glow are <div>. */
 .dreams__z:nth-of-type(1) {
-  font-size: 14px;
+  font-size: 16px;
   left: calc(50% + 70px);
   top: calc(50% - 90px);
   animation-delay: 0s;
 }
 
 .dreams__z:nth-of-type(2) {
-  font-size: 20px;
+  font-size: 22px;
   left: calc(50% + 100px);
   top: calc(50% - 130px);
   animation-delay: 1.2s;
 }
 
 .dreams__z:nth-of-type(3) {
-  font-size: 28px;
+  font-size: 32px;
   left: calc(50% + 130px);
   top: calc(50% - 175px);
   animation-delay: 2.4s;
@@ -186,7 +186,7 @@
 }
 
 .dreams__bubble-label {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--accent-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -194,7 +194,7 @@
 }
 
 .dreams__bubble-text {
-  font-size: 16px;
+  font-size: 18px;
   color: var(--accent);
   font-style: italic;
   opacity: 0.8;
@@ -298,13 +298,13 @@
 }
 
 .dreams__stat-value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .dreams__stat-label {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -344,7 +344,7 @@
 }
 
 .dreams__trace-title {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -360,7 +360,7 @@
   justify-content: center;
   background: color-mix(in oklab, var(--accent-subtle) 85%, transparent);
   color: var(--accent);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -379,7 +379,7 @@
 }
 
 .dreams__trace-snippet {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.35;
   color: var(--text);
 }
@@ -388,7 +388,7 @@
 .dreams__trace-meta,
 .dreams__trace-empty {
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.35;
   color: var(--muted);
 }
@@ -415,7 +415,7 @@
   border: 1px solid var(--border);
   background: color-mix(in oklab, var(--panel) 70%, transparent);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-family: inherit;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -457,7 +457,7 @@
 }
 
 .dreams__controls-error {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--danger);
 }
 
@@ -472,7 +472,7 @@
 }
 
 .dreams__status-label {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -483,7 +483,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--ok-muted);
 }
 
@@ -593,7 +593,7 @@
 }
 
 .dreams-diary__title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--muted);
   letter-spacing: 0.14em;
@@ -609,7 +609,7 @@
 }
 
 .dreams-diary__page {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   min-width: 36px;
@@ -627,7 +627,7 @@
   border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   transition:
@@ -705,7 +705,7 @@
 
 .dreams-diary__date {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--accent-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -763,7 +763,7 @@
 }
 
 .dreams-diary__timeline-month {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
   color: var(--muted);
   opacity: 0.65;
@@ -784,7 +784,7 @@
   border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   background: color-mix(in oklab, var(--panel) 84%, transparent);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   text-align: center;
@@ -862,7 +862,7 @@
 
 .dreams-diary__panel-title {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.3;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -871,7 +871,7 @@
 
 .dreams-diary__panel-subtitle {
   margin-top: 2px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.3;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -914,7 +914,7 @@
 
 .dreams-diary__item {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.6;
   color: color-mix(in oklab, var(--text) 88%, var(--muted));
 }
@@ -933,7 +933,7 @@
 
 .dreams-diary__para {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.8;
   color: color-mix(in oklab, var(--text) 85%, var(--muted));
   font-style: italic;
@@ -978,20 +978,20 @@
 }
 
 .dreams-diary__empty-text {
-  font-size: 13px;
+  font-size: 15px;
   font-style: italic;
   color: var(--muted);
   opacity: 0.7;
 }
 
 .dreams-diary__empty-hint {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   opacity: 0.4;
 }
 
 .dreams-diary__error {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--danger);
   text-align: center;
   padding: 20px 0;

@@ -5,6 +5,7 @@ import type {
   AgentsFilesListResult,
   AgentsListResult,
   ChannelsStatusSnapshot,
+  SessionsListResult,
   CronJob,
   CronStatus,
   ModelCatalogEntry,
@@ -20,10 +21,14 @@ import {
 import { renderAgentTools } from "./agents-panels-tools-skills.ts";
 import {
   buildAgentContext,
+  deriveAgentStatusFromSessions,
+  formatRelativeTime,
+  formatTokenCount,
   normalizeAgentLabel,
   resolveAgentEmoji,
   resolveModelLabel,
 } from "./agents-utils.ts";
+import { parseAgentSessionKey } from "../session-key.ts";
 
 export type AgentsPanel = "overview" | "files" | "tools" | "cron";
 
@@ -115,6 +120,7 @@ export type AgentsProps = {
   onCronRefresh: () => void;
   onCronRunNow: (jobId: string) => void;
   onSetDefault: (agentId: string) => void;
+  sessionsResult?: SessionsListResult | null;
 };
 
 function countDetailMetrics(
@@ -169,17 +175,24 @@ export function renderAgents(props: AgentsProps) {
             )}
       </section>
 
-      ${props.error
-        ? html`<div class="callout danger" style="margin-top: 8px;">${props.error}</div>`
-        : nothing}
+      <div class="agent-detail-panel">
+        ${props.error
+          ? html`<div class="callout danger" style="margin-top: 8px;">${props.error}</div>`
+          : nothing}
 
-      ${selectedAgent
-        ? html`
-            <section class="agent-detail-panel">
+        ${selectedAgent
+          ? html`
               ${renderAgentDetailContent(props, selectedAgent, defaultId)}
-            </section>
-          `
-        : nothing}
+            `
+          : html`
+              <div class="agent-card agent-card--empty" style="margin: auto; padding: 48px 24px; border: none;">
+                <div class="agent-card__body" style="align-items: center; text-align: center;">
+                  <div class="agent-card__name" style="justify-content: center; font-size: 16px;">${agents.length === 0 ? "No Agents Deployed" : "Select an Agent"}</div>
+                  <div class="agent-card__sub" style="text-align: center; margin-top: 4px;">${agents.length === 0 ? "Deploy an agent to begin monitoring." : "Choose an agent from the sidebar to inspect."}</div>
+                </div>
+              </div>
+            `}
+      </div>
     </div>
   `;
 }
@@ -203,6 +216,11 @@ function renderAgentCard(
     isDefault ? agent.id : null,
     props.agentIdentityById[agent.id] ?? null,
   );
+  const metrics = countDetailMetrics(props, agent.id);
+  const activeAgentId = parseAgentSessionKey(props.runtimeSessionKey)?.agentId;
+  const isRunning = agent.id === activeAgentId;
+  const sessions = props.sessionsResult?.sessions ?? [];
+  const statusInfo = deriveAgentStatusFromSessions(sessions, agent.id);
 
   return html`
     <button
@@ -211,7 +229,7 @@ function renderAgentCard(
       @click=${() => props.onSelectAgent(agent.id)}
     >
       <div class="agent-card__header">
-        <span class="agent-card__indicator ${isSelected ? "agent-card__indicator--active" : ""}"></span>
+        <span class="agent-card__indicator ${isRunning ? "agent-card__indicator--active" : ""}"></span>
         <span class="agent-card__avatar">${emoji || label.charAt(0).toUpperCase()}</span>
         <div class="agent-card__body">
           <div class="agent-card__name">
@@ -219,9 +237,23 @@ function renderAgentCard(
             ${isDefault
               ? html`<span class="agent-card__badge">default</span>`
               : nothing}
+            <span class="agent-card__status-tag agent-card__status-tag--${statusInfo.status}">${statusInfo.statusLabel}</span>
           </div>
           <div class="agent-card__sub">${modelLabel} · ${ctx.workspace}</div>
         </div>
+      </div>
+      <div class="agent-card__metrics">
+        ${agentCardMetric("Files", metrics.filesCount)}
+        ${agentCardMetric("Tools", metrics.toolsCount)}
+        ${agentCardMetric("Skills", metrics.skillsCount)}
+      </div>
+      <div class="agent-card__stats-row">
+        <span class="agent-card__stat">${statusInfo.sessionCount} 会话</span>
+        <span class="agent-card__stat">${formatTokenCount(statusInfo.totalTokens)} tokens</span>
+        <span class="agent-card__stat">${formatRelativeTime(statusInfo.lastActiveAt)}</span>
+      </div>
+      <div class="agent-card__token-bar">
+        <div class="agent-card__token-bar-fill" style="width: ${Math.min(100, (statusInfo.totalTokens / 100000) * 100)}%"></div>
       </div>
     </button>
   `;
@@ -279,13 +311,37 @@ function renderAgentDetailContent(
       <div class="agent-detail-section">
         <button
           type="button"
-          class="agent-detail-section__toggle"
+          class="agent-detail-section__toggle ${props.activePanel === "overview" ? "active" : ""}"
           @click=${() => props.onSelectPanel("overview")}
         >
           Overview
         </button>
-        ${props.activePanel === "overview"
-          ? html`<div class="agent-detail-section__content">
+        <button
+          type="button"
+          class="agent-detail-section__toggle ${props.activePanel === "files" ? "active" : ""}"
+          @click=${() => props.onSelectPanel("files")}
+        >
+          Files
+        </button>
+        <button
+          type="button"
+          class="agent-detail-section__toggle ${props.activePanel === "tools" ? "active" : ""}"
+          @click=${() => props.onSelectPanel("tools")}
+        >
+          Tools
+        </button>
+        <button
+          type="button"
+          class="agent-detail-section__toggle ${props.activePanel === "cron" ? "active" : ""}"
+          @click=${() => props.onSelectPanel("cron")}
+        >
+          Cron Jobs
+        </button>
+      </div>
+
+      ${props.activePanel === "overview"
+        ? html`<div class="agent-detail-section">
+            <div class="agent-detail-section__content">
               ${renderAgentOverview({
                 agent,
                 basePath: props.basePath,
@@ -305,20 +361,13 @@ function renderAgentDetailContent(
                 onModelFallbacksChange: props.onModelFallbacksChange,
                 onSelectPanel: props.onSelectPanel,
               })}
-            </div>`
-          : nothing}
-      </div>
+            </div>
+          </div>`
+        : nothing}
 
-      <div class="agent-detail-section">
-        <button
-          type="button"
-          class="agent-detail-section__toggle"
-          @click=${() => props.onSelectPanel("files")}
-        >
-          Files
-        </button>
-        ${props.activePanel === "files"
-          ? html`<div class="agent-detail-section__content">
+      ${props.activePanel === "files"
+        ? html`<div class="agent-detail-section">
+            <div class="agent-detail-section__content">
               ${renderAgentFiles({
                 agentId: agent.id,
                 agentFilesList: props.agentFiles.list,
@@ -334,20 +383,13 @@ function renderAgentDetailContent(
                 onFileReset: props.onFileReset,
                 onFileSave: props.onFileSave,
               })}
-            </div>`
-          : nothing}
-      </div>
+            </div>
+          </div>`
+        : nothing}
 
-      <div class="agent-detail-section">
-        <button
-          type="button"
-          class="agent-detail-section__toggle"
-          @click=${() => props.onSelectPanel("tools")}
-        >
-          Tools
-        </button>
-        ${props.activePanel === "tools"
-          ? html`<div class="agent-detail-section__content">
+      ${props.activePanel === "tools"
+        ? html`<div class="agent-detail-section">
+            <div class="agent-detail-section__content">
               ${renderAgentTools({
                 agentId: agent.id,
                 configForm: props.config.form,
@@ -367,20 +409,13 @@ function renderAgentDetailContent(
                 onConfigReload: props.onConfigReload,
                 onConfigSave: props.onConfigSave,
               })}
-            </div>`
-          : nothing}
-      </div>
+            </div>
+          </div>`
+        : nothing}
 
-      <div class="agent-detail-section">
-        <button
-          type="button"
-          class="agent-detail-section__toggle"
-          @click=${() => props.onSelectPanel("cron")}
-        >
-          Cron Jobs
-        </button>
-        ${props.activePanel === "cron"
-          ? html`<div class="agent-detail-section__content">
+      ${props.activePanel === "cron"
+        ? html`<div class="agent-detail-section">
+            <div class="agent-detail-section__content">
               ${renderAgentCron({
                 context: buildAgentContext(
                   agent,
@@ -398,9 +433,9 @@ function renderAgentDetailContent(
                 onRunNow: props.onCronRunNow,
                 onSelectPanel: props.onSelectPanel,
               })}
-            </div>`
-          : nothing}
-      </div>
+            </div>
+          </div>`
+        : nothing}
     </div>
   `;
 }
@@ -410,6 +445,17 @@ function metricChip(label: string, count: number | null) {
     <span class="agent-detail-stat">
       <span class="agent-detail-stat__value">${count != null ? count : "—"}</span>
       <span class="agent-detail-stat__label">${label}</span>
+    </span>
+  `;
+}
+
+function agentCardMetric(label: string, count: number | null) {
+  if (count == null) {
+    return nothing;
+  }
+  return html`
+    <span class="agent-card__metric">
+      <span class="agent-card__metric-label">${label}</span>${count}
     </span>
   `;
 }

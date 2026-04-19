@@ -63,6 +63,8 @@ export type CronProps = {
   deliveryToSuggestions: string[];
   accountSuggestions: string[];
   onFormChange: (patch: Partial<CronFormState>) => void;
+  formOpenForNew: boolean;
+  onSetFormOpenForNew: (open: boolean) => void;
   onRefresh: () => void;
   onAdd: () => void;
   onEdit: (job: CronJob) => void;
@@ -241,17 +243,9 @@ function renderFieldLabel(text: string, required = false) {
   </span>`;
 }
 
-// ── Main render ──
-
-let formOpenForNew = false;
-
-export function resetCronViewStateForTests() {
-  formOpenForNew = false;
-}
-
 export function renderCron(props: CronProps) {
   const isEditing = Boolean(props.editingJobId);
-  const showFormOverlay = isEditing || formOpenForNew;
+  const showFormOverlay = isEditing || props.formOpenForNew;
   const isAgentTurn = props.form.payloadKind === "agentTurn";
   const isCronSchedule = props.form.scheduleKind === "cron";
   const channelOptions = buildChannelOptions(props);
@@ -277,7 +271,6 @@ export function renderCron(props: CronProps) {
 
   return html`
     <section class="cron-simple">
-      <!-- Summary strip -->
       <section class="card cron-summary-strip">
         <div class="cron-summary-strip__left">
           <div class="cron-summary-item">
@@ -313,7 +306,12 @@ export function renderCron(props: CronProps) {
         </div>
       </section>
 
-      <!-- Job card list -->
+      <section class="cron-filter-bar">
+        ${renderFilterPill(props, "all", t("cron.jobs.all"), true)}
+        ${renderFilterPill(props, "enabled", t("cron.jobs.enabled"), props.jobsEnabledFilter === "enabled")}
+        ${renderFilterPill(props, "disabled", t("common.disabled"), props.jobsEnabledFilter === "disabled")}
+      </section>
+
       <section class="cron-job-list">
         ${props.jobs.length === 0
           ? html`<div class="muted" style="padding:24px;text-align:center;">${t("cron.jobs.noMatching")}</div>`
@@ -334,7 +332,6 @@ export function renderCron(props: CronProps) {
           `
         : nothing}
 
-      <!-- FAB: Add new job -->
       ${!showFormOverlay
         ? html`
             <button
@@ -344,7 +341,7 @@ export function renderCron(props: CronProps) {
               aria-label=${t("cron.form.addJob")}
               ?disabled=${props.busy}
               @click=${() => {
-                formOpenForNew = true;
+                props.onSetFormOpenForNew(true);
               }}
             >
               +
@@ -352,35 +349,44 @@ export function renderCron(props: CronProps) {
           `
         : nothing}
 
-      <!-- Form overlay -->
       ${showFormOverlay
         ? html`
-            <div class="cron-form-overlay">
-              <div class="cron-form-overlay__header">
-                <button class="btn btn--ghost" @click=${() => {
-                  formOpenForNew = false;
+            <div
+              class="cron-form-overlay"
+              @click=${(e: Event) => {
+                if (e.target === e.currentTarget) {
+                  props.onSetFormOpenForNew(false);
                   if (props.editingJobId) { props.onCancelEdit(); }
-                }}>
-                  ← ${t("cron.form.cancel")}
-                </button>
-                <span class="cron-form-overlay__title">
-                  ${props.editingJobId ? t("cron.form.editJob") : t("cron.form.newJob")}
-                </span>
-                <span></span>
-              </div>
-              <div class="cron-form-overlay__body">
-                ${renderFormContent(
-                  props,
-                  isEditing,
-                  isAgentTurn,
-                  isCronSchedule,
-                  channelOptions,
-                  selectedDeliveryMode,
-                  supportsAnnounce,
-                  blockingFields,
-                  blockedByValidation,
-                  submitDisabledReason,
-                )}
+                }
+              }}
+            >
+              <div class="cron-form-overlay__panel">
+                <div class="cron-form-overlay__header">
+                  <button class="btn btn--ghost" @click=${() => {
+                    props.onSetFormOpenForNew(false);
+                    if (props.editingJobId) { props.onCancelEdit(); }
+                  }}>
+                    ← ${t("cron.form.cancel")}
+                  </button>
+                  <span class="cron-form-overlay__title">
+                    ${props.editingJobId ? t("cron.form.editJob") : t("cron.form.newJob")}
+                  </span>
+                  <span></span>
+                </div>
+                <div class="cron-form-overlay__body">
+                  ${renderFormContent(
+                    props,
+                    isEditing,
+                    isAgentTurn,
+                    isCronSchedule,
+                    channelOptions,
+                    selectedDeliveryMode,
+                    supportsAnnounce,
+                    blockingFields,
+                    blockedByValidation,
+                    submitDisabledReason,
+                  )}
+                </div>
               </div>
             </div>
           `
@@ -396,6 +402,41 @@ export function renderCron(props: CronProps) {
   `;
 }
 
+function renderFilterPill(
+  _props: CronProps,
+  filterKey: string,
+  label: string,
+  active: boolean,
+) {
+  const dotClass = filterKey === "enabled"
+    ? "cron-filter-pill__dot cron-filter-pill__dot--green"
+    : filterKey === "disabled"
+      ? "cron-filter-pill__dot cron-filter-pill__dot--gray"
+      : nothing;
+  return html`
+    <button
+      class=${`cron-filter-pill ${active ? "cron-filter-pill--active" : ""}`}
+      type="button"
+      @click=${() => {
+        if (filterKey === "all") {
+          _props.onJobsFiltersChange({ cronJobsEnabledFilter: "all" });
+        } else if (filterKey === "enabled") {
+          _props.onJobsFiltersChange({
+            cronJobsEnabledFilter: _props.jobsEnabledFilter === "enabled" ? "all" : "enabled",
+          });
+        } else {
+          _props.onJobsFiltersChange({
+            cronJobsEnabledFilter: _props.jobsEnabledFilter === "disabled" ? "all" : "disabled",
+          });
+        }
+      }}
+    >
+      ${dotClass ? html`<span class=${dotClass}></span>` : nothing}
+      ${label}
+    </button>
+  `;
+}
+
 // ── Job card ──
 
 function renderJobCard(
@@ -405,12 +446,25 @@ function renderJobCard(
 ) {
   const isExpanded = props.runsJobId === job.id;
   const lastStatus = job.state?.lastStatus;
-  const statusDot =
+  const lastStatusIcon =
     lastStatus === "ok"
-      ? "cron-status-dot--ok"
+      ? "✓"
       : lastStatus === "error"
-        ? "cron-status-dot--error"
-        : "cron-status-dot--na";
+        ? "✗"
+        : "—";
+  const lastStatusClass =
+    lastStatus === "ok"
+      ? "cron-card__last-status--ok"
+      : lastStatus === "error"
+        ? "cron-card__last-status--error"
+        : "cron-card__last-status--na";
+  const enabledDotClass = job.enabled
+    ? "cron-card__enabled-dot cron-card__enabled-dot--on"
+    : "cron-card__enabled-dot cron-card__enabled-dot--off";
+
+  const tags: string[] = [];
+  if (job.agentId) { tags.push(job.agentId); }
+  if (job.payload.kind === "agentTurn" && job.payload.model) { tags.push(job.payload.model); }
 
   return html`
     <div class="cron-card ${isExpanded ? "cron-card--expanded" : ""}">
@@ -423,23 +477,33 @@ function renderJobCard(
           props.onLoadRuns(job.id);
         }}
       >
-        <span class="cron-status-dot ${statusDot}"></span>
-        <div class="cron-card__info">
-          <div class="cron-card__name">${job.name || job.id}</div>
-          <div class="cron-card__schedule">${formatCronSchedule(job)}</div>
+        <div class="cron-card__status-col">
+          <span class=${enabledDotClass}></span>
+          <span class=${`cron-card__last-status ${lastStatusClass}`}>${lastStatusIcon}</span>
         </div>
-        <label
-          class="toggle-switch"
-          @click=${(e: Event) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            .checked=${job.enabled}
-            ?disabled=${props.busy}
-            @change=${() => props.onToggle(job, !job.enabled)}
-          />
-          <span class="toggle-switch__slider"></span>
-        </label>
+        <div class="cron-card__info">
+          <div class="cron-card__schedule">${formatCronSchedule(job)}</div>
+          <div class="cron-card__name">${job.name || job.id}</div>
+          ${tags.length > 0
+            ? html`<div class="cron-card__tags">
+                ${tags.map((tag) => html`<span class="cron-card__tag">${tag}</span>`)}
+              </div>`
+            : nothing}
+        </div>
+        <div class="cron-card__controls">
+          <label
+            class="toggle-switch"
+            @click=${(e: Event) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              .checked=${job.enabled}
+              ?disabled=${props.busy}
+              @change=${() => props.onToggle(job, !job.enabled)}
+            />
+            <span class="toggle-switch__slider"></span>
+          </label>
+        </div>
       </div>
 
       ${isExpanded
@@ -467,41 +531,43 @@ function renderJobCard(
                     <span class="muted">${job.payload.message}</span>
                   </div>`}
 
-              <!-- Recent runs -->
               ${expandedRuns.length > 0
                 ? html`
                     <div class="cron-card__runs">
                       <div class="cron-card__runs-title">Recent runs</div>
                       ${expandedRuns.map(
-                        (entry) => html`
-                          <div class="cron-card__run">
-                            <span class="cron-status-dot cron-status-dot--${entry.status ?? "na"}"></span>
-                            <span>${entry.summary ?? entry.error ?? t("cron.runEntry.noSummary")}</span>
-                            <span class="muted">${formatRelativeTimestamp(entry.ts)}</span>
-                            ${typeof entry.durationMs === "number"
-                              ? html`<span class="muted">${entry.durationMs}ms</span>`
-                              : nothing}
-                            ${entry.sessionKey
-                              ? html`<a
-                                  class="session-link"
-                                  href="${pathForTab("chat", props.basePath)}?session=${encodeURIComponent(entry.sessionKey)}"
-                                  @click=${(e: MouseEvent) => {
-                                    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey) { return; }
-                                    if (props.onNavigateToChat && entry.sessionKey) {
-                                      e.preventDefault();
-                                      props.onNavigateToChat(entry.sessionKey);
-                                    }
-                                  }}
-                                >${t("cron.runEntry.openRunChat")}</a>`
-                              : nothing}
-                          </div>
-                        `,
+                        (entry) => {
+                          const runStatus = entry.status ?? "na";
+                          return html`
+                            <div class=${`cron-card__run cron-card__run--${runStatus}`}>
+                              <span class="cron-card__run-time">${formatRelativeTimestamp(entry.ts)}</span>
+                              <span class="cron-card__run-summary">
+                                ${entry.summary ?? entry.error ?? t("cron.runEntry.noSummary")}
+                                ${entry.sessionKey
+                                  ? html`<a
+                                      class="session-link"
+                                      href="${pathForTab("chat", props.basePath)}?session=${encodeURIComponent(entry.sessionKey)}"
+                                      @click=${(e: MouseEvent) => {
+                                        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey) { return; }
+                                        if (props.onNavigateToChat && entry.sessionKey) {
+                                          e.preventDefault();
+                                          props.onNavigateToChat(entry.sessionKey);
+                                        }
+                                      }}
+                                    >${t("cron.runEntry.openRunChat")}</a>`
+                                  : nothing}
+                              </span>
+                              <span class="cron-card__run-duration">
+                                ${typeof entry.durationMs === "number" ? `${entry.durationMs}ms` : ""}
+                              </span>
+                            </div>
+                          `;
+                        },
                       )}
                     </div>
                   `
                 : nothing}
 
-              <!-- Actions -->
               <div class="cron-card__actions">
                 <button
                   class="btn btn--sm"
@@ -1106,7 +1172,7 @@ function renderFormContent(
         ${props.editingJobId
           ? html`
               <button class="btn" ?disabled=${props.busy} @click=${() => {
-                formOpenForNew = false;
+                props.onSetFormOpenForNew(false);
                 props.onCancelEdit();
               }}>
                 ${t("cron.form.cancel")}

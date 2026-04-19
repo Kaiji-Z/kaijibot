@@ -64,6 +64,7 @@ export type CronState = {
   cronForm: CronFormState;
   cronFieldErrors: CronFieldErrors;
   cronEditingJobId: string | null;
+  cronFormOpenForNew: boolean;
   cronRunsJobId: string | null;
   cronRunsLoadingMore: boolean;
   cronRuns: CronRunLogEntry[];
@@ -707,6 +708,7 @@ export async function addCronJob(state: CronState) {
       await state.client.request("cron.add", job);
       resetCronFormToDefaults(state);
     }
+    state.cronFormOpenForNew = false;
     await loadCronJobs(state);
     await loadCronStatus(state);
   } catch (err) {
@@ -928,6 +930,7 @@ export function startCronClone(state: CronState, job: CronJob) {
 }
 
 export function cancelCronEdit(state: CronState) {
+  state.cronFormOpenForNew = false;
   clearCronEditState(state);
   resetCronFormToDefaults(state);
 }
