@@ -35,3 +35,20 @@ export { checkProactiveGate } from "./scheduler/gate.js";
 export { TimerSource } from "./scheduler/event-sources/timer-source.js";
 export { PersonaChangeSource } from "./scheduler/event-sources/persona-change-source.js";
 export type { SchedulerEvent, GateDecision, SchedulerConfig } from "./scheduler/types.js";
+
+// Evolution module
+export { evaluateComplexity } from "./evolution/index.js";
+export { generateSkillDraft, toKebabCase, sanitizeSkillName } from "./evolution/index.js";
+export { EvolutionStore, createEvolutionDir } from "./evolution/index.js";
+export { EvolutionEngine } from "./evolution/index.js";
+export { DEFAULT_EVOLUTION_CONFIG } from "./evolution/index.js";
+export type {
+  EvolutionCandidate,
+  SkillDraft,
+  EvolutionDecision,
+  EvolutionUserResponse,
+  EvolutionRecord,
+  EvolutionConfig,
+  ComplexityFactor,
+  ComplexityResult,
+} from "./evolution/index.js";
