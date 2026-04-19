@@ -179,12 +179,18 @@ export class ProactiveScheduler {
   }
 
   start(listUserIds: () => Promise<string[]>, intervalMs?: number): void {
-    const interval =
+    const baseInterval =
       intervalMs ?? this.config.minIntervalHours * 60 * 60 * 1000;
+
+    const scheduleNext = (): void => {
+      const jitter = baseInterval * (0.5 + Math.random());
+      this.timerHandle = setTimeout(tick, jitter);
+      this.timerHandle?.unref?.();
+    };
 
     const tick = async (): Promise<void> => {
       const userIds = await listUserIds();
-      log.info("timer tick", { userCount: userIds.length, interval });
+      log.info("timer tick", { userCount: userIds.length, baseInterval });
       for (const userId of userIds) {
         try {
           const result = await this.processEvent(userId, {
@@ -197,12 +203,10 @@ export class ProactiveScheduler {
         }
       }
 
-      this.timerHandle = setTimeout(tick, interval);
-      this.timerHandle?.unref?.();
+      scheduleNext();
     };
 
-    this.timerHandle = setTimeout(tick, interval);
-    this.timerHandle?.unref?.();
+    scheduleNext();
   }
 
   stop(): void {

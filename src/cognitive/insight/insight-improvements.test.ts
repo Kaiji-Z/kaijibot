@@ -111,26 +111,29 @@ function makeMockDeps(
   },
 ): LlmInsightDeps {
   return {
-    complete: async () => ({
-      content: [{
-        type: "text" as const,
-        text: options?.llmResponse ?? JSON.stringify([{
-          content: "TypeScript的decorator pattern和MCP的tool schema design本质上在做同一件事——用声明式的方式定义行为边界。差别在于前者在编译时生效，后者在运行时由LLM解析。",
-          rationale: "Connects TypeScript and MCP domains via shared design pattern",
-          targetDomains: ["TypeScript", "MCP"],
-          sourceDomains: ["Rust"],
-          relevanceScore: 0.9,
-          surpriseScore: 0.7,
-        }]),
-      }],
-      usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150, cost: { input: 0, output: 0, total: 0 } },
-      model: "test",
-      finishReason: "stop",
-    }),
-    prepareModel: async () => ({
-      model: {} as any,
-      auth: { apiKey: "test", providerId: "test" },
-    }),
+    complete: async () =>
+      ({
+        role: "assistant" as const,
+        content: [{
+          type: "text" as const,
+          text: options?.llmResponse ?? JSON.stringify([{
+            content: "TypeScript的decorator pattern和MCP的tool schema design本质上在做同一件事——用声明式的方式定义行为边界。差别在于前者在编译时生效，后者在运行时由LLM解析。",
+            rationale: "Connects TypeScript and MCP domains via shared design pattern",
+            targetDomains: ["TypeScript", "MCP"],
+            sourceDomains: ["Rust"],
+            relevanceScore: 0.9,
+            surpriseScore: 0.7,
+          }]),
+        }],
+        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150, input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: { input: 0, output: 0, total: 0 } },
+        model: "test",
+        provider: "test",
+        api: {},
+        stopReason: "stop",
+        timestamp: Date.now(),
+      }) as any,
+    prepareModel: async () =>
+      ({ model: {}, auth: { apiKey: "test", providerId: "test", source: "test", mode: "api-key" as const } }) as any,
     webSearch: options?.webResults
       ? async () => options.webResults!
       : undefined,
