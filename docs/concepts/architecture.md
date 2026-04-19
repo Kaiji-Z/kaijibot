@@ -5,7 +5,7 @@ read_when:
 title: "Gateway Architecture"
 ---
 
-> 💡 **KaijiBot 说明：** 此页面中的频道示例保留了上游 OpenClaw 的多频道说明。KaijiBot 仅支持飞书频道，但核心概念（会话、消息格式、路由等）完全适用。
+> 💡 **KaijiBot 说明：** 此页面描述 Gateway 通用架构。KaijiBot 仅支持飞书频道，认知管道是 KaijiBot 独有的新增模块。
 
 
 # Gateway architecture
@@ -150,6 +150,47 @@ Details: [Gateway protocol](/gateway/protocol), [Pairing](/channels/pairing),
 - Exactly one Gateway controls a single Baileys session per host.
 - Handshake is mandatory; any non‑JSON or non‑connect first frame is a hard close.
 - Events are not replayed; clients must refresh on gaps.
+
+## Cognitive pipeline (KaijiBot-specific)
+
+The cognitive layer runs alongside the Gateway, adding proactive AI capabilities unique to KaijiBot. It does not import from extensions and can be disabled via `cognitive.enabled: false`.
+
+```mermaid
+flowchart TD
+    ES["Event Sources<br/>(Timer / PersonaChange / InfoScan)"]
+    PS["ProactiveScheduler<br/>(SIRI loop)"]
+    G["PRISM Gate<br/>(pNeed × pAccept > threshold?)"]
+    S["Search<br/>(cross-domain / questions / depth)"]
+    I["Identify<br/>(pick best by pAct)"]
+    R["Resolve<br/>(LLM + optional web search)"]
+    D["Deliver<br/>(find session → Feishu)"]
+    F["Feedback<br/>(update persona + trust)"]
+
+    ES --> PS --> G
+    G -->|pass| S --> I --> R --> D --> F
+    G -->|veto| X["Skip"]
+```
+
+### Per-turn cognitive injection
+
+Every user message (not just proactive ones) gets cognitive context injected into the system prompt:
+
+1. **Mode classification** — `mode-router.ts` classifies the message as task/insight/hybrid/proactive
+2. **Persona context** — `context-builder.ts` summarizes the user's profile, domains, and mood
+3. **Trust phase advice** — `trust-calculator.ts` provides behavior guidance based on the current relationship stage (orientation → exploration → rapport → partnership)
+
+This means even reactive conversations benefit from the cognitive layer — the agent adapts its tone and depth based on trust level.
+
+### Proactive delivery pipeline
+
+When an insight passes the gate:
+
+1. `proactive-scheduler.ts` calls `onInsightReady` callback
+2. `cognitive-delivery.ts` resolves `userId → sessionKey → channel → recipient`
+3. `heartbeat-runner.ts` wakes the agent with a `cognitive-insight` event (classified as `wake` kind, bypasses HEARTBEAT.md gate)
+4. Agent generates and delivers the proactive message via Feishu
+
+See [Cognitive Overview](/concepts/cognitive-overview) for the full architecture details.
 
 ## Related
 

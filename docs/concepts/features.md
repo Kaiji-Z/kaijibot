@@ -41,11 +41,15 @@ title: "Features"
 
 **Cognitive AI (proactive layer):**
 
-- **Persona system** — per-user cognitive model that learns identity, domains, interests, and communication style over time; dual extraction (rule-based fast path + LLM deep path)
-- **Proactive insights** — cross-domain discovery, pending-question follow-ups, domain-depth nudges; serendipity-scored for optimal novelty
-- **Cost-sensitive gate** — PRISM-style graded gating weighs need (pNeed) × acceptance (pAccept) against disturbance cost before every proactive contact
-- **Trust evolution** — four-stage relationship model (orientation → exploration → rapport → partnership) with Thompson Sampling preference learning
-- **Feedback collection** — explicit and implicit signals (reply length, topic continuation, depth cues) continuously refine per-topic preference probabilities
+- **Persona system** — per-user cognitive model that learns identity, domains, interests, communication style, and mood over time; dual extraction (rule-based fast path <50ms + LLM deep path with 5s timeout); persisted at `~/.kaijibot/cognitive/persona/`
+- **Proactive insights** — cross-domain discovery, pending-question follow-ups, domain-depth nudges, and exploration suggestions; LLM-powered with 8×8 prompt frame/structure combinations; optional web search integration (Exa/Tavily) for timely external facts
+- **Cost-sensitive gate** — PRISM-style graded gating weighs pNeed × pAccept against disturbance cost; hard vetoes for active hours, suppression, and insufficient exchanges; calibration correction from historical outcomes
+- **Trust evolution** — SARA framework with four relationship stages (orientation → exploration → rapport → partnership); each stage has specific behavior guidance for tone and proactivity
+- **Preference learning** — Thompson Sampling per topic with Beta(α, β) posterior, optimistic prior, 90-day decay, and automatic frequency adaptation (positive → more frequent, negative → less frequent)
+- **Feedback collection** — explicit and implicit signals (reply length, latency, topic continuation/abandonment, question depth) continuously refine per-topic preference probabilities
+- **Timing naturalness** — timer jitter (50%~150% of base interval) ensures proactive messages don't arrive like clockwork
+- **Semantic dedup** — domain overlap check (>50% with recent insights) prevents repeating the same angle
+- **Anti-repetition** — banned openings, generic pattern filtering (20+ regex), and past insight history comparison
 
 **Agent:**
 
@@ -56,8 +60,10 @@ title: "Features"
 
 **Auth and providers:**
 
-- Z.AI (智谱 GLM) as primary provider (14 models including GLM-5-turbo)
-- OpenAI-compatible provider support (vLLM, SGLang, Ollama, and any OpenAI-compatible or Anthropic-compatible endpoint)
+- Z.AI (智谱 GLM) as primary provider (GLM-4.7, GLM-5, and more)
+- 35+ LLM providers total: DeepSeek, Qwen (通义千问), Kimi, MiniMax, 百度千帆, 阶跃星辰, 火山引擎, BytePlus, Kimi Coding, 小米, Alibaba, Anthropic Claude, Google Gemini, xAI Grok, Mistral, Perplexity, Groq, Nvidia, HuggingFace, OpenAI, OpenRouter, LiteLLM, Together, Fireworks, Cloudflare AI, Vercel AI, Microsoft, Ollama, LMStudio, SGLang, vLLM, and more
+- OpenAI-compatible provider support (any OpenAI-compatible or Anthropic-compatible endpoint)
+- Model failover and API key rotation
 
 **Media:**
 
@@ -76,4 +82,4 @@ title: "Features"
 - Browser automation (Playwright), exec, sandboxing
 - Web search (Exa, Tavily)
 - Cron jobs and heartbeat scheduling
-- Skills (21 built-in, ClawHub marketplace) and plugin ecosystem
+- Skills (21 built-in, ClawHub marketplace) and 62 bundled extensions (plugin ecosystem)

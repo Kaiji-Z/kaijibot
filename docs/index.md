@@ -43,7 +43,7 @@ title: "KaijiBot"
 
 ## What is KaijiBot?
 
-KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https://github.com/openclaw/openclaw), tailored for Chinese users with deep Feishu integration. It connects to **40+ LLM providers** — Z.AI (智谱 GLM), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds a **cognitive AI layer** that makes the assistant genuinely proactive.
+KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https://github.com/openclaw/openclaw), tailored for Chinese users with deep Feishu integration. It connects to **62+ extensions** covering 35+ LLM providers — Z.AI (智谱 GLM), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds a **cognitive AI layer** that makes the assistant genuinely proactive.
 
 **Who is it for?** Developers and power users who want an AI partner that knows them, learns their interests, and initiates conversations with relevant insights — all running on their own hardware.
 
@@ -51,7 +51,7 @@ KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https:/
 
 - **Proactive cognitive AI** — builds a per-user persona, generates cross-domain insights, and decides when to reach out based on learned trust and preferences
 - **Feishu-native** — deep integration with Feishu via WebSocket long-connection and event subscription (the only messaging channel)
-- **Multi-provider LLM** — 40+ providers: Z.AI (GLM-5-turbo), DeepSeek, Qwen, Kimi, Anthropic Claude, Google Gemini, OpenRouter, LiteLLM, Ollama, and more
+- **Multi-provider LLM** — 35+ providers: Z.AI (GLM), DeepSeek, Qwen, Kimi, MiniMax, 百度千帆, 阶跃星辰, 火山引擎, BytePlus, Anthropic Claude, Google Gemini, OpenRouter, LiteLLM, Ollama, and more
 - **Self-hosted**: runs on your hardware, your rules — no data leaves your machine unless you configure search providers
 - **Open source**: MIT licensed, based on the OpenClaw platform
 
@@ -133,7 +133,7 @@ Open the browser Control UI after the Gateway starts.
 
 Config lives at `~/.kaijibot/kaijibot.json`.
 
-- If you **do nothing**, KaijiBot uses Z.AI GLM-5-turbo with per-sender sessions and the cognitive layer enabled.
+- If you **do nothing**, KaijiBot uses Z.AI GLM with per-sender sessions and the cognitive layer enabled.
 - To customize, set Feishu access controls or cognitive parameters.
 
 Example:
@@ -172,8 +172,8 @@ Example:
   <Card title="Feishu Channel" href="/channels/feishu" icon="message-square">
     Feishu bot setup, event subscription, and message handling.
   </Card>
-  <Card title="Cognitive Layer" href="/cognitive/overview" icon="brain">
-    Persona, insights, proactive scheduling, and trust models.
+  <Card title="Cognitive Layer" href="/concepts/cognitive-overview" icon="brain">
+    Persona, insights, proactive scheduling, trust models, and feedback loop.
   </Card>
   <Card title="Help" href="/help" icon="life-buoy">
     Common fixes and troubleshooting entry point.

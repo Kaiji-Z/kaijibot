@@ -48,13 +48,13 @@ KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动
 
 洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了 Exa 或 Tavily API Key，洞察会紧跟时事。
 
-### 🔌 35+ LLM 提供商开箱即用
+### 🔌 62 个扩展开箱即用
 
 不绑死任何一家。国内国际随意切换，`kaijibot onboard` 向导自动发现已配置的 API Key。
 
 | 国内（推荐） | 国际主流 | 聚合 / 自部署 |
 |---|---|---|
-| 智谱 GLM（默认）· DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · 小米 · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · SGLang · vLLM · Ollama · LMStudio |
+| 智谱 GLM（默认）· DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · SGLang · vLLM · Ollama · LMStudio |
 
 切换模型只需一行：
 
@@ -140,9 +140,25 @@ export TAVILY_API_KEY="your-key"
 
 ## 🏗️ 架构概览
 
-认知系统的核心流程：事件源（定时器 / 画像变更 / 信息扫描）→ 调度器 → 门控判断（该不该说）→ 洞察生成（跨域连接 / 问题跟进）→ 投递路由（找到你的会话并推送）。
+### 认知洞察流程
 
-Gateway 提供 WebSocket + HTTP 双协议，100+ RPC 方法，兼容 OpenAI API（`/v1/chat/completions`）和 MCP 协议。插件 SDK 支持 20+ 生命周期钩子，扩展可按 npm 包、Git 仓库或内置方式加载。会话默认按渠道 + 对话方隔离。
+```
+事件源（定时器 + 随机抖动 / 画像变更 / 信息扫描）
+  → PRISM 门控（pNeed × pAccept > 成本阈值？）
+    → 搜索洞察机会（跨域连接 / 待答问题 / 领域深度 / 探索）
+      → 选最佳机会 → LLM 生成洞察（+ 可选 Web 搜索）
+        → 语义去重（与近期洞察领域重叠 >50% 则跳过）
+          → 投递到你的飞书会话
+            → 收集反馈 → 更新画像与信任模型
+```
+
+### 技术架构
+
+Gateway 提供 WebSocket + HTTP 双协议，100+ RPC 方法，兼容 OpenAI API（`/v1/chat/completions`）和 MCP 协议。插件 SDK 支持 20+ 生命周期钩子，扩展可按 npm 包、Git 仓库或内置方式加载。会话按渠道 + 对话方隔离。
+
+Agent 系统实现完整的推理循环：系统提示组装（上下文文件 + 认知模式 + 工具描述 + 记忆搜索）→ LLM 推理 → 工具调用 → 观察 → 继续推理 → 流式输出。支持上下文压缩、子 agent 并行派生、模型故障转移和 API Key 轮换。
+
+项目规模：`src/agents/`（762 文件）、`src/infra/`（484）、`src/gateway/`（356）、`src/plugin-sdk/`（341）、`src/plugins/`（256）、`src/cognitive/`（9+ 模块）。
 
 ## 📦 扩展与技能
 
