@@ -96,10 +96,16 @@ export async function generateInsightCandidatesLLM(
     if (query) {
       try {
         webResults = await deps.webSearch(query);
-      } catch {
+        log.info("web search completed", { query, resultCount: webResults.length });
+      } catch (err) {
+        log.warn("web search failed, proceeding without web results", { query, error: String(err) });
         webResults = [];
       }
+    } else {
+      log.info("web search skipped: empty query");
     }
+  } else {
+    log.info("web search skipped: no webSearch dep provided");
   }
 
   const prompt = buildInsightPrompt(persona, input, webResults, input.recentInsightContents);
@@ -314,6 +320,15 @@ export function buildInsightPrompt(
         webSnippetByDomain.set(domainName, list);
       }
     }
+  }
+  if (webResults.length > 0) {
+    const matchedDomains = [...webSnippetByDomain.keys()];
+    const unmatched = webResults.length - [...webSnippetByDomain.values()].reduce((s, v) => s + v.length, 0);
+    log.info("web search domain matching", {
+      totalResults: webResults.length,
+      matchedDomains: matchedDomains.length > 0 ? matchedDomains : "(none)",
+      unmatchedSnippets: unmatched,
+    });
   }
 
   const sortedDomainEntries = Object.entries(persona.domains)

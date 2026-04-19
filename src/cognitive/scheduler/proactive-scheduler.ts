@@ -126,6 +126,15 @@ export class ProactiveScheduler {
     const insight = await this.resolve(persona, selected);
     if (!insight) return undefined;
 
+    log.info("insight generated", {
+      userId,
+      insightId: insight.id,
+      contentPreview: insight.content.slice(0, 80),
+      sourceCount: insight.sources.length,
+      hasWebSources: insight.sources.length > 0,
+      targetDomains: insight.targetDomains,
+    });
+
     await this.callbacks.onInsightReady(userId, insight);
 
     persona.feedbackProfile.lastProactiveAt = event.timestamp;
