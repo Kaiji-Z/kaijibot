@@ -30,15 +30,6 @@ vi.mock("./controllers/chat.ts", () => ({
 vi.mock("./controllers/devices.ts", () => ({
   loadDevices: vi.fn(),
 }));
-vi.mock("./controllers/exec-approval.ts", () => ({
-  addExecApproval: vi.fn(),
-  parseExecApprovalRequested: vi.fn(() => null),
-  parseExecApprovalResolved: vi.fn(() => null),
-  removeExecApproval: vi.fn(),
-}));
-vi.mock("./controllers/nodes.ts", () => ({
-  loadNodes: vi.fn(),
-}));
 vi.mock("./controllers/sessions.ts", () => ({
   loadSessions: loadSessionsMock,
   subscribeSessions: vi.fn(),
@@ -49,9 +40,6 @@ vi.mock("./gateway.ts", () => ({
 }));
 
 const { handleGatewayEvent } = await import("./app-gateway.ts");
-const { addExecApproval } = await vi.importActual<typeof import("./controllers/exec-approval.ts")>(
-  "./controllers/exec-approval.ts",
-);
 
 function createHost() {
   return {
@@ -101,8 +89,6 @@ function createHost() {
     sessionKey: "main",
     chatRunId: null,
     refreshSessionsAfterChat: new Set<string>(),
-    execApprovalQueue: [],
-    execApprovalError: null,
     updateAvailable: null,
   } as unknown as Parameters<typeof handleGatewayEvent>[0];
 }
@@ -121,30 +107,5 @@ describe("handleGatewayEvent sessions.changed", () => {
 
     expect(loadSessionsMock).toHaveBeenCalledTimes(1);
     expect(loadSessionsMock).toHaveBeenCalledWith(host);
-  });
-});
-
-describe("addExecApproval", () => {
-  it("keeps the newest approval at the front of the queue", () => {
-    const queue = addExecApproval(
-      [
-        {
-          id: "approval-old",
-          kind: "exec",
-          request: { command: "echo old" },
-          createdAtMs: 1,
-          expiresAtMs: Date.now() + 120_000,
-        },
-      ],
-      {
-        id: "approval-new",
-        kind: "exec",
-        request: { command: "echo new" },
-        createdAtMs: 2,
-        expiresAtMs: Date.now() + 120_000,
-      },
-    );
-
-    expect(queue.map((entry) => entry.id)).toEqual(["approval-new", "approval-old"]);
   });
 });

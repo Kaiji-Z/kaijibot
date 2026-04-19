@@ -150,8 +150,6 @@ function createHost() {
     toolStreamOrder: [],
     toolStreamSyncTimer: null,
     refreshSessionsAfterChat: new Set<string>(),
-    execApprovalQueue: [],
-    execApprovalError: null,
     updateAvailable: null,
   } as unknown as Parameters<typeof connectGateway>[0];
 }
@@ -210,67 +208,25 @@ describe("connectGateway", () => {
     expect(host.lastError).toBeNull();
   });
 
-  it("preserves live approval prompts, clears stale run indicators, and resumes queued work after seq-gap reconnect", () => {
-    const now = 1_700_000_000_000;
-    vi.spyOn(Date, "now").mockReturnValue(now);
+  it("clears stale run indicators after seq-gap reconnect", () => {
     const host = createHost();
     connectGateway(host);
     const client = gatewayClientInstances[0];
     expect(client).toBeDefined();
     const chatHost = host as typeof host & {
       chatRunId: string | null;
-      chatQueue: Array<{
-        id: string;
-        text: string;
-        createdAt: number;
-        pendingRunId?: string;
-      }>;
     };
     chatHost.chatRunId = "run-1";
-    chatHost.chatQueue = [
-      {
-        id: "pending",
-        text: "/steer tighten the plan",
-        createdAt: 1,
-        pendingRunId: "run-1",
-      },
-      {
-        id: "queued",
-        text: "follow up",
-        createdAt: 2,
-      },
-    ];
-    host.execApprovalQueue = [
-      {
-        id: "approval-1",
-        kind: "exec",
-        request: { command: "rm -rf /tmp/demo" },
-        createdAtMs: now,
-        expiresAtMs: now + 60_000,
-      },
-    ];
 
     client.emitGap(20, 24);
 
     expect(gatewayClientInstances).toHaveLength(2);
-    expect(host.execApprovalQueue).toHaveLength(1);
-    expect(host.execApprovalQueue[0]?.id).toBe("approval-1");
-    expect(chatHost.chatQueue).toHaveLength(1);
-    expect(chatHost.chatQueue[0]?.text).toBe("follow up");
+    expect(chatHost.chatRunId).toBeNull();
 
     const reconnectClient = gatewayClientInstances[1];
     expect(reconnectClient).toBeDefined();
 
     reconnectClient.emitHello();
-
-    expect(reconnectClient.request).toHaveBeenCalledWith("chat.send", {
-      sessionKey: "main",
-      message: "follow up",
-      deliver: false,
-      idempotencyKey: expect.any(String),
-      attachments: undefined,
-    });
-    expect(chatHost.chatQueue).toHaveLength(0);
   });
 
   it("ignores stale client onEvent callbacks after reconnect", () => {
@@ -565,7 +521,7 @@ describe("connectGateway", () => {
     expect(loadChatHistoryMock).not.toHaveBeenCalled();
   });
 
-  it("routes plugin.approval.requested into execApprovalQueue with kind plugin", () => {
+  it("ignores plugin.approval.requested events (feature removed)", () => {
     const host = createHost();
 
     connectGateway(host);
@@ -589,36 +545,7 @@ describe("connectGateway", () => {
       },
     });
 
-    expect(host.execApprovalQueue).toHaveLength(1);
-    expect(host.execApprovalQueue[0]?.id).toBe("plugin-approval-1");
-    expect((host.execApprovalQueue[0] as { kind: string }).kind).toBe("plugin");
-  });
-
-  it("routes plugin.approval.resolved to remove from execApprovalQueue", () => {
-    const host = createHost();
-
-    connectGateway(host);
-    const client = gatewayClientInstances[0];
-    expect(client).toBeDefined();
-
-    // Add a plugin approval first
-    client.emitEvent({
-      event: "plugin.approval.requested",
-      payload: {
-        id: "plugin-approval-2",
-        createdAtMs: Date.now(),
-        expiresAtMs: Date.now() + 120_000,
-        request: { title: "Alert" },
-      },
-    });
-    expect(host.execApprovalQueue).toHaveLength(1);
-
-    // Resolve it
-    client.emitEvent({
-      event: "plugin.approval.resolved",
-      payload: { id: "plugin-approval-2", decision: "allow-once" },
-    });
-    expect(host.execApprovalQueue).toHaveLength(0);
+    expect(host.eventLogBuffer).toHaveLength(0);
   });
 
   it("reloads chat history once after the final chat event when tool output was used", () => {

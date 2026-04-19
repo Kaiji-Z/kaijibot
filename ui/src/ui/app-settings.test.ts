@@ -10,25 +10,7 @@ import {
 } from "./app-settings.ts";
 import type { ThemeMode, ThemeName } from "./theme.ts";
 
-type Tab =
-  | "agents"
-  | "overview"
-  | "channels"
-  | "instances"
-  | "sessions"
-  | "usage"
-  | "cron"
-  | "skills"
-  | "nodes"
-  | "chat"
-  | "config"
-  | "communications"
-  | "appearance"
-  | "automation"
-  | "infrastructure"
-  | "aiAgents"
-  | "debug"
-  | "logs";
+type Tab = "chat" | "agents" | "cron" | "settings";
 
 type SettingsHost = {
   settings: {
@@ -55,25 +37,11 @@ type SettingsHost = {
   tab: Tab;
   connected: boolean;
   chatHasAutoScrolled: boolean;
-  logsAtBottom: boolean;
   eventLog: unknown[];
   eventLogBuffer: unknown[];
   basePath: string;
-  themeMedia: MediaQueryList | null;
-  themeMediaHandler: ((event: MediaQueryListEvent) => void) | null;
-  logsPollInterval: number | null;
-  debugPollInterval: number | null;
   pendingGatewayUrl?: string | null;
   pendingGatewayToken?: string | null;
-  dreamingStatusLoading: boolean;
-  dreamingStatusError: string | null;
-  dreamingStatus: null;
-  dreamingModeSaving: boolean;
-  dreamDiaryLoading: boolean;
-  dreamDiaryActionLoading: boolean;
-  dreamDiaryError: string | null;
-  dreamDiaryPath: string | null;
-  dreamDiaryContent: string | null;
 };
 
 function setTestWindowUrl(urlString: string) {
@@ -144,25 +112,11 @@ const createHost = (tab: Tab): SettingsHost => ({
   tab,
   connected: false,
   chatHasAutoScrolled: false,
-  logsAtBottom: false,
   eventLog: [],
   eventLogBuffer: [],
   basePath: "",
-  themeMedia: null,
-  themeMediaHandler: null,
-  logsPollInterval: null,
-  debugPollInterval: null,
   pendingGatewayUrl: null,
   pendingGatewayToken: null,
-  dreamingStatusLoading: false,
-  dreamingStatusError: null,
-  dreamingStatus: null,
-  dreamingModeSaving: false,
-  dreamDiaryLoading: false,
-  dreamDiaryActionLoading: false,
-  dreamDiaryError: null,
-  dreamDiaryPath: null,
-  dreamDiaryContent: null,
 });
 
 describe("setTabFromRoute", () => {
@@ -173,28 +127,6 @@ describe("setTabFromRoute", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
-  });
-
-  it("starts and stops log polling based on the tab", () => {
-    const host = createHost("chat");
-
-    setTabFromRoute(host, "logs");
-    expect(host.logsPollInterval).not.toBeNull();
-    expect(host.debugPollInterval).toBeNull();
-
-    setTabFromRoute(host, "chat");
-    expect(host.logsPollInterval).toBeNull();
-  });
-
-  it("starts and stops debug polling based on the tab", () => {
-    const host = createHost("chat");
-
-    setTabFromRoute(host, "debug");
-    expect(host.debugPollInterval).not.toBeNull();
-    expect(host.logsPollInterval).toBeNull();
-
-    setTabFromRoute(host, "chat");
-    expect(host.debugPollInterval).toBeNull();
   });
 
   it("re-resolves the active palette when only themeMode changes", () => {
@@ -275,7 +207,7 @@ describe("applySettingsFromUrl", () => {
     vi.stubGlobal("localStorage", createStorageMock());
     vi.stubGlobal("sessionStorage", createStorageMock());
     vi.stubGlobal("navigator", { language: "en-US" } as Navigator);
-    setTestWindowUrl("https://control.example/ui/overview");
+    setTestWindowUrl("https://control.example/ui/settings");
   });
 
   afterEach(() => {
@@ -284,8 +216,8 @@ describe("applySettingsFromUrl", () => {
   });
 
   it("hydrates query token params and strips them from the URL", () => {
-    setTestWindowUrl("https://control.example/ui/overview?token=abc123");
-    const host = createHost("overview");
+    setTestWindowUrl("https://control.example/ui/settings?token=abc123");
+    const host = createHost("settings");
     host.settings.gatewayUrl = "wss://control.example/kaijibot";
 
     applySettingsFromUrl(host);
@@ -296,9 +228,9 @@ describe("applySettingsFromUrl", () => {
 
   it("keeps query token params pending when a gatewayUrl confirmation is required", () => {
     setTestWindowUrl(
-      "https://control.example/ui/overview?gatewayUrl=wss://other-gateway.example/kaijibot&token=abc123",
+      "https://control.example/ui/settings?gatewayUrl=wss://other-gateway.example/kaijibot&token=abc123",
     );
-    const host = createHost("overview");
+    const host = createHost("settings");
     host.settings.gatewayUrl = "wss://control.example/kaijibot";
 
     applySettingsFromUrl(host);
@@ -310,8 +242,8 @@ describe("applySettingsFromUrl", () => {
   });
 
   it("prefers fragment tokens over legacy query tokens when both are present", () => {
-    setTestWindowUrl("https://control.example/ui/overview?token=query-token#token=hash-token");
-    const host = createHost("overview");
+    setTestWindowUrl("https://control.example/ui/settings?token=query-token#token=hash-token");
+    const host = createHost("settings");
     host.settings.gatewayUrl = "wss://control.example/kaijibot";
 
     applySettingsFromUrl(host);

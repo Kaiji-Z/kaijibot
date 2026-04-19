@@ -2,79 +2,20 @@ import { t } from "../i18n/index.ts";
 import type { IconName } from "./icons.js";
 import { normalizeLowercaseStringOrEmpty } from "./string-coerce.ts";
 
-export const TAB_GROUPS = [
-  { label: "chat", tabs: ["chat"] },
-  {
-    label: "control",
-    tabs: ["overview", "channels", "instances", "sessions", "usage", "cron"],
-  },
-  { label: "agent", tabs: ["agents", "skills", "nodes", "dreams"] },
-  {
-    label: "settings",
-    tabs: [
-      "config",
-      "communications",
-      "appearance",
-      "automation",
-      "infrastructure",
-      "aiAgents",
-      "debug",
-      "logs",
-    ],
-  },
-] as const;
+export const TABS = ["chat", "agents", "cron", "settings"] as const;
 
-export type Tab =
-  | "agents"
-  | "overview"
-  | "channels"
-  | "instances"
-  | "sessions"
-  | "usage"
-  | "cron"
-  | "skills"
-  | "nodes"
-  | "chat"
-  | "config"
-  | "communications"
-  | "appearance"
-  | "automation"
-  | "infrastructure"
-  | "aiAgents"
-  | "debug"
-  | "logs"
-  | "dreams";
+export type Tab = (typeof TABS)[number];
 
 const TAB_PATHS: Record<Tab, string> = {
-  agents: "/agents",
-  overview: "/overview",
-  channels: "/channels",
-  instances: "/instances",
-  sessions: "/sessions",
-  usage: "/usage",
-  cron: "/cron",
-  skills: "/skills",
-  nodes: "/nodes",
   chat: "/chat",
-  config: "/config",
-  communications: "/communications",
-  appearance: "/appearance",
-  automation: "/automation",
-  infrastructure: "/infrastructure",
-  aiAgents: "/ai-agents",
-  debug: "/debug",
-  logs: "/logs",
-  dreams: "/dreaming",
+  agents: "/agents",
+  cron: "/cron",
+  settings: "/settings",
 };
 
-const PATH_ALIASES: Record<string, Tab> = {
-  "/dreams": "dreams",
-};
-
-const PATH_TO_TAB = new Map<string, Tab>([
-  ...Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab] as const),
-  ...Object.entries(PATH_ALIASES),
-]);
+const PATH_TO_TAB = new Map<string, Tab>(
+  Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab as Tab] as const),
+);
 
 export function normalizeBasePath(basePath: string): string {
   if (!basePath) {
@@ -157,44 +98,14 @@ export function inferBasePathFromPathname(pathname: string): string {
 
 export function iconForTab(tab: Tab): IconName {
   switch (tab) {
-    case "agents":
-      return "folder";
     case "chat":
       return "messageSquare";
-    case "overview":
-      return "barChart";
-    case "channels":
-      return "link";
-    case "instances":
-      return "radio";
-    case "sessions":
-      return "fileText";
-    case "usage":
-      return "barChart";
-    case "cron":
-      return "loader";
-    case "skills":
-      return "zap";
-    case "nodes":
-      return "monitor";
-    case "config":
-      return "settings";
-    case "communications":
-      return "send";
-    case "appearance":
-      return "spark";
-    case "automation":
-      return "terminal";
-    case "infrastructure":
-      return "globe";
-    case "aiAgents":
+    case "agents":
       return "brain";
-    case "debug":
-      return "bug";
-    case "logs":
-      return "scrollText";
-    case "dreams":
-      return "moon";
+    case "cron":
+      return "fileText";
+    case "settings":
+      return "settings";
     default:
       return "folder";
   }

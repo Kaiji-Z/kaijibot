@@ -36,11 +36,11 @@ function expectConfirmedGatewayChange(app: ReturnType<typeof mountApp>) {
 
 describe("control UI routing", () => {
   it("hydrates the tab from the location", async () => {
-    const app = mountApp("/sessions");
+    const app = mountApp("/agents");
     await app.updateComplete;
 
-    expect(app.tab).toBe("sessions");
-    expect(window.location.pathname).toBe("/sessions");
+    expect(app.tab).toBe("agents");
+    expect(window.location.pathname).toBe("/agents");
   });
 
   it("respects /ui base paths", async () => {
@@ -84,78 +84,12 @@ describe("control UI routing", () => {
     expect(window.location.pathname).toBe("/channels");
   });
 
-  it("keeps dreams navigation visible even when dreaming is disabled", async () => {
-    const app = mountApp("/chat");
-    await app.updateComplete;
-
-    const dreamsLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/dreaming"]');
-    expect(dreamsLink).not.toBeNull();
-  });
-
-  it("renders the dreaming view on the /dreaming route", async () => {
-    const app = mountApp("/dreaming");
-    app.dreamingStatus = {
-      enabled: true,
-      timezone: "Europe/Madrid",
-      verboseLogging: false,
-      storageMode: "inline",
-      separateReports: false,
-      shortTermCount: 2,
-      recallSignalCount: 1,
-      dailySignalCount: 1,
-      groundedSignalCount: 0,
-      totalSignalCount: 2,
-      phaseSignalCount: 0,
-      lightPhaseHitCount: 0,
-      remPhaseHitCount: 0,
-      promotedTotal: 1,
-      promotedToday: 1,
-      shortTermEntries: [],
-      signalEntries: [],
-      promotedEntries: [],
-      phases: {
-        light: { enabled: true, cron: "", managedCronPresent: false, lookbackDays: 7, limit: 20 },
-        deep: {
-          enabled: true,
-          cron: "",
-          managedCronPresent: false,
-          limit: 20,
-          minScore: 0.75,
-          minRecallCount: 3,
-          minUniqueQueries: 2,
-          recencyHalfLifeDays: 7,
-        },
-        rem: {
-          enabled: true,
-          cron: "",
-          managedCronPresent: false,
-          lookbackDays: 7,
-          limit: 20,
-          minPatternStrength: 0.6,
-        },
-      },
-    };
-    app.dreamDiaryPath = "DREAMS.md";
-    app.dreamDiaryContent = [
-      "# Dream Diary",
-      "",
-      "<!-- kaijibot:dreaming:diary:start -->",
-      "",
-      "---",
-      "",
-      "*January 1, 2026*",
-      "",
-      "What Happened",
-      "1. Stable operator rule surfaced.",
-      "",
-      "<!-- kaijibot:dreaming:diary:end -->",
-    ].join("\n");
+  it("renders the settings view on the /settings route", async () => {
+    const app = mountApp("/settings");
     app.requestUpdate();
     await app.updateComplete;
 
-    expect(app.tab).toBe("dreams");
-    expect(app.querySelector(".dreams__tab")).not.toBeNull();
-    expect(app.querySelector(".dreams__lobster")).not.toBeNull();
+    expect(app.tab).toBe("settings");
   });
 
   it("renders the refreshed top navigation shell", async () => {
@@ -363,14 +297,14 @@ describe("control UI routing", () => {
     toggle?.click();
     await app.updateComplete;
 
-    const link = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/channels"]');
+    const link = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/settings"]');
     const shell = app.querySelector<HTMLElement>(".shell");
     expect(link).not.toBeNull();
     expect(shell?.classList.contains("shell--nav-drawer-open")).toBe(true);
     link?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
 
     await app.updateComplete;
-    expect(app.tab).toBe("channels");
+    expect(app.tab).toBe("settings");
     expect(shell?.classList.contains("shell--nav-drawer-open")).toBe(false);
   });
 
@@ -466,23 +400,23 @@ describe("control UI routing", () => {
   });
 
   it("hydrates token from query params and strips them", async () => {
-    const app = mountApp("/ui/overview?token=abc123");
+    const app = mountApp("/ui/settings?token=abc123");
     await app.updateComplete;
 
     expect(app.settings.token).toBe("abc123");
     expect(JSON.parse(localStorage.getItem("kaijibot.control.settings.v1") ?? "{}").token).toBe(
       undefined,
     );
-    expect(window.location.pathname).toBe("/ui/overview");
+    expect(window.location.pathname).toBe("/ui/settings");
     expect(window.location.search).toBe("");
   });
 
   it("strips password URL params without importing them", async () => {
-    const app = mountApp("/ui/overview?password=sekret");
+    const app = mountApp("/ui/settings?password=sekret");
     await app.updateComplete;
 
     expect(app.password).toBe("");
-    expect(window.location.pathname).toBe("/ui/overview");
+    expect(window.location.pathname).toBe("/ui/settings");
     expect(window.location.search).toBe("");
   });
 
@@ -491,7 +425,7 @@ describe("control UI routing", () => {
       "kaijibot.control.settings.v1",
       JSON.stringify({ token: "existing-token", gatewayUrl: "wss://gateway.example/kaijibot" }),
     );
-    const app = mountApp("/ui/overview#token=abc123");
+    const app = mountApp("/ui/settings#token=abc123");
     await app.updateComplete;
 
     expect(app.settings.token).toBe("abc123");
@@ -501,24 +435,24 @@ describe("control UI routing", () => {
     expect(JSON.parse(localStorage.getItem("kaijibot.control.settings.v1") ?? "{}").token).toBe(
       undefined,
     );
-    expect(window.location.pathname).toBe("/ui/overview");
+    expect(window.location.pathname).toBe("/ui/settings");
     expect(window.location.hash).toBe("");
   });
 
   it("hydrates token from URL hash and strips it", async () => {
-    const app = mountApp("/ui/overview#token=abc123");
+    const app = mountApp("/ui/settings#token=abc123");
     await app.updateComplete;
 
     expect(app.settings.token).toBe("abc123");
     expect(JSON.parse(localStorage.getItem("kaijibot.control.settings.v1") ?? "{}").token).toBe(
       undefined,
     );
-    expect(window.location.pathname).toBe("/ui/overview");
+    expect(window.location.pathname).toBe("/ui/settings");
     expect(window.location.hash).toBe("");
   });
 
   it("clears the current token when the gateway URL changes", async () => {
-    const app = mountApp("/ui/overview#token=abc123");
+    const app = mountApp("/ui/settings#token=abc123");
     await app.updateComplete;
 
     const gatewayUrlInput = app.querySelector<HTMLInputElement>(
@@ -535,7 +469,7 @@ describe("control UI routing", () => {
 
   it("keeps a hash token pending until the gateway URL change is confirmed", async () => {
     const app = mountApp(
-      "/ui/overview?gatewayUrl=wss://other-gateway.example/kaijibot#token=abc123",
+      "/ui/settings?gatewayUrl=wss://other-gateway.example/kaijibot#token=abc123",
     );
     await app.updateComplete;
 
@@ -549,7 +483,7 @@ describe("control UI routing", () => {
 
   it("keeps a query token pending until the gateway URL change is confirmed", async () => {
     const app = mountApp(
-      "/ui/overview?gatewayUrl=wss://other-gateway.example/kaijibot&token=abc123",
+      "/ui/settings?gatewayUrl=wss://other-gateway.example/kaijibot&token=abc123",
     );
     await app.updateComplete;
 
@@ -562,11 +496,11 @@ describe("control UI routing", () => {
   });
 
   it("restores the token after a same-tab refresh", async () => {
-    const first = mountApp("/ui/overview#token=abc123");
+    const first = mountApp("/ui/settings#token=abc123");
     await first.updateComplete;
     first.remove();
 
-    const refreshed = mountApp("/ui/overview");
+    const refreshed = mountApp("/ui/settings");
     await refreshed.updateComplete;
 
     expect(refreshed.settings.token).toBe("abc123");

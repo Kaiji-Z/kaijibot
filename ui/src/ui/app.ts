@@ -2,24 +2,11 @@ import { LitElement } from "lit";
 import { state } from "lit/decorators.js";
 import { i18n, I18nController, isSupportedLocale } from "../i18n/index.ts";
 import {
-  handleChannelConfigReload as handleChannelConfigReloadInternal,
-  handleChannelConfigSave as handleChannelConfigSaveInternal,
-  handleNostrProfileCancel as handleNostrProfileCancelInternal,
-  handleNostrProfileEdit as handleNostrProfileEditInternal,
-  handleNostrProfileFieldChange as handleNostrProfileFieldChangeInternal,
-  handleNostrProfileImport as handleNostrProfileImportInternal,
-  handleNostrProfileSave as handleNostrProfileSaveInternal,
-  handleNostrProfileToggleAdvanced as handleNostrProfileToggleAdvancedInternal,
-  handleWhatsAppLogout as handleWhatsAppLogoutInternal,
-  handleWhatsAppStart as handleWhatsAppStartInternal,
-  handleWhatsAppWait as handleWhatsAppWaitInternal,
-} from "./app-channels.ts";
-import {
   handleAbortChat as handleAbortChatInternal,
   handleSendChat as handleSendChatInternal,
   removeQueuedMessage as removeQueuedMessageInternal,
 } from "./app-chat.ts";
-import { DEFAULT_CRON_FORM, DEFAULT_LOG_LEVEL_FILTERS } from "./app-defaults.ts";
+import { DEFAULT_CRON_FORM } from "./app-defaults.ts";
 import type { EventLogEntry } from "./app-events.ts";
 import { connectGateway as connectGatewayInternal } from "./app-gateway.ts";
 import {
@@ -30,16 +17,13 @@ import {
 } from "./app-lifecycle.ts";
 import { renderApp } from "./app-render.ts";
 import {
-  exportLogs as exportLogsInternal,
   handleChatScroll as handleChatScrollInternal,
-  handleLogsScroll as handleLogsScrollInternal,
   resetChatScroll as resetChatScrollInternal,
   scheduleChatScroll as scheduleChatScrollInternal,
 } from "./app-scroll.ts";
 import {
   applySettings as applySettingsInternal,
   loadCron as loadCronInternal,
-  loadOverview as loadOverviewInternal,
   setTab as setTabInternal,
   setTheme as setThemeInternal,
   setThemeMode as setThemeModeInternal,
@@ -59,15 +43,6 @@ import {
   refreshVisibleToolsEffectiveForCurrentSession as refreshVisibleToolsEffectiveForCurrentSessionInternal,
 } from "./controllers/agents.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
-import type { DevicePairingList } from "./controllers/devices.ts";
-import type { DreamingStatus } from "./controllers/dreaming.ts";
-import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
-import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
-import type {
-  ClawHubSearchResult,
-  ClawHubSkillDetail,
-  SkillMessage,
-} from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
 import { resolveAgentIdFromSessionKey } from "./session-key.ts";
@@ -83,23 +58,16 @@ import type {
   CronJob,
   CronRunLogEntry,
   CronStatus,
-  HealthSummary,
-  LogEntry,
-  LogLevel,
   ModelCatalogEntry,
-  PresenceEntry,
   ChannelsStatusSnapshot,
   SessionCompactionCheckpoint,
   SessionsListResult,
   SkillStatusReport,
-  StatusSummary,
-  NostrProfile,
   ToolsCatalogResult,
   ToolsEffectiveResult,
 } from "./types.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
 import { generateUUID } from "./uuid.ts";
-import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 
 declare global {
   interface Window {
@@ -134,8 +102,6 @@ export class KaijiBotApp extends LitElement {
     }
   }
   @state() password = "";
-  @state() loginShowGatewayToken = false;
-  @state() loginShowGatewayPassword = false;
   @state() tab: Tab = "chat";
   @state() onboarding = resolveOnboardingMode();
   @state() connected = false;
@@ -185,23 +151,6 @@ export class KaijiBotApp extends LitElement {
   @state() sidebarContent: string | null = null;
   @state() sidebarError: string | null = null;
   @state() splitRatio = this.settings.splitRatio;
-
-  @state() nodesLoading = false;
-  @state() nodes: Array<Record<string, unknown>> = [];
-  @state() devicesLoading = false;
-  @state() devicesError: string | null = null;
-  @state() devicesList: DevicePairingList | null = null;
-  @state() execApprovalsLoading = false;
-  @state() execApprovalsSaving = false;
-  @state() execApprovalsDirty = false;
-  @state() execApprovalsSnapshot: ExecApprovalsSnapshot | null = null;
-  @state() execApprovalsForm: ExecApprovalsFile | null = null;
-  @state() execApprovalsSelectedAgent: string | null = null;
-  @state() execApprovalsTarget: "gateway" | "node" = "gateway";
-  @state() execApprovalsTargetNodeId: string | null = null;
-  @state() execApprovalQueue: ExecApprovalRequest[] = [];
-  @state() execApprovalBusy = false;
-  @state() execApprovalError: string | null = null;
   @state() pendingGatewayUrl: string | null = null;
   pendingGatewayToken: string | null = null;
 
@@ -221,57 +170,16 @@ export class KaijiBotApp extends LitElement {
   @state() configUiHints: ConfigUiHints = {};
   @state() configForm: Record<string, unknown> | null = null;
   @state() configFormOriginal: Record<string, unknown> | null = null;
-  @state() dreamingStatusLoading = false;
-  @state() dreamingStatusError: string | null = null;
-  @state() dreamingStatus: DreamingStatus | null = null;
-  @state() dreamingModeSaving = false;
-  @state() dreamDiaryLoading = false;
-  @state() dreamDiaryActionLoading = false;
-  @state() dreamDiaryError: string | null = null;
-  @state() dreamDiaryPath: string | null = null;
-  @state() dreamDiaryContent: string | null = null;
   @state() configFormDirty = false;
   @state() configFormMode: "form" | "raw" = "form";
   @state() configSearchQuery = "";
   @state() configActiveSection: string | null = null;
   @state() configActiveSubsection: string | null = null;
-  @state() communicationsFormMode: "form" | "raw" = "form";
-  @state() communicationsSearchQuery = "";
-  @state() communicationsActiveSection: string | null = null;
-  @state() communicationsActiveSubsection: string | null = null;
-  @state() appearanceFormMode: "form" | "raw" = "form";
-  @state() appearanceSearchQuery = "";
-  @state() appearanceActiveSection: string | null = null;
-  @state() appearanceActiveSubsection: string | null = null;
-  @state() automationFormMode: "form" | "raw" = "form";
-  @state() automationSearchQuery = "";
-  @state() automationActiveSection: string | null = null;
-  @state() automationActiveSubsection: string | null = null;
-  @state() infrastructureFormMode: "form" | "raw" = "form";
-  @state() infrastructureSearchQuery = "";
-  @state() infrastructureActiveSection: string | null = null;
-  @state() infrastructureActiveSubsection: string | null = null;
-  @state() aiAgentsFormMode: "form" | "raw" = "form";
-  @state() aiAgentsSearchQuery = "";
-  @state() aiAgentsActiveSection: string | null = null;
-  @state() aiAgentsActiveSubsection: string | null = null;
 
   @state() channelsLoading = false;
   @state() channelsSnapshot: ChannelsStatusSnapshot | null = null;
   @state() channelsError: string | null = null;
   @state() channelsLastSuccess: number | null = null;
-  @state() whatsappLoginMessage: string | null = null;
-  @state() whatsappLoginQrDataUrl: string | null = null;
-  @state() whatsappLoginConnected: boolean | null = null;
-  @state() whatsappBusy = false;
-  @state() nostrProfileFormState: NostrProfileFormState | null = null;
-  @state() nostrProfileAccountId: string | null = null;
-
-  @state() presenceLoading = false;
-  @state() presenceEntries: PresenceEntry[] = [];
-  @state() presenceError: string | null = null;
-  @state() presenceStatus: string | null = null;
-
   @state() agentsLoading = false;
   @state() agentsList: AgentsListResult | null = null;
   @state() agentsError: string | null = null;
@@ -284,7 +192,7 @@ export class KaijiBotApp extends LitElement {
   @state() toolsEffectiveResultKey: string | null = null;
   @state() toolsEffectiveError: string | null = null;
   @state() toolsEffectiveResult: ToolsEffectiveResult | null = null;
-  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" = "files";
+  @state() agentsPanel: "overview" | "files" | "tools" | "cron" = "files";
   @state() agentFilesLoading = false;
   @state() agentFilesError: string | null = null;
   @state() agentFilesList: AgentsFilesListResult | null = null;
@@ -308,72 +216,11 @@ export class KaijiBotApp extends LitElement {
   @state() sessionsIncludeGlobal = true;
   @state() sessionsIncludeUnknown = false;
   @state() sessionsHideCron = true;
-  @state() sessionsSearchQuery = "";
-  @state() sessionsSortColumn: "key" | "kind" | "updated" | "tokens" = "updated";
-  @state() sessionsSortDir: "asc" | "desc" = "desc";
-  @state() sessionsPage = 0;
-  @state() sessionsPageSize = 25;
-  @state() sessionsSelectedKeys: Set<string> = new Set();
   @state() sessionsExpandedCheckpointKey: string | null = null;
   @state() sessionsCheckpointItemsByKey: Record<string, SessionCompactionCheckpoint[]> = {};
   @state() sessionsCheckpointLoadingKey: string | null = null;
   @state() sessionsCheckpointBusyKey: string | null = null;
   @state() sessionsCheckpointErrorByKey: Record<string, string> = {};
-
-  @state() usageLoading = false;
-  @state() usageResult: import("./types.js").SessionsUsageResult | null = null;
-  @state() usageCostSummary: import("./types.js").CostUsageSummary | null = null;
-  @state() usageError: string | null = null;
-  @state() usageStartDate = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  })();
-  @state() usageEndDate = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  })();
-  @state() usageSelectedSessions: string[] = [];
-  @state() usageSelectedDays: string[] = [];
-  @state() usageSelectedHours: number[] = [];
-  @state() usageChartMode: "tokens" | "cost" = "tokens";
-  @state() usageDailyChartMode: "total" | "by-type" = "by-type";
-  @state() usageTimeSeriesMode: "cumulative" | "per-turn" = "per-turn";
-  @state() usageTimeSeriesBreakdownMode: "total" | "by-type" = "by-type";
-  @state() usageTimeSeries: import("./types.js").SessionUsageTimeSeries | null = null;
-  @state() usageTimeSeriesLoading = false;
-  @state() usageTimeSeriesCursorStart: number | null = null;
-  @state() usageTimeSeriesCursorEnd: number | null = null;
-  @state() usageSessionLogs: import("./views/usage.js").SessionLogEntry[] | null = null;
-  @state() usageSessionLogsLoading = false;
-  @state() usageSessionLogsExpanded = false;
-  // Applied query (used to filter the already-loaded sessions list client-side).
-  @state() usageQuery = "";
-  // Draft query text (updates immediately as the user types; applied via debounce or "Search").
-  @state() usageQueryDraft = "";
-  @state() usageSessionSort: "tokens" | "cost" | "recent" | "messages" | "errors" = "recent";
-  @state() usageSessionSortDir: "desc" | "asc" = "desc";
-  @state() usageRecentSessions: string[] = [];
-  @state() usageTimeZone: "local" | "utc" = "local";
-  @state() usageContextExpanded = false;
-  @state() usageHeaderPinned = false;
-  @state() usageSessionsTab: "all" | "recent" = "all";
-  @state() usageVisibleColumns: string[] = [
-    "channel",
-    "agent",
-    "provider",
-    "model",
-    "messages",
-    "tools",
-    "errors",
-    "duration",
-  ];
-  @state() usageLogFilterRoles: import("./views/usage.js").SessionLogRole[] = [];
-  @state() usageLogFilterTools: string[] = [];
-  @state() usageLogFilterHasTools = false;
-  @state() usageLogFilterQuery = "";
-
-  // Non-reactive (don’t trigger renders just for timer bookkeeping).
-  usageQueryDebounceTimer: number | null = null;
 
   @state() cronLoading = false;
   @state() cronJobsLoadingMore = false;
@@ -413,76 +260,12 @@ export class KaijiBotApp extends LitElement {
 
   @state() updateAvailable: import("./types.js").UpdateAvailable | null = null;
 
-  // Overview dashboard state
-  @state() attentionItems: import("./types.js").AttentionItem[] = [];
-  @state() paletteOpen = false;
-  @state() paletteQuery = "";
-  @state() paletteActiveIndex = 0;
-  @state() overviewShowGatewayToken = false;
-  @state() overviewShowGatewayPassword = false;
-  @state() overviewLogLines: string[] = [];
-  @state() overviewLogCursor = 0;
-
-  @state() skillsLoading = false;
-  @state() skillsReport: SkillStatusReport | null = null;
-  @state() skillsError: string | null = null;
-  @state() skillsFilter = "";
-  @state() skillsStatusFilter: "all" | "ready" | "needs-setup" | "disabled" = "all";
-  @state() skillEdits: Record<string, string> = {};
-  @state() skillsBusyKey: string | null = null;
-  @state() skillMessages: Record<string, SkillMessage> = {};
-  @state() skillsDetailKey: string | null = null;
-  @state() clawhubSearchQuery = "";
-  @state() clawhubSearchResults: ClawHubSearchResult[] | null = null;
-  @state() clawhubSearchLoading = false;
-  @state() clawhubSearchError: string | null = null;
-  @state() clawhubDetail: ClawHubSkillDetail | null = null;
-  @state() clawhubDetailSlug: string | null = null;
-  @state() clawhubDetailLoading = false;
-  @state() clawhubDetailError: string | null = null;
-  @state() clawhubInstallSlug: string | null = null;
-  @state() clawhubInstallMessage: { kind: "success" | "error"; text: string } | null = null;
-
-  @state() healthLoading = false;
-  @state() healthResult: HealthSummary | null = null;
-  @state() healthError: string | null = null;
-
-  @state() debugLoading = false;
-  @state() debugStatus: StatusSummary | null = null;
-  @state() debugHealth: HealthSummary | null = null;
-  @state() debugModels: ModelCatalogEntry[] = [];
-  @state() debugHeartbeat: unknown = null;
-  @state() debugCallMethod = "";
-  @state() debugCallParams = "{}";
-  @state() debugCallResult: string | null = null;
-  @state() debugCallError: string | null = null;
-
-  @state() logsLoading = false;
-  @state() logsError: string | null = null;
-  @state() logsFile: string | null = null;
-  @state() logsEntries: LogEntry[] = [];
-  @state() logsFilterText = "";
-  @state() logsLevelFilters: Record<LogLevel, boolean> = {
-    ...DEFAULT_LOG_LEVEL_FILTERS,
-  };
-  @state() logsAutoFollow = true;
-  @state() logsTruncated = false;
-  @state() logsCursor: number | null = null;
-  @state() logsLastFetchAt: number | null = null;
-  @state() logsLimit = 500;
-  @state() logsMaxBytes = 250_000;
-  @state() logsAtBottom = true;
-
   client: GatewayBrowserClient | null = null;
   private chatScrollFrame: number | null = null;
   private chatScrollTimeout: number | null = null;
   private chatHasAutoScrolled = false;
   private chatUserNearBottom = true;
   @state() chatNewMessagesBelow = false;
-  private nodesPollInterval: number | null = null;
-  private logsPollInterval: number | null = null;
-  private debugPollInterval: number | null = null;
-  private logsScrollFrame: number | null = null;
   private toolStreamById = new Map<string, ToolStreamEntry>();
   private toolStreamOrder: string[] = [];
   refreshSessionsAfterChat = new Set<string>();
@@ -490,16 +273,6 @@ export class KaijiBotApp extends LitElement {
   private popStateHandler = () =>
     onPopStateInternal(this as unknown as Parameters<typeof onPopStateInternal>[0]);
   private topbarObserver: ResizeObserver | null = null;
-  private globalKeydownHandler = (e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "k") {
-      e.preventDefault();
-      this.paletteOpen = !this.paletteOpen;
-      if (this.paletteOpen) {
-        this.paletteQuery = "";
-        this.paletteActiveIndex = 0;
-      }
-    }
-  };
 
   createRenderRoot() {
     return this;
@@ -524,7 +297,6 @@ export class KaijiBotApp extends LitElement {
         }
       }
     };
-    document.addEventListener("keydown", this.globalKeydownHandler);
     handleConnected(this as unknown as Parameters<typeof handleConnected>[0]);
   }
 
@@ -533,7 +305,6 @@ export class KaijiBotApp extends LitElement {
   }
 
   disconnectedCallback() {
-    document.removeEventListener("keydown", this.globalKeydownHandler);
     handleDisconnected(this as unknown as Parameters<typeof handleDisconnected>[0]);
     super.disconnectedCallback();
   }
@@ -567,17 +338,6 @@ export class KaijiBotApp extends LitElement {
       this as unknown as Parameters<typeof handleChatScrollInternal>[0],
       event,
     );
-  }
-
-  handleLogsScroll(event: Event) {
-    handleLogsScrollInternal(
-      this as unknown as Parameters<typeof handleLogsScrollInternal>[0],
-      event,
-    );
-  }
-
-  exportLogs(lines: string[], label: string) {
-    exportLogsInternal(lines, label);
   }
 
   resetToolStream() {
@@ -637,10 +397,6 @@ export class KaijiBotApp extends LitElement {
     return [active, ...rest];
   }
 
-  async loadOverview() {
-    await loadOverviewInternal(this as unknown as Parameters<typeof loadOverviewInternal>[0]);
-  }
-
   async loadCron() {
     await loadCronInternal(this as unknown as Parameters<typeof loadCronInternal>[0]);
   }
@@ -665,71 +421,6 @@ export class KaijiBotApp extends LitElement {
       messageOverride,
       opts,
     );
-  }
-
-  async handleWhatsAppStart(force: boolean) {
-    await handleWhatsAppStartInternal(this, force);
-  }
-
-  async handleWhatsAppWait() {
-    await handleWhatsAppWaitInternal(this);
-  }
-
-  async handleWhatsAppLogout() {
-    await handleWhatsAppLogoutInternal(this);
-  }
-
-  async handleChannelConfigSave() {
-    await handleChannelConfigSaveInternal(this);
-  }
-
-  async handleChannelConfigReload() {
-    await handleChannelConfigReloadInternal(this);
-  }
-
-  handleNostrProfileEdit(accountId: string, profile: NostrProfile | null) {
-    handleNostrProfileEditInternal(this, accountId, profile);
-  }
-
-  handleNostrProfileCancel() {
-    handleNostrProfileCancelInternal(this);
-  }
-
-  handleNostrProfileFieldChange(field: keyof NostrProfile, value: string) {
-    handleNostrProfileFieldChangeInternal(this, field, value);
-  }
-
-  async handleNostrProfileSave() {
-    await handleNostrProfileSaveInternal(this);
-  }
-
-  async handleNostrProfileImport() {
-    await handleNostrProfileImportInternal(this);
-  }
-
-  handleNostrProfileToggleAdvanced() {
-    handleNostrProfileToggleAdvancedInternal(this);
-  }
-
-  async handleExecApprovalDecision(decision: "allow-once" | "allow-always" | "deny") {
-    const active = this.execApprovalQueue[0];
-    if (!active || !this.client || this.execApprovalBusy) {
-      return;
-    }
-    this.execApprovalBusy = true;
-    this.execApprovalError = null;
-    try {
-      const method = active.kind === "plugin" ? "plugin.approval.resolve" : "exec.approval.resolve";
-      await this.client.request(method, {
-        id: active.id,
-        decision,
-      });
-      this.execApprovalQueue = this.execApprovalQueue.filter((entry) => entry.id !== active.id);
-    } catch (err) {
-      this.execApprovalError = `Approval failed: ${String(err)}`;
-    } finally {
-      this.execApprovalBusy = false;
-    }
   }
 
   handleGatewayUrlConfirm() {

@@ -3351,6 +3351,229 @@ td.data-table-key-col {
   gap: 8px;
 }
 
+/* ===========================================
+   Agent Cards — Card-based mobile-first layout
+   =========================================== */
+
+.agents-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.agent-card {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+  min-height: 44px;
+}
+
+.agent-card:hover {
+  border-color: var(--border-strong);
+}
+
+.agent-card--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.agent-card--empty {
+  cursor: default;
+  justify-content: center;
+}
+
+.agent-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.agent-card__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+  transition: background var(--duration-fast) ease;
+}
+
+.agent-card__indicator--active {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+}
+
+.agent-card__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--secondary);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.agent-card__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.agent-card__name {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-card__badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.agent-card__sub {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Agent detail panel — shown below cards when one is selected */
+
+.agent-detail-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  padding: 14px 16px;
+}
+
+.agent-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.agent-detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.agent-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.agent-detail-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.agent-detail-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-accent);
+}
+
+.agent-detail-stat__value {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.agent-detail-stat__label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Collapsible sections within the detail panel */
+
+.agent-detail-sections {
+  display: grid;
+  gap: 8px;
+}
+
+.agent-detail-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.agent-detail-section__toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.agent-detail-section__toggle:hover {
+  background: var(--bg-hover);
+}
+
+.agent-detail-section__content {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* Desktop: 2-column card grid */
+
+@media (min-width: 769px) {
+  .agents-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .md-preview-dialog {
   width: min(980px, calc(100vw - 32px));
   max-width: none;
@@ -4459,5 +4682,266 @@ details[open] > .ov-expandable-toggle::after {
   .ov-recent__row {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+}
+
+/* ── Cron Simplified Layout ── */
+
+.cron-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 72px;
+}
+
+.cron-job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cron-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  overflow: hidden;
+}
+
+.cron-card--expanded {
+  border-color: var(--accent);
+}
+
+.cron-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.cron-card__header:hover {
+  background: var(--hover);
+}
+
+.cron-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cron-card__name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cron-card__schedule {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.cron-card__detail {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.cron-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.cron-card__payload {
+  padding: 6px 0;
+  font-size: 0.85rem;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cron-card__runs {
+  margin: 8px 0;
+}
+
+.cron-card__runs-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.cron-card__run {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  padding: 3px 0;
+}
+
+.cron-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cron-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cron-status-dot--ok {
+  background: var(--ok);
+}
+
+.cron-status-dot--error {
+  background: var(--danger);
+}
+
+.cron-status-dot--na {
+  background: var(--muted);
+}
+
+.cron-status-dot--skipped {
+  background: var(--warn);
+}
+
+/* ── Toggle Switch ── */
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--muted);
+  border-radius: 22px;
+  transition: background-color 0.2s;
+}
+
+.toggle-switch__slider::before {
+  content: "";
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-switch__slider {
+  background-color: var(--ok);
+}
+
+.toggle-switch input:checked + .toggle-switch__slider::before {
+  transform: translateX(18px);
+}
+
+/* ── FAB ── */
+
+.cron-fab {
+  position: fixed;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 24px;
+  font-weight: 300;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.cron-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.cron-fab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Form Overlay ── */
+
+.cron-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cron-form-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.cron-form-overlay__title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.cron-form-overlay__body {
+  padding: 16px;
+  flex: 1;
+}
+
+@media (min-width: 769px) {
+  .cron-job-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .cron-card--expanded {
+    grid-column: 1 / -1;
+  }
+
+  .cron-form-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: auto;
+    width: 480px;
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
   }
 }

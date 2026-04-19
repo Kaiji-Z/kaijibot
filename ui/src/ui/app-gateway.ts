@@ -22,18 +22,6 @@ import { loadAgents } from "./controllers/agents.ts";
 import { loadAssistantIdentity } from "./controllers/assistant-identity.ts";
 import { loadChatHistory } from "./controllers/chat.ts";
 import { handleChatEvent, type ChatEventPayload } from "./controllers/chat.ts";
-import { loadDevices } from "./controllers/devices.ts";
-import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
-import {
-  addExecApproval,
-  parseExecApprovalRequested,
-  parseExecApprovalResolved,
-  parsePluginApprovalRequested,
-  pruneExecApprovalQueue,
-  removeExecApproval,
-} from "./controllers/exec-approval.ts";
-import { loadHealthState } from "./controllers/health.ts";
-import { loadNodes } from "./controllers/nodes.ts";
 import { loadSessions, subscribeSessions } from "./controllers/sessions.ts";
 import {
   resolveGatewayErrorDetailCode,
@@ -86,8 +74,6 @@ type GatewayHost = {
   sessionKey: string;
   chatRunId: string | null;
   refreshSessionsAfterChat: Set<string>;
-  execApprovalQueue: ExecApprovalRequest[];
-  execApprovalError: string | null;
   updateAvailable: UpdateAvailable | null;
 };
 
@@ -196,20 +182,12 @@ export function connectGateway(host: GatewayHost, options?: ConnectGatewayOption
   host.hello = null;
   host.connected = false;
   if (reconnectReason === "seq-gap") {
-    // A seq gap means the socket stayed on the same gateway; preserve prompts
-    // that only arrived as ephemeral events and clear stale run-scoped indicators.
-    host.execApprovalQueue = pruneExecApprovalQueue(host.execApprovalQueue);
     clearPendingQueueItemsForRun(
       host as unknown as Parameters<typeof clearPendingQueueItemsForRun>[0],
       host.chatRunId ?? undefined,
     );
     shutdownHost.resumeChatQueueAfterReconnect = true;
-  } else {
-    // Preserve any still-live approvals that were already staged in UI state.
-    // Initial connect can happen after a soft reload while an approval is pending.
-    host.execApprovalQueue = pruneExecApprovalQueue(host.execApprovalQueue);
   }
-  host.execApprovalError = null;
 
   const previousClient = host.client;
   const clientVersion = resolveControlUiClientVersion({
@@ -251,9 +229,6 @@ export function connectGateway(host: GatewayHost, options?: ConnectGatewayOption
       void subscribeSessions(host as unknown as KaijiBotApp);
       void loadAssistantIdentity(host as unknown as KaijiBotApp);
       void loadAgents(host as unknown as KaijiBotApp);
-      void loadHealthState(host as unknown as KaijiBotApp);
-      void loadNodes(host as unknown as KaijiBotApp, { quiet: true });
-      void loadDevices(host as unknown as KaijiBotApp, { quiet: true });
       void refreshActiveTab(host as unknown as Parameters<typeof refreshActiveTab>[0]);
     },
     onClose: ({ code, reason, error }) => {
@@ -366,9 +341,6 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     { ts: Date.now(), event: evt.event, payload: evt.payload },
     ...host.eventLogBuffer,
   ].slice(0, 250);
-  if (host.tab === "debug" || host.tab === "overview") {
-    host.eventLog = host.eventLogBuffer;
-  }
 
   if (evt.event === "agent") {
     if (host.onboarding) {
@@ -416,52 +388,6 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
 
   if (evt.event === "cron" && host.tab === "cron") {
     void loadCron(host as unknown as Parameters<typeof loadCron>[0]);
-  }
-
-  if (evt.event === "device.pair.requested" || evt.event === "device.pair.resolved") {
-    void loadDevices(host as unknown as KaijiBotApp, { quiet: true });
-  }
-
-  if (evt.event === "exec.approval.requested") {
-    const entry = parseExecApprovalRequested(evt.payload);
-    if (entry) {
-      host.execApprovalQueue = addExecApproval(host.execApprovalQueue, entry);
-      host.execApprovalError = null;
-      const delay = Math.max(0, entry.expiresAtMs - Date.now() + 500);
-      window.setTimeout(() => {
-        host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, entry.id);
-      }, delay);
-    }
-    return;
-  }
-
-  if (evt.event === "exec.approval.resolved") {
-    const resolved = parseExecApprovalResolved(evt.payload);
-    if (resolved) {
-      host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
-    }
-    return;
-  }
-
-  if (evt.event === "plugin.approval.requested") {
-    const entry = parsePluginApprovalRequested(evt.payload);
-    if (entry) {
-      host.execApprovalQueue = addExecApproval(host.execApprovalQueue, entry);
-      host.execApprovalError = null;
-      const delay = Math.max(0, entry.expiresAtMs - Date.now() + 500);
-      window.setTimeout(() => {
-        host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, entry.id);
-      }, delay);
-    }
-    return;
-  }
-
-  if (evt.event === "plugin.approval.resolved") {
-    const resolved = parseExecApprovalResolved(evt.payload);
-    if (resolved) {
-      host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
-    }
-    return;
   }
 
   if (evt.event === GATEWAY_EVENT_UPDATE_AVAILABLE) {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  TAB_GROUPS,
   iconForTab,
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -9,15 +8,13 @@ import {
   subtitleForTab,
   tabFromPath,
   titleForTab,
+  TABS,
   type Tab,
 } from "./navigation.ts";
 
-/** All valid tab identifiers derived from TAB_GROUPS */
-const ALL_TABS: Tab[] = TAB_GROUPS.flatMap((group) => group.tabs) as Tab[];
-
 describe("iconForTab", () => {
   it("returns a non-empty string for every tab", () => {
-    for (const tab of ALL_TABS) {
+    for (const tab of TABS) {
       const icon = iconForTab(tab);
       expect(icon).toBeTruthy();
       expect(typeof icon).toBe("string");
@@ -27,16 +24,9 @@ describe("iconForTab", () => {
 
   it("returns stable icons for known tabs", () => {
     expect(iconForTab("chat")).toBe("messageSquare");
-    expect(iconForTab("overview")).toBe("barChart");
-    expect(iconForTab("channels")).toBe("link");
-    expect(iconForTab("instances")).toBe("radio");
-    expect(iconForTab("sessions")).toBe("fileText");
-    expect(iconForTab("cron")).toBe("loader");
-    expect(iconForTab("skills")).toBe("zap");
-    expect(iconForTab("nodes")).toBe("monitor");
-    expect(iconForTab("config")).toBe("settings");
-    expect(iconForTab("debug")).toBe("bug");
-    expect(iconForTab("logs")).toBe("scrollText");
+    expect(iconForTab("agents")).toBe("brain");
+    expect(iconForTab("cron")).toBe("fileText");
+    expect(iconForTab("settings")).toBe("settings");
   });
 
   it("returns a fallback icon for unknown tab", () => {
@@ -48,31 +38,20 @@ describe("iconForTab", () => {
 
 describe("titleForTab", () => {
   it("returns a non-empty string for every tab", () => {
-    for (const tab of ALL_TABS) {
+    for (const tab of TABS) {
       const title = titleForTab(tab);
       expect(title).toBeTruthy();
       expect(typeof title).toBe("string");
     }
   });
-
-  it("returns expected titles", () => {
-    expect(titleForTab("chat")).toBe("Chat");
-    expect(titleForTab("overview")).toBe("Overview");
-    expect(titleForTab("cron")).toBe("Cron Jobs");
-  });
 });
 
 describe("subtitleForTab", () => {
   it("returns a string for every tab", () => {
-    for (const tab of ALL_TABS) {
+    for (const tab of TABS) {
       const subtitle = subtitleForTab(tab);
       expect(typeof subtitle).toBe("string");
     }
-  });
-
-  it("returns descriptive subtitles", () => {
-    expect(subtitleForTab("chat")).toContain("quick interventions");
-    expect(subtitleForTab("config")).toContain("kaijibot.json");
   });
 });
 
@@ -116,22 +95,21 @@ describe("normalizePath", () => {
 describe("pathForTab", () => {
   it("returns correct path without base", () => {
     expect(pathForTab("chat")).toBe("/chat");
-    expect(pathForTab("overview")).toBe("/overview");
+    expect(pathForTab("settings")).toBe("/settings");
   });
 
   it("prepends base path", () => {
     expect(pathForTab("chat", "/ui")).toBe("/ui/chat");
-    expect(pathForTab("sessions", "/apps/kaijibot")).toBe("/apps/kaijibot/sessions");
+    expect(pathForTab("agents", "/apps/kaijibot")).toBe("/apps/kaijibot/agents");
   });
 });
 
 describe("tabFromPath", () => {
   it("returns tab for valid path", () => {
     expect(tabFromPath("/chat")).toBe("chat");
-    expect(tabFromPath("/overview")).toBe("overview");
-    expect(tabFromPath("/sessions")).toBe("sessions");
-    expect(tabFromPath("/dreaming")).toBe("dreams");
-    expect(tabFromPath("/dreams")).toBe("dreams");
+    expect(tabFromPath("/agents")).toBe("agents");
+    expect(tabFromPath("/cron")).toBe("cron");
+    expect(tabFromPath("/settings")).toBe("settings");
   });
 
   it("returns chat for root path", () => {
@@ -140,7 +118,7 @@ describe("tabFromPath", () => {
 
   it("handles base paths", () => {
     expect(tabFromPath("/ui/chat", "/ui")).toBe("chat");
-    expect(tabFromPath("/apps/kaijibot/sessions", "/apps/kaijibot")).toBe("sessions");
+    expect(tabFromPath("/apps/kaijibot/agents", "/apps/kaijibot")).toBe("agents");
   });
 
   it("returns null for unknown path", () => {
@@ -149,7 +127,7 @@ describe("tabFromPath", () => {
 
   it("is case-insensitive", () => {
     expect(tabFromPath("/CHAT")).toBe("chat");
-    expect(tabFromPath("/Overview")).toBe("overview");
+    expect(tabFromPath("/Settings")).toBe("settings");
   });
 });
 
@@ -160,34 +138,16 @@ describe("inferBasePathFromPathname", () => {
 
   it("returns empty string for direct tab path", () => {
     expect(inferBasePathFromPathname("/chat")).toBe("");
-    expect(inferBasePathFromPathname("/overview")).toBe("");
-    expect(inferBasePathFromPathname("/dreaming")).toBe("");
-    expect(inferBasePathFromPathname("/dreams")).toBe("");
+    expect(inferBasePathFromPathname("/settings")).toBe("");
   });
 
   it("infers base path from nested paths", () => {
     expect(inferBasePathFromPathname("/ui/chat")).toBe("/ui");
-    expect(inferBasePathFromPathname("/apps/kaijibot/sessions")).toBe("/apps/kaijibot");
+    expect(inferBasePathFromPathname("/apps/kaijibot/agents")).toBe("/apps/kaijibot");
   });
 
   it("handles index.html suffix", () => {
     expect(inferBasePathFromPathname("/index.html")).toBe("");
     expect(inferBasePathFromPathname("/ui/index.html")).toBe("/ui");
-  });
-});
-
-describe("TAB_GROUPS", () => {
-  it("contains all expected groups", () => {
-    const labels = TAB_GROUPS.map((g) => g.label);
-    expect(labels).toContain("chat");
-    expect(labels).toContain("control");
-    expect(labels).toContain("agent");
-    expect(labels).toContain("settings");
-  });
-
-  it("all tabs are unique", () => {
-    const allTabs = TAB_GROUPS.flatMap((g) => g.tabs);
-    const uniqueTabs = new Set(allTabs);
-    expect(uniqueTabs.size).toBe(allTabs.length);
   });
 });

@@ -1,13 +1,9 @@
 import { connectGateway } from "./app-gateway.ts";
 import {
-  startLogsPolling,
   startNodesPolling,
-  stopLogsPolling,
   stopNodesPolling,
-  startDebugPolling,
-  stopDebugPolling,
 } from "./app-polling.ts";
-import { observeTopbar, scheduleChatScroll, scheduleLogsScroll } from "./app-scroll.ts";
+import { observeTopbar, scheduleChatScroll } from "./app-scroll.ts";
 import {
   applySettingsFromUrl,
   attachThemeListener,
@@ -35,9 +31,6 @@ type LifecycleHost = {
   chatMessages: unknown[];
   chatToolMessages: unknown[];
   chatStream: string | null;
-  logsAutoFollow: boolean;
-  logsAtBottom: boolean;
-  logsEntries: unknown[];
   popStateHandler: () => void;
   topbarObserver: ResizeObserver | null;
 };
@@ -58,12 +51,6 @@ export function handleConnected(host: LifecycleHost) {
     connectGateway(host as unknown as Parameters<typeof connectGateway>[0]);
   });
   startNodesPolling(host as unknown as Parameters<typeof startNodesPolling>[0]);
-  if (host.tab === "logs") {
-    startLogsPolling(host as unknown as Parameters<typeof startLogsPolling>[0]);
-  }
-  if (host.tab === "debug") {
-    startDebugPolling(host as unknown as Parameters<typeof startDebugPolling>[0]);
-  }
 }
 
 export function handleFirstUpdated(host: LifecycleHost) {
@@ -74,8 +61,6 @@ export function handleDisconnected(host: LifecycleHost) {
   host.connectGeneration += 1;
   window.removeEventListener("popstate", host.popStateHandler);
   stopNodesPolling(host as unknown as Parameters<typeof stopNodesPolling>[0]);
-  stopLogsPolling(host as unknown as Parameters<typeof stopLogsPolling>[0]);
-  stopDebugPolling(host as unknown as Parameters<typeof stopDebugPolling>[0]);
   host.client?.stop();
   host.client = null;
   host.connected = false;
@@ -109,16 +94,5 @@ export function handleUpdated(host: LifecycleHost, changed: Map<PropertyKey, unk
       host as unknown as Parameters<typeof scheduleChatScroll>[0],
       forcedByTab || forcedByLoad || streamJustStarted || !host.chatHasAutoScrolled,
     );
-  }
-  if (
-    host.tab === "logs" &&
-    (changed.has("logsEntries") || changed.has("logsAutoFollow") || changed.has("tab"))
-  ) {
-    if (host.logsAutoFollow && host.logsAtBottom) {
-      scheduleLogsScroll(
-        host as unknown as Parameters<typeof scheduleLogsScroll>[0],
-        changed.has("tab") || changed.has("logsAutoFollow"),
-      );
-    }
   }
 }

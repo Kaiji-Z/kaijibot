@@ -21,7 +21,7 @@ import type {
 } from "../types.ts";
 import { type AgentContext } from "./agents-utils.ts";
 import type { AgentsPanel } from "./agents.ts";
-import { resolveChannelExtras as resolveChannelExtrasFromConfig } from "./channel-config-extras.ts";
+import { resolveChannelExtras as resolveChannelExtrasFromConfig } from "./channel-config-extras.js";
 
 function renderAgentContextCard(
   context: AgentContext,

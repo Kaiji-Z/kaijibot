@@ -1127,6 +1127,14 @@
   }
 }
 
+/* ===========================================
+   Bottom Tab Bar — mobile only
+   =========================================== */
+
+.bottom-tab-bar {
+  display: none;
+}
+
 /* Mobile chat controls — hidden on desktop, shown in layout.mobile.css */
 .chat-mobile-controls-wrapper {
   display: none;

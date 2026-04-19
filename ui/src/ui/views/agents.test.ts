@@ -108,50 +108,47 @@ function createProps(overrides: Partial<AgentsProps> = {}): AgentsProps {
     onConfigSave: () => undefined,
     onModelChange: () => undefined,
     onModelFallbacksChange: () => undefined,
-    onChannelsRefresh: () => undefined,
     onCronRefresh: () => undefined,
     onCronRunNow: () => undefined,
-    onSkillsFilterChange: () => undefined,
-    onSkillsRefresh: () => undefined,
-    onAgentSkillToggle: () => undefined,
-    onAgentSkillsClear: () => undefined,
-    onAgentSkillsDisableAll: () => undefined,
     onSetDefault: () => undefined,
     ...overrides,
   };
 }
 
 describe("renderAgents", () => {
-  it("shows the skills count only for the selected agent's report", async () => {
+  it("renders agent cards for each agent", async () => {
+    const container = document.createElement("div");
+    render(renderAgents(createProps()), container);
+    await Promise.resolve();
+
+    const cards = container.querySelectorAll<HTMLButtonElement>(".agent-card");
+    expect(cards.length).toBe(2);
+  });
+
+  it("marks the selected agent card as selected", async () => {
+    const container = document.createElement("div");
+    render(renderAgents(createProps({ selectedAgentId: "beta" })), container);
+    await Promise.resolve();
+
+    const selected = container.querySelector(".agent-card--selected");
+    expect(selected).not.toBeNull();
+  });
+
+  it("shows default badge on the default agent card", async () => {
     const container = document.createElement("div");
     render(
       renderAgents(
-        createProps({
-          agentSkills: {
-            report: {
-              workspaceDir: "/tmp/workspace",
-              managedSkillsDir: "/tmp/skills",
-              skills: [createSkill()],
-            },
-            loading: false,
-            error: null,
-            agentId: "alpha",
-            filter: "",
-          },
-        }),
+        createProps({ selectedAgentId: "alpha" }),
       ),
       container,
     );
     await Promise.resolve();
 
-    const skillsTab = Array.from(container.querySelectorAll<HTMLButtonElement>(".agent-tab")).find(
-      (button) => button.textContent?.includes("Skills"),
-    );
-
-    expect(skillsTab?.textContent?.trim()).toBe("Skills");
+    const badge = container.querySelector(".agent-card__badge");
+    expect(badge?.textContent?.trim()).toBe("default");
   });
 
-  it("shows the selected agent's skills count when the report matches", async () => {
+  it("shows skills count in detail stats when report matches selected agent", async () => {
     const container = document.createElement("div");
     render(
       renderAgents(
@@ -173,10 +170,48 @@ describe("renderAgents", () => {
     );
     await Promise.resolve();
 
-    const skillsTab = Array.from(container.querySelectorAll<HTMLButtonElement>(".agent-tab")).find(
-      (button) => button.textContent?.includes("Skills"),
+    const stats = Array.from(container.querySelectorAll<HTMLSpanElement>(".agent-detail-stat"));
+    const skillsStat = stats.find((stat) =>
+      stat.querySelector(".agent-detail-stat__label")?.textContent?.includes("Skills"),
     );
+    expect(skillsStat?.querySelector(".agent-detail-stat__value")?.textContent?.trim()).toBe("1");
+  });
 
-    expect(skillsTab?.textContent?.trim()).toContain("1");
+  it("does not show skills count when report is for a different agent", async () => {
+    const container = document.createElement("div");
+    render(
+      renderAgents(
+        createProps({
+          agentSkills: {
+            report: {
+              workspaceDir: "/tmp/workspace",
+              managedSkillsDir: "/tmp/skills",
+              skills: [createSkill()],
+            },
+            loading: false,
+            error: null,
+            agentId: "alpha",
+            filter: "",
+          },
+        }),
+      ),
+      container,
+    );
+    await Promise.resolve();
+
+    const stats = Array.from(container.querySelectorAll<HTMLSpanElement>(".agent-detail-stat"));
+    const skillsStat = stats.find((stat) =>
+      stat.querySelector(".agent-detail-stat__label")?.textContent?.includes("Skills"),
+    );
+    expect(skillsStat?.querySelector(".agent-detail-stat__value")?.textContent?.trim()).toBe("—");
+  });
+
+  it("renders detail panel for the selected agent", async () => {
+    const container = document.createElement("div");
+    render(renderAgents(createProps()), container);
+    await Promise.resolve();
+
+    const detail = container.querySelector(".agent-detail-panel");
+    expect(detail).not.toBeNull();
   });
 });
