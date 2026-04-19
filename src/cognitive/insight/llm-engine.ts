@@ -164,17 +164,82 @@ export async function generateInsightCandidatesLLM(
   }
 }
 
-function buildSearchQuery(input: InsightEngineInput): string {
+/**
+ * Strip conversational noise from a raw user utterance and keep only
+ * the noun-phrases / technical terms that are useful as search keywords.
+ *
+ * Removes:
+ *  - Feishu user-ID prefixes (`ou_xxx:`, `9cc3e...:`)
+ *  - Common Chinese conversational fillers / question wrappers
+ *  - Leading interrogatives (你能不能, 我能怎么, 为什么 etc.)
+ *  - Stray punctuation
+ */
+export function extractKeyTerms(text: string): string[] {
+  let cleaned = text
+    .replace(/\b(?:ou_)?[0-9a-f]{16,}\s*:?\s*/g, "")
+    .replace(/^(?:需要我|你能|我能不能|我能怎么|你为什么|是不是|你好[，,]?|请问|能不能|为什么)/, "")
+    .replace(/[？?，,。.！!]+$/g, "")
+    .replace(/(?:才能|的话|到底|这个|那个|一下|帮我|帮我去)/g, " ")
+    .trim();
+
+  if (!cleaned) return [];
+
+  const segments = cleaned
+    .split(/[，,？?；;、—–]+|(?:的?时候|之前|之后|还是)/)
+    .flatMap((s) => {
+      const trimmed = s.trim();
+      if (!trimmed) return [];
+      if (trimmed.length <= 30 && trimmed.length >= 2) return [trimmed];
+      if (trimmed.length > 30) {
+        return trimmed.split(/\s+/).filter((w) => w.length >= 2 && w.length <= 30);
+      }
+      return [];
+    });
+
+  return segments;
+}
+
+/**
+ * Build a focused web-search query from the insight pipeline input.
+ *
+ * Strategy:
+ *  1. Try to extract 2-3 key concepts from the first pending question.
+ *  2. If no pending question (or extraction yields nothing), fall back to recentFocus.
+ *  3. Always prepend the primary target domain as context.
+ *  4. Cap at 120 chars and ensure the query is well-formed.
+ */
+export function buildSearchQuery(input: InsightEngineInput): string {
+  const domain = input.targetDomains[0] ?? "";
   const parts: string[] = [];
-  if (input.targetDomains.length > 0) {
-    parts.push(input.targetDomains.slice(0, 2).join(" "));
+
+  // Attempt concept extraction from pending question first (highest signal)
+  const questionTerms = input.pendingQuestions.length > 0
+    ? extractKeyTerms(input.pendingQuestions[0]!)
+    : [];
+
+  // Fall back to recent focus if question extraction yields nothing useful
+  const focusTerms = questionTerms.length === 0 && input.recentFocus.length > 0
+    ? extractKeyTerms(input.recentFocus[0]!)
+    : [];
+
+  const concepts = questionTerms.length > 0 ? questionTerms : focusTerms;
+
+  if (domain) {
+    parts.push(domain);
   }
-  if (input.pendingQuestions.length > 0) {
-    parts.push(input.pendingQuestions[0]);
+
+  const seen = new Set<string>();
+  const domainLower = domain.toLowerCase();
+  for (const term of concepts) {
+    const termLower = term.toLowerCase();
+    const overlapsDomain = domainLower && (termLower.includes(domainLower) || domainLower.includes(termLower));
+    if (!overlapsDomain && !seen.has(termLower)) {
+      parts.push(term);
+      seen.add(termLower);
+    }
+    if (parts.length >= 4) break;
   }
-  if (input.recentFocus.length > 0) {
-    parts.push(input.recentFocus[0]);
-  }
+
   return parts.join(" ").slice(0, 120);
 }
 

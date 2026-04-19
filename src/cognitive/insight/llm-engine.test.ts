@@ -2,7 +2,7 @@ import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, buildInsightPrompt, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
+import { generateInsightCandidatesLLM, buildInsightPrompt, extractKeyTerms, buildSearchQuery, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
 
 const TEST_MODEL: Model<Api> = {
@@ -515,5 +515,164 @@ describe("buildInsightPrompt — domain alias matching", () => {
       { title: "Model Context Protocol spec v2", url: "https://example.com", snippet: "MCP spec updated" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
+  });
+});
+
+describe("extractKeyTerms", () => {
+  it("extracts substantive terms from a clean Chinese question", () => {
+    const terms = extractKeyTerms("Rust和TypeScript通过WASM结合的最佳实践");
+    expect(terms.length).toBeGreaterThanOrEqual(1);
+    expect(terms).toContain("Rust和TypeScript通过WASM结合的最佳实践");
+  });
+
+  it("strips Feishu user-ID prefix", () => {
+    const terms = extractKeyTerms("ou_9fc49cc3e2864aba3cd8f720955e379a: 软件架构设计模式");
+    expect(terms.length).toBeGreaterThanOrEqual(1);
+    expect(terms.some((t) => t.includes("软件架构"))).toBe(true);
+    expect(terms.some((t) => t.includes("ou_") || t.includes("9fc49"))).toBe(false);
+  });
+
+  it("strips hex-only user-ID prefix", () => {
+    const terms = extractKeyTerms("9cc3e2864aba3cd8f720955e379a: Gateway配置");
+    expect(terms).toContain("Gateway配置");
+  });
+
+  it("removes leading interrogative fillers", () => {
+    const terms = extractKeyTerms("需要我重启Gateway才能识别这个Chromium？");
+    expect(terms.length).toBeGreaterThanOrEqual(1);
+    expect(terms[0]).not.toMatch(/^需要我/);
+  });
+
+  it("removes trailing punctuation", () => {
+    const terms = extractKeyTerms("KaijiBot网关调试。。？！");
+    expect(terms.length).toBeGreaterThanOrEqual(1);
+    expect(terms[0]).not.toMatch(/[。？！，]+$/);
+  });
+
+  it("splits on conjunctions and keeps substantive segments", () => {
+    const terms = extractKeyTerms("软件架构的时候还是系统设计");
+    expect(terms.length).toBeGreaterThanOrEqual(2);
+    expect(terms).toContain("软件架构");
+    expect(terms).toContain("系统设计");
+  });
+
+  it("filters out very short segments (< 2 chars)", () => {
+    const terms = extractKeyTerms("的");
+    expect(terms).toEqual([]);
+  });
+
+  it("filters out very long segments (> 30 chars)", () => {
+    const longText = "这是一个非常长的句子包含超过三十个字符的限制所以应该被过滤掉才对啊";
+    const terms = extractKeyTerms(longText);
+    for (const term of terms) {
+      expect(term.length).toBeLessThanOrEqual(30);
+    }
+  });
+
+  it("returns empty array for empty string", () => {
+    expect(extractKeyTerms("")).toEqual([]);
+  });
+
+  it("returns empty array for whitespace only", () => {
+    expect(extractKeyTerms("   ")).toEqual([]);
+  });
+
+  it("returns empty array after stripping leaves nothing", () => {
+    expect(extractKeyTerms("你好？")).toEqual([]);
+  });
+
+  it("handles English technical terms", () => {
+    const terms = extractKeyTerms("How to optimize React server components");
+    expect(terms.length).toBeGreaterThanOrEqual(1);
+    expect(terms.some((t) => t.toLowerCase().includes("react") || t.toLowerCase().includes("server"))).toBe(true);
+  });
+});
+
+describe("buildSearchQuery", () => {
+  it("prefers pending question terms over recent focus", () => {
+    const input = makeInput({
+      targetDomains: ["rust"],
+      pendingQuestions: ["Rust所有权模型和借用检查器"],
+      recentFocus: ["wasm"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("rust");
+    expect(query).not.toBe("rust wasm");
+  });
+
+  it("falls back to recentFocus when no pending questions", () => {
+    const input = makeInput({
+      targetDomains: ["typescript"],
+      pendingQuestions: [],
+      recentFocus: ["装饰器模式"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("typescript");
+    expect(query).toContain("装饰器模式");
+  });
+
+  it("uses targetDomains even when both question and focus are empty", () => {
+    const input = makeInput({
+      targetDomains: ["kubernetes"],
+      pendingQuestions: [],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toBe("kubernetes");
+  });
+
+  it("deduplicates concepts that overlap with domain", () => {
+    const input = makeInput({
+      targetDomains: ["typescript"],
+      pendingQuestions: ["TypeScript的高级类型"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    const matches = query.match(/typescript/gi);
+    expect(matches).toHaveLength(1);
+  });
+
+  it("caps query at 120 characters", () => {
+    const input = makeInput({
+      targetDomains: ["domain"],
+      pendingQuestions: ["这是一个非常非常长的搜索查询包含了很多关键词和描述性文字希望能够超过一百二十个字符的限制以便测试截断功能是否正常工作呀".repeat(3)],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query.length).toBeLessThanOrEqual(120);
+  });
+
+  it("limits to domain + 3 concepts", () => {
+    const input = makeInput({
+      targetDomains: ["ai"],
+      pendingQuestions: ["机器学习 深度学习 神经网络 自然语言处理 计算机视觉 强化学习"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    const parts = query.split(" ");
+    expect(parts.length).toBeLessThanOrEqual(4);
+  });
+
+  it("handles empty targetDomains gracefully", () => {
+    const input = makeInput({
+      targetDomains: [],
+      pendingQuestions: ["React状态管理最佳实践"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toBeTruthy();
+    expect(query.length).toBeGreaterThan(0);
+  });
+
+  it("produces a clean query instead of raw conversational text", () => {
+    const input = makeInput({
+      targetDomains: ["软件架构"],
+      pendingQuestions: ["需要我重启Gateway才能识别这个Chromium？ KaijiBot网关调试"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).not.toContain("需要我");
+    expect(query).not.toContain("才能识别");
+    expect(query).toContain("软件架构");
   });
 });
