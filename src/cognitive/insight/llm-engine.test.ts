@@ -2,7 +2,7 @@ import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, type LlmInsightDeps } from "./llm-engine.js";
+import { generateInsightCandidatesLLM, buildInsightPrompt, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
 
 const TEST_MODEL: Model<Api> = {
@@ -382,5 +382,138 @@ describe("generateInsightCandidatesLLM", () => {
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.sources.length).toBe(1);
     expect(result[0]!.sources[0]!.url).toBe("https://example.com/ts55");
+  });
+});
+
+describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
+  it("places web snippets in EXTERNAL_FACTS block when web results exist", () => {
+    const persona = makePersona({
+      domains: {
+        TypeScript: {
+          depth: 5,
+          recurrence: 10,
+          lastMentioned: Date.now(),
+          keyInsights: ["type system"],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["TypeScript"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "TypeScript 5.5", url: "https://example.com", snippet: "New type predicates" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("New type predicates");
+    // Should NOT have inline news: in domain descriptions
+    expect(prompt).not.toMatch(/news:.*New type predicates/);
+  });
+
+  it("does not include EXTERNAL_FACTS block when no web results", () => {
+    const persona = makePersona({
+      domains: {
+        Rust: {
+          depth: 3,
+          recurrence: 5,
+          lastMentioned: Date.now(),
+          keyInsights: [],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["Rust"] });
+    const prompt = buildInsightPrompt(persona, input, []);
+    expect(prompt).not.toContain("EXTERNAL_FACTS");
+  });
+
+  it("includes prioritization instruction when EXTERNAL_FACTS present", () => {
+    const persona = makePersona({
+      domains: {
+        Rust: {
+          depth: 3,
+          recurrence: 5,
+          lastMentioned: Date.now(),
+          keyInsights: [],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["Rust"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "Rust async", url: "https://example.com", snippet: "Tokio runtime update" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("prioritize building the insight around those external facts");
+  });
+});
+
+describe("buildInsightPrompt — domain alias matching", () => {
+  it("matches web results by keyInsight-derived aliases", () => {
+    const persona = makePersona({
+      domains: {
+        TypeScript: {
+          depth: 5,
+          recurrence: 10,
+          lastMentioned: Date.now(),
+          keyInsights: ["decorator pattern", "template literal types"],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["TypeScript"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "New TC39 decorator metadata", url: "https://example.com", snippet: "Stage 3 decorator proposal" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("Stage 3 decorator proposal");
+  });
+
+  it("still matches by domain name (regression)", () => {
+    const persona = makePersona({
+      domains: {
+        TypeScript: {
+          depth: 3,
+          recurrence: 5,
+          lastMentioned: Date.now(),
+          keyInsights: [],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["TypeScript"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "TypeScript 5.5 Release", url: "https://example.com", snippet: "New type predicates" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("New type predicates");
+  });
+
+  it("matches multi-word keyInsight phrases", () => {
+    const persona = makePersona({
+      domains: {
+        MCP: {
+          depth: 3,
+          recurrence: 5,
+          lastMentioned: Date.now(),
+          keyInsights: ["Model Context Protocol"],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["MCP"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "Model Context Protocol spec v2", url: "https://example.com", snippet: "MCP spec updated" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
   });
 });

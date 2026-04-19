@@ -304,23 +304,61 @@ function truncate(s: string, maxLen: number): string {
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
 }
 
+function buildExternalFactsEntries(webSnippetByDomain: Map<string, string[]>): string[] {
+  return [...webSnippetByDomain.entries()]
+    .flatMap(([domain, snippets]) => snippets.map((s) => `[${domain}] ${truncate(s, 120)}`))
+    .slice(0, 6);
+}
+
+function buildDomainKeywordMap(
+  domains: Record<string, import("../types.js").DomainNode>,
+): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const [name, domain] of Object.entries(domains)) {
+    const keywords = new Set<string>();
+    keywords.add(name.toLowerCase());
+    for (const insight of domain.keyInsights.slice(0, 3)) {
+      const lower = insight.toLowerCase();
+      keywords.add(lower);
+      for (const word of lower.split(/\s+/)) {
+        if (word.length >= 3) keywords.add(word);
+      }
+    }
+    map.set(name, keywords);
+  }
+  return map;
+}
+
+function matchWebResultsToDomains(
+  webResults: WebSearchResult[],
+  keywordMap: Map<string, Set<string>>,
+): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  for (const r of webResults) {
+    const titleLower = r.title.toLowerCase();
+    const snippetLower = r.snippet.toLowerCase();
+    for (const [domainName, keywords] of keywordMap) {
+      const matched = [...keywords].some(
+        (kw) => titleLower.includes(kw) || snippetLower.includes(kw),
+      );
+      if (matched) {
+        const list = result.get(domainName) ?? [];
+        list.push(r.snippet);
+        result.set(domainName, list);
+      }
+    }
+  }
+  return result;
+}
+
 export function buildInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   webResults: WebSearchResult[] = [],
   recentInsightContents: string[] = [],
 ): string {
-  const webSnippetByDomain = new Map<string, string[]>();
-  for (const r of webResults) {
-    const title = r.title.toLowerCase();
-    for (const domainName of Object.keys(persona.domains)) {
-      if (title.includes(domainName.toLowerCase()) || r.snippet.toLowerCase().includes(domainName.toLowerCase())) {
-        const list = webSnippetByDomain.get(domainName) ?? [];
-        list.push(r.snippet);
-        webSnippetByDomain.set(domainName, list);
-      }
-    }
-  }
+  const keywordMap = buildDomainKeywordMap(persona.domains);
+  const webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
   if (webResults.length > 0) {
     const matchedDomains = [...webSnippetByDomain.keys()];
     const unmatched = webResults.length - [...webSnippetByDomain.values()].reduce((s, v) => s + v.length, 0);
@@ -342,10 +380,6 @@ export function buildInsightPrompt(
       if (d.keyInsights.length > 0) {
         parts.push(`known: ${d.keyInsights.slice(0, 3).join("; ")}`);
       }
-      const snippets = webSnippetByDomain.get(name);
-      if (snippets && snippets.length > 0) {
-        parts.push(`news: ${snippets[0]}`);
-      }
       return parts.join(" | ");
     })
     .join("\n");
@@ -356,6 +390,11 @@ export function buildInsightPrompt(
   const anchorBlock = anchorFacts.length > 0
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
     : "  (not yet established)";
+
+  const externalFacts = buildExternalFactsEntries(webSnippetByDomain);
+  const externalFactsBlock = externalFacts.length > 0
+    ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "";
 
   const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
   const pendingQuestions = persona.pendingQuestions.slice(0, 3).join("; ");
@@ -422,6 +461,7 @@ ${coOccurrenceBlock ? `\nCROSS-DOMAIN CONNECTIONS:\n${coOccurrenceBlock}` : ""}
 
 SPECIFIC FACTS YOU KNOW ABOUT THIS USER (your insight MUST reference at least one):
 ${anchorBlock}
+${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's domains):\n${externalFactsBlock}\n\nIMPORTANT: If EXTERNAL_FACTS contains information relevant to the user's focus areas, prioritize building the insight around those external facts rather than recombining known keyInsights.` : ""}
 
 Recent focus: ${recentFocus || "None"}
 Pending questions: ${pendingQuestions || "None"}
