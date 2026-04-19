@@ -20,13 +20,13 @@ import {
   buildProviderReplayFamilyHooks,
   normalizeModelCompat,
 } from "kaijibot/plugin-sdk/provider-model-shared";
-import { buildProviderStreamFamilyHooks } from "kaijibot/plugin-sdk/provider-stream-family";
 import { fetchZaiUsage, resolveLegacyPiAgentAccessToken } from "kaijibot/plugin-sdk/provider-usage";
 import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
 import { detectZaiEndpoint, type ZaiEndpointId } from "./detect.js";
 import { zaiMediaUnderstandingProvider } from "./media-understanding-provider.js";
 import { buildZaiModelDefinition } from "./model-definitions.js";
 import { applyZaiConfig, applyZaiProviderConfig, ZAI_DEFAULT_MODEL_REF } from "./onboard.js";
+import { wrapZaiProviderStream } from "./stream.js";
 
 const PROVIDER_ID = "zai";
 const GLM5_TEMPLATE_MODEL_ID = "glm-4.7";
@@ -34,7 +34,6 @@ const PROFILE_ID = "zai:default";
 const OPENAI_COMPATIBLE_REPLAY_HOOKS = buildProviderReplayFamilyHooks({
   family: "openai-compatible",
 });
-const ZAI_TOOL_STREAM_HOOKS = buildProviderStreamFamilyHooks("tool-stream-default-on");
 
 function resolveGlm5ForwardCompatModel(
   ctx: ProviderResolveDynamicModelContext,
@@ -290,7 +289,7 @@ export default definePluginEntry({
           tool_stream: true,
         };
       },
-      ...ZAI_TOOL_STREAM_HOOKS,
+      wrapStreamFn: wrapZaiProviderStream,
       isBinaryThinking: () => true,
       isModernModelRef: ({ modelId }) => {
         const lower = normalizeLowercaseStringOrEmpty(modelId);
