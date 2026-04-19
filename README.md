@@ -40,11 +40,11 @@ KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动
 
 它怎么做到的：
 
-- **Persona 画像** — 每次对话都在学习你。你的专业领域、兴趣方向、沟通风格、语言偏好，全部自动提取并持久化。不是预设标签，而是从对话中自然涌现的认知模型。
-- **跨域洞察** — 你同时关注 A 和 B，它发现二者有潜在联系。你之前问过但没深入的问题，它从新角度跟进。你在某个领域钻得够深了，它推荐延伸方向。
-- **时机门控** — 不是想发就发。凌晨不打扰，信任度低时克制，你最近活跃度低就先等等。每条洞察都经过"该不该说"的判断。
-- **信任演化** — 刚认识时谨慎试探，聊多了之后越来越懂你，最终变成可以大胆推荐的深度伙伴。四个阶段：定向 → 探索 → 融洽 → 伙伴。
-- **偏好学习** — 你回复长了、追问了"为什么"，它记下你喜欢这个话题。你敷衍了，它下次换一个方向。每次反馈都会更新概率模型。
+- **Persona 画像** — 每次对话都在学习你。采用双阶段提取（规则引擎 + LLM 兜底），从对话中提取领域、兴趣、沟通风格并存入结构化画像。兴趣和领域知识带时间衰减，不再讨论的话题会自然淡化。
+- **跨域洞察** — 你同时关注 A 和 B，它发现二者有潜在联系。你之前问过但没深入的问题，它从新角度跟进。你在某个领域钻得够深了，它推荐延伸方向。领域间通过共现图谱建立关联，图谱边同样带衰减。
+- **时机门控** — 不是想发就发。基于信号检测论的 PRISM 模型计算每条洞察的期望价值，只有当预期收益超过打扰成本时才推送。凌晨不打扰，信任度低时克制，你最近活跃度低就先等等。
+- **信任演化** — 刚认识时谨慎试探，聊多了之后越来越懂你，最终变成可以大胆推荐的深度伙伴。四个阶段（SARA 框架）：定向 → 探索 → 融洽 → 伙伴，信任等级决定系统被允许做什么。
+- **偏好学习** — 你回复长了、追问了"为什么"，它记下你喜欢这个话题。你敷衍了，它下次换一个方向。每个话题维护一组 Thompson Sampling 参数（Beta 分布），隐式反馈（回复深度、响应延迟）比显式反馈更诚实。
 
 洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了 Exa 或 Tavily API Key，洞察会紧跟时事。
 
@@ -185,16 +185,38 @@ Agent 系统实现完整的推理循环：系统提示组装（上下文文件 +
 
 基于 [OpenClaw](https://github.com/openclaw/openclaw) 开源项目开发。
 
+### 学术研究
+
 认知系统的设计借鉴了以下研究：
 
+**基础理论**
+
 - Green, D. M., & Swets, J. A. (1966). *Signal detection theory and psychophysics*. Wiley.
-- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. *ACM Transactions on Computer-Human Interaction*, 12(2), 293–327.
 - Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in view of the evidence of two samples. *Biometrika*, 25(3/4), 285–294.
-- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. *Knowledge-Based Systems*, 111, 180–192.
 - Altman, I., & Taylor, D. A. (1973). *Social penetration: The development of interpersonal relationships*. Holt, Rinehart & Winston.
 - Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155–170.
 
-主要开源依赖：[智谱 GLM](https://open.bigmodel.cn/)、[飞书开放平台](https://open.feishu.cn/)、[Vitest](https://vitest.dev/)、[Playwright](https://playwright.dev/)、[tsdown](https://github.com/nicepkg/tsdown)、[Zod](https://zod.dev/)。
+**人机关系与推荐系统**
+
+- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. *ACM Transactions on Computer-Human Interaction*, 12(2), 293–327.
+- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. *Knowledge-Based Systems*, 111, 180–192.
+
+**LLM 画像与记忆**
+
+- DEEPER: Directed Persona Refinement. (2025). *Proceedings of ACL 2025*. 32.2% error reduction via active contradiction resolution in persona maintenance.
+- PERSONAMEM: Persona-Aware Memory in LLMs. (2025). *Proceedings of COLM 2025*. Benchmark showing LLMs achieve ~50% accuracy on evolving profile tasks.
+- DV365: Dynamic User Representations over 365 Days. (2025). *Proceedings of KDD 2025*. Instagram's multi-slicing user embedding architecture.
+- GemiRec: Gemini-Powered Recommendations. (2025). Xiaohongshu's multi-interest vector architecture with codebook quantization.
+- PIE: Personalized Interest Exploration. (2023). *Proceedings of WWW 2023*. Personalized PageRank with bandit exploration.
+- ProfiLLM: Fully Implicit User Profiling from Chatbot Interactions. (2025).
+
+### 工业界参考
+
+画像提取的双阶段设计（事实抽取 + 冲突消解）参考了 [ChatGPT Memory](https://openai.com/index/memory/) 的 mem0 架构。时间衰减的兴趣权重借鉴了 [Spotify](https://research.atspotify.com/) 的 taste profile 机制。领域共现图谱的思路来自 [TikTok/抖音](https://www.tiktok.com/) 的兴趣图和 [小红书](https://www.xiaohongshu.com/) 的多兴趣向量设计。隐式反馈优于显式反馈的判断依据来自 [Instagram](https://about.instagram/) 的 DM 分享质量信号和 [Netflix](https://research.netflix.com/) 的留存优化研究。关系叙事压缩参考了 [Character.AI](https://character.ai/) 的关系摘要机制。
+
+### 开源依赖
+
+[智谱 GLM](https://open.bigmodel.cn/)、[飞书开放平台](https://open.feishu.cn/)、[Vitest](https://vitest.dev/)、[Playwright](https://playwright.dev/)、[tsdown](https://github.com/nicepkg/tsdown)、[Zod](https://zod.dev/)。
 
 ## 许可证
 
