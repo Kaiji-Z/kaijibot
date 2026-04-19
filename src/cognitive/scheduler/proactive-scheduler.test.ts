@@ -785,3 +785,187 @@ describe("ProactiveScheduler.search — blacklist integration", () => {
     }
   });
 });
+
+describe("ProactiveScheduler — semantic dedup", () => {
+  it("skips insight when targetDomains 100% overlap with recent insight", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
+    persona.feedbackProfile.lastProactiveAt = 0;
+
+    const fakeInsight: InsightCandidate = {
+      id: "dedup-test",
+      content: "重复洞察",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeUndefined(); // 100% overlap → dedup
+  });
+
+  it("allows insight when domains have no overlap", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["Rust"]];
+    persona.feedbackProfile.lastProactiveAt = 0;
+
+    const fakeInsight: InsightCandidate = {
+      id: "new-insight",
+      content: "全新领域洞察",
+      rationale: "test",
+      targetDomains: ["Design"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeDefined();
+  });
+
+  it("allows insight when recentInsightDomains is empty", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.lastProactiveAt = 0;
+
+    const fakeInsight: InsightCandidate = {
+      id: "first-insight",
+      content: "第一个洞察",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeDefined();
+  });
+
+  it("stores recentInsightDomains and recentInsightTypes after delivery", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.lastProactiveAt = 0;
+    let savedPersona: PersonaTree | undefined;
+
+    const fakeInsight: InsightCandidate = {
+      id: "test-id",
+      content: "Test insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_userId, p) => { savedPersona = p; },
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    await scheduler.processEvent("user1", {
+      type: "info_scan",
+      timestamp: Date.now(),
+    });
+
+    expect(savedPersona?.feedbackProfile.recentInsightDomains).toBeDefined();
+    expect(savedPersona?.feedbackProfile.recentInsightDomains).toContainEqual(["AI/机器学习"]);
+    expect(savedPersona?.feedbackProfile.recentInsightTypes).toBeDefined();
+  });
+
+  it("does not dedup when overlap is exactly 50% (boundary)", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习", "Rust"]];
+    persona.feedbackProfile.lastProactiveAt = 0;
+
+    const fakeInsight: InsightCandidate = {
+      id: "boundary-test",
+      content: "边界测试",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    // overlap = 1/max(1,2) = 0.5 → NOT > 0.5 → should pass
+    expect(result).toBeDefined();
+  });
+});

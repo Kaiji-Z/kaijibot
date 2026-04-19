@@ -67,6 +67,8 @@ export type FeedbackProfile = {
   suppressUntil?: number;
   recentInsightIds: string[];
   recentInsightContents: string[];
+  recentInsightDomains?: string[][];
+  recentInsightTypes?: string[];
 };
 
 // Trust/rapport metrics

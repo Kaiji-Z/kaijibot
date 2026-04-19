@@ -167,6 +167,8 @@ export function createDefaultPersona(): PersonaTree {
       lastProactiveAt: 0,
       recentInsightIds: [],
       recentInsightContents: [],
+      recentInsightDomains: [],
+      recentInsightTypes: [],
     },
     rapport: {
       trustScore: 0.1,

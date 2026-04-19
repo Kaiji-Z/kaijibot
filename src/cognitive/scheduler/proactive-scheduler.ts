@@ -8,6 +8,23 @@ import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/scheduler");
 
+function computeDomainOverlap(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const setB = new Set(b.map((d) => d.toLowerCase()));
+  const overlap = a.filter((d) => setB.has(d.toLowerCase())).length;
+  return overlap / Math.max(a.length, b.length);
+}
+
+function isDuplicateByDomainOverlap(
+  newDomains: string[],
+  recentDomains: string[][],
+): boolean {
+  for (const prev of recentDomains) {
+    if (computeDomainOverlap(newDomains, prev) > 0.5) return true;
+  }
+  return false;
+}
+
 export type InsightGeneratorFn = (persona: PersonaTree, input: InsightEngineInput, options?: { verificationLevel?: "basic" | "strict" | "paranoid"; maxCandidates?: number }) => Promise<InsightCandidate[]>;
 
 export class ProactiveScheduler {
@@ -126,6 +143,16 @@ export class ProactiveScheduler {
     const insight = await this.resolve(persona, selected);
     if (!insight) return undefined;
 
+    const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+    if (recentDomains.length > 0 && isDuplicateByDomainOverlap(insight.targetDomains, recentDomains)) {
+      log.info("dedup: domain overlap", {
+        userId,
+        newDomains: insight.targetDomains,
+        recentDomains,
+      });
+      return undefined;
+    }
+
     log.info("insight generated", {
       userId,
       insightId: insight.id,
@@ -142,6 +169,10 @@ export class ProactiveScheduler {
     persona.feedbackProfile.recentInsightIds = ids;
     const contents = [...(persona.feedbackProfile.recentInsightContents ?? []), insight.content].slice(-5);
     persona.feedbackProfile.recentInsightContents = contents;
+    const insightDomains = [...(persona.feedbackProfile.recentInsightDomains ?? []), insight.targetDomains].slice(-5);
+    persona.feedbackProfile.recentInsightDomains = insightDomains;
+    const insightTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
+    persona.feedbackProfile.recentInsightTypes = insightTypes;
     await this.callbacks.savePersona(userId, persona);
 
     return insight;
