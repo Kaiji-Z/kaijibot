@@ -181,21 +181,18 @@ Agent 系统实现完整的推理循环：系统提示组装（上下文文件 +
 
 需要更多？`kaijibot skills install <name>` 从 ClawHub 安装。
 
-## 🤝 社区与贡献
-
-欢迎 Star 和 PR。同步上游更新：
-
-```bash
-git remote add upstream https://gitee.com/kaiji1126/kaijibot
-git fetch upstream
-git merge upstream/main
-```
-
-核心代码完全兼容，认知层（`src/cognitive/`）是独立模块，不影响上游同步。
-
 ## 致谢
 
-基于 [OpenClaw](https://github.com/openclaw/openclaw) 项目开发，上游同步自 [KaijiBot Gitee 镜像](https://gitee.com/kaiji1126/kaijibot)。认知系统的设计借鉴了信号检测论（Green & Swets, 1966）、关系型智能体（Bickmore & Picard, 2005）、Thompson Sampling（Thompson, 1933）、惊喜度推荐（Kotkov et al., 2016）、社会渗透理论（Altman & Taylor, 1973）、结构映射理论（Gentner, 1983）等前沿研究。
+基于 [OpenClaw](https://github.com/openclaw/openclaw) 开源项目开发。
+
+认知系统的设计借鉴了以下研究：
+
+- Green, D. M., & Swets, J. A. (1966). *Signal detection theory and psychophysics*. Wiley.
+- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. *ACM Transactions on Computer-Human Interaction*, 12(2), 293–327.
+- Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in view of the evidence of two samples. *Biometrika*, 25(3/4), 285–294.
+- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. *Knowledge-Based Systems*, 111, 180–192.
+- Altman, I., & Taylor, D. A. (1973). *Social penetration: The development of interpersonal relationships*. Holt, Rinehart & Winston.
+- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155–170.
 
 主要开源依赖：[智谱 GLM](https://open.bigmodel.cn/)、[飞书开放平台](https://open.feishu.cn/)、[Vitest](https://vitest.dev/)、[Playwright](https://playwright.dev/)、[tsdown](https://github.com/nicepkg/tsdown)、[Zod](https://zod.dev/)。
 
