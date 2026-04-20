@@ -18,6 +18,7 @@ export function createEvolutionSuggestTool(deps: {
   sessionKey?: string;
 }): AnyAgentTool | null {
   if (deps.config?.cognitive?.enabled === false) return null;
+  if (deps.config?.cognitive?.evolution?.enabled === false) return null;
 
   return {
     name: "evaluate_skill_evolution",
@@ -67,7 +68,7 @@ export function createEvolutionSuggestTool(deps: {
           });
         }
 
-        const draft = engine.generate(candidate);
+        const draft = await engine.generate(candidate);
 
         const record = {
           id: randomUUID(),

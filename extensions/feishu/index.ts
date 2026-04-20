@@ -61,6 +61,22 @@ function registerFeishuBitableTools(api: KaijiBotPluginApi) {
   register(api);
 }
 
+function registerFeishuVcTools(api: KaijiBotPluginApi) {
+  const register = loadBundledEntryExportSync<(api: KaijiBotPluginApi) => void>(import.meta.url, {
+    specifier: "./api.js",
+    exportName: "registerFeishuVcTools",
+  });
+  register(api);
+}
+
+function registerFeishuTaskTools(api: KaijiBotPluginApi) {
+  const register = loadBundledEntryExportSync<(api: KaijiBotPluginApi) => void>(import.meta.url, {
+    specifier: "./api.js",
+    exportName: "registerFeishuTaskTools",
+  });
+  register(api);
+}
+
 export default defineBundledChannelEntry({
   id: "feishu",
   name: "Feishu",
@@ -97,5 +113,7 @@ export default defineBundledChannelEntry({
     registerFeishuDriveTools(api);
     registerFeishuPermTools(api);
     registerFeishuBitableTools(api);
+    registerFeishuVcTools(api);
+    registerFeishuTaskTools(api);
   },
 });

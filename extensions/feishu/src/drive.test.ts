@@ -47,6 +47,8 @@ describe("registerFeishuDriveTools", () => {
       drive: true,
       perm: false,
       scopes: false,
+      vc: false,
+      task: false,
     });
     createFeishuToolClientMock.mockReturnValue({
       request: requestMock,
@@ -1105,6 +1107,266 @@ describe("registerFeishuDriveTools", () => {
     expect(result.details).toEqual(
       expect.objectContaining({
         error: "block_id is only supported for docx comments",
+      }),
+    );
+  });
+
+  it("handles metas_batch_query action", async () => {
+    const registerTool = vi.fn();
+    registerFeishuDriveTools(
+      createDriveToolApi({
+        config: {
+          channels: {
+            feishu: {
+              enabled: true,
+              appId: "app_id",
+              appSecret: "app_secret", // pragma: allowlist secret
+              tools: { drive: true },
+            },
+          },
+        },
+        registerTool,
+      }),
+    );
+
+    const toolFactory = registerTool.mock.calls[0]?.[0];
+    const tool = toolFactory?.({ agentAccountId: undefined });
+
+    requestMock.mockResolvedValueOnce({
+      code: 0,
+      data: {
+        items: [
+          {
+            doc_type: "doc",
+            doc_token: "doc_1",
+            name: "Document One",
+            type: "doc",
+            url: "https://feishu.cn/doc/doc_1",
+          },
+          {
+            doc_type: "doc",
+            doc_token: "doc_2",
+            name: "Document Two",
+            type: "doc",
+            url: "https://feishu.cn/doc/doc_2",
+          },
+        ],
+      },
+    });
+
+    const result = await tool.execute("call-metas-batch", {
+      action: "metas_batch_query",
+      file_tokens: ["doc_1", "doc_2"],
+      file_type: "doc",
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "POST",
+        url: "/open-apis/drive/v1/metas/batch_query",
+        data: {
+          request_docs: [
+            { doc_type: "doc", doc_token: "doc_1" },
+            { doc_type: "doc", doc_token: "doc_2" },
+          ],
+          with_url: true,
+        },
+      }),
+    );
+    expect(result.details).toEqual(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            doc_token: "doc_1",
+            name: "Document One",
+            url: "https://feishu.cn/doc/doc_1",
+          }),
+          expect.objectContaining({
+            doc_token: "doc_2",
+            name: "Document Two",
+            url: "https://feishu.cn/doc/doc_2",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("defaults metas_batch_query file_type to doc", async () => {
+    const registerTool = vi.fn();
+    registerFeishuDriveTools(
+      createDriveToolApi({
+        config: {
+          channels: {
+            feishu: {
+              enabled: true,
+              appId: "app_id",
+              appSecret: "app_secret", // pragma: allowlist secret
+              tools: { drive: true },
+            },
+          },
+        },
+        registerTool,
+      }),
+    );
+
+    const toolFactory = registerTool.mock.calls[0]?.[0];
+    const tool = toolFactory?.({ agentAccountId: undefined });
+
+    requestMock.mockResolvedValueOnce({
+      code: 0,
+      data: { items: [] },
+    });
+
+    await tool.execute("call-metas-default", {
+      action: "metas_batch_query",
+      file_tokens: ["doc_1"],
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          request_docs: [{ doc_type: "doc", doc_token: "doc_1" }],
+          with_url: true,
+        },
+      }),
+    );
+  });
+
+  it("handles view_records action", async () => {
+    const registerTool = vi.fn();
+    registerFeishuDriveTools(
+      createDriveToolApi({
+        config: {
+          channels: {
+            feishu: {
+              enabled: true,
+              appId: "app_id",
+              appSecret: "app_secret", // pragma: allowlist secret
+              tools: { drive: true },
+            },
+          },
+        },
+        registerTool,
+      }),
+    );
+
+    const toolFactory = registerTool.mock.calls[0]?.[0];
+    const tool = toolFactory?.({ agentAccountId: undefined });
+
+    requestMock.mockResolvedValueOnce({
+      code: 0,
+      data: {
+        view_records: [
+          { viewer_id: "ou_1", viewer_name: "Alice", view_time: 1700000000, view_cnt: 3 },
+          { viewer_id: "ou_2", viewer_name: "Bob", view_time: 1700001000, view_cnt: 1 },
+        ],
+        has_more: true,
+        page_token: "next_page",
+      },
+    });
+
+    const result = await tool.execute("call-view-records", {
+      action: "view_records",
+      file_token: "doc_1",
+      file_type: "docx",
+      page_size: 10,
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/open-apis/drive/v1/files/doc_1/view_records?file_type=docx&user_id_type=open_id&page_size=10",
+      }),
+    );
+    expect(result.details).toEqual(
+      expect.objectContaining({
+        view_records: [
+          expect.objectContaining({ viewer_id: "ou_1", viewer_name: "Alice", view_cnt: 3 }),
+          expect.objectContaining({ viewer_id: "ou_2", viewer_name: "Bob", view_cnt: 1 }),
+        ],
+        has_more: true,
+        page_token: "next_page",
+      }),
+    );
+  });
+
+  it("defaults view_records file_type to doc and clamps page_size", async () => {
+    const registerTool = vi.fn();
+    registerFeishuDriveTools(
+      createDriveToolApi({
+        config: {
+          channels: {
+            feishu: {
+              enabled: true,
+              appId: "app_id",
+              appSecret: "app_secret", // pragma: allowlist secret
+              tools: { drive: true },
+            },
+          },
+        },
+        registerTool,
+      }),
+    );
+
+    const toolFactory = registerTool.mock.calls[0]?.[0];
+    const tool = toolFactory?.({ agentAccountId: undefined });
+
+    requestMock.mockResolvedValueOnce({
+      code: 0,
+      data: { view_records: [], has_more: false },
+    });
+
+    await tool.execute("call-view-records-default", {
+      action: "view_records",
+      file_token: "doc_1",
+      page_size: 100,
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/open-apis/drive/v1/files/doc_1/view_records?file_type=doc&user_id_type=open_id&page_size=50",
+      }),
+    );
+  });
+
+  it("includes page_token in view_records query when provided", async () => {
+    const registerTool = vi.fn();
+    registerFeishuDriveTools(
+      createDriveToolApi({
+        config: {
+          channels: {
+            feishu: {
+              enabled: true,
+              appId: "app_id",
+              appSecret: "app_secret", // pragma: allowlist secret
+              tools: { drive: true },
+            },
+          },
+        },
+        registerTool,
+      }),
+    );
+
+    const toolFactory = registerTool.mock.calls[0]?.[0];
+    const tool = toolFactory?.({ agentAccountId: undefined });
+
+    requestMock.mockResolvedValueOnce({
+      code: 0,
+      data: { view_records: [], has_more: false },
+    });
+
+    await tool.execute("call-view-records-paginate", {
+      action: "view_records",
+      file_token: "doc_1",
+      file_type: "doc",
+      page_token: "next_page_token",
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "/open-apis/drive/v1/files/doc_1/view_records?file_type=doc&user_id_type=open_id&page_token=next_page_token",
       }),
     );
   });

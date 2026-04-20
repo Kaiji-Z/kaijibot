@@ -33,14 +33,21 @@ export { ProactiveScheduler } from "./scheduler/proactive-scheduler.js";
 export type { InsightGeneratorFn } from "./scheduler/proactive-scheduler.js";
 export { checkProactiveGate } from "./scheduler/gate.js";
 export { TimerSource } from "./scheduler/event-sources/timer-source.js";
+export { EvolutionSource } from "./scheduler/event-sources/evolution-source.js";
 export { PersonaChangeSource } from "./scheduler/event-sources/persona-change-source.js";
 export type { SchedulerEvent, GateDecision, SchedulerConfig } from "./scheduler/types.js";
 
 // Evolution module
 export { evaluateComplexity } from "./evolution/index.js";
 export { generateSkillDraft, toKebabCase, sanitizeSkillName } from "./evolution/index.js";
+export { generateSkillDraftLLM, buildDraftPrompt, validateDraftRepair } from "./evolution/index.js";
+export type { LlmDraftDeps } from "./evolution/index.js";
+export { EvolutionPreferenceAdapter } from "./evolution/index.js";
 export { EvolutionStore, createEvolutionDir } from "./evolution/index.js";
 export { EvolutionEngine } from "./evolution/index.js";
+export type { DraftGeneratorFn } from "./evolution/index.js";
+export { SkillPersistenceWriter } from "./evolution/index.js";
+export { AuditLog } from "./evolution/index.js";
 export { DEFAULT_EVOLUTION_CONFIG } from "./evolution/index.js";
 export type {
   EvolutionCandidate,
@@ -52,3 +59,4 @@ export type {
   ComplexityFactor,
   ComplexityResult,
 } from "./evolution/index.js";
+export type { AuditEntry } from "./evolution/index.js";

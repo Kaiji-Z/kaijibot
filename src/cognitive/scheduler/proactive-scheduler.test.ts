@@ -969,3 +969,69 @@ describe("ProactiveScheduler — semantic dedup", () => {
     expect(result).toBeDefined();
   });
 });
+
+describe("ProactiveScheduler.identify — repetition penalty", () => {
+  const lowThresholdConfig: SchedulerConfig = {
+    minIntervalHours: 4,
+    minTrustScore: 0.3,
+    costFalseNegative: 10,
+    costFalseAlarm: 1,
+  };
+
+  it("penalizes opportunities with overlapping recent domains", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"]];
+
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: ["Rust"], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected).not.toBeNull();
+    expect(selected!.pAct).toBeLessThan(0.81);
+  });
+
+  it("selects non-overlapping opportunity when dominant one is penalized", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"]];
+
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.7, pAccept: 0.7, pAct: 0.49 },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected).not.toBeNull();
+    expect(selected!.targetDomains).toContain("Design");
+  });
+
+  it("does not penalize when persona has no recent insights", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+    ];
+
+    const selected = scheduler.identify(opportunities);
+    expect(selected).not.toBeNull();
+    expect(selected!.pAct).toBe(0.81);
+  });
+
+  it("penalizes repeated opportunity type", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightTypes = ["domain_depth", "domain_depth", "domain_depth"];
+
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["Rust"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+      { type: "cross_domain", targetDomains: ["Rust"], sourceDomains: ["Design"], pNeed: 0.7, pAccept: 0.7, pAct: 0.49 },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected).not.toBeNull();
+    expect(selected!.pAct).toBeLessThan(0.81);
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkProactiveGate, computeGradedGate } from "./gate.js";
+import { checkProactiveGate, computeGradedGate, computeRepetitionDecay } from "./gate.js";
 import { createDefaultPersona } from "../persona/store.js";
 import type { SchedulerConfig, GateContext } from "./types.js";
 
@@ -356,5 +356,71 @@ describe("computeGradedGate", () => {
     expect(result.pAccept).toBe(0);
     expect(result.pAct).toBe(0);
     expect(result.decision).toBe(false);
+  });
+});
+
+describe("computeRepetitionDecay", () => {
+  it("returns 1 when no recent insight domains", () => {
+    const persona = createDefaultPersona();
+    expect(computeRepetitionDecay(persona)).toBe(1);
+  });
+
+  it("returns 1 when recent domains are diverse", () => {
+    const persona = createDefaultPersona();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/ML"],
+      ["Rust"],
+      ["Design"],
+      ["Security"],
+      ["Cloud"],
+    ];
+    expect(computeRepetitionDecay(persona)).toBe(1);
+  });
+
+  it("decays when all recent insights target same domain", () => {
+    const persona = createDefaultPersona();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["编程语言"],
+      ["编程语言"],
+      ["编程语言"],
+      ["编程语言"],
+      ["编程语言"],
+    ];
+    const decay = computeRepetitionDecay(persona);
+    expect(decay).toBeLessThan(1);
+    expect(decay).toBe(0.125); // 0.5^(5-1) = 0.0625, clamped to 0.125
+  });
+
+  it("decays proportionally to domain repetition", () => {
+    const persona = createDefaultPersona();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/ML", "Rust"],
+      ["AI/ML", "Design"],
+      ["AI/ML"],
+    ];
+    const decay = computeRepetitionDecay(persona);
+    expect(decay).toBeLessThan(1);
+    expect(decay).toBeGreaterThan(0);
+  });
+
+  it("pAct is reduced by repetition decay in graded gate", () => {
+    const now = Date.now();
+    const basePersona = () => {
+      const p = createDefaultPersona();
+      p.rapport.trustScore = 0.7;
+      p.rapport.totalExchanges = 10;
+      p.feedbackProfile.lastProactiveAt = 0;
+      p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 } };
+      return p;
+    };
+
+    const freshPersona = basePersona();
+    const repeatedPersona = basePersona();
+    repeatedPersona.feedbackProfile.recentInsightDomains = [["AI"], ["AI"], ["AI"], ["AI"]];
+
+    const freshResult = computeGradedGate(makeGateContext({ persona: freshPersona, event: { type: "timer", timestamp: now } }));
+    const repeatedResult = computeGradedGate(makeGateContext({ persona: repeatedPersona, event: { type: "timer", timestamp: now } }));
+
+    expect(freshResult.pAct).toBeGreaterThan(repeatedResult.pAct);
   });
 });

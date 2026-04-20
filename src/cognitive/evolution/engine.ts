@@ -1,5 +1,6 @@
 import { evaluateComplexity } from "./complexity-evaluator.js";
 import { generateSkillDraft } from "./skill-draft-generator.js";
+import type { EvolutionPreferenceAdapter } from "./preference-adapter.js";
 import { EvolutionStore } from "./store.js";
 import type {
   EvolutionCandidate,
@@ -12,10 +13,14 @@ import type {
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 import { randomUUID } from "node:crypto";
 
+export type DraftGeneratorFn = (candidate: EvolutionCandidate) => Promise<SkillDraft>;
+
 export class EvolutionEngine {
   constructor(
     private readonly store: EvolutionStore,
     private readonly config?: Partial<EvolutionConfig>,
+    private readonly preferenceAdapter?: EvolutionPreferenceAdapter,
+    private readonly draftGenerator?: DraftGeneratorFn,
   ) {}
 
   private async effectiveConfig(): Promise<EvolutionConfig> {
@@ -71,15 +76,22 @@ export class EvolutionEngine {
       };
     }
 
+    let confidence = complexity.score;
+    if (this.preferenceAdapter) {
+      const domainRate = await this.preferenceAdapter.getDomainAcceptanceRate(userId, candidate.domain);
+      confidence = confidence * domainRate;
+    }
+
     return {
       shouldSuggest: true,
-      confidence: complexity.score,
+      confidence,
       complexityScore: complexity.score,
       reasoning: `Task is complex enough (score ${complexity.score.toFixed(2)}) for skill suggestion`,
     };
   }
 
-  generate(candidate: EvolutionCandidate): SkillDraft {
+  async generate(candidate: EvolutionCandidate): Promise<SkillDraft> {
+    if (this.draftGenerator) return this.draftGenerator(candidate);
     return generateSkillDraft(candidate);
   }
 

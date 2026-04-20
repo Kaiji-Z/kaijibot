@@ -20,6 +20,7 @@ const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {
   timer: 0.7,
   persona_change: 0.9,
   info_scan: 0.8,
+  evolution_scan: 0.75,
   external: 0.85,
 };
 
@@ -154,7 +155,8 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
   let pAccept = computePAccept(persona);
   const calibrationSlope = computeCalibrationSlope(persona.calibrationHistory);
   pAccept = applyCalibrationCorrection(pAccept, calibrationSlope);
-  const pAct = pNeed * pAccept;
+  const repetitionDecay = computeRepetitionDecay(persona);
+  const pAct = pNeed * pAccept * repetitionDecay;
 
   // Cost-sensitive threshold: τ = C_FA / (C_FN + C_FA)
   const cfn = config.costFalseNegative ?? DEFAULT_C_FN;
@@ -228,6 +230,30 @@ function computePAccept(persona: PersonaTree): number {
   const feedbackFactor = totalCount > 0 ? positiveCount / totalCount : 0.5;
 
   return clamp01(0.5 * trustFactor + 0.3 * banditFactor + 0.2 * feedbackFactor);
+}
+
+// ── Repetition decay ──────────────────────────────────────────────────
+
+/**
+ * Compute a decay multiplier for pAct when recent insights have covered
+ * the same domains repeatedly. Each overlapping recent insight entry
+ * reduces the multiplier by a factor of 0.5.
+ *
+ * Example: if the last 3 insight domain sets all overlap, decay = 0.5^3 = 0.125
+ */
+export function computeRepetitionDecay(persona: PersonaTree): number {
+  const recentDomains = persona.feedbackProfile.recentInsightDomains;
+  if (!recentDomains || recentDomains.length === 0) return 1;
+
+  const allDomains = recentDomains.flat().map((d) => d.toLowerCase());
+  const uniqueDomains = new Set(allDomains);
+  if (uniqueDomains.size === 0) return 1;
+
+  const ratio = uniqueDomains.size / allDomains.length;
+  if (ratio >= 0.8) return 1;
+
+  const repeatCount = allDomains.length - uniqueDomains.size;
+  return Math.max(0.125, Math.pow(0.5, repeatCount));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

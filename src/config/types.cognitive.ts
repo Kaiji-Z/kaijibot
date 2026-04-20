@@ -46,4 +46,15 @@ export type CognitiveConfig = {
     /** Collect implicit feedback (default: true) */
     implicitFeedback?: boolean;
   };
+  /** Skill evolution settings */
+  evolution?: {
+    /** Enable skill evolution suggestions (default: true) */
+    enabled?: boolean;
+    /** Minimum complexity score to consider (default: 0.5) */
+    minComplexity?: number;
+    /** Cooldown between suggestions in hours (default: 24) */
+    cooldownHours?: number;
+    /** Max suggestions per user per day (default: 3) */
+    maxSuggestionsPerDay?: number;
+  };
 };

@@ -21,6 +21,28 @@ const CommentFileType = Type.Union([
 
 export const FeishuDriveSchema = Type.Union([
   Type.Object({
+    action: Type.Literal("metas_batch_query"),
+    file_tokens: Type.Array(Type.String({ description: "File tokens to query" }), {
+      description: "Array of file tokens",
+    }),
+    file_type: Type.Optional(
+      Type.Union([Type.Literal("doc"), Type.Literal("docx"), Type.Literal("sheet"), Type.Literal("bitable"), Type.Literal("file"), Type.Literal("slides")], {
+        description: "Document type for all tokens. Defaults to doc.",
+      }),
+    ),
+  }),
+  Type.Object({
+    action: Type.Literal("view_records"),
+    file_token: Type.String({ description: "Document token" }),
+    file_type: Type.Optional(
+      Type.Union([Type.Literal("doc"), Type.Literal("docx"), Type.Literal("sheet"), Type.Literal("bitable"), Type.Literal("file"), Type.Literal("slides")], {
+        description: "Document type. Defaults to doc.",
+      }),
+    ),
+    page_size: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "Page size" })),
+    page_token: Type.Optional(Type.String({ description: "Page token for pagination" })),
+  }),
+  Type.Object({
     action: Type.Literal("list"),
     folder_token: Type.Optional(
       Type.String({ description: "Folder token (optional, omit for root directory)" }),

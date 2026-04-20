@@ -88,6 +88,34 @@ type FeishuDriveCommentCard = {
   };
 };
 
+type FeishuDriveDocMeta = {
+  doc_type?: string;
+  doc_token?: string;
+  name?: string;
+  type?: string;
+  url?: string;
+  created_time?: number;
+  modified_time?: number;
+  owner_id?: string;
+};
+
+type FeishuDriveMetasBatchQueryResponse = FeishuDriveApiResponse<{
+  items?: FeishuDriveDocMeta[];
+}>;
+
+type FeishuDriveViewRecord = {
+  viewer_id?: string;
+  viewer_name?: string;
+  view_time?: number;
+  view_cnt?: number;
+};
+
+type FeishuDriveViewRecordsResponse = FeishuDriveApiResponse<{
+  view_records?: FeishuDriveViewRecord[];
+  has_more?: boolean;
+  page_token?: string;
+}>;
+
 type FeishuDriveListCommentsResponse = FeishuDriveApiResponse<{
   has_more?: boolean;
   items?: FeishuDriveCommentCard[];
@@ -742,6 +770,78 @@ export async function deliverCommentThreadText(
   }
 }
 
+async function metasBatchQuery(
+  client: Lark.Client,
+  params: {
+    file_tokens: string[];
+    file_type: string;
+  },
+) {
+  const requestDocs = params.file_tokens.map((token) => ({
+    doc_type: params.file_type,
+    doc_token: token,
+  }));
+  const response = assertDriveApiSuccess(
+    await requestDriveApi<FeishuDriveMetasBatchQueryResponse>({
+      client,
+      method: "POST",
+      url: "/open-apis/drive/v1/metas/batch_query",
+      data: {
+        request_docs: requestDocs,
+        with_url: true,
+      },
+    }),
+  );
+  return {
+    items:
+      response.data?.items?.map((item) => ({
+        doc_type: item.doc_type,
+        doc_token: item.doc_token,
+        name: item.name,
+        type: item.type,
+        url: item.url,
+        created_time: item.created_time,
+        modified_time: item.modified_time,
+        owner_id: item.owner_id,
+      })) ?? [],
+  };
+}
+
+async function getViewRecords(
+  client: Lark.Client,
+  params: {
+    file_token: string;
+    file_type: string;
+    page_size?: number;
+    page_token?: string;
+  },
+) {
+  const query: Record<string, string | undefined> = {
+    file_type: params.file_type,
+    user_id_type: "open_id",
+  };
+  if (typeof params.page_size === "number" && Number.isFinite(params.page_size)) {
+    query.page_size = String(Math.min(Math.max(Math.floor(params.page_size), 1), 50));
+  }
+  if (params.page_token) {
+    query.page_token = params.page_token;
+  }
+  const response = assertDriveApiSuccess(
+    await requestDriveApi<FeishuDriveViewRecordsResponse>({
+      client,
+      method: "GET",
+      url:
+        `/open-apis/drive/v1/files/${encodeURIComponent(params.file_token)}/view_records` +
+        encodeQuery(query),
+    }),
+  );
+  return {
+    view_records: response.data?.view_records ?? [],
+    has_more: response.data?.has_more ?? false,
+    page_token: response.data?.page_token,
+  };
+}
+
 // ============ Tool Registration ============
 
 export function registerFeishuDriveTools(api: KaijiBotPluginApi) {
@@ -771,7 +871,7 @@ export function registerFeishuDriveTools(api: KaijiBotPluginApi) {
         name: "feishu_drive",
         label: "Feishu Drive",
         description:
-          "Feishu cloud storage operations. Actions: list, info, create_folder, move, delete, list_comments, list_comment_replies, add_comment, reply_comment",
+          "Feishu cloud storage operations. Actions: metas_batch_query, view_records, list, info, create_folder, move, delete, list_comments, list_comment_replies, add_comment, reply_comment",
         parameters: FeishuDriveSchema,
         async execute(_toolCallId, params) {
           const p = params as FeishuDriveExecuteParams;
@@ -782,6 +882,26 @@ export function registerFeishuDriveTools(api: KaijiBotPluginApi) {
               defaultAccountId,
             });
             switch (p.action) {
+              case "metas_batch_query": {
+                const fileType = p.file_type ?? "doc";
+                return jsonToolResult(
+                  await metasBatchQuery(client, {
+                    file_tokens: p.file_tokens,
+                    file_type: fileType,
+                  }),
+                );
+              }
+              case "view_records": {
+                const fileType = p.file_type ?? "doc";
+                return jsonToolResult(
+                  await getViewRecords(client, {
+                    file_token: p.file_token,
+                    file_type: fileType,
+                    page_size: p.page_size,
+                    page_token: p.page_token,
+                  }),
+                );
+              }
               case "list":
                 return jsonToolResult(await listFolder(client, p.folder_token));
               case "info":

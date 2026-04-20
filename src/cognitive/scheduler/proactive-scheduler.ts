@@ -73,14 +73,37 @@ export class ProactiveScheduler {
     return filterBlacklistedOpportunities(opportunities, persona.domainBlacklist);
   }
 
-  identify(opportunities: Opportunity[]): Opportunity | null {
+  identify(opportunities: Opportunity[], persona?: PersonaTree): Opportunity | null {
     if (opportunities.length === 0) return null;
 
     const cfn = this.config.costFalseNegative ?? DEFAULT_C_FN;
     const cfa = this.config.costFalseAlarm ?? DEFAULT_C_FA;
     const threshold = cfa / (cfn + cfa);
 
-    const sorted = [...opportunities].sort((a, b) => b.pAct - a.pAct);
+    const recentDomains = persona?.feedbackProfile.recentInsightDomains ?? [];
+    const recentTypes = persona?.feedbackProfile.recentInsightTypes ?? [];
+
+    const penalized = opportunities.map((opp) => {
+      let adjustedPAct = opp.pAct;
+
+      if (recentDomains.length > 0 && opp.targetDomains.length > 0) {
+        const overlapCount = recentDomains.reduce((count, prev) => {
+          const overlap = computeDomainOverlap(opp.targetDomains, prev);
+          return count + (overlap > 0.5 ? 1 : 0);
+        }, 0);
+        if (overlapCount > 0) {
+          adjustedPAct *= Math.pow(0.5, overlapCount);
+        }
+      }
+
+      if (recentTypes.length > 0 && recentTypes[recentTypes.length - 1] === opp.type) {
+        adjustedPAct *= 0.7;
+      }
+
+      return { ...opp, pAct: adjustedPAct };
+    });
+
+    const sorted = [...penalized].sort((a, b) => b.pAct - a.pAct);
     const best = sorted[0];
     if (!best || best.pAct <= threshold) return null;
 
@@ -133,7 +156,7 @@ export class ProactiveScheduler {
 
     const opportunities = this.search(persona, event);
     log.info("search found opportunities", { userId, count: opportunities.length });
-    const selected = this.identify(opportunities);
+    const selected = this.identify(opportunities, persona);
     if (!selected) {
       log.info("identify selected nothing", { userId });
       return undefined;

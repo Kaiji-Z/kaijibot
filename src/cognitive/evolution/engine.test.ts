@@ -141,8 +141,8 @@ describe("EvolutionEngine", () => {
     expect(decision.reasoning).toContain("complex enough");
   });
 
-  it("generate() returns a SkillDraft", () => {
-    const draft = engine.generate(complexCandidate);
+  it("generate() returns a SkillDraft", async () => {
+    const draft = await engine.generate(complexCandidate);
     expect(draft.name).toBeTruthy();
     expect(draft.description).toBeTruthy();
     expect(draft.triggerPhrases.length).toBeGreaterThan(0);

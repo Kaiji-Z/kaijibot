@@ -5,6 +5,8 @@ export { registerFeishuWikiTools } from "./src/wiki.js";
 export { registerFeishuDriveTools } from "./src/drive.js";
 export { registerFeishuPermTools } from "./src/perm.js";
 export { registerFeishuBitableTools } from "./src/bitable.js";
+export { registerFeishuVcTools } from "./src/vc.js";
+export { registerFeishuTaskTools } from "./src/task.js";
 export {
   handleFeishuSubagentDeliveryTarget,
   handleFeishuSubagentEnded,

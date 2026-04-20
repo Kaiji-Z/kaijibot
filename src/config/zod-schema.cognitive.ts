@@ -51,6 +51,16 @@ export const CognitiveFeedbackSchema = z
   .strict()
   .optional();
 
+export const CognitiveEvolutionSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    minComplexity: z.number().min(0).max(1).optional(),
+    cooldownHours: z.number().min(1).max(168).optional(),
+    maxSuggestionsPerDay: z.number().min(1).max(50).optional(),
+  })
+  .strict()
+  .optional();
+
 export const CognitiveSchema = z
   .object({
     enabled: z.boolean().optional(),
@@ -58,6 +68,7 @@ export const CognitiveSchema = z
     persona: CognitivePersonaSchema,
     insight: CognitiveInsightSchema,
     feedback: CognitiveFeedbackSchema,
+    evolution: CognitiveEvolutionSchema,
   })
   .strict()
   .optional();
