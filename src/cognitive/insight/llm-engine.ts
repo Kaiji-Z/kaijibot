@@ -205,35 +205,30 @@ export function extractKeyTerms(text: string): string[] {
  * Strategy:
  *  1. Try to extract 2-3 key concepts from the first pending question.
  *  2. If no pending question (or extraction yields nothing), fall back to recentFocus.
- *  3. Always prepend the primary target domain as context.
+ *  3. If both are empty, fall back to the primary target domain name.
  *  4. Cap at 120 chars and ensure the query is well-formed.
  */
 export function buildSearchQuery(input: InsightEngineInput): string {
-  const domain = input.targetDomains[0] ?? "";
   const parts: string[] = [];
 
-  // Attempt concept extraction from pending question first (highest signal)
   const questionTerms = input.pendingQuestions.length > 0
     ? extractKeyTerms(input.pendingQuestions[0]!)
     : [];
 
-  // Fall back to recent focus if question extraction yields nothing useful
   const focusTerms = questionTerms.length === 0 && input.recentFocus.length > 0
     ? extractKeyTerms(input.recentFocus[0]!)
     : [];
 
   const concepts = questionTerms.length > 0 ? questionTerms : focusTerms;
 
-  if (domain) {
-    parts.push(domain);
+  if (concepts.length === 0 && input.targetDomains.length > 0) {
+    return input.targetDomains[0]!.slice(0, 120);
   }
 
   const seen = new Set<string>();
-  const domainLower = domain.toLowerCase();
   for (const term of concepts) {
     const termLower = term.toLowerCase();
-    const overlapsDomain = domainLower && (termLower.includes(domainLower) || domainLower.includes(termLower));
-    if (!overlapsDomain && !seen.has(termLower)) {
+    if (!seen.has(termLower)) {
       parts.push(term);
       seen.add(termLower);
     }

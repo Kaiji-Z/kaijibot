@@ -596,8 +596,7 @@ describe("buildSearchQuery", () => {
       recentFocus: ["wasm"],
     });
     const query = buildSearchQuery(input);
-    expect(query).toContain("rust");
-    expect(query).not.toBe("rust wasm");
+    expect(query).toContain("Rust");
   });
 
   it("falls back to recentFocus when no pending questions", () => {
@@ -607,11 +606,10 @@ describe("buildSearchQuery", () => {
       recentFocus: ["装饰器模式"],
     });
     const query = buildSearchQuery(input);
-    expect(query).toContain("typescript");
     expect(query).toContain("装饰器模式");
   });
 
-  it("uses targetDomains even when both question and focus are empty", () => {
+  it("falls back to targetDomains when both question and focus are empty", () => {
     const input = makeInput({
       targetDomains: ["kubernetes"],
       pendingQuestions: [],
@@ -621,15 +619,15 @@ describe("buildSearchQuery", () => {
     expect(query).toBe("kubernetes");
   });
 
-  it("deduplicates concepts that overlap with domain", () => {
+  it("does not prepend domain name as prefix", () => {
     const input = makeInput({
-      targetDomains: ["typescript"],
-      pendingQuestions: ["TypeScript的高级类型"],
+      targetDomains: ["编程语言"],
+      pendingQuestions: ["需要我重启Gateway才能识别这个Chromium？"],
       recentFocus: [],
     });
     const query = buildSearchQuery(input);
-    const matches = query.match(/typescript/gi);
-    expect(matches).toHaveLength(1);
+    expect(query).not.toContain("编程语言");
+    expect(query).toContain("Gateway");
   });
 
   it("caps query at 120 characters", () => {
@@ -642,7 +640,7 @@ describe("buildSearchQuery", () => {
     expect(query.length).toBeLessThanOrEqual(120);
   });
 
-  it("limits to domain + 3 concepts", () => {
+  it("limits to 4 concepts", () => {
     const input = makeInput({
       targetDomains: ["ai"],
       pendingQuestions: ["机器学习 深度学习 神经网络 自然语言处理 计算机视觉 强化学习"],
@@ -673,6 +671,16 @@ describe("buildSearchQuery", () => {
     const query = buildSearchQuery(input);
     expect(query).not.toContain("需要我");
     expect(query).not.toContain("才能识别");
-    expect(query).toContain("软件架构");
+  });
+
+  it("does not include domain name in query when concepts are available", () => {
+    const input = makeInput({
+      targetDomains: ["TypeScript"],
+      pendingQuestions: ["TypeScript的高级类型"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    const matches = query.match(/typescript/gi);
+    expect(matches).toHaveLength(1);
   });
 });
