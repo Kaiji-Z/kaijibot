@@ -1,69 +1,118 @@
 import type { EvolutionCandidate, SkillDraft } from "./types.js";
 import { generateSkillDraft, sanitizeSkillName } from "./skill-draft-generator.js";
+import { SKILL_CREATOR_SPEC } from "./skill-creator-spec.js";
 
-/** Injected dependencies for LLM-based draft generation. */
 export type LlmDraftDeps = {
   generateText: (prompt: string) => Promise<string>;
 };
 
 function buildPrompt(candidate: EvolutionCandidate): string {
-  return [
-    "You are a skill draft generator for an AI assistant. Given a completed task, generate a reusable Skill proposal.",
+  const sections: string[] = [
+    SKILL_CREATOR_SPEC,
     "",
-    "## Task Summary",
+    "---",
+    "",
+    "## Task to Analyze",
+    "",
+    "The following is a completed task. Generate a reusable SKILL.md for it.",
+    "",
+    "### Task Summary",
     candidate.taskSummary,
     "",
-    "## Domain",
+    "### Domain",
     candidate.domain,
     "",
-    "## Tools Used",
+    "### Tools Used",
     ...candidate.toolCalls.map((t, i) => `${i + 1}. ${t}`),
     "",
-    "## Reasoning Turns",
+    "### Reasoning Turns",
     String(candidate.reasoningTurns),
     "",
-    "Generate a JSON object with these fields:",
-    "- name: kebab-case skill name (e.g. 'feishu-wiki-archive')",
-    "- description: one-line description under 200 chars, including trigger context",
-    "- triggerPhrases: array of 3-5 trigger phrases (mix Chinese and English)",
-    "- bodyMarkdown: markdown body with ## When to use, ## Workflow (numbered steps), ## Notes sections",
+    "### Duration (ms)",
+    String(candidate.durationMs),
+  ];
+
+  if (candidate.transcript) {
+    sections.push(
+      "",
+      "### Transcript",
+      candidate.transcript,
+    );
+  }
+
+  sections.push(
     "",
-    "Return ONLY valid JSON, no markdown fences.",
-  ].join("\n");
+    "---",
+    "",
+    "## Output Instructions",
+    "",
+    "Based on the skill-creator specification above, generate a complete SKILL.md file for the completed task.",
+    "Output ONLY the SKILL.md content starting with `---` frontmatter.",
+    "",
+    "Requirements:",
+    "- YAML frontmatter with `name:` (kebab-case) and `description:` (comprehensive — what the skill does AND when to use it, this is the trigger mechanism)",
+    "- A `## Triggers` section with a bulleted list of 3-7 trigger phrases (mix Chinese and English)",
+    "- Body follows skill-creator principles: progressive disclosure, appropriate degrees of freedom, concise examples, imperative form",
+    "- Body under 200 lines (auto-generated skill)",
+    "- Do NOT include Steps 3/5 from skill-creator (init_skill.py, package_skill.py) — those are manual workflow steps",
+    "- Use imperative/infinitive form throughout",
+    "- Include workflow steps and concise usage guidance",
+  );
+
+  return sections.join("\n");
 }
 
-const MAX_DESCRIPTION_LENGTH = 200;
-const MAX_TRIGGER_PHRASES = 5;
+function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDraft {
+  let text = raw.trim();
 
-function validateAndRepair(raw: Record<string, unknown>, candidate: EvolutionCandidate): SkillDraft {
-  const name = typeof raw.name === "string" ? sanitizeSkillName(raw.name) : `skill-${candidate.domain}`;
-
-  let description = typeof raw.description === "string" ? raw.description : `${candidate.taskSummary}`;
-  if (description.length > MAX_DESCRIPTION_LENGTH) {
-    description = description.slice(0, MAX_DESCRIPTION_LENGTH - 1) + "…";
+  const fenceMatch = text.match(/^```(?:markdown|md)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  if (fenceMatch) {
+    text = fenceMatch[1].trim();
   }
 
-  let triggerPhrases: string[] = [];
-  if (Array.isArray(raw.triggerPhrases)) {
-    triggerPhrases = raw.triggerPhrases.filter((p): p is string => typeof p === "string").slice(0, MAX_TRIGGER_PHRASES);
-  }
+  const firstDash = text.indexOf("---");
+  if (firstDash === -1) return generateSkillDraft(candidate);
 
-  const bodyMarkdown = typeof raw.bodyMarkdown === "string" ? raw.bodyMarkdown : "";
+  const afterFirst = text.indexOf("---", firstDash + 3);
+  if (afterFirst === -1) return generateSkillDraft(candidate);
 
-  if (!triggerPhrases.length || !bodyMarkdown) {
-    return generateSkillDraft(candidate);
-  }
+  const frontmatter = text.slice(firstDash + 3, afterFirst).trim();
+  const body = text.slice(afterFirst + 3).trim();
 
-  return { name, description, triggerPhrases, bodyMarkdown };
+  if (!body) return generateSkillDraft(candidate);
+
+  const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+  const descMatch = frontmatter.match(/^description:\s*["']?(.+?)["']?\s*$/m);
+
+  if (!nameMatch || !descMatch) return generateSkillDraft(candidate);
+
+  const name = sanitizeSkillName(nameMatch[1].trim());
+  const description = descMatch[1].trim();
+
+  const triggerPhrases = extractTriggerPhrases(body);
+  if (triggerPhrases.length === 0) return generateSkillDraft(candidate);
+
+  return { name, description, triggerPhrases, bodyMarkdown: body };
 }
 
-/**
- * Generate a SkillDraft using an LLM, falling back to the rule-based
- * generator when the LLM call fails, times out, or returns unparseable
- * output.
- *
- * This function never throws.
- */
+function extractTriggerPhrases(body: string): string[] {
+  const triggerHeading = body.match(/^##\s+Triggers\s*$/m);
+  if (!triggerHeading || triggerHeading.index === undefined) return [];
+
+  const afterHeading = body.slice(triggerHeading.index + triggerHeading[0].length);
+  const nextHeading = afterHeading.match(/^##\s/m);
+  const section = nextHeading ? afterHeading.slice(0, nextHeading.index) : afterHeading;
+
+  const phrases: string[] = [];
+  for (const line of section.split("\n")) {
+    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
+    if (bulletMatch) {
+      phrases.push(bulletMatch[1].trim());
+    }
+  }
+  return phrases;
+}
+
 export async function generateSkillDraftLLM(
   candidate: EvolutionCandidate,
   deps: LlmDraftDeps,
@@ -71,20 +120,7 @@ export async function generateSkillDraftLLM(
   try {
     const prompt = buildPrompt(candidate);
     const response = await deps.generateText(prompt);
-
-    let parsed: Record<string, unknown>;
-    try {
-      const cleaned = response.replace(/^```(?:json)?\s*/m, "").replace(/\s*```$/m, "");
-      parsed = JSON.parse(cleaned);
-    } catch {
-      return generateSkillDraft(candidate);
-    }
-
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return generateSkillDraft(candidate);
-    }
-
-    return validateAndRepair(parsed, candidate);
+    return validateAndRepair(response, candidate);
   } catch {
     return generateSkillDraft(candidate);
   }

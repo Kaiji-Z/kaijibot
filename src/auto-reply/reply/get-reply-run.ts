@@ -282,6 +282,7 @@ export async function runPreparedReply(
     const { prompt: cognitivePrompt } = buildCognitiveModePrompt({
       message: rawBodyTrimmed,
       cognitiveEnabled: cognitiveCfg?.enabled,
+      evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
       persona,
     });
     if (cognitivePrompt) {

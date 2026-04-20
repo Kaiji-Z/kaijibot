@@ -11,6 +11,7 @@ export const EvolutionSuggestSchema = Type.Object({
   reasoningTurns: Type.Number({ description: "Number of agent reasoning turns" }),
   durationMs: Type.Number({ description: "Wall-clock time in milliseconds" }),
   domain: Type.String({ description: "Cognitive domain (e.g. 'feishu-wiki', 'code-review')" }),
+  transcript: Type.Optional(Type.String({ description: "Optional conversation transcript summary for richer context" })),
 });
 
 export function createEvolutionSuggestTool(deps: {
@@ -34,6 +35,7 @@ export function createEvolutionSuggestTool(deps: {
         reasoningTurns: number;
         durationMs: number;
         domain: string;
+        transcript?: string;
       };
 
       try {
@@ -56,6 +58,7 @@ export function createEvolutionSuggestTool(deps: {
           reasoningTurns: params.reasoningTurns,
           durationMs: params.durationMs,
           domain: params.domain,
+          transcript: params.transcript,
         };
 
         const decision = await engine.evaluate(candidate, userId);
@@ -87,6 +90,8 @@ export function createEvolutionSuggestTool(deps: {
           skillName: draft.name,
           description: draft.description,
           triggerPhrases: draft.triggerPhrases,
+          bodyMarkdown: draft.bodyMarkdown,
+          suggestionText: `刚才帮你完成了「${params.taskSummary}」（用了 ${params.toolCalls.length} 个工具，经历了 ${params.reasoningTurns} 轮推理）。这个流程比较复杂，下次遇到类似问题可以直接套用。我已经帮你起草了一个技能「${draft.name}」，你看看有没有要调整的？`,
         });
       } catch (err) {
         return textResult(

@@ -9,9 +9,10 @@ export function buildCognitiveModePrompt(params: {
   isCron?: boolean;
   recentModes?: CognitiveMode[];
   cognitiveEnabled?: boolean;
+  evolutionEnabled?: boolean;
   persona?: PersonaTree;
 }): { prompt: string; classification: ModeClassification } {
-  const { message, isHeartbeat, isCron, recentModes, cognitiveEnabled, persona } = params;
+  const { message, isHeartbeat, isCron, recentModes, cognitiveEnabled, evolutionEnabled, persona } = params;
 
   const classification = classifyMode(message, {
     isHeartbeat,
@@ -36,6 +37,14 @@ export function buildCognitiveModePrompt(params: {
     if (advice) {
       parts.push(`## Interaction Guidance\n${advice}`);
     }
+  }
+
+  if (evolutionEnabled !== false) {
+    parts.push([
+      "## Skill Evolution",
+      "当完成涉及 3+ 工具调用或持续较长时间的复杂任务时，调用 evaluate_skill_evolution 工具评估是否值得保存为可复用技能。",
+      "如果评估结果为 suggested，主动向用户展示生成的技能草稿并询问是否采纳。",
+    ].join("\n"));
   }
 
   return { prompt: parts.join("\n\n"), classification };

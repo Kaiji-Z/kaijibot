@@ -6,6 +6,7 @@ const mockGenerate = vi.fn().mockReturnValue({
   name: "test-skill",
   description: "A test skill",
   triggerPhrases: ["test trigger"],
+  bodyMarkdown: "## When to use\n\nUse when testing.\n\n## Workflow\n\n1. Step one\n2. Step two",
 });
 const mockSave = vi.fn().mockResolvedValue(undefined);
 
@@ -109,6 +110,12 @@ describe("createEvolutionSuggestTool", () => {
         complexityScore: 0.85,
         confidence: 0.9,
       });
+      mockGenerate.mockResolvedValueOnce({
+        name: "feishu-wiki-archive",
+        description: "Archive wiki pages",
+        triggerPhrases: ["归档", "archive"],
+        bodyMarkdown: "## When to use\n\nUse when archiving wiki.\n\n## Workflow\n\n1. Scan\n2. Move",
+      });
 
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:user-2",
@@ -125,8 +132,11 @@ describe("createEvolutionSuggestTool", () => {
 
       const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
       expect(payload.status).toBe("suggested");
-      expect(payload.skillName).toBe("test-skill");
+      expect(payload.skillName).toBe("feishu-wiki-archive");
       expect(payload.complexityScore).toBe(0.85);
+      expect(payload.bodyMarkdown).toBe("## When to use\n\nUse when archiving wiki.\n\n## Workflow\n\n1. Scan\n2. Move");
+      expect(payload.suggestionText).toContain("刚才帮你完成了");
+      expect(payload.suggestionText).toContain("complex workflow");
       expect(mockSave).toHaveBeenCalledTimes(1);
     });
 
@@ -149,6 +159,64 @@ describe("createEvolutionSuggestTool", () => {
       const text = (result.content as Array<{ text: string }>)[0].text;
       expect(text).toContain("Evolution evaluation failed");
       expect(text).toContain("engine failure");
+    });
+
+    it("suggestionText includes tool count and reasoning turns", async () => {
+      mockEvaluate.mockResolvedValueOnce({
+        shouldSuggest: true,
+        reasoning: "complex",
+        complexityScore: 0.9,
+        confidence: 0.95,
+      });
+      mockGenerate.mockResolvedValueOnce({
+        name: "multi-tool-skill",
+        description: "Multi-tool skill",
+        triggerPhrases: ["multi"],
+        bodyMarkdown: "## Workflow\n\n1. A\n2. B\n3. C\n4. D",
+      });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:user-4",
+      })!;
+
+      const result = await tool.execute("call-5", {
+        taskSummary: "multi-step analysis",
+        toolCalls: ["tool_a", "tool_b", "tool_c", "tool_d", "tool_e"],
+        uniqueToolCount: 5,
+        reasoningTurns: 12,
+        durationMs: 30000,
+        domain: "data-analysis",
+      });
+
+      const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+      expect(payload.suggestionText).toContain("5 个工具");
+      expect(payload.suggestionText).toContain("12 轮推理");
+    });
+
+    it("passes transcript to candidate in engine.evaluate", async () => {
+      mockEvaluate.mockResolvedValueOnce({
+        shouldSuggest: false,
+        reasoning: "too simple",
+        complexityScore: 0.2,
+      });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:user-5",
+      })!;
+
+      await tool.execute("call-6", {
+        taskSummary: "task with transcript",
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 2,
+        durationMs: 1000,
+        domain: "test",
+        transcript: "User asked about feishu wiki archiving, bot listed pages and moved them.",
+      });
+
+      expect(mockEvaluate).toHaveBeenCalledTimes(1);
+      const candidate = mockEvaluate.mock.calls[0][0] as { transcript?: string };
+      expect(candidate.transcript).toBe("User asked about feishu wiki archiving, bot listed pages and moved them.");
     });
   });
 });
