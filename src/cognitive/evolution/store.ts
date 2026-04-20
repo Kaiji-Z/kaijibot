@@ -31,7 +31,13 @@ export class EvolutionStore {
 
     const targetPath = this.recordPath(record.userId);
     const records = await this.loadRecords(record.userId);
-    records.push(record);
+
+    const existingIdx = records.findIndex((r) => r.id === record.id);
+    if (existingIdx >= 0) {
+      records[existingIdx] = record;
+    } else {
+      records.push(record);
+    }
 
     await this.atomicWrite(targetPath, JSON.stringify(records, null, 2));
   }
