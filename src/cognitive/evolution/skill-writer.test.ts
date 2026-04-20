@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFile, readdir } from "node:fs/promises";
@@ -94,5 +94,90 @@ describe("SkillPersistenceWriter", () => {
     expect(content).toContain("## Triggers");
     expect(content).toContain("- do cool thing");
     expect(content).toContain("## Usage");
+  });
+
+  it("written SKILL.md contains createdAt in frontmatter", async () => {
+    const draft = makeDraft();
+    const path = await writer.writeSkill(draft);
+    const content = await readFile(path, "utf-8");
+
+    expect(content).toMatch(/^createdAt:\s*\d+$/m);
+    expect(content).toMatch(/^lastUsedAt:\s*\d+$/m);
+    expect(content).toMatch(/^usageCount:\s*0$/m);
+  });
+
+  it("readSkillMeta() returns null for missing skill", async () => {
+    const meta = await writer.readSkillMeta("nonexistent");
+    expect(meta).toBeNull();
+  });
+
+  it("readSkillMeta() parses lifecycle fields", async () => {
+    const draft = makeDraft({
+      name: "meta-test",
+      description: "Test metadata parsing",
+    });
+    await writer.writeSkill(draft);
+
+    const meta = await writer.readSkillMeta("meta-test");
+    expect(meta).not.toBeNull();
+    expect(meta!.name).toBe("meta-test");
+    expect(meta!.description).toBe("Test metadata parsing");
+    expect(meta!.createdAt).toBeGreaterThan(0);
+    expect(meta!.lastUsedAt).toBeGreaterThan(0);
+    expect(meta!.usageCount).toBe(0);
+    expect(meta!.isStale).toBe(false);
+  });
+
+  it("touchSkill() increments usageCount and updates lastUsedAt", async () => {
+    const draft = makeDraft({ name: "touch-test" });
+    await writer.writeSkill(draft);
+
+    const before = await writer.readSkillMeta("touch-test");
+    expect(before!.usageCount).toBe(0);
+
+    await writer.touchSkill("touch-test");
+
+    const after = await writer.readSkillMeta("touch-test");
+    expect(after!.usageCount).toBe(1);
+    expect(after!.lastUsedAt).toBeGreaterThanOrEqual(before!.lastUsedAt);
+
+    await writer.touchSkill("touch-test");
+    const afterSecond = await writer.readSkillMeta("touch-test");
+    expect(afterSecond!.usageCount).toBe(2);
+  });
+
+  it("touchSkill() does nothing for missing skill", async () => {
+    await expect(writer.touchSkill("nonexistent")).resolves.toBeUndefined();
+  });
+
+  it("listSkillNames() returns skill directory names", async () => {
+    await writer.writeSkill(makeDraft({ name: "skill-a" }));
+    await writer.writeSkill(makeDraft({ name: "skill-b" }));
+
+    const names = await writer.listSkillNames();
+    expect(names.sort()).toEqual(["skill-a", "skill-b"]);
+  });
+
+  it("listSkillNames() skips directories without SKILL.md", async () => {
+    const skillsDir = join(tempDir, "skills");
+    mkdirSync(join(skillsDir, "empty-dir"), { recursive: true });
+    await writer.writeSkill(makeDraft({ name: "real-skill" }));
+
+    const names = await writer.listSkillNames();
+    expect(names).toEqual(["real-skill"]);
+  });
+
+  it("readSkillMeta() marks skill as stale when lastUsedAt is old", async () => {
+    const draft = makeDraft({ name: "stale-test" });
+    await writer.writeSkill(draft);
+
+    const skillPath = join(tempDir, "skills", "stale-test", "SKILL.md");
+    let content = await readFile(skillPath, "utf-8");
+    const oldTimestamp = Date.now() - 31 * 24 * 60 * 60 * 1000;
+    content = content.replace(/^lastUsedAt:\s*\d+/m, `lastUsedAt: ${oldTimestamp}`);
+    writeFileSync(skillPath, content, "utf-8");
+
+    const meta = await writer.readSkillMeta("stale-test");
+    expect(meta!.isStale).toBe(true);
   });
 });

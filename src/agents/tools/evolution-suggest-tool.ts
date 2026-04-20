@@ -12,6 +12,8 @@ export const EvolutionSuggestSchema = Type.Object({
   durationMs: Type.Number({ description: "Wall-clock time in milliseconds" }),
   domain: Type.String({ description: "Cognitive domain (e.g. 'feishu-wiki', 'code-review')" }),
   transcript: Type.Optional(Type.String({ description: "Optional conversation transcript summary for richer context" })),
+  hasTrialAndError: Type.Optional(Type.Boolean({ description: "Whether trial-and-error patterns were detected" })),
+  userCorrections: Type.Optional(Type.Number({ description: "Number of user corrections during the task" })),
 });
 
 export function createEvolutionSuggestTool(deps: {
@@ -36,6 +38,8 @@ export function createEvolutionSuggestTool(deps: {
         durationMs: number;
         domain: string;
         transcript?: string;
+        hasTrialAndError?: boolean;
+        userCorrections?: number;
       };
 
       try {
@@ -59,6 +63,8 @@ export function createEvolutionSuggestTool(deps: {
           durationMs: params.durationMs,
           domain: params.domain,
           transcript: params.transcript,
+          hasTrialAndError: params.hasTrialAndError,
+          userCorrections: params.userCorrections,
         };
 
         const decision = await engine.evaluate(candidate, userId);

@@ -218,5 +218,55 @@ describe("createEvolutionSuggestTool", () => {
       const candidate = mockEvaluate.mock.calls[0][0] as { transcript?: string };
       expect(candidate.transcript).toBe("User asked about feishu wiki archiving, bot listed pages and moved them.");
     });
+
+    it("passes hasTrialAndError to candidate", async () => {
+      mockEvaluate.mockResolvedValueOnce({
+        shouldSuggest: false,
+        reasoning: "too simple",
+        complexityScore: 0.2,
+      });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:user-6",
+      })!;
+
+      await tool.execute("call-7", {
+        taskSummary: "trial-error task",
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 2,
+        durationMs: 1000,
+        domain: "test",
+        hasTrialAndError: true,
+      });
+
+      const candidate = mockEvaluate.mock.calls[0][0] as { hasTrialAndError?: boolean };
+      expect(candidate.hasTrialAndError).toBe(true);
+    });
+
+    it("passes userCorrections to candidate", async () => {
+      mockEvaluate.mockResolvedValueOnce({
+        shouldSuggest: false,
+        reasoning: "too simple",
+        complexityScore: 0.2,
+      });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:user-7",
+      })!;
+
+      await tool.execute("call-8", {
+        taskSummary: "corrected task",
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 2,
+        durationMs: 1000,
+        domain: "test",
+        userCorrections: 4,
+      });
+
+      const candidate = mockEvaluate.mock.calls[0][0] as { userCorrections?: number };
+      expect(candidate.userCorrections).toBe(4);
+    });
   });
 });

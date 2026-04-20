@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EvolutionStore } from "./store.js";
 import { EvolutionEngine } from "./engine.js";
+import { SkillPersistenceWriter } from "./skill-writer.js";
+import { SkillLifecycleManager } from "./skill-lifecycle.js";
 import type { EvolutionCandidate, EvolutionRecord } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 
@@ -188,5 +190,139 @@ describe("EvolutionEngine", () => {
     );
     expect(decision.shouldSuggest).toBe(false);
     expect(decision.reasoning).toContain("below threshold");
+  });
+
+  describe("checkBeforeGenerate()", () => {
+    it("returns shouldCreate:true when no lifecycle provided", async () => {
+      const result = await engine.checkBeforeGenerate(complexCandidate);
+      expect(result.shouldCreate).toBe(true);
+      expect(result.existingSkill).toBeUndefined();
+    });
+
+    it("returns shouldCreate:false when similar skill exists", async () => {
+      const writer = new SkillPersistenceWriter(tempDir);
+      await writer.writeSkill({
+        name: "feishu-wiki",
+        description: "Complex multi-step wiki operation",
+        triggerPhrases: ["wiki ops"],
+        bodyMarkdown: "# Wiki Operations\n\nHandles wiki tasks.",
+      });
+
+      const lifecycle = new SkillLifecycleManager(writer);
+      const candidate = makeCandidate({
+        taskSummary: "Complex multi-step wiki operation",
+        domain: "feishu-wiki",
+        toolCalls: Array.from({ length: 10 }, (_, i) => `tool_${i}`),
+        uniqueToolCount: 8,
+        reasoningTurns: 10,
+        durationMs: 300_000,
+      });
+
+      const result = await engine.checkBeforeGenerate(candidate, lifecycle);
+      expect(result.shouldCreate).toBe(false);
+      expect(result.existingSkill).toBe("feishu-wiki");
+    });
+
+    it("returns shouldCreate:true when no similar skill exists", async () => {
+      const writer = new SkillPersistenceWriter(tempDir);
+      await writer.writeSkill({
+        name: "weather-forecast",
+        description: "Get weather forecasts for cities",
+        triggerPhrases: ["weather"],
+        bodyMarkdown: "# Weather\n\nGets weather.",
+      });
+
+      const lifecycle = new SkillLifecycleManager(writer);
+      const candidate = makeCandidate({
+        taskSummary: "Complex multi-step wiki operation",
+        domain: "feishu-wiki",
+        toolCalls: Array.from({ length: 10 }, (_, i) => `tool_${i}`),
+        uniqueToolCount: 8,
+        reasoningTurns: 10,
+        durationMs: 300_000,
+      });
+
+      const result = await engine.checkBeforeGenerate(candidate, lifecycle);
+      expect(result.shouldCreate).toBe(true);
+    });
+  });
+});
+
+describe("EvolutionEngine.patchSkill", () => {
+  let patchStore: EvolutionStore;
+  let patchEngine: EvolutionEngine;
+  let skillWriter: SkillPersistenceWriter;
+  let patchTempDir: string;
+
+  beforeEach(() => {
+    patchTempDir = mkdtempSync(join(tmpdir(), "kaijibot-engine-patch-test-"));
+    patchStore = new EvolutionStore(patchTempDir);
+    patchEngine = new EvolutionEngine(patchStore);
+    skillWriter = new SkillPersistenceWriter(patchTempDir);
+  });
+
+  afterEach(() => {
+    rmSync(patchTempDir, { recursive: true, force: true });
+  });
+
+  it("returns error for nonexistent skill", async () => {
+    const result = await patchEngine.patchSkill(
+      { name: "ghost", instructions: "update it" },
+      { generateText: async () => "", writer: skillWriter },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("Skill not found");
+    }
+  });
+
+  it("calls LLM and writes updated content on success", async () => {
+    await skillWriter.writeSkill({
+      name: "existing-skill",
+      description: "Old desc",
+      triggerPhrases: ["old trigger"],
+      bodyMarkdown: "## Old Body",
+    });
+
+    const updatedMarkdown = "---\nname: existing-skill\ndescription: \"New desc\"\nmetadata:\n  kaijibot:\n    generated: true\n    version: 1\n---\n\n## New Body\n\nUpdated content.";
+
+    const mockGenerateText = async (_prompt: string) => updatedMarkdown;
+
+    const result = await patchEngine.patchSkill(
+      { name: "existing-skill", instructions: "Update the body" },
+      { generateText: mockGenerateText, writer: skillWriter },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.updatedPath).toContain("existing-skill");
+      const { readFile } = await import("node:fs/promises");
+      const content = await readFile(result.updatedPath, "utf-8");
+      expect(content).toContain("New Body");
+    }
+  });
+
+  it("returns ok:true with updatedPath", async () => {
+    await skillWriter.writeSkill({
+      name: "path-test",
+      description: "Test",
+      triggerPhrases: [],
+      bodyMarkdown: "Body",
+    });
+
+    const result = await patchEngine.patchSkill(
+      { name: "path-test", instructions: "no-op" },
+      {
+        generateText: async () =>
+          "---\nname: path-test\ndescription: \"Test\"\nmetadata:\n  kaijibot:\n    generated: true\n    version: 1\n---\n\nBody",
+        writer: skillWriter,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.updatedPath).toContain("path-test");
+      expect(result.updatedPath).toContain("SKILL.md");
+    }
   });
 });

@@ -22,6 +22,12 @@ export type EvolutionCandidate = {
   domain: string;
   /** Optional: raw transcript of the task interaction */
   transcript?: string;
+  /** Whether trial-and-error patterns were detected during the task */
+  hasTrialAndError?: boolean;
+  /** Number of times the user corrected the agent during the task */
+  userCorrections?: number;
+  /** Evidence strings from the transcript showing trial-error patterns */
+  trialErrorSignals?: string[];
 };
 
 /** A drafted Skill proposal generated from an evolution candidate. */
@@ -141,4 +147,34 @@ export type ClawHubSearchResult = {
 export type ClawHubSkillDetail = ClawHubSearchResult & {
   content: string;
   changelog?: string;
+};
+
+export type SkillPatch = {
+  name: string;
+  instructions: string;
+  replacements?: Array<{ oldText: string; newText: string }>;
+};
+
+export type SkillPatchResult =
+  | { ok: true; updatedPath: string }
+  | { ok: false; error: string };
+
+export type SkillMeta = {
+  name: string;
+  description: string;
+  createdAt: number;
+  lastUsedAt: number;
+  usageCount: number;
+  isStale: boolean;
+};
+
+export type DedupCheckResult =
+  | { duplicate: false }
+  | { duplicate: true; existingName: string; similarity: number };
+
+export type TrialErrorResult = {
+  detected: boolean;
+  signals: string[];
+  userCorrections: number;
+  boost: number;
 };
