@@ -9,6 +9,8 @@ export { EvolutionEngine } from "./engine.js";
 export type { DraftGeneratorFn } from "./engine.js";
 export { SkillPersistenceWriter } from "./skill-writer.js";
 export { AuditLog } from "./audit-log.js";
+export { ClawHubPublisher } from "./clawhub-publisher.js";
+export { ClawHubCatalog } from "./clawhub-catalog.js";
 export {
   DEFAULT_EVOLUTION_CONFIG,
 } from "./types.js";
@@ -21,6 +23,9 @@ export type {
   EvolutionConfig,
   ComplexityFactor,
   ComplexityResult,
+  ClawHubPublishResult,
+  ClawHubSearchResult,
+  ClawHubSkillDetail,
 } from "./types.js";
 export { SafetyGate } from "./safety-gate.js";
 export type { RiskLevel, OperationRequest, SafetyDecision } from "./safety-gate.js";

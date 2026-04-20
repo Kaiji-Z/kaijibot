@@ -85,6 +85,12 @@ export type EvolutionConfig = {
   minTrustScore: number;
   /** Whether the evolution engine is active (default true) */
   enabled: boolean;
+  /** Whether to enable ClawHub skill sharing (default false) */
+  clawhubEnabled: boolean;
+  /** ClawHub registry URL (default "https://clawhub.com") */
+  clawhubRegistry: string;
+  /** Whether to auto-publish accepted skills (default false) */
+  clawhubAutoPublish: boolean;
 };
 
 /** Complexity evaluation factors contributing to the score. */
@@ -114,4 +120,25 @@ export const DEFAULT_EVOLUTION_CONFIG: EvolutionConfig = {
   maxSuggestionsPerDay: 3,
   minTrustScore: 0.5,
   enabled: true,
+  clawhubEnabled: false,
+  clawhubRegistry: "https://clawhub.com",
+  clawhubAutoPublish: false,
+};
+
+export type ClawHubPublishResult =
+  | { ok: true; slug: string; version: string }
+  | { ok: false; error: string };
+
+export type ClawHubSearchResult = {
+  slug: string;
+  name: string;
+  description: string;
+  version: string;
+  downloads: number;
+  author: string;
+};
+
+export type ClawHubSkillDetail = ClawHubSearchResult & {
+  content: string;
+  changelog?: string;
 };

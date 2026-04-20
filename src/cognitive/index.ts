@@ -10,6 +10,14 @@ export { extractFromMessageLLM, createDefaultDeps as createDefaultExtractorDeps 
 export type { LlmExtractorDeps, LlmExtractorOptions } from "./persona/llm-extractor.js";
 export { buildPersonaContext } from "./persona/context-builder.js";
 export type { ExtractedAttribute, ExtractionResult } from "./persona/types.js";
+export { mapFeishuActivity } from "./persona/feishu-activity-mapper.js";
+export type {
+  FeishuActivityData,
+  TaskActivitySummary,
+  DocActivitySummary,
+  MeetingActivitySummary,
+} from "./persona/feishu-activity-types.js";
+export { FeishuActivitySource } from "./persona/feishu-activity-source.js";
 
 // Feedback module
 export { processFeedback, processImplicitFeedback, extractImplicitSignals } from "./feedback/collector.js";

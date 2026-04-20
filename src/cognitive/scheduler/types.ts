@@ -2,7 +2,7 @@ import type { PersonaTree } from "../types.js";
 
 /** Event that triggers the proactive scheduler */
 export type SchedulerEvent = {
-  type: "timer" | "persona_change" | "info_scan" | "evolution_scan" | "external";
+  type: "timer" | "persona_change" | "info_scan" | "evolution_scan" | "activity_scan" | "external";
   timestamp: number;
   payload?: unknown;
 };

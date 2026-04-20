@@ -56,5 +56,11 @@ export type CognitiveConfig = {
     cooldownHours?: number;
     /** Max suggestions per user per day (default: 3) */
     maxSuggestionsPerDay?: number;
+    /** Enable ClawHub skill sharing (default: false) */
+    clawhubEnabled?: boolean;
+    /** ClawHub registry URL */
+    clawhubRegistry?: string;
+    /** Auto-publish accepted skills to ClawHub (default: false) */
+    clawhubAutoPublish?: boolean;
   };
 };

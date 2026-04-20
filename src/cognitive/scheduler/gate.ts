@@ -21,6 +21,7 @@ const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {
   persona_change: 0.9,
   info_scan: 0.8,
   evolution_scan: 0.75,
+  activity_scan: 0.8,
   external: 0.85,
 };
 
