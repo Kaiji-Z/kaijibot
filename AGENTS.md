@@ -10,8 +10,9 @@ This is a simplified fork of [OpenClaw](https://github.com/openclaw/openclaw), e
 - **`src/`** — core engine: CLI (`src/cli`), commands (`src/commands`), gateway (`src/gateway`), agents (`src/agents`), config (`src/config`), plugin system (`src/plugins`, `src/plugin-sdk`), channels (`src/channels`), media pipeline (`src/media`), **cognitive layer (`src/cognitive`)**
 - **`src/cognitive/`** — KaijiBot's proactive AI system (unique to this fork, not in upstream OpenClaw):
   - `persona/` — per-user cognitive model (identity, domains, interests, trust), dual extraction (rule-based + LLM), persistence at `~/.kaijibot/cognitive/persona/`
-  - `insight/` — proactive insight generation (cross-domain, pending questions, domain depth), cross-domain mapper, serendipity scorer, verification pipeline
-  - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan event sources)
+  - `insight/` — proactive insight generation (cross-domain, pending questions, domain depth), cross-domain mapper, serendipity scorer, LLM prompt builder, verification pipeline
+  - `evolution/` — self-evolution engine: complexity evaluator, LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
+  - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
@@ -62,7 +63,7 @@ This is a simplified fork of [OpenClaw](https://github.com/openclaw/openclaw), e
 
 ## Cognitive System Architecture
 
-The proactive AI layer follows this pipeline:
+### Proactive Insight Pipeline
 
 ```
 Event Sources (timer / persona_change / info_scan)
@@ -75,11 +76,41 @@ Event Sources (timer / persona_change / info_scan)
               → heartbeat-runner → agent turn → deliverOutboundPayloads → user receives message
 ```
 
-Key integration points:
+### Self-Evolution Pipeline
+
+```
+Complex task completed
+  → context-writer injected hint: "when 3+ tools, call evaluate_skill_evolution"
+    → Agent calls evaluate_skill_evolution tool
+      → engine.evaluate(): complexity gate + cooldown + daily cap + trial-error boost
+        → Passes: engine.generate() → LLM (with full skill-creator spec) → SKILL.md draft
+          → Tool returns suggestionText (Chinese) + full bodyMarkdown
+            → Agent asks user: "要不要做成技能？"
+              → Confirm → skill-writer saves to ~/.kaijibot/skills/
+              → Modify → patch_skill tool → text replace or LLM patch
+              → Reject → recordResponse("rejected") → preference learning
+Before creation: engine.checkBeforeGenerate() → lifecycle.checkDuplicate()
+  → Similar exists → suggest updating instead
+  → Unique → proceed with creation
+After creation: frontmatter tracks createdAt/lastUsedAt/usageCount
+  → touchSkill() per use → removeStale(30) cleans skills unused 30+ days with 0 usage
+```
+
+### Key Integration Points
+
+Insight delivery:
 - `src/gateway/server.impl.ts` (cognitive section) — bootstraps ProactiveScheduler, wires event sources and delivery
 - `src/gateway/cognitive-delivery.ts` — resolves userId to session key for delivery routing
 - `src/infra/heartbeat-reason.ts` — classifies `"cognitive-insight"` as `"wake"` kind to bypass HEARTBEAT.md gate
 - `src/infra/heartbeat-runner.ts` — `hasCognitiveEvents` check for `shouldInspectPendingEvents`
+
+Evolution (inline during agent turns, no gateway wiring):
+- `src/agents/tools/evolution-suggest-tool.ts` — `evaluate_skill_evolution` agent tool
+- `src/agents/tools/evolution-patch-tool.ts` — `patch_skill` agent tool (NOTE: not yet registered in `kaijibot-tools.ts`)
+- `src/cognitive/context-writer.ts` — injects "Skill Evolution" system prompt section when `evolutionEnabled`
+- `src/auto-reply/reply/get-reply-run.ts` — passes `evolutionEnabled` to context-writer
+
+Shared:
 - `src/agents/tools/cognitive-feedback-tool.ts` — agent tool for collecting explicit feedback
 - `src/agents/system-prompt.ts` — injects cognitive mode prompt into agent system prompt
 
@@ -137,10 +168,13 @@ Key integration points:
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
+- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.minComplexity` (0-1, default 0.6), `cognitive.evolution.cooldownHours` (default 24), `cognitive.evolution.maxSuggestionsPerDay` (default 3), `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.
 - Persona data stored at `~/.kaijibot/cognitive/persona/{userId}.json`.
+- Evolution records stored at `~/.kaijibot/cognitive/evolution/{userId}.json`; skills at `~/.kaijibot/skills/{name}/SKILL.md`.
+- Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl`.
 - Never commit real phone numbers, API keys, or live config values.
 
 ## Syncing Upstream
