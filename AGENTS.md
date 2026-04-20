@@ -113,6 +113,10 @@ Key integration points:
 - For scoped debugging: `pnpm test <path-or-filter>` (not raw `pnpm vitest run ...`).
 - `KAIJIBOT_VITEST_MAX_WORKERS=1 pnpm test` for memory-constrained runs.
 - Do not modify baseline, snapshot, or expected-failure files to silence failing checks without explicit approval.
+- **Cognitive layer live tests** — after modifying `src/cognitive/evolution/` or `src/cognitive/insight/`, run the live quality tests to verify real LLM output:
+  - Evolution: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-quality.test.ts`
+  - Insight: `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-live-quality.test.ts`
+  - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
 - Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
 
 ## Commit Guidelines
