@@ -176,7 +176,8 @@ export async function generateInsightCandidatesLLM(
  */
 export function extractKeyTerms(text: string): string[] {
   let cleaned = text
-    .replace(/\b(?:ou_)?[0-9a-f]{16,}\s*:?\s*/g, "")
+    .replace(/\bou_[0-9a-f]+\s*:?\s*/g, "")
+    .replace(/\b[0-9a-f]{16,}\s*:?\s*/g, "")
     .replace(/^(?:需要我|你能|我能不能|我能怎么|你为什么|是不是|你好[，,]?|请问|能不能|为什么)/, "")
     .replace(/[？?，,。.！!]+$/g, "")
     .replace(/(?:才能|的话|到底|这个|那个|一下|帮我|帮我去)/g, " ")
