@@ -156,6 +156,10 @@ Shared:
 - `pnpm test` (full suite) uses a custom runner (`scripts/test-projects.mjs`) that spawns vitest as child processes. **stdout is empty except for the pnpm header**; test output goes to stderr. Judge success by exit code only — do not wait for stdout feedback. For targeted output, use `pnpm test <path-or-filter>`.
 - Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
 
+## Auditing Default-Disabled Features
+
+- When auditing which features default to disabled, grep patterns like `DEFAULT_.*ENABLED.*=.*false` and `?? false` across **all of `src/`** — not just `src/gateway/` or `src/cognitive/`. Feature defaults can live in cross-cutting modules like `src/memory-host-sdk/` that don't map 1:1 to a subsystem directory. Do not assume directory boundaries match feature module boundaries.
+
 ## Commit Guidelines
 
 - Create commits with `scripts/committer "<msg>" <file...>` to keep staging scoped.
