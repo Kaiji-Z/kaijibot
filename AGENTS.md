@@ -79,10 +79,15 @@ Event Sources (timer / persona_change / info_scan)
 ### Self-Evolution Pipeline
 
 ```
-Complex task completed
-  → context-writer injected hint: "when 3+ tools, call evaluate_skill_evolution"
+Task completed (with errors/retries OR complex)
+  → handleToolExecutionEnd() detects isError → accumulateToolError(sessionKey, {toolName, mutatingAction})
+  → context-writer injected hint: "when errors or 3+ tools, call evaluate_skill_evolution"
     → Agent calls evaluate_skill_evolution tool
-      → engine.evaluate(): complexity gate + cooldown + daily cap + trial-error boost
+      → consumeToolErrorProfile(sessionKey) reads + resets accumulated errors
+      → engine.evaluate(): dual-threshold gate + cooldown + daily cap
+        → errors/retries detected → use errorComplexityThreshold (0.3)
+        → no errors → use minComplexity (0.6)
+          → complexity-evaluator: base factors + toolErrors(w=0.50) + toolRetries(w=0.40) + trial-error boost
         → Passes: engine.generate() → LLM (with full skill-creator spec) → SKILL.md draft
           → Tool returns suggestionText (Chinese) + full bodyMarkdown
             → Agent asks user: "要不要做成技能？"
@@ -148,6 +153,7 @@ Shared:
   - Evolution: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-quality.test.ts`
   - Insight: `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-live-quality.test.ts`
   - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
+- `pnpm test` (full suite) uses a custom runner (`scripts/test-projects.mjs`) that spawns vitest as child processes. **stdout is empty except for the pnpm header**; test output goes to stderr. Judge success by exit code only — do not wait for stdout feedback. For targeted output, use `pnpm test <path-or-filter>`.
 - Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
 
 ## Commit Guidelines
@@ -168,7 +174,7 @@ Shared:
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
-- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.minComplexity` (0-1, default 0.6), `cognitive.evolution.cooldownHours` (default 24), `cognitive.evolution.maxSuggestionsPerDay` (default 3), `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
+- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.minComplexity` (0-1, default 0.6), `cognitive.evolution.errorComplexityThreshold` (0-1, default 0.3), `cognitive.evolution.cooldownHours` (default 24), `cognitive.evolution.maxSuggestionsPerDay` (default 3), `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.
