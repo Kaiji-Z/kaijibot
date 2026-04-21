@@ -1383,7 +1383,9 @@ export async function startGatewayServer(
         );
 
         const handleEventForAllUsers = async (event: SchedulerEvent) => {
-          const userIds = await cognitiveStore.listUserIds("main");
+          const userIds = (await cognitiveStore.listUserIds("main")).filter(
+            (id) => !id.startsWith("kaijibot-"),
+          );
           for (const userId of userIds) {
             try {
               await proactiveScheduler.processEvent(userId, event);
@@ -1397,8 +1399,11 @@ export async function startGatewayServer(
         infoScanSource.start();
         const schedulerIntervalMs = process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS
           ? Number(process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS)
-          : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4) * 3600_000;
-        proactiveScheduler.start(() => cognitiveStore.listUserIds("main"), schedulerIntervalMs);
+          : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5) * 3600_000;
+        proactiveScheduler.start(
+          async () => (await cognitiveStore.listUserIds("main")).filter((id) => !id.startsWith("kaijibot-")),
+          schedulerIntervalMs,
+        );
         log.info(`cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`);
       } catch (err) {
         log.warn(`cognitive scheduler skipped: ${String(err)}`);

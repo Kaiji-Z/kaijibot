@@ -396,7 +396,7 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
       mutated = true;
     }
     if (proactive.minIntervalHours === undefined) {
-      proactive.minIntervalHours = 4;
+      proactive.minIntervalHours = 0.5;
       mutated = true;
     }
     if (mutated) next.proactive = proactive;
