@@ -2,8 +2,9 @@ import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, buildInsightPrompt, extractKeyTerms, buildSearchQuery, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
-import type { InsightEngineInput } from "./types.js";
+import { generateInsightCandidatesLLM, buildInsightPrompt, buildSurpriseInsightPrompt, extractKeyTerms, buildSearchQuery, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
+import type { InsightEngineInput, SearchStrategy } from "./types.js";
+import type { InterestInferenceDeps } from "./interest-inference.js";
 
 const TEST_MODEL: Model<Api> = {
   id: "test-model",
@@ -682,5 +683,201 @@ describe("buildSearchQuery", () => {
     const query = buildSearchQuery(input);
     const matches = query.match(/typescript/gi);
     expect(matches).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildSurpriseInsightPrompt
+// ---------------------------------------------------------------------------
+
+const TEST_STRATEGY: SearchStrategy = {
+  inferredInterest: "eBPF distributed tracing",
+  searchQuery: "eBPF distributed tracing observability",
+  bridgeReasoning: "User knows Rust and observability, eBPF bridges both",
+  avoidTopics: ["rust", "typescript"],
+  estimatedSurprise: 0.8,
+};
+
+describe("buildSurpriseInsightPrompt", () => {
+  it("includes INFERRED LATENT INTEREST section with strategy fields", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+
+    expect(prompt).toContain("INFERRED LATENT INTEREST");
+    expect(prompt).toContain("eBPF distributed tracing");
+    expect(prompt).toContain("User knows Rust and observability, eBPF bridges both");
+    expect(prompt).toContain("Why surprising");
+  });
+
+  it("includes SPECIFIC FACTS and anchor block", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+
+    expect(prompt).toContain("SPECIFIC FACTS YOU KNOW ABOUT THIS USER");
+    expect(prompt).toContain("type narrowing");
+    expect(prompt).toContain("ownership model");
+  });
+
+  it("includes EXTERNAL_FACTS when web results exist", () => {
+    const webResults: WebSearchResult[] = [
+      { title: "eBPF Tracing Guide", url: "https://example.com/ebpf", snippet: "Rust-based eBPF distributed tracing" },
+    ];
+
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      webResults,
+      [],
+      TEST_STRATEGY,
+    );
+
+    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("Rust-based eBPF distributed tracing");
+  });
+
+  it("includes language instruction for Chinese by default", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+
+    expect(prompt).toContain("用中文输出。");
+  });
+
+  it("includes English language instruction when outputLanguage is 'en'", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+      "en",
+    );
+
+    expect(prompt).toContain("Output in English.");
+  });
+
+  it("includes PAST INSIGHTS when recentInsightContents provided", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      ["Rust的所有权模型在并发场景下有独特的优势", "TypeScript 5.5新增了类型推断的改进"],
+      TEST_STRATEGY,
+    );
+
+    expect(prompt).toContain("PAST INSIGHTS");
+    expect(prompt).toContain("Rust的所有权模型在并发场景下有独特的优势");
+  });
+
+  it("includes opening bans from recent insight contents", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      ["最近发现了一个有趣的技术", "你有没有想过eBPF"],
+      TEST_STRATEGY,
+    );
+
+    expect(prompt).toContain("不要以");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateInsightCandidatesLLM — surprise mode
+// ---------------------------------------------------------------------------
+
+function inferenceSuccessDeps(strategyJSON: string): InterestInferenceDeps {
+  return {
+    complete: async () => assistantMessage(strategyJSON),
+    prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+  };
+}
+
+function surpriseInput(overrides?: Partial<InsightEngineInput>): InsightEngineInput {
+  return makeInput({ mode: "surprise", ...overrides });
+}
+
+function validStrategyJSON(): string {
+  return JSON.stringify({
+    inferredInterest: "eBPF distributed tracing",
+    searchQuery: "eBPF distributed tracing observability",
+    bridgeReasoning: "User knows Rust and observability, eBPF bridges both",
+    avoidTopics: ["rust", "typescript"],
+    estimatedSurprise: 0.8,
+  });
+}
+
+describe("generateInsightCandidatesLLM — surprise mode", () => {
+  it("uses inference layer in surprise mode and returns candidates", async () => {
+    const deps: LlmInsightDeps = {
+      complete: async () => assistantMessage(validLLMResponse()),
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+      inferenceDeps: inferenceSuccessDeps(validStrategyJSON()),
+    };
+
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      surpriseInput(),
+      makeConfig(),
+      deps,
+    );
+
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toBeTruthy();
+  });
+
+  it("falls back to extend mode when inference fails", async () => {
+    const inferenceFailDeps: InterestInferenceDeps = {
+      complete: async () => assistantMessage(""),
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+    };
+
+    const deps: LlmInsightDeps = {
+      complete: async () => assistantMessage(validLLMResponse()),
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+      inferenceDeps: inferenceFailDeps,
+    };
+
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      surpriseInput(),
+      makeConfig(),
+      deps,
+    );
+
+    // Should still produce results via extend mode fallback
+    expect(result.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("skips inference when no inferenceDeps provided even in surprise mode", async () => {
+    const deps: LlmInsightDeps = {
+      complete: async () => assistantMessage(validLLMResponse()),
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+      // no inferenceDeps
+    };
+
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      surpriseInput(),
+      makeConfig(),
+      deps,
+    );
+
+    // Should produce results using the extend path since no inferenceDeps
+    expect(result.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -1,7 +1,7 @@
 import type { PersonaTree } from "../types.js";
 import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
 import { computeGradedGate } from "./gate.js";
-import type { InsightCandidate, InsightEngineInput } from "../insight/types.js";
+import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections } from "../insight/cross-domain-mapper.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
@@ -25,7 +25,15 @@ function isDuplicateByDomainOverlap(
   return false;
 }
 
-export type InsightGeneratorFn = (persona: PersonaTree, input: InsightEngineInput, options?: { verificationLevel?: "basic" | "strict" | "paranoid"; maxCandidates?: number }) => Promise<InsightCandidate[]>;
+export type InsightGeneratorFn = (
+  persona: PersonaTree,
+  input: InsightEngineInput,
+  options?: {
+    verificationLevel?: "basic" | "strict" | "paranoid";
+    maxCandidates?: number;
+    mode?: InsightMode;
+  },
+) => Promise<InsightCandidate[]>;
 
 export class ProactiveScheduler {
   private timerHandle: ReturnType<typeof setTimeout> | undefined;
@@ -113,6 +121,7 @@ export class ProactiveScheduler {
   async resolve(persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
+    const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
     const candidates = await this.generateInsights(
       persona,
       {
@@ -124,10 +133,12 @@ export class ProactiveScheduler {
         trustScore: persona.rapport.trustScore,
         recentInsightIds,
         recentInsightContents,
+        mode,
       },
       {
         verificationLevel: "basic",
         maxCandidates: 1,
+        mode,
       },
     );
 
@@ -390,55 +401,38 @@ function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
 
-/** Known universe of domains for exploration slot */
-const KNOWN_UNIVERSE = [
-  "AI",
-  "architecture",
-  "programming",
-  "product",
-  "business",
-  "data science",
-  "security",
-  "cloud",
-  "blockchain",
-  "quantum computing",
-  "digital art",
-  "biotech",
-  "psychology",
-  "philosophy",
-  "design thinking",
-  "project management",
-  "testing",
-  "DevSecOps",
-] as const;
-
-/** Deterministic 20% exploration slot: picks an unknown domain */
 function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
-  if ((event.timestamp % 5) !== 0) return [];
+  const surpriseRatio = 0.8;
+  const roll = (event.timestamp % 10) / 10;
+  const mode: InsightMode = roll < surpriseRatio ? "surprise" : "extend";
 
   const userDomainKeys = Object.keys(persona.domains);
   if (userDomainKeys.length === 0) return [];
 
-  const unknownDomains = KNOWN_UNIVERSE.filter(
-    (domain) => !userDomainKeys.some((ud) => ud.toLowerCase().includes(domain.toLowerCase())),
-  );
-
-  if (unknownDomains.length === 0) return [];
-
-  const index = Math.floor((event.timestamp / 7) % unknownDomains.length);
-  const targetDomain = unknownDomains[index];
-
   const baseline = computeBaselinePAccept(persona);
-  const pNeed = 0.5;
-  const pAccept = baseline * 0.8;
 
+  if (mode === "surprise") {
+    return [{
+      type: "exploration" as const,
+      targetDomains: [],
+      sourceDomains: [],
+      pNeed: 0.55,
+      pAccept: baseline * 0.85,
+      pAct: 0.55 * baseline * 0.85,
+      metadata: { mode: "surprise" },
+    }];
+  }
+
+  const index = Math.floor((event.timestamp / 7) % userDomainKeys.length);
+  const targetDomain = userDomainKeys[index]!;
   return [{
     type: "exploration" as const,
     targetDomains: [targetDomain],
     sourceDomains: [],
-    pNeed,
-    pAccept,
-    pAct: pNeed * pAccept,
+    pNeed: 0.5,
+    pAccept: baseline * 0.8,
+    pAct: 0.5 * baseline * 0.8,
+    metadata: { mode: "extend" },
   }];
 }
 

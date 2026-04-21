@@ -39,6 +39,9 @@ export const CognitiveInsightSchema = z
       .strict()
       .optional(),
     verificationLevel: z.enum(["basic", "strict", "paranoid"]).optional(),
+    inferenceModel: z.string().optional(),
+    surpriseRatio: z.number().min(0).max(1).optional(),
+    outputLanguage: z.string().optional(),
   })
   .strict()
   .optional();

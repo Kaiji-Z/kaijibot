@@ -7,8 +7,9 @@ import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import type { InsightCandidate, InsightEngineInput } from "./types.js";
+import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
@@ -32,13 +33,8 @@ export type LlmInsightDeps = {
     | { model: Model<Api>; auth: ResolvedProviderAuth }
     | { error: string }
   >;
-  /**
-   * Optional web search function. When provided the insight generator
-   * will query recent web results before calling the LLM, producing
-   * time-relevant insights.  Returns an empty array when unavailable
-   * (e.g. no API key configured).
-   */
   webSearch?: (query: string) => Promise<WebSearchResult[]>;
+  inferenceDeps?: InterestInferenceDeps;
 };
 
 export type LlmInsightOptions = {
@@ -68,6 +64,13 @@ export function createDefaultInsightDeps(): LlmInsightDeps {
       const modelId = modelParts.join("/") || "glm-5-turbo";
       return prepareSimpleCompletionModel({ cfg, provider, modelId });
     },
+    inferenceDeps: { complete, prepareModel: async (cfg, modelRef) => {
+      const extractionModel = cfg.cognitive?.persona?.extractionModel;
+      const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5-turbo";
+      const [provider, ...modelParts] = modelRefToUse.split("/");
+      const modelId = modelParts.join("/") || "glm-5-turbo";
+      return prepareSimpleCompletionModel({ cfg, provider, modelId });
+    } },
   };
 }
 
@@ -89,26 +92,50 @@ export async function generateInsightCandidatesLLM(
   options?: LlmInsightOptions,
 ): Promise<InsightCandidate[]> {
   const maxCandidates = options?.maxCandidates ?? 3;
+  const mode = input.mode ?? "extend";
 
   let webResults: WebSearchResult[] = [];
-  if (deps.webSearch) {
-    const query = buildSearchQuery(input);
-    if (query) {
-      try {
-        webResults = await deps.webSearch(query);
-        log.info("web search completed", { query, resultCount: webResults.length });
-      } catch (err) {
-        log.warn("web search failed, proceeding without web results", { query, error: String(err) });
-        webResults = [];
+  let searchStrategy: import("./types.js").SearchStrategy | undefined;
+
+  if (mode === "surprise" && deps.inferenceDeps) {
+    const inferenceResult = await inferSearchStrategy(persona, input, config, deps.inferenceDeps);
+    if (inferenceResult.ok) {
+      searchStrategy = inferenceResult.strategy;
+      if (deps.webSearch && searchStrategy.searchQuery) {
+        try {
+          webResults = await deps.webSearch(searchStrategy.searchQuery);
+          log.info("surprise-mode web search completed", { query: searchStrategy.searchQuery, resultCount: webResults.length });
+        } catch (err) {
+          log.warn("surprise-mode web search failed", { query: searchStrategy.searchQuery, error: String(err) });
+        }
       }
     } else {
-      log.info("web search skipped: empty query");
+      log.info("inference failed, falling back to extend mode", { error: inferenceResult.error });
+      return generateExtendMode(persona, input, config, deps, options, maxCandidates);
     }
   } else {
-    log.info("web search skipped: no webSearch dep provided");
+    if (deps.webSearch) {
+      const query = buildSearchQuery(input);
+      if (query) {
+        try {
+          webResults = await deps.webSearch(query);
+          log.info("web search completed", { query, resultCount: webResults.length });
+        } catch (err) {
+          log.warn("web search failed, proceeding without web results", { query, error: String(err) });
+          webResults = [];
+        }
+      } else {
+        log.info("web search skipped: empty query");
+      }
+    } else {
+      log.info("web search skipped: no webSearch dep provided");
+    }
   }
 
-  const prompt = buildInsightPrompt(persona, input, webResults, input.recentInsightContents);
+  const outputLanguage = config.cognitive?.insight?.outputLanguage ?? detectOutputLanguage(persona);
+  const prompt = mode === "surprise" && searchStrategy
+    ? buildSurpriseInsightPrompt(persona, input, webResults, input.recentInsightContents, searchStrategy, outputLanguage)
+    : buildInsightPrompt(persona, input, webResults, input.recentInsightContents);
 
   try {
     const modelRef =
@@ -162,6 +189,26 @@ export async function generateInsightCandidatesLLM(
     log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
     return [];
   }
+}
+
+async function generateExtendMode(
+  persona: PersonaTree,
+  input: InsightEngineInput,
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  options: LlmInsightOptions | undefined,
+  maxCandidates: number,
+): Promise<InsightCandidate[]> {
+  const extendInput: InsightEngineInput = { ...input, mode: "extend" };
+  return generateInsightCandidatesLLM(persona, extendInput, config, deps, { ...options, maxCandidates });
+}
+
+function detectOutputLanguage(persona: PersonaTree): string {
+  const lang = persona.identity?.primaryLanguage
+    ?? persona.identity?.communicationStyle?.preferredLanguage;
+  if (lang === "en") return "en";
+  if (lang === "mixed") return "zh";
+  return "zh";
 }
 
 /**
@@ -252,6 +299,112 @@ function enrichWithWebSources(
       credibility: 0.5,
     })),
   };
+}
+
+export function buildSurpriseInsightPrompt(
+  persona: PersonaTree,
+  input: InsightEngineInput,
+  webResults: WebSearchResult[] = [],
+  recentInsightContents: string[] = [],
+  strategy: import("./types.js").SearchStrategy,
+  outputLanguage: string = "zh",
+): string {
+  const keywordMap = buildDomainKeywordMap(persona.domains);
+  const webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
+
+  const sortedDomainEntries = Object.entries(persona.domains)
+    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+
+  const anchorFacts = sortedDomainEntries
+    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .slice(0, 6);
+  const anchorBlock = anchorFacts.length > 0
+    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "  (not yet established)";
+
+  const externalFacts = buildExternalFactsEntries(webSnippetByDomain);
+  const externalFactsBlock = externalFacts.length > 0
+    ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "";
+
+  const userName = persona.identity?.displayName || "";
+  const identityBlock = persona.identity
+    ? [
+        userName ? `Name: ${userName}` : "",
+        persona.identity.expertDomains?.length
+          ? `Expert in: ${persona.identity.expertDomains.join(", ")}`
+          : "",
+        persona.identity.interestDomains?.length
+          ? `Interested in: ${persona.identity.interestDomains.join(", ")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
+  const pastInsightBlock = recentInsightContents.length > 0
+    ? recentInsightContents.slice(-3).map((c, i) => `${i + 1}. ${truncate(c, 80)}`).join("\n")
+    : "";
+
+  const bannedOpenings = recentInsightContents
+    .slice(-3)
+    .map((c) => c.trim().slice(0, 8))
+    .filter((o) => o.length >= 4);
+
+  const openingBans = bannedOpenings.length > 0
+    ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
+    : "";
+
+  const langInstruction = outputLanguage === "en"
+    ? "Output in English."
+    : "用中文输出。";
+
+  return `You are the AI assistant speaking in your own voice and personality. You are proactively reaching out to share something genuinely SURPRISING — something the user hasn't encountered but would find fascinating.
+
+${identityBlock ? `USER:\n${identityBlock}` : ""}
+
+INFERRED LATENT INTEREST:
+  Interest: ${strategy.inferredInterest}
+  Bridge: ${strategy.bridgeReasoning}
+  Why surprising: This area is adjacent to what the user knows but explores a direction they haven't considered.
+
+SPECIFIC FACTS YOU KNOW ABOUT THIS USER:
+${anchorBlock}
+${externalFactsBlock ? `\nEXTERNAL_FACTS (fresh web findings):\n${externalFactsBlock}` : ""}
+
+${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
+
+TASK:
+Share a specific, surprising insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory. The insight should feel like a genuine discovery, not a recommendation or tutorial.
+
+Constraints:
+- 1-3 sentences, ${langInstruction}
+- Tone: like suddenly remembering something fascinating to tell a friend
+- NO question marks, NO lists, NO numbering
+- Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是", "换个角度来看", "有没有可能"
+- Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
+- ${openingBans ? `Also do NOT start with: ${openingBans}` : ""}
+- Content must be a specific judgment, observation, or discovery — not vague feelings
+${webResults.length > 0 ? "- Weave external information naturally, do NOT say 'saw', 'read', 'reportedly'" : ""}
+
+Good surprise insight traits (hit at least one):
+- Frontier bridge: connects user's existing knowledge to a genuinely new development
+- Unexpected connection: reveals a hidden link the user wouldn't have noticed
+- Paradigm shift: challenges an assumption the user likely holds
+
+CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
+
+Respond with ONLY a JSON array (no markdown, no code fences):
+[
+  {
+    "content": "Your surprising insight in your own voice",
+    "rationale": "Why this is surprising and relevant to this user SPECIFICALLY",
+    "targetDomains": ["inferred-domain"],
+    "sourceDomains": ["user-known-domain"],
+    "relevanceScore": 0.8,
+    "surpriseScore": 0.7
+  }
+]`;
 }
 
 /** Extended context for prompt frame generation. */

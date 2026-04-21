@@ -38,6 +38,12 @@ export type CognitiveConfig = {
     };
     /** Fact verification strictness */
     verificationLevel?: "basic" | "strict" | "paranoid";
+    /** Model used for interest inference and insight generation (default: uses main model). */
+    inferenceModel?: string;
+    /** Ratio of surprise-mode insights vs extend-mode (0-1, default 0.8 = 80% surprise). */
+    surpriseRatio?: number;
+    /** Output language for generated insights (default: "zh"). Auto-detected from persona if omitted. */
+    outputLanguage?: string;
   };
   /** Feedback settings */
   feedback?: {

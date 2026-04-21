@@ -564,81 +564,98 @@ describe("ProactiveScheduler pipeline integration", () => {
   });
 });
 
-describe("scanExploration (20% fixed slot)", () => {
-  it("produces exploration opportunity when timestamp % 5 === 0", () => {
+describe("scanExploration (80/20 surprise/extend)", () => {
+  it("always produces an exploration opportunity", () => {
     const persona = personaWithDomains();
     const scheduler = makeScheduler(config, persona);
 
     const opportunities = scheduler.search(persona, {
       type: "timer",
-      timestamp: 1000, // 1000 % 5 === 0
+      timestamp: 1001,
     });
 
     const exploration = opportunities.filter((o) => o.type === "exploration");
     expect(exploration.length).toBe(1);
-    expect(exploration[0]!.pNeed).toBe(0.5);
-    expect(exploration[0]!.pAct).toBeCloseTo(0.5 * exploration[0]!.pAccept, 10);
   });
 
-  it("does NOT produce exploration when timestamp % 5 !== 0", () => {
+  it("surprise mode has empty targetDomains (inferred by interest layer)", () => {
     const persona = personaWithDomains();
     const scheduler = makeScheduler(config, persona);
 
+    const ts = 1000; // (1000 % 10) / 10 = 0 < 0.8 → surprise
     const opportunities = scheduler.search(persona, {
       type: "timer",
-      timestamp: 1001, // 1001 % 5 === 1
+      timestamp: ts,
     });
 
-    const exploration = opportunities.filter((o) => o.type === "exploration");
-    expect(exploration.length).toBe(0);
+    const exploration = opportunities.find((o) => o.type === "exploration");
+    expect(exploration).toBeDefined();
+    expect(exploration!.metadata).toEqual({ mode: "surprise" });
+    expect(exploration!.targetDomains).toEqual([]);
+    expect(exploration!.pNeed).toBe(0.55);
   });
 
-  it("target domain is always outside user's known graph", () => {
+  it("extend mode picks from user's own domains", () => {
     const persona = personaWithDomains();
     const scheduler = makeScheduler(config, persona);
-    const userDomainKeys = Object.keys(persona.domains);
 
-    for (let t = 0; t < 50; t += 5) {
-      const opportunities = scheduler.search(persona, {
-        type: "timer",
-        timestamp: t,
-      });
-      const exploration = opportunities.filter((o) => o.type === "exploration");
-      if (exploration.length > 0) {
-        for (const opp of exploration) {
-          for (const td of opp.targetDomains) {
-            for (const ud of userDomainKeys) {
-              expect(td.toLowerCase()).not.toBe(ud.toLowerCase());
-            }
-          }
-        }
-      }
+    const ts = 9001; // (9001 % 10) / 10 = 0.1 < 0.8... need ts%10 >= 8 → ts=8 → (8%10)/10=0.8, not < 0.8 → extend
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: 8,
+    });
+
+    const exploration = opportunities.find((o) => o.type === "exploration");
+    expect(exploration).toBeDefined();
+    expect(exploration!.metadata).toEqual({ mode: "extend" });
+    expect(exploration!.targetDomains.length).toBeGreaterThan(0);
+    expect(exploration!.pNeed).toBe(0.5);
+  });
+
+  it("fires for ALL event types", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    const eventTypes: Array<"timer" | "persona_change" | "info_scan" | "external"> = [
+      "timer", "persona_change", "info_scan", "external",
+    ];
+
+    for (const type of eventTypes) {
+      const opportunities = scheduler.search(persona, { type, timestamp: 2000, payload: {} });
+      const hasExploration = opportunities.some((o) => o.type === "exploration");
+      expect(hasExploration).toBe(true);
     }
   });
 
-  it("returns empty when all KNOWN_UNIVERSE domains are already known", () => {
+  it("~80% of events produce surprise mode", () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    let surpriseCount = 0;
+    let extendCount = 0;
+    const total = 1000;
+
+    for (let i = 0; i < total; i++) {
+      const opportunities = scheduler.search(persona, {
+        type: "timer",
+        timestamp: i,
+      });
+      const exploration = opportunities.find((o) => o.type === "exploration");
+      if (exploration) {
+        const mode = (exploration.metadata as Record<string, string>)?.mode;
+        if (mode === "surprise") surpriseCount++;
+        else extendCount++;
+      }
+    }
+
+    const surpriseRatio = surpriseCount / total;
+    expect(surpriseRatio).toBeGreaterThanOrEqual(0.78);
+    expect(surpriseRatio).toBeLessThanOrEqual(0.82);
+  });
+
+  it("returns empty when persona has no domains", () => {
     const persona = createDefaultPersona();
     persona.rapport.trustScore = 0.7;
-    persona.domains = {
-      "AI": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "architecture": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "programming": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "product": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "business": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "data science": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "security": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "cloud": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "blockchain": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "quantum computing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "digital art": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "biotech": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "psychology": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "philosophy": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "design thinking": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "project management": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "testing": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-      "DevSecOps": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 },
-    };
     const scheduler = makeScheduler(config, persona);
 
     const opportunities = scheduler.search(persona, {
@@ -648,60 +665,6 @@ describe("scanExploration (20% fixed slot)", () => {
 
     const exploration = opportunities.filter((o) => o.type === "exploration");
     expect(exploration).toEqual([]);
-  });
-
-  it("exploration type is correct", () => {
-    const persona = personaWithDomains();
-    const scheduler = makeScheduler(config, persona);
-
-    const opportunities = scheduler.search(persona, {
-      type: "timer",
-      timestamp: 500,
-    });
-
-    const exploration = opportunities.find((o) => o.type === "exploration");
-    expect(exploration).toBeDefined();
-    expect(exploration!.type).toBe("exploration");
-    expect(exploration!.pAccept).toBeLessThan(1);
-    expect(exploration!.pAct).toBeGreaterThan(0);
-  });
-
-  it("fires for ALL event types when slot is active", () => {
-    const persona = personaWithDomains();
-    const scheduler = makeScheduler(config, persona);
-    const ts = 2000; // 2000 % 5 === 0
-
-    const eventTypes: Array<"timer" | "persona_change" | "info_scan" | "external"> = [
-      "timer", "persona_change", "info_scan", "external",
-    ];
-
-    for (const type of eventTypes) {
-      const opportunities = scheduler.search(persona, { type, timestamp: ts, payload: {} });
-      const hasExploration = opportunities.some((o) => o.type === "exploration");
-      expect(hasExploration).toBe(true);
-    }
-  });
-
-  it("~20% of events produce exploration opportunities", () => {
-    const persona = personaWithDomains();
-    const scheduler = makeScheduler(config, persona);
-
-    let explorationCount = 0;
-    const total = 1000;
-
-    for (let i = 0; i < total; i++) {
-      const opportunities = scheduler.search(persona, {
-        type: "timer",
-        timestamp: i,
-      });
-      if (opportunities.some((o) => o.type === "exploration")) {
-        explorationCount++;
-      }
-    }
-
-    const ratio = explorationCount / total;
-    expect(ratio).toBeGreaterThanOrEqual(0.18);
-    expect(ratio).toBeLessThanOrEqual(0.22);
   });
 });
 
