@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const CognitiveProactiveSchema = z
   .object({
-    enabled: z.boolean().optional(),
-    minIntervalHours: z.number().min(0.5).max(168).optional(),
+    enabled: z.boolean().default(true),
+    minIntervalHours: z.number().min(0.5).max(168).default(0.5),
     activeHours: z
       .object({
         start: z.string().optional(),
@@ -21,7 +21,7 @@ export const CognitiveProactiveSchema = z
 
 export const CognitivePersonaSchema = z
   .object({
-    autoExtract: z.boolean().optional(),
+    autoExtract: z.boolean().default(true),
     extractionModel: z.string().optional(),
     identityRefreshHours: z.number().min(1).max(720).optional(),
   })
@@ -56,10 +56,11 @@ export const CognitiveFeedbackSchema = z
 
 export const CognitiveEvolutionSchema = z
   .object({
-    enabled: z.boolean().optional(),
-    minComplexity: z.number().min(0).max(1).optional(),
-    cooldownHours: z.number().min(1).max(168).optional(),
-    maxSuggestionsPerDay: z.number().min(1).max(50).optional(),
+    enabled: z.boolean().default(true),
+    minComplexity: z.number().min(0).max(1).default(0.6),
+    errorComplexityThreshold: z.number().min(0).max(1).default(0.3),
+    cooldownHours: z.number().min(1).max(168).default(24),
+    maxSuggestionsPerDay: z.number().min(1).max(50).default(3),
     clawhubEnabled: z.boolean().optional(),
     clawhubRegistry: z.string().url().optional(),
     clawhubAutoPublish: z.boolean().optional(),
@@ -69,7 +70,7 @@ export const CognitiveEvolutionSchema = z
 
 export const CognitiveSchema = z
   .object({
-    enabled: z.boolean().optional(),
+    enabled: z.boolean().default(true),
     proactive: CognitiveProactiveSchema,
     persona: CognitivePersonaSchema,
     insight: CognitiveInsightSchema,

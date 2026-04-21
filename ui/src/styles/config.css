@@ -1909,6 +1909,13 @@
   margin-top: 4px;
 }
 
+.config-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
 /* Advanced Settings Divider */
 .config-advanced-divider {
   display: flex;

@@ -21876,6 +21876,187 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
         description:
           "Global MCP server definitions managed by KaijiBot. Embedded Pi and other runtime adapters can consume these servers without storing them inside Pi-owned project settings.",
       },
+      cognitive: {
+        type: "object",
+        properties: {
+          enabled: {
+            default: true,
+            type: "boolean",
+          },
+          proactive: {
+            type: "object",
+            properties: {
+              enabled: {
+                default: true,
+                type: "boolean",
+              },
+              minIntervalHours: {
+                default: 0.5,
+                type: "number",
+                minimum: 0.5,
+                maximum: 168,
+              },
+              activeHours: {
+                type: "object",
+                properties: {
+                  start: {
+                    type: "string",
+                  },
+                  end: {
+                    type: "string",
+                  },
+                  timezone: {
+                    type: "string",
+                  },
+                },
+                additionalProperties: false,
+              },
+              digestMode: {
+                type: "string",
+                enum: ["realtime", "daily", "weekly"],
+              },
+              costFalseNegative: {
+                type: "number",
+                minimum: 0.1,
+                maximum: 100,
+              },
+              costFalseAlarm: {
+                type: "number",
+                minimum: 0.1,
+                maximum: 100,
+              },
+            },
+            required: ["enabled", "minIntervalHours"],
+            additionalProperties: false,
+          },
+          persona: {
+            type: "object",
+            properties: {
+              autoExtract: {
+                default: true,
+                type: "boolean",
+              },
+              extractionModel: {
+                type: "string",
+              },
+              identityRefreshHours: {
+                type: "number",
+                minimum: 1,
+                maximum: 720,
+              },
+            },
+            required: ["autoExtract"],
+            additionalProperties: false,
+          },
+          insight: {
+            type: "object",
+            properties: {
+              sources: {
+                type: "object",
+                properties: {
+                  webSearchProvider: {
+                    type: "string",
+                  },
+                  scanIntervalHours: {
+                    type: "number",
+                    minimum: 1,
+                    maximum: 168,
+                  },
+                  explicitTopics: {
+                    type: "array",
+                    items: {
+                      type: "string",
+                    },
+                  },
+                },
+                additionalProperties: false,
+              },
+              verificationLevel: {
+                type: "string",
+                enum: ["basic", "strict", "paranoid"],
+              },
+              inferenceModel: {
+                type: "string",
+              },
+              surpriseRatio: {
+                type: "number",
+                minimum: 0,
+                maximum: 1,
+              },
+              outputLanguage: {
+                type: "string",
+              },
+            },
+            additionalProperties: false,
+          },
+          feedback: {
+            type: "object",
+            properties: {
+              mechanism: {
+                type: "string",
+                enum: ["emoji", "buttons", "text"],
+              },
+              implicitFeedback: {
+                type: "boolean",
+              },
+            },
+            additionalProperties: false,
+          },
+          evolution: {
+            type: "object",
+            properties: {
+              enabled: {
+                default: true,
+                type: "boolean",
+              },
+              minComplexity: {
+                default: 0.6,
+                type: "number",
+                minimum: 0,
+                maximum: 1,
+              },
+              errorComplexityThreshold: {
+                default: 0.3,
+                type: "number",
+                minimum: 0,
+                maximum: 1,
+              },
+              cooldownHours: {
+                default: 24,
+                type: "number",
+                minimum: 1,
+                maximum: 168,
+              },
+              maxSuggestionsPerDay: {
+                default: 3,
+                type: "number",
+                minimum: 1,
+                maximum: 50,
+              },
+              clawhubEnabled: {
+                type: "boolean",
+              },
+              clawhubRegistry: {
+                type: "string",
+                format: "uri",
+              },
+              clawhubAutoPublish: {
+                type: "boolean",
+              },
+            },
+            required: [
+              "enabled",
+              "minComplexity",
+              "errorComplexityThreshold",
+              "cooldownHours",
+              "maxSuggestionsPerDay",
+            ],
+            additionalProperties: false,
+          },
+        },
+        required: ["enabled"],
+        additionalProperties: false,
+      },
       skills: {
         type: "object",
         properties: {
@@ -26935,6 +27116,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced", "url-secret"],
     },
   },
-  version: "2026.4.10",
+  version: "2026.4.17",
   generatedAt: "2026-03-22T21:17:33.302Z",
 };
