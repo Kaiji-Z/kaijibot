@@ -25,7 +25,7 @@ Spotted an attack vector or risk we haven't covered? Open an issue on [kaijibot/
 
 We'll handle the ATLAS mapping, threat IDs, and risk assessment during review. If you want to include those details, great - but it's not expected.
 
-> **This is for adding to the threat model, not reporting live vulnerabilities.** If you've found an exploitable vulnerability, see our [Trust page](https://trust.kaijibot.ai) for responsible disclosure instructions.
+> **This is for adding to the threat model, not reporting live vulnerabilities.** If you've found an exploitable vulnerability, please open a private security advisory on GitHub or contact the maintainers directly.
 
 ### Suggest a Mitigation
 
@@ -89,7 +89,7 @@ If you're unsure about the risk level, just describe the impact and we'll assess
 
 ## Contact
 
-- **Security vulnerabilities:** See our [Trust page](https://trust.kaijibot.ai) for reporting instructions
+- **Security vulnerabilities:** Please open a private security advisory on GitHub or contact the maintainers directly
 - **Threat model questions:** Open an issue on [kaijibot/trust](https://github.com/kaijibot/trust/issues)
 - **General chat:** Discord #security channel
 

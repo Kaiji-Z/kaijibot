@@ -137,7 +137,9 @@ Replace `youruser` with the account you created, and the IP with your VM's IP.
 Inside the VM:
 
 ```bash
-npm install -g kaijibot@latest
+git clone https://gitee.com/kaiji1126/kaijibot
+cd kaijibot
+pnpm install && pnpm build
 kaijibot onboard --install-daemon
 ```
 

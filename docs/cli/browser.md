@@ -100,7 +100,7 @@ kaijibot browser tabs
 kaijibot browser tab new
 kaijibot browser tab select 2
 kaijibot browser tab close 2
-kaijibot browser open https://docs.kaijibot.ai
+kaijibot browser open https://example.com
 kaijibot browser focus <targetId>
 kaijibot browser close <targetId>
 ```

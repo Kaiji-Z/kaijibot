@@ -39,7 +39,7 @@ kaijibot onboard --auth-choice openrouter-api-key
 - OpenRouter uses a Bearer token with your API key under the hood.
 - On real OpenRouter requests (`https://openrouter.ai/api/v1`), KaijiBot also
   adds OpenRouter's documented app-attribution headers:
-  `HTTP-Referer: https://kaijibot.ai`, `X-OpenRouter-Title: KaijiBot`, and
+  `HTTP-Referer: https://github.com/kaijibot/kaijibot`, `X-OpenRouter-Title: KaijiBot`, and
   `X-OpenRouter-Categories: cli-agent`.
 - On verified OpenRouter routes, Anthropic model refs also keep the
   OpenRouter-specific Anthropic `cache_control` markers that KaijiBot uses for

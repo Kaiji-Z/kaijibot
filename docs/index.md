@@ -97,7 +97,10 @@ The Gateway is the single source of truth for sessions, routing, and channel con
 <Steps>
   <Step title="Install KaijiBot">
     ```bash
-    npm install -g kaijibot@latest
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install
+    pnpm build
     ```
   </Step>
   <Step title="Configure Feishu and LLM provider">

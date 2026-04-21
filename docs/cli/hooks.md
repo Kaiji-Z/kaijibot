@@ -92,7 +92,7 @@ Details:
   Source: kaijibot-bundled
   Path: /path/to/kaijibot/hooks/bundled/session-memory/HOOK.md
   Handler: /path/to/kaijibot/hooks/bundled/session-memory/handler.ts
-  Homepage: https://docs.kaijibot.ai/automation/hooks#session-memory
+  Homepage: /cli/hooks#session-memory
   Events: command:new, command:reset
 
 Requirements:

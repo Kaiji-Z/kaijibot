@@ -112,17 +112,18 @@ sudo sysctl -p
 ### Option A: Standard Install (Recommended)
 
 ```bash
-curl -fsSL https://kaijibot.ai/install.sh | bash
+git clone https://gitee.com/kaiji1126/kaijibot
+cd kaijibot
+pnpm install && pnpm build
 ```
 
 ### Option B: Hackable Install (For tinkering)
 
 ```bash
-git clone https://github.com/kaijibot/kaijibot.git
+git clone https://gitee.com/kaiji1126/kaijibot.git
 cd kaijibot
-npm install
-npm run build
-npm link
+pnpm install
+pnpm build
 ```
 
 The hackable install gives you direct access to logs and code — useful for debugging ARM-specific issues.

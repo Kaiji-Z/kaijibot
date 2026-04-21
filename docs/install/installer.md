@@ -1,443 +1,216 @@
 ---
-summary: "How the installer scripts work (install.sh, install-cli.sh, install.ps1), flags, and automation"
+summary: "Build and install KaijiBot from source (git clone + pnpm), Docker alternative, and environment setup"
 read_when:
-  - You want to understand `kaijibot.ai/install.sh`
-  - You want to automate installs (CI / headless)
-  - You want to install from a GitHub checkout
-title: "Installer Internals"
+  - You want to install KaijiBot from source
+  - You want to run KaijiBot via Docker
+  - You want to set up a development environment
+title: "Installation Guide"
 ---
 
-# Installer internals
+# Installation
 
-KaijiBot ships three installer scripts, served from `kaijibot.ai`.
+KaijiBot is installed by building from source. There is no npm package or
+installer script -- clone the repository and build with pnpm.
+(没有 npm 包或安装脚本，通过源码构建安装。)
 
-| Script                             | Platform             | What it does                                                                                                   |
-| ---------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------- |
-| [`install.sh`](#installsh)         | macOS / Linux / WSL  | Installs Node if needed, installs KaijiBot via npm (default) or git, and can run onboarding.                   |
-| [`install-cli.sh`](#install-clish) | macOS / Linux / WSL  | Installs Node + KaijiBot into a local prefix (`~/.kaijibot`) with npm or git checkout modes. No root required. |
-| [`install.ps1`](#installps1)       | Windows (PowerShell) | Installs Node if needed, installs KaijiBot via npm (default) or git, and can run onboarding.                   |
+## Prerequisites
 
-## Quick commands
-
-<Tabs>
-  <Tab title="install.sh">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash
-    ```
-
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --help
-    ```
-
-  </Tab>
-  <Tab title="install-cli.sh">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash
-    ```
-
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash -s -- --help
-    ```
-
-  </Tab>
-  <Tab title="install.ps1">
-    ```powershell
-    iwr -useb https://kaijibot.ai/install.ps1 | iex
-    ```
-
-    ```powershell
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -Tag beta -NoOnboard -DryRun
-    ```
-
-  </Tab>
-</Tabs>
+| Requirement | Minimum | Recommended |
+|---|---|---|
+| Node.js | 22 LTS (`22.14+`) | 24 |
+| pnpm | 9+ | latest |
+| Git | 2.x | latest |
 
 <Note>
-If install succeeds but `kaijibot` is not found in a new terminal, see [Node.js troubleshooting](/install/node#troubleshooting).
+KaijiBot targets Chinese users and uses the Gitee mirror as the default
+upstream. A GitHub remote is also available for international contributors.
+(默认使用 Gitee 镜像，GitHub 仓库同样可用。)
 </Note>
 
 ---
 
-<a id="installsh"></a>
+## Source build (source build / 源码构建)
 
-## install.sh
+### 1. Clone the repository
 
-<Tip>
-Recommended for most interactive installs on macOS/Linux/WSL.
-</Tip>
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+```
 
-### Flow (install.sh)
+### 2. Install dependencies
 
-<Steps>
-  <Step title="Detect OS">
-    Supports macOS and Linux (including WSL). If macOS is detected, installs Homebrew if missing.
-  </Step>
-  <Step title="Ensure Node.js 24 by default">
-    Checks Node version and installs Node 24 if needed (Homebrew on macOS, NodeSource setup scripts on Linux apt/dnf/yum). KaijiBot still supports Node 22 LTS, currently `22.14+`, for compatibility.
-  </Step>
-  <Step title="Ensure Git">
-    Installs Git if missing.
-  </Step>
-  <Step title="Install KaijiBot">
-    - `npm` method (default): global npm install
-    - `git` method: clone/update repo, install deps with pnpm, build, then install wrapper at `~/.local/bin/kaijibot`
-  </Step>
-  <Step title="Post-install tasks">
-    - Refreshes a loaded gateway service best-effort (`kaijibot gateway install --force`, then restart)
-    - Runs `kaijibot doctor --non-interactive` on upgrades and git installs (best effort)
-    - Attempts onboarding when appropriate (TTY available, onboarding not disabled, and bootstrap/config checks pass)
-    - Defaults `SHARP_IGNORE_GLOBAL_LIBVIPS=1`
-  </Step>
-</Steps>
+```bash
+pnpm install
+```
 
-### Source checkout detection
+For users in China, use the npmmirror registry for faster downloads
+(国内镜像加速):
 
-If run inside an KaijiBot checkout (`package.json` + `pnpm-workspace.yaml`), the script offers:
+```bash
+pnpm install --registry https://registry.npmmirror.com
+```
 
-- use checkout (`git`), or
-- use global install (`npm`)
+### 3. Build
 
-If no TTY is available and no install method is set, it defaults to `npm` and warns.
+```bash
+pnpm build
+```
 
-The script exits with code `2` for invalid method selection or invalid `--install-method` values.
+### 4. Configure (配置)
 
-### Examples (install.sh)
+Run the interactive setup wizard (交互式配置向导):
 
-<Tabs>
-  <Tab title="Default">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash
-    ```
-  </Tab>
-  <Tab title="Skip onboarding">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --no-onboard
-    ```
-  </Tab>
-  <Tab title="Git install">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --install-method git
-    ```
-  </Tab>
-  <Tab title="GitHub main via npm">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --version main
-    ```
-  </Tab>
-  <Tab title="Dry run">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --dry-run
-    ```
-  </Tab>
-</Tabs>
+```bash
+pnpm kaijibot onboard
+```
 
-<AccordionGroup>
-  <Accordion title="Flags reference">
+Or set required values manually:
 
-| Flag                                  | Description                                                |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `--install-method npm\|git`           | Choose install method (default: `npm`). Alias: `--method`  |
-| `--npm`                               | Shortcut for npm method                                    |
-| `--git`                               | Shortcut for git method. Alias: `--github`                 |
-| `--version <version\|dist-tag\|spec>` | npm version, dist-tag, or package spec (default: `latest`) |
-| `--beta`                              | Use beta dist-tag if available, else fallback to `latest`  |
-| `--git-dir <path>`                    | Checkout directory (default: `~/kaijibot`). Alias: `--dir` |
-| `--no-git-update`                     | Skip `git pull` for existing checkout                      |
-| `--no-prompt`                         | Disable prompts                                            |
-| `--no-onboard`                        | Skip onboarding                                            |
-| `--onboard`                           | Enable onboarding                                          |
-| `--dry-run`                           | Print actions without applying changes                     |
-| `--verbose`                           | Enable debug output (`set -x`, npm notice-level logs)      |
-| `--help`                              | Show usage (`-h`)                                          |
+```bash
+# LLM provider (at least one)
+export ZAI_API_KEY="your-key"
 
-  </Accordion>
+# Feishu channel
+pnpm kaijibot config set channels.feishu.appId "your-app-id"
+pnpm kaijibot config set channels.feishu.appSecret "your-app-secret"
+```
 
-  <Accordion title="Environment variables reference">
+Config is stored at `~/.kaijibot/kaijibot.json`.
 
-| Variable                                                | Description                                   |
-| ------------------------------------------------------- | --------------------------------------------- |
-| `KAIJIBOT_INSTALL_METHOD=git\|npm`                      | Install method                                |
-| `KAIJIBOT_VERSION=latest\|next\|main\|<semver>\|<spec>` | npm version, dist-tag, or package spec        |
-| `KAIJIBOT_BETA=0\|1`                                    | Use beta if available                         |
-| `KAIJIBOT_GIT_DIR=<path>`                               | Checkout directory                            |
-| `KAIJIBOT_GIT_UPDATE=0\|1`                              | Toggle git updates                            |
-| `KAIJIBOT_NO_PROMPT=1`                                  | Disable prompts                               |
-| `KAIJIBOT_NO_ONBOARD=1`                                 | Skip onboarding                               |
-| `KAIJIBOT_DRY_RUN=1`                                    | Dry run mode                                  |
-| `KAIJIBOT_VERBOSE=1`                                    | Debug mode                                    |
-| `KAIJIBOT_NPM_LOGLEVEL=error\|warn\|notice`             | npm log level                                 |
-| `SHARP_IGNORE_GLOBAL_LIBVIPS=0\|1`                      | Control sharp/libvips behavior (default: `1`) |
+### 5. Start the gateway
 
-  </Accordion>
-</AccordionGroup>
+```bash
+pnpm kaijibot gateway --port 18789
+```
+
+Add `--verbose` for debug output. The gateway listens on port 18789 by default
+and connects to Feishu via WebSocket.
+
+### 6. Verify
+
+Send a message to your bot in Feishu. If it responds, installation is complete.
 
 ---
 
-<a id="install-clish"></a>
+## Docker (Docker / 容器部署)
 
-## install-cli.sh
+### Quick start
 
-<Info>
-Designed for environments where you want everything under a local prefix
-(default `~/.kaijibot`) and no system Node dependency. Supports npm installs
-by default, plus git-checkout installs under the same prefix flow.
-</Info>
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+docker compose up -d
+```
 
-### Flow (install-cli.sh)
+### Default ports
 
-<Steps>
-  <Step title="Install local Node runtime">
-    Downloads a pinned supported Node LTS tarball (the version is embedded in the script and updated independently) to `<prefix>/tools/node-v<version>` and verifies SHA-256.
-  </Step>
-  <Step title="Ensure Git">
-    If Git is missing, attempts install via apt/dnf/yum on Linux or Homebrew on macOS.
-  </Step>
-  <Step title="Install KaijiBot under prefix">
-    - `npm` method (default): installs under the prefix with npm, then writes wrapper to `<prefix>/bin/kaijibot`
-    - `git` method: clones/updates a checkout (default `~/kaijibot`) and still writes the wrapper to `<prefix>/bin/kaijibot`
-  </Step>
-  <Step title="Refresh loaded gateway service">
-    If a gateway service is already loaded from that same prefix, the script runs
-    `kaijibot gateway install --force`, then `kaijibot gateway restart`, and
-    probes gateway health best-effort.
-  </Step>
-</Steps>
+| Port | Purpose |
+|---|---|
+| 18789 | Gateway (HTTP + WebSocket) |
+| 18790 | Bridge |
 
-### Examples (install-cli.sh)
+### Configuration via environment
 
-<Tabs>
-  <Tab title="Default">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash
-    ```
-  </Tab>
-  <Tab title="Custom prefix + version">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash -s -- --prefix /opt/kaijibot --version latest
-    ```
-  </Tab>
-  <Tab title="Git install">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash -s -- --install-method git --git-dir ~/kaijibot
-    ```
-  </Tab>
-  <Tab title="Automation JSON output">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash -s -- --json --prefix /opt/kaijibot
-    ```
-  </Tab>
-  <Tab title="Run onboarding">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash -s -- --onboard
-    ```
-  </Tab>
-</Tabs>
+Set these in `docker-compose.yml` or a `.env` file:
 
-<AccordionGroup>
-  <Accordion title="Flags reference">
+```bash
+ZAI_API_KEY=your-key
+KAIJIBOT_GATEWAY_TOKEN=your-token
+KAIJIBOT_GATEWAY_PORT=18789
+KAIJIBOT_GATEWAY_BIND=0.0.0.0
+```
 
-| Flag                        | Description                                                                     |
-| --------------------------- | ------------------------------------------------------------------------------- |
-| `--prefix <path>`           | Install prefix (default: `~/.kaijibot`)                                         |
-| `--install-method npm\|git` | Choose install method (default: `npm`). Alias: `--method`                       |
-| `--npm`                     | Shortcut for npm method                                                         |
-| `--git`, `--github`         | Shortcut for git method                                                         |
-| `--git-dir <path>`          | Git checkout directory (default: `~/kaijibot`). Alias: `--dir`                  |
-| `--version <ver>`           | KaijiBot version or dist-tag (default: `latest`)                                |
-| `--node-version <ver>`      | Node version (default: `22.22.0`)                                               |
-| `--json`                    | Emit NDJSON events                                                              |
-| `--onboard`                 | Run `kaijibot onboard` after install                                            |
-| `--no-onboard`              | Skip onboarding (default)                                                       |
-| `--set-npm-prefix`          | On Linux, force npm prefix to `~/.npm-global` if current prefix is not writable |
-| `--help`                    | Show usage (`-h`)                                                               |
-
-  </Accordion>
-
-  <Accordion title="Environment variables reference">
-
-| Variable                                    | Description                                   |
-| ------------------------------------------- | --------------------------------------------- |
-| `KAIJIBOT_PREFIX=<path>`                    | Install prefix                                |
-| `KAIJIBOT_INSTALL_METHOD=git\|npm`          | Install method                                |
-| `KAIJIBOT_VERSION=<ver>`                    | KaijiBot version or dist-tag                  |
-| `KAIJIBOT_NODE_VERSION=<ver>`               | Node version                                  |
-| `KAIJIBOT_GIT_DIR=<path>`                   | Git checkout directory for git installs       |
-| `KAIJIBOT_GIT_UPDATE=0\|1`                  | Toggle git updates for existing checkouts     |
-| `KAIJIBOT_NO_ONBOARD=1`                     | Skip onboarding                               |
-| `KAIJIBOT_NPM_LOGLEVEL=error\|warn\|notice` | npm log level                                 |
-| `SHARP_IGNORE_GLOBAL_LIBVIPS=0\|1`          | Control sharp/libvips behavior (default: `1`) |
-
-  </Accordion>
-</AccordionGroup>
+Config and credentials are mounted at `/home/node/.kaijibot` inside the
+container.
 
 ---
 
-<a id="installps1"></a>
+## Development setup (开发环境)
 
-## install.ps1
+Same source-build steps as above. Useful commands for contributors:
 
-### Flow (install.ps1)
+| Command | Purpose |
+|---|---|
+| `pnpm build` | Compile TypeScript |
+| `pnpm tsgo` | Type check only |
+| `pnpm check` | Lint + typecheck + boundary checks |
+| `pnpm test` | Run tests (Vitest) |
+| `pnpm test <path>` | Scoped test run |
+| `pnpm format:fix` | Auto-format (oxfmt) |
+| `pnpm kaijibot ...` | Run CLI in dev |
 
-<Steps>
-  <Step title="Ensure PowerShell + Windows environment">
-    Requires PowerShell 5+.
-  </Step>
-  <Step title="Ensure Node.js 24 by default">
-    If missing, attempts install via winget, then Chocolatey, then Scoop. Node 22 LTS, currently `22.14+`, remains supported for compatibility.
-  </Step>
-  <Step title="Install KaijiBot">
-    - `npm` method (default): global npm install using selected `-Tag`
-    - `git` method: clone/update repo, install/build with pnpm, and install wrapper at `%USERPROFILE%\.local\bin\kaijibot.cmd`
-  </Step>
-  <Step title="Post-install tasks">
-    - Adds needed bin directory to user PATH when possible
-    - Refreshes a loaded gateway service best-effort (`kaijibot gateway install --force`, then restart)
-    - Runs `kaijibot doctor --non-interactive` on upgrades and git installs (best effort)
-  </Step>
-</Steps>
-
-### Examples (install.ps1)
-
-<Tabs>
-  <Tab title="Default">
-    ```powershell
-    iwr -useb https://kaijibot.ai/install.ps1 | iex
-    ```
-  </Tab>
-  <Tab title="Git install">
-    ```powershell
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -InstallMethod git
-    ```
-  </Tab>
-  <Tab title="GitHub main via npm">
-    ```powershell
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -Tag main
-    ```
-  </Tab>
-  <Tab title="Custom git directory">
-    ```powershell
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -InstallMethod git -GitDir "C:\kaijibot"
-    ```
-  </Tab>
-  <Tab title="Dry run">
-    ```powershell
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -DryRun
-    ```
-  </Tab>
-  <Tab title="Debug trace">
-    ```powershell
-    # install.ps1 has no dedicated -Verbose flag yet.
-    Set-PSDebug -Trace 1
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -NoOnboard
-    Set-PSDebug -Trace 0
-    ```
-  </Tab>
-</Tabs>
-
-<AccordionGroup>
-  <Accordion title="Flags reference">
-
-| Flag                        | Description                                                |
-| --------------------------- | ---------------------------------------------------------- |
-| `-InstallMethod npm\|git`   | Install method (default: `npm`)                            |
-| `-Tag <tag\|version\|spec>` | npm dist-tag, version, or package spec (default: `latest`) |
-| `-GitDir <path>`            | Checkout directory (default: `%USERPROFILE%\kaijibot`)     |
-| `-NoOnboard`                | Skip onboarding                                            |
-| `-NoGitUpdate`              | Skip `git pull`                                            |
-| `-DryRun`                   | Print actions only                                         |
-
-  </Accordion>
-
-  <Accordion title="Environment variables reference">
-
-| Variable                           | Description        |
-| ---------------------------------- | ------------------ |
-| `KAIJIBOT_INSTALL_METHOD=git\|npm` | Install method     |
-| `KAIJIBOT_GIT_DIR=<path>`          | Checkout directory |
-| `KAIJIBOT_NO_ONBOARD=1`            | Skip onboarding    |
-| `KAIJIBOT_GIT_UPDATE=0`            | Disable git pull   |
-| `KAIJIBOT_DRY_RUN=1`               | Dry run mode       |
-
-  </Accordion>
-</AccordionGroup>
-
-<Note>
-If `-InstallMethod git` is used and Git is missing, the script exits and prints the Git for Windows link.
-</Note>
+Pre-commit hooks: `prek install`. Skip with `FAST_COMMIT=1`.
 
 ---
 
-## CI and automation
+## Syncing upstream
 
-Use non-interactive flags/env vars for predictable runs.
+To pull updates from the Gitee upstream (同步上游):
 
-<Tabs>
-  <Tab title="install.sh (non-interactive npm)">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --no-prompt --no-onboard
-    ```
-  </Tab>
-  <Tab title="install.sh (non-interactive git)">
-    ```bash
-    KAIJIBOT_INSTALL_METHOD=git KAIJIBOT_NO_PROMPT=1 \
-      curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash
-    ```
-  </Tab>
-  <Tab title="install-cli.sh (JSON)">
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install-cli.sh | bash -s -- --json --prefix /opt/kaijibot
-    ```
-  </Tab>
-  <Tab title="install.ps1 (skip onboarding)">
-    ```powershell
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -NoOnboard
-    ```
-  </Tab>
-</Tabs>
+```bash
+git remote add upstream https://gitee.com/kaiji1126/kaijibot
+git fetch upstream
+git merge upstream/main
+```
+
+Core code (`src/`) is fully compatible with upstream. The cognitive layer
+(`src/cognitive/`) is unique to this fork and lives in separate files, so merge
+conflicts should be rare.
 
 ---
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Why is Git required?">
-    Git is required for `git` install method. For `npm` installs, Git is still checked/installed to avoid `spawn git ENOENT` failures when dependencies use git URLs.
-  </Accordion>
-
-  <Accordion title="Why does npm hit EACCES on Linux?">
-    Some Linux setups point npm global prefix to root-owned paths. `install.sh` can switch prefix to `~/.npm-global` and append PATH exports to shell rc files (when those files exist).
-  </Accordion>
-
-  <Accordion title="sharp/libvips issues">
-    The scripts default `SHARP_IGNORE_GLOBAL_LIBVIPS=1` to avoid sharp building against system libvips. To override:
+  <Accordion title="Node.js version too old">
+    KaijiBot requires Node.js >= 22. Check your version:
 
     ```bash
-    SHARP_IGNORE_GLOBAL_LIBVIPS=0 curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash
+    node -v
     ```
 
+    Use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to manage Node versions.
   </Accordion>
 
-  <Accordion title='Windows: "npm error spawn git / ENOENT"'>
-    Install Git for Windows, reopen PowerShell, rerun installer.
+  <Accordion title="pnpm not found">
+    Install pnpm globally:
+
+    ```bash
+    npm install -g pnpm
+    # or
+    corepack enable && corepack prepare pnpm@latest --activate
+    ```
   </Accordion>
 
-  <Accordion title='Windows: "kaijibot is not recognized"'>
-    Run `npm config get prefix` and add that directory to your user PATH (no `\bin` suffix needed on Windows), then reopen PowerShell.
-  </Accordion>
+  <Accordion title="Build fails with TypeScript errors">
+    Run type checking separately to see errors:
 
-  <Accordion title="Windows: how to get verbose installer output">
-    `install.ps1` does not currently expose a `-Verbose` switch.
-    Use PowerShell tracing for script-level diagnostics:
-
-    ```powershell
-    Set-PSDebug -Trace 1
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -NoOnboard
-    Set-PSDebug -Trace 0
+    ```bash
+    pnpm tsgo
     ```
 
+    Ensure all dependencies installed correctly:
+
+    ```bash
+    rm -rf node_modules
+    pnpm install
+    ```
   </Accordion>
 
-  <Accordion title="kaijibot not found after install">
-    Usually a PATH issue. See [Node.js troubleshooting](/install/node#troubleshooting).
+  <Accordion title="Feishu bot not responding">
+    - Verify `channels.feishu.appId` and `channels.feishu.appSecret` are set
+    - Check that the gateway is running: `curl http://localhost:18789/health`
+    - Ensure the Feishu app event subscription URL points to your gateway
+  </Accordion>
+
+  <Accordion title="Docker container exits immediately">
+    Check logs:
+
+    ```bash
+    docker compose logs kaijibot-gateway
+    ```
+
+    Common cause: missing `ZAI_API_KEY` or Feishu credentials.
   </Accordion>
 </AccordionGroup>

@@ -59,7 +59,6 @@ rm -rf ~/.kaijibot/workspace
 5. Remove the CLI install (pick the one you used):
 
 ```bash
-npm rm -g kaijibot
 pnpm remove -g kaijibot
 bun remove -g kaijibot
 ```
@@ -114,10 +113,9 @@ If you used a profile, delete the matching task name and `~\.kaijibot-<profile>\
 
 ## Normal install vs source checkout
 
-### Normal install (install.sh / npm / pnpm / bun)
+### Normal install (pnpm / bun)
 
-If you used `https://kaijibot.ai/install.sh` or `install.ps1`, the CLI was installed with `npm install -g kaijibot@latest`.
-Remove it with `npm rm -g kaijibot` (or `pnpm remove -g` / `bun remove -g` if you installed that way).
+If you installed via pnpm or bun, remove with `pnpm remove -g kaijibot` (or `bun remove -g`).
 
 ### Source checkout (git clone)
 

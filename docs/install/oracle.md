@@ -75,7 +75,9 @@ Run a persistent KaijiBot Gateway on Oracle Cloud's **Always Free** ARM tier (up
 
   <Step title="Install KaijiBot">
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install && pnpm build
     source ~/.bashrc
     ```
 

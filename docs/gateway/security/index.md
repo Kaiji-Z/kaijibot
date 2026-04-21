@@ -1357,6 +1357,6 @@ Commit the updated `.secrets.baseline` once it reflects the intended state.
 
 Found a vulnerability in KaijiBot? Please report responsibly:
 
-1. Email: [security@kaijibot.ai](mailto:security@kaijibot.ai)
+1. Open a private security advisory on GitHub (preferred)
 2. Don't post publicly until fixed
 3. We'll credit you (unless you prefer anonymity)

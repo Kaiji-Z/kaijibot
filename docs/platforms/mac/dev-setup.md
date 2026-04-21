@@ -49,13 +49,15 @@ The macOS app expects a global `kaijibot` CLI install to manage background tasks
 2. Go to the **General** settings tab.
 3. Click **"Install CLI"**.
 
-Alternatively, install it manually:
+Alternatively, install it from source:
 
 ```bash
-npm install -g kaijibot@<version>
+git clone https://gitee.com/kaiji1126/kaijibot
+cd kaijibot
+pnpm install
+pnpm build
 ```
 
-`pnpm add -g kaijibot@<version>` and `bun add -g kaijibot@<version>` also work.
 For the Gateway runtime, Node remains the recommended path.
 
 ## Troubleshooting

@@ -88,23 +88,23 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
     - **OpenAI Codex**: [https://openai.com/codex/](https://openai.com/codex/)
 
     These tools can read the repo, run commands, inspect logs, and help fix your machine-level
-    setup (PATH, services, permissions, auth files). Give them the **full source checkout** via
-    the hackable (git) install:
+    setup (PATH, services, permissions, auth files). Give them the **full source checkout**:
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash -s -- --install-method git
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install
+    pnpm build
     ```
 
-    This installs KaijiBot **from a git checkout**, so the agent can read the code + docs and
-    reason about the exact version you are running. You can always switch back to stable later
-    by re-running the installer without `--install-method git`.
+    This installs KaijiBot **from source**, so the agent can read the code + docs and
+    reason about the exact version you are running.
 
     Tip: ask the agent to **plan and supervise** the fix (step-by-step), then execute only the
     necessary commands. That keeps changes small and easier to audit.
 
-    If you discover a real bug or fix, please file a GitHub issue or send a PR:
-    [https://github.com/kaijibot/kaijibot/issues](https://github.com/kaijibot/kaijibot/issues)
-    [https://github.com/kaijibot/kaijibot/pulls](https://github.com/kaijibot/kaijibot/pulls)
+    If you discover a real bug or fix, please file an issue or send a PR:
+    [https://gitee.com/kaiji1126/kaijibot/issues](https://gitee.com/kaiji1126/kaijibot/issues)
 
     Start with these commands (share outputs when asking for help):
 
@@ -144,27 +144,23 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   </Accordion>
 
   <Accordion title="Recommended way to install and set up KaijiBot">
-    The repo recommends running from source and using onboarding:
+    Build from source and run onboarding:
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash
-    kaijibot onboard --install-daemon
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install
+    pnpm build
+    pnpm kaijibot onboard --install-daemon
     ```
 
     The wizard can also build UI assets automatically. After onboarding, you typically run the Gateway on port **18789**.
 
-    From source (contributors/dev):
+    If you want to build the web UI separately:
 
     ```bash
-    git clone https://github.com/kaijibot/kaijibot.git
-    cd kaijibot
-    pnpm install
-    pnpm build
     pnpm ui:build # auto-installs UI deps on first run
-    kaijibot onboard
     ```
-
-    If you don't have a global install yet, run it via `pnpm kaijibot onboard`.
 
   </Accordion>
 
@@ -298,8 +294,8 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   </Accordion>
 
   <Accordion title="Where do I see what is new in the latest version?">
-    Check the GitHub changelog:
-    [https://github.com/kaijibot/kaijibot/blob/main/CHANGELOG.md](https://github.com/kaijibot/kaijibot/blob/main/CHANGELOG.md)
+    Check the changelog in the repo:
+    [https://gitee.com/kaiji1126/kaijibot/blob/main/CHANGELOG.md](https://gitee.com/kaiji1126/kaijibot/blob/main/CHANGELOG.md)
 
     Newest entries are at the top. If the top section is marked **Unreleased**, the next dated
     section is the latest shipped version. Entries are grouped by **Highlights**, **Changes**, and
@@ -307,85 +303,27 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
   </Accordion>
 
-  <Accordion title="Cannot access docs.kaijibot.ai (SSL error)">
-    Some Comcast/Xfinity connections incorrectly block `docs.kaijibot.ai` via Xfinity
-    Advanced Security. Disable it or allowlist `docs.kaijibot.ai`, then retry.
-    Please help us unblock it by reporting here: [https://spa.xfinity.com/check_url_status](https://spa.xfinity.com/check_url_status).
-
-    If you still can't reach the site, the docs are mirrored on GitHub:
-    [https://github.com/kaijibot/kaijibot/tree/main/docs](https://github.com/kaijibot/kaijibot/tree/main/docs)
-
-  </Accordion>
-
-  <Accordion title="Difference between stable and beta">
-    **Stable** and **beta** are **npm dist-tags**, not separate code lines:
-
-    - `latest` = stable
-    - `beta` = early build for testing
-
-    Usually, a stable release lands on **beta** first, then an explicit
-    promotion step moves that same version to `latest`. Maintainers can also
-    publish straight to `latest` when needed. That's why beta and stable can
-    point at the **same version** after promotion.
-
-    See what changed:
-    [https://github.com/kaijibot/kaijibot/blob/main/CHANGELOG.md](https://github.com/kaijibot/kaijibot/blob/main/CHANGELOG.md)
-
-    For install one-liners and the difference between beta and dev, see the accordion below.
-
-  </Accordion>
-
-  <Accordion title="How do I install the beta version and what is the difference between beta and dev?">
-    **Beta** is the npm dist-tag `beta` (may match `latest` after promotion).
-    **Dev** is the moving head of `main` (git); when published, it uses the npm dist-tag `dev`.
-
-    One-liners (macOS/Linux):
-
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --beta
-    ```
-
-    ```bash
-    curl -fsSL --proto '=https' --tlsv1.2 https://kaijibot.ai/install.sh | bash -s -- --install-method git
-    ```
-
-    Windows installer (PowerShell):
-    [https://kaijibot.ai/install.ps1](https://kaijibot.ai/install.ps1)
-
-    More detail: [Development channels](/install/development-channels) and [Installer flags](/install/installer).
-
-  </Accordion>
-
   <Accordion title="How do I try the latest bits?">
-    Two options:
-
-    1. **Dev channel (git checkout):**
+    Pull the latest from the main branch:
 
     ```bash
-    kaijibot update --channel dev
+    cd kaijibot
+    git pull
+    pnpm install
+    pnpm build
+    kaijibot gateway restart
     ```
 
-    This switches to the `main` branch and updates from source.
-
-    2. **Hackable install (from the installer site):**
+    For a clean clone:
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash -s -- --install-method git
-    ```
-
-    That gives you a local repo you can edit, then update via git.
-
-    If you prefer a clean clone manually, use:
-
-    ```bash
-    git clone https://github.com/kaijibot/kaijibot.git
+    git clone https://gitee.com/kaiji1126/kaijibot
     cd kaijibot
     pnpm install
     pnpm build
     ```
 
-    Docs: [Update](/cli/update), [Development channels](/install/development-channels),
-    [Install](/install).
+    Docs: [Update](/cli/update), [Install](/install).
 
   </Accordion>
 
@@ -400,60 +338,51 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
   </Accordion>
 
-  <Accordion title="Installer stuck? How do I get more feedback?">
-    Re-run the installer with **verbose output**:
+  <Accordion title="Build stuck? How do I get more feedback?">
+    Re-run the build with verbose output:
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash -s -- --verbose
+    pnpm install
+    pnpm build
     ```
 
-    Beta install with verbose:
+    If `pnpm install` fails, try clearing the store cache:
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash -s -- --beta --verbose
+    pnpm store prune
+    rm -rf node_modules
+    pnpm install
     ```
 
-    For a hackable (git) install:
+    For build errors, check the TypeScript output:
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash -s -- --install-method git --verbose
+    pnpm tsgo
     ```
 
-    Windows (PowerShell) equivalent:
+    For runtime issues, start the gateway with verbose logging:
 
-    ```powershell
-    # install.ps1 has no dedicated -Verbose flag yet.
-    Set-PSDebug -Trace 1
-    & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -NoOnboard
-    Set-PSDebug -Trace 0
+    ```bash
+    kaijibot gateway --verbose
     ```
-
-    More options: [Installer flags](/install/installer).
 
   </Accordion>
 
-  <Accordion title="Windows install says git not found or kaijibot not recognized">
-    Two common Windows issues:
+  <Accordion title="Build says git not found or kaijibot not recognized">
+    Common issues:
 
-    **1) npm error spawn git / git not found**
+    **1) git not found**
 
-    - Install **Git for Windows** and make sure `git` is on your PATH.
-    - Close and reopen PowerShell, then re-run the installer.
+    - Install **Git** and make sure `git` is on your PATH.
+    - Close and reopen your terminal, then retry the clone.
 
-    **2) kaijibot is not recognized after install**
+    **2) kaijibot is not recognized after build**
 
-    - Your npm global bin folder is not on PATH.
-    - Check the path:
+    - The `kaijibot` CLI is available via `pnpm kaijibot` from the project root.
+    - Alternatively, run `pnpm link --global` from the project root to make `kaijibot` available system-wide.
+    - Close and reopen your terminal after linking.
 
-      ```powershell
-      npm config get prefix
-      ```
-
-    - Add that directory to your user PATH (no `\bin` suffix needed on Windows; on most systems it is `%AppData%\npm`).
-    - Close and reopen PowerShell after updating PATH.
-
-    If you want the smoothest Windows setup, use **WSL2** instead of native Windows.
-    Docs: [Windows](/platforms/windows).
+    Docs: [Getting started](/start/getting-started).
 
   </Accordion>
 
@@ -482,19 +411,22 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
     If you still reproduce this on latest KaijiBot, track/report it in:
 
-    - [Issue #30640](https://github.com/kaijibot/kaijibot/issues/30640)
+    - [Issue #30640](https://gitee.com/kaiji1126/kaijibot/issues/30640)
 
   </Accordion>
 
   <Accordion title="The docs did not answer my question - how do I get a better answer?">
-    Use the **hackable (git) install** so you have the full source and docs locally, then ask
-    your bot (or Claude/Codex) _from that folder_ so it can read the repo and answer precisely.
+    Use a local AI agent (Claude Code, Codex, etc.) from the source checkout so it can read
+    the repo and answer precisely.
 
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh | bash -s -- --install-method git
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install
+    pnpm build
     ```
 
-    More detail: [Install](/install) and [Installer flags](/install/installer).
+    More detail: [Install](/install).
 
   </Accordion>
 
@@ -808,43 +740,30 @@ for usage/billing and raise limits as needed.
 
   </Accordion>
 
-  <Accordion title="Difference between the hackable git install and npm install">
-    - **Hackable (git) install:** full source checkout, editable, best for contributors.
-      You run builds locally and can patch code/docs.
-    - **npm install:** global CLI install, no repo, best for "just run it."
-      Updates come from npm dist-tags.
+  <Accordion title="Can I switch machines without losing data?">
+    Yes. Install KaijiBot on the new machine, then copy your state. This
+    **does not delete your data** - your state
+    (`~/.kaijibot`) and workspace (`~/.kaijibot/workspace`) can be transferred.
 
-    Docs: [Getting started](/start/getting-started), [Updating](/install/updating).
-
-  </Accordion>
-
-  <Accordion title="Can I switch between npm and git installs later?">
-    Yes. Install the other flavor, then run Doctor so the gateway service points at the new entrypoint.
-    This **does not delete your data** - it only changes the KaijiBot code install. Your state
-    (`~/.kaijibot`) and workspace (`~/.kaijibot/workspace`) stay untouched.
-
-    From npm to git:
+    Steps:
 
     ```bash
-    git clone https://github.com/kaijibot/kaijibot.git
+    # On the new machine
+    git clone https://gitee.com/kaiji1126/kaijibot
     cd kaijibot
     pnpm install
     pnpm build
-    kaijibot doctor
-    kaijibot gateway restart
     ```
 
-    From git to npm:
+    Then copy `~/.kaijibot` from the old machine and run:
 
     ```bash
-    npm install -g kaijibot@latest
     kaijibot doctor
     kaijibot gateway restart
     ```
 
-    Doctor detects a gateway service entrypoint mismatch and offers to rewrite the service config to match the current install (use `--repair` in automation).
-
-    Backup tips: see [Backup strategy](#where-things-live-on-disk).
+    Doctor detects mismatches and offers to repair. See [Migrating](/install/migrating) and
+    [Backup strategy](#where-things-live-on-disk).
 
   </Accordion>
 
@@ -988,7 +907,7 @@ for usage/billing and raise limits as needed.
     - **Always-on Gateway** (run on a VPS, interact from anywhere)
     - **Nodes** for local browser/screen/camera/exec
 
-    Showcase: [https://kaijibot.ai/showcase](https://kaijibot.ai/showcase)
+    Docs: [Gateway](/gateway), [Multi-agent](/concepts/multi-agent), [Nodes](/nodes).
 
   </Accordion>
 </AccordionGroup>
@@ -3296,4 +3215,4 @@ Related: [/concepts/oauth](/concepts/oauth) (OAuth flows, token storage, multi-a
 
 ---
 
-Still stuck? Ask in [Discord](https://discord.com/invite/clawd) or open a [GitHub discussion](https://github.com/kaijibot/kaijibot/discussions).
+Still stuck? Open an [issue](https://gitee.com/kaiji1126/kaijibot/issues) on Gitee.

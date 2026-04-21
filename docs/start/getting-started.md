@@ -8,124 +8,78 @@ title: "Getting Started"
 
 # Getting Started
 
-Install KaijiBot, run onboarding, and chat with your AI assistant — all in
-about 5 minutes. By the end you will have a running Gateway, configured auth,
-and a working chat session.
+Build KaijiBot from source, run onboarding, and start chatting in about 5 minutes. By the end you will have a running Gateway, configured auth, and a working chat session.
 
 ## What you need
 
-- **Node.js** — Node 24 recommended (Node 22.14+ also supported)
-- **An API key** from a model provider — 国内用户推荐 Z.AI（智谱 GLM）、DeepSeek、通义千问（Qwen）、Kimi（Moonshot），onboarding 向导会引导你完成配置
+- **Node.js >= 22** -- Node 24 recommended
+- **pnpm** -- `corepack enable` or `npm install -g pnpm`
+- **An API key** from a model provider -- 国内用户推荐 Z.AI（智谱 GLM）、DeepSeek、通义千问（Qwen）、Kimi（Moonshot），onboarding 向导会引导你完成配置
 
 <Tip>
 Check your Node version with `node --version`.
-**Windows users:** both native Windows and WSL2 are supported. WSL2 is more
-stable and recommended for the full experience. See [Windows](/platforms/windows).
-Need to install Node? See [Node setup](/install/node).
+**Windows users:** both native Windows and WSL2 are supported. WSL2 is more stable and recommended for the full experience. See [Windows](/platforms/windows). Need to install Node? See [Node setup](/install/node).
 </Tip>
 
 ## Quick setup
 
 <Steps>
-  <Step title="Install KaijiBot">
-    <Tabs>
-      <Tab title="macOS / Linux">
-        ```bash
-        curl -fsSL https://kaijibot.ai/install.sh | bash
-        ```
-        <img
-  src="/assets/install-script.svg"
-  alt="Install Script Process"
-  className="rounded-lg"
-/>
-      </Tab>
-      <Tab title="Windows (PowerShell)">
-        ```powershell
-        iwr -useb https://kaijibot.ai/install.ps1 | iex
-        ```
-      </Tab>
-    </Tabs>
+  <Step title="Clone and build">
+    ```bash
+    git clone https://gitee.com/kaiji1126/kaijibot.git
+    cd kaijibot
+    pnpm install
+    pnpm build
+    ```
 
     <Note>
-    Other install methods (Docker, Nix, npm): [Install](/install).
+    国内镜像加速：`pnpm install --registry https://registry.npmmirror.com`
     </Note>
 
   </Step>
   <Step title="Run onboarding">
     ```bash
-    kaijibot onboard --install-daemon
+    pnpm kaijibot onboard
     ```
 
-    The wizard walks you through choosing a model provider, setting an API key,
-    and configuring the Gateway. It takes about 2 minutes.
+    The wizard walks you through choosing a model provider, setting an API key, and configuring the Gateway. It takes about 2 minutes.
 
     <Tip>
     KaijiBot 支持 40+ 个 LLM 提供商。国内用户推荐优先选择：
-    - **Z.AI（智谱 GLM）** — 默认选项，国内访问最快
-    - **DeepSeek** — 性价比极高
-    - **通义千问（Qwen）** — 阿里云，中文能力强
-    - **Kimi（Moonshot）** — 长上下文 200K
+    - **Z.AI（智谱 GLM）** -- 默认选项，国内访问最快
+    - **DeepSeek** -- 性价比极高
+    - **通义千问（Qwen）** -- 阿里云，中文能力强
+    - **Kimi（Moonshot）** -- 长上下文 200K
     </Tip>
 
     See [Onboarding (CLI)](/start/wizard) for the full reference.
 
   </Step>
-  <Step title="Verify the Gateway is running">
+  <Step title="Start the Gateway">
     ```bash
-    kaijibot gateway status
+    pnpm kaijibot gateway --port 18789
     ```
 
     You should see the Gateway listening on port 18789.
 
   </Step>
-  <Step title="Open the dashboard">
-    ```bash
-    kaijibot dashboard
-    ```
-
-    This opens the Control UI in your browser. If it loads, everything is working.
-
-  </Step>
   <Step title="Send your first message">
     Type a message in the Control UI chat and you should get an AI reply.
 
-    Want to chat from Feishu instead? See the [Feishu channel guide](/channels/feishu)
-    — you just need an App ID and App Secret from [open.feishu.cn](https://open.feishu.cn/).
+    Want to chat from Feishu instead? See the [Feishu channel guide](/channels/feishu) -- you just need an App ID and App Secret from [open.feishu.cn](https://open.feishu.cn/).
 
   </Step>
 </Steps>
 
-<Accordion title="Advanced: mount a custom Control UI build">
-  If you maintain a localized or customized dashboard build, point
-  `gateway.controlUi.root` to a directory that contains your built static
-  assets and `index.html`.
+## Docker alternative
 
 ```bash
-mkdir -p "$HOME/.kaijibot/control-ui-custom"
-# Copy your built static files into that directory.
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+docker compose up -d
 ```
 
-Then set:
-
-```json
-{
-  "gateway": {
-    "controlUi": {
-      "enabled": true,
-      "root": "$HOME/.kaijibot/control-ui-custom"
-    }
-  }
-}
-```
-
-Restart the gateway and reopen the dashboard:
-
-```bash
-kaijibot gateway restart
-kaijibot dashboard
-```
-
-</Accordion>
+See [Docker](/install/docker) for configuration details.
 
 ## What to do next
 
@@ -147,9 +101,9 @@ kaijibot dashboard
 <Accordion title="Advanced: environment variables">
   If you run KaijiBot as a service account or want custom paths:
 
-- `KAIJIBOT_HOME` — home directory for internal path resolution
-- `KAIJIBOT_STATE_DIR` — override the state directory
-- `KAIJIBOT_CONFIG_PATH` — override the config file path
+  - `KAIJIBOT_HOME` -- home directory for internal path resolution
+  - `KAIJIBOT_STATE_DIR` -- override the state directory
+  - `KAIJIBOT_CONFIG_PATH` -- override the config file path
 
-Full reference: [Environment variables](/help/environment).
+  Full reference: [Environment variables](/help/environment).
 </Accordion>

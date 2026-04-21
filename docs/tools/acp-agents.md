@@ -738,7 +738,7 @@ See [Plugins](/tools/plugin).
 
 ### Automatic dependency install
 
-When you install KaijiBot globally with `npm install -g kaijibot`, the acpx
+When you build KaijiBot from source (`git clone` + `pnpm install` + `pnpm build`), the acpx
 runtime dependencies (platform-specific binaries) are installed automatically
 via a postinstall hook. If the automatic install fails, the gateway still starts
 normally and reports the missing dependency through `kaijibot acp doctor`.

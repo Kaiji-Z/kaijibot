@@ -16,15 +16,17 @@ running (or attaches to an existing local Gateway if one is already running).
 
 ## Install the CLI (required for local mode)
 
-Node 24 is the default runtime on the Mac. Node 22 LTS, currently `22.14+`, still works for compatibility. Then install `kaijibot` globally:
+Node 24 is the default runtime on the Mac. Node 22 LTS, currently `22.14+`, still works for compatibility. Then install `kaijibot` from source:
 
 ```bash
-npm install -g kaijibot@<version>
+git clone https://gitee.com/kaiji1126/kaijibot
+cd kaijibot
+pnpm install
+pnpm build
 ```
 
-The macOS app’s **Install CLI** button runs the same global install flow the app
-uses internally: it prefers npm first, then pnpm, then bun if that is the only
-detected package manager. Node remains the recommended Gateway runtime.
+The macOS app's **Install CLI** button runs the same build flow the app
+uses internally. Node remains the recommended Gateway runtime.
 
 ## Launchd (Gateway as LaunchAgent)
 

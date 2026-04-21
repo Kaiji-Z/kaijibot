@@ -17,7 +17,7 @@ It intentionally exposes capability families, not raw gateway RPC names and not 
 Copy and paste this to an agent:
 
 ```text
-Read https://docs.kaijibot.ai/cli/infer, then create a skill that routes my common workflows to `kaijibot infer`.
+Read the KaijiBot infer documentation (`/cli/infer`), then create a skill that routes my common workflows to `kaijibot infer`.
 Focus on model runs, image generation, video generation, audio transcription, TTS, web search, and embeddings.
 ```
 
@@ -212,7 +212,7 @@ Use `web` for search and fetch workflows.
 ```bash
 kaijibot infer web search --query "KaijiBot docs" --json
 kaijibot infer web search --query "KaijiBot infer web providers" --json
-kaijibot infer web fetch --url https://docs.kaijibot.ai/cli/infer --json
+kaijibot infer web fetch --url https://example.com --json
 kaijibot infer web providers --json
 ```
 

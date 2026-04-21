@@ -71,7 +71,9 @@ curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 apt install -y nodejs
 
 # Install KaijiBot
-curl -fsSL https://kaijibot.ai/install.sh | bash
+git clone https://gitee.com/kaiji1126/kaijibot
+cd kaijibot
+pnpm install && pnpm build
 
 # Verify
 kaijibot --version

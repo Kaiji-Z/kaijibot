@@ -99,7 +99,9 @@ tailscale status
 ## 5) Install KaijiBot
 
 ```bash
-curl -fsSL https://kaijibot.ai/install.sh | bash
+git clone https://gitee.com/kaiji1126/kaijibot
+cd kaijibot
+pnpm install && pnpm build
 source ~/.bashrc
 ```
 

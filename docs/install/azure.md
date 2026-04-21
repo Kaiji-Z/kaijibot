@@ -256,12 +256,13 @@ This guide sets up an Azure Linux VM with the Azure CLI, applies Network Securit
 
   <Step title="Install KaijiBot (in the VM shell)">
     ```bash
-    curl -fsSL https://kaijibot.ai/install.sh -o /tmp/install.sh
-    bash /tmp/install.sh
-    rm -f /tmp/install.sh
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install
+    pnpm build
     ```
 
-    The installer installs Node LTS and dependencies if not already present, installs KaijiBot, and launches the onboarding wizard. See [Install](/install) for details.
+    This clones the source and builds KaijiBot. Node LTS and dependencies should already be present. Run `kaijibot onboard` to start the onboarding wizard. See [Install](/install) for details.
 
   </Step>
 

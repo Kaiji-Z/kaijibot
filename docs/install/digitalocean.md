@@ -46,7 +46,9 @@ Run a persistent KaijiBot Gateway on a DigitalOcean Droplet.
     apt install -y nodejs
 
     # Install KaijiBot
-    curl -fsSL https://kaijibot.ai/install.sh | bash
+    git clone https://gitee.com/kaiji1126/kaijibot
+    cd kaijibot
+    pnpm install && pnpm build
     kaijibot --version
     ```
 

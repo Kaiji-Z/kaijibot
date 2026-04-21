@@ -32,19 +32,16 @@ if you want the raw npm beta dist-tag for a one-off package update.
 
 See [Development channels](/install/development-channels) for channel semantics.
 
-## Alternative: re-run the installer
+## Alternative: re-run from source
 
 ```bash
-curl -fsSL https://kaijibot.ai/install.sh | bash
+cd kaijibot
+git pull
+pnpm install
+pnpm build
 ```
 
-Add `--no-onboard` to skip onboarding. For source installs, pass `--install-method git --no-onboard`.
-
-## Alternative: manual npm, pnpm, or bun
-
-```bash
-npm i -g kaijibot@latest
-```
+## Alternative: manual pnpm or bun
 
 ```bash
 pnpm add -g kaijibot@latest
@@ -108,15 +105,18 @@ kaijibot health
 
 ## Rollback
 
-### Pin a version (npm)
+### Pin a version (source build)
 
 ```bash
-npm i -g kaijibot@<version>
+cd kaijibot
+git checkout <tag>
+pnpm install
+pnpm build
 kaijibot doctor
 kaijibot gateway restart
 ```
 
-Tip: `npm view kaijibot version` shows the current published version.
+Tip: `git tag -l` shows available versions.
 
 ### Pin a commit (source)
 
