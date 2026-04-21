@@ -152,7 +152,7 @@ function formatModeErrorList<T extends string>(modes: readonly T[]): string {
 }
 
 function maybeLogPendingControlUiBuild(cfg: ReturnType<typeof loadConfig>): void {
-  if (cfg.gateway?.controlUi?.enabled === false || cfg.gateway?.controlUi?.enabled === undefined) {
+  if (cfg.gateway?.controlUi?.enabled === false) {
     return;
   }
   if (toOptionString(cfg.gateway?.controlUi?.root)) {
