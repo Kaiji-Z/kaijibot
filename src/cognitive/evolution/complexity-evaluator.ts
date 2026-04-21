@@ -139,7 +139,6 @@ export function evaluateComplexity(candidate: EvolutionCandidate): ComplexityRes
     1,
   );
 
-  // Trial-and-error boost
   const trialError = detectTrialAndError(candidate);
   if (trialError.detected) {
     factors.push({
@@ -150,7 +149,39 @@ export function evaluateComplexity(candidate: EvolutionCandidate): ComplexityRes
     });
   }
 
-  const score = Math.min(baseScore + trialError.boost, 1);
+  // Error-profile factor: dominates when tool errors were accumulated at runtime
+  const ep = candidate.errorProfile;
+  if (ep && ep.errorCount > 0) {
+    const errorNorm = Math.min(ep.errorCount / 3, 1);
+    factors.push({
+      name: "toolErrors",
+      raw: ep.errorCount,
+      normalized: errorNorm,
+      weight: 0.50,
+    });
+  }
+
+  // Retry factor: same tool called multiple times suggests wrong-params or wrong-result
+  const uniqueSet = new Set(candidate.toolCalls);
+  const retryCount = candidate.toolCalls.length - uniqueSet.size;
+  if (retryCount > 0) {
+    const retryNorm = Math.min(retryCount / 3, 1);
+    factors.push({
+      name: "toolRetries",
+      raw: retryCount,
+      normalized: retryNorm,
+      weight: 0.40,
+    });
+  }
+
+  let score = baseScore + trialError.boost;
+  if (ep && ep.errorCount > 0) {
+    score += Math.min(ep.errorCount / 3, 1) * 0.50;
+  }
+  if (retryCount > 0) {
+    score += Math.min(retryCount / 3, 1) * 0.40;
+  }
+  score = Math.min(score, 1);
 
   return { score, factors };
 }

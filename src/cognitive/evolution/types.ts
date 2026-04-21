@@ -6,6 +6,16 @@
  * tracks user acceptance/rejection to learn preferences.
  */
 
+/** Tool error profile accumulated automatically during agent run. */
+export type ToolErrorProfile = {
+  /** Number of tool calls that returned errors (isError: true) */
+  errorCount: number;
+  /** Distinct tool names that produced errors */
+  failedToolNames: string[];
+  /** Whether any error involved a mutating action (writes, deletes, etc.) */
+  hasMutatingErrors: boolean;
+};
+
 /** A completed task evaluated for skill evolution potential. */
 export type EvolutionCandidate = {
   /** Short human-readable summary of what the task accomplished */
@@ -28,6 +38,8 @@ export type EvolutionCandidate = {
   userCorrections?: number;
   /** Evidence strings from the transcript showing trial-error patterns */
   trialErrorSignals?: string[];
+  /** Automatically accumulated tool error profile from the agent runtime */
+  errorProfile?: ToolErrorProfile;
 };
 
 /** A drafted Skill proposal generated from an evolution candidate. */
@@ -83,6 +95,8 @@ export type EvolutionRecord = {
 export type EvolutionConfig = {
   /** Minimum complexity score to trigger a suggestion (0-1, default 0.6) */
   minComplexity: number;
+  /** Lower threshold used when tool errors or retries were detected (0-1, default 0.3) */
+  errorComplexityThreshold: number;
   /** Minimum hours between suggestions for a user (default 24) */
   cooldownHours: number;
   /** Maximum suggestions per user per day (default 3) */
@@ -122,6 +136,7 @@ export type ComplexityResult = {
 /** Default evolution configuration. */
 export const DEFAULT_EVOLUTION_CONFIG: EvolutionConfig = {
   minComplexity: 0.6,
+  errorComplexityThreshold: 0.3,
   cooldownHours: 24,
   maxSuggestionsPerDay: 3,
   minTrustScore: 0.5,

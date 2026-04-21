@@ -46,6 +46,7 @@ export function createEvolutionSuggestTool(deps: {
         const { EvolutionEngine } = await import("../../cognitive/evolution/engine.js");
         const { EvolutionStore } = await import("../../cognitive/evolution/store.js");
         const { resolveConfigDir } = await import("../../utils.js");
+        const { consumeToolErrorProfile } = await import("../tool-error-summary.js");
 
         const store = new EvolutionStore(resolveConfigDir());
         const engine = new EvolutionEngine(store);
@@ -54,6 +55,10 @@ export function createEvolutionSuggestTool(deps: {
         if (!userId || userId === "main") {
           return textResult("No user session; evolution evaluation skipped.", { status: "no_session" });
         }
+
+        const errorProfile = deps.sessionKey
+          ? consumeToolErrorProfile(deps.sessionKey)
+          : undefined;
 
         const candidate = {
           taskSummary: params.taskSummary,
@@ -65,6 +70,7 @@ export function createEvolutionSuggestTool(deps: {
           transcript: params.transcript,
           hasTrialAndError: params.hasTrialAndError,
           userCorrections: params.userCorrections,
+          errorProfile,
         };
 
         const decision = await engine.evaluate(candidate, userId);

@@ -192,6 +192,77 @@ describe("EvolutionEngine", () => {
     expect(decision.reasoning).toContain("below threshold");
   });
 
+  describe("dual threshold (error-driven)", () => {
+    it("uses errorComplexityThreshold when errorProfile has errors", async () => {
+      const candidate = makeCandidate({
+        taskSummary: "Simple task with tool errors",
+        toolCalls: ["tool_a", "tool_a", "tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 3,
+        durationMs: 10_000,
+        domain: "test",
+        errorProfile: { errorCount: 3, failedToolNames: ["tool_a"], hasMutatingErrors: false },
+      });
+      const decision = await engine.evaluate(candidate, "user-err-1");
+      expect(decision.shouldSuggest).toBe(true);
+      expect(decision.reasoning).toContain("error threshold");
+    });
+
+    it("uses errorComplexityThreshold when retries are detected", async () => {
+      const candidate = makeCandidate({
+        taskSummary: "Simple task with retries",
+        toolCalls: ["tool_a", "tool_a", "tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 3,
+        durationMs: 10_000,
+        domain: "test",
+      });
+      const decision = await engine.evaluate(candidate, "user-retry-1");
+      expect(decision.shouldSuggest).toBe(true);
+      expect(decision.reasoning).toContain("error threshold");
+    });
+
+    it("uses minComplexity when no errors or retries", async () => {
+      const candidate = makeCandidate({
+        taskSummary: "Simple task, no errors",
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 2_000,
+        domain: "test",
+      });
+      const decision = await engine.evaluate(candidate, "user-clean-1");
+      expect(decision.shouldSuggest).toBe(false);
+      expect(decision.complexityScore).toBeLessThan(DEFAULT_EVOLUTION_CONFIG.minComplexity);
+    });
+
+    it("error candidate still respects cooldown", async () => {
+      const candidate = makeCandidate({
+        taskSummary: "Error task",
+        toolCalls: ["tool_a", "tool_a", "tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 3,
+        durationMs: 10_000,
+        domain: "test",
+        errorProfile: { errorCount: 3, failedToolNames: ["tool_a"], hasMutatingErrors: false },
+      });
+
+      const decision1 = await engine.evaluate(candidate, "user-err-cooldown");
+      expect(decision1.shouldSuggest).toBe(true);
+
+      const recentRecord = makeRecord({
+        userId: "user-err-cooldown",
+        decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.5, reasoning: "err" },
+        timestamp: Date.now() - 1000,
+      });
+      await store.save(recentRecord);
+
+      const decision2 = await engine.evaluate(candidate, "user-err-cooldown");
+      expect(decision2.shouldSuggest).toBe(false);
+      expect(decision2.reasoning).toContain("cooldown");
+    });
+  });
+
   describe("checkBeforeGenerate()", () => {
     it("returns shouldCreate:true when no lifecycle provided", async () => {
       const result = await engine.checkBeforeGenerate(complexCandidate);

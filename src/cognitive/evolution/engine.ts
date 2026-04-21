@@ -57,14 +57,30 @@ export class EvolutionEngine {
       reasoningParts.push(`Trial-and-error detected: ${trialError.signals.length} signals, boost +${trialError.boost.toFixed(2)}`);
     }
 
-    if (complexity.score < config.minComplexity) {
+    const hasErrors = (candidate.errorProfile?.errorCount ?? 0) > 0;
+    const uniqueSet = new Set(candidate.toolCalls);
+    const retryCount = candidate.toolCalls.length - uniqueSet.size;
+    const hasRetries = retryCount > 0;
+
+    const threshold = (hasErrors || hasRetries)
+      ? config.errorComplexityThreshold
+      : config.minComplexity;
+
+    if (hasErrors) {
+      reasoningParts.push(`Tool errors detected (${candidate.errorProfile!.errorCount} errors in: ${candidate.errorProfile!.failedToolNames.join(", ")}), using error threshold ${threshold}`);
+    }
+    if (hasRetries) {
+      reasoningParts.push(`Tool retries detected (${retryCount} retries), using error threshold ${threshold}`);
+    }
+
+    if (complexity.score < threshold) {
       return {
         shouldSuggest: false,
         confidence: 0,
         complexityScore: complexity.score,
         reasoning: reasoningParts.length > 0
-          ? `${reasoningParts.join("; ")}; Complexity score ${complexity.score.toFixed(2)} below threshold ${config.minComplexity}`
-          : `Complexity score ${complexity.score.toFixed(2)} below threshold ${config.minComplexity}`,
+          ? `${reasoningParts.join("; ")}; Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`
+          : `Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`,
       };
     }
 

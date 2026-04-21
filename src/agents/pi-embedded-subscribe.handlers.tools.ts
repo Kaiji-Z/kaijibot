@@ -776,6 +776,13 @@ export async function handleToolExecutionEnd(
       mutatingAction: callSummary?.mutatingAction,
       actionFingerprint: callSummary?.actionFingerprint,
     };
+    if (ctx.params.sessionKey) {
+      const { accumulateToolError } = await import("./tool-error-summary.js");
+      accumulateToolError(ctx.params.sessionKey, {
+        toolName,
+        mutatingAction: callSummary?.mutatingAction,
+      });
+    }
   } else if (ctx.state.lastToolError) {
     // Keep unresolved mutating failures until the same action succeeds.
     if (ctx.state.lastToolError.mutatingAction) {

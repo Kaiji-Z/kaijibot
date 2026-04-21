@@ -25,6 +25,7 @@ import type {
   EvolutionRecord,
   SkillDraft,
   SkillPatch,
+  ToolErrorProfile,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -1062,5 +1063,135 @@ describe("Pipeline: custom draft generator injection", () => {
     const result = await engineWithCustom.generate(complexCandidate());
     expect(result.name).toBe("custom-skill");
     expect(result.bodyMarkdown).toContain("Custom");
+  });
+});
+
+// ===========================================================================
+// SCENARIO 18: Error-prone simple task triggers evolution (errorComplexityThreshold)
+// ===========================================================================
+describe("Pipeline: error-driven evolution for simple tasks", () => {
+  it("simple task with tool errors triggers suggestion", async () => {
+    const candidate = simpleCandidate();
+    candidate.errorProfile = {
+      errorCount: 2,
+      failedToolNames: ["weather_get"],
+      hasMutatingErrors: false,
+    };
+    const decision = await engine.evaluate(candidate, "user-err-simple");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.reasoning).toContain("error threshold");
+  });
+
+  it("simple task with retries triggers suggestion", async () => {
+    const candidate: EvolutionCandidate = {
+      taskSummary: "查询天气（重试了3次）",
+      toolCalls: ["weather_get", "weather_get", "weather_get", "weather_get"],
+      uniqueToolCount: 1,
+      reasoningTurns: 4,
+      durationMs: 15_000,
+      domain: "weather",
+    };
+    const decision = await engine.evaluate(candidate, "user-retry-simple");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.reasoning).toContain("error threshold");
+  });
+
+  it("simple task without errors does NOT trigger (backward compat)", async () => {
+    const candidate = simpleCandidate();
+    const decision = await engine.evaluate(candidate, "user-clean-simple");
+    expect(decision.shouldSuggest).toBe(false);
+  });
+});
+
+// ===========================================================================
+// SCENARIO 19: Error-prone simple task gets higher priority than smooth complex task
+// ===========================================================================
+describe("Pipeline: error priority vs smooth complexity", () => {
+  it("error-based suggestion includes error info in reasoning", async () => {
+    const candidate: EvolutionCandidate = {
+      taskSummary: "创建飞书文档",
+      toolCalls: ["feishu_doc_create", "feishu_doc_create", "feishu_doc_create"],
+      uniqueToolCount: 1,
+      reasoningTurns: 3,
+      durationMs: 10_000,
+      domain: "feishu-doc",
+      errorProfile: {
+        errorCount: 2,
+        failedToolNames: ["feishu_doc_create"],
+        hasMutatingErrors: true,
+      },
+    };
+    const decision = await engine.evaluate(candidate, "user-err-priority");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.reasoning).toContain("Tool errors detected");
+    expect(decision.reasoning).toContain("feishu_doc_create");
+  });
+
+  it("smooth complex task still uses minComplexity threshold", async () => {
+    const candidate = complexCandidate();
+    const decision = await engine.evaluate(candidate, "user-smooth-complex");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.reasoning).not.toContain("error threshold");
+    expect(decision.reasoning).toContain("complex enough");
+  });
+});
+
+// ===========================================================================
+// SCENARIO 20: Error-driven trigger respects cooldown
+// ===========================================================================
+describe("Pipeline: error-driven trigger respects cooldown", () => {
+  it("error-based suggestion still blocked by cooldown", async () => {
+    const userId = "user-err-cooldown";
+
+    const recentRecord: EvolutionRecord = {
+      id: "rec-err-recent",
+      userId,
+      candidate: simpleCandidate(),
+      decision: { shouldSuggest: true, confidence: 0.5, complexityScore: 0.4, reasoning: "err" },
+      timestamp: Date.now() - 1000,
+    };
+    await store.save(recentRecord);
+
+    const candidate = simpleCandidate();
+    candidate.errorProfile = {
+      errorCount: 3,
+      failedToolNames: ["weather_get"],
+      hasMutatingErrors: false,
+    };
+    const decision = await engine.evaluate(candidate, userId);
+    expect(decision.shouldSuggest).toBe(false);
+    expect(decision.reasoning).toContain("cooldown");
+  });
+});
+
+// ===========================================================================
+// SCENARIO 21: Backward compatibility — existing tests still pass
+// ===========================================================================
+describe("Pipeline: backward compatibility with error fields", () => {
+  it("complex candidate without errorProfile still works", async () => {
+    const candidate = complexCandidate();
+    expect(candidate.errorProfile).toBeUndefined();
+    const decision = await engine.evaluate(candidate, "user-backward");
+    expect(decision.shouldSuggest).toBe(true);
+  });
+
+  it("complex candidate with empty errorProfile uses minComplexity", async () => {
+    const candidate = complexCandidate();
+    candidate.errorProfile = { errorCount: 0, failedToolNames: [], hasMutatingErrors: false };
+    const decision = await engine.evaluate(candidate, "user-zero-err");
+    expect(decision.shouldSuggest).toBe(true);
+  });
+
+  it("trial-and-error + error profile both contribute", async () => {
+    const candidate = trialErrorCandidate();
+    candidate.errorProfile = {
+      errorCount: 1,
+      failedToolNames: ["feishu_doc_search"],
+      hasMutatingErrors: false,
+    };
+    const decision = await engine.evaluate(candidate, "user-combined");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.reasoning).toContain("Trial-and-error");
+    expect(decision.reasoning).toContain("Tool errors detected");
   });
 });

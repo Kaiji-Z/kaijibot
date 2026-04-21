@@ -263,3 +263,70 @@ describe("evaluateComplexity with trial-error boost", () => {
     expect(trialFactor!.normalized).toBeGreaterThan(0);
   });
 });
+
+describe("evaluateComplexity with error profile", () => {
+  it("adds toolErrors factor when errorProfile has errors", () => {
+    const result = evaluateComplexity(
+      makeCandidate({
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 5_000,
+        errorProfile: { errorCount: 2, failedToolNames: ["tool_a"], hasMutatingErrors: false },
+      }),
+    );
+    const errorFactor = result.factors.find((f) => f.name === "toolErrors");
+    expect(errorFactor).toBeDefined();
+    expect(errorFactor!.raw).toBe(2);
+    expect(errorFactor!.weight).toBe(0.50);
+  });
+
+  it("boosts score with errors compared to same candidate without", () => {
+    const base = evaluateComplexity(
+      makeCandidate({
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 5_000,
+      }),
+    );
+    const withErrors = evaluateComplexity(
+      makeCandidate({
+        toolCalls: ["tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 5_000,
+        errorProfile: { errorCount: 3, failedToolNames: ["tool_a"], hasMutatingErrors: true },
+      }),
+    );
+    expect(withErrors.score).toBeGreaterThan(base.score);
+  });
+
+  it("adds toolRetries factor when tool calls contain duplicates", () => {
+    const result = evaluateComplexity(
+      makeCandidate({
+        toolCalls: ["tool_a", "tool_a", "tool_b", "tool_b", "tool_b"],
+        uniqueToolCount: 2,
+        reasoningTurns: 1,
+        durationMs: 5_000,
+      }),
+    );
+    const retryFactor = result.factors.find((f) => f.name === "toolRetries");
+    expect(retryFactor).toBeDefined();
+    expect(retryFactor!.raw).toBe(3);
+    expect(retryFactor!.weight).toBe(0.40);
+  });
+
+  it("error + retry combined boost dominates over base factors", () => {
+    const result = evaluateComplexity(
+      makeCandidate({
+        toolCalls: ["tool_a", "tool_a", "tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 2_000,
+        errorProfile: { errorCount: 2, failedToolNames: ["tool_a"], hasMutatingErrors: false },
+      }),
+    );
+    expect(result.score).toBeGreaterThan(0.3);
+  });
+});
