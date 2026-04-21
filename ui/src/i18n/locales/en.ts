@@ -858,6 +858,8 @@ export const en: TranslationMap = {
     apply: "Apply",
     updating: "Updating…",
     update: "Update",
+    updateNow: "Update now",
+    dismissUpdateBanner: "Dismiss",
     invalidConfig: "Your configuration is invalid. Some settings may not work as expected.",
     dontRemindAgain: "Don't remind again",
     loadingSchema: "Loading schema…",

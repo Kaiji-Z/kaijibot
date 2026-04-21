@@ -853,6 +853,8 @@ export const zh_CN: TranslationMap = {
     apply: "应用",
     updating: "更新中…",
     update: "更新",
+    updateNow: "立即更新",
+    dismissUpdateBanner: "关闭",
     invalidConfig: "配置无效。部分设置可能无法正常工作。",
     dontRemindAgain: "不再提醒",
     loadingSchema: "加载 Schema 中…",

@@ -110,7 +110,7 @@ export async function runSetupWizard(
 ) {
   const onboardHelpers = await import("../commands/onboard-helpers.js");
   onboardHelpers.printWizardHeader(runtime);
-  await prompter.intro("KaijiBot setup");
+  await prompter.intro("KaijiBot 配置向导");
   await requireRiskAcknowledgement({ opts, prompter });
 
   const snapshot = await readConfigFileSnapshot();
@@ -133,7 +133,7 @@ export async function runSetupWizard(
       );
     }
     await prompter.outro(
-      `Config invalid. Run \`${formatCliCommand("kaijibot doctor")}\` to repair it, then re-run setup.`,
+      `配置无效。运行 \`${formatCliCommand("kaijibot doctor")}\` 修复后重新执行配置。`,
     );
     runtime.exit(1);
     return;
@@ -169,7 +169,7 @@ export async function runSetupWizard(
     normalizedExplicitFlow !== "quickstart" &&
     normalizedExplicitFlow !== "advanced"
   ) {
-    runtime.error("Invalid --flow (use quickstart, manual, or advanced).");
+    runtime.error("无效的 --flow 参数（请使用 quickstart、manual 或 advanced）。");
     runtime.exit(1);
     return;
   }
@@ -180,10 +180,10 @@ export async function runSetupWizard(
   let flow: WizardFlow =
     explicitFlow ??
     (await prompter.select({
-      message: "Setup mode",
+      message: "配置模式",
       options: [
-        { value: "quickstart", label: "QuickStart", hint: quickstartHint },
-        { value: "advanced", label: "Manual", hint: manualHint },
+        { value: "quickstart", label: "快速配置", hint: quickstartHint },
+        { value: "advanced", label: "手动配置", hint: manualHint },
       ],
       initialValue: "quickstart",
     }));
@@ -203,11 +203,11 @@ export async function runSetupWizard(
     );
 
     const action = await prompter.select({
-      message: "Config handling",
+      message: "配置处理方式",
       options: [
-        { value: "keep", label: "Use existing values" },
-        { value: "modify", label: "Update values" },
-        { value: "reset", label: "Reset" },
+        { value: "keep", label: "使用现有配置" },
+        { value: "modify", label: "更新配置" },
+        { value: "reset", label: "重置" },
       ],
     });
 
@@ -215,16 +215,16 @@ export async function runSetupWizard(
       const workspaceDefault =
         baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE;
       const resetScope = (await prompter.select({
-        message: "Reset scope",
+        message: "重置范围",
         options: [
-          { value: "config", label: "Config only" },
+          { value: "config", label: "仅配置" },
           {
             value: "config+creds+sessions",
-            label: "Config + creds + sessions",
+            label: "配置 + 凭证 + 会话",
           },
           {
             value: "full",
-            label: "Full reset (config + creds + sessions + workspace)",
+            label: "完全重置（配置 + 凭证 + 会话 + 工作空间）",
           },
         ],
       })) as ResetScope;
@@ -418,18 +418,18 @@ export async function runSetupWizard(
     (flow === "quickstart"
       ? "local"
       : ((await prompter.select({
-          message: "What do you want to set up?",
+          message: "你想配置什么？",
           options: [
             {
               value: "local",
-              label: "Local gateway (this machine)",
+              label: "本地网关（本机）",
               hint: localProbe.ok
                 ? `Gateway reachable (${localUrl})`
                 : `No gateway detected (${localUrl})`,
             },
             {
               value: "remote",
-              label: "Remote gateway (info-only)",
+              label: "远程网关（仅信息）",
               hint: !remoteUrl
                 ? "No remote URL configured yet"
                 : remoteProbe?.ok
@@ -448,7 +448,7 @@ export async function runSetupWizard(
     nextConfig = onboardHelpers.applyWizardMetadata(nextConfig, { command: "onboard", mode });
     await writeConfigFile(nextConfig);
     logConfigUpdated(runtime);
-    await prompter.outro("Remote gateway configured.");
+    await prompter.outro("远程网关已配置。");
     return;
   }
 
@@ -457,7 +457,7 @@ export async function runSetupWizard(
     (flow === "quickstart"
       ? (baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE)
       : await prompter.text({
-          message: "Workspace directory",
+           message: "工作空间目录",
           initialValue: baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE,
         }));
 

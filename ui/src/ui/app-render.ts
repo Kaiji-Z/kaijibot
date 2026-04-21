@@ -436,13 +436,13 @@ export function renderApp(state: AppViewState) {
                 ?disabled=${state.updateRunning || !state.connected}
                 @click=${() => runUpdate(state)}
               >
-                ${state.updateRunning ? "Updating…" : "Update now"}
+                ${state.updateRunning ? t("common.updating") : t("common.updateNow")}
               </button>
               <button
                 class="update-banner__close"
                 type="button"
-                title="Dismiss"
-                aria-label="Dismiss update banner"
+                title=${t("common.dismissUpdateBanner")}
+                aria-label=${t("common.dismissUpdateBanner")}
                 @click=${() => {
                   dismissUpdateBanner(state.updateAvailable);
                   state.updateAvailable = null;

@@ -119,13 +119,13 @@ async function promptConfigureSection(
 ): Promise<ConfigureSectionChoice> {
   return guardCancel(
     await select<ConfigureSectionChoice>({
-      message: "Select sections to configure",
+      message: "选择要配置的分区",
       options: [
         ...CONFIGURE_SECTION_OPTIONS,
         {
           value: "__continue",
-          label: "Continue",
-          hint: hasSelection ? "Done" : "Skip for now",
+          label: "继续",
+          hint: hasSelection ? "完成" : "暂时跳过",
         },
       ],
       initialValue: CONFIGURE_SECTION_OPTIONS[0]?.value,
@@ -137,16 +137,16 @@ async function promptConfigureSection(
 async function promptChannelMode(runtime: RuntimeEnv): Promise<ChannelsWizardMode> {
   return guardCancel(
     await select({
-      message: "Channels",
+      message: "消息渠道",
       options: [
         {
           value: "configure",
-          label: "Configure/link",
+          label: "配置/关联",
           hint: "Add/update channels; disable unselected accounts",
         },
         {
           value: "remove",
-          label: "Remove channel config",
+          label: "移除渠道配置",
           hint: "Delete channel tokens/settings from kaijibot.json",
         },
       ],
@@ -180,7 +180,7 @@ async function promptWebToolsConfig(
 
   const enableSearch = guardCancel(
     await confirm({
-      message: "Enable web_search?",
+      message: "启用 web_search？",
       initialValue: existingSearch?.enabled ?? searchProviderOptions.length > 0,
     }),
     runtime,
@@ -211,7 +211,7 @@ async function promptWebToolsConfig(
 
       const enableCodexNative = guardCancel(
         await confirm({
-          message: "Enable native Codex web search for Codex-capable models?",
+          message: "为支持 Codex 的模型启用原生 Codex 网络搜索？",
           initialValue: existingSearch?.openaiCodex?.enabled === true,
         }),
         runtime,
@@ -220,7 +220,7 @@ async function promptWebToolsConfig(
       if (enableCodexNative) {
         const codexMode = guardCancel(
           await select({
-            message: "Codex native web search mode",
+            message: "Codex 原生网络搜索模式",
             options: [
               {
                 value: "cached",
@@ -247,7 +247,7 @@ async function promptWebToolsConfig(
         };
         configureManagedProvider = guardCancel(
           await confirm({
-            message: "Configure or change a managed web search provider now?",
+            message: "现在配置或更换托管的网络搜索服务？",
             initialValue: Boolean(existingSearch?.provider),
           }),
           runtime,
@@ -295,7 +295,7 @@ async function promptWebToolsConfig(
 
   const enableFetch = guardCancel(
     await confirm({
-      message: "Enable web_fetch (keyless HTTP fetch)?",
+      message: "启用 web_fetch（无需密钥的 HTTP 抓取）？",
       initialValue: existingFetch?.enabled ?? true,
     }),
     runtime,
@@ -324,7 +324,7 @@ export async function runConfigureWizard(
   runtime: RuntimeEnv = defaultRuntime,
 ) {
   try {
-    intro(opts.command === "update" ? "KaijiBot update wizard" : "KaijiBot configure");
+    intro(opts.command === "update" ? "KaijiBot 更新向导" : "KaijiBot 配置");
     const prompter = createClackPrompter();
 
     const snapshot = await readConfigFileSnapshot();
@@ -348,7 +348,7 @@ export async function runConfigureWizard(
       }
       if (!snapshot.valid) {
         outro(
-          `Config invalid. Run \`${formatCliCommand("kaijibot doctor")}\` to repair it, then re-run configure.`,
+          `配置无效。运行 \`${formatCliCommand("kaijibot doctor")}\` 修复后重新执行配置。`,
         );
         runtime.exit(1);
         return;
@@ -386,18 +386,18 @@ export async function runConfigureWizard(
 
     const mode = guardCancel(
       await select({
-        message: "Where will the Gateway run?",
+        message: "网关运行在哪里？",
         options: [
           {
             value: "local",
-            label: "Local (this machine)",
+            label: "本地（本机）",
             hint: localProbe.ok
               ? `Gateway reachable (${localUrl})`
               : `No gateway detected (${localUrl})`,
           },
           {
             value: "remote",
-            label: "Remote (info-only)",
+            label: "远程（仅信息）",
             hint: !remoteUrl
               ? "No remote URL configured yet"
               : remoteProbe?.ok
@@ -421,7 +421,7 @@ export async function runConfigureWizard(
       });
       currentBaseHash = undefined;
       logConfigUpdated(runtime);
-      outro("Remote gateway configured.");
+      outro("远程网关已配置。");
       return;
     }
 
@@ -459,7 +459,7 @@ export async function runConfigureWizard(
     const configureWorkspace = async () => {
       const workspaceInput = guardCancel(
         await text({
-          message: "Workspace directory",
+          message: "工作空间目录",
           initialValue: workspaceDir,
         }),
         runtime,
@@ -524,7 +524,7 @@ export async function runConfigureWizard(
     const promptDaemonPort = async () => {
       const portInput = guardCancel(
         await text({
-          message: "Gateway port for service install",
+          message: "服务安装的网关端口",
           initialValue: String(gatewayPort),
           validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
         }),
@@ -536,7 +536,7 @@ export async function runConfigureWizard(
     if (opts.sections) {
       const selected = opts.sections;
       if (!selected || selected.length === 0) {
-        outro("No changes selected.");
+        outro("未选择任何更改。");
         return;
       }
 
@@ -662,10 +662,10 @@ export async function runConfigureWizard(
       if (!ranSection) {
         if (didSetGatewayMode) {
           await persistConfig();
-          outro("Gateway mode set to local.");
+          outro("网关模式已设为本地。");
           return;
         }
-        outro("No changes selected.");
+        outro("未选择任何更改。");
         return;
       }
     }
@@ -730,7 +730,7 @@ export async function runConfigureWizard(
       "Control UI",
     );
 
-    outro("Configure complete.");
+    outro("配置完成。");
   } catch (err) {
     if (err instanceof WizardCancelledError) {
       runtime.exit(1);
