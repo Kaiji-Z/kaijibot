@@ -219,9 +219,9 @@ export async function inferSearchStrategy(
       { messages },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: 800,
+        maxTokens: 2000,
         temperature: 0.9,
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(30_000),
       },
     );
 

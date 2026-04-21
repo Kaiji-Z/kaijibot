@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { complete as piComplete, type Api, type AssistantMessage, type Model } from "@mariozechner/pi-ai";
 import { generateInsightCandidatesLLM, GENERIC_INSIGHT_PATTERNS } from "./llm-engine.js";
 import type { LlmInsightDeps, WebSearchResult } from "./llm-engine.js";
 import { inferSearchStrategy } from "./interest-inference.js";
@@ -139,21 +140,43 @@ async function callLLM(prompt: string): Promise<string> {
 // Deps — same pattern as other live tests: inject callLLM as generateText
 // ---------------------------------------------------------------------------
 
+const LIVE_MODEL: Model<Api> = {
+  id: MODEL,
+  name: MODEL,
+  api: "openai-completions",
+  provider: "zai",
+  baseUrl: ZAI_URL,
+  reasoning: false,
+  input: ["text"],
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  contextWindow: 128000,
+  maxTokens: 4096,
+};
+
+const LIVE_AUTH = {
+  apiKey: ZAI_API_KEY!,
+  source: "env" as const,
+  mode: "api-key" as const,
+};
+
 const liveDeps = {
-  complete: async (_model: unknown, ctx: { messages: Array<{ content: string }> }, _opts: Record<string, unknown>) => {
-    const prompt = ctx.messages[0].content;
+  complete: async (_model: Model<Api>, ctx: Parameters<typeof piComplete>[1], _opts?: Parameters<typeof piComplete>[2]): Promise<AssistantMessage> => {
+    const prompt = "messages" in ctx && Array.isArray(ctx.messages) && ctx.messages[0] && "content" in ctx.messages[0]
+      ? String(ctx.messages[0].content)
+      : "";
     const text = await callLLM(prompt);
     return {
+      role: "assistant",
       content: [{ type: "text" as const, text }],
+      api: "openai-completions",
+      provider: "zai",
+      model: MODEL,
       usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
       stopReason: "stop" as const,
       timestamp: Date.now(),
     };
   },
-  prepareModel: async () => ({
-    model: { id: MODEL, name: MODEL, api: "openai-completions", provider: "zai", baseUrl: ZAI_URL, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 4096 },
-    auth: { apiKey: ZAI_API_KEY!, source: "env", mode: "api-key" as const },
-  }),
+  prepareModel: async () => ({ model: LIVE_MODEL, auth: LIVE_AUTH }),
 };
 
 const inferenceDeps: InterestInferenceDeps = liveDeps;

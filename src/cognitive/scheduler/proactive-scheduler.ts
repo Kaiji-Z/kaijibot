@@ -41,7 +41,7 @@ export class ProactiveScheduler {
 
   constructor(
     private readonly config: SchedulerConfig,
-    private readonly callbacks: {
+    readonly callbacks: {
       loadPersona: (userId: string) => Promise<PersonaTree | undefined>;
       onInsightReady: (userId: string, candidate: InsightCandidate) => Promise<void>;
       savePersona: (userId: string, persona: PersonaTree) => Promise<void>;
