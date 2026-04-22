@@ -265,7 +265,13 @@ export function buildSearchQuery(input: InsightEngineInput): string {
   const concepts = focusTerms;
 
   if (concepts.length === 0 && input.targetDomains.length > 0) {
-    return input.targetDomains[0]!.slice(0, 120);
+    const domain = input.targetDomains[0]!;
+    // Split compound domain names: "AI/机器学习" → "AI 机器学习"
+    const parts = domain.split(/[\/\+\-\s]+/).filter(p => p.length > 0);
+    // Add context suffix to scope the search
+    const contextSuffixes = ["最新进展", "技术", "best practices"];
+    const suffix = contextSuffixes[0]!;
+    return [...parts, suffix].join(" ").slice(0, 120);
   }
 
   const seen = new Set<string>();
@@ -521,6 +527,11 @@ function buildDomainKeywordMap(
   for (const [name, domain] of Object.entries(domains)) {
     const keywords = new Set<string>();
     keywords.add(name.toLowerCase());
+    // Split compound names: "AI/机器学习" → "ai", "机器学习"
+    for (const part of name.split(/[\/\+]/)) {
+      const trimmed = part.trim().toLowerCase();
+      if (trimmed.length >= 2) keywords.add(trimmed);
+    }
     for (const insight of domain.keyInsights.slice(0, 3)) {
       const lower = insight.toLowerCase();
       keywords.add(lower);
@@ -533,6 +544,15 @@ function buildDomainKeywordMap(
   return map;
 }
 
+function extractBigrams(text: string): Set<string> {
+  const bigrams = new Set<string>();
+  const normalized = text.toLowerCase().replace(/\s+/g, "");
+  for (let i = 0; i < normalized.length - 1; i++) {
+    bigrams.add(normalized.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
 function matchWebResultsToDomains(
   webResults: WebSearchResult[],
   keywordMap: Map<string, Set<string>>,
@@ -542,9 +562,18 @@ function matchWebResultsToDomains(
     const titleLower = r.title.toLowerCase();
     const snippetLower = r.snippet.toLowerCase();
     for (const [domainName, keywords] of keywordMap) {
-      const matched = [...keywords].some(
-        (kw) => titleLower.includes(kw) || snippetLower.includes(kw),
-      );
+      const matched = [...keywords].some((kw) => {
+        if (titleLower.includes(kw) || snippetLower.includes(kw)) return true;
+        // Bigram similarity for fuzzy matching
+        if (kw.length >= 4) {
+          const kwBigrams = extractBigrams(kw);
+          const textBigrams = extractBigrams(titleLower + " " + snippetLower);
+          const overlap = [...kwBigrams].filter(b => textBigrams.has(b)).length;
+          const similarity = overlap / Math.max(kwBigrams.size, 1);
+          return similarity > 0.7;
+        }
+        return false;
+      });
       if (matched) {
         const list = result.get(domainName) ?? [];
         list.push(r.snippet);

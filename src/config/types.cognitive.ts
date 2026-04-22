@@ -39,7 +39,7 @@ export type CognitiveConfig = {
     /** Fact verification strictness */
     verificationLevel?: "basic" | "strict" | "paranoid";
     /** Insight engine version (default: v1) */
-    engine?: "v1" | "v2";
+    engine?: "v1" | "v2" | "dual";
     /** Model used for interest inference and insight generation (default: uses main model). */
     inferenceModel?: string;
     /** Ratio of surprise-mode insights vs extend-mode (0-1, default 0.8 = 80% surprise). */

@@ -1094,7 +1094,7 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     expect(selected!.pAct).toBe(0.81);
   });
 
-  it("penalizes repeated opportunity type", () => {
+  it("penalizes repeated opportunity type with 0.5 multiplier", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightTypes = ["domain_depth", "domain_depth", "domain_depth"];
@@ -1106,6 +1106,126 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
 
     const selected = scheduler.identify(opportunities, persona);
     expect(selected).not.toBeNull();
-    expect(selected!.pAct).toBeLessThan(0.81);
+    // domain_depth 0.81 * 0.5 = 0.405, cross_domain 0.49 → cross_domain wins
+    expect(selected!.pAct).toBe(0.49);
+    expect(selected!.type).toBe("cross_domain");
+  });
+});
+
+describe("pNeed imbalance fix", () => {
+  function deepDomainPersona(): PersonaTree {
+    const persona = createDefaultPersona();
+    persona.rapport.trustScore = 0.7;
+    persona.rapport.totalExchanges = 10;
+    persona.domains = {
+      "AI/机器学习": {
+        depth: 10,
+        recurrence: 20,
+        lastMentioned: Date.now(),
+        keyInsights: ["Transformer架构", "注意力机制"],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 0,
+      },
+      "软件架构": {
+        depth: 5,
+        recurrence: 8,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        connections: [],
+        negationSignals: 0,
+      },
+    };
+    persona.feedbackProfile.topicBandits = {
+      "AI/机器学习": { alpha: 5, beta: 1 },
+      "软件架构": { alpha: 4, beta: 2 },
+    };
+    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() };
+    return persona;
+  }
+
+  const lowThresholdConfig: SchedulerConfig = {
+    minIntervalHours: 4,
+    minTrustScore: 0.3,
+    costFalseNegative: 10,
+    costFalseAlarm: 1,
+  };
+
+  it("scanDomainDepth never exceeds 0.7 pNeed", () => {
+    const persona = deepDomainPersona();
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    const domainDepthOpps = opportunities.filter((o) => o.type === "domain_depth");
+    expect(domainDepthOpps.length).toBeGreaterThan(0);
+
+    for (const opp of domainDepthOpps) {
+      expect(opp.pNeed).toBeLessThanOrEqual(0.7);
+    }
+
+    // With depth=10 and recencyBoost=1: uncapped would be 0.3+0.8+0.2=1.3, now capped at 0.7
+    const deepOpp = domainDepthOpps.find((o) => o.targetDomains.includes("AI/机器学习"));
+    expect(deepOpp).toBeDefined();
+    expect(deepOpp!.pNeed).toBe(0.7);
+  });
+
+  it("scanCrossDomain can reach 0.85 pNeed with deep domain", () => {
+    const persona = deepDomainPersona();
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = scheduler.search(persona, {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    const crossDomainOpps = opportunities.filter((o) => o.type === "cross_domain");
+    // "AI/机器学习" has depth=10 → depthFactor=min(10/5,1)=1 → pNeed=0.55*1+0.3=0.85
+    const aiCross = crossDomainOpps.find((o) => o.targetDomains.includes("AI/机器学习"));
+    if (aiCross) {
+      expect(aiCross.pNeed).toBeCloseTo(0.85, 5);
+    }
+  });
+
+  it("scanExploration has no pAccept penalty", () => {
+    const persona = deepDomainPersona();
+    const scheduler = makeScheduler(config, persona);
+
+    // Compute expected baseline: trustFactor=0.7, bandits mean=(5/6 + 4/6)/2
+    // meanPosterior = (0.8333 + 0.6667) / 2 = 0.75
+    // baseline = 0.5*0.7 + 0.5*0.75 = 0.725
+    const baseline = 0.5 * 0.7 + 0.5 * ((5 / 6 + 4 / 6) / 2);
+
+    // Check both surprise and extend modes
+    for (let ts = 0; ts < 20; ts++) {
+      const opportunities = scheduler.search(persona, {
+        type: "timer",
+        timestamp: ts,
+      });
+      const exploration = opportunities.find((o) => o.type === "exploration");
+      if (!exploration) continue;
+
+      expect(exploration.pAccept).toBeCloseTo(baseline, 5);
+    }
+  });
+
+  it("identify applies 0.5 same-type penalty", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    // Last type is domain_depth → domain_depth gets 0.5 penalty
+    persona.feedbackProfile.recentInsightTypes = ["cross_domain", "domain_depth"];
+
+    const originalPAct = 0.8;
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["A"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: originalPAct },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected).not.toBeNull();
+    expect(selected!.pAct).toBeCloseTo(originalPAct * 0.5, 5);
   });
 });

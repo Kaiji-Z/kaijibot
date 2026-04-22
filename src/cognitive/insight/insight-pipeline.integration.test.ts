@@ -663,7 +663,8 @@ describe("Pipeline: search query building", () => {
       targetDomains: ["AI/机器学习"],
     }));
 
-    expect(query).toContain("AI/机器学习");
+    expect(query).toContain("AI");
+    expect(query).toContain("机器学习");
   });
 
   it("returns empty string when no data at all", () => {

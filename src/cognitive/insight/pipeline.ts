@@ -24,6 +24,7 @@ import {
   createDefaultComposerDeps,
   type ComposerDeps,
 } from "./composer.js";
+import { computeTrigramSimilarity } from "./content-similarity.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/pipeline");
@@ -166,5 +167,46 @@ export function createV2InsightGenerator(
   return async (persona, input) => {
     const result = await pipeline.generateInsight(persona, input, config);
     return result.deliverable;
+  };
+}
+
+// ─── Dual pipeline (v1 + v2 in parallel) ───
+
+export function createDualInsightGenerator(
+  v1Generator: (persona: PersonaTree, input: InsightEngineInput) => Promise<InsightCandidate[]>,
+  v2Generator: (persona: PersonaTree, input: InsightEngineInput) => Promise<InsightCandidate[]>,
+): (persona: PersonaTree, input: InsightEngineInput) => Promise<InsightCandidate[]> {
+  return async (persona, input) => {
+    const [v1Result, v2Result] = await Promise.allSettled([
+      v1Generator(persona, input),
+      v2Generator(persona, input),
+    ]);
+
+    const candidates: InsightCandidate[] = [];
+
+    if (v1Result.status === "fulfilled") {
+      candidates.push(...v1Result.value);
+    } else {
+      log.warn(`v1 generator failed: ${String(v1Result.reason)}`);
+    }
+
+    if (v2Result.status === "fulfilled") {
+      candidates.push(...v2Result.value);
+    } else {
+      log.warn(`v2 generator failed: ${String(v2Result.reason)}`);
+    }
+
+    // Deduplicate by content similarity
+    const deduped: InsightCandidate[] = [];
+    for (const candidate of candidates) {
+      const isDup = deduped.some(
+        (existing) => computeTrigramSimilarity(candidate.content, existing.content) > 0.6,
+      );
+      if (!isDup) deduped.push(candidate);
+    }
+
+    // Sort by compositeScore descending, return top 3
+    deduped.sort((a, b) => b.compositeScore - a.compositeScore);
+    return deduped.slice(0, 3);
   };
 }

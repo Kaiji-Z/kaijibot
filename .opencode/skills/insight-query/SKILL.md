@@ -160,6 +160,54 @@ Structure the report as:
 - [Any issues noticed: repeated topics, failed web searches, etc.]
 ```
 
+## Real-time Pipeline Monitor
+
+A Python script provides real-time 12-step pipeline visualization with color-coded output.
+
+### Script location
+
+- **Standalone (recommended)**: `~/.kaijibot/scripts/cognitive-watch.sh` — self-contained, auto-tails log
+- **Python filter**: `~/.kaijibot/scripts/cognitive-watch.py` — reads from stdin, for replay/custom piping
+- **Ephemeral copies**: `/tmp/kaijibot/cognitive-watch.{sh,py}` (may not survive reboot)
+
+### Usage
+
+```bash
+# Live monitoring — one command, auto-follows today's log
+~/.kaijibot/scripts/cognitive-watch.sh
+
+# Replay a specific day's pipeline (Python version, reads stdin)
+python3 -u ~/.kaijibot/scripts/cognitive-watch.py < /tmp/kaijibot/kaijibot-2026-04-22.log
+
+# In tmux (for persistent monitoring)
+tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
+```
+
+### Pipeline steps displayed
+
+| Step | Label | Color | What it shows |
+|------|-------|-------|---------------|
+| 1 | ⏰ TICK | dim | Timer fire, user count, interval |
+| 2 | 🟢/🔴 GATE | green/red | PRISM gate pass/veto with pNeed, pAccept, pAct |
+| 3 | 🔍 SEARCH | yellow | Number of opportunities found |
+| 4 | 🎯 IDENTIFY | cyan | Selected type (domain_depth/cross_domain/etc), target domains, pAct |
+| 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching results |
+| 6 | 🤖 LLM GEN | magenta | Number of insight candidates generated |
+| 7 | ❌ PARSE FAIL | red | JSON parse errors (rare) |
+| 8 | ⚠️ VERIFY | yellow | Verification failures |
+| 9 | 🚫 DEDUP | magenta | Duplicate detection |
+| 10 | 💡 INSIGHT ✓ | green | Final insight with content preview, source count, domains |
+| 11 | 📨 DELIVERED | green | Successfully sent to feishu |
+| 12 | 🏁 DONE | green/dim | Pipeline completion status |
+
+### Key patterns to watch for
+
+- **`type=domain_depth` every time** → opportunity selection is monopolized, cross_domain never wins
+- **`matchedDomains: (none)`** → web search results don't match user domains, insight has no factual grounding
+- **Same `targetDomains` repeated** → always targeting the same domain
+- **Gate vetoed with low pAct** → normal (PRISM cost gate working)
+- **🚀 SCHEDULER START** → gateway was restarted, check if interval is correct
+
 ## Quality Assessment Rubric
 
 Rate each insight on a 3-level scale:

@@ -607,13 +607,14 @@ describe("buildSearchQuery", () => {
     expect(query).toContain("装饰器模式");
   });
 
-  it("falls back to targetDomains when recentFocus is empty", () => {
+  it("falls back to targetDomains with context suffix when recentFocus is empty", () => {
     const input = makeInput({
       targetDomains: ["kubernetes"],
       recentFocus: [],
     });
     const query = buildSearchQuery(input);
-    expect(query).toBe("kubernetes");
+    expect(query).toContain("kubernetes");
+    expect(query).toContain("最新进展");
   });
 
   it("does not prepend domain name as prefix", () => {
@@ -673,6 +674,29 @@ describe("buildSearchQuery", () => {
     const query = buildSearchQuery(input);
     const matches = query.match(/typescript/gi);
     expect(matches).toHaveLength(1);
+  });
+
+  it("splits compound domain name in fallback query", () => {
+    const input = makeInput({
+      targetDomains: ["AI/机器学习"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("AI");
+    expect(query).toContain("机器学习");
+    expect(query).toContain("最新进展");
+    expect(query).not.toBe("AI/机器学习");
+  });
+
+  it("produces space-separated parts for single domain fallback", () => {
+    const input = makeInput({
+      targetDomains: ["飞书能力探索"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("飞书能力探索");
+    expect(query).toContain("最新进展");
+    expect(query).not.toBe("飞书能力探索");
   });
 });
 
@@ -929,5 +953,52 @@ describe("buildInsightPrompt — pendingQuestions removal", () => {
   it("does not contain 解答悬问 trait", () => {
     const prompt = buildInsightPrompt(makePersona(), makeInput(), [], []);
     expect(prompt).not.toContain("解答悬问");
+  });
+});
+
+describe("buildInsightPrompt — compound domain keyword splitting", () => {
+  it("matches web results by split sub-keywords of compound domain name", () => {
+    const persona = makePersona({
+      domains: {
+        "AI/机器学习": {
+          depth: 4,
+          recurrence: 6,
+          lastMentioned: Date.now(),
+          keyInsights: [],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["AI/机器学习"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "机器学习最新突破", url: "https://example.com", snippet: "深度学习模型优化" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("深度学习模型优化");
+  });
+});
+
+describe("buildInsightPrompt — bigram similarity matching", () => {
+  it("matches web results via bigram similarity for compound keywords", () => {
+    const persona = makePersona({
+      domains: {
+        artificialintelligence: {
+          depth: 3,
+          recurrence: 5,
+          lastMentioned: Date.now(),
+          keyInsights: ["artificial intelligence research"],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["artificialintelligence"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "New breakthroughs in artificial intelligence", url: "https://example.com", snippet: "AI research advances" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
   });
 });

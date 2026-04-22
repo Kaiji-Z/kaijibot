@@ -11,6 +11,7 @@ import {
   collectFragmentsForTurn,
   createV2InsightGenerator,
   createPipelineDeps,
+  createDualInsightGenerator,
 } from "./pipeline.js";
 
 const TEST_MODEL: Model<Api> = {
@@ -712,6 +713,108 @@ describe("createV2InsightGenerator", () => {
     const result = await generator(makePersona(), makeInput());
 
     expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+// ─── createDualInsightGenerator ───
+
+function makeCandidate(overrides: Partial<InsightCandidate>): InsightCandidate {
+  return {
+    id: "c-1",
+    content: "test insight",
+    rationale: "test",
+    targetDomains: [],
+    sourceDomains: [],
+    relevanceScore: 0.5,
+    surpriseScore: 0.5,
+    compositeScore: 0.5,
+    sources: [],
+    verificationStatus: "unverified",
+    ...overrides,
+  };
+}
+
+describe("createDualInsightGenerator", () => {
+  it("merges results from both generators", async () => {
+    const v1 = vi.fn(async () => [
+      makeCandidate({ id: "v1-1", content: "Rust ownership model prevents data races at compile time" }),
+    ]);
+    const v2 = vi.fn(async () => [
+      makeCandidate({ id: "v2-1", content: "WebAssembly enables near-native performance in browsers" }),
+    ]);
+    const dual = createDualInsightGenerator(v1, v2);
+    const result = await dual(makePersona(), makeInput());
+
+    expect(result).toHaveLength(2);
+    const ids = result.map((c) => c.id);
+    expect(ids).toContain("v1-1");
+    expect(ids).toContain("v2-1");
+  });
+
+  it("deduplicates by content similarity", async () => {
+    const v1 = vi.fn(async () => [
+      makeCandidate({ id: "v1-1", content: "TypeScript's type system provides compile-time safety" }),
+    ]);
+    const v2 = vi.fn(async () => [
+      makeCandidate({ id: "v2-1", content: "TypeScript type system provides compile time safety guarantees" }),
+    ]);
+    const dual = createDualInsightGenerator(v1, v2);
+    const result = await dual(makePersona(), makeInput());
+
+    expect(result).toHaveLength(1);
+  });
+
+  it("returns empty when both generators fail", async () => {
+    const v1 = vi.fn(async () => { throw new Error("v1 fail"); });
+    const v2 = vi.fn(async () => { throw new Error("v2 fail"); });
+    const dual = createDualInsightGenerator(v1, v2);
+    const result = await dual(makePersona(), makeInput());
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("continues with v2 when v1 fails", async () => {
+    const v1 = vi.fn(async () => { throw new Error("v1 fail"); });
+    const v2 = vi.fn(async () => [
+      makeCandidate({ id: "v2-1", content: "v2 insight" }),
+    ]);
+    const dual = createDualInsightGenerator(v1, v2);
+    const result = await dual(makePersona(), makeInput());
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("v2-1");
+  });
+
+  it("sorts by compositeScore descending", async () => {
+    const v1 = vi.fn(async () => [
+      makeCandidate({ id: "v1-1", content: "Rust ownership model prevents data races at compile time", compositeScore: 0.5 }),
+    ]);
+    const v2 = vi.fn(async () => [
+      makeCandidate({ id: "v2-1", content: "WebAssembly enables near-native performance in browsers", compositeScore: 0.9 }),
+    ]);
+    const dual = createDualInsightGenerator(v1, v2);
+    const result = await dual(makePersona(), makeInput());
+
+    expect(result[0].compositeScore).toBe(0.9);
+    expect(result[1].compositeScore).toBe(0.5);
+  });
+
+  it("limits to top 3 candidates", async () => {
+    const v1 = vi.fn(async () => [
+      makeCandidate({ id: "v1-1", content: "alpha", compositeScore: 0.9 }),
+      makeCandidate({ id: "v1-2", content: "beta", compositeScore: 0.7 }),
+    ]);
+    const v2 = vi.fn(async () => [
+      makeCandidate({ id: "v2-1", content: "gamma", compositeScore: 0.8 }),
+      makeCandidate({ id: "v2-2", content: "delta", compositeScore: 0.6 }),
+    ]);
+    const dual = createDualInsightGenerator(v1, v2);
+    const result = await dual(makePersona(), makeInput());
+
+    expect(result).toHaveLength(3);
+    expect(result[0].compositeScore).toBe(0.9);
+    expect(result[1].compositeScore).toBe(0.8);
+    expect(result[2].compositeScore).toBe(0.7);
   });
 });
 

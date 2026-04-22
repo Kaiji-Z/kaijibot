@@ -5,6 +5,7 @@ import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insig
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections } from "../insight/cross-domain-mapper.js";
 import { verifyInsight } from "../insight/verification/pipeline.js";
+import { isDuplicateByContent } from "../insight/content-similarity.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/scheduler");
@@ -104,7 +105,7 @@ export class ProactiveScheduler {
       }
 
       if (recentTypes.length > 0 && recentTypes[recentTypes.length - 1] === opp.type) {
-        adjustedPAct *= 0.7;
+        adjustedPAct *= 0.5;
       }
 
       return { ...opp, pAct: adjustedPAct };
@@ -142,6 +143,17 @@ export class ProactiveScheduler {
 
     const candidate = candidates[0] ?? null;
     if (!candidate) return null;
+
+    // Content-level dedup (second pass after domain overlap check)
+    if (candidate && recentInsightContents.length > 0) {
+      if (isDuplicateByContent(candidate.content, recentInsightContents)) {
+        log.info("content dedup: similar to recent insight", {
+          userId: persona.identity?.userId,
+          contentPreview: candidate.content.slice(0, 60),
+        });
+        return null;
+      }
+    }
 
     const verification = verifyInsight({
       content: candidate.content,
@@ -284,7 +296,7 @@ function scanCrossDomain(persona: PersonaTree): Opportunity[] {
   return connections.slice(0, 3).map((conn) => {
     const fromDomain = persona.domains[conn.from];
     const depthFactor = fromDomain ? Math.min(fromDomain.depth / 5, 1) : 0.3;
-    const pNeed = 0.5 * depthFactor + 0.3;
+    const pNeed = 0.55 * depthFactor + 0.3;
 
     return {
       type: "cross_domain" as const,
@@ -313,7 +325,7 @@ function scanDomainDepth(persona: PersonaTree): Opportunity[] {
     .map(([domainName, domain]) => {
       const daysSinceMention = (now - domain.lastMentioned) / (24 * 60 * 60 * 1000);
       const recencyBoost = Math.max(0, 1 - daysSinceMention / 7);
-      const pNeed = 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost;
+      const pNeed = Math.min(0.7, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
 
       return {
         type: "domain_depth" as const,
@@ -409,8 +421,8 @@ function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportuni
       targetDomains: [],
       sourceDomains: [],
       pNeed: 0.55,
-      pAccept: baseline * 0.85,
-      pAct: 0.55 * baseline * 0.85,
+      pAccept: baseline,
+      pAct: 0.55 * baseline,
       metadata: { mode: "surprise" },
     }];
   }
@@ -422,8 +434,8 @@ function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportuni
     targetDomains: [targetDomain],
     sourceDomains: [],
     pNeed: 0.5,
-    pAccept: baseline * 0.8,
-    pAct: 0.5 * baseline * 0.8,
+    pAccept: baseline,
+    pAct: 0.5 * baseline,
     metadata: { mode: "extend" },
   }];
 }

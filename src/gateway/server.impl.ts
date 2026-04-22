@@ -1318,30 +1318,42 @@ export async function startGatewayServer(
         const scanIntervalMs = (cfgAtStart.cognitive?.insight?.sources?.scanIntervalHours ?? 6) * 3600_000;
         infoScanSource = new InfoScanSource(scanIntervalMs);
 
-        // ── V2 pipeline setup ──
+        // ── Insight engine setup ──
         let insightGeneratorOverride: import("../cognitive/scheduler/proactive-scheduler.js").InsightGeneratorFn | undefined;
         let fragmentStoreForDeepScan: import("../cognitive/insight/fragment-store.js").FragmentStore | undefined;
 
-        if (cfgAtStart.cognitive?.insight?.engine === "v2") {
+        const engineMode = cfgAtStart.cognitive?.insight?.engine ?? "dual";
+
+        if (engineMode === "v2" || engineMode === "dual") {
           const { InsightV2Pipeline, createPipelineDeps, createV2InsightGenerator } = await import("../cognitive/insight/pipeline.js");
           const { FragmentStore } = await import("../cognitive/insight/fragment-store.js");
 
           const pipelineDeps = createPipelineDeps(resolveConfigDir());
           fragmentStoreForDeepScan = new FragmentStore(resolveConfigDir());
 
-          const pipeline = new InsightV2Pipeline(
-            pipelineDeps,
-            async (persona, input) => {
-              return generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
-                maxCandidates: 3,
-                timeout: 20_000,
-                systemContext: workspacePersonaContext || undefined,
-              });
-            },
-          );
+          const v1FallbackForV2 = async (persona: import("../cognitive/types.js").PersonaTree, input: import("../cognitive/insight/types.js").InsightEngineInput) => {
+            return generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
+              maxCandidates: 3,
+              timeout: 20_000,
+              systemContext: workspacePersonaContext || undefined,
+            });
+          };
 
-          insightGeneratorOverride = createV2InsightGenerator(pipeline, cfgAtStart);
-          log.info("cognitive insight engine: v2 (blind spot detection) active");
+          const pipeline = new InsightV2Pipeline(pipelineDeps, v1FallbackForV2);
+          const v2Generator = createV2InsightGenerator(pipeline, cfgAtStart);
+
+          if (engineMode === "v2") {
+            insightGeneratorOverride = v2Generator;
+            log.info("cognitive insight engine: v2 (blind spot detection) active");
+          } else {
+            const { createDualInsightGenerator } = await import("../cognitive/insight/pipeline.js");
+            insightGeneratorOverride = createDualInsightGenerator(v1FallbackForV2, v2Generator);
+            log.info("cognitive insight engine: dual (v1 external + v2 internal) active");
+          }
+        }
+
+        if (engineMode === "v1") {
+          log.info("cognitive insight engine: v1 (external search) active");
         }
 
         const proactiveScheduler = new ProactiveScheduler(
@@ -1433,7 +1445,7 @@ export async function startGatewayServer(
         );
 
         // Deep-scan timer for v2 crystallization (every 4-8 hours)
-        if (fragmentStoreForDeepScan && cfgAtStart.cognitive?.insight?.engine === "v2") {
+        if (fragmentStoreForDeepScan && (engineMode === "v2" || engineMode === "dual")) {
           const { crystallize, createCrystallizationDepsFromStore } = await import("../cognitive/insight/crystallization.js");
           const deepScanIntervalMs = (4 + Math.random() * 4) * 3600_000; // 4-8h with jitter
           const deepScanTimer = setInterval(async () => {
