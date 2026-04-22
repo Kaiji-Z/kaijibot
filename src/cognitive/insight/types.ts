@@ -48,6 +48,7 @@ export type InsightCandidate = {
   compositeScore: number;
   sources: Array<{ url: string; title: string; credibility: number }>;
   verificationStatus: "unverified" | "partial" | "verified" | "contradicted";
+  source?: "v1" | "v2";
 };
 
 /** Verification result from the pipeline */

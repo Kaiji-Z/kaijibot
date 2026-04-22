@@ -167,6 +167,15 @@ export async function assessQuality(
   const composite = computeComposite({ structuralNovelty, actionability, emotionalReadiness, nonObviousness });
   const verdict = computeQualityVerdict(composite);
 
+  log.info("quality gate assessed", {
+    verdict,
+    composite: composite.toFixed(2),
+    structuralNovelty: structuralNovelty.toFixed(2),
+    actionability: actionability.toFixed(2),
+    nonObviousness: nonObviousness.toFixed(2),
+    blindSpot: candidate.blindSpot.slice(0, 60),
+  });
+
   return { structuralNovelty, actionability, emotionalReadiness, nonObviousness, composite, verdict };
 }
 

@@ -67,15 +67,13 @@ export class InsightV2Pipeline {
     const userId = persona.identity?.userId;
     if (!userId) return { deliverable: [], parked: [] };
 
-    // Cold start check
     const fragments = await this.deps.loadFragments(userId);
     if (fragments.length < COLD_START_THRESHOLD) {
-      log.debug(`cold start for ${userId}: ${fragments.length} fragments, falling back to v1`);
+      log.info("v2 pipeline: cold start", { userId, fragmentCount: fragments.length, fallback: "v1" });
       const v1Candidates = await this.v1Fallback(persona, input);
       return { deliverable: v1Candidates, parked: [] };
     }
 
-    // Step 1: Crystallize
     const blindSpots = await crystallize(
       userId,
       persona,
@@ -83,9 +81,9 @@ export class InsightV2Pipeline {
       this.deps.crystallization,
       "signal" as CrystallizationMode,
     );
+    log.info("v2 pipeline: crystallized", { userId, blindSpotCount: blindSpots.length });
     if (blindSpots.length === 0) return { deliverable: [], parked: [] };
 
-    // Step 2: Quality gate + compose
     const deliverable: InsightCandidate[] = [];
     const parked: PipelineResult["parked"] = [];
 
@@ -93,22 +91,25 @@ export class InsightV2Pipeline {
       try {
         const assessment = await assessQuality(bs, persona, config, this.deps.qualityGate);
 
-        if (assessment.verdict === "discard") {
-          log.debug(`discarded blind spot: ${bs.blindSpot.slice(0, 50)}`);
-          continue;
-        }
+        log.info("v2 pipeline: quality gate", {
+          verdict: assessment.verdict,
+          composite: assessment.composite,
+          blindSpot: bs.blindSpot.slice(0, 60),
+        });
+
+        if (assessment.verdict === "discard") continue;
 
         if (assessment.verdict === "park") {
           parked.push({ candidate: bs, assessment });
-          log.debug(
-            `parked blind spot (composite: ${assessment.composite.toFixed(2)}): ${bs.blindSpot.slice(0, 50)}`,
-          );
           continue;
         }
 
-        // verdict === "deliver"
         const insight = await composeInsight(bs, persona, config, this.deps.composer);
-        if (insight) deliverable.push(insight);
+        if (insight) {
+          insight.source = "v2";
+          deliverable.push(insight);
+          log.info("v2 pipeline: insight composed", { contentPreview: insight.content.slice(0, 80) });
+        }
       } catch (err) {
         log.warn(`error processing blind spot: ${String(err)}`);
         continue;
@@ -182,21 +183,17 @@ export function createDualInsightGenerator(
       v2Generator(persona, input),
     ]);
 
-    const candidates: InsightCandidate[] = [];
+    const v1Candidates = v1Result.status === "fulfilled" ? v1Result.value : [];
+    const v2Candidates = v2Result.status === "fulfilled" ? v2Result.value : [];
 
-    if (v1Result.status === "fulfilled") {
-      candidates.push(...v1Result.value);
-    } else {
-      log.warn(`v1 generator failed: ${String(v1Result.reason)}`);
-    }
+    if (v1Result.status === "rejected") log.warn(`v1 generator failed: ${String(v1Result.reason)}`);
+    if (v2Result.status === "rejected") log.warn(`v2 generator failed: ${String(v2Result.reason)}`);
 
-    if (v2Result.status === "fulfilled") {
-      candidates.push(...v2Result.value);
-    } else {
-      log.warn(`v2 generator failed: ${String(v2Result.reason)}`);
-    }
+    for (const c of v1Candidates) c.source = "v1";
+    for (const c of v2Candidates) c.source = "v2";
 
-    // Deduplicate by content similarity
+    const candidates = [...v1Candidates, ...v2Candidates];
+
     const deduped: InsightCandidate[] = [];
     for (const candidate of candidates) {
       const isDup = deduped.some(
@@ -205,7 +202,13 @@ export function createDualInsightGenerator(
       if (!isDup) deduped.push(candidate);
     }
 
-    // Sort by compositeScore descending, return top 3
+    log.info("dual pipeline: merged", {
+      v1: v1Candidates.length,
+      v2: v2Candidates.length,
+      total: candidates.length,
+      deduped: deduped.length,
+    });
+
     deduped.sort((a, b) => b.compositeScore - a.compositeScore);
     return deduped.slice(0, 3);
   };

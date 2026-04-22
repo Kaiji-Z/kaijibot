@@ -168,6 +168,8 @@ Respond with ONLY the insight text (no JSON, no markdown, no code fences).`;
     return null;
   }
 
+  log.info("insight composed", { contentPreview: text.slice(0, 80), domains: candidate.domains });
+
   return {
     id: randomUUID(),
     content: text,

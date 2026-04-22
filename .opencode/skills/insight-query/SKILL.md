@@ -26,9 +26,10 @@ Three data sources, queried in order:
    - `pendingQuestions`, `recentFocus`
 
 2. **Gateway logs** — `/tmp/kaijibot/kaijibot-YYYY-MM-DD.log` (JSONL, daily rotation)
-   - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, insight output
-   - Subsystem `"cognitive/insight-llm"` — web search calls, domain matching, LLM generation
-   - Log line format: `{"0":"{\"subsystem\":\"cognitive/...\"}","1":{...meta},"2":"message","time":"ISO"}`
+    - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, insight output with source tag
+    - Subsystem `"cognitive/insight"` — v2 pipeline: crystallization, quality gate, composer, dual merge
+    - Subsystem `"cognitive/insight-llm"` — v1 web search, domain matching, LLM generation
+    - Log line format: `{"0":"{\"subsystem\":\"cognitive/...\"}","1":{...meta},"2":"message","time":"ISO"}`
 
 3. **Source code** (for reference, not routine queries)
    - `src/cognitive/insight/llm-engine.ts` — LLM insight generation + web search
@@ -92,7 +93,7 @@ TARGET_TIME="2026-04-18T02:20"  # adjust per insight
 LOG_FILE="/tmp/kaijibot/kaijibot-2026-04-18.log"
 
 # Full pipeline trace: gate → search → identify → web search → LLM → insight generated
-grep -E "(gate |search |identify |insight generated|web search|domain matching|gate vetoed)" "$LOG_FILE" | \
+grep -E "(gate |search |identify |insight generated|web search|domain matching|gate vetoed|crystallized|quality gate|dual pipeline|merged)" "$LOG_FILE" | \
   grep -A0 -B0 "cognitive/" | \
   awk -v target="$TARGET_TIME" '{
     # Filter for entries within ~2 minutes of target
@@ -148,7 +149,8 @@ Structure the report as:
 #### 洞察 #[N]
 - **内容**: [text]
 - **时间**: [timestamp]
-- **Pipeline**: [event source] → gate (pAct=X.XX) → search (N opportunities) → identify ([type], targetDomains=[...]) → resolve
+- **来源**: [v1/v2]
+- **Pipeline**: [event source] → gate (pAct=X.XX) → search (N opportunities) → identify ([type]) → resolve
 - **Web search**: [triggered/skipped] — query: "...", N results, matched domains: [...]
 - **质量评估**: [high/medium/low] — [1-sentence rationale]
 
@@ -156,13 +158,18 @@ Structure the report as:
 - 通过: N / 否决: N (通过率 XX%)
 - 平均 pAct: X.XX
 
+### 管线对比 (v1 vs v2)
+- v1 洞察: N 条 (XX%)
+- v2 洞察: N 条 (XX%)
+- 去重拦截: N 条
+
 ### 建议改进 (如有)
 - [Any issues noticed: repeated topics, failed web searches, etc.]
 ```
 
 ## Real-time Pipeline Monitor
 
-A Python script provides real-time 12-step pipeline visualization with color-coded output.
+A Python script provides real-time 15-step pipeline visualization with color-coded output.
 
 ### Script location
 
@@ -190,13 +197,16 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 | 1 | ⏰ TICK | dim | Timer fire, user count, interval |
 | 2 | 🟢/🔴 GATE | green/red | PRISM gate pass/veto with pNeed, pAccept, pAct |
 | 3 | 🔍 SEARCH | yellow | Number of opportunities found |
-| 4 | 🎯 IDENTIFY | cyan | Selected type (domain_depth/cross_domain/etc), target domains, pAct |
-| 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching results |
-| 6 | 🤖 LLM GEN | magenta | Number of insight candidates generated |
-| 7 | ❌ PARSE FAIL | red | JSON parse errors (rare) |
+| 4 | 🎯 IDENTIFY | cyan | Selected type, target domains, pAct |
+| 4b | 🧊 CRYSTAL | cyan | v2: Crystallized blind spot count + mode |
+| 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite score |
+| 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching |
+| 6 | 🤖 LLM GEN | magenta | v1: Number of insight candidates |
+| 6b | 🔀 MERGE | cyan | Dual: v1=N v2=N total=N deduped=N |
+| 7 | ❌ PARSE FAIL | red | JSON parse errors |
 | 8 | ⚠️ VERIFY | yellow | Verification failures |
 | 9 | 🚫 DEDUP | magenta | Duplicate detection |
-| 10 | 💡 INSIGHT ✓ | green | Final insight with content preview, source count, domains |
+| 10 | 💡 INSIGHT ✓ | green | Final insight with [v1]/[v2] source tag, content preview |
 | 11 | 📨 DELIVERED | green | Successfully sent to feishu |
 | 12 | 🏁 DONE | green/dim | Pipeline completion status |
 
@@ -207,6 +217,10 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 - **Same `targetDomains` repeated** → always targeting the same domain
 - **Gate vetoed with low pAct** → normal (PRISM cost gate working)
 - **🚀 SCHEDULER START** → gateway was restarted, check if interval is correct
+- **v2 `[v2]` insights appearing** → dual pipeline working, blind spot detection producing deliverable insights
+- **v2 cold start** → fragment count < 5, v2 falls back to v1
+- **🔀 MERGE v2=0 consistently** → v2 pipeline never produces candidates, check fragment count and crystallization
+- **Quality gate verdict=discard every time** → blind spots not novel enough, consider lowering thresholds
 
 ## Quality Assessment Rubric
 

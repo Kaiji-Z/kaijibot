@@ -222,6 +222,7 @@ export class ProactiveScheduler {
       sourceCount: insight.sources.length,
       hasWebSources: insight.sources.length > 0,
       targetDomains: insight.targetDomains,
+      source: insight.source ?? "v1",
     });
 
     await this.callbacks.onInsightReady(userId, insight);

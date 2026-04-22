@@ -792,6 +792,7 @@ function parseLLMInsights(
         compositeScore: 0,
         sources: [],
         verificationStatus: "unverified" as const,
+        source: "v1" as const,
       }))
       .filter((c: InsightCandidate) => c.content.length > 0 && isSubstantiveContent(c.content));
   } catch (err) {

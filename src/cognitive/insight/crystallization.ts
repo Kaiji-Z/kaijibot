@@ -115,6 +115,10 @@ export async function crystallize(
       }
     }
 
+    if (candidates.length > 0) {
+      log.info("crystallized blind spots", { userId, count: candidates.length, mode });
+    }
+
     return candidates;
   } catch (err) {
     log.warn("crystallize failed", { error: String(err) });
