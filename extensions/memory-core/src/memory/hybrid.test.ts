@@ -95,4 +95,210 @@ describe("memory hybrid helpers", () => {
     expect(merged[0]?.snippet).toBe("kw-a");
     expect(merged[0]?.score).toBeCloseTo(0.5 * 0.2 + 0.5 * 1.0);
   });
+
+  describe("semantic dedup", () => {
+    it("filters near-duplicate results when dedup enabled", async () => {
+      const merged = await mergeHybridResults({
+        vectorWeight: 1,
+        textWeight: 0,
+        vector: [
+          {
+            id: "a",
+            path: "memory/a.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet:
+              "KaijiBot is an AI assistant that proactively sends cognitive insights to users via Feishu",
+            vectorScore: 0.9,
+          },
+          {
+            id: "b",
+            path: "memory/b.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet:
+              "KaijiBot is an AI assistant that proactively sends cognitive insights to users via Feishu messaging",
+            vectorScore: 0.8,
+          },
+        ],
+        keyword: [],
+        semanticDedup: { enabled: true, threshold: 0.85 },
+      });
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0]?.path).toBe("memory/a.md");
+    });
+
+    it("preserves diverse results when dedup enabled", async () => {
+      const merged = await mergeHybridResults({
+        vectorWeight: 1,
+        textWeight: 0,
+        vector: [
+          {
+            id: "a",
+            path: "memory/a.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: "TypeScript strict mode catches bugs at compile time",
+            vectorScore: 0.9,
+          },
+          {
+            id: "b",
+            path: "memory/b.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: "Rust ownership model prevents memory leaks at runtime",
+            vectorScore: 0.8,
+          },
+        ],
+        keyword: [],
+        semanticDedup: { enabled: true, threshold: 0.85 },
+      });
+
+      expect(merged).toHaveLength(2);
+    });
+
+    it("does not dedup when disabled (default)", async () => {
+      const merged = await mergeHybridResults({
+        vectorWeight: 1,
+        textWeight: 0,
+        vector: [
+          {
+            id: "a",
+            path: "memory/a.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: "KaijiBot is an AI assistant for Feishu",
+            vectorScore: 0.9,
+          },
+          {
+            id: "b",
+            path: "memory/b.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: "KaijiBot is an AI assistant for Feishu users",
+            vectorScore: 0.8,
+          },
+        ],
+        keyword: [],
+      });
+
+      expect(merged).toHaveLength(2);
+    });
+
+    it("works with both dedup and MMR enabled", async () => {
+      const merged = await mergeHybridResults({
+        vectorWeight: 1,
+        textWeight: 0,
+        vector: [
+          {
+            id: "a",
+            path: "memory/a.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet:
+              "KaijiBot proactively sends cognitive insights to users via Feishu",
+            vectorScore: 0.95,
+          },
+          {
+            id: "b",
+            path: "memory/b.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet:
+              "KaijiBot proactively sends cognitive insights to users via Feishu chat",
+            vectorScore: 0.9,
+          },
+          {
+            id: "c",
+            path: "memory/c.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: "Rust ownership prevents data races at compile time",
+            vectorScore: 0.7,
+          },
+        ],
+        keyword: [],
+        semanticDedup: { enabled: true, threshold: 0.85 },
+        mmr: { enabled: true, lambda: 0.5 },
+      });
+
+      expect(merged.length).toBeLessThanOrEqual(2);
+      expect(merged.length).toBeGreaterThanOrEqual(1);
+      const paths = merged.map((r) => r.path);
+      if (merged.length === 2) {
+        expect(paths).toContain("memory/c.md");
+      }
+    });
+
+    it("respects custom threshold", async () => {
+      const snippet1 = "the cat sat on the mat";
+      const snippet2 = "the dog sat on the mat";
+
+      const mergedLow = await mergeHybridResults({
+        vectorWeight: 1,
+        textWeight: 0,
+        vector: [
+          {
+            id: "a",
+            path: "memory/a.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: snippet1,
+            vectorScore: 0.9,
+          },
+          {
+            id: "b",
+            path: "memory/b.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: snippet2,
+            vectorScore: 0.8,
+          },
+        ],
+        keyword: [],
+        semanticDedup: { enabled: true, threshold: 0.5 },
+      });
+
+      const mergedHigh = await mergeHybridResults({
+        vectorWeight: 1,
+        textWeight: 0,
+        vector: [
+          {
+            id: "a",
+            path: "memory/a.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: snippet1,
+            vectorScore: 0.9,
+          },
+          {
+            id: "b",
+            path: "memory/b.md",
+            startLine: 1,
+            endLine: 2,
+            source: "memory",
+            snippet: snippet2,
+            vectorScore: 0.8,
+          },
+        ],
+        keyword: [],
+        semanticDedup: { enabled: true, threshold: 0.99 },
+      });
+
+      expect(mergedLow.length).toBeLessThanOrEqual(mergedHigh.length);
+    });
+  });
 });

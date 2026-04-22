@@ -22,6 +22,7 @@ import {
   resolveShortTermRecallStorePath,
   __testing,
 } from "./short-term-promotion.js";
+import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 
 describe("short-term promotion", () => {
   let fixtureRoot = "";
@@ -1626,7 +1627,7 @@ describe("short-term promotion", () => {
       expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
     });
 
-    it("does not treat ordinary candidate notes with daily-memory evidence as contaminated", () => {
+    it("treats ordinary candidate notes with daily-memory evidence as contaminated via exclusion rules", () => {
       const snippet = [
         "Candidate: move backups weekly",
         "confidence: 0.76",
@@ -1634,7 +1635,7 @@ describe("short-term promotion", () => {
         "status: staged",
         "recalls: 3",
       ].join("\n");
-      expect(isContaminatedDreamingSnippet(snippet)).toBe(false);
+      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
     });
 
     it("treats transcript-style dreaming prompt echoes as contaminated", () => {
@@ -1646,5 +1647,96 @@ describe("short-term promotion", () => {
       expect(isContaminatedDreamingSnippet("")).toBe(false);
       expect(isContaminatedDreamingSnippet("   ")).toBe(false);
     });
+
+    it("rejects code lines via exclusion rules", () => {
+      expect(isContaminatedDreamingSnippet("function foo() {")).toBe(true);
+    });
+
+    it("rejects file paths via exclusion rules", () => {
+      expect(isContaminatedDreamingSnippet("src/bar.ts has a bug")).toBe(true);
+    });
+
+    it("rejects git info via exclusion rules", () => {
+      expect(isContaminatedDreamingSnippet("commit abc123 merged")).toBe(true);
+    });
+
+    it("rejects derivable info via exclusion rules", () => {
+      expect(isContaminatedDreamingSnippet("the file exists in the project")).toBe(true);
+    });
+
+    it("rejects ephemeral state via exclusion rules", () => {
+      expect(isContaminatedDreamingSnippet("currently running task")).toBe(true);
+    });
+
+    it("allows legitimate user preference content", () => {
+      expect(isContaminatedDreamingSnippet("User prefers dark mode")).toBe(false);
+    });
+
+    it("allows project event content", () => {
+      expect(isContaminatedDreamingSnippet("Project migrated to v2 on 2026-03-01")).toBe(false);
+    });
+
+    it("allows feedback content", () => {
+      expect(isContaminatedDreamingSnippet("Feedback: always check docs before answering")).toBe(false);
+    });
+  });
+});
+
+describe("promotion semantic dedup", () => {
+  it("keeps only the highest-scored item from a near-duplicate group", () => {
+    const items: DedupableItem[] = [
+      { id: "a", score: 0.9, content: "User prefers dark mode for all IDE configurations" },
+      { id: "b", score: 0.8, content: "User prefers dark mode for all IDE configurations" },
+      { id: "c", score: 0.7, content: "User prefers dark mode for all IDE configurations" },
+    ];
+    const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe("a");
+    expect(result[0]!.mergedFrom).toEqual(["b", "c"]);
+  });
+
+  it("keeps all items when content is unique", () => {
+    const items: DedupableItem[] = [
+      { id: "a", score: 0.9, content: "User prefers dark mode for all IDE configurations" },
+      { id: "b", score: 0.85, content: "Project uses TypeScript strict mode with no implicit any" },
+      { id: "c", score: 0.8, content: "Team follows trunk-based development with short-lived branches" },
+    ];
+    const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("handles mixed groups: some dedup, some unique", () => {
+    const items: DedupableItem[] = [
+      { id: "a", score: 0.9, content: "User prefers dark mode for all IDE configurations and editor settings" },
+      { id: "b", score: 0.8, content: "User prefers dark mode for all IDE configurations and editor settings" },
+      { id: "c", score: 0.85, content: "Project uses TypeScript strict mode with no implicit any" },
+      { id: "d", score: 0.7, content: "Team follows trunk-based development with short-lived feature branches" },
+      { id: "e", score: 0.75, content: "Team follows trunk-based development with short-lived feature branches" },
+    ];
+    const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.id)).toEqual(["a", "c", "e"]);
+    expect(result.find((r) => r.id === "a")!.mergedFrom).toEqual(["b"]);
+    expect(result.find((r) => r.id === "e")!.mergedFrom).toEqual(["d"]);
+  });
+
+  it("returns all items when dedup is disabled", () => {
+    const items: DedupableItem[] = [
+      { id: "a", score: 0.9, content: "User prefers dark mode for all IDE configurations" },
+      { id: "b", score: 0.8, content: "User prefers dark mode for all IDE configurations" },
+    ];
+    const result = deduplicateBySimilarity(items, { enabled: false, threshold: 0.85 });
+    expect(result).toHaveLength(2);
+  });
+
+  it("works with promotion-candidate-like IDs", () => {
+    const items: DedupableItem[] = [
+      { id: "memory/2026-04-03.md:1:0", score: 0.95, content: "Always use the Happy Together calendar for flights and hotel reservations" },
+      { id: "memory/2026-04-04.md:3:1", score: 0.88, content: "Always use the Happy Together calendar for flights and hotel reservations" },
+    ];
+    const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe("memory/2026-04-03.md:1:0");
   });
 });
