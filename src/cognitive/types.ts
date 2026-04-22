@@ -1,3 +1,5 @@
+import type { BlindSpotCandidate, ParkedBlindSpot } from "./insight/fragment-types.js";
+
 // Conversation mode — determines agent behavior
 export type CognitiveMode = "task" | "insight" | "hybrid" | "proactive";
 
@@ -134,6 +136,8 @@ export type PersonaTree = {
   rapport: RapportMetrics;
   domainGraph?: LearnedDomainGraph;
   moodHistory: MoodSnapshot[];
+  activeBlindSpots?: BlindSpotCandidate[];
+  parkedBlindSpots?: ParkedBlindSpot[];
   domainBlacklist: string[];
   lifecycle: UserLifecycle;
   calibrationHistory: CalibrationRecord[];
