@@ -1600,4 +1600,51 @@ describe("short-term promotion", () => {
       }),
     ).toEqual(expect.arrayContaining(["障害対応", "ルーター", "バックアップ", "路由器", "备份"]));
   });
+
+  describe("isContaminatedDreamingSnippet", () => {
+    const { isContaminatedDreamingSnippet } = __testing;
+
+    it("treats diff-prefixed dreaming snippets as contaminated", () => {
+      const snippet = [
+        "@@ -1,1 - Candidate: consolidate async patterns",
+        "confidence: 0.78",
+        "evidence: memory/.dreams/session-corpus/2026-04-10.md:3-5",
+        "status: staged",
+        "recalls: 4",
+      ].join("\n");
+      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+    });
+
+    it("treats bracket-prefixed dreaming snippets as contaminated", () => {
+      const snippet = [
+        "([ Candidate: move backup strategy to weekly rotation",
+        "confidence: 0.76",
+        "evidence: memory/.dreams/session-corpus/2026-04-08.md:1-1",
+        "status: staged",
+        "recalls: 3",
+      ].join("\n");
+      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+    });
+
+    it("does not treat ordinary candidate notes with daily-memory evidence as contaminated", () => {
+      const snippet = [
+        "Candidate: move backups weekly",
+        "confidence: 0.76",
+        "evidence: memory/2026-04-08.md:1-1",
+        "status: staged",
+        "recalls: 3",
+      ].join("\n");
+      expect(isContaminatedDreamingSnippet(snippet)).toBe(false);
+    });
+
+    it("treats transcript-style dreaming prompt echoes as contaminated", () => {
+      const snippet = "[main/dreaming-narrative-light.jsonl#L1] User: Write a dream diary entry from these memory fragments:";
+      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+    });
+
+    it("returns false for empty or whitespace-only snippets", () => {
+      expect(isContaminatedDreamingSnippet("")).toBe(false);
+      expect(isContaminatedDreamingSnippet("   ")).toBe(false);
+    });
+  });
 });

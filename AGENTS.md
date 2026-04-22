@@ -1,8 +1,12 @@
-# KaijiBot Simplify — Repository Guidelines
+# KaijiBot — Repository Guidelines
 
-This is a simplified fork of [OpenClaw](https://github.com/openclaw/openclaw), enhanced with a **proactive cognitive AI layer**. Targeting Chinese users with Feishu + Z.AI (智谱 GLM). The upstream AGENTS.md has been adapted; only guidance relevant to this fork is kept.
+KaijiBot is an independent project — a proactive cognitive AI assistant targeting Chinese users with Feishu + Z.AI (智谱 GLM). Originally forked from [OpenClaw](https://github.com/openclaw/openclaw), now developed independently with its own cognitive layer, architecture, and direction.
 
-- Repo: fork of `https://github.com/openclaw/openclaw`, upstream synced from `https://gitee.com/kaiji1126/kaijibot`
+- Repo: independent project, originally forked from [OpenClaw](https://github.com/openclaw/openclaw)
+  - Main (GitHub): `https://github.com/Kaiji-Z/kaijibot`
+  - Backup (Gitee): `https://gitee.com/kaiji1126/kaijibot`
+  - Upstream (GitHub): `https://github.com/openclaw/openclaw`
+  - Upstream mirror (Gitee): `https://gitee.com/kaiji1126/openclaw` (manual mirror, squash history)
 - In chat replies, file references must be repo-root relative only (e.g. `src/cli/index.ts:80`); never absolute paths or `~/...`.
 
 ## Project Structure
@@ -190,9 +194,16 @@ Shared:
 ## Syncing Upstream
 
 ```bash
-git remote add upstream https://gitee.com/kaiji1126/kaijibot
+git remote add upstream https://github.com/openclaw/openclaw
 git fetch upstream
 git merge upstream/main
+```
+
+Or use the Gitee mirror (squash history, no individual commits):
+```bash
+git remote add openclaw https://gitee.com/kaiji1126/openclaw
+git fetch openclaw
+git merge openclaw/main
 ```
 
 Core code (`src/`) is fully compatible; merge conflicts should be rare. The cognitive layer (`src/cognitive/`) is unique to this fork and lives in separate files — it does not conflict with upstream merges.
