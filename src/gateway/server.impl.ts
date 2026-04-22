@@ -1318,6 +1318,32 @@ export async function startGatewayServer(
         const scanIntervalMs = (cfgAtStart.cognitive?.insight?.sources?.scanIntervalHours ?? 6) * 3600_000;
         infoScanSource = new InfoScanSource(scanIntervalMs);
 
+        // ── V2 pipeline setup ──
+        let insightGeneratorOverride: import("../cognitive/scheduler/proactive-scheduler.js").InsightGeneratorFn | undefined;
+        let fragmentStoreForDeepScan: import("../cognitive/insight/fragment-store.js").FragmentStore | undefined;
+
+        if (cfgAtStart.cognitive?.insight?.engine === "v2") {
+          const { InsightV2Pipeline, createPipelineDeps, createV2InsightGenerator } = await import("../cognitive/insight/pipeline.js");
+          const { FragmentStore } = await import("../cognitive/insight/fragment-store.js");
+
+          const pipelineDeps = createPipelineDeps(resolveConfigDir());
+          fragmentStoreForDeepScan = new FragmentStore(resolveConfigDir());
+
+          const pipeline = new InsightV2Pipeline(
+            pipelineDeps,
+            async (persona, input) => {
+              return generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
+                maxCandidates: 3,
+                timeout: 20_000,
+                systemContext: workspacePersonaContext || undefined,
+              });
+            },
+          );
+
+          insightGeneratorOverride = createV2InsightGenerator(pipeline, cfgAtStart);
+          log.info("cognitive insight engine: v2 (blind spot detection) active");
+        }
+
         const proactiveScheduler = new ProactiveScheduler(
           {
             minIntervalHours: cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5,
@@ -1373,12 +1399,13 @@ export async function startGatewayServer(
             },
           },
           {
-            insightGenerator: async (persona, input, options) =>
-              generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
-                maxCandidates: options?.maxCandidates,
-                timeout: 20_000,
-                systemContext: workspacePersonaContext || undefined,
-              }),
+            insightGenerator: insightGeneratorOverride
+              ?? (async (persona, input, options) =>
+                generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
+                  maxCandidates: options?.maxCandidates,
+                  timeout: 20_000,
+                  systemContext: workspacePersonaContext || undefined,
+                })),
           },
         );
 
@@ -1404,6 +1431,32 @@ export async function startGatewayServer(
           async () => (await cognitiveStore.listUserIds("main")).filter((id) => !id.startsWith("kaijibot-")),
           schedulerIntervalMs,
         );
+
+        // Deep-scan timer for v2 crystallization (every 4-8 hours)
+        if (fragmentStoreForDeepScan && cfgAtStart.cognitive?.insight?.engine === "v2") {
+          const { crystallize, createCrystallizationDepsFromStore } = await import("../cognitive/insight/crystallization.js");
+          const deepScanIntervalMs = (4 + Math.random() * 4) * 3600_000; // 4-8h with jitter
+          const deepScanTimer = setInterval(async () => {
+            const userIds = (await cognitiveStore.listUserIds("main")).filter(id => !id.startsWith("kaijibot-"));
+            for (const userId of userIds) {
+              try {
+                const persona = await cognitiveStore.load("main", userId);
+                if (!persona) continue;
+                const crystDeps = createCrystallizationDepsFromStore(fragmentStoreForDeepScan!);
+                const candidates = await crystallize(userId, persona, cfgAtStart, crystDeps, "deep_scan");
+                if (candidates.length > 0) {
+                  persona.activeBlindSpots = [...(persona.activeBlindSpots ?? []), ...candidates].slice(-10);
+                  await cognitiveStore.save("main", userId, persona);
+                  log.info(`deep scan crystallized ${candidates.length} blind spot(s) for ${userId}`);
+                }
+              } catch (e) {
+                log.warn(`deep scan failed for ${userId}: ${String(e)}`);
+              }
+            }
+          }, deepScanIntervalMs);
+          deepScanTimer.unref();
+        }
+
         log.info(`cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`);
       } catch (err) {
         log.warn(`cognitive scheduler skipped: ${String(err)}`);

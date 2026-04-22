@@ -36,6 +36,37 @@ export { scoreSerendipity } from "./insight/serendipity-scorer.js";
 export { verifyInsight } from "./insight/verification/pipeline.js";
 export type { InsightEngineInput, InsightCandidate, VerificationResult } from "./insight/types.js";
 
+// Insight v2 module
+export { FragmentStore } from "./insight/fragment-store.js";
+export { collectFragments, shouldSkipTurn, createDefaultFragmentCollectorDeps } from "./insight/fragment-collector.js";
+export type { FragmentCollectorDeps } from "./insight/fragment-collector.js";
+export { assessQuality, createDefaultQualityGateDeps } from "./insight/quality-gate.js";
+export type { QualityGateDeps } from "./insight/quality-gate.js";
+export { crystallize, createCrystallizationDepsFromStore } from "./insight/crystallization.js";
+export type { CrystallizationDeps, CrystallizationMode } from "./insight/crystallization.js";
+export { composeInsight, createDefaultComposerDeps } from "./insight/composer.js";
+export type { ComposerDeps } from "./insight/composer.js";
+export { InsightV2Pipeline, createPipelineDeps, createV2InsightGenerator, collectFragmentsForTurn } from "./insight/pipeline.js";
+export type { PipelineDeps, PipelineResult } from "./insight/pipeline.js";
+export type {
+  Fragment,
+  FragmentKind,
+  FragmentCluster,
+  BlindSpotCandidate,
+  QualityAssessment,
+  ParkedBlindSpot,
+  FragmentStoreFile,
+} from "./insight/fragment-types.js";
+export {
+  QUALITY_PILLAR_WEIGHTS,
+  computeQualityVerdict,
+  computeComposite,
+  isFragmentExpired,
+  createDefaultFragment,
+  computeFragmentDecay,
+  FRAGMENT_TTL_MS,
+} from "./insight/fragment-types.js";
+
 // Scheduler module
 export { ProactiveScheduler } from "./scheduler/proactive-scheduler.js";
 export type { InsightGeneratorFn } from "./scheduler/proactive-scheduler.js";

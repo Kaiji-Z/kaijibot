@@ -2237,6 +2237,23 @@ export async function runEmbeddedAttempt(
               const signals = extractImplicitSignals(userText, undefined, undefined);
               const feedbackUpdated = processImplicitFeedback(pruned, signals);
               await store.save("main", userId, feedbackUpdated);
+
+              try {
+                const { collectFragments, createDefaultFragmentCollectorDeps } = await import("../../../cognitive/insight/fragment-collector.js");
+                const { FragmentStore } = await import("../../../cognitive/insight/fragment-store.js");
+
+                const fragStore = new FragmentStore(configDir);
+                const fragDeps = createDefaultFragmentCollectorDeps();
+                const newFragments = await collectFragments(
+                  userText, assistantText, feedbackUpdated, params.config, fragDeps,
+                );
+                for (const frag of newFragments) {
+                  frag.userId = userId;
+                  await fragStore.addFragment(userId, frag);
+                }
+              } catch (fragErr) {
+                log.debug(`fragment collection skipped: ${String(fragErr)}`);
+              }
             } catch (err) {
               log.debug(`cognitive write-path skipped: ${String(err)}`);
             }
