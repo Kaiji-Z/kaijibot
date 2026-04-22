@@ -128,7 +128,6 @@ export class ProactiveScheduler {
           ? opportunity.targetDomains
           : Object.keys(persona.domains),
         recentFocus: persona.recentFocus,
-        pendingQuestions: persona.pendingQuestions,
         trustScore: persona.rapport.trustScore,
         recentInsightIds,
         recentInsightContents,

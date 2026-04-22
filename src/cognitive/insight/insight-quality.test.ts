@@ -76,7 +76,6 @@ function makeInput(targetDomains: string[]): InsightEngineInput {
   return {
     targetDomains,
     recentFocus: ["认知层洞察质量优化", "Persona提取过滤器", "LLM prompt调试"],
-    pendingQuestions: ["如何让洞察更个性化而非模板化？"],
     trustScore: 0.85,
     recentInsightIds: ["id1", "id2"],
     recentInsightContents: [
@@ -371,7 +370,7 @@ describe("insight pipeline validation (mock LLM)", () => {
     expect(prompt).toContain("Zod验证");
     expect(prompt).toContain("Persona双通道提取");
     expect(prompt).toContain("认知层洞察质量优化");
-    expect(prompt).toContain("如何让洞察更个性化而非模板化");
+    expect(prompt).not.toContain("如何让洞察更个性化而非模板化");
 
     // Must include anti-patterns
     expect(prompt).toContain("被人X但换个角度");

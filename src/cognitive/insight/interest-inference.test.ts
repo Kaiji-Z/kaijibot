@@ -114,7 +114,6 @@ function makeInput(overrides?: Partial<InsightEngineInput>): InsightEngineInput 
   return {
     targetDomains: ["typescript", "rust"],
     recentFocus: ["wasm"],
-    pendingQuestions: ["How to combine Rust and TypeScript via wasm?"],
     trustScore: 0.75,
     recentInsightIds: ["id-1", "id-2"],
     recentInsightContents: [],
@@ -195,14 +194,13 @@ describe("buildInterestInferencePrompt", () => {
     expect(prompt).toContain("3 co-occurrences");
   });
 
-  it("includes RECENT FOCUS and PENDING QUESTIONS", () => {
+  it("includes RECENT FOCUS section", () => {
     const prompt = buildInterestInferencePrompt(makePersona(), makeInput());
 
     expect(prompt).toContain("RECENT FOCUS");
     expect(prompt).toContain("- wasm");
     expect(prompt).toContain("- type-systems");
-    expect(prompt).toContain("PENDING QUESTIONS");
-    expect(prompt).toContain("How to combine Rust and TypeScript via wasm?");
+    expect(prompt).not.toContain("PENDING QUESTIONS");
   });
 
   it("includes avoidTopics with top recurrent domains", () => {

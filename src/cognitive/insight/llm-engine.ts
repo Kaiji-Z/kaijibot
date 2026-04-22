@@ -251,23 +251,18 @@ export function extractKeyTerms(text: string): string[] {
  * Build a focused web-search query from the insight pipeline input.
  *
  * Strategy:
- *  1. Try to extract 2-3 key concepts from the first pending question.
- *  2. If no pending question (or extraction yields nothing), fall back to recentFocus.
- *  3. If both are empty, fall back to the primary target domain name.
- *  4. Cap at 120 chars and ensure the query is well-formed.
+ *  1. Extract key concepts from the user's recent focus areas.
+ *  2. If empty, fall back to the primary target domain name.
+ *  3. Cap at 120 chars and ensure the query is well-formed.
  */
 export function buildSearchQuery(input: InsightEngineInput): string {
   const parts: string[] = [];
 
-  const questionTerms = input.pendingQuestions.length > 0
-    ? extractKeyTerms(input.pendingQuestions[0]!)
-    : [];
-
-  const focusTerms = questionTerms.length === 0 && input.recentFocus.length > 0
+  const focusTerms = input.recentFocus.length > 0
     ? extractKeyTerms(input.recentFocus[0]!)
     : [];
 
-  const concepts = questionTerms.length > 0 ? questionTerms : focusTerms;
+  const concepts = focusTerms;
 
   if (concepts.length === 0 && input.targetDomains.length > 0) {
     return input.targetDomains[0]!.slice(0, 120);

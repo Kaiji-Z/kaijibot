@@ -95,7 +95,6 @@ function makeInput(targetDomains: string[]): InsightEngineInput {
   return {
     targetDomains,
     recentFocus: ["认知层改进"],
-    pendingQuestions: ["如何让洞察更有跨域惊喜感？"],
     trustScore: 0.9,
     recentInsightIds: [],
     recentInsightContents: [],
@@ -235,8 +234,8 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const scheduler = new ProactiveScheduler(config, {
@@ -266,8 +265,8 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const scheduler = new ProactiveScheduler(config, {
@@ -298,8 +297,8 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       relevanceScore: 0.9,
       surpriseScore: 0.7,
       compositeScore: 0.8,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const scheduler = new ProactiveScheduler(config, {
@@ -334,8 +333,8 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const insight2: InsightCandidate = {
@@ -347,8 +346,8 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const scheduler = new ProactiveScheduler(config, {
@@ -525,7 +524,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
         { url: "https://example.com/1", title: "Model Context Protocol v2 tools", credibility: 0.5 },
         { url: "https://example.com/2", title: "Rust borrow checker update", credibility: 0.5 },
       ],
-      verificationStatus: "unverified",
+      verificationStatus: "verified",
     };
 
     const scheduler = new ProactiveScheduler(config, {
@@ -558,8 +557,8 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const scheduler2 = new ProactiveScheduler(config, {
@@ -583,8 +582,8 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       relevanceScore: 0.9,
       surpriseScore: 0.7,
       compositeScore: 0.8,
-      sources: [],
-      verificationStatus: "unverified",
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
+      verificationStatus: "verified",
     };
 
     const latestPersona = savedPersonas[savedPersonas.length - 1]!;

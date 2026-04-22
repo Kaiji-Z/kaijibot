@@ -26,8 +26,6 @@ export type InsightEngineInput = {
   targetDomains: string[];
   /** User's recent focus areas */
   recentFocus: string[];
-  /** User's pending questions */
-  pendingQuestions: string[];
   /** User's trust score */
   trustScore: number;
   /** Recent insights already delivered (to avoid duplicates) */

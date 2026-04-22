@@ -33,13 +33,7 @@ export function generateInsightCandidates(
     if (candidate) candidates.push(candidate);
   }
 
-  // Strategy 2: Pending questions → insight prompts
-  for (const question of persona.pendingQuestions.slice(0, 2)) {
-    const candidate = buildQuestionInsightCandidate(question, persona);
-    if (candidate) candidates.push(candidate);
-  }
-
-  // Strategy 3: Domain depth insights (connect user's deep domains with current events)
+  // Strategy 2: Domain depth insights (connect user's deep domains with current events)
   const deepDomains = Object.entries(persona.domains)
     .filter(([, d]) => d.depth >= 4)
     .sort(([, a], [, b]) => b.depth - a.depth);
@@ -126,13 +120,6 @@ function buildCrossDomainCandidate(
     sources: [],
     verificationStatus: "unverified",
   };
-}
-
-function buildQuestionInsightCandidate(
-  _question: string,
-  _persona: PersonaTree,
-): undefined {
-  return undefined;
 }
 
 function buildDomainDepthInsight(_domainName: string): undefined {

@@ -36,7 +36,6 @@ function baseInput(): InsightEngineInput {
   return {
     targetDomains: ["AI/机器学习", "软件架构"],
     recentFocus: [],
-    pendingQuestions: [],
     trustScore: 0.5,
     recentInsightIds: [],
     recentInsightContents: [],

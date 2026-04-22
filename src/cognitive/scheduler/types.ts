@@ -41,7 +41,7 @@ export interface GateContext {
 
 /** PROBE-style opportunity discovered during the search phase */
 export interface Opportunity {
-  type: "cross_domain" | "pending_question" | "domain_depth" | "info_scan_hit" | "exploration";
+  type: "cross_domain" | "domain_depth" | "info_scan_hit" | "exploration";
   targetDomains: string[];
   sourceDomains: string[];
   pNeed: number;

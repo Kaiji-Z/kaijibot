@@ -798,7 +798,7 @@ describe("filterBlacklistedOpportunities", () => {
       pAct: 0.3,
     },
     {
-      type: "pending_question",
+      type: "domain_depth",
       targetDomains: ["Design"],
       sourceDomains: ["AI/机器学习"],
       pNeed: 0.5,

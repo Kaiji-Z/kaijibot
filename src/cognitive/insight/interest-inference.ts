@@ -138,12 +138,6 @@ export function buildInterestInferencePrompt(
     ? recentFocus.map((f) => `- ${f}`).join("\n")
     : "(none)";
 
-  // Section 6: Pending questions
-  const pendingQuestions = persona.pendingQuestions.slice(0, 3);
-  const pendingBlock = pendingQuestions.length > 0
-    ? pendingQuestions.map((q) => `- ${q}`).join("\n")
-    : "(none)";
-
   // Top discussed domains for avoidTopics
   const topDiscussed = domainEntries
     .sort(([, a], [, b]) => b.recurrence - a.recurrence)
@@ -166,9 +160,6 @@ ${connectionsBlock}
 
 ## RECENT FOCUS
 ${recentFocusBlock}
-
-## PENDING QUESTIONS
-${pendingBlock}
 
 ## TASK
 Analyze this user's knowledge structure. Identify a LATENT interest — something they would find surprising and valuable, but that they haven't explicitly explored. The latent interest should bridge from what they know to something adjacent but unexpected.

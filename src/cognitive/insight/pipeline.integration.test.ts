@@ -108,7 +108,6 @@ function makeInput(overrides?: Partial<InsightEngineInput>): InsightEngineInput 
   return {
     targetDomains: ["typescript", "rust"],
     recentFocus: ["wasm"],
-    pendingQuestions: ["How to combine Rust and TypeScript via wasm?"],
     trustScore: 0.75,
     recentInsightIds: ["id-1", "id-2"],
     recentInsightContents: [],
@@ -132,6 +131,10 @@ function makeSchedulerConfig(overrides?: Partial<SchedulerConfig>): SchedulerCon
   };
 }
 
+const TEST_SOURCES: Array<{ url: string; title: string; credibility: number }> = [
+  { url: "https://test.com", title: "Test", credibility: 0.8 },
+];
+
 function validInsightJSON(): string {
   return JSON.stringify([
     {
@@ -141,6 +144,8 @@ function validInsightJSON(): string {
       sourceDomains: ["rust"],
       relevanceScore: 0.85,
       surpriseScore: 0.7,
+      verificationStatus: "verified",
+      sources: [{ url: "https://test.com", title: "Test", credibility: 0.8 }],
     },
   ]);
 }
@@ -205,7 +210,9 @@ describe("insight pipeline integration", () => {
     const generator: InsightGeneratorFn = (p, input, options) => {
       return generateInsightCandidatesLLM(p, input, config, mockDeps, {
         maxCandidates: options?.maxCandidates,
-      });
+      }).then((candidates) =>
+        candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })),
+      );
     };
 
     const insights: InsightCandidate[] = [];
@@ -288,7 +295,9 @@ describe("insight pipeline integration", () => {
     const generator: InsightGeneratorFn = (p, input, options) => {
       return generateInsightCandidatesLLM(p, input, config, mockDeps, {
         maxCandidates: options?.maxCandidates,
-      });
+      }).then((candidates) =>
+        candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })),
+      );
     };
 
     const scheduler = new ProactiveScheduler(
@@ -324,8 +333,8 @@ describe("insight pipeline integration", () => {
         relevanceScore: 0.8,
         surpriseScore: 0.6,
         compositeScore: 0.7,
-        sources: [],
-        verificationStatus: "unverified",
+        sources: [{ url: "https://test.com", title: "Test", credibility: 0.8 }],
+        verificationStatus: "verified",
       }];
     };
 
@@ -415,7 +424,9 @@ describe("insight pipeline integration", () => {
     const generator: InsightGeneratorFn = (p, input, options) => {
       return generateInsightCandidatesLLM(p, input, config, mockDeps, {
         maxCandidates: options?.maxCandidates,
-      });
+      }).then((candidates) =>
+        candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })),
+      );
     };
 
     const delivered: InsightCandidate[] = [];

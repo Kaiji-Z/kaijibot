@@ -80,7 +80,6 @@ function makeSurpriseInput(): InsightEngineInput {
   return {
     targetDomains: [],
     recentFocus: ["认知层洞察质量优化"],
-    pendingQuestions: ["如何让洞察更个性化而非模板化？"],
     trustScore: 0.85,
     recentInsightIds: [],
     recentInsightContents: [

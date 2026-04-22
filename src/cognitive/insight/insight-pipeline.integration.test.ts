@@ -136,7 +136,6 @@ function baseInput(overrides: Partial<InsightEngineInput> = {}): InsightEngineIn
   return {
     targetDomains: ["AI/机器学习", "软件架构"],
     recentFocus: [],
-    pendingQuestions: [],
     trustScore: 0.5,
     recentInsightIds: [],
     recentInsightContents: [],
@@ -641,27 +640,25 @@ describe("Pipeline: search query building", () => {
     expect(extractKeyTerms("你好")).toEqual([]);
   });
 
-  it("builds query from pending questions", () => {
+  it("builds query from recentFocus", () => {
     const query = buildSearchQuery(baseInput({
-      pendingQuestions: ["如何将AI模型部署到边缘设备"],
+      recentFocus: ["AI模型部署到边缘设备"],
     }));
 
     expect(query.length).toBeGreaterThan(0);
     expect(query.length).toBeLessThanOrEqual(120);
   });
 
-  it("falls back to recentFocus when no pending questions", () => {
+  it("uses recentFocus for search query", () => {
     const query = buildSearchQuery(baseInput({
-      pendingQuestions: [],
       recentFocus: ["RAG系统设计"],
     }));
 
     expect(query).toBeTruthy();
   });
 
-  it("falls back to target domain when no questions or focus", () => {
+  it("falls back to target domain when no focus", () => {
     const query = buildSearchQuery(baseInput({
-      pendingQuestions: [],
       recentFocus: [],
       targetDomains: ["AI/机器学习"],
     }));
@@ -673,7 +670,6 @@ describe("Pipeline: search query building", () => {
     const query = buildSearchQuery({
       targetDomains: [],
       recentFocus: [],
-      pendingQuestions: [],
       trustScore: 0.5,
       recentInsightIds: [],
       recentInsightContents: [],

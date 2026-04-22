@@ -103,7 +103,6 @@ function makeInput(overrides?: Partial<InsightEngineInput>): InsightEngineInput 
   return {
     targetDomains: ["typescript", "rust"],
     recentFocus: ["wasm"],
-    pendingQuestions: ["How to combine Rust and TypeScript via wasm?"],
     trustScore: 0.75,
     recentInsightIds: ["id-1", "id-2"],
     recentInsightContents: [],
@@ -590,30 +589,27 @@ describe("extractKeyTerms", () => {
 });
 
 describe("buildSearchQuery", () => {
-  it("prefers pending question terms over recent focus", () => {
+  it("uses recentFocus terms for search query", () => {
     const input = makeInput({
       targetDomains: ["rust"],
-      pendingQuestions: ["Rust所有权模型和借用检查器"],
-      recentFocus: ["wasm"],
+      recentFocus: ["Rust所有权模型和借用检查器"],
     });
     const query = buildSearchQuery(input);
     expect(query).toContain("Rust");
   });
 
-  it("falls back to recentFocus when no pending questions", () => {
+  it("uses recentFocus terms for search query when no other input", () => {
     const input = makeInput({
       targetDomains: ["typescript"],
-      pendingQuestions: [],
       recentFocus: ["装饰器模式"],
     });
     const query = buildSearchQuery(input);
     expect(query).toContain("装饰器模式");
   });
 
-  it("falls back to targetDomains when both question and focus are empty", () => {
+  it("falls back to targetDomains when recentFocus is empty", () => {
     const input = makeInput({
       targetDomains: ["kubernetes"],
-      pendingQuestions: [],
       recentFocus: [],
     });
     const query = buildSearchQuery(input);
@@ -623,8 +619,7 @@ describe("buildSearchQuery", () => {
   it("does not prepend domain name as prefix", () => {
     const input = makeInput({
       targetDomains: ["编程语言"],
-      pendingQuestions: ["需要我重启Gateway才能识别这个Chromium？"],
-      recentFocus: [],
+      recentFocus: ["需要我重启Gateway才能识别这个Chromium？"],
     });
     const query = buildSearchQuery(input);
     expect(query).not.toContain("编程语言");
@@ -634,8 +629,7 @@ describe("buildSearchQuery", () => {
   it("caps query at 120 characters", () => {
     const input = makeInput({
       targetDomains: ["domain"],
-      pendingQuestions: ["这是一个非常非常长的搜索查询包含了很多关键词和描述性文字希望能够超过一百二十个字符的限制以便测试截断功能是否正常工作呀".repeat(3)],
-      recentFocus: [],
+      recentFocus: ["这是一个非常非常长的搜索查询包含了很多关键词和描述性文字希望能够超过一百二十个字符的限制以便测试截断功能是否正常工作呀".repeat(3)],
     });
     const query = buildSearchQuery(input);
     expect(query.length).toBeLessThanOrEqual(120);
@@ -644,8 +638,7 @@ describe("buildSearchQuery", () => {
   it("limits to 4 concepts", () => {
     const input = makeInput({
       targetDomains: ["ai"],
-      pendingQuestions: ["机器学习 深度学习 神经网络 自然语言处理 计算机视觉 强化学习"],
-      recentFocus: [],
+      recentFocus: ["机器学习 深度学习 神经网络 自然语言处理 计算机视觉 强化学习"],
     });
     const query = buildSearchQuery(input);
     const parts = query.split(" ");
@@ -655,8 +648,7 @@ describe("buildSearchQuery", () => {
   it("handles empty targetDomains gracefully", () => {
     const input = makeInput({
       targetDomains: [],
-      pendingQuestions: ["React状态管理最佳实践"],
-      recentFocus: [],
+      recentFocus: ["React状态管理最佳实践"],
     });
     const query = buildSearchQuery(input);
     expect(query).toBeTruthy();
@@ -666,8 +658,7 @@ describe("buildSearchQuery", () => {
   it("produces a clean query instead of raw conversational text", () => {
     const input = makeInput({
       targetDomains: ["软件架构"],
-      pendingQuestions: ["需要我重启Gateway才能识别这个Chromium？ KaijiBot网关调试"],
-      recentFocus: [],
+      recentFocus: ["需要我重启Gateway才能识别这个Chromium？ KaijiBot网关调试"],
     });
     const query = buildSearchQuery(input);
     expect(query).not.toContain("需要我");
@@ -677,8 +668,7 @@ describe("buildSearchQuery", () => {
   it("does not include domain name in query when concepts are available", () => {
     const input = makeInput({
       targetDomains: ["TypeScript"],
-      pendingQuestions: ["TypeScript的高级类型"],
-      recentFocus: [],
+      recentFocus: ["TypeScript的高级类型"],
     });
     const query = buildSearchQuery(input);
     const matches = query.match(/typescript/gi);
