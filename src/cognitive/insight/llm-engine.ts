@@ -179,7 +179,7 @@ export async function generateInsightCandidatesLLM(
 
     const candidates = parseLLMInsights(text, maxCandidates);
     if (candidates.length === 0) {
-      log.warn(`LLM response could not be parsed as insights (raw: ${text.slice(0, 200)})`);
+      log.warn("LLM response could not be parsed as insights", { raw: text.slice(0, 300) });
       return [];
     }
     log.info(`LLM generated ${candidates.length} insight candidate(s)`);
@@ -409,7 +409,6 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 
 /** Extended context for prompt frame generation. */
 type PromptFrameExtra = {
-  pendingQuestions: string[];
   domains: string[];
   keyInsights: string[];
   recentFocus: string[];
@@ -437,11 +436,8 @@ const PROMPT_FRAMES = [
     }
     return `在${topic}方向上，用户目前的理解里有一个盲区。你看到了，直接指出来，不要铺垫。`;
   },
-  // 2: Answer pending question concretely
-  (topic: string, extra: PromptFrameExtra) => {
-    if (extra.pendingQuestions.length > 0) {
-      return `之前的问题是"${extra.pendingQuestions[0]!}"。你现在的理解有了进展——不要复述问题，直接给出你最新的判断或发现。`;
-    }
+  // 2: Concrete change or case related to user's focus
+  (topic: string, _extra: PromptFrameExtra) => {
     return `你刚注意到${topic}领域一个具体的变化或案例，直接关系到用户之前提到的关注点。简洁地说出来。`;
   },
   // 3: Challenge assumption using a keyInsight
@@ -484,7 +480,6 @@ const PROMPT_FRAMES = [
 
 function pickPromptFrame(
   topics: string[],
-  pendingQuestions: string[],
   domainNames: string[],
   keyInsights: string[],
   recentFocus: string[],
@@ -492,7 +487,7 @@ function pickPromptFrame(
 ): string {
   const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
   const frame = PROMPT_FRAMES[Math.floor(Math.random() * PROMPT_FRAMES.length)];
-  return frame(topic, { pendingQuestions, domains: domainNames, keyInsights, recentFocus, userName });
+  return frame(topic, { domains: domainNames, keyInsights, recentFocus, userName });
 }
 
 const STRUCTURE_SEEDS = [
@@ -611,7 +606,6 @@ export function buildInsightPrompt(
     : "";
 
   const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
-  const pendingQuestions = persona.pendingQuestions.slice(0, 3).join("; ");
   const recentInsightIds = input.recentInsightIds.slice(0, 5).join(", ");
 
   const userName = persona.identity?.displayName || "";
@@ -656,7 +650,7 @@ export function buildInsightPrompt(
   const domainNames = sortedDomainEntries.map(([name]) => name);
   const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) => d.keyInsights.slice(0, 2));
   const promptFrame = pickPromptFrame(
-    input.targetDomains, persona.pendingQuestions, domainNames,
+    input.targetDomains, domainNames,
     flatKeyInsights, persona.recentFocus, userName,
   );
 
@@ -677,9 +671,8 @@ SPECIFIC FACTS YOU KNOW ABOUT THIS USER (your insight MUST reference at least on
 ${anchorBlock}
 ${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's domains):\n${externalFactsBlock}\n\nIMPORTANT: If EXTERNAL_FACTS contains information relevant to the user's focus areas, prioritize building the insight around those external facts rather than recombining known keyInsights.` : ""}
 
-Recent focus: ${recentFocus || "None"}
-Pending questions: ${pendingQuestions || "None"}
-Trust: ${persona.rapport.trustScore.toFixed(2)} / 1.0
+ Recent focus: ${recentFocus || "None"}
+ Trust: ${persona.rapport.trustScore.toFixed(2)} / 1.0
 Delivered insight IDs: ${recentInsightIds || "None"}
 ${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
 
@@ -706,11 +699,10 @@ ${openingBans ? `  · ${openingBans}` : ""}
 - 内容必须是一个具体的判断、观察或建议，不是泛泛的感受
 ${webResults.length > 0 ? "- 外部信息自然融入内容里，不要说'看到'、'读到'、'据说'" : ""}
 
-好的洞察（满足至少一条）：
-- 跨域连接：把用户不同兴趣领域的具体知识关联起来
-- 解答悬问：对用户之前问过但没答案的问题给出新判断
-- 实用建议：给一个明确的、可直接执行的行动方向
-- 反常识观点：挑战一个可能的错误认知，用事实反驳
+ 好的洞察（满足至少一条）：
+ - 跨域连接：把用户不同兴趣领域的具体知识关联起来
+ - 实用建议：给一个明确的、可直接执行的行动方向
+ - 反常识观点：挑战一个可能的错误认知，用事实反驳
 
 CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
@@ -738,9 +730,27 @@ function parseLLMInsights(
       .replace(/^```(?:json)?\s*/m, "")
       .replace(/\s*```$/m, "")
       .trim();
-    const parsed = JSON.parse(cleaned);
-    const items = Array.isArray(parsed) ? parsed : [];
 
+    let jsonStr = extractJsonArray(cleaned);
+    if (!jsonStr) {
+      log.warn("parseLLMInsights: no JSON array found in LLM response", { raw: cleaned.slice(0, 200) });
+      return [];
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      const repaired = repairJsonArray(jsonStr);
+      try {
+        parsed = JSON.parse(repaired);
+      } catch (repairErr) {
+        log.warn("parseLLMInsights: JSON repair failed", { error: String(repairErr), raw: jsonStr.slice(0, 200) });
+        return [];
+      }
+    }
+
+    const items = Array.isArray(parsed) ? parsed : [];
     return items
       .slice(0, maxCandidates)
       .map((item: Record<string, unknown>) => ({
@@ -760,9 +770,39 @@ function parseLLMInsights(
         verificationStatus: "unverified" as const,
       }))
       .filter((c: InsightCandidate) => c.content.length > 0 && isSubstantiveContent(c.content));
-  } catch {
+  } catch (err) {
+    log.warn("parseLLMInsights: unexpected error", { error: String(err) });
     return [];
   }
+}
+
+function extractJsonArray(text: string): string | null {
+  const start = text.indexOf("[");
+  const end = text.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) return null;
+  return text.slice(start, end + 1);
+}
+
+function repairJsonArray(raw: string): string {
+  let s = raw;
+  s = s.replace(/,\s*([}\]])/g, "$1");
+  let openBrackets = 0;
+  let openBraces = 0;
+  let inString = false;
+  let escape = false;
+  for (const ch of s) {
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "[") openBrackets++;
+    else if (ch === "]") openBrackets--;
+    else if (ch === "{") openBraces++;
+    else if (ch === "}") openBraces--;
+  }
+  while (openBraces > 0) { s += "}"; openBraces--; }
+  while (openBrackets > 0) { s += "]"; openBrackets--; }
+  return s;
 }
 
 export const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [

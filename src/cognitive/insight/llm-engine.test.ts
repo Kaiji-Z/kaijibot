@@ -881,3 +881,63 @@ describe("generateInsightCandidatesLLM — surprise mode", () => {
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// parseLLMInsights robust parsing
+// ---------------------------------------------------------------------------
+
+describe("parseLLMInsights robust parsing", () => {
+  it("extracts JSON array from text with leading prose", async () => {
+    const raw = 'Here are the insights:\n[{"content":"TypeScript和Rust的内存管理模型有深刻的设计共鸣","rationale":"跨域连接","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toContain("TypeScript");
+  });
+
+  it("extracts JSON array from text with trailing prose", async () => {
+    const raw = '[{"content":"Rust的所有权模型和TypeScript的类型体操有有趣的共鸣","rationale":"跨域","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.6}]\n\nHope this helps!';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("handles trailing comma before closing bracket", async () => {
+    const raw = '[{"content":"TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象","rationale":"test","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.6},]';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns empty for completely unparseable input", async () => {
+    const raw = "This is just plain text with no JSON at all.";
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("still parses valid JSON correctly (regression)", async () => {
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(validLLMResponse()),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toContain("TypeScript");
+  });
+});
+
+describe("buildInsightPrompt — pendingQuestions removal", () => {
+  it("does not contain Pending questions section", () => {
+    const prompt = buildInsightPrompt(makePersona(), makeInput(), [], []);
+    expect(prompt).not.toContain("Pending questions");
+    expect(prompt).not.toContain("pendingQuestions");
+  });
+
+  it("does not contain 解答悬问 trait", () => {
+    const prompt = buildInsightPrompt(makePersona(), makeInput(), [], []);
+    expect(prompt).not.toContain("解答悬问");
+  });
+});

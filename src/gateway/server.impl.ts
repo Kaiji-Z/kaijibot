@@ -1320,7 +1320,7 @@ export async function startGatewayServer(
 
         const proactiveScheduler = new ProactiveScheduler(
           {
-            minIntervalHours: cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 4,
+            minIntervalHours: cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5,
             minTrustScore: 0.5,
             activeHoursStart: cfgAtStart.cognitive?.proactive?.activeHours?.start,
             activeHoursEnd: cfgAtStart.cognitive?.proactive?.activeHours?.end,

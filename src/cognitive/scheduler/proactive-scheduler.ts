@@ -4,6 +4,7 @@ import { computeGradedGate } from "./gate.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections } from "../insight/cross-domain-mapper.js";
+import { verifyInsight } from "../insight/verification/pipeline.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/scheduler");
@@ -61,7 +62,6 @@ export class ProactiveScheduler {
       case "timer":
       case "external":
         opportunities.push(...scanCrossDomain(persona));
-        opportunities.push(...scanPendingQuestions(persona));
         opportunities.push(...scanDomainDepth(persona));
         break;
       case "persona_change":
@@ -70,7 +70,6 @@ export class ProactiveScheduler {
         break;
       case "info_scan":
         opportunities.push(...scanCrossDomain(persona));
-        opportunities.push(...scanPendingQuestions(persona));
         opportunities.push(...scanDomainDepth(persona));
         opportunities.push(...scanInfoScan(persona, event));
         break;
@@ -142,7 +141,25 @@ export class ProactiveScheduler {
       },
     );
 
-    return candidates[0] ?? null;
+    const candidate = candidates[0] ?? null;
+    if (!candidate) return null;
+
+    const verification = verifyInsight({
+      content: candidate.content,
+      sources: candidate.sources,
+      verificationLevel: "basic",
+    });
+    candidate.verificationStatus = verification.status;
+
+    if (candidate.verificationStatus === "unverified") {
+      log.warn("insight candidate has no verifiable sources, skipping delivery", {
+        sources: candidate.sources.length,
+        content: candidate.content.slice(0, 80),
+      });
+      return null;
+    }
+
+    return candidate;
   }
 
   async processEvent(
@@ -278,30 +295,6 @@ function scanCrossDomain(persona: PersonaTree): Opportunity[] {
       pAccept,
       pAct: pNeed * pAccept,
       metadata: { bridge: conn.bridge, distance: conn.distance },
-    };
-  });
-}
-
-function scanPendingQuestions(persona: PersonaTree): Opportunity[] {
-  if (persona.pendingQuestions.length === 0) return [];
-
-  const pAccept = computeBaselinePAccept(persona);
-  const domains = Object.keys(persona.domains);
-
-  return persona.pendingQuestions.slice(0, 3).map((question) => {
-    const relevantDomain = domains.find(
-      (name) => question.includes(name.split("/")[0]) || question.includes(name),
-    );
-    const pNeed = relevantDomain ? 0.8 : 0.5;
-
-    return {
-      type: "pending_question" as const,
-      targetDomains: relevantDomain ? [relevantDomain] : domains.slice(0, 1),
-      sourceDomains: [],
-      pNeed,
-      pAccept,
-      pAct: pNeed * pAccept,
-      metadata: { question },
     };
   });
 }

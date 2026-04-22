@@ -123,6 +123,18 @@ describe("ProactiveScheduler", () => {
     let savedPersona: PersonaTree | undefined;
 
     const capturedCandidates: InsightCandidate[] = [];
+    const fakeInsight: InsightCandidate = {
+      id: "test-id",
+      content: "Test insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async (_userId, candidate) => {
@@ -131,7 +143,7 @@ describe("ProactiveScheduler", () => {
       savePersona: async (_userId, p) => {
         savedPersona = p;
       },
-    });
+    }, { insightGenerator: async () => [fakeInsight] });
 
     const now = Date.now();
     const result = await scheduler.processEvent("user1", {
@@ -237,13 +249,25 @@ describe("ProactiveScheduler", () => {
   it("generates cross-domain insight on persona_change event", async () => {
     const persona = personaWithDomains();
     const capturedCandidates: InsightCandidate[] = [];
+    const fakeInsight: InsightCandidate = {
+      id: "test-id",
+      content: "Test insight",
+      rationale: "test",
+      targetDomains: ["区块链"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async (_userId, candidate) => {
         capturedCandidates.push(candidate);
       },
       savePersona: async () => {},
-    });
+    }, { insightGenerator: async () => [fakeInsight] });
 
     const result = await scheduler.processEvent("user1", {
       type: "persona_change",
@@ -258,13 +282,25 @@ describe("ProactiveScheduler", () => {
   it("generates insight on info_scan event", async () => {
     const persona = personaWithDomains();
     const capturedCandidates: InsightCandidate[] = [];
+    const fakeInsight: InsightCandidate = {
+      id: "test-id",
+      content: "Test insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async (_userId, candidate) => {
         capturedCandidates.push(candidate);
       },
       savePersona: async () => {},
-    });
+    }, { insightGenerator: async () => [fakeInsight] });
 
     const result = await scheduler.processEvent("user1", {
       type: "info_scan",
@@ -281,11 +317,23 @@ describe("ProactiveScheduler", () => {
     const eventTypes: Array<"timer" | "persona_change" | "info_scan"> = ["timer", "persona_change", "info_scan"];
     const results: Array<InsightCandidate | undefined> = [];
 
+    const fakeInsight: InsightCandidate = {
+      id: "test-id",
+      content: "Test insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => JSON.parse(JSON.stringify(persona)) as PersonaTree,
       onInsightReady: async () => {},
       savePersona: async () => {},
-    });
+    }, { insightGenerator: async () => [fakeInsight] });
 
     for (const type of eventTypes) {
       const result = await scheduler.processEvent("user1", {
@@ -314,7 +362,6 @@ describe("ProactiveScheduler.search", () => {
     expect(opportunities.length).toBeGreaterThanOrEqual(2);
     const types = new Set(opportunities.map((o) => o.type));
     expect(types.has("cross_domain")).toBe(true);
-    expect(types.has("pending_question")).toBe(true);
     expect(types.has("domain_depth")).toBe(true);
   });
 
@@ -330,7 +377,6 @@ describe("ProactiveScheduler.search", () => {
     expect(opportunities.length).toBeGreaterThanOrEqual(2);
     const types = new Set(opportunities.map((o) => o.type));
     expect(types.has("cross_domain")).toBe(true);
-    expect(types.has("pending_question")).toBe(true);
     expect(types.has("domain_depth")).toBe(true);
   });
 
@@ -405,8 +451,8 @@ describe("ProactiveScheduler.search", () => {
     const personaChangeTypes = personaChangeOpps.map((o) => o.type);
     const infoScanTypes = infoScanOpps.map((o) => o.type);
 
-    expect(timerTypes).toContain("pending_question");
-    expect(personaChangeTypes).not.toContain("pending_question");
+    expect(timerTypes).toContain("cross_domain");
+    expect(personaChangeTypes).not.toContain("info_scan_hit");
     expect(infoScanTypes).toContain("info_scan_hit");
     expect(timerTypes).not.toContain("info_scan_hit");
   });
@@ -417,13 +463,13 @@ describe("ProactiveScheduler.identify", () => {
     const scheduler = makeScheduler(config);
     const opportunities: Opportunity[] = [
       { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
-      { type: "pending_question", targetDomains: ["A"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "domain_depth", targetDomains: ["C"], sourceDomains: [], pNeed: 0.7, pAccept: 0.8, pAct: 0.56 },
+      { type: "domain_depth", targetDomains: ["A"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+      { type: "exploration", targetDomains: ["C"], sourceDomains: [], pNeed: 0.7, pAccept: 0.8, pAct: 0.56 },
     ];
 
     const selected = scheduler.identify(opportunities);
     expect(selected).not.toBeNull();
-    expect(selected!.type).toBe("pending_question");
+    expect(selected!.type).toBe("domain_depth");
     expect(selected!.pAct).toBe(0.81);
   });
 
@@ -467,7 +513,7 @@ describe("ProactiveScheduler.resolve", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
 
@@ -506,6 +552,71 @@ describe("ProactiveScheduler.resolve", () => {
 
     const result = await scheduler.resolve(persona, opportunity);
     expect(result).toBeNull();
+  });
+
+  it("returns null for unverified insight (no sources)", async () => {
+    const persona = personaWithDomains();
+    const fakeInsight: InsightCandidate = {
+      id: "unverified-id",
+      content: "Unverified insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).toBeNull();
+  });
+
+  it("returns candidate with partial verification", async () => {
+    const persona = personaWithDomains();
+    const fakeInsight: InsightCandidate = {
+      id: "partial-id",
+      content: "Partially verified insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.verificationStatus).toBe("partial");
   });
 });
 
@@ -764,7 +875,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
 
@@ -800,7 +911,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
 
@@ -835,7 +946,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
 
@@ -871,7 +982,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
 
@@ -909,7 +1020,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
       relevanceScore: 0.8,
       surpriseScore: 0.5,
       compositeScore: 0.65,
-      sources: [],
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
 
