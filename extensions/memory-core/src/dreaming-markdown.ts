@@ -14,11 +14,13 @@ import {
 const DAILY_PHASE_HEADINGS: Record<Exclude<MemoryDreamingPhaseName, "deep">, string> = {
   light: "## Light Sleep",
   rem: "## REM Sleep",
+  prune: "## Pruning",
 };
 
 const DAILY_PHASE_LABELS: Record<Exclude<MemoryDreamingPhaseName, "deep">, string> = {
   light: "light",
   rem: "rem",
+  prune: "prune",
 };
 
 function resolvePhaseMarkers(phase: Exclude<MemoryDreamingPhaseName, "deep">): {
@@ -97,7 +99,7 @@ export async function writeDailyDreamingPhaseBlock(params: {
     );
     await fs.mkdir(path.dirname(reportPath), { recursive: true });
     const report = [
-      `# ${params.phase === "light" ? "Light Sleep" : "REM Sleep"}`,
+      `# ${DAILY_PHASE_HEADINGS[params.phase].replace(/^## /, "")}`,
       "",
       body,
       "",

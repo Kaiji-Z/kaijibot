@@ -12,6 +12,8 @@ import {
   type ConceptTagScriptCoverage,
 } from "./concept-vocabulary.js";
 import { asRecord } from "./dreaming-shared.js";
+import { isExcludedMemoryContent } from "./memory-types.js";
+import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 
 const SHORT_TERM_PATH_RE = /(?:^|\/)memory\/(?:[^/]+\/)*(\d{4})-(\d{2})-(\d{2})\.md$/;
 const DREAMING_MEMORY_PATH_RE = /(?:^|\/)memory\/dreaming\//;
@@ -291,7 +293,12 @@ function isContaminatedDreamingSnippet(raw: string): boolean {
   );
   const hasStatus = /\bstatus:\s*staged\b/i.test(snippet);
   const hasRecalls = /\brecalls:\s*\d+\b/i.test(snippet);
-  return hasNarrativeLead && hasConfidence && hasEvidence && hasStatus && hasRecalls;
+  if (hasNarrativeLead && hasConfidence && hasEvidence && hasStatus && hasRecalls) {
+    return true;
+  }
+
+  // Reject content that matches exclusion rules (code, git, derivable, ephemeral)
+  return isExcludedMemoryContent(snippet);
 }
 
 function normalizeMemoryPath(rawPath: string): string {
@@ -1575,8 +1582,23 @@ export async function applyShortTermPromotions(
       })
       .slice(0, limit);
 
+    // Semantic dedup: merge near-duplicate candidates before promotion
+    const dedupItems: DedupableItem[] = selected.map((c, i) => ({
+      id: `${c.path}:${c.startLine}:${i}`,
+      score: c.score ?? 0,
+      content: c.snippet ?? "",
+    }));
+    const deduped = deduplicateBySimilarity(dedupItems, {
+      enabled: true,
+      threshold: 0.85,
+    });
+    const keptIds = new Set(deduped.map((d) => d.id));
+    const dedupedSelected = selected.filter(
+      (_c, i) => keptIds.has(`${selected[i]!.path}:${selected[i]!.startLine}:${i}`),
+    );
+
     const rehydratedSelected: PromotionCandidate[] = [];
-    for (const candidate of selected) {
+    for (const candidate of dedupedSelected) {
       const rehydrated = await rehydratePromotionCandidate(workspaceDir, candidate);
       if (rehydrated && !isContaminatedDreamingSnippet(rehydrated.snippet)) {
         rehydratedSelected.push(rehydrated);

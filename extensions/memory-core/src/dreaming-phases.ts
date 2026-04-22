@@ -19,6 +19,7 @@ import {
   type MemoryRemDreamingConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-status";
 import { writeDailyDreamingPhaseBlock } from "./dreaming-markdown.js";
+import { resolveMemoryPruningConfig, runPruningPhase } from "./dreaming-pruning.js";
 import { generateAndAppendDreamNarrative, type NarrativePhaseData } from "./dreaming-narrative.js";
 import { asRecord, formatErrorMessage, normalizeTrimmedString } from "./dreaming-shared.js";
 import {
@@ -1653,6 +1654,23 @@ export async function runDreamingSweepPhases(params: {
       logger: params.logger,
       subagent: params.subagent,
       nowMs: params.nowMs,
+    });
+  }
+
+  const pruning = resolveMemoryPruningConfig({
+    pluginConfig: params.pluginConfig,
+    cfg: params.cfg,
+  });
+  if (pruning.enabled) {
+    const storage = light.storage ?? { mode: "inline" as const, separateReports: false };
+    await runPruningPhase({
+      workspaceDir: params.workspaceDir,
+      pluginConfig: params.pluginConfig,
+      cfg: params.cfg,
+      logger: params.logger,
+      nowMs: params.nowMs,
+      storage,
+      timezone: light.timezone,
     });
   }
 }

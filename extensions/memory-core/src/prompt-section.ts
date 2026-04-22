@@ -1,4 +1,5 @@
 import type { MemoryPromptSectionBuilder } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
+import { VERIFICATION_PROMPT_SECTION } from "./memory-types.js";
 
 export const buildPromptSection: MemoryPromptSectionBuilder = ({
   availableTools,
@@ -33,6 +34,8 @@ export const buildPromptSection: MemoryPromptSectionBuilder = ({
       "Citations: include Source: <path#line> when it helps the user verify memory snippets.",
     );
   }
+  lines.push("");
+  lines.push(VERIFICATION_PROMPT_SECTION);
   lines.push("");
   return lines;
 };

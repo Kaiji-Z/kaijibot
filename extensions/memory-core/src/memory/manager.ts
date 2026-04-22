@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { type FSWatcher } from "chokidar";
 import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
@@ -56,7 +58,15 @@ import {
   type MemoryReadonlyRecoveryState,
 } from "./manager-sync-control.js";
 import { applyTemporalDecayToHybridResults } from "./temporal-decay.js";
+import {
+  type RecallVerifyConfig,
+  verifySearchResults,
+} from "./recall-verify.js";
 const SNIPPET_MAX_CHARS = 700;
+
+type QuerySettingsWithVerify = ResolvedMemorySearchConfig["query"] & {
+  verify?: Partial<RecallVerifyConfig>;
+};
 const VECTOR_TABLE = "chunks_vec";
 const FTS_TABLE = "chunks_fts";
 const EMBEDDING_CACHE_TABLE = "embedding_cache";
@@ -385,7 +395,8 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
         workspaceDir: this.workspaceDir,
       });
       const sorted = decayed.toSorted((a, b) => b.score - a.score);
-      return this.selectScoredResults(sorted, maxResults, minScore, 0);
+      const ftsResults = this.selectScoredResults(sorted, maxResults, minScore, 0);
+      return await this.applyVerification(ftsResults);
     }
 
     // If FTS isn't available, hybrid mode cannot use keyword search; degrade to vector-only.
@@ -401,7 +412,8 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
       : [];
 
     if (!hybrid.enabled || !this.fts.enabled || !this.fts.available) {
-      return vectorResults.filter((entry) => entry.score >= minScore).slice(0, maxResults);
+      const vecResults = vectorResults.filter((entry) => entry.score >= minScore).slice(0, maxResults);
+      return await this.applyVerification(vecResults);
     }
 
     const merged = await this.mergeHybridResults({
@@ -414,7 +426,8 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
     });
     const strict = merged.filter((entry) => entry.score >= minScore);
     if (strict.length > 0 || keywordResults.length === 0) {
-      return strict.slice(0, maxResults);
+      const strictResults = strict.slice(0, maxResults);
+      return await this.applyVerification(strictResults);
     }
 
     // Hybrid defaults can produce keyword-only matches with max score equal to
@@ -427,7 +440,7 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
         (entry) => `${entry.source}:${entry.path}:${entry.startLine}:${entry.endLine}`,
       ),
     );
-    return this.selectScoredResults(
+    const hybridResults = this.selectScoredResults(
       merged.filter((entry) =>
         keywordKeys.has(`${entry.source}:${entry.path}:${entry.startLine}:${entry.endLine}`),
       ),
@@ -435,6 +448,7 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
       minScore,
       relaxedMinScore,
     );
+    return await this.applyVerification(hybridResults);
   }
 
   private selectScoredResults<T extends MemorySearchResult & { score: number }>(
@@ -448,6 +462,37 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
       return strict.slice(0, maxResults);
     }
     return results.filter((entry) => entry.score >= relaxedMinScore).slice(0, maxResults);
+  }
+
+  private async applyVerification(
+    results: MemorySearchResult[],
+  ): Promise<MemorySearchResult[]> {
+    const querySettings = this.settings.query as QuerySettingsWithVerify;
+    const verifyConfig = querySettings.verify;
+    if (!verifyConfig?.enabled) {
+      return results;
+    }
+    const verified = await verifySearchResults(results, {
+      readFile: async (relPath: string) => {
+        try {
+          const fullPath = path.join(this.workspaceDir, relPath);
+          return await fs.readFile(fullPath, "utf-8");
+        } catch {
+          return null;
+        }
+      },
+    }, verifyConfig);
+    return verified
+      .filter((r) => r.verified)
+      .map((r) => ({
+        path: r.path,
+        startLine: r.actualStartLine ?? r.startLine,
+        endLine: r.actualEndLine ?? r.endLine,
+        score: r.score,
+        snippet: r.snippet,
+        source: r.source,
+        citation: r.citation,
+      }));
   }
 
   private hasIndexedContent(): boolean {

@@ -113,7 +113,7 @@ export type MemoryRemDreamingConfig = {
   execution: MemoryDreamingExecutionConfig;
 };
 
-export type MemoryDreamingPhaseName = "light" | "deep" | "rem";
+export type MemoryDreamingPhaseName = "light" | "deep" | "rem" | "prune";
 
 export type MemoryDreamingConfig = {
   enabled: boolean;

@@ -6,6 +6,11 @@ import {
   type MemoryFlushPlan,
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
+import {
+  CLASSIFICATION_PROMPT_SECTION,
+  EXCLUSION_PROMPT_SECTION,
+  WRITE_QUALITY_PROMPT_SECTION,
+} from "./memory-types.js";
 
 export const DEFAULT_MEMORY_FLUSH_SOFT_TOKENS = 4000;
 export const DEFAULT_MEMORY_FLUSH_FORCE_TRANSCRIPT_BYTES = 2 * 1024 * 1024;
@@ -81,6 +86,23 @@ function ensureMemoryFlushSafetyHints(text: string): string {
   return next;
 }
 
+function ensureMemoryFlushClassificationHints(text: string): string {
+  let next = text.trim();
+  const sections = [
+    CLASSIFICATION_PROMPT_SECTION,
+    EXCLUSION_PROMPT_SECTION,
+    WRITE_QUALITY_PROMPT_SECTION,
+  ];
+  for (const section of sections) {
+    // Use the first line as a sentinel to avoid duplicate injection
+    const sentinel = section.split("\n")[0];
+    if (!next.includes(sentinel)) {
+      next = next ? `${next}\n\n${section}` : section;
+    }
+  }
+  return next;
+}
+
 function appendCurrentTimeLine(text: string, timeLine: string): string {
   const trimmed = text.trimEnd();
   if (!trimmed) {
@@ -120,11 +142,15 @@ export function buildMemoryFlushPlan(
   const relativePath = `memory/${dateStamp}.md`;
 
   const promptBase = ensureNoReplyHint(
-    ensureMemoryFlushSafetyHints(defaults?.prompt?.trim() || DEFAULT_MEMORY_FLUSH_PROMPT),
+    ensureMemoryFlushClassificationHints(
+      ensureMemoryFlushSafetyHints(defaults?.prompt?.trim() || DEFAULT_MEMORY_FLUSH_PROMPT),
+    ),
   );
   const systemPrompt = ensureNoReplyHint(
-    ensureMemoryFlushSafetyHints(
-      defaults?.systemPrompt?.trim() || DEFAULT_MEMORY_FLUSH_SYSTEM_PROMPT,
+    ensureMemoryFlushClassificationHints(
+      ensureMemoryFlushSafetyHints(
+        defaults?.systemPrompt?.trim() || DEFAULT_MEMORY_FLUSH_SYSTEM_PROMPT,
+      ),
     ),
   );
 

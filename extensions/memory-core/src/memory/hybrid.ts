@@ -4,11 +4,17 @@ import {
   type TemporalDecayConfig,
   DEFAULT_TEMPORAL_DECAY_CONFIG,
 } from "./temporal-decay.js";
+import {
+  deduplicateBySimilarity,
+  DEFAULT_SEMANTIC_DEDUP_CONFIG,
+  type SemanticDedupConfig,
+} from "./semantic-dedup.js";
 
 export type HybridSource = string;
 
 export { type MMRConfig, DEFAULT_MMR_CONFIG };
 export { type TemporalDecayConfig, DEFAULT_TEMPORAL_DECAY_CONFIG };
+export { type SemanticDedupConfig, DEFAULT_SEMANTIC_DEDUP_CONFIG };
 
 export type HybridVectorResult = {
   id: string;
@@ -66,6 +72,8 @@ export async function mergeHybridResults(params: {
   temporalDecay?: Partial<TemporalDecayConfig>;
   /** Test hook for deterministic time-dependent behavior */
   nowMs?: number;
+  /** Semantic dedup configuration for removing near-duplicate results */
+  semanticDedup?: Partial<SemanticDedupConfig>;
 }): Promise<
   Array<{
     path: string;
@@ -145,11 +153,25 @@ export async function mergeHybridResults(params: {
   });
   const sorted = decayed.toSorted((a, b) => b.score - a.score);
 
+  const dedupConfig = { ...DEFAULT_SEMANTIC_DEDUP_CONFIG, ...params.semanticDedup };
+  const afterDedup = dedupConfig.enabled
+    ? (() => {
+        const items = sorted.map((r, i) => ({
+          id: `${r.path}:${r.startLine}:${i}`,
+          score: r.score,
+          content: r.snippet,
+        }));
+        const dedupedItems = deduplicateBySimilarity(items, dedupConfig);
+        const keptIds = new Set(dedupedItems.map((d) => d.id));
+        return sorted.filter((_, i) => keptIds.has(`${_.path}:${_.startLine}:${i}`));
+      })()
+    : sorted;
+
   // Apply MMR re-ranking if enabled
   const mmrConfig = { ...DEFAULT_MMR_CONFIG, ...params.mmr };
   if (mmrConfig.enabled) {
-    return applyMMRToHybridResults(sorted, mmrConfig);
+    return applyMMRToHybridResults(afterDedup, mmrConfig);
   }
 
-  return sorted;
+  return afterDedup;
 }
