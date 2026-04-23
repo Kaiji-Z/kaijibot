@@ -185,17 +185,16 @@ describe("FragmentStore", () => {
       expect(clusters[0].domains).toContain("d");
     });
 
-    it("pre-filter rejects cluster with <3 fragments", async () => {
+    it("pre-filter rejects cluster with <2 fragments", async () => {
       const fragments = [
         makeFragment({ domains: ["a", "b"], strength: 0.8 }),
-        makeFragment({ domains: ["a", "c"], strength: 0.8 }),
       ];
       await store.save("test-user", fragments);
       const clusters = await store.findClusters("test-user");
       expect(clusters).toHaveLength(0);
     });
 
-    it("pre-filter rejects cluster with avg strength < 0.4", async () => {
+    it("pre-filter rejects cluster with avg strength < 0.3", async () => {
       const fragments = [
         makeFragment({ domains: ["a", "b"], strength: 0.1 }),
         makeFragment({ domains: ["a", "c"], strength: 0.2 }),
@@ -236,6 +235,66 @@ describe("FragmentStore", () => {
     it("returns empty clusters for user with no fragments", async () => {
       const clusters = await store.findClusters("empty-user");
       expect(clusters).toEqual([]);
+    });
+  });
+
+  // ─── Domain-aware dedup ───
+
+  describe("domain-aware dedup", () => {
+    it("addFragment does not dedupe fragments with same tag but different domains", async () => {
+      await store.addFragment("test-user", makeFragment({ structuralTag: "tag-a", domains: ["A"] }));
+      const result = await store.addFragment("test-user", makeFragment({ structuralTag: "tag-a", domains: ["B"] }));
+      expect(result).toHaveLength(2);
+    });
+
+    it("addFragment dedupes fragments with same tag AND same domains", async () => {
+      await store.addFragment("test-user", makeFragment({ structuralTag: "tag-a", domains: ["A", "B"], strength: 0.7 }));
+      const result = await store.addFragment("test-user", makeFragment({ structuralTag: "tag-a", domains: ["B", "A"], strength: 0.3 }));
+      expect(result).toHaveLength(1);
+      expect(result[0].strength).toBeCloseTo(0.7, 1);
+    });
+
+    it("addFragment dedupes by keeping stronger fragment", async () => {
+      await store.addFragment("test-user", makeFragment({ structuralTag: "tag-x", domains: ["X"], strength: 0.3 }));
+      const result = await store.addFragment("test-user", makeFragment({ structuralTag: "tag-x", domains: ["X"], strength: 0.7 }));
+      expect(result).toHaveLength(1);
+      expect(result[0].strength).toBeCloseTo(0.7, 1);
+    });
+  });
+
+  // ─── Relaxed clustering thresholds ───
+
+  describe("relaxed clustering", () => {
+    it("findClusters forms clusters with 2 fragments", async () => {
+      const fragments = [
+        makeFragment({ domains: ["A", "B"], strength: 0.5 }),
+        makeFragment({ domains: ["A", "C"], strength: 0.5 }),
+      ];
+      await store.save("test-user", fragments);
+      const clusters = await store.findClusters("test-user");
+      expect(clusters.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("findClusters forms clusters with avg strength 0.3", async () => {
+      const fragments = [
+        makeFragment({ domains: ["A", "B"], strength: 0.35 }),
+        makeFragment({ domains: ["A", "C"], strength: 0.35 }),
+        makeFragment({ domains: ["A", "D"], strength: 0.35 }),
+      ];
+      await store.save("test-user", fragments);
+      const clusters = await store.findClusters("test-user");
+      expect(clusters.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("findClusters rejects cluster with avg strength below 0.3", async () => {
+      const fragments = [
+        makeFragment({ domains: ["A", "B"], strength: 0.2 }),
+        makeFragment({ domains: ["A", "C"], strength: 0.2 }),
+        makeFragment({ domains: ["A", "D"], strength: 0.2 }),
+      ];
+      await store.save("test-user", fragments);
+      const clusters = await store.findClusters("test-user");
+      expect(clusters).toHaveLength(0);
     });
   });
 

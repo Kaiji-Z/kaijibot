@@ -69,7 +69,10 @@ export class FragmentStore {
 
   async addFragment(userId: string, fragment: Fragment): Promise<Fragment[]> {
     const existing = await this.load(userId);
-    const dupIdx = existing.findIndex(f => f.structuralTag === fragment.structuralTag);
+    const domainKey = (domains: string[]) => [...domains].sort().join(",");
+    const dupIdx = existing.findIndex(f =>
+      f.structuralTag === fragment.structuralTag && domainKey(f.domains) === domainKey(fragment.domains)
+    );
     if (dupIdx >= 0) {
       const dup = existing[dupIdx];
       if (fragment.strength > dup.strength) {
@@ -162,10 +165,10 @@ export class FragmentStore {
 
       const avgStrength = strengthSum / groupFragments.length;
 
-      // Pre-filter: ≥3 fragments AND (≥2 domains OR ≥2 tension fragments) AND avg strength ≥ 0.4
-      if (groupFragments.length < 3) continue;
-      if (allDomains.size < 2 && tensionCount < 2) continue;
-      if (avgStrength < 0.4) continue;
+      // Pre-filter: ≥2 fragments AND (≥2 domains OR ≥1 tension fragment) AND avg strength ≥ 0.3
+      if (groupFragments.length < 2) continue;
+      if (allDomains.size < 2 && tensionCount < 1) continue;
+      if (avgStrength < 0.3) continue;
 
       clusters.push({
         id: randomUUID(),
