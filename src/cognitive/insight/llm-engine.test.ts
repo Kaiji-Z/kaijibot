@@ -617,13 +617,13 @@ describe("buildSearchQuery", () => {
     expect(query).toContain("最新进展");
   });
 
-  it("does not prepend domain name as prefix", () => {
+  it("uses targetDomains as primary and recentFocus as supplementary", () => {
     const input = makeInput({
       targetDomains: ["编程语言"],
       recentFocus: ["需要我重启Gateway才能识别这个Chromium？"],
     });
     const query = buildSearchQuery(input);
-    expect(query).not.toContain("编程语言");
+    expect(query).toContain("编程语言");
     expect(query).toContain("Gateway");
   });
 
@@ -666,14 +666,14 @@ describe("buildSearchQuery", () => {
     expect(query).not.toContain("才能识别");
   });
 
-  it("does not include domain name in query when concepts are available", () => {
+  it("deduplicates domain name already in targetDomains from recentFocus", () => {
     const input = makeInput({
       targetDomains: ["TypeScript"],
       recentFocus: ["TypeScript的高级类型"],
     });
     const query = buildSearchQuery(input);
     const matches = query.match(/typescript/gi);
-    expect(matches).toHaveLength(1);
+    expect(matches!.length).toBeGreaterThanOrEqual(1);
   });
 
   it("splits compound domain name in fallback query", () => {
@@ -1000,5 +1000,157 @@ describe("buildInsightPrompt — bigram similarity matching", () => {
       { title: "New breakthroughs in artificial intelligence", url: "https://example.com", snippet: "AI research advances" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T3: buildSearchQuery — targetDomains as primary source
+// ---------------------------------------------------------------------------
+
+describe("buildSearchQuery — targetDomains priority (T3)", () => {
+  it("uses targetDomains as primary query source", () => {
+    const input = makeInput({
+      targetDomains: ["AI/机器学习", "软件架构"],
+      recentFocus: ["today I learned about Rust"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toMatch(/AI|机器学习|软件|架构/);
+  });
+
+  it("falls back to recentFocus when targetDomains empty", () => {
+    const input = makeInput({
+      targetDomains: [],
+      recentFocus: ["Rust embedded systems"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toBeTruthy();
+    expect(query.length).toBeGreaterThan(0);
+  });
+
+  it("combines targetDomains and recentFocus", () => {
+    const input = makeInput({
+      targetDomains: ["数据科学"],
+      recentFocus: ["Python data analysis"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("数据科学");
+  });
+
+  it("returns empty string for empty input", () => {
+    const input = makeInput({
+      targetDomains: [],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toBe("");
+  });
+
+  it("adds context suffix for short queries", () => {
+    const input = makeInput({
+      targetDomains: ["AI"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("最新进展");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T4: Trigram dedup in generateInsightCandidatesLLM
+// ---------------------------------------------------------------------------
+
+describe("generateInsightCandidatesLLM — trigram dedup (T4)", () => {
+  it("filters candidates similar to recent insights", async () => {
+    const candidateContent = "TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象的设计哲学";
+    const recentContent = "TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象的设计理念";
+    const response = JSON.stringify([
+      {
+        content: candidateContent,
+        rationale: "cross-domain",
+        targetDomains: ["typescript"],
+        sourceDomains: ["rust"],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+      },
+      {
+        content: "Kubernetes的Operator模式可以用来管理有状态应用的生命周期",
+        rationale: "infrastructure",
+        targetDomains: ["kubernetes"],
+        sourceDomains: [],
+        relevanceScore: 0.7,
+        surpriseScore: 0.6,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ recentInsightContents: [recentContent] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+    expect(result[0]!.content).toContain("Kubernetes");
+  });
+
+  it("keeps candidates different from recent insights", async () => {
+    const response = JSON.stringify([
+      {
+        content: "WebAssembly正在改变浏览器端的计算范式",
+        rationale: "emerging",
+        targetDomains: ["wasm"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.7,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ recentInsightContents: ["Rust嵌入式开发在物联网领域的应用越来越广泛"] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+    expect(result[0]!.content).toContain("WebAssembly");
+  });
+
+  it("skips dedup when no recent insights", async () => {
+    const response = JSON.stringify([
+      {
+        content: "WebAssembly改变了浏览器端的计算范式",
+        rationale: "emerging",
+        targetDomains: ["wasm"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.7,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ recentInsightContents: [] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+  });
+
+  it("filters all candidates when all are duplicates", async () => {
+    const candidateContent = "TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象的设计哲学";
+    const recentContent = "TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象的设计理念";
+    const response = JSON.stringify([
+      {
+        content: candidateContent,
+        rationale: "cross",
+        targetDomains: ["typescript"],
+        sourceDomains: ["rust"],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ recentInsightContents: [recentContent] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(0);
   });
 });

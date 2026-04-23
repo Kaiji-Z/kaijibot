@@ -10,6 +10,7 @@ import type { PersonaTree } from "../types.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
+import { isDuplicateByContent } from "./content-similarity.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
@@ -183,7 +184,21 @@ export async function generateInsightCandidatesLLM(
       return [];
     }
     log.info(`LLM generated ${candidates.length} insight candidate(s)`);
-    return candidates.map((c) => enrichWithWebSources(c, webResults));
+
+    // Trigram dedup: filter candidates too similar to recently delivered insights
+    const recentContents = input.recentInsightContents;
+    const filtered = recentContents.length > 0
+      ? candidates.filter(c => !isDuplicateByContent(c.content, recentContents, 0.7))
+      : candidates;
+
+    if (filtered.length < candidates.length) {
+      log.info("trigram dedup filtered candidates", {
+        before: candidates.length,
+        after: filtered.length,
+      });
+    }
+
+    return filtered.map((c) => enrichWithWebSources(c, webResults));
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
     log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
@@ -257,34 +272,39 @@ export function extractKeyTerms(text: string): string[] {
  */
 export function buildSearchQuery(input: InsightEngineInput): string {
   const parts: string[] = [];
-
-  const focusTerms = input.recentFocus.length > 0
-    ? extractKeyTerms(input.recentFocus[0]!)
-    : [];
-
-  const concepts = focusTerms;
-
-  if (concepts.length === 0 && input.targetDomains.length > 0) {
-    const domain = input.targetDomains[0]!;
-    // Split compound domain names: "AI/机器学习" → "AI 机器学习"
-    const parts = domain.split(/[\/\+\-\s]+/).filter(p => p.length > 0);
-    // Add context suffix to scope the search
-    const contextSuffixes = ["最新进展", "技术", "best practices"];
-    const suffix = contextSuffixes[0]!;
-    return [...parts, suffix].join(" ").slice(0, 120);
-  }
-
   const seen = new Set<string>();
-  for (const term of concepts) {
-    const termLower = term.toLowerCase();
-    if (!seen.has(termLower)) {
-      parts.push(term);
-      seen.add(termLower);
+
+  // Primary: targetDomains (from cross-domain mapping / identify step)
+  for (const domain of input.targetDomains) {
+    const terms = domain.split(/[\/\+\-\s]+/).filter(p => p.length > 0);
+    for (const term of terms) {
+      const lower = term.toLowerCase();
+      if (!seen.has(lower)) {
+        parts.push(term);
+        seen.add(lower);
+      }
     }
-    if (parts.length >= 4) break;
+    if (parts.length >= 3) break;
   }
 
-  return parts.join(" ").slice(0, 120);
+  // Supplementary: recentFocus terms (up to 2 more)
+  if (parts.length < 4 && input.recentFocus.length > 0) {
+    const focusTerms = extractKeyTerms(input.recentFocus[0]!);
+    for (const term of focusTerms) {
+      const lower = term.toLowerCase();
+      if (!seen.has(lower)) {
+        parts.push(term);
+        seen.add(lower);
+      }
+      if (parts.length >= 4) break;
+    }
+  }
+
+  if (parts.length === 0) return "";
+
+  // Add a context suffix for better search results
+  const suffix = parts.length <= 2 ? " 最新进展" : "";
+  return (parts.join(" ") + suffix).slice(0, 120);
 }
 
 function enrichWithWebSources(
