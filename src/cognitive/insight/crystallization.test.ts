@@ -1,8 +1,22 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { CrystallizationDeps } from "./crystallization.js";
-import { crystallize, parseBlindSpot } from "./crystallization.js";
 import type { Fragment, FragmentCluster, BlindSpotCandidate } from "./fragment-types.js";
 import type { PersonaTree } from "../types.js";
+
+// ─── Logger mock (hoisted by vitest) ───
+
+const debugMessages: unknown[][] = [];
+vi.mock("../../logging/subsystem.js", () => ({
+  createSubsystemLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: (...args: unknown[]) => { debugMessages.push(args); },
+  }),
+}));
+
+// Import AFTER vi.mock so the mock is active
+import { crystallize, parseBlindSpot } from "./crystallization.js";
 
 // ─── Helpers ───
 
@@ -172,6 +186,35 @@ describe("crystallize", () => {
       const result = await crystallize("user-1", persona, defaultConfig, deps);
 
       expect(result).toEqual([]);
+    });
+
+    it("logs debug when no clusters found", async () => {
+      debugMessages.length = 0;
+      const deps = makeMockDeps([], [], "");
+
+      await crystallize("user-1", makePersona(), defaultConfig, deps);
+
+      expect(debugMessages.some((args) => String(args[0]).includes("no clusters found"))).toBe(true);
+    });
+
+    it("logs debug when all clusters filtered by domain overlap", async () => {
+      debugMessages.length = 0;
+      const cluster = makeCluster({ domains: ["domain-a", "domain-b"] });
+      const existingBS: BlindSpotCandidate = {
+        id: "bs-1",
+        blindSpot: "existing blind spot",
+        supportingFragmentIds: [],
+        potentialImpact: "connection_reveal",
+        domains: ["domain-a", "domain-b"],
+        unusedDomains: [],
+        crystallizationScore: 0.7,
+      };
+      const persona = makePersona({ activeBlindSpots: [existingBS] });
+      const deps = makeMockDeps([], [cluster], makeValidLlmResponse());
+
+      await crystallize("user-1", persona, defaultConfig, deps);
+
+      expect(debugMessages.some((args) => String(args[0]).includes("all clusters filtered"))).toBe(true);
     });
 
     it("processes max 3 clusters per run", async () => {

@@ -74,14 +74,20 @@ export async function crystallize(
 ): Promise<BlindSpotCandidate[]> {
   try {
     const allClusters = await deps.findClusters(userId);
-    if (allClusters.length === 0) return [];
+    if (allClusters.length === 0) {
+      log.debug("crystallize: no clusters found", { userId });
+      return [];
+    }
 
     const targetClusters =
       mode === "deep_scan"
         ? allClusters
         : filterNewlyRipeClusters(allClusters, persona);
 
-    if (targetClusters.length === 0) return [];
+    if (targetClusters.length === 0) {
+      log.debug("crystallize: all clusters filtered by domain overlap", { userId, total: allClusters.length });
+      return [];
+    }
 
     const allFragments = await deps.loadFragments(userId);
     const fragmentMap = new Map<string, Fragment>(
