@@ -112,6 +112,47 @@ Ignore this.
     expect(result).not.toContain("Other");
   });
 
+  it("extracts Memory section", async () => {
+    const content = `# Rules
+
+## Session Startup
+
+Do startup.
+
+## Memory
+
+Classify memories as: user, feedback, project, reference.
+Never save code patterns.
+
+## Red Lines
+
+Never do X.
+
+## Other
+
+Ignore this.
+`;
+    fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), content);
+    const result = await readPostCompactionContext(tmpDir);
+    expect(result).not.toBeNull();
+    expect(result).toContain("Session Startup");
+    expect(result).toContain("Memory");
+    expect(result).toContain("Classify memories");
+    expect(result).toContain("Red Lines");
+    expect(result).not.toContain("Other");
+    expect(result).not.toContain("Ignore this");
+  });
+
+  it("extracts all three default sections including Memory", async () => {
+    const content = `## Session Startup\n\nDo startup.\n\n## Memory\n\nClassify types.\n\n## Red Lines\n\nDo not break.\n\n## Other\n\nIgnore.\n`;
+    fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), content);
+    const result = await readPostCompactionContext(tmpDir);
+    expect(result).toContain("Do startup");
+    expect(result).toContain("Classify types");
+    expect(result).toContain("Do not break");
+    expect(result).not.toContain("Ignore");
+  });
+
   it("truncates when content exceeds limit", async () => {
     const longContent = "## Session Startup\n\n" + "A".repeat(4000) + "\n\n## Other\n\nStuff.";
     fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), longContent);
@@ -354,18 +395,18 @@ Read WORKFLOW.md on startup.
       fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), content);
       const result = await readPostCompactionContext(tmpDir);
       expect(result).not.toBeNull();
-      expect(result).toContain("Run your Session Startup sequence");
+      expect(result).toContain("Run your Session Startup sequence and re-read your Memory rules");
     });
 
     it("falls back to legacy sections when defaults are explicitly configured", async () => {
       // Older AGENTS.md templates use "Every Session" / "Safety" instead of
-      // "Session Startup" / "Red Lines". Explicitly setting the defaults should
+      // "Session Startup" / "Memory" / "Red Lines". Explicitly setting the defaults should
       // still trigger the legacy fallback — same behavior as leaving the field unset.
-      await expectLegacySectionFallback(["Session Startup", "Red Lines"]);
+      await expectLegacySectionFallback(["Session Startup", "Memory", "Red Lines"]);
     });
 
     it("falls back to legacy sections when default sections are configured in a different order", async () => {
-      await expectLegacySectionFallback(["Red Lines", "Session Startup"], true);
+      await expectLegacySectionFallback(["Red Lines", "Session Startup", "Memory"], true);
     });
 
     it("custom section names are matched case-insensitively", async () => {

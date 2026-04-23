@@ -7,7 +7,7 @@ import { openBoundaryFile } from "../../infra/boundary-file-read.js";
 import { normalizeLowercaseStringOrEmpty } from "../../shared/string-coerce.js";
 
 const MAX_CONTEXT_CHARS = 3000;
-const DEFAULT_POST_COMPACTION_SECTIONS = ["Session Startup", "Red Lines"];
+const DEFAULT_POST_COMPACTION_SECTIONS = ["Session Startup", "Memory", "Red Lines"];
 const LEGACY_POST_COMPACTION_SECTIONS = ["Every Session", "Safety"];
 
 // Compare configured section names as a case-insensitive set so deployments can
@@ -85,7 +85,7 @@ export async function readPostCompactionContext(
       }
     })();
 
-    // Extract configured sections from AGENTS.md (default: Session Startup + Red Lines).
+    // Extract configured sections from AGENTS.md (default: Session Startup + Memory + Red Lines).
     // An explicit empty array disables post-compaction context injection entirely.
     const configuredSections = cfg?.agents?.defaults?.compaction?.postCompactionSections;
     const sectionNames = Array.isArray(configuredSections)
@@ -137,7 +137,7 @@ export async function readPostCompactionContext(
     // would be misleading for deployments that use different section names.
     const prose = isDefaultSections
       ? "Session was just compacted. The conversation summary above is a hint, NOT a substitute for your startup sequence. " +
-        "Run your Session Startup sequence - read the required files before responding to the user."
+        "Run your Session Startup sequence and re-read your Memory rules - read the required files before responding to the user."
       : `Session was just compacted. The conversation summary above is a hint, NOT a substitute for your full startup sequence. ` +
         `Re-read the sections injected below (${displayNames.join(", ")}) and follow your configured startup procedure before responding to the user.`;
 
