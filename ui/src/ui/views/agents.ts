@@ -248,13 +248,16 @@ function renderAgentCard(
         ${agentCardMetric("Skills", metrics.skillsCount)}
       </div>
       <div class="agent-card__stats-row">
-        <span class="agent-card__stat">${statusInfo.sessionCount} 会话</span>
-        <span class="agent-card__stat">${formatTokenCount(statusInfo.totalTokens)} tokens</span>
+        ${statusInfo.contextTokens > 0
+          ? html`<span class="agent-card__stat">${formatTokenCount(statusInfo.usedTokens)}/${formatTokenCount(statusInfo.contextTokens)} (${Math.round((statusInfo.usedTokens / statusInfo.contextTokens) * 100)}%)</span>`
+          : nothing}
         <span class="agent-card__stat">${formatRelativeTime(statusInfo.lastActiveAt)}</span>
       </div>
-      <div class="agent-card__token-bar">
-        <div class="agent-card__token-bar-fill" style="width: ${Math.min(100, (statusInfo.totalTokens / 100000) * 100)}%"></div>
-      </div>
+      ${statusInfo.contextTokens > 0
+        ? html`<div class="agent-card__token-bar">
+            <div class="agent-card__token-bar-fill" style="width: ${Math.min(100, (statusInfo.usedTokens / statusInfo.contextTokens) * 100)}%"></div>
+          </div>`
+        : nothing}
     </button>
   `;
 }

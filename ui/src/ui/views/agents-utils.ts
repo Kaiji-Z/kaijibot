@@ -711,15 +711,15 @@ export function resolveToolProfile(profile: string) {
 export type AgentStatusInfo = {
   status: "running" | "active" | "idle";
   statusLabel: string;
-  totalTokens: number;
-  sessionCount: number;
+  usedTokens: number;
+  contextTokens: number;
   lastActiveAt: number | null;
   model: string | null;
   modelProvider: string | null;
 };
 
 export function deriveAgentStatusFromSessions(
-  sessions: Array<{ key: string; status?: string; updatedAt?: number | null; totalTokens?: number; model?: string; modelProvider?: string }>,
+  sessions: Array<{ key: string; status?: string; updatedAt?: number | null; totalTokens?: number; contextTokens?: number; model?: string; modelProvider?: string }>,
   agentId: string,
 ): AgentStatusInfo {
   const now = Date.now();
@@ -731,10 +731,9 @@ export function deriveAgentStatusFromSessions(
   });
 
   if (agentSessions.length === 0) {
-    return { status: "idle", statusLabel: "空闲", totalTokens: 0, sessionCount: 0, lastActiveAt: null, model: null, modelProvider: null };
+    return { status: "idle", statusLabel: "空闲", usedTokens: 0, contextTokens: 0, lastActiveAt: null, model: null, modelProvider: null };
   }
 
-  const totalTokens = agentSessions.reduce((sum, s) => sum + (s.totalTokens ?? 0), 0);
   const lastActiveAt = Math.max(...agentSessions.map((s) => s.updatedAt ?? 0));
 
   const hasRunning = agentSessions.some((s) => s.status === "running");
@@ -754,15 +753,16 @@ export function deriveAgentStatusFromSessions(
     statusLabel = "空闲";
   }
 
-  const latestSession = agentSessions.reduce((a, b) =>
-    (b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a,
-  );
+  // Prefer running session, fall back to most recently updated.
+  const latestSession = hasRunning
+    ? agentSessions.find((s) => s.status === "running") ?? agentSessions.reduce((a, b) => (b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a)
+    : agentSessions.reduce((a, b) => (b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a);
 
   return {
     status,
     statusLabel,
-    totalTokens,
-    sessionCount: agentSessions.length,
+    usedTokens: latestSession.totalTokens ?? 0,
+    contextTokens: latestSession.contextTokens ?? 0,
     lastActiveAt: lastActiveAt > 0 ? lastActiveAt : null,
     model: latestSession.model ?? null,
     modelProvider: latestSession.modelProvider ?? null,
