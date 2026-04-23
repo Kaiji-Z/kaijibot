@@ -291,7 +291,7 @@ function scanCrossDomain(persona: PersonaTree): Opportunity[] {
   const userDomains = Object.keys(persona.domains);
   if (userDomains.length === 0) return [];
 
-  const connections = findCrossDomainConnections(userDomains);
+  const connections = findCrossDomainConnections(userDomains, undefined, persona.domainGraph);
   const pAccept = computeBaselinePAccept(persona);
 
   return connections.slice(0, 3).map((conn) => {

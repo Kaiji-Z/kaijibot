@@ -102,6 +102,24 @@ describe("generateInsightCandidates", () => {
     }
   });
 
+  it("uses persona.domainGraph for cross-domain connections", () => {
+    const persona = personaWithDomains();
+    // Add a custom domain connected via domainGraph that is NOT in default adjacencies
+    persona.domainGraph = {
+      nodes: ["AI/机器学习", "软件架构", "CustomDomain"],
+      edges: [
+        { source: "AI/机器学习", target: "CustomDomain", weight: 0.8, lastObserved: Date.now(), observations: 5 },
+        { source: "软件架构", target: "CustomDomain", weight: 0.8, lastObserved: Date.now(), observations: 5 },
+      ],
+      totalObservations: 10,
+    };
+    const candidates = generateInsightCandidates(persona, baseInput(), { maxCandidates: 10 });
+    const hasCustomDomain = candidates.some(
+      (c) => c.sourceDomains.includes("CustomDomain") || c.targetDomains.includes("CustomDomain"),
+    );
+    expect(hasCustomDomain).toBe(true);
+  });
+
   it("never returns candidates referencing blacklisted domains", () => {
     const persona = personaWithDomains();
     persona.domains["软件架构"].depth = 5;

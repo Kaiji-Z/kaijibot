@@ -343,6 +343,23 @@ describe("findCrossDomainConnections with learned graph", () => {
     const result2 = findCrossDomainConnections(["AI/机器学习", "软件架构"], undefined, undefined);
     expect(result1).toEqual(result2);
   });
+
+  it("includes connections from domainGraph edges not in default adjacencies", () => {
+    const domainGraph: LearnedDomainGraph = {
+      nodes: ["AI/机器学习", "软件架构", "NicheDomain"],
+      edges: [
+        { source: "AI/机器学习", target: "NicheDomain", weight: 0.8, lastObserved: Date.now(), observations: 5 },
+      ],
+      totalObservations: 5,
+    };
+    const withoutGraph = findCrossDomainConnections(["AI/机器学习"]);
+    const targetsWithout = withoutGraph.map((c) => c.to);
+    expect(targetsWithout).not.toContain("NicheDomain");
+
+    const withGraph = findCrossDomainConnections(["AI/机器学习"], undefined, domainGraph);
+    const targetsWith = withGraph.map((c) => c.to);
+    expect(targetsWith).toContain("NicheDomain");
+  });
 });
 
 describe("semanticDistance with learned graph", () => {
