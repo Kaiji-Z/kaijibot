@@ -154,3 +154,31 @@ A memory that names a specific file, function, or flag is a claim that it existe
 - If the user is about to act on your recommendation, verify first
 
 "The memory says X exists" is not the same as "X exists now."`;
+
+export const TOPIC_FILE_FORMAT_SECTION = `## Topic File Format
+
+Each topic file lives under memory/topics/ and uses this structure:
+
+\`\`\`markdown
+---
+type: user|feedback|project|reference
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+entries: N
+---
+
+## Entry Title (YYYY-MM-DD)
+
+Entry content in free-form markdown.
+
+## Another Entry (YYYY-MM-DD)
+
+More content.
+\`\`\`
+
+Rules:
+- Frontmatter uses simple YAML (key: value pairs)
+- Each entry is a ## heading with title and date in parentheses
+- Entry importance: "high", "normal" (default), or "low"
+- Entry source: "session-compact", "memory-save", "dreaming", etc.
+- Default topic files: user-profile.md, feedback.md, project-decisions.md, reference.md`;

@@ -20,6 +20,20 @@ export {
   DEFAULT_MEMORY_FLUSH_SOFT_TOKENS,
 } from "./src/flush-plan.js";
 export { buildPromptSection } from "./src/prompt-section.js";
+export { TopicManager, createTopicManager, type TopicManagerDeps } from "./src/topic-manager.js";
+export {
+  type TopicFile,
+  type TopicEntry,
+  DEFAULT_TOPIC_FILES,
+  parseTopicFile,
+  parseTopicEntry,
+  parseTopicEntryHeading,
+  serializeTopicFile,
+  serializeTopicEntry,
+  createEmptyTopicFile,
+  formatEntryHeading,
+} from "./src/topic-types.js";
+export { MemoryIndexManager, type MemoryIndexDeps, type MemoryIndex, type MemoryIndexSection, type RecentSession } from "./src/memory-index.js";
 
 export default definePluginEntry({
   id: "memory-core",
