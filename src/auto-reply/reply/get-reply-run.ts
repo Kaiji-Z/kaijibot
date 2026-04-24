@@ -268,22 +268,22 @@ export async function runPreparedReply(
   const rawBodyTrimmed = (ctx.CommandBody ?? ctx.RawBody ?? ctx.Body ?? "").trim();
 
   // Cognitive layer: classify mode, load persona, inject context into system prompt.
+  let cognitivePersona: import("../../cognitive/types.js").PersonaTree | undefined;
   try {
     const { buildCognitiveModePrompt } = await import("../../cognitive/context-writer.js");
     const { PersonaStore } = await import("../../cognitive/persona/store.js");
     const { resolveConfigDir } = await import("../../utils.js");
     const cognitiveCfg = cfg.cognitive;
     const userId = sessionCtx.SenderId;
-    let persona;
     if (userId) {
       const store = new PersonaStore(resolveConfigDir());
-      persona = await store.load("main", userId);
+      cognitivePersona = await store.load("main", userId);
     }
     const { prompt: cognitivePrompt } = buildCognitiveModePrompt({
       message: rawBodyTrimmed,
       cognitiveEnabled: cognitiveCfg?.enabled,
       evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
-      persona,
+      persona: cognitivePersona,
     });
     if (cognitivePrompt) {
       extraSystemPromptParts.push(cognitivePrompt);
@@ -308,6 +308,21 @@ export async function runPreparedReply(
   const isBareSessionReset =
     isNewSession &&
     ((baseBodyTrimmedRaw.length === 0 && rawBodyTrimmed.length > 0) || isBareNewOrReset);
+  if (isBareSessionReset) {
+    try {
+      const { buildAutoRecallContext } = await import("./auto-recall.js");
+      const recallContext = await buildAutoRecallContext({
+        cfg,
+        agentId,
+        persona: cognitivePersona,
+      });
+      if (recallContext) {
+        extraSystemPromptParts.unshift(recallContext);
+      }
+    } catch {
+      // Auto-recall failure must not block session startup.
+    }
+  }
   const baseBodyFinal = isBareSessionReset ? buildBareSessionResetPrompt(cfg) : baseBody;
   const envelopeOptions = resolveEnvelopeFormatOptions(cfg);
   const inboundUserContext = buildInboundUserContextPrefix(

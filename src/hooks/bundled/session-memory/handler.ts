@@ -1,8 +1,8 @@
 /**
  * Session memory hook handler
  *
- * Saves session context to memory when /new or /reset command is triggered
- * Creates a new dated memory file with LLM-generated slug
+ * Saves structured session summaries to memory when /new or /reset command
+ * is triggered. Creates daily memory files and routes topics to topic files.
  */
 
 import fs from "node:fs/promises";
@@ -14,7 +14,7 @@ import {
 } from "../../../agents/agent-scope.js";
 import type { KaijiBotConfig } from "../../../config/config.js";
 import { resolveStateDir } from "../../../config/paths.js";
-import { writeFileWithinRoot } from "../../../infra/fs-safe.js";
+import { appendFileWithinRoot, mkdirPathWithinRoot } from "../../../infra/fs-safe.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import {
   parseAgentSessionKey,
@@ -23,10 +23,28 @@ import {
 } from "../../../routing/session-key.js";
 import { resolveHookConfig } from "../../config.js";
 import type { HookHandler } from "../../hooks.js";
-import { generateSlugViaLLM } from "../../llm-slug-generator.js";
-import { findPreviousSessionFile, getRecentSessionContentWithResetFallback } from "./transcript.js";
+import {
+  findPreviousSessionFile,
+  getRecentSessionContentWithResetFallback,
+} from "./transcript.js";
+import { generateStructuredSummary, formatSummaryAsMarkdown } from "./summary.js";
+import type { StructuredSummary } from "./summary.js";
+// Inline type — memory-core types are loaded dynamically to respect the extension boundary.
+interface TopicEntry {
+  title: string;
+  date: string;
+  content: string;
+  importance?: "high" | "normal" | "low";
+  source?: string;
+}
 
 const log = createSubsystemLogger("hooks/session-memory");
+
+const MESSAGE_CAP = 500;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function resolveDisplaySessionKey(params: {
   cfg?: KaijiBotConfig;
@@ -47,11 +65,27 @@ function resolveDisplaySessionKey(params: {
   });
 }
 
-/**
- * Save session context to memory when /new or /reset command is triggered
- */
+function createNodeFsAdapter() {
+  return {
+    readFile: (p: string) => fs.readFile(p, "utf-8"),
+    writeFile: (p: string, data: string) => fs.writeFile(p, data, "utf-8"),
+    mkdir: async (p: string, opts: { recursive: boolean }) => {
+      await fs.mkdir(p, opts);
+    },
+    readdir: (p: string) => fs.readdir(p),
+    stat: async (p: string) => {
+      const s = await fs.stat(p);
+      return { mtimeMs: s.mtimeMs, size: s.size };
+    },
+    rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
+
 const saveSessionToMemory: HookHandler = async (event) => {
-  // Only trigger on reset/new commands
   const isResetCommand = event.action === "new" || event.action === "reset";
   if (event.type !== "command" || !isResetCommand) {
     return;
@@ -80,12 +114,9 @@ const saveSessionToMemory: HookHandler = async (event) => {
     const memoryDir = path.join(workspaceDir, "memory");
     await fs.mkdir(memoryDir, { recursive: true });
 
-    // Get today's date for filename
     const now = new Date(event.timestamp);
-    const dateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    const dateStr = now.toISOString().split("T")[0];
 
-    // Generate descriptive slug from session using LLM
-    // Prefer previousSessionEntry (old session before /new) over current (which may be empty)
     const sessionEntry = (context.previousSessionEntry || context.sessionEntry || {}) as Record<
       string,
       unknown
@@ -93,7 +124,6 @@ const saveSessionToMemory: HookHandler = async (event) => {
     const currentSessionId = sessionEntry.sessionId as string;
     let currentSessionFile = (sessionEntry.sessionFile as string) || undefined;
 
-    // If sessionFile is empty or looks like a new/reset file, try to find the previous session file.
     if (!currentSessionFile || currentSessionFile.includes(".reset.")) {
       const sessionsDirs = new Set<string>();
       if (currentSessionFile) {
@@ -102,17 +132,16 @@ const saveSessionToMemory: HookHandler = async (event) => {
       sessionsDirs.add(path.join(workspaceDir, "sessions"));
 
       for (const sessionsDir of sessionsDirs) {
-        const recoveredSessionFile = await findPreviousSessionFile({
+        const recovered = await findPreviousSessionFile({
           sessionsDir,
           currentSessionFile,
           sessionId: currentSessionId,
         });
-        if (!recoveredSessionFile) {
-          continue;
+        if (recovered) {
+          currentSessionFile = recovered;
+          log.debug("Found previous session file", { file: currentSessionFile });
+          break;
         }
-        currentSessionFile = recoveredSessionFile;
-        log.debug("Found previous session file", { file: currentSessionFile });
-        break;
       }
     }
 
@@ -124,91 +153,124 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
     const sessionFile = currentSessionFile || undefined;
 
-    // Read message count from hook config (default: 15)
     const hookConfig = resolveHookConfig(cfg, "session-memory");
     const messageCount =
       typeof hookConfig?.messages === "number" && hookConfig.messages > 0
-        ? hookConfig.messages
-        : 15;
+        ? Math.min(hookConfig.messages, MESSAGE_CAP)
+        : MESSAGE_CAP;
 
-    let slug: string | null = null;
     let sessionContent: string | null = null;
+    let summary: StructuredSummary;
 
     if (sessionFile) {
-      // Get recent conversation content, with fallback to rotated reset transcript.
       sessionContent = await getRecentSessionContentWithResetFallback(sessionFile, messageCount);
       log.debug("Session content loaded", {
         length: sessionContent?.length ?? 0,
         messageCount,
       });
+    }
 
-      // Avoid calling the model provider in unit tests; keep hooks fast and deterministic.
-      const isTestEnv =
-        process.env.KAIJIBOT_TEST_FAST === "1" ||
-        process.env.VITEST === "true" ||
-        process.env.VITEST === "1" ||
-        process.env.NODE_ENV === "test";
-      const allowLlmSlug = !isTestEnv && hookConfig?.llmSlug !== false;
+    const isTestEnv =
+      process.env.KAIJIBOT_TEST_FAST === "1" ||
+      process.env.VITEST === "true" ||
+      process.env.VITEST === "1" ||
+      process.env.NODE_ENV === "test";
+    const allowLlm = !isTestEnv && hookConfig?.llmSlug !== false;
 
-      if (sessionContent && cfg && allowLlmSlug) {
-        log.debug("Calling generateSlugViaLLM...");
-        // Use LLM to generate a descriptive slug
-        slug = await generateSlugViaLLM({ sessionContent, cfg });
-        log.debug("Generated slug", { slug });
+    if (sessionContent && cfg && allowLlm) {
+      summary = await generateStructuredSummary({ transcript: sessionContent, cfg });
+      log.debug("Structured summary generated", { topicSlug: summary.topicSlug, type: summary.type });
+    } else if (sessionContent) {
+      const firstLine = sessionContent.split("\n")[0] ?? "";
+      summary = {
+        summary: firstLine.slice(0, 300) || "(session)",
+        decisions: [],
+        followups: [],
+        topics: [],
+        participants: ["user"],
+        type: "reference",
+        topicSlug: "session",
+      };
+    } else {
+      const timeStr = now.toISOString().split("T")[1].split(".")[0].replace(/:/g, "").slice(0, 4);
+      summary = {
+        summary: `(empty session at ${timeStr})`,
+        decisions: [],
+        followups: [],
+        topics: [],
+        participants: ["user"],
+        type: "reference",
+        topicSlug: `session-${timeStr}`,
+      };
+    }
+
+    // --- Write daily file: memory/YYYY-MM-DD.md (append) ---
+    const dailyFilename = `${dateStr}.md`;
+    const markdownEntry = formatSummaryAsMarkdown(summary, dateStr);
+
+    await mkdirPathWithinRoot({ rootDir: memoryDir, relativePath: "." });
+    await appendFileWithinRoot({
+      rootDir: memoryDir,
+      relativePath: dailyFilename,
+      data: `\n${markdownEntry}\n`,
+      prependNewlineIfNeeded: true,
+    });
+    log.debug("Daily memory file updated", { filename: dailyFilename });
+
+    // --- Route to topic files ---
+    if (summary.topicSlug && cfg) {
+      try {
+        const { createTopicManager, MemoryIndexManager } = await import(
+          "../../../../extensions/memory-core/index.js"
+        );
+        const nodeFs = createNodeFsAdapter();
+
+        const topicManager = createTopicManager({ workspaceDir, fs: nodeFs });
+        await topicManager.ensureTopicsDir();
+
+        const topicFileName = `${summary.topicSlug}.md`;
+        let topic = await topicManager.getTopic(topicFileName);
+        if (!topic) {
+          topic = await topicManager.createTopic(summary.type, topicFileName);
+        }
+
+        const entryContent = sessionContent
+          ? sessionContent.slice(0, 4000)
+          : summary.summary;
+
+        const topicEntry: TopicEntry = {
+          title: `${dateStr} session`,
+          date: dateStr,
+          content: entryContent,
+          importance: summary.decisions.length > 0 ? "high" : "normal",
+          source: "session-memory",
+        };
+        await topicManager.appendEntry(topicFileName, topicEntry);
+        log.debug("Topic file updated", { topic: topicFileName });
+
+        const indexFs = {
+          readFile: (p: string) => fs.readFile(p, "utf-8"),
+          writeFile: (p: string, data: string) => fs.writeFile(p, data, "utf-8"),
+          mkdir: async (p: string, opts: { recursive: boolean }) => {
+            await fs.mkdir(p, opts);
+          },
+          rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
+        };
+        const indexManager = new MemoryIndexManager({ workspaceDir, fs: indexFs });
+        await indexManager.addRecentSession({
+          date: dateStr,
+          title: summary.summary.slice(0, 80),
+          topicPath: `memory/topics/${topicFileName}`,
+        });
+        log.debug("MEMORY.md index updated");
+      } catch (topicErr) {
+        const msg = topicErr instanceof Error ? topicErr.message : String(topicErr);
+        log.error("Failed to update topic files or index", { error: msg });
       }
     }
 
-    // If no slug, use timestamp
-    if (!slug) {
-      const timeSlug = now.toISOString().split("T")[1].split(".")[0].replace(/:/g, "");
-      slug = timeSlug.slice(0, 4); // HHMM
-      log.debug("Using fallback timestamp slug", { slug });
-    }
-
-    // Create filename with date and slug
-    const filename = `${dateStr}-${slug}.md`;
-    const memoryFilePath = path.join(memoryDir, filename);
-    log.debug("Memory file path resolved", {
-      filename,
-      path: memoryFilePath.replace(os.homedir(), "~"),
-    });
-
-    // Format time as HH:MM:SS UTC
-    const timeStr = now.toISOString().split("T")[1].split(".")[0];
-
-    // Extract context details
-    const sessionId = (sessionEntry.sessionId as string) || "unknown";
-    const source = (context.commandSource as string) || "unknown";
-
-    // Build Markdown entry
-    const entryParts = [
-      `# Session: ${dateStr} ${timeStr} UTC`,
-      "",
-      `- **Session Key**: ${displaySessionKey}`,
-      `- **Session ID**: ${sessionId}`,
-      `- **Source**: ${source}`,
-      "",
-    ];
-
-    // Include conversation content if available
-    if (sessionContent) {
-      entryParts.push("## Conversation Summary", "", sessionContent, "");
-    }
-
-    const entry = entryParts.join("\n");
-
-    // Write under memory root with alias-safe file validation.
-    await writeFileWithinRoot({
-      rootDir: memoryDir,
-      relativePath: filename,
-      data: entry,
-      encoding: "utf-8",
-    });
-    log.debug("Memory file written successfully");
-
-    // Log completion (but don't send user-visible confirmation - it's internal housekeeping)
-    const relPath = memoryFilePath.replace(os.homedir(), "~");
-    log.info(`Session context saved to ${relPath}`);
+    const relPath = path.join(memoryDir, dailyFilename).replace(os.homedir(), "~");
+    log.info(`Session summary saved to ${relPath}`);
   } catch (err) {
     if (err instanceof Error) {
       log.error("Failed to save session memory", {

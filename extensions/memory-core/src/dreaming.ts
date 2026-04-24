@@ -26,6 +26,11 @@ import {
   repairShortTermPromotionArtifacts,
   rankShortTermPromotionCandidates,
 } from "./short-term-promotion.js";
+import {
+  createTidyDepsFromNodeFs,
+  isTidyEnabled,
+  runMemoryTidyActions,
+} from "./tools.memory-tidy.js";
 
 const MANAGED_DREAMING_CRON_NAME = "Memory Dreaming Promotion";
 const MANAGED_DREAMING_CRON_TAG = "[managed-by=memory-core.short-term-promotion]";
@@ -632,6 +637,24 @@ export async function runShortTermDreamingPromotionIfTriggered(params: {
           timezone: params.config.timezone,
           logger: params.logger,
         });
+      }
+
+      // Auto-tidy after Deep Sleep
+      if (isTidyEnabled(pluginConfig)) {
+        try {
+          const nodeFs = await import("node:fs/promises");
+          const tidyDeps = createTidyDepsFromNodeFs(workspaceDir, nodeFs);
+          const dedupResult = await runMemoryTidyActions(tidyDeps, { action: "dedup" });
+          params.logger.info(
+            `[dreaming] auto-tidy dedup: ${dedupResult.entriesAffected} entries affected`,
+          );
+          const rebalanceResult = await runMemoryTidyActions(tidyDeps, { action: "rebalance" });
+          params.logger.info(
+            `[dreaming] auto-tidy rebalance: ${rebalanceResult.changes.length} changes`,
+          );
+        } catch (tidyErr) {
+          params.logger.warn(`[dreaming] auto-tidy failed: ${String(tidyErr)}`);
+        }
       }
     } catch (err) {
       failedWorkspaces += 1;
