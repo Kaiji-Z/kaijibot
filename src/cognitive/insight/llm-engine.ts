@@ -10,7 +10,7 @@ import type { PersonaTree } from "../types.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
-import { isDuplicateByContent } from "./content-similarity.js";
+import { isDuplicateByContent, isDuplicateBySemanticOverlap } from "./content-similarity.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
@@ -97,12 +97,14 @@ export async function generateInsightCandidatesLLM(
 
   let webResults: WebSearchResult[] = [];
   let searchStrategy: import("./types.js").SearchStrategy | undefined;
+  let queryUsed: string | undefined;
 
   if (mode === "surprise" && deps.inferenceDeps) {
     const inferenceResult = await inferSearchStrategy(persona, input, config, deps.inferenceDeps);
     if (inferenceResult.ok) {
       searchStrategy = inferenceResult.strategy;
       if (deps.webSearch && searchStrategy.searchQuery) {
+        queryUsed = searchStrategy.searchQuery;
         try {
           webResults = await deps.webSearch(searchStrategy.searchQuery);
           log.info("surprise-mode web search completed", { query: searchStrategy.searchQuery, resultCount: webResults.length });
@@ -117,6 +119,7 @@ export async function generateInsightCandidatesLLM(
   } else {
     if (deps.webSearch) {
       const query = buildSearchQuery(input);
+      queryUsed = query || undefined;
       if (query) {
         try {
           webResults = await deps.webSearch(query);
@@ -188,7 +191,7 @@ export async function generateInsightCandidatesLLM(
     // Trigram dedup: filter candidates too similar to recently delivered insights
     const recentContents = input.recentInsightContents;
     const filtered = recentContents.length > 0
-      ? candidates.filter(c => !isDuplicateByContent(c.content, recentContents, 0.7))
+      ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.7 }))
       : candidates;
 
     if (filtered.length < candidates.length) {
@@ -198,7 +201,11 @@ export async function generateInsightCandidatesLLM(
       });
     }
 
-    return filtered.map((c) => enrichWithWebSources(c, webResults));
+    return filtered.map((c) => {
+      const enriched = enrichWithWebSources(c, webResults);
+      if (queryUsed) enriched.searchQueryUsed = queryUsed;
+      return enriched;
+    });
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
     log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
@@ -262,21 +269,28 @@ export function extractKeyTerms(text: string): string[] {
   return segments;
 }
 
-/**
- * Build a focused web-search query from the insight pipeline input.
- *
- * Strategy:
- *  1. Extract key concepts from the user's recent focus areas.
- *  2. If empty, fall back to the primary target domain name.
- *  3. Cap at 120 chars and ensure the query is well-formed.
- */
+const SUFFIXES = [" 最新进展", " 实践案例", " 最佳实践", " 技术趋势", " 新方向"] as const;
+
 export function buildSearchQuery(input: InsightEngineInput): string {
   const parts: string[] = [];
   const seen = new Set<string>();
 
-  // Primary: targetDomains (from cross-domain mapping / identify step)
+  const historyTerms = new Set<string>();
+  const history = input.recentQueryHistory ?? [];
+  for (const query of history.slice(-3)) {
+    for (const term of extractKeyTerms(query)) {
+      historyTerms.add(term.toLowerCase());
+    }
+    for (const word of query.split(/\s+/)) {
+      if (word.length >= 2) historyTerms.add(word.toLowerCase());
+    }
+  }
+
   for (const domain of input.targetDomains) {
     const terms = domain.split(/[\/\+\-\s]+/).filter(p => p.length > 0);
+    const domainMatchesHistory = terms.length > 0 && terms.every(t => historyTerms.has(t.toLowerCase()));
+    if (domainMatchesHistory && input.targetDomains.length > 1) continue;
+
     for (const term of terms) {
       const lower = term.toLowerCase();
       if (!seen.has(lower)) {
@@ -287,23 +301,27 @@ export function buildSearchQuery(input: InsightEngineInput): string {
     if (parts.length >= 3) break;
   }
 
-  // Supplementary: recentFocus terms (up to 2 more)
   if (parts.length < 4 && input.recentFocus.length > 0) {
-    const focusTerms = extractKeyTerms(input.recentFocus[0]!);
-    for (const term of focusTerms) {
-      const lower = term.toLowerCase();
-      if (!seen.has(lower)) {
-        parts.push(term);
-        seen.add(lower);
+    for (let fi = 0; fi < input.recentFocus.length && parts.length < 4; fi++) {
+      const focusTerms = extractKeyTerms(input.recentFocus[fi]!);
+      for (const term of focusTerms) {
+        const lower = term.toLowerCase();
+        if (!seen.has(lower)) {
+          parts.push(term);
+          seen.add(lower);
+        }
+        if (parts.length >= 4) break;
       }
-      if (parts.length >= 4) break;
     }
   }
 
   if (parts.length === 0) return "";
 
-  // Add a context suffix for better search results
-  const suffix = parts.length <= 2 ? " 最新进展" : "";
+  const suffixIndex = parts.length <= 2
+    ? (history.length % SUFFIXES.length)
+    : -1;
+  const suffix = suffixIndex >= 0 ? SUFFIXES[suffixIndex]! : "";
+
   return (parts.join(" ") + suffix).slice(0, 120);
 }
 

@@ -3,6 +3,7 @@ import type { InsightEngineInput, InsightCandidate } from "./types.js";
 import { scoreSerendipity } from "./serendipity-scorer.js";
 import { findCrossDomainConnections, semanticDistance } from "./cross-domain-mapper.js";
 import { verifyInsight } from "./verification/pipeline.js";
+import { isDuplicateBySemanticOverlap } from "./content-similarity.js";
 import { randomUUID } from "node:crypto";
 
 /**
@@ -69,7 +70,7 @@ export function generateInsightCandidates(
     const score = scoreSerendipity({
       domainRelevance: c.relevanceScore,
       userConnectingDomains,
-      isRepeat: input.recentInsightIds.includes(c.id),
+      isRepeat: isDuplicateBySemanticOverlap(c.content, input.recentInsightContents),
       topicRecency,
       trustScore: persona.rapport.trustScore,
     });

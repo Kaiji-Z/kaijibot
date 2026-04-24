@@ -130,6 +130,28 @@ describe("generateInsightCandidates", () => {
       expect(c.sourceDomains).not.toContain("AI/机器学习");
     }
   });
+
+  it("candidates similar to recentInsightContents get lower serendipity scores", () => {
+    const persona = personaWithDomains();
+    const similarContent = "你在AI/机器学习领域的洞见（Transformer架构；注意力机制）与软件架构有深层联系";
+    const inputWithHistory: InsightEngineInput = {
+      ...baseInput(),
+      recentInsightContents: [similarContent],
+    };
+    const inputWithoutHistory = baseInput();
+
+    const candidatesWithHistory = generateInsightCandidates(persona, inputWithHistory, { maxCandidates: 10 });
+    const candidatesWithoutHistory = generateInsightCandidates(persona, inputWithoutHistory, { maxCandidates: 10 });
+
+    const withHistAvg = candidatesWithHistory.length > 0
+      ? candidatesWithHistory.reduce((s, c) => s + c.compositeScore, 0) / candidatesWithHistory.length
+      : 0;
+    const withoutHistAvg = candidatesWithoutHistory.length > 0
+      ? candidatesWithoutHistory.reduce((s, c) => s + c.compositeScore, 0) / candidatesWithoutHistory.length
+      : 0;
+
+    expect(withHistAvg).toBeLessThanOrEqual(withoutHistAvg);
+  });
 });
 
 describe("isCandidateBlacklisted", () => {

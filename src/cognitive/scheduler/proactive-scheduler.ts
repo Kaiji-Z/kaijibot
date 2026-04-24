@@ -5,7 +5,8 @@ import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insig
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections } from "../insight/cross-domain-mapper.js";
 import { verifyInsight } from "../insight/verification/pipeline.js";
-import { isDuplicateByContent } from "../insight/content-similarity.js";
+import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
+import { pickBestTopic } from "../feedback/preference-learner.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/scheduler");
@@ -15,6 +16,22 @@ function computeDomainOverlap(a: string[], b: string[]): number {
   const setB = new Set(b.map((d) => d.toLowerCase()));
   const overlap = a.filter((d) => setB.has(d.toLowerCase())).length;
   return overlap / Math.max(a.length, b.length);
+}
+
+function getFatiguedDomains(recentInsightDomains: string[][]): Set<string> {
+  if (recentInsightDomains.length === 0) return new Set();
+  const last5 = recentInsightDomains.slice(-5);
+  const counts = new Map<string, number>();
+  for (const domains of last5) {
+    for (const d of domains) {
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+  }
+  const fatigued = new Set<string>();
+  for (const [domain, count] of counts) {
+    if (count >= 2) fatigued.add(domain);
+  }
+  return fatigued;
 }
 
 function isDuplicateByDomainOverlap(
@@ -62,16 +79,16 @@ export class ProactiveScheduler {
     switch (event.type) {
       case "timer":
       case "external":
-        opportunities.push(...scanCrossDomain(persona));
-        opportunities.push(...scanDomainDepth(persona));
+        opportunities.push(...scanCrossDomain(persona, event));
+        opportunities.push(...scanDomainDepth(persona, event));
         break;
       case "persona_change":
         opportunities.push(...scanPersonaChange(persona, event));
-        opportunities.push(...scanDomainDepth(persona));
+        opportunities.push(...scanDomainDepth(persona, event));
         break;
       case "info_scan":
-        opportunities.push(...scanCrossDomain(persona));
-        opportunities.push(...scanDomainDepth(persona));
+        opportunities.push(...scanCrossDomain(persona, event));
+        opportunities.push(...scanDomainDepth(persona, event));
         opportunities.push(...scanInfoScan(persona, event));
         break;
     }
@@ -100,7 +117,7 @@ export class ProactiveScheduler {
           return count + (overlap > 0.5 ? 1 : 0);
         }, 0);
         if (overlapCount > 0) {
-          adjustedPAct *= Math.pow(0.5, overlapCount);
+          adjustedPAct *= Math.pow(0.3, overlapCount);
         }
       }
 
@@ -111,8 +128,14 @@ export class ProactiveScheduler {
       return { ...opp, pAct: adjustedPAct };
     });
 
-    const sorted = [...penalized].sort((a, b) => b.pAct - a.pAct);
-    const best = sorted[0];
+    const fatigued = getFatiguedDomains(recentDomains);
+    const nonFatigued = fatigued.size > 0
+      ? penalized.filter(opp => !opp.targetDomains.some(d => fatigued.has(d)))
+      : penalized;
+    const sorted = [...nonFatigued].sort((a, b) => b.pAct - a.pAct);
+    const pool = sorted.length > 0 ? sorted : [...penalized].sort((a, b) => b.pAct - a.pAct);
+
+    const best = pool[0];
     if (!best || best.pAct <= threshold) return null;
 
     return best;
@@ -121,6 +144,7 @@ export class ProactiveScheduler {
   async resolve(persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
+    const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
     const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
     const candidates = await this.generateInsights(
       persona,
@@ -133,6 +157,7 @@ export class ProactiveScheduler {
         recentInsightIds,
         recentInsightContents,
         mode,
+        recentQueryHistory,
       },
       {
         verificationLevel: "basic",
@@ -146,7 +171,7 @@ export class ProactiveScheduler {
 
     // Content-level dedup (second pass after domain overlap check)
     if (candidate && recentInsightContents.length > 0) {
-      if (isDuplicateByContent(candidate.content, recentInsightContents)) {
+      if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents)) {
         log.info("content dedup: similar to recent insight", {
           userId: persona.identity?.userId,
           contentPreview: candidate.content.slice(0, 60),
@@ -236,6 +261,10 @@ export class ProactiveScheduler {
     persona.feedbackProfile.recentInsightDomains = insightDomains;
     const insightTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
     persona.feedbackProfile.recentInsightTypes = insightTypes;
+    if (insight.searchQueryUsed) {
+      const queries = [...(persona.feedbackProfile.recentInsightQueryHistory ?? []), insight.searchQueryUsed].slice(-10);
+      persona.feedbackProfile.recentInsightQueryHistory = queries;
+    }
     await this.callbacks.savePersona(userId, persona);
 
     return insight;
@@ -287,14 +316,27 @@ const defaultInsightGenerator: InsightGeneratorFn = (persona, input, options) =>
   return Promise.resolve(generateInsightCandidates(persona, input, options));
 };
 
-function scanCrossDomain(persona: PersonaTree): Opportunity[] {
+/** Seeded Fisher-Yates shuffle for deterministic but varied ordering. */
+function seededShuffle<T>(arr: readonly T[], seed: number): T[] {
+  const result = [...arr];
+  let s = seed;
+  for (let i = result.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1);
+    [result[i], result[j]] = [result[j]!, result[i]!];
+  }
+  return result;
+}
+
+function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
   const userDomains = Object.keys(persona.domains);
   if (userDomains.length === 0) return [];
 
   const connections = findCrossDomainConnections(userDomains, undefined, persona.domainGraph);
+  const shuffled = seededShuffle(connections, event.timestamp);
   const pAccept = computeBaselinePAccept(persona);
 
-  return connections.slice(0, 3).map((conn) => {
+  return shuffled.slice(0, 3).map((conn) => {
     const fromDomain = persona.domains[conn.from];
     const depthFactor = fromDomain ? Math.min(fromDomain.depth / 5, 1) : 0.3;
     const pNeed = 0.55 * depthFactor + 0.3;
@@ -311,12 +353,20 @@ function scanCrossDomain(persona: PersonaTree): Opportunity[] {
   });
 }
 
-function scanDomainDepth(persona: PersonaTree): Opportunity[] {
+function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportunity[] {
   const pAccept = computeBaselinePAccept(persona);
   const now = Date.now();
 
-  return Object.entries(persona.domains)
-    .filter(([, d]) => d.depth >= 3)
+  const recentDomainSet = new Set(
+    (persona.feedbackProfile.recentInsightDomains ?? []).flat(),
+  );
+
+  const filtered = Object.entries(persona.domains)
+    .filter(([name, d]) => d.depth >= 3 && !recentDomainSet.has(name));
+
+  const entries = filtered.length > 0 ? filtered : Object.entries(persona.domains).filter(([, d]) => d.depth >= 3);
+
+  return entries
     .sort(([, a], [, b]) => {
       const recencyDelta = a.lastMentioned - b.lastMentioned;
       if (Math.abs(recencyDelta) > 24 * 60 * 60 * 1000) return -recencyDelta;
@@ -371,11 +421,15 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
   });
 }
 
-function scanInfoScan(persona: PersonaTree, _event: SchedulerEvent): Opportunity[] {
+function scanInfoScan(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
   const pAccept = computeBaselinePAccept(persona);
   const domains = Object.keys(persona.domains);
+  if (domains.length === 0) return [];
 
-  return domains.slice(0, 2).map((domain) => ({
+  const startIdx = event.timestamp % domains.length;
+  const rotated = [...domains.slice(startIdx), ...domains.slice(0, startIdx)];
+
+  return rotated.slice(0, 2).map((domain) => ({
     type: "info_scan_hit" as const,
     targetDomains: [domain],
     sourceDomains: [],
@@ -386,9 +440,10 @@ function scanInfoScan(persona: PersonaTree, _event: SchedulerEvent): Opportunity
   }));
 }
 
-function computeBaselinePAccept(persona: PersonaTree): number {
+function computeBaselinePAccept(persona: PersonaTree, fatiguedDomains?: Set<string>): number {
   const trustFactor = persona.rapport.trustScore;
-  const banditEntries = Object.entries(persona.feedbackProfile.topicBandits);
+  const banditEntries = Object.entries(persona.feedbackProfile.topicBandits)
+    .filter(([topic]) => !fatiguedDomains?.has(topic));
 
   let banditFactor = 0.5;
   if (banditEntries.length > 0) {
@@ -414,7 +469,8 @@ function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportuni
   const userDomainKeys = Object.keys(persona.domains);
   if (userDomainKeys.length === 0) return [];
 
-  const baseline = computeBaselinePAccept(persona);
+  const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
+  const baseline = computeBaselinePAccept(persona, fatigued.size > 0 ? fatigued : undefined);
 
   if (mode === "surprise") {
     return [{
@@ -428,8 +484,10 @@ function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportuni
     }];
   }
 
-  const index = Math.floor((event.timestamp / 7) % userDomainKeys.length);
-  const targetDomain = userDomainKeys[index]!;
+  const fatiguedList = [...fatigued];
+  const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
+  const targetDomain = bestTopic ?? userDomainKeys[Math.floor((event.timestamp / 7) % userDomainKeys.length)];
+  if (!targetDomain) return [];
   return [{
     type: "exploration" as const,
     targetDomains: [targetDomain],

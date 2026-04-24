@@ -24,7 +24,7 @@ import {
   createDefaultComposerDeps,
   type ComposerDeps,
 } from "./composer.js";
-import { computeTrigramSimilarity } from "./content-similarity.js";
+import { computeTrigramSimilarity, isDuplicateBySemanticOverlap } from "./content-similarity.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/pipeline");
@@ -197,7 +197,7 @@ export function createDualInsightGenerator(
     const deduped: InsightCandidate[] = [];
     for (const candidate of candidates) {
       const isDup = deduped.some(
-        (existing) => computeTrigramSimilarity(candidate.content, existing.content) > 0.6,
+        (existing) => isDuplicateBySemanticOverlap(candidate.content, [existing.content], { trigramThreshold: 0.6 }),
       );
       if (!isDup) deduped.push(candidate);
     }

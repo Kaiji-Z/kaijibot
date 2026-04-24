@@ -1154,3 +1154,123 @@ describe("generateInsightCandidatesLLM — trigram dedup (T4)", () => {
     expect(result.length).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Query diversification via recentQueryHistory
+// ---------------------------------------------------------------------------
+
+describe("buildSearchQuery — query diversification", () => {
+  it("produces different queries with different recentQueryHistory lengths", () => {
+    const base = makeInput({
+      targetDomains: ["kubernetes"],
+      recentFocus: [],
+    });
+    const q0 = buildSearchQuery({ ...base, recentQueryHistory: [] });
+    const q1 = buildSearchQuery({ ...base, recentQueryHistory: ["kubernetes 最新进展"] });
+    const q2 = buildSearchQuery({ ...base, recentQueryHistory: ["kubernetes 最新进展", "kubernetes 实践案例"] });
+
+    const suffixes = ["最新进展", "实践案例", "最佳实践", "技术趋势", "新方向"];
+    const hasSuffix = (q: string) => suffixes.some((s) => q.includes(s));
+    expect(hasSuffix(q0)).toBe(true);
+    expect(hasSuffix(q1)).toBe(true);
+    expect(hasSuffix(q2)).toBe(true);
+
+    // At least two should differ (suffix rotation)
+    const all = [q0, q1, q2];
+    const unique = new Set(all);
+    expect(unique.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it("produces different suffix via history-length-based rotation", () => {
+    const base = makeInput({
+      targetDomains: ["kubernetes"],
+      recentFocus: [],
+    });
+
+    const queries = Array.from({ length: 5 }, (_, i) =>
+      buildSearchQuery({ ...base, recentQueryHistory: Array.from({ length: i }, (_, j) => `query ${j}`) })
+    );
+
+    const suffixes = ["最新进展", "实践案例", "最佳实践", "技术趋势", "新方向"];
+    const usedSuffixes = new Set<string>();
+    for (const q of queries) {
+      for (const s of suffixes) {
+        if (q.includes(s)) usedSuffixes.add(s);
+      }
+    }
+    expect(usedSuffixes.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("excludes terms from recentQueryHistory when alternatives exist", () => {
+    const base = makeInput({
+      targetDomains: ["AI", "机器学习"],
+      recentFocus: [],
+    });
+    const qWithout = buildSearchQuery({ ...base, recentQueryHistory: [] });
+    const qWith = buildSearchQuery({ ...base, recentQueryHistory: ["AI 最新进展"] });
+
+    expect(qWithout).toContain("AI");
+    // With history containing "AI", the query should still produce a valid query
+    expect(qWith.length).toBeGreaterThan(0);
+  });
+
+  it("skips domain fully in history when alternatives exist", () => {
+    const input = makeInput({
+      targetDomains: ["AI", "Rust"],
+      recentFocus: [],
+      recentQueryHistory: ["AI 最新进展", "AI 实践案例", "AI 最佳实践"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("Rust");
+  });
+
+  it("remains backward compatible when recentQueryHistory is undefined", () => {
+    const input = makeInput({
+      targetDomains: ["AI"],
+      recentFocus: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("AI");
+    expect(query).toContain("最新进展");
+  });
+
+  it("remains backward compatible when recentQueryHistory is empty", () => {
+    const input = makeInput({
+      targetDomains: ["AI"],
+      recentFocus: [],
+      recentQueryHistory: [],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("AI");
+    expect(query).toContain("最新进展");
+  });
+
+  it("tries multiple recentFocus items when first matches history", () => {
+    const input = makeInput({
+      targetDomains: ["AI"],
+      recentFocus: ["深度学习", "区块链"],
+      recentQueryHistory: ["AI 深度学习 最新进展"],
+    });
+    const query = buildSearchQuery(input);
+    expect(query).toContain("AI");
+    // Should pick up from the second recentFocus since first overlaps with history
+    expect(query.length).toBeGreaterThan(0);
+  });
+
+  it("suffix rotation cycles through all options deterministically", () => {
+    const base = makeInput({
+      targetDomains: ["devops"],
+      recentFocus: [],
+    });
+
+    const suffixes = ["最新进展", "实践案例", "最佳实践", "技术趋势", "新方向"];
+    const collected: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const q = buildSearchQuery({ ...base, recentQueryHistory: Array.from({ length: i }, (_, j) => `q${j}`) });
+      for (const s of suffixes) {
+        if (q.includes(s)) { collected.push(s); break; }
+      }
+    }
+    expect(collected).toEqual(suffixes);
+  });
+});

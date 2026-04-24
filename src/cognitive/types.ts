@@ -71,6 +71,7 @@ export type FeedbackProfile = {
   recentInsightContents: string[];
   recentInsightDomains?: string[][];
   recentInsightTypes?: string[];
+  recentInsightQueryHistory?: string[];
 };
 
 // Trust/rapport metrics
