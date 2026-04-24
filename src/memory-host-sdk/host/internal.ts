@@ -74,13 +74,20 @@ export function normalizeExtraMemoryPaths(workspaceDir: string, extraPaths?: str
 
 export function isMemoryPath(relPath: string): boolean {
   const normalized = normalizeRelPath(relPath);
-  if (!normalized) {
+  if (!normalized || normalized.endsWith("/")) {
     return false;
   }
   if (normalized === "MEMORY.md" || normalized === "memory.md" || normalized === "DREAMS.md") {
     return true;
   }
   return normalized.startsWith("memory/");
+}
+
+const TOPIC_PATH_RE = /^memory\/topics\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*\.md$/;
+
+export function isTopicPath(relPath: string): boolean {
+  const normalized = normalizeRelPath(relPath);
+  return TOPIC_PATH_RE.test(normalized);
 }
 
 function isAllowedMemoryFilePath(filePath: string, multimodal?: MemoryMultimodalSettings): boolean {

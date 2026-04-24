@@ -7,6 +7,7 @@ import {
   buildFileEntry,
   chunkMarkdown,
   isMemoryPath,
+  isTopicPath,
   listMemoryFiles,
   normalizeExtraMemoryPaths,
   remapChunkLines,
@@ -161,6 +162,44 @@ describe("listMemoryFiles", () => {
 describe("isMemoryPath", () => {
   it("allows explicit access to top-level DREAMS.md", () => {
     expect(isMemoryPath("DREAMS.md")).toBe(true);
+  });
+
+  it("allows memory/topics/*.md paths", () => {
+    expect(isMemoryPath("memory/topics/user-profile.md")).toBe(true);
+  });
+
+  it("allows memory/topics/**/*.md nested paths", () => {
+    expect(isMemoryPath("memory/topics/sub/file.md")).toBe(true);
+  });
+
+  it("rejects memory/topics/ directory path (not a file)", () => {
+    expect(isMemoryPath("memory/topics/")).toBe(false);
+  });
+});
+
+describe("isTopicPath", () => {
+  it("matches memory/topics/{slug}.md with lowercase hyphenated slug", () => {
+    expect(isTopicPath("memory/topics/user-profile.md")).toBe(true);
+  });
+
+  it("matches nested topic paths", () => {
+    expect(isTopicPath("memory/topics/sub/file.md")).toBe(true);
+  });
+
+  it("rejects paths outside topics directory", () => {
+    expect(isTopicPath("memory/user-profile.md")).toBe(false);
+  });
+
+  it("rejects directory paths", () => {
+    expect(isTopicPath("memory/topics/")).toBe(false);
+  });
+
+  it("rejects non-md files", () => {
+    expect(isTopicPath("memory/topics/user-profile.txt")).toBe(false);
+  });
+
+  it("rejects slugs starting with hyphen", () => {
+    expect(isTopicPath("memory/topics/-invalid.md")).toBe(false);
   });
 });
 
