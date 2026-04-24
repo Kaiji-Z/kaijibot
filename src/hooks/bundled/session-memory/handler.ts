@@ -87,7 +87,8 @@ function createNodeFsAdapter() {
 
 const saveSessionToMemory: HookHandler = async (event) => {
   const isResetCommand = event.action === "new" || event.action === "reset";
-  if (event.type !== "command" || !isResetCommand) {
+  const isCompaction = event.type === "compaction" && event.action === "after";
+  if (!(event.type === "command" && isResetCommand) && !isCompaction) {
     return;
   }
 

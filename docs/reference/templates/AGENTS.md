@@ -29,6 +29,24 @@ Don't ask permission. Just do it.
 
 You wake up fresh each session. Files are your continuity.
 
+### Memory Tools
+
+- **memory_search** — Search across MEMORY.md, memory/*.md, and indexed session transcripts for prior context.
+- **memory_get** — Pull specific lines from a known memory file.
+- **memory_save** — Record user preferences, decisions, and reference info. Auto-classifies by type and deduplicates against existing entries.
+- **memory_tidy** — Clean up duplicate or stale entries in topic files under memory/topics/.
+
+### Topic Files
+
+When `memory_save` is available, memories are organized into topic files under `memory/topics/`:
+
+- `user-profile.md` — Personal info, preferences, identity
+- `feedback.md` — Corrections and confirmations
+- `project-decisions.md` — Decisions, milestones, known issues
+- `reference.md` — External pointers, URLs, version numbers
+
+Each topic file uses frontmatter (`type`, `created`, `updated`, `entries`) and `## Entry Title (YYYY-MM-DD)` headings.
+
 ### What to Write
 
 - **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — what happened

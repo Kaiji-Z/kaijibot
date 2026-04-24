@@ -1966,6 +1966,36 @@ export async function removeGroundedShortTermCandidates(params: {
   return { removed, storePath };
 }
 
+export async function incrementGroundedCount(params: {
+  workspaceDir: string;
+  path: string;
+  boost: number;
+}): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const storePath = resolveStorePath(params.workspaceDir);
+  let raw: string;
+  try {
+    raw = await fs.readFile(storePath, "utf-8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+      return;
+    }
+    throw err;
+  }
+  const store = normalizeStore(JSON.parse(raw) as unknown, nowIso);
+  let changed = false;
+  for (const entry of Object.values(store.entries)) {
+    if (entry.path.includes(params.path)) {
+      entry.groundedCount = Math.max(0, Math.floor(entry.groundedCount)) + params.boost;
+      changed = true;
+    }
+  }
+  if (changed) {
+    store.updatedAt = nowIso;
+    await writeStore(params.workspaceDir, store);
+  }
+}
+
 export const __testing = {
   parseLockOwnerPid,
   canStealStaleLock,

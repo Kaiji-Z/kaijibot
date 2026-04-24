@@ -1,4 +1,5 @@
 import type { AgentEvent } from "@mariozechner/pi-agent-core";
+import { triggerInternalHook } from "../hooks/internal-hooks.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
@@ -97,6 +98,23 @@ export function handleAutoCompactionEnd(
           ctx.log.warn(`after_compaction hook failed: ${String(err)}`);
         });
     }
+
+    void triggerInternalHook({
+      type: "compaction",
+      action: "after",
+      sessionKey: ctx.params.sessionKey ?? "",
+      context: {
+        sessionFile: ctx.params.session.sessionFile,
+        messageCount: ctx.params.session.messages?.length ?? 0,
+        compactedCount: ctx.getCompactionCount(),
+        cfg: ctx.params.config,
+        agentId: ctx.params.agentId,
+      },
+      timestamp: new Date(),
+      messages: [],
+    }).catch((err) => {
+      ctx.log.warn(`compaction:after internal hook failed: ${String(err)}`);
+    });
   }
 }
 

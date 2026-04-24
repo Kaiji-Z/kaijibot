@@ -19,6 +19,7 @@ import {
 import type { MemoryType } from "./memory-types.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
+import { incrementGroundedCount } from "./short-term-promotion.js";
 import {
   DEFAULT_TOPIC_FILES,
   type TopicEntry,
@@ -284,7 +285,9 @@ export function createMemorySaveTool(options: {
       });
 
       if (importance === "high" || importance === "normal") {
-        // Wave 2A: incrementGroundedCount() will be wired here
+        const boost = importance === "high" ? 3 : 1;
+        const topicFilePath = `memory/topics/${topicFile}`;
+        await incrementGroundedCount({ workspaceDir, path: topicFilePath, boost });
       }
 
       return jsonResult({

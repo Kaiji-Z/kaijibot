@@ -9,6 +9,7 @@ import {
 import {
   CLASSIFICATION_PROMPT_SECTION,
   EXCLUSION_PROMPT_SECTION,
+  TOPIC_FILE_FORMAT_SECTION,
   WRITE_QUALITY_PROMPT_SECTION,
 } from "./memory-types.js";
 
@@ -92,6 +93,7 @@ function ensureMemoryFlushClassificationHints(text: string): string {
     CLASSIFICATION_PROMPT_SECTION,
     EXCLUSION_PROMPT_SECTION,
     WRITE_QUALITY_PROMPT_SECTION,
+    TOPIC_FILE_FORMAT_SECTION,
   ];
   for (const section of sections) {
     // Use the first line as a sentinel to avoid duplicate injection

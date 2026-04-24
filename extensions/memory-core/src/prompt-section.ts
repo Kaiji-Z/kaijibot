@@ -1,5 +1,5 @@
 import type { MemoryPromptSectionBuilder } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
-import { VERIFICATION_PROMPT_SECTION } from "./memory-types.js";
+import { TOPIC_FILE_FORMAT_SECTION, VERIFICATION_PROMPT_SECTION } from "./memory-types.js";
 
 export const buildPromptSection: MemoryPromptSectionBuilder = ({
   availableTools,
@@ -7,8 +7,10 @@ export const buildPromptSection: MemoryPromptSectionBuilder = ({
 }) => {
   const hasMemorySearch = availableTools.has("memory_search");
   const hasMemoryGet = availableTools.has("memory_get");
+  const hasMemorySave = availableTools.has("memory_save");
+  const hasMemoryTidy = availableTools.has("memory_tidy");
 
-  if (!hasMemorySearch && !hasMemoryGet) {
+  if (!hasMemorySearch && !hasMemoryGet && !hasMemorySave && !hasMemoryTidy) {
     return [];
   }
 
@@ -37,5 +39,22 @@ export const buildPromptSection: MemoryPromptSectionBuilder = ({
   lines.push("");
   lines.push(VERIFICATION_PROMPT_SECTION);
   lines.push("");
+
+  if (hasMemorySave) {
+    lines.push(
+      "Use memory_save to record user preferences, decisions, and reference info. It auto-classifies and deduplicates.",
+    );
+    lines.push("");
+    lines.push(TOPIC_FILE_FORMAT_SECTION);
+    lines.push("");
+  }
+
+  if (hasMemoryTidy) {
+    lines.push(
+      "Use memory_tidy to clean up duplicate or stale entries in topic files.",
+    );
+    lines.push("");
+  }
+
   return lines;
 };

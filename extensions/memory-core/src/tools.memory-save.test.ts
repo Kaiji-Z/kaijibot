@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, afterEach, describe, expect, it } from "vitest";
@@ -14,6 +14,7 @@ import {
   setMemoryWorkspaceDir,
 } from "./memory-tool-manager-mock.js";
 import { type TopicEntry } from "./topic-types.js";
+import { incrementGroundedCount } from "./short-term-promotion.js";
 
 // ---------------------------------------------------------------------------
 // Temp directory for integration tests
@@ -448,5 +449,312 @@ describe("memory_save tool", () => {
     const topicPath = path.join(tempDir, "memory", "topics", "reference.md");
     const content = await readFile(topicPath, "utf-8");
     expect(content).toContain("type: reference");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// incrementGroundedCount
+// ---------------------------------------------------------------------------
+
+describe("incrementGroundedCount", () => {
+  const nowIso = new Date().toISOString();
+
+  async function writeStore(workspaceDir: string, entries: Record<string, unknown>) {
+    const storePath = path.join(workspaceDir, "memory", ".dreams", "short-term-recall.json");
+    await mkdir(path.dirname(storePath), { recursive: true });
+    await writeFile(
+      storePath,
+      JSON.stringify({ version: 1, updatedAt: nowIso, entries }, null, 2) + "\n",
+      "utf-8",
+    );
+  }
+
+  async function readStoreEntries(workspaceDir: string) {
+    const storePath = path.join(workspaceDir, "memory", ".dreams", "short-term-recall.json");
+    const raw = JSON.parse(await readFile(storePath, "utf-8"));
+    return raw.entries as Record<string, { groundedCount: number; path: string }>;
+  }
+
+  it("increments groundedCount for matching entries", async () => {
+    await writeStore(tempDir, {
+      "key-1": {
+        key: "key-1",
+        path: "memory/topics/user-profile.md",
+        startLine: 1,
+        endLine: 10,
+        source: "memory",
+        snippet: "test",
+        recallCount: 1,
+        dailyCount: 0,
+        groundedCount: 2,
+        totalScore: 0.5,
+        maxScore: 0.5,
+        firstRecalledAt: nowIso,
+        lastRecalledAt: nowIso,
+        queryHashes: [],
+        recallDays: [],
+        conceptTags: [],
+      },
+    });
+
+    await incrementGroundedCount({
+      workspaceDir: tempDir,
+      path: "memory/topics/user-profile.md",
+      boost: 3,
+    });
+
+    const entries = await readStoreEntries(tempDir);
+    expect(entries["key-1"].groundedCount).toBe(5);
+  });
+
+  it("only increments entries whose path contains the target", async () => {
+    await writeStore(tempDir, {
+      "key-1": {
+        key: "key-1",
+        path: "memory/topics/user-profile.md",
+        startLine: 1,
+        endLine: 10,
+        source: "memory",
+        snippet: "test",
+        recallCount: 1,
+        dailyCount: 0,
+        groundedCount: 1,
+        totalScore: 0.5,
+        maxScore: 0.5,
+        firstRecalledAt: nowIso,
+        lastRecalledAt: nowIso,
+        queryHashes: [],
+        recallDays: [],
+        conceptTags: [],
+      },
+      "key-2": {
+        key: "key-2",
+        path: "memory/topics/project-decisions.md",
+        startLine: 1,
+        endLine: 5,
+        source: "memory",
+        snippet: "other",
+        recallCount: 1,
+        dailyCount: 0,
+        groundedCount: 1,
+        totalScore: 0.3,
+        maxScore: 0.3,
+        firstRecalledAt: nowIso,
+        lastRecalledAt: nowIso,
+        queryHashes: [],
+        recallDays: [],
+        conceptTags: [],
+      },
+    });
+
+    await incrementGroundedCount({
+      workspaceDir: tempDir,
+      path: "memory/topics/user-profile.md",
+      boost: 1,
+    });
+
+    const entries = await readStoreEntries(tempDir);
+    expect(entries["key-1"].groundedCount).toBe(2);
+    expect(entries["key-2"].groundedCount).toBe(1);
+  });
+
+  it("no-ops when store file does not exist", async () => {
+    await expect(
+      incrementGroundedCount({
+        workspaceDir: tempDir,
+        path: "memory/topics/user-profile.md",
+        boost: 3,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("does not write when no entries match", async () => {
+    await writeStore(tempDir, {
+      "key-1": {
+        key: "key-1",
+        path: "memory/topics/other.md",
+        startLine: 1,
+        endLine: 5,
+        source: "memory",
+        snippet: "test",
+        recallCount: 1,
+        dailyCount: 0,
+        groundedCount: 1,
+        totalScore: 0.3,
+        maxScore: 0.3,
+        firstRecalledAt: nowIso,
+        lastRecalledAt: nowIso,
+        queryHashes: [],
+        recallDays: [],
+        conceptTags: [],
+      },
+    });
+
+    const storePath = path.join(tempDir, "memory", ".dreams", "short-term-recall.json");
+    const before = await readFile(storePath, "utf-8");
+
+    await incrementGroundedCount({
+      workspaceDir: tempDir,
+      path: "memory/topics/user-profile.md",
+      boost: 1,
+    });
+
+    const after = await readFile(storePath, "utf-8");
+    expect(after).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groundedCount integration with memory_save
+// ---------------------------------------------------------------------------
+
+describe("memory_save groundedCount integration", () => {
+  it("increments groundedCount with boost 3 for importance=high", async () => {
+    const storeDir = path.join(tempDir, "memory", ".dreams");
+    await mkdir(storeDir, { recursive: true });
+    const nowIso = new Date().toISOString();
+    await writeFile(
+      path.join(storeDir, "short-term-recall.json"),
+      JSON.stringify({
+        version: 1,
+        updatedAt: nowIso,
+        entries: {
+          "key-1": {
+            key: "key-1",
+            path: "memory/topics/user-profile.md",
+            startLine: 1,
+            endLine: 10,
+            source: "memory",
+            snippet: "test",
+            recallCount: 1,
+            dailyCount: 0,
+            groundedCount: 0,
+            totalScore: 0.5,
+            maxScore: 0.5,
+            firstRecalledAt: nowIso,
+            lastRecalledAt: nowIso,
+            queryHashes: [],
+            recallDays: [],
+            conceptTags: [],
+          },
+        },
+      }, null, 2) + "\n",
+      "utf-8",
+    );
+
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+
+    await tool!.execute("tc-grounded-1", {
+      content: "Critical preference",
+      type: "user",
+      importance: "high",
+    });
+
+    const storeRaw = JSON.parse(
+      await readFile(path.join(storeDir, "short-term-recall.json"), "utf-8"),
+    );
+    expect(storeRaw.entries["key-1"].groundedCount).toBe(3);
+  });
+
+  it("increments groundedCount with boost 1 for importance=normal", async () => {
+    const storeDir = path.join(tempDir, "memory", ".dreams");
+    await mkdir(storeDir, { recursive: true });
+    const nowIso = new Date().toISOString();
+    await writeFile(
+      path.join(storeDir, "short-term-recall.json"),
+      JSON.stringify({
+        version: 1,
+        updatedAt: nowIso,
+        entries: {
+          "key-1": {
+            key: "key-1",
+            path: "memory/topics/feedback.md",
+            startLine: 1,
+            endLine: 10,
+            source: "memory",
+            snippet: "test",
+            recallCount: 1,
+            dailyCount: 0,
+            groundedCount: 0,
+            totalScore: 0.5,
+            maxScore: 0.5,
+            firstRecalledAt: nowIso,
+            lastRecalledAt: nowIso,
+            queryHashes: [],
+            recallDays: [],
+            conceptTags: [],
+          },
+        },
+      }, null, 2) + "\n",
+      "utf-8",
+    );
+
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+
+    await tool!.execute("tc-grounded-2", {
+      content: "Normal feedback",
+      type: "feedback",
+      importance: "normal",
+    });
+
+    const storeRaw = JSON.parse(
+      await readFile(path.join(storeDir, "short-term-recall.json"), "utf-8"),
+    );
+    expect(storeRaw.entries["key-1"].groundedCount).toBe(1);
+  });
+
+  it("does not increment groundedCount for importance=low", async () => {
+    const storeDir = path.join(tempDir, "memory", ".dreams");
+    await mkdir(storeDir, { recursive: true });
+    const nowIso = new Date().toISOString();
+    const storePath = path.join(storeDir, "short-term-recall.json");
+    const storeContent = JSON.stringify({
+      version: 1,
+      updatedAt: nowIso,
+      entries: {
+        "key-1": {
+          key: "key-1",
+          path: "memory/topics/reference.md",
+          startLine: 1,
+          endLine: 10,
+          source: "memory",
+          snippet: "test",
+          recallCount: 1,
+          dailyCount: 0,
+          groundedCount: 0,
+          totalScore: 0.5,
+          maxScore: 0.5,
+          firstRecalledAt: nowIso,
+          lastRecalledAt: nowIso,
+          queryHashes: [],
+          recallDays: [],
+          conceptTags: [],
+        },
+      },
+    }, null, 2) + "\n";
+    await writeFile(storePath, storeContent, "utf-8");
+
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+
+    await tool!.execute("tc-grounded-3", {
+      content: "Low importance note",
+      type: "reference",
+      importance: "low",
+    });
+
+    const after = await readFile(storePath, "utf-8");
+    expect(after).toBe(storeContent);
   });
 });
