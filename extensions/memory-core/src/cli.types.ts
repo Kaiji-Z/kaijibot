@@ -39,3 +39,10 @@ export type MemoryRemBackfillOptions = MemoryCommandOptions & {
   stageShortTerm?: boolean;
   rollbackShortTerm?: boolean;
 };
+
+export type MemoryMigrateOptions = MemoryCommandOptions & {
+  dryRun?: boolean;
+  sourceDir?: string;
+  batchSize?: number;
+  archive?: boolean;
+};
