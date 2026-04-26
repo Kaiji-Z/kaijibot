@@ -73,12 +73,35 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
 Event Sources (timer / persona_change / info_scan)
   → ProactiveScheduler.processEvent(userId, event)
     → computeGradedGate() [pNeed × pAccept vs cost threshold]
-      → search() [scan opportunities: cross-domain, pending Qs, domain depth]
-        → identify() [pick best by pAct]
-          → resolve() [generate insight candidate via LLM or template]
+      → search() [scan opportunities: cross-domain, pending Qs, domain depth, exploration]
+        → identify() [pick best by pAct, with domain cooldown + type cooldown]
+          → resolve() [dual pipeline: v1 (LLM) + v2 (fragment crystallization) in parallel]
+            → dedup (trigram 0.85, contentWord 0.25) + verification gate
+              → v2 insights bypass verification (partial status)
+              → exploration-type insights bypass verification
             → onInsightReady callback → findSessionKeyForUserId → enqueueSystemEvent → requestHeartbeatNow
               → heartbeat-runner → agent turn → deliverOutboundPayloads → user receives message
 ```
+
+**Dual Pipeline (v1 + v2):**
+
+- **v1** (`generateInsightCandidatesLLM`): LLM generates insight candidates directly from persona + web search results. Optional surprise mode uses `inferSearchStrategy` (another LLM call) to plan web search queries.
+- **v2** (`InsightV2Pipeline`): Conversation fragments collected per-turn via `collectFragmentsForTurn` → stored in `FragmentStore` → `findClusters` (avg strength ≥ 0.15, min 2 fragments) → `crystallize` into insight candidates → `qualityGate` assessment → `compose` final output. Falls back to v1 when no clusters are available.
+- **Merge**: `createDualInsightGenerator` runs both in parallel (`Promise.allSettled`), tags each candidate `.source = "v1"/"v2"`, deduplicates via `isDuplicateBySemanticOverlap` (trigram 0.6), sorts by compositeScore.
+
+**Scheduler Diversification:**
+
+- `identify()` applies domain cooldown: `Math.pow(0.3, overlapCount)` for domains overlapping with recent insights, plus `0.3x` penalty when a domain appears ≥3 times in history.
+- Type cooldown: `0.6x` if last two were same type, `0.75x` if last one was same type.
+- Fatigued domains are filtered out entirely before selection.
+- `scanCrossDomain` uses 1-hop (userDomain → non-userDomain) and 2-hop (userDomain → userDomain neighbor → non-userDomain) connections from the domain graph. Falls back to `semanticDistance()` to find the most distant user-domain pair when both produce zero results.
+- `scanDomainDepth` filters out recently targeted domains, falls back to all depth-3+ domains when none remain.
+
+**Blind Spot Lifecycle:**
+
+- `activeBlindSpots` entries carry `createdAt` / `expiresAt` (24h TTL via `BLIND_SPOT_TTL_MS`).
+- `crystallize()` auto-expires stale entries, deduplicates new candidates against existing (>0.8 domain overlap), and marks candidates for delivery.
+- `removeDeliveredBlindSpots()` is called after v2 insight delivery to clear resolved blind spots.
 
 ### Self-Evolution Pipeline
 
@@ -123,6 +146,23 @@ Shared:
 - `src/agents/tools/cognitive-feedback-tool.ts` — agent tool for collecting explicit feedback
 - `src/agents/system-prompt.ts` — injects cognitive mode prompt into agent system prompt
 
+### Session Memory
+
+- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`
+- `src/hooks/bundled/session-memory/summary.ts` — `formatSummaryAsMarkdown(summary, dateStr, sessionKey?, rawTranscript?)` outputs YAML frontmatter + structured sections + folded `<details>` raw transcript; `generateStructuredSummary` calls LLM to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug)
+- Dual output: structured summary for search/retrieval + raw transcript preserved in collapsible block for context recovery
+
+### Dreaming
+
+- Default storage mode: `"separate"` (`DEFAULT_MEMORY_DREAMING_STORAGE_MODE` in `src/memory-host-sdk/dreaming.ts`); writes dream output to separate files instead of inline in daily memory files
+- `MemoryDreamingStorageMode` type: `"inline" | "separate" | "both"`
+- `extensions/memory-core/src/dreaming.ts` — `enqueueSystemEvent` after memory promotion to trigger downstream processing
+
+### Memory Organization
+
+- `skills/memory-organize/SKILL.md` — four-step organize flow: GC (MEMORY.md cleanup + dedup) → Deep scan (QMD sessions) → Tidy (`memory_tidy` full) → Final check (4KB budget)
+- MEMORY.md 4KB budget is a skill-level constraint enforced by the LLM + `memory_tidy` tool, not a code constant
+
 ## Coding Style
 
 - TypeScript (ESM), strict typing. Avoid `any`.
@@ -156,6 +196,7 @@ Shared:
 - **Cognitive layer live tests** — after modifying `src/cognitive/evolution/` or `src/cognitive/insight/`, run the live quality tests to verify real LLM output:
   - Evolution: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-quality.test.ts`
   - Insight: `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-live-quality.test.ts`
+  - Pipeline eval (5-round dual pipeline): `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-pipeline-live-eval.test.ts`
   - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
 - `pnpm test` (full suite) uses a custom runner (`scripts/test-projects.mjs`) that spawns vitest as child processes. **stdout is empty except for the pnpm header**; test output goes to stderr. Judge success by exit code only — do not wait for stdout feedback. For targeted output, use `pnpm test <path-or-filter>`.
 - Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
