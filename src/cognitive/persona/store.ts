@@ -97,6 +97,10 @@ export class PersonaStore {
       console.warn(`[PersonaStore] Invalid persona JSON for ${agentId}/${userId}, ignoring`);
       return undefined;
     }
+    // Backfill userId for personas created before identity.userId was persisted
+    if (!validated.identity.userId) {
+      validated.identity.userId = userId;
+    }
     return validated;
   }
 
@@ -158,7 +162,6 @@ export function createDefaultPersona(): PersonaTree {
     domains: {},
     recentFocus: [],
     activeProjects: [],
-    pendingQuestions: [],
     moodHistory: [],
     feedbackProfile: {
       topicBandits: {},

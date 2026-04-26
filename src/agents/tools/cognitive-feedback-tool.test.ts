@@ -12,7 +12,6 @@ const mockPersona: PersonaTree = {
   domains: {},
   recentFocus: [],
   activeProjects: [],
-  pendingQuestions: [],
   feedbackProfile: {
     topicBandits: {},
     preferredStyle: "observation",

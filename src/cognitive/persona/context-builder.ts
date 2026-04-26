@@ -44,12 +44,6 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
     lines.push(persona.recentFocus.slice(0, 5).join(", "));
   }
 
-  // Pending questions
-  if (persona.pendingQuestions.length > 0) {
-    lines.push("### Open Questions");
-    lines.push(...persona.pendingQuestions.slice(0, 3));
-  }
-
   // Trust level indicator (subtle, for agent behavior adaptation)
   const trust = persona.rapport.trustScore;
   if (trust >= 0.7) {

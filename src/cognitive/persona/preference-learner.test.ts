@@ -22,11 +22,6 @@ describe("extractFromMessage", () => {
     expect(selfDesc?.confidence).toBeGreaterThanOrEqual(0.8);
   });
 
-  it("detects pending questions from user message", () => {
-    const result = extractFromMessage("这个方案怎么优化？", "我来帮你分析");
-    expect(result.pendingQuestions.length).toBeGreaterThanOrEqual(1);
-  });
-
   it("extracts recent focus phrases", () => {
     const result = extractFromMessage(
       "我想了解微服务架构的最佳实践",

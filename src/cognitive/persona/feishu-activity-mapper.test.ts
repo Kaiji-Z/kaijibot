@@ -43,7 +43,6 @@ describe("mapFeishuActivity", () => {
     expect(result.attributes).toEqual([]);
     expect(result.domains).toEqual([]);
     expect(result.recentFocus).toEqual([]);
-    expect(result.pendingQuestions).toEqual([]);
     expect(result.sentiment).toBeUndefined();
   });
 
@@ -180,7 +179,6 @@ describe("mapFeishuActivity", () => {
     const result = mapFeishuActivity(data);
     const taskDomain = result.domains.find((d) => d.name === "Critical");
     expect(taskDomain?.questions).toContain("Has overdue tasks in Critical");
-    expect(result.pendingQuestions.some((q) => q.includes("overdue"))).toBe(true);
   });
 
   it("generates reading-but-not-contributing question for doc domains", () => {
@@ -314,37 +312,6 @@ describe("mapFeishuActivity", () => {
     expect(result.recentFocus.length).toBeLessThanOrEqual(5);
     const unique = new Set(result.recentFocus);
     expect(unique.size).toBe(result.recentFocus.length);
-  });
-
-  it("generates coordination burden question for heavy organizers", () => {
-    const data = emptyData({
-      meetingActivity: {
-        attended: 4,
-        organized: 3,
-        totalDurationMinutes: 100,
-        meetingThemes: [],
-        sinceMs: 0,
-        untilMs: 0,
-      },
-    });
-    const result = mapFeishuActivity(data);
-    expect(result.pendingQuestions).toContain("Organizing many meetings — potential coordination burden");
-  });
-
-  it("generates reading-extensively question", () => {
-    const data = emptyData({
-      docActivity: {
-        viewed: 10,
-        edited: 1,
-        created: 0,
-        documentThemes: [],
-        wikiSpaces: [],
-        sinceMs: 0,
-        untilMs: 0,
-      },
-    });
-    const result = mapFeishuActivity(data);
-    expect(result.pendingQuestions).toContain("Reading extensively but not editing documents");
   });
 
   it("merges domains from all three sources", () => {

@@ -268,11 +268,6 @@ describe("extractFromMessage — attributes and questions still work", () => {
     const ds = findDomain(result, "数据科学");
     expect(ds?.negated).toBe(true);
   });
-
-  it("still detects pending questions alongside negation", () => {
-    const result = extractFromMessage("我不喜欢数据，但机器学习怎么做？", "");
-    expect(result.pendingQuestions.length).toBeGreaterThanOrEqual(1);
-  });
 });
 
 describe("detectBlacklistIntent — Chinese patterns", () => {

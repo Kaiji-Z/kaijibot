@@ -62,7 +62,6 @@ function createDefaultPersona(): PersonaTree {
     domains: {},
     recentFocus: [],
     activeProjects: [],
-    pendingQuestions: [],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",
@@ -128,7 +127,6 @@ function richPersona(): PersonaTree {
     },
   };
   persona.recentFocus = ["大模型推理优化", "RAG系统"];
-  persona.pendingQuestions = ["如何将AI模型高效部署到边缘设备？"];
   return persona;
 }
 

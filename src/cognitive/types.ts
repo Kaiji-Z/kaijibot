@@ -132,7 +132,6 @@ export type PersonaTree = {
   domains: Record<string, DomainNode>;
   recentFocus: string[];
   activeProjects: string[];
-  pendingQuestions: string[];
   feedbackProfile: FeedbackProfile;
   rapport: RapportMetrics;
   domainGraph?: LearnedDomainGraph;

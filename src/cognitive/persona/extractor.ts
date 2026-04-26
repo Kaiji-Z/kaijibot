@@ -288,7 +288,7 @@ export function extractFromMessage(
     attributes,
     domains,
     recentFocus,
-    pendingQuestions,
+
     blacklistRequests: blacklistRequests.length > 0 ? blacklistRequests : undefined,
     sentiment,
   };

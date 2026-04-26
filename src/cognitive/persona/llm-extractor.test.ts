@@ -64,7 +64,6 @@ describe("extractFromMessageLLM", () => {
       ],
       domains: [{ name: "数据科学", depth: 3, insights: ["knows SQL"], questions: [] }],
       recentFocus: ["ETL pipeline"],
-      pendingQuestions: ["如何优化数据管道?"],
     });
 
     const deps = makeSuccessDeps(json);
@@ -85,7 +84,6 @@ describe("extractFromMessageLLM", () => {
     expect(result.domains[0]!.name).toBe("数据科学");
     expect(result.domains[0]!.depth).toBe(3);
     expect(result.recentFocus).toEqual(["ETL pipeline"]);
-    expect(result.pendingQuestions).toEqual(["如何优化数据管道?"]);
   });
 
   it("strips markdown code fences before parsing", async () => {
@@ -95,7 +93,6 @@ describe("extractFromMessageLLM", () => {
       ],
       domains: [],
       recentFocus: ["topic"],
-      pendingQuestions: [],
     });
 
     const wrapped = "```json\n" + json + "\n```";
@@ -156,7 +153,6 @@ describe("extractFromMessageLLM", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
     });
 
     const deps = makeSuccessDeps(json);
@@ -194,7 +190,6 @@ describe("extractFromMessageLLM", () => {
         ],
         domains: [],
         recentFocus: ["x"],
-        pendingQuestions: [],
       }),
       (args) => {
         const messages = args[1].messages;
@@ -222,7 +217,6 @@ describe("extractFromMessageLLM", () => {
       },
       recentFocus: ["transformer architecture"],
       activeProjects: [],
-      pendingQuestions: ["how does attention work?"],
       feedbackProfile: {
         topicBandits: {},
         preferredStyle: "question",
@@ -259,19 +253,7 @@ describe("extractFromMessageLLM", () => {
       ],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
     });
-
-    const deps = makeSuccessDeps(json);
-    const result = await extractFromMessageLLM(
-      "hello",
-      "hi",
-      undefined,
-      stubConfig,
-      deps,
-    );
-
-    expect(result.attributes[0]!.confidence).toBe(1);
   });
 
   it("clamps domain depth to 1-5 range", async () => {
@@ -279,7 +261,6 @@ describe("extractFromMessageLLM", () => {
       attributes: [],
       domains: [{ name: "test", depth: 10, insights: [], questions: [] }],
       recentFocus: [],
-      pendingQuestions: [],
     });
 
     const deps = makeSuccessDeps(json);
@@ -301,7 +282,6 @@ describe("extractFromMessageLLM", () => {
       ],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
     });
 
     const deps = makeSuccessDeps(json);

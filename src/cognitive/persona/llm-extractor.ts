@@ -121,8 +121,7 @@ export async function extractFromMessageLLM(
     if (
       parsed.attributes.length === 0 &&
       parsed.domains.length === 0 &&
-      parsed.recentFocus.length === 0 &&
-      parsed.pendingQuestions.length === 0
+      parsed.recentFocus.length === 0
     ) {
       return extractFromMessage(userMessage, assistantMessage, existingPersona);
     }
@@ -139,7 +138,7 @@ function buildExtractionPrompt(
   persona: PersonaTree | undefined,
 ): string {
   const personaContext = persona
-    ? `\n\nKnown persona:\n- Domains: ${Object.keys(persona.domains).join(", ") || "none"}\n- Focus: ${persona.recentFocus.slice(0, 5).join(", ") || "none"}\n- Questions: ${persona.pendingQuestions.slice(0, 3).join("; ") || "none"}`
+    ? `\n\nKnown persona:\n- Domains: ${Object.keys(persona.domains).join(", ") || "none"}\n- Focus: ${persona.recentFocus.slice(0, 5).join(", ") || "none"}`
     : "";
 
   return `You are a persona extraction system. Analyze the conversation turn below and extract structured persona attributes ABOUT THE HUMAN USER ONLY.
@@ -160,8 +159,7 @@ Extract and respond with ONLY a JSON object in this exact format (no markdown, n
   "domains": [
     {"name": "AI/机器学习", "depth": 3, "insights": [], "questions": []}
   ],
-  "recentFocus": ["topic1", "topic2"],
-  "pendingQuestions": ["question1"]
+  "recentFocus": ["topic1", "topic2"]
 }
 
 Rules:
@@ -207,12 +205,9 @@ function parseLLMExtraction(text: string): ExtractionResult {
       recentFocus: Array.isArray(parsed.recentFocus)
         ? parsed.recentFocus.map(String).slice(0, 5)
         : [],
-      pendingQuestions: Array.isArray(parsed.pendingQuestions)
-        ? parsed.pendingQuestions.map(String).slice(0, 5)
-        : [],
     };
   } catch {
-    return { attributes: [], domains: [], recentFocus: [], pendingQuestions: [] };
+    return { attributes: [], domains: [], recentFocus: [] };
   }
 }
 

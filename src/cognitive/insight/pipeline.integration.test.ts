@@ -80,7 +80,6 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     },
     recentFocus: ["wasm", "type-systems"],
     activeProjects: ["kaijibot"],
-    pendingQuestions: ["How to combine Rust and TypeScript via wasm?"],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",

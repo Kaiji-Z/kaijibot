@@ -187,12 +187,6 @@ export function mergeExtraction(
     .filter(isValidFocus)
     .slice(0, 10);
 
-  const newPendingQuestions = [
-    ...new Set([...extraction.pendingQuestions, ...persona.pendingQuestions]),
-  ]
-    .filter(isValidQuestion)
-    .slice(0, 10);
-
   // Update rapport
   const newRapport: RapportMetrics = {
     ...persona.rapport,
@@ -254,7 +248,6 @@ export function mergeExtraction(
     identity: newIdentity,
     domains: newDomains,
     recentFocus: newRecentFocus,
-    pendingQuestions: newPendingQuestions,
     rapport: newRapport,
     domainGraph: updatedGraph,
     moodHistory: newMoodHistory.slice(-10),

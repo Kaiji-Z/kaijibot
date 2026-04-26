@@ -42,7 +42,6 @@ function makeFullStackDevPersona(): PersonaTree {
     },
     recentFocus: ["认知层洞察质量优化", "Persona提取过滤器", "LLM prompt调试"],
     activeProjects: [],
-    pendingQuestions: ["如何让洞察更个性化而非模板化？"],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",

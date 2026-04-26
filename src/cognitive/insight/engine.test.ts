@@ -28,7 +28,6 @@ function personaWithDomains(): PersonaTree {
       negationSignals: 0,
     },
   };
-  persona.pendingQuestions = ["如何将AI模型部署到边缘设备？"];
   return persona;
 }
 
@@ -104,7 +103,13 @@ describe("generateInsightCandidates", () => {
 
   it("uses persona.domainGraph for cross-domain connections", () => {
     const persona = personaWithDomains();
-    // Add a custom domain connected via domainGraph that is NOT in default adjacencies
+    // Add default adjacency targets as user domains so only CustomDomain remains as a cross-domain target
+    for (const defaultTarget of ["数据科学", "编程语言", "云/基础设施", "网络安全"]) {
+      persona.domains[defaultTarget] = {
+        depth: 1, recurrence: 1, lastMentioned: Date.now(),
+        keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0,
+      };
+    }
     persona.domainGraph = {
       nodes: ["AI/机器学习", "软件架构", "CustomDomain"],
       edges: [

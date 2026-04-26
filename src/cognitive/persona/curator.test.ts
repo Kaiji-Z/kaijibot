@@ -18,7 +18,6 @@ describe("mergeExtraction", () => {
       ],
       domains: [],
       recentFocus: ["AI架构"],
-      pendingQuestions: [],
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.identity.coreTraits["技术决策者"].value).toBe("是");
@@ -39,7 +38,6 @@ describe("mergeExtraction", () => {
       ],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
     };
     const result1 = mergeExtraction(persona, extraction);
     const result2 = mergeExtraction(result1, extraction);
@@ -59,7 +57,6 @@ describe("mergeExtraction", () => {
         },
       ],
       recentFocus: [],
-      pendingQuestions: [],
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.domains["AI/机器学习"].recurrence).toBe(1);
@@ -72,7 +69,6 @@ describe("mergeExtraction", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.rapport.totalExchanges).toBe(1);
@@ -139,7 +135,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
       blacklistRequests: ["数据科学", "区块链"],
     };
     const result = mergeExtraction(persona, extraction);
@@ -154,7 +149,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
       blacklistRequests: ["数据科学", "区块链"],
     };
     const result = mergeExtraction(persona, extraction);
@@ -181,7 +175,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domainBlacklist).toContain("数据科学");
@@ -207,7 +201,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domainBlacklist).not.toContain("数据科学");
@@ -234,7 +228,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domainBlacklist).not.toContain("数据科学");
@@ -268,7 +262,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domains["AI/机器学习"]).toBeUndefined();
@@ -286,7 +280,7 @@ describe("mergeExtraction — domainBlacklist", () => {
         { name: "软件架构", depth: 3, insights: [], questions: [] },
       ],
       recentFocus: [],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domains["AI/机器学习"]).toBeUndefined();
@@ -300,7 +294,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.domainBlacklist).toContain("数据科学");
@@ -312,7 +306,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: ["机器学习", "深度学习", "人工智能"],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.recentFocus).toContain("机器学习");
@@ -327,7 +321,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: ["数据科学"],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.recentFocus).not.toContain("```json");
@@ -338,24 +332,6 @@ describe("mergeExtraction — domainBlacklist", () => {
     expect(result.recentFocus).toContain("数据科学");
   });
 
-  it("filters long markdown dumps from pendingQuestions during merge", () => {
-    const persona = createDefaultPersona();
-    persona.pendingQuestions = [
-      "？\\n如果信任是一种认知状态" + "x".repeat(100),
-      "SARA信任框架怎么实现的？",
-    ];
-    const extraction: ExtractionResult = {
-      attributes: [],
-      domains: [],
-      recentFocus: [],
-      pendingQuestions: ["每次重启信任真的重置了吗？"],
-    };
-    const result = mergeExtraction(persona, extraction);
-    expect(result.pendingQuestions).toContain("SARA信任框架怎么实现的？");
-    expect(result.pendingQuestions).toContain("每次重启信任真的重置了吗？");
-    expect(result.pendingQuestions.every(q => q.length <= 100)).toBe(true);
-  });
-
   it("keeps valid English tech terms in recentFocus but rejects noise", () => {
     const persona = createDefaultPersona();
     persona.recentFocus = ["kubernetes", "machine learning", "the", "is not"];
@@ -363,7 +339,7 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: ["docker", "if available", "typescript"],
-      pendingQuestions: [],
+
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.recentFocus).toContain("kubernetes");

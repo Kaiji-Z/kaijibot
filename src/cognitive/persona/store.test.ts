@@ -97,7 +97,7 @@ describe("PersonaStore", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "user-missing.json"), JSON.stringify({
       identity: { coreTraits: {} },
-      // missing domains, recentFocus, activeProjects, pendingQuestions, feedbackProfile, rapport
+      // missing domains, recentFocus, activeProjects, feedbackProfile, rapport
     }), "utf-8");
 
     const loaded = await store.loadOrCreate("main", "user-missing");
@@ -132,7 +132,6 @@ describe("PersonaStore", () => {
     };
     persona.recentFocus = ["Kubernetes", "eBPF"];
     persona.activeProjects = ["Sidecar Proxy"];
-    persona.pendingQuestions = ["如何实现零停机部署?"];
     persona.feedbackProfile = {
       topicBandits: {
         "分布式系统": { alpha: 3, beta: 1 },

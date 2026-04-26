@@ -13,7 +13,6 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
     domains: {},
     recentFocus: [],
     activeProjects: [],
-    pendingQuestions: [],
     feedbackProfile: {
       topicBandits: {
         "AI/机器学习": { alpha: 3, beta: 2 },

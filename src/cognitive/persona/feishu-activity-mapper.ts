@@ -168,7 +168,6 @@ export function mapFeishuActivity(data: FeishuActivityData): ExtractionResult {
     attributes: buildAttributes(data),
     domains,
     recentFocus: buildRecentFocus(data),
-    pendingQuestions: buildPendingQuestions(data),
     sentiment: undefined,
   };
 }

@@ -64,7 +64,6 @@ function makeTestPersona(): PersonaTree {
     },
     recentFocus: ["认知层改进", "洞察质量"],
     activeProjects: [],
-    pendingQuestions: ["如何让洞察更有跨域惊喜感？"],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",

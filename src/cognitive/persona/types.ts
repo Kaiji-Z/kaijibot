@@ -29,7 +29,6 @@ export type ExtractionResult = {
     negated?: boolean;
   }>;
   recentFocus: string[];
-  pendingQuestions: string[];
   /** Domain names the user explicitly wants blacklisted */
   blacklistRequests?: string[];
   sentiment?: import("../types.js").SentimentResult;
