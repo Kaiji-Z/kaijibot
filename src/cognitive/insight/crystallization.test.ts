@@ -6,10 +6,11 @@ import type { PersonaTree } from "../types.js";
 // ─── Logger mock (hoisted by vitest) ───
 
 const debugMessages: unknown[][] = [];
+const warnMessages: unknown[][] = [];
 vi.mock("../../logging/subsystem.js", () => ({
   createSubsystemLogger: () => ({
     info: vi.fn(),
-    warn: vi.fn(),
+    warn: (...args: unknown[]) => { warnMessages.push(args); },
     error: vi.fn(),
     debug: (...args: unknown[]) => { debugMessages.push(args); },
   }),
@@ -68,7 +69,6 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     },
     recentFocus: [],
     activeProjects: [],
-    pendingQuestions: [],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "question",
@@ -197,7 +197,7 @@ describe("crystallize", () => {
       expect(debugMessages.some((args) => String(args[0]).includes("no clusters found"))).toBe(true);
     });
 
-    it("logs debug when all clusters filtered by domain overlap", async () => {
+    it("logs warn when all clusters filtered by domain overlap", async () => {
       debugMessages.length = 0;
       const cluster = makeCluster({ domains: ["domain-a", "domain-b"] });
       const existingBS: BlindSpotCandidate = {
@@ -214,7 +214,7 @@ describe("crystallize", () => {
 
       await crystallize("user-1", persona, defaultConfig, deps);
 
-      expect(debugMessages.some((args) => String(args[0]).includes("all clusters filtered"))).toBe(true);
+      expect(warnMessages.some((args) => String(args[0]).includes("all clusters filtered"))).toBe(true);
     });
 
     it("processes max 3 clusters per run", async () => {
@@ -301,9 +301,9 @@ describe("crystallize", () => {
   });
 
   describe("fragment handling", () => {
-    it("skips clusters with <3 fragments after loading", async () => {
-      const fragments = [makeFragment({ id: "f1" }), makeFragment({ id: "f2" })];
-      const cluster = makeCluster({ fragmentIds: ["f1", "f2", "f-missing"] });
+    it("skips clusters with <2 fragments after loading", async () => {
+      const fragments = [makeFragment({ id: "f1" })];
+      const cluster = makeCluster({ fragmentIds: ["f1", "f-missing"] });
       const deps = makeMockDeps(fragments, [cluster], makeValidLlmResponse());
 
       const result = await crystallize("user-1", makePersona(), defaultConfig, deps);

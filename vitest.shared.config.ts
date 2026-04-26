@@ -231,6 +231,7 @@ export const sharedVitestConfig = {
       "vitest.plugins.config.ts",
       "vitest.config.ts",
       "vitest.scoped-config.ts",
+      "vitest.hooks.config.ts",
     ],
     include: [
       "src/**/*.test.ts",

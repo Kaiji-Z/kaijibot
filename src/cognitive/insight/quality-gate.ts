@@ -172,6 +172,7 @@ export async function assessQuality(
     composite: composite.toFixed(2),
     structuralNovelty: structuralNovelty.toFixed(2),
     actionability: actionability.toFixed(2),
+    emotionalReadiness: emotionalReadiness.toFixed(2),
     nonObviousness: nonObviousness.toFixed(2),
     blindSpot: candidate.blindSpot.slice(0, 60),
   });

@@ -13,6 +13,7 @@ import {
   createCrystallizationDepsFromStore,
   type CrystallizationDeps,
   type CrystallizationMode,
+  removeDeliveredBlindSpots,
 } from "./crystallization.js";
 import {
   assessQuality,
@@ -108,6 +109,9 @@ export class InsightV2Pipeline {
         if (insight) {
           insight.source = "v2";
           deliverable.push(insight);
+          if (bs.domains) {
+            removeDeliveredBlindSpots(persona, bs.domains);
+          }
           log.info("v2 pipeline: insight composed", { contentPreview: insight.content.slice(0, 80) });
         }
       } catch (err) {
@@ -146,8 +150,8 @@ export async function collectFragmentsForTurn(
 
 // ─── Factory ───
 
-export function createPipelineDeps(configDir: string): PipelineDeps {
-  const store = new FragmentStore(configDir);
+export function createPipelineDeps(configDir: string, externalStore?: FragmentStore): PipelineDeps {
+  const store = externalStore ?? new FragmentStore(configDir);
   return {
     collector: createDefaultFragmentCollectorDeps(),
     crystallization: createCrystallizationDepsFromStore(store),

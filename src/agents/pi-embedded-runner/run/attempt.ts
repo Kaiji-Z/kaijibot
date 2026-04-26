@@ -2252,13 +2252,13 @@ export async function runEmbeddedAttempt(
                   await fragStore.addFragment(userId, frag);
                 }
               } catch (fragErr) {
-                log.debug(`fragment collection skipped: ${String(fragErr)}`);
+                log.warn(`fragment collection skipped: ${String(fragErr)}`);
               }
             } catch (err) {
-              log.debug(`cognitive write-path skipped: ${String(err)}`);
+              log.warn(`cognitive write-path skipped: ${String(err)}`);
             }
           }).catch((err) => {
-            log.debug(`cognitive write-path skipped: ${String(err)}`);
+            log.warn(`cognitive write-path skipped: ${String(err)}`);
           });
         }
       } finally {

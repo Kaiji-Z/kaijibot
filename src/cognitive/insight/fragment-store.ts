@@ -20,17 +20,23 @@ export class FragmentStore {
     return join(this.configDir, FRAGMENTS_DIR, `${userId}.json`);
   }
 
-  private pruneAndDecay(fragments: Fragment[]): Fragment[] {
+  private pruneAndDecay(fragments: Fragment[], userId?: string): Fragment[] {
     const now = Date.now();
-    return fragments
+    const before = fragments.length;
+    const result = fragments
       .filter(f => !isFragmentExpired(f, now))
       .map(f => ({ ...f, strength: computeFragmentDecay(f, now) }));
+    const removed = before - result.length;
+    if (removed > 0 && userId) {
+      log.info("fragment maintenance", { userId, before, after: result.length, removed });
+    }
+    return result;
   }
 
   async load(userId: string): Promise<Fragment[]> {
     const cached = this.cache.get(userId);
     if (cached && Date.now() - cached.loadedAt < FragmentStore.CACHE_TTL_MS) {
-      return this.pruneAndDecay(cached.fragments);
+      return this.pruneAndDecay(cached.fragments, userId);
     }
 
     const path = this.filePath(userId);
@@ -47,7 +53,7 @@ export class FragmentStore {
       ) {
         return [];
       }
-      const fragments = this.pruneAndDecay((parsed as FragmentStoreFile).fragments);
+      const fragments = this.pruneAndDecay((parsed as FragmentStoreFile).fragments, userId);
       this.cache.set(userId, { fragments: (parsed as FragmentStoreFile).fragments, loadedAt: Date.now() });
       return fragments;
     } catch (err) {
@@ -88,6 +94,11 @@ export class FragmentStore {
       }
     } else {
       existing.push(fragment);
+    }
+    if (dupIdx >= 0) {
+      log.info("fragment dedup hit", { userId, structuralTag: fragment.structuralTag, existingStrength: existing[dupIdx].strength.toFixed(3), newStrength: fragment.strength.toFixed(3) });
+    } else {
+      log.info("fragment added", { userId, structuralTag: fragment.structuralTag, strength: fragment.strength.toFixed(3), domains: fragment.domains });
     }
     await this.save(userId, existing);
     return existing;
@@ -165,10 +176,10 @@ export class FragmentStore {
 
       const avgStrength = strengthSum / groupFragments.length;
 
-      // Pre-filter: ≥2 fragments AND (≥2 domains OR ≥1 tension fragment) AND avg strength ≥ 0.3
+      // Pre-filter: ≥2 fragments AND (≥2 domains OR ≥1 tension fragment OR ≥3 fragments in single domain) AND avg strength ≥ 0.15
       if (groupFragments.length < 2) continue;
-      if (allDomains.size < 2 && tensionCount < 1) continue;
-      if (avgStrength < 0.3) continue;
+      if (allDomains.size < 2 && tensionCount < 1 && groupFragments.length < 3) continue;
+      if (avgStrength < 0.15) continue;
 
       clusters.push({
         id: randomUUID(),
@@ -181,6 +192,7 @@ export class FragmentStore {
     }
 
     clusters.sort((a, b) => (b.averageStrength * b.fragmentIds.length) - (a.averageStrength * a.fragmentIds.length));
+    log.info("fragment clusters", { userId, clusterCount: clusters.length, sizes: clusters.map(c => c.fragmentIds.length), domains: clusters.map(c => [...c.domains]) });
     return clusters;
   }
 

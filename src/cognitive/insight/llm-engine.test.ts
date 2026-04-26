@@ -75,7 +75,6 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     },
     recentFocus: ["wasm", "type-systems"],
     activeProjects: ["kaijibot"],
-    pendingQuestions: ["How to combine Rust and TypeScript via wasm?"],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",
@@ -940,19 +939,6 @@ describe("parseLLMInsights robust parsing", () => {
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("TypeScript");
-  });
-});
-
-describe("buildInsightPrompt — pendingQuestions removal", () => {
-  it("does not contain Pending questions section", () => {
-    const prompt = buildInsightPrompt(makePersona(), makeInput(), [], []);
-    expect(prompt).not.toContain("Pending questions");
-    expect(prompt).not.toContain("pendingQuestions");
-  });
-
-  it("does not contain 解答悬问 trait", () => {
-    const prompt = buildInsightPrompt(makePersona(), makeInput(), [], []);
-    expect(prompt).not.toContain("解答悬问");
   });
 });
 

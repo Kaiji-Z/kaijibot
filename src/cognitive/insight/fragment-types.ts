@@ -47,6 +47,9 @@ export type BlindSpotCandidate = {
   domains: string[];
   unusedDomains: string[];
   crystallizationScore: number;
+  // lifecycle tracking
+  createdAt?: number;
+  expiresAt?: number;
 };
 
 // ─── QualityAssessment ───

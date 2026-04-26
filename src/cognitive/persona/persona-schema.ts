@@ -40,6 +40,9 @@ const feedbackProfileSchema = z.object({
   suppressUntil: z.number().optional(),
   recentInsightIds: z.array(z.string()).optional().default([]),
   recentInsightContents: z.array(z.string()).optional().default([]),
+  recentInsightDomains: z.array(z.array(z.string())).optional().default([]),
+  recentInsightTypes: z.array(z.string()).optional().default([]),
+  recentInsightQueryHistory: z.array(z.string()).optional().default([]),
 });
 
 const rapportMetricsSchema = z.object({
@@ -89,7 +92,7 @@ const personaTreeSchema = z.object({
   domains: z.record(z.string(), domainNodeSchema),
   recentFocus: z.array(z.string()),
   activeProjects: z.array(z.string()),
-  pendingQuestions: z.array(z.string()),
+  pendingQuestions: z.array(z.string()).optional().default([]),
   feedbackProfile: feedbackProfileSchema,
   rapport: rapportMetricsSchema,
   domainBlacklist: z.array(z.string()).optional().default([]),
@@ -100,6 +103,7 @@ const personaTreeSchema = z.object({
     consecutiveSilentDays: 0,
     totalActiveDays: 0,
   }),
+  moodHistory: z.array(z.any()).optional().default([]),
   calibrationHistory: z.array(calibrationRecordSchema).optional().default([]),
   contradictionLog: z.array(contradictionRecordSchema).optional().default([]),
 }).passthrough();

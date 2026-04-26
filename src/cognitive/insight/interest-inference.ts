@@ -87,6 +87,7 @@ function clamp01(value: number): number {
 export function buildInterestInferencePrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
+  mode: "surprise" | "extend" = "surprise",
 ): string {
   // Section 1: Known knowledge
   const domainEntries = Object.entries(persona.domains)
@@ -144,6 +145,30 @@ export function buildInterestInferencePrompt(
     .slice(0, 3)
     .map(([name]) => name);
 
+  const isExtend = mode === "extend";
+
+  const hasTargetDomains = input.targetDomains.length > 0;
+  const targetDomainsBlock = hasTargetDomains
+    ? `\n## TARGET DOMAIN FOR THIS INSIGHT\nThe insight pipeline has selected the following domain(s) as the focus area for this insight:\n${input.targetDomains.map((d) => `- ${d}`).join("\n")}\n\nThe searchQuery MUST be specifically about or related to these target domain(s).\n`
+    : "";
+
+  const taskInstruction = isExtend
+    ? hasTargetDomains
+      ? `Generate a focused search query to deepen understanding of "${input.targetDomains[0]}". Find a surprising angle, recent development, or lesser-known aspect within this specific domain.`
+      : `Analyze this user's knowledge structure. Identify their MOST ACTIVE domain and generate a focused search query to deepen understanding of it. The query should target practical applications or recent developments in that domain.`
+    : hasTargetDomains
+      ? `The pipeline has selected "${input.targetDomains[0]}" as the focus area. Find a LATENT interest within or adjacent to this domain — something the user would find surprising and valuable, but hasn't explicitly explored within ${input.targetDomains[0]}.`
+      : `Analyze this user's knowledge structure. Identify a LATENT interest — something they would find surprising and valuable, but that they haven't explicitly explored. The latent interest should bridge from what they know to something adjacent but unexpected.`;
+
+  const modeConstraints = isExtend
+    ? `- The searchQuery must be 2-6 English keywords targeting practical applications or recent developments in the user's most active domain
+- The estimatedSurprise should be moderate (0.3–0.6) since this is for extending known domains
+- Prefer queries that surface actionable content: tools, case studies, benchmarks, or how-to guides`
+    : `- The searchQuery must be 2-6 English keywords suitable for a web search API
+- The estimatedSurprise must be between 0.6 and 1.0 (this is for surprise-mode insights only)
+- Do NOT suggest topics the user is already an expert in
+- Prefer cross-domain bridges that connect two areas the user knows about in an unexpected way`;
+
   return `You are an expert at identifying latent interests and knowledge gaps from a user's knowledge profile.
 
 ## USER'S KNOWN KNOWLEDGE
@@ -160,16 +185,13 @@ ${connectionsBlock}
 
 ## RECENT FOCUS
 ${recentFocusBlock}
-
+${targetDomainsBlock}
 ## TASK
-Analyze this user's knowledge structure. Identify a LATENT interest — something they would find surprising and valuable, but that they haven't explicitly explored. The latent interest should bridge from what they know to something adjacent but unexpected.
+${taskInstruction}
 
 Constraints:
-- The searchQuery must be 2-6 English keywords suitable for a web search API
-- The estimatedSurprise must be between 0.6 and 1.0 (this is for surprise-mode insights only)
+${modeConstraints}
 - avoidTopics should contain the user's most-discussed domains to avoid re-treading: ${topDiscussed.join(", ")}
-- Do NOT suggest topics the user is already an expert in
-- Prefer cross-domain bridges that connect two areas the user knows about in an unexpected way
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 {
@@ -190,6 +212,7 @@ export async function inferSearchStrategy(
   input: InsightEngineInput,
   config: KaijiBotConfig,
   deps: InterestInferenceDeps,
+  mode: "surprise" | "extend" = "surprise",
 ): Promise<InferenceResult> {
   const modelRef = resolveInferenceModel(config);
 
@@ -200,7 +223,7 @@ export async function inferSearchStrategy(
       return { ok: false, error: `Model preparation failed: ${prepared.error}` };
     }
 
-    const prompt = buildInterestInferencePrompt(persona, input);
+    const prompt = buildInterestInferencePrompt(persona, input, mode);
     const messages: Array<{ role: "user"; content: string; timestamp: number }> = [
       { role: "user", content: prompt, timestamp: Date.now() },
     ];

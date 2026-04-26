@@ -12,6 +12,7 @@ const log = createSubsystemLogger("cognitive/crystallization");
 
 const MAX_LLM_CALLS_PER_RUN = 3;
 const DOMAIN_OVERLAP_THRESHOLD = 0.7;
+const BLIND_SPOT_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ─── Deps ───
 
@@ -85,7 +86,7 @@ export async function crystallize(
         : filterNewlyRipeClusters(allClusters, persona);
 
     if (targetClusters.length === 0) {
-      log.debug("crystallize: all clusters filtered by domain overlap", { userId, total: allClusters.length });
+      log.warn("crystallize: all clusters filtered by domain overlap", { userId, total: allClusters.length });
       return [];
     }
 
@@ -103,7 +104,7 @@ export async function crystallize(
         .map((id) => fragmentMap.get(id))
         .filter((f): f is Fragment => f !== undefined);
 
-      if (clusterFragments.length < 3) continue;
+      if (clusterFragments.length < 2) continue;
 
       const result = await synthesizeBlindSpot(
         cluster,
@@ -114,6 +115,9 @@ export async function crystallize(
       );
 
       if (result) {
+        const now = Date.now();
+        result.createdAt = now;
+        result.expiresAt = now + BLIND_SPOT_TTL_MS;
         candidates.push(result);
         await deps.touchFragments(userId, cluster.fragmentIds).catch((err) => {
           log.warn("touchFragments failed", { error: String(err) });
@@ -149,10 +153,43 @@ function computeDomainOverlap(
   return union === 0 ? 0 : shared / union;
 }
 
+function computeDomainOverlapForBlindSpot(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const setB = new Set(b.map(d => d.toLowerCase()));
+  const overlap = a.filter(d => setB.has(d.toLowerCase())).length;
+  return overlap / Math.max(a.length, b.length);
+}
+
 function filterNewlyRipeClusters(
   clusters: FragmentCluster[],
   persona: PersonaTree,
 ): FragmentCluster[] {
+  if (persona.activeBlindSpots && persona.activeBlindSpots.length > 0) {
+    const now = Date.now();
+    persona.activeBlindSpots = persona.activeBlindSpots.filter(
+      bs => !bs.expiresAt || now <= bs.expiresAt,
+    );
+  }
+
+  if (persona.activeBlindSpots && persona.activeBlindSpots.length > 1) {
+    const deduped: BlindSpotCandidate[] = [];
+    for (const bs of persona.activeBlindSpots) {
+      const overlapIdx = deduped.findIndex(existing => {
+        const overlap = computeDomainOverlapForBlindSpot(existing.domains, bs.domains);
+        return overlap > 0.8;
+      });
+      if (overlapIdx >= 0) {
+        const existing = deduped[overlapIdx];
+        if ((bs.createdAt ?? 0) > (existing.createdAt ?? 0)) {
+          deduped[overlapIdx] = bs;
+        }
+      } else {
+        deduped.push(bs);
+      }
+    }
+    persona.activeBlindSpots = deduped;
+  }
+
   const activeBlindSpots = persona.activeBlindSpots ?? [];
 
   return clusters.filter((cluster) => {
@@ -328,4 +365,12 @@ export function parseBlindSpot(
     log.warn("parseBlindSpot: unexpected error", { error: String(err) });
     return null;
   }
+}
+
+export function removeDeliveredBlindSpots(persona: PersonaTree, insightDomains: string[]): void {
+  if (!persona.activeBlindSpots || persona.activeBlindSpots.length === 0) return;
+  persona.activeBlindSpots = persona.activeBlindSpots.filter(bs => {
+    const overlap = computeDomainOverlapForBlindSpot(bs.domains, insightDomains);
+    return overlap <= 0.7;
+  });
 }

@@ -38,10 +38,9 @@ function buildEdgeIndex(edges: DomainGraphEdge[]): Map<string, DomainGraphEdge> 
   return index;
 }
 
-export function seedDomainGraph(): LearnedDomainGraph {
+export function seedDomainGraph(now: number = Date.now()): LearnedDomainGraph {
   const nodes: string[] = Object.keys(DEFAULT_DOMAIN_ADJACENCIES);
   const edges: DomainGraphEdge[] = [];
-  const now = 0;
   const seen = new Set<string>();
 
   for (const [source, targets] of Object.entries(DEFAULT_DOMAIN_ADJACENCIES)) {
@@ -168,7 +167,7 @@ function buildAdjacencyFromLearned(graph: LearnedDomainGraph): DomainGraph {
     adj[node] = [];
   }
   for (const edge of graph.edges) {
-    if (edge.weight >= 0.3) {
+    if (edge.weight >= 0.05) {
       if (!adj[edge.source]) adj[edge.source] = [];
       if (!adj[edge.target]) adj[edge.target] = [];
       adj[edge.source].push(edge.target);
@@ -183,9 +182,20 @@ export function findCrossDomainConnections(
   extendedGraph?: DomainGraph,
   domainGraph?: LearnedDomainGraph,
 ): Array<{ from: string; to: string; bridge: string[]; distance: number }> {
-  const graph = domainGraph
+  const learnedGraph = domainGraph
     ? buildAdjacencyFromLearned(domainGraph)
-    : resolveGraph(extendedGraph);
+    : {};
+  const defaultGraph = resolveGraph(extendedGraph);
+  const graph: DomainGraph = {};
+  for (const [node, neighbors] of Object.entries(defaultGraph)) {
+    graph[node] = [...neighbors];
+  }
+  for (const [node, neighbors] of Object.entries(learnedGraph)) {
+    if (!graph[node]) graph[node] = [];
+    for (const n of neighbors) {
+      if (!graph[node].includes(n)) graph[node].push(n);
+    }
+  }
   const connections: Array<{ from: string; to: string; bridge: string[]; distance: number }> = [];
 
   for (const domain of userDomains) {

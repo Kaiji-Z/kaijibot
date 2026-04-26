@@ -114,8 +114,12 @@ export async function collectFragments(
       return [];
     }
 
-    return parseFragments(text);
-  } catch (err) {
+    const fragments = parseFragments(text);
+    if (fragments.length > 0) {
+      log.info("fragments extracted", { count: fragments.length, kinds: fragments.map(f => f.kind), domains: [...new Set(fragments.flatMap(f => f.domains))] });
+    }
+    return fragments;
+   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
     log.warn(`fragment-collector ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping`);
     return [];
@@ -154,12 +158,14 @@ Detect up to 2 of these thinking pattern types:
 
 CRITICAL: Do NOT extract topics. Extract what they DON'T know about their own thinking. Focus on structural cognitive patterns, not content.
 
+Each fragment MUST include at least 2 domains (fields of knowledge). Look for connections between domains in the user's thinking. For example, if they discuss a programming concept, consider what broader domain it connects to (software architecture, distributed systems, etc.). Use the user's known domains above when possible.
+
 Respond with ONLY a JSON array (no markdown, no code fences):
 [
   {
     "kind": "assumption",
     "evidence": "brief quote or paraphrase from the conversation",
-    "domains": ["relevant-domain"],
+    "domains": ["domain-a", "domain-b"],
     "structuralTag": "one-word tag for the thinking pattern",
     "strength": 0.7
   }

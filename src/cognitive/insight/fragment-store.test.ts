@@ -286,11 +286,11 @@ describe("FragmentStore", () => {
       expect(clusters.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("findClusters rejects cluster with avg strength below 0.3", async () => {
+    it("findClusters rejects cluster with avg strength below 0.15", async () => {
       const fragments = [
-        makeFragment({ domains: ["A", "B"], strength: 0.2 }),
-        makeFragment({ domains: ["A", "C"], strength: 0.2 }),
-        makeFragment({ domains: ["A", "D"], strength: 0.2 }),
+        makeFragment({ domains: ["A", "B"], strength: 0.1 }),
+        makeFragment({ domains: ["A", "C"], strength: 0.1 }),
+        makeFragment({ domains: ["A", "D"], strength: 0.1 }),
       ];
       await store.save("test-user", fragments);
       const clusters = await store.findClusters("test-user");

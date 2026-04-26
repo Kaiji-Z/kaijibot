@@ -106,7 +106,7 @@ export async function generateInsightCandidatesLLM(
       if (deps.webSearch && searchStrategy.searchQuery) {
         queryUsed = searchStrategy.searchQuery;
         try {
-          webResults = await deps.webSearch(searchStrategy.searchQuery);
+          webResults = await cachedWebSearch(deps.webSearch, searchStrategy.searchQuery);
           log.info("surprise-mode web search completed", { query: searchStrategy.searchQuery, resultCount: webResults.length });
         } catch (err) {
           log.warn("surprise-mode web search failed", { query: searchStrategy.searchQuery, error: String(err) });
@@ -118,11 +118,27 @@ export async function generateInsightCandidatesLLM(
     }
   } else {
     if (deps.webSearch) {
-      const query = buildSearchQuery(input);
-      queryUsed = query || undefined;
+      let query: string | undefined;
+      // Try LLM-based query generation for extend mode when inferenceDeps available
+      if (deps.inferenceDeps) {
+        try {
+          const inferenceResult = await inferSearchStrategy(persona, input, config, deps.inferenceDeps, "extend");
+          if (inferenceResult.ok && inferenceResult.strategy.searchQuery) {
+            query = inferenceResult.strategy.searchQuery;
+            log.info("extend-mode LLM query generated", { query });
+          }
+        } catch (err) {
+          log.warn("extend-mode inference failed, falling back to rule-based query", { error: String(err) });
+        }
+      }
+      // Fallback to rule-based query
+      if (!query) {
+        query = buildSearchQuery(input) || undefined;
+      }
+      queryUsed = query;
       if (query) {
         try {
-          webResults = await deps.webSearch(query);
+          webResults = await cachedWebSearch(deps.webSearch, query);
           log.info("web search completed", { query, resultCount: webResults.length });
         } catch (err) {
           log.warn("web search failed, proceeding without web results", { query, error: String(err) });
@@ -191,7 +207,7 @@ export async function generateInsightCandidatesLLM(
     // Trigram dedup: filter candidates too similar to recently delivered insights
     const recentContents = input.recentInsightContents;
     const filtered = recentContents.length > 0
-      ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.7 }))
+      ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.85, contentWordThreshold: 0.25 }))
       : candidates;
 
     if (filtered.length < candidates.length) {
@@ -270,6 +286,42 @@ export function extractKeyTerms(text: string): string[] {
 }
 
 const SUFFIXES = [" 最新进展", " 实践案例", " 最佳实践", " 技术趋势", " 新方向"] as const;
+
+const SEARCH_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 100;
+const searchCache = new Map<string, { results: WebSearchResult[]; fetchedAt: number }>();
+
+function cachedWebSearch(
+  webSearch: (query: string) => Promise<WebSearchResult[]>,
+  query: string,
+): Promise<WebSearchResult[]> {
+  const now = Date.now();
+  const cached = searchCache.get(query);
+  if (cached && now - cached.fetchedAt < SEARCH_CACHE_TTL_MS) {
+    log.info("web search cache hit", { query });
+    return Promise.resolve(cached.results);
+  }
+  if (searchCache.size >= MAX_CACHE_ENTRIES) {
+    const staleKeys: string[] = [];
+    for (const [k, v] of searchCache) {
+      if (now - v.fetchedAt >= SEARCH_CACHE_TTL_MS) staleKeys.push(k);
+    }
+    if (staleKeys.length > 0) {
+      for (const k of staleKeys) searchCache.delete(k);
+    } else {
+      const firstKey = searchCache.keys().next().value;
+      if (firstKey !== undefined) searchCache.delete(firstKey);
+    }
+  }
+  return webSearch(query).then(results => {
+    searchCache.set(query, { results, fetchedAt: now });
+    return results;
+  });
+}
+
+export function clearSearchCache(): void {
+  searchCache.clear();
+}
 
 export function buildSearchQuery(input: InsightEngineInput): string {
   const parts: string[] = [];
@@ -632,7 +684,16 @@ export function buildInsightPrompt(
   const webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
   if (webResults.length > 0) {
     const matchedDomains = [...webSnippetByDomain.keys()];
-    const unmatched = webResults.length - [...webSnippetByDomain.values()].reduce((s, v) => s + v.length, 0);
+    const matchedUrls = new Set<string>();
+    for (const result of webResults) {
+      for (const snippets of webSnippetByDomain.values()) {
+        if (snippets.some(s => s === result.snippet)) {
+          matchedUrls.add(result.url);
+          break;
+        }
+      }
+    }
+    const unmatched = webResults.length - matchedUrls.size;
     log.info("web search domain matching", {
       totalResults: webResults.length,
       matchedDomains: matchedDomains.length > 0 ? matchedDomains : "(none)",
@@ -848,6 +909,27 @@ function extractJsonArray(text: string): string | null {
 
 function repairJsonArray(raw: string): string {
   let s = raw;
+
+  // Normalize Chinese curly quotes inside string values before any bracket fixing.
+  // GLM models tend to emit \u201c/\u201d inside JSON strings, which breaks JSON.parse.
+  {
+    let inStr = false;
+    let esc = false;
+    let normalized = "";
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i]!;
+      if (esc) { normalized += ch; esc = false; continue; }
+      if (ch === "\\") { normalized += ch; esc = true; continue; }
+      if (ch === '"') { inStr = !inStr; normalized += ch; continue; }
+      if (inStr && (ch === "\u201c" || ch === "\u201d")) {
+        normalized += '"';
+        continue;
+      }
+      normalized += ch;
+    }
+    s = normalized;
+  }
+
   s = s.replace(/,\s*([}\]])/g, "$1");
   let openBrackets = 0;
   let openBraces = 0;

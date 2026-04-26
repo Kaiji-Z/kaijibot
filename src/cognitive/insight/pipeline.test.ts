@@ -66,7 +66,6 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     domains: {},
     recentFocus: [],
     activeProjects: [],
-    pendingQuestions: [],
     feedbackProfile: {
       topicBandits: {},
       preferredStyle: "observation",
