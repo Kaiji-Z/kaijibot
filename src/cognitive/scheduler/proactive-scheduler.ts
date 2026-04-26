@@ -3,7 +3,7 @@ import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "
 import { computeGradedGate } from "./gate.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
-import { findCrossDomainConnections } from "../insight/cross-domain-mapper.js";
+import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
 import { verifyInsight } from "../insight/verification/pipeline.js";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
 import { pickBestTopic } from "../feedback/preference-learner.js";
@@ -121,8 +121,24 @@ export class ProactiveScheduler {
         }
       }
 
-      if (recentTypes.length > 0 && recentTypes[recentTypes.length - 1] === opp.type) {
-        adjustedPAct *= 0.5;
+      if (recentTypes.length >= 2) {
+        const lastTwo = recentTypes.slice(-2);
+        if (lastTwo[0] === opp.type && lastTwo[1] === opp.type) {
+          adjustedPAct *= 0.6;
+        }
+      } else if (recentTypes.length === 1 && recentTypes[0] === opp.type) {
+        adjustedPAct *= 0.75;
+      }
+
+      const domainHistory = (persona?.feedbackProfile?.recentInsightDomains ?? []).flat();
+      if (domainHistory.length > 0) {
+        for (const domain of opp.targetDomains) {
+          const recentCount = domainHistory.filter((d) => d === domain).length;
+          if (recentCount >= 3) {
+            adjustedPAct *= 0.3;
+            break;
+          }
+        }
       }
 
       return { ...opp, pAct: adjustedPAct };
@@ -146,25 +162,36 @@ export class ProactiveScheduler {
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
     const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
-    const candidates = await this.generateInsights(
-      persona,
-      {
-        targetDomains: opportunity.targetDomains.length > 0
-          ? opportunity.targetDomains
-          : Object.keys(persona.domains),
-        recentFocus: persona.recentFocus,
-        trustScore: persona.rapport.trustScore,
-        recentInsightIds,
-        recentInsightContents,
-        mode,
-        recentQueryHistory,
-      },
-      {
-        verificationLevel: "basic",
-        maxCandidates: 1,
-        mode,
-      },
-    );
+    let candidates: InsightCandidate[] | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await this.generateInsights(
+        persona,
+        {
+          targetDomains: opportunity.targetDomains.length > 0
+            ? opportunity.targetDomains
+            : Object.keys(persona.domains),
+          recentFocus: persona.recentFocus,
+          trustScore: persona.rapport.trustScore,
+          recentInsightIds,
+          recentInsightContents,
+          mode,
+          recentQueryHistory,
+        },
+        {
+          verificationLevel: "basic",
+          maxCandidates: 1,
+          mode,
+        },
+      );
+      if (result && result.length > 0) {
+        candidates = result;
+        break;
+      }
+      if (attempt === 0) {
+        log.info("resolve: retrying insight generation", { userId: persona.identity?.userId });
+      }
+    }
+    if (!candidates) return null;
 
     const candidate = candidates[0] ?? null;
     if (!candidate) return null;
@@ -180,6 +207,16 @@ export class ProactiveScheduler {
       }
     }
 
+    // v2 insights are crystallized from conversation fragments — skip web-source verification
+    if (candidate.source === "v2") {
+      candidate.verificationStatus = "partial";
+      log.info("v2 insight bypasses verification gate", {
+        source: candidate.source,
+        content: candidate.content.slice(0, 60),
+      });
+      return candidate;
+    }
+
     const verification = verifyInsight({
       content: candidate.content,
       sources: candidate.sources,
@@ -187,7 +224,7 @@ export class ProactiveScheduler {
     });
     candidate.verificationStatus = verification.status;
 
-    if (candidate.verificationStatus === "unverified") {
+    if (opportunity.type !== "exploration" && candidate.verificationStatus === "unverified") {
       log.warn("insight candidate has no verifiable sources, skipping delivery", {
         sources: candidate.sources.length,
         content: candidate.content.slice(0, 80),
@@ -219,13 +256,18 @@ export class ProactiveScheduler {
     log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pNeed * gateResult.pAccept });
 
     const opportunities = this.search(persona, event);
-    log.info("search found opportunities", { userId, count: opportunities.length });
+    const byType: Record<string, number> = {};
+    for (const opp of opportunities) {
+      byType[opp.type] = (byType[opp.type] ?? 0) + 1;
+    }
+    log.info("search found opportunities", { userId, count: opportunities.length, byType });
+    const recentTypes = persona.feedbackProfile.recentInsightTypes ?? [];
     const selected = this.identify(opportunities, persona);
     if (!selected) {
       log.info("identify selected nothing", { userId });
       return undefined;
     }
-    log.info("identify selected", { userId, type: selected.type, targetDomains: selected.targetDomains, pAct: selected.pAct });
+    log.info("identify selected", { userId, type: selected.type, targetDomains: selected.targetDomains, pAct: selected.pAct, recentTypes });
 
     const insight = await this.resolve(persona, selected);
     if (!insight) return undefined;
@@ -336,7 +378,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
   const shuffled = seededShuffle(connections, event.timestamp);
   const pAccept = computeBaselinePAccept(persona);
 
-  return shuffled.slice(0, 3).map((conn) => {
+  const results: Opportunity[] = shuffled.slice(0, 3).map((conn) => {
     const fromDomain = persona.domains[conn.from];
     const depthFactor = fromDomain ? Math.min(fromDomain.depth / 5, 1) : 0.3;
     const pNeed = 0.55 * depthFactor + 0.3;
@@ -351,6 +393,82 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
       metadata: { bridge: conn.bridge, distance: conn.distance },
     };
   });
+
+  // 2-hop: userDomain → userDomain neighbor → non-userDomain
+  const userDomainSet = new Set(userDomains);
+  const edges = persona.domainGraph?.edges ?? [];
+  if (edges.length > 0) {
+    const twoHopBest = new Map<string, Opportunity>();
+    for (const domain of userDomains) {
+      if (!persona.domainGraph?.nodes?.includes(domain)) continue;
+
+      const midHops = edges
+        .filter((e) => e.source === domain || e.target === domain)
+        .map((e) => (e.source === domain ? e.target : e.source))
+        .filter((n) => userDomainSet.has(n));
+
+      for (const midHop of midHops) {
+        const twoHopTargets = edges
+          .filter((e) => e.source === midHop || e.target === midHop)
+          .map((e) => (e.source === midHop ? e.target : e.source))
+          .filter((n) => !userDomainSet.has(n));
+
+        for (const target of twoHopTargets) {
+          const fromDomain = persona.domains[domain];
+          const depthFactor = fromDomain ? Math.min(fromDomain.depth / 5, 1) : 0.3;
+          const pNeed = Math.max(0.3, 0.55 * depthFactor + 0.3 - 0.1);
+          const opp: Opportunity = {
+            type: "cross_domain" as const,
+            targetDomains: [domain],
+            sourceDomains: [target],
+            pNeed,
+            pAccept,
+            pAct: pNeed * pAccept,
+            metadata: { bridge: [midHop], distance: 2 },
+          };
+
+          const existing = twoHopBest.get(target);
+          if (!existing || opp.pNeed > existing.pNeed) {
+            twoHopBest.set(target, opp);
+          }
+        }
+      }
+    }
+    results.push(...twoHopBest.values());
+  }
+
+  // Fallback: intra-user cross-pollination when graph is fully covered by user domains
+  if (results.length === 0 && userDomains.length >= 2) {
+    let weakestPair: { from: string; to: string; distance: number } | null = null;
+    let maxDist = 0;
+
+    for (let i = 0; i < userDomains.length; i++) {
+      for (let j = i + 1; j < userDomains.length; j++) {
+        const d = semanticDistance(userDomains[i]!, userDomains[j]!, undefined, persona.domainGraph);
+        if (d > maxDist) {
+          maxDist = d;
+          weakestPair = { from: userDomains[i]!, to: userDomains[j]!, distance: d };
+        }
+      }
+    }
+
+    if (weakestPair && maxDist > 0.5) {
+      const fromDomain = persona.domains[weakestPair.from];
+      const depthFactor = fromDomain ? Math.min(fromDomain.depth / 5, 1) : 0.3;
+      const pNeed = 0.55 * depthFactor + 0.3;
+      results.push({
+        type: "cross_domain",
+        targetDomains: [weakestPair.from, weakestPair.to],
+        sourceDomains: [],
+        pNeed,
+        pAccept,
+        pAct: pNeed * pAccept,
+        metadata: { intraUserCrossPollination: true, semanticDistance: weakestPair.distance },
+      });
+    }
+  }
+
+  return results;
 }
 
 function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportunity[] {
@@ -376,7 +494,7 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
     .map(([domainName, domain]) => {
       const daysSinceMention = (now - domain.lastMentioned) / (24 * 60 * 60 * 1000);
       const recencyBoost = Math.max(0, 1 - daysSinceMention / 7);
-      const pNeed = Math.min(0.7, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
+      const pNeed = Math.min(0.55, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
 
       return {
         type: "domain_depth" as const,

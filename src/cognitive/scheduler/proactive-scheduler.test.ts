@@ -48,12 +48,6 @@ function personaWithDomains(): PersonaTree {
   return persona;
 }
 
-function personaWithPendingQuestions(): PersonaTree {
-  const persona = personaWithDomains();
-  persona.pendingQuestions = ["如何优化Transformer注意力机制？", "Rust异步运行时选哪个？"];
-  return persona;
-}
-
 const config: SchedulerConfig = {
   minIntervalHours: 4,
   minTrustScore: 0.3,
@@ -353,7 +347,7 @@ describe("ProactiveScheduler", () => {
 
 describe("ProactiveScheduler.search", () => {
   it("returns multiple Opportunity objects for timer event", () => {
-    const persona = personaWithPendingQuestions();
+    const persona = personaWithDomains();
     const scheduler = makeScheduler(config, persona);
 
     const opportunities = scheduler.search(persona, {
@@ -368,7 +362,7 @@ describe("ProactiveScheduler.search", () => {
   });
 
   it("returns all strategies for external event", () => {
-    const persona = personaWithPendingQuestions();
+    const persona = personaWithDomains();
     const scheduler = makeScheduler(config, persona);
 
     const opportunities = scheduler.search(persona, {
@@ -435,7 +429,7 @@ describe("ProactiveScheduler.search", () => {
   });
 
   it("different event types produce different opportunity sets", () => {
-    const persona = personaWithPendingQuestions();
+    const persona = personaWithDomains();
     const scheduler = makeScheduler(config, persona);
 
     const timerOpps = scheduler.search(persona, { type: "timer", timestamp: Date.now() });
@@ -1154,7 +1148,7 @@ describe("pNeed imbalance fix", () => {
     costFalseAlarm: 1,
   };
 
-  it("scanDomainDepth never exceeds 0.7 pNeed", () => {
+  it("scanDomainDepth never exceeds 0.55 pNeed", () => {
     const persona = deepDomainPersona();
     const scheduler = makeScheduler(config, persona);
 
@@ -1167,13 +1161,13 @@ describe("pNeed imbalance fix", () => {
     expect(domainDepthOpps.length).toBeGreaterThan(0);
 
     for (const opp of domainDepthOpps) {
-      expect(opp.pNeed).toBeLessThanOrEqual(0.7);
+      expect(opp.pNeed).toBeLessThanOrEqual(0.55);
     }
 
-    // With depth=10 and recencyBoost=1: uncapped would be 0.3+0.8+0.2=1.3, now capped at 0.7
+    // With depth=10 and recencyBoost=1: uncapped would be 0.3+0.8+0.2=1.3, now capped at 0.55
     const deepOpp = domainDepthOpps.find((o) => o.targetDomains.includes("AI/机器学习"));
     expect(deepOpp).toBeDefined();
-    expect(deepOpp!.pNeed).toBe(0.7);
+    expect(deepOpp!.pNeed).toBe(0.55);
   });
 
   it("scanCrossDomain can reach 0.85 pNeed with deep domain", () => {
@@ -1215,11 +1209,11 @@ describe("pNeed imbalance fix", () => {
     }
   });
 
-  it("identify applies 0.5 same-type penalty", () => {
+  it("identify applies 0.6 same-type penalty for consecutive same types", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
-    // Last type is domain_depth → domain_depth gets 0.5 penalty
-    persona.feedbackProfile.recentInsightTypes = ["cross_domain", "domain_depth"];
+    // Last two types are both domain_depth → domain_depth gets 0.6 penalty
+    persona.feedbackProfile.recentInsightTypes = ["domain_depth", "domain_depth"];
 
     const originalPAct = 0.8;
     const opportunities: Opportunity[] = [
@@ -1228,7 +1222,7 @@ describe("pNeed imbalance fix", () => {
 
     const selected = scheduler.identify(opportunities, persona);
     expect(selected).not.toBeNull();
-    expect(selected!.pAct).toBeCloseTo(originalPAct * 0.5, 5);
+    expect(selected!.pAct).toBeCloseTo(originalPAct * 0.6, 5);
   });
 });
 
