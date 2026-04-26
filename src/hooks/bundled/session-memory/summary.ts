@@ -21,15 +21,6 @@ import { runEmbeddedPiAgent } from "../../../agents/pi-embedded.js";
 import type { KaijiBotConfig } from "../../../config/config.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import { normalizeLowercaseStringOrEmpty } from "../../../shared/string-coerce.js";
-type MemoryType = "user" | "feedback" | "project" | "reference";
-
-const MEMORY_TYPES = new Set<string>(["user", "feedback", "project", "reference"]);
-
-function parseMemoryType(raw: string | undefined): MemoryType | null {
-  if (raw === undefined) return null;
-  if (MEMORY_TYPES.has(raw)) return raw as MemoryType;
-  return null;
-}
 
 const log = createSubsystemLogger("hooks/session-memory/summary");
 
@@ -48,9 +39,7 @@ export interface StructuredSummary {
   topics: string[];
   /** Participants involved */
   participants: string[];
-  /** Primary memory type classification */
-  type: MemoryType;
-  /** LLM-generated slug for topic file name */
+  /** Subject-based topic name for routing (kebab-case, e.g. "feishu", "product") */
   topicSlug: string;
 }
 
@@ -65,13 +54,7 @@ const SUMMARY_SYSTEM_PROMPT = `You are a structured conversation summarizer. Ana
 - "followups": array of pending action items (as strings). Empty if none.
 - "topics": array of 1-3 short topic tags (lowercase, hyphenated, e.g. "api-design", "user-preferences"). Empty if none.
 - "participants": array of participant names/roles (e.g. ["user", "assistant"]). At minimum ["user"].
-- "type": one of "user", "feedback", "project", or "reference".
-  - "user": personal info, preferences, identity, relationships
-  - "feedback": corrections AND confirmations from user
-  - "project": decisions, milestones, known issues NOT derivable from code/git
-  - "reference": external pointers (URLs, version numbers, connected services)
-  - Default to "project" if unclear.
-- "topicSlug": a short 1-3 word slug for the topic file name (lowercase, hyphenated, max 30 chars).
+- "topicSlug": a short 1-3 word slug for the topic file name (lowercase, hyphenated, max 30 chars). This is the primary classification — choose a subject that groups related memories together (e.g. "feishu", "philosophy", "product", "football").
 
 ## What NOT to save in memory
 
@@ -131,8 +114,6 @@ function parseStructuredSummaryResponse(raw: string, transcript: string): Struct
     ? parsed.participants.filter((p): p is string => typeof p === "string")
     : ["user"];
 
-  const type = parseMemoryType(parsed.type as string) ?? "project";
-
   const topicSlug =
     typeof parsed.topicSlug === "string"
       ? normalizeLowercaseStringOrEmpty(parsed.topicSlug)
@@ -148,7 +129,6 @@ function parseStructuredSummaryResponse(raw: string, transcript: string): Struct
     followups,
     topics,
     participants,
-    type,
     topicSlug: topicSlug || "session",
   };
 }
@@ -166,7 +146,6 @@ function createFallbackSummary(transcript: string): StructuredSummary {
     followups: [],
     topics: [],
     participants: ["user"],
-    type: "reference",
     topicSlug: "session",
   };
 }
@@ -258,7 +237,12 @@ export async function generateStructuredSummary(params: {
  * Format a StructuredSummary as a markdown document with YAML frontmatter,
  * suitable for appending to a daily memory file.
  */
-export function formatSummaryAsMarkdown(summary: StructuredSummary, dateStr: string): string {
+export function formatSummaryAsMarkdown(
+  summary: StructuredSummary,
+  dateStr: string,
+  sessionKey?: string,
+  rawTranscript?: string,
+): string {
   const frontmatter = [
     "---",
     `type: session-summary`,
@@ -270,6 +254,10 @@ export function formatSummaryAsMarkdown(summary: StructuredSummary, dateStr: str
   ].join("\n");
 
   const sections: string[] = [frontmatter];
+
+  if (sessionKey) {
+    sections.push(`- **Session Key**: ${sessionKey}`, "");
+  }
 
   sections.push(`## 摘要`, "", summary.summary, "");
 
@@ -287,6 +275,12 @@ export function formatSummaryAsMarkdown(summary: StructuredSummary, dateStr: str
       sections.push(`- [ ] ${f}`);
     }
     sections.push("");
+  }
+
+  if (rawTranscript && rawTranscript.trim()) {
+    sections.push("## 原始对话", "", "<details>", "<summary>点击展开完整对话记录</summary>", "");
+    sections.push(rawTranscript);
+    sections.push("", "</details>", "");
   }
 
   if (summary.topicSlug) {

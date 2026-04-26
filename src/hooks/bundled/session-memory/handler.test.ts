@@ -90,7 +90,7 @@ async function runNewWithPreviousSessionEntry(params: {
   await handler(event);
 
   const memoryDir = path.join(params.tempDir, "memory");
-  const files = await fs.readdir(memoryDir);
+  const files = (await fs.readdir(memoryDir)).filter((f) => f.endsWith(".md"));
   const memoryContent =
     files.length > 0 ? await fs.readFile(path.join(memoryDir, files[0]), "utf-8") : "";
   return { files, memoryContent };

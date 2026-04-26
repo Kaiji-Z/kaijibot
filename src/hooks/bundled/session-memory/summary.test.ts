@@ -11,7 +11,6 @@ function makeSummary(overrides: Partial<StructuredSummary> = {}): StructuredSumm
     followups: ["实现认证中间件", "编写 API 文档"],
     topics: ["api-design", "architecture"],
     participants: ["user", "assistant"],
-    type: "project",
     topicSlug: "api-design",
     ...overrides,
   };
@@ -80,7 +79,6 @@ describe("formatSummaryAsMarkdown", () => {
   it("uses reference type and English summary correctly", () => {
     const summary = makeSummary({
       summary: "User asked about deployment options for the new service.",
-      type: "reference",
       decisions: [],
       followups: [],
       topics: ["deployment"],

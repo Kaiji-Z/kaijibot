@@ -14,7 +14,7 @@ import {
 } from "../../../agents/agent-scope.js";
 import type { KaijiBotConfig } from "../../../config/config.js";
 import { resolveStateDir } from "../../../config/paths.js";
-import { appendFileWithinRoot, mkdirPathWithinRoot } from "../../../infra/fs-safe.js";
+import { appendFileWithinRoot } from "../../../infra/fs-safe.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import {
   parseAgentSessionKey,
@@ -180,16 +180,14 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
     if (sessionContent && cfg && allowLlm) {
       summary = await generateStructuredSummary({ transcript: sessionContent, cfg });
-      log.debug("Structured summary generated", { topicSlug: summary.topicSlug, type: summary.type });
+      log.debug("Structured summary generated", { topicSlug: summary.topicSlug });
     } else if (sessionContent) {
-      const firstLine = sessionContent.split("\n")[0] ?? "";
       summary = {
-        summary: firstLine.slice(0, 300) || "(session)",
+        summary: sessionContent.slice(0, 6000) || "(session)",
         decisions: [],
         followups: [],
         topics: [],
         participants: ["user"],
-        type: "reference",
         topicSlug: "session",
       };
     } else {
@@ -200,21 +198,25 @@ const saveSessionToMemory: HookHandler = async (event) => {
         followups: [],
         topics: [],
         participants: ["user"],
-        type: "reference",
         topicSlug: `session-${timeStr}`,
       };
     }
 
     // --- Write daily file: memory/YYYY-MM-DD.md (append) ---
     const dailyFilename = `${dateStr}.md`;
-    const markdownEntry = formatSummaryAsMarkdown(summary, dateStr);
+    const markdownEntry = formatSummaryAsMarkdown(
+      summary,
+      dateStr,
+      displaySessionKey,
+      sessionContent ?? undefined,
+    );
 
-    await mkdirPathWithinRoot({ rootDir: memoryDir, relativePath: "." });
     await appendFileWithinRoot({
       rootDir: memoryDir,
       relativePath: dailyFilename,
       data: `\n${markdownEntry}\n`,
       prependNewlineIfNeeded: true,
+      mkdir: true,
     });
     log.debug("Daily memory file updated", { filename: dailyFilename });
 
@@ -232,7 +234,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
         const topicFileName = `${summary.topicSlug}.md`;
         let topic = await topicManager.getTopic(topicFileName);
         if (!topic) {
-          topic = await topicManager.createTopic(summary.type, topicFileName);
+          topic = await topicManager.createTopic(summary.topicSlug, topicFileName);
         }
 
         const entryContent = sessionContent
