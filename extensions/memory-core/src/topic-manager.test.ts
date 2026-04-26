@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
-import { type TopicEntry, DEFAULT_TOPIC_FILES, parseTopicFile } from "./topic-types.js";
+import { type TopicEntry, parseTopicFile } from "./topic-types.js";
 
 function createMemoryFs(): {
   files: Map<string, string>;
@@ -66,12 +66,12 @@ describe("TopicManager", () => {
     it("creates and reads back an empty topic file", async () => {
       const { manager } = createManager();
       const topic = await manager.createTopic("user", "user-profile");
-      expect(topic.frontmatter.type).toBe("user");
+      expect(topic.frontmatter.subject).toBe("user");
       expect(topic.entries).toHaveLength(0);
 
       const read = await manager.getTopic("user-profile");
       expect(read).not.toBeNull();
-      expect(read!.frontmatter.type).toBe("user");
+      expect(read!.frontmatter.subject).toBe("user");
     });
 
     it("normalizes name with .md suffix", async () => {
@@ -79,7 +79,7 @@ describe("TopicManager", () => {
       await manager.createTopic("feedback", "my-feedback.md");
       const read = await manager.getTopic("my-feedback");
       expect(read).not.toBeNull();
-      expect(read!.frontmatter.type).toBe("feedback");
+      expect(read!.frontmatter.subject).toBe("feedback");
     });
 
     it("returns null for non-existent topic", async () => {
@@ -214,35 +214,6 @@ describe("TopicManager", () => {
       const { manager } = createManager();
       const list = await manager.listTopics();
       expect(list).toEqual([]);
-    });
-  });
-
-  describe("ensureDefaultTopics", () => {
-    it("creates all 4 default topic files", async () => {
-      const { manager } = createManager();
-      await manager.ensureDefaultTopics();
-
-      const list = await manager.listTopics();
-      expect(list).toContain("user-profile.md");
-      expect(list).toContain("feedback.md");
-      expect(list).toContain("project-decisions.md");
-      expect(list).toContain("reference.md");
-    });
-
-    it("does not overwrite existing topics", async () => {
-      const { manager } = createManager();
-      await manager.createTopic("user", "user-profile");
-      await manager.appendEntry("user-profile", {
-        title: "Existing",
-        date: "2026-04-20",
-        content: "Data",
-      });
-
-      await manager.ensureDefaultTopics();
-
-      const topic = await manager.getTopic("user-profile");
-      expect(topic!.entries).toHaveLength(1);
-      expect(topic!.entries[0]!.title).toBe("Existing");
     });
   });
 

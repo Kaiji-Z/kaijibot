@@ -1,21 +1,21 @@
 /**
  * MemoryIndexManager — reads, writes, and maintains the MEMORY.md index file.
  *
- * The MEMORY.md file serves as the top-level index into topic files stored
- * under memory/topics/. New format sections go ABOVE any legacy promoted
- * content to ensure zero content loss during migration.
+ * Hybrid format: the first 3 sections (👤 User, 💬 Key Feedback, 🎯 Active
+ * Focus) contain INLINE content directly in MEMORY.md. Remaining sections
+ * are topic pointers under `## Title`. Legacy promoted content is always
+ * preserved below new-format sections.
  */
 
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { type MemoryType, parseMemoryType } from "./memory-types.js";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface MemoryIndexSection {
-  type: MemoryType;
+  subject: string;
   title: string;
   topicFile: string;
   summary: string;
@@ -27,10 +27,17 @@ export interface RecentSession {
   topicPath: string;
 }
 
+export interface InlineContent {
+  section: string; // heading like "👤 User", "💬 Key Feedback", "🎯 Active Focus"
+  lines: string[]; // actual content lines (high-frequency info)
+}
+
 export interface MemoryIndex {
   sections: MemoryIndexSection[];
   recentSessions: RecentSession[];
   promotedContent: string;
+  /** Inline sections rendered directly in MEMORY.md (high-frequency content). */
+  inlineSections?: InlineContent[];
 }
 
 export interface MemoryIndexDeps {
@@ -49,12 +56,20 @@ export interface MemoryIndexDeps {
 
 const MEMORY_MD = "MEMORY.md";
 const TOPIC_FILE_PREFIX = "memory/topics/";
-const DEFAULT_MAX_BYTES = 25000;
+const DEFAULT_MAX_BYTES = 4096;
 
-const SECTION_HEADING_RE = /^## \[([^\]]+)\] (.+)$/;
+const SECTION_HEADING_RE = /^## (.+)$/;
 const RECENT_SESSIONS_HEADING = "## Recent Sessions";
 const PROMOTED_HEADING = "## Promoted From Short-Term Memory";
-const INDEX_TITLE = "# Long-Term Memory Index";
+const INDEX_TITLE = "# Long-Term Memory";
+
+const INLINE_SECTION_HEADINGS = ["👤 User", "💬 Key Feedback", "🎯 Active Focus"] as const;
+
+const INLINE_SECTION_SUBJECTS: Record<string, string> = {
+  "👤 User": "user",
+  "💬 Key Feedback": "feedback",
+  "🎯 Active Focus": "project",
+};
 
 // ---------------------------------------------------------------------------
 // Atomic write
@@ -73,15 +88,27 @@ async function atomicWrite(
 }
 
 // ---------------------------------------------------------------------------
-// Parsing
+// Inline heading helpers
+// ---------------------------------------------------------------------------
+
+function parseInlineHeading(line: string): string | null {
+  const trimmed = line.trim();
+  for (const h of INLINE_SECTION_HEADINGS) {
+    if (trimmed === `## ${h}`) return h;
+  }
+  return null;
+}
+
+function isInlineHeading(line: string): boolean {
+  return parseInlineHeading(line) !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Parsing helpers
 // ---------------------------------------------------------------------------
 
 function splitLines(text: string): string[] {
   return text.split(/\r?\n/);
-}
-
-function isSectionHeading(line: string): boolean {
-  return SECTION_HEADING_RE.test(line.trim());
 }
 
 function isRecentSessionsHeading(line: string): boolean {
@@ -93,27 +120,55 @@ function isPromotedHeading(line: string): boolean {
   return trimmed === PROMOTED_HEADING || trimmed.startsWith("## Promoted From Short-Term Memory");
 }
 
-function isTopicIndexTitle(line: string): boolean {
-  return line.trim() === INDEX_TITLE;
+function isReferencesHeading(line: string): boolean {
+  return line.trim() === "## References";
 }
 
 function isH2Heading(line: string): boolean {
   return /^## /.test(line.trim());
 }
 
+// ---------------------------------------------------------------------------
+// Parsing
+// ---------------------------------------------------------------------------
+
 /**
  * Parse a MEMORY.md file into structured index.
+ * Supports both new hybrid format (inline sections + topic pointers)
+ * and legacy `## [type] Title` format.
  */
 export function parseMemoryIndex(content: string): MemoryIndex {
   const lines = splitLines(content);
   const sections: MemoryIndexSection[] = [];
   const recentSessions: RecentSession[] = [];
+  const inlineSections: InlineContent[] = [];
 
   let currentSection: MemoryIndexSection | null = null;
   let currentSectionSummaryLines: string[] = [];
+  let currentInlineSection: string | null = null;
+  let currentInlineLines: string[] = [];
   let promotedLines: string[] = [];
   let inPromoted = false;
   let inRecentSessions = false;
+  let inReferences = false;
+
+  function flushSection(): void {
+    if (currentSection) {
+      currentSection.summary = currentSectionSummaryLines.join("\n").trim();
+      sections.push(currentSection);
+      currentSection = null;
+      currentSectionSummaryLines = [];
+    }
+    if (currentInlineSection !== null) {
+      // Trim trailing blank lines
+      while (currentInlineLines.length > 0 && currentInlineLines[currentInlineLines.length - 1]!.trim() === "") {
+        currentInlineLines.pop();
+      }
+      inlineSections.push({ section: currentInlineSection, lines: currentInlineLines });
+      currentInlineSection = null;
+      currentInlineLines = [];
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
@@ -125,42 +180,53 @@ export function parseMemoryIndex(content: string): MemoryIndex {
     }
 
     if (isPromotedHeading(trimmed)) {
-      // Flush current section
-      if (currentSection) {
-        currentSection.summary = currentSectionSummaryLines.join("\n").trim();
-        sections.push(currentSection);
-        currentSection = null;
-        currentSectionSummaryLines = [];
-      }
+      flushSection();
       inPromoted = true;
       inRecentSessions = false;
+      inReferences = false;
       promotedLines.push(line);
       continue;
     }
 
-    const sectionMatch = trimmed.match(SECTION_HEADING_RE);
-    if (sectionMatch) {
-      if (currentSection) {
-        currentSection.summary = currentSectionSummaryLines.join("\n").trim();
-        sections.push(currentSection);
-      }
+    // Check for inline section heading (## 👤 User, etc.)
+    const inlineHeading = parseInlineHeading(trimmed);
+    if (inlineHeading) {
+      flushSection();
+      currentInlineSection = inlineHeading;
+      currentInlineLines = [];
+      inRecentSessions = false;
+      inReferences = false;
+      continue;
+    }
 
-      const type = parseMemoryType(sectionMatch[1]) ?? "reference";
-      const title = sectionMatch[2]!;
-      currentSection = { type, title, topicFile: "", summary: "" };
-      currentSectionSummaryLines = [];
+    // Check for References heading (## References)
+    if (isReferencesHeading(trimmed)) {
+      flushSection();
+      inReferences = true;
       inRecentSessions = false;
       continue;
     }
 
-    if (isRecentSessionsHeading(trimmed)) {
-      if (currentSection) {
-        currentSection.summary = currentSectionSummaryLines.join("\n").trim();
-        sections.push(currentSection);
-        currentSection = null;
+    // Check for topic section heading (## Title with → pointer)
+    const sectionMatch = trimmed.match(SECTION_HEADING_RE);
+    if (sectionMatch && !isInlineHeading(trimmed) && !isRecentSessionsHeading(trimmed) && !isPromotedHeading(trimmed) && !isReferencesHeading(trimmed)) {
+      // Look ahead for → pointer to distinguish from inline headings
+      const nextLine = lines[i + 1]?.trim() ?? "";
+      if (nextLine.startsWith("→ ")) {
+        flushSection();
+        const title = sectionMatch[1]!;
+        currentSection = { subject: "", title, topicFile: "", summary: "" };
         currentSectionSummaryLines = [];
+        inRecentSessions = false;
+        inReferences = false;
+        continue;
       }
+    }
+
+    if (isRecentSessionsHeading(trimmed)) {
+      flushSection();
       inRecentSessions = true;
+      inReferences = false;
       continue;
     }
 
@@ -176,6 +242,25 @@ export function parseMemoryIndex(content: string): MemoryIndex {
       continue;
     }
 
+    // In References section — parse arrow lines as lightweight sections
+    if (inReferences) {
+      const arrowMatch = trimmed.match(/^→ (.+)$/);
+      if (arrowMatch) {
+        const topicFile = arrowMatch[1]!.trim();
+        const basename = path.basename(topicFile, ".md");
+        const subject = basename;
+        sections.push({ subject, title: basename, topicFile, summary: "" });
+      }
+      continue;
+    }
+
+    // In inline section — collect content lines
+    if (currentInlineSection !== null) {
+      currentInlineLines.push(line);
+      continue;
+    }
+
+    // In old-style section
     if (currentSection) {
       const arrowMatch = trimmed.match(/^→ (.+)$/);
       if (arrowMatch && !currentSection.topicFile) {
@@ -186,15 +271,13 @@ export function parseMemoryIndex(content: string): MemoryIndex {
     }
   }
 
-  if (currentSection) {
-    currentSection.summary = currentSectionSummaryLines.join("\n").trim();
-    sections.push(currentSection);
-  }
+  flushSection();
 
   return {
     sections,
     recentSessions,
     promotedContent: promotedLines.join("\n"),
+    inlineSections,
   };
 }
 
@@ -202,9 +285,13 @@ export function parseMemoryIndex(content: string): MemoryIndex {
 // Serialization
 // ---------------------------------------------------------------------------
 
+function serializeInlineSection(inline: InlineContent): string {
+  return [`## ${inline.section}`, ...inline.lines].join("\n");
+}
+
 function serializeSection(section: MemoryIndexSection): string {
   const lines = [
-    `## [${section.type}] ${section.title}`,
+    `## ${section.title}`,
     `→ ${section.topicFile}`,
   ];
   if (section.summary) {
@@ -220,6 +307,14 @@ function serializeRecentSession(session: RecentSession): string {
 function serializeIndex(index: MemoryIndex): string {
   const parts: string[] = [INDEX_TITLE, ""];
 
+  // Inline sections first (high-frequency content)
+  const inlineSections = index.inlineSections ?? [];
+  for (const inline of inlineSections) {
+    parts.push(serializeInlineSection(inline));
+    parts.push("");
+  }
+
+  // Topic pointer sections
   for (const section of index.sections) {
     parts.push(serializeSection(section));
     parts.push("");
@@ -251,15 +346,11 @@ function isLegacyFormat(content: string): boolean {
   const lines = splitLines(content);
   for (const line of lines) {
     const trimmed = line.trim();
-    if (SECTION_HEADING_RE.test(trimmed)) {
-      return false;
-    }
-    if (isPromotedHeading(trimmed)) {
-      return false;
-    }
-    if (isRecentSessionsHeading(trimmed)) {
-      return false;
-    }
+    if (SECTION_HEADING_RE.test(trimmed)) return false;
+    if (isInlineHeading(trimmed)) return false;
+    if (isPromotedHeading(trimmed)) return false;
+    if (isRecentSessionsHeading(trimmed)) return false;
+    if (isReferencesHeading(trimmed)) return false;
   }
   // If it has content but no recognized new-format markers, it's legacy
   return content.trim().length > 0;
@@ -293,7 +384,7 @@ export class MemoryIndexManager {
     try {
       content = await this.fs.readFile(this.resolveMemoryPath());
     } catch {
-      return { sections: [], recentSessions: [], promotedContent: "" };
+      return { sections: [], recentSessions: [], promotedContent: "", inlineSections: [] };
     }
     return parseMemoryIndex(content);
   }
@@ -306,7 +397,7 @@ export class MemoryIndexManager {
   async updateSection(section: MemoryIndexSection): Promise<void> {
     const index = await this.readIndex();
     const existingIdx = index.sections.findIndex(
-      (s) => s.type === section.type && s.topicFile === section.topicFile,
+      (s) => s.topicFile === section.topicFile,
     );
     if (existingIdx >= 0) {
       index.sections[existingIdx] = section;
@@ -330,17 +421,101 @@ export class MemoryIndexManager {
       return new TextEncoder().encode(serializeSection(section) + "\n\n").length;
     };
 
-    let totalBytes = index.sections.reduce((sum, s) => sum + sectionBytes(s), 0) + promotedBytes;
+    const inlineBytes = (inline: InlineContent): number => {
+      return new TextEncoder().encode(serializeInlineSection(inline) + "\n\n").length;
+    };
+
+    const inlineSections = index.inlineSections ?? [];
+
+    let totalBytes =
+      index.sections.reduce((sum, s) => sum + sectionBytes(s), 0) +
+      inlineSections.reduce((sum, s) => sum + inlineBytes(s), 0) +
+      promotedBytes;
 
     if (totalBytes <= maxBytes) return;
 
-    // Remove oldest section entries first (from the end), never touch promoted
+    // Step 1: Trim inline section content (remove lines from last section first)
+    while (totalBytes > maxBytes) {
+      let trimmed = false;
+      for (let i = inlineSections.length - 1; i >= 0; i--) {
+        const inline = inlineSections[i]!;
+        if (inline.lines.length > 0) {
+          const removedLine = inline.lines.pop()!;
+          totalBytes -= new TextEncoder().encode(removedLine + "\n").length;
+          trimmed = true;
+          break;
+        }
+      }
+      if (!trimmed) break;
+    }
+
+    if (totalBytes <= maxBytes) {
+      index.inlineSections = inlineSections;
+      await this.writeIndex(index);
+      return;
+    }
+
+    // Step 2: Relocate entire inline sections to topic files
+    while (totalBytes > maxBytes && inlineSections.length > 0) {
+      const relocated = inlineSections.pop()!;
+      totalBytes -= inlineBytes(relocated);
+      const subject = INLINE_SECTION_SUBJECTS[relocated.section] ?? "misc";
+      await this.relocateInlineToTopic(relocated, subject);
+    }
+
+    index.inlineSections = inlineSections;
+
+    // Step 3: Remove oldest section entries from the end, never touch promoted
     while (totalBytes > maxBytes && index.sections.length > 0) {
       const removed = index.sections.pop()!;
       totalBytes -= sectionBytes(removed);
     }
 
     await this.writeIndex(index);
+  }
+
+  /**
+   * Relocate evicted inline content to the appropriate topic file.
+   * Appends the inline section's lines to the default topic file for the
+   * given memory type.
+   */
+  async relocateInlineToTopic(section: InlineContent, subject: string): Promise<void> {
+    const topicFile = `${subject}.md`;
+    const today = new Date().toISOString().slice(0, 10);
+
+    let existingContent = "";
+    try {
+      existingContent = await this.fs.readFile(
+        path.join(this.workspaceDir, TOPIC_FILE_PREFIX, topicFile),
+      );
+    } catch {
+      // file does not exist yet
+    }
+
+    const frontmatter = !existingContent
+      ? [
+          "---",
+          `subject: ${subject}`,
+          `created: ${today}`,
+          `updated: ${today}`,
+          "entries: 0",
+          "---",
+          "",
+        ].join("\n")
+      : "";
+
+    const appendContent = [
+      `## ${section.section} (relocated from MEMORY.md)`,
+      ...section.lines,
+    ].join("\n");
+
+    const fullContent = existingContent + frontmatter + appendContent + "\n";
+
+    await this.fs.mkdir(path.join(this.workspaceDir, TOPIC_FILE_PREFIX), { recursive: true });
+    await this.fs.writeFile(
+      path.join(this.workspaceDir, TOPIC_FILE_PREFIX, topicFile),
+      fullContent,
+    );
   }
 
   async migrateLegacy(content: string): Promise<string> {

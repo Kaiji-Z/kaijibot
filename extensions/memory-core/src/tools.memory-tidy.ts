@@ -71,7 +71,7 @@ export interface TidyResult {
 const DEDUP_THRESHOLD = 0.85;
 const MERGE_THRESHOLD = 0.7;
 const ARCHIVE_THRESHOLD_DAYS = 90;
-const REBALANCE_BUDGET_BYTES = 25_000;
+const REBALANCE_BUDGET_BYTES = 4_096;
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -306,7 +306,7 @@ async function actionRebalance(
 
   if (dryRun) {
     changes.push(
-      `would rebalance MEMORY.md index (current: ${currentSize} bytes, budget: ${REBALANCE_BUDGET_BYTES})`,
+      `would rebalance MEMORY.md index (current: ${currentSize} bytes, budget: ${REBALANCE_BUDGET_BYTES} (hybrid 4KB))`,
     );
     return { action: "rebalance", filesAffected: 1, entriesAffected: 0, changes, dryRun };
   }

@@ -7,11 +7,9 @@
 
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { type MemoryType, MEMORY_TYPES } from "./memory-types.js";
 import {
   type TopicFile,
   type TopicEntry,
-  DEFAULT_TOPIC_FILES,
   parseTopicFile,
   serializeTopicFile,
   createEmptyTopicFile,
@@ -113,9 +111,9 @@ export class TopicManager {
     return parseTopicFile(raw);
   }
 
-  async createTopic(type: MemoryType, name: string): Promise<TopicFile> {
+  async createTopic(subject: string, name: string): Promise<TopicFile> {
     await this.ensureTopicsDir();
-    const topic = createEmptyTopicFile(type, name);
+    const topic = createEmptyTopicFile(subject, name);
     const filePath = resolveTopicPath(this.workspaceDir, name);
     await atomicWrite(this.fs, filePath, serializeTopicFile(topic));
     return topic;
@@ -190,24 +188,10 @@ export class TopicManager {
 
   async deleteTopic(name: string): Promise<void> {
     const filePath = resolveTopicPath(this.workspaceDir, name);
-    // fs interface lacks unlink; overwrite with empty as best-effort deletion
     try {
       await atomicWrite(this.fs, filePath, "");
     } catch {
       // already absent
-    }
-  }
-
-  async ensureDefaultTopics(): Promise<void> {
-    await this.ensureTopicsDir();
-    const existing = await this.listTopics();
-    const existingSet = new Set(existing);
-
-    for (const type of MEMORY_TYPES) {
-      const filename = DEFAULT_TOPIC_FILES[type];
-      if (!existingSet.has(filename!)) {
-        await this.createTopic(type, filename!);
-      }
     }
   }
 }

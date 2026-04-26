@@ -6,7 +6,6 @@ import {
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-cli";
 import type {
   MemoryCommandOptions,
-  MemoryMigrateOptions,
   MemoryPromoteCommandOptions,
   MemoryPromoteExplainOptions,
   MemoryRemBackfillOptions,
@@ -66,11 +65,6 @@ async function runMemoryRemBackfill(opts: MemoryRemBackfillOptions) {
   await runtime.runMemoryRemBackfill(opts);
 }
 
-async function runMemoryMigrate(opts: MemoryMigrateOptions) {
-  const runtime = await loadMemoryCliRuntime();
-  await runtime.runMemoryMigrate(opts);
-}
-
 export function registerMemoryCli(program: Command) {
   const memory = program
     .command("memory")
@@ -116,14 +110,6 @@ export function registerMemoryCli(program: Command) {
             "Also seed durable grounded candidates into the live short-term promotion store.",
           ],
           ["kaijibot memory status --json", "Output machine-readable JSON (good for scripts)."],
-          [
-            "kaijibot memory migrate --dry-run",
-            "Preview migrating legacy memory files into topic files.",
-          ],
-          [
-            "kaijibot memory migrate --archive",
-            "Migrate and archive processed daily memory files.",
-          ],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/memory", "docs.kaijibot.ai/cli/memory")}\n`,
     );
 
@@ -234,17 +220,4 @@ export function registerMemoryCli(program: Command) {
       await runMemoryRemBackfill(opts);
     });
 
-  memory
-    .command("migrate")
-    .description("Migrate legacy daily memory files into topic files")
-    .option("--agent <id>", "Agent id (default: default agent)")
-    .option("--dry-run", "Preview migration without writing files", false)
-    .option("--source-dir <path>", "Override source memory directory")
-    .option("--batch-size <n>", "Entries per LLM classification batch", (value: string) => Number(value))
-    .option("--archive", "Move processed files to memory/archive/ (default: true)", true)
-    .option("--json", "Print JSON")
-    .option("--verbose", "Verbose logging", false)
-    .action(async (opts: MemoryMigrateOptions) => {
-      await runMemoryMigrate(opts);
-    });
 }

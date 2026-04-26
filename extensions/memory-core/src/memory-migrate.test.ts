@@ -181,7 +181,7 @@ describe("parseLegacyMemoryFiles", () => {
 // ---------------------------------------------------------------------------
 
 describe("heuristicClassify", () => {
-  it("classifies entries as reference type with session slug", () => {
+  it("classifies entries with subject and session slug", () => {
     const entries = [
       {
         sourceFile: "2026-04-16.md",
@@ -196,8 +196,8 @@ describe("heuristicClassify", () => {
     const classified = heuristicClassify(entries);
 
     expect(classified).toHaveLength(1);
-    expect(classified[0]!.type).toBe("reference");
-    expect(classified[0]!.topicSlug).toBe("session");
+    expect(classified[0]!.subject).toBe("misc");
+    expect(classified[0]!.topicSlug).toBe("misc");
     expect(classified[0]!.title).toContain("2026-04-16");
     expect(classified[0]!.importance).toBe("normal");
     expect(classified[0]!.originalContent).toBe(entries[0]!.content);
@@ -242,7 +242,7 @@ describe("classifyEntries", () => {
     const classified = await classifyEntries(entries);
 
     expect(classified).toHaveLength(1);
-    expect(classified[0]!.type).toBe("reference");
+    expect(classified[0]!.subject).toBe("misc");
   });
 
   it("uses provided classifyFn", async () => {
@@ -260,7 +260,7 @@ describe("classifyEntries", () => {
     const mockClassify = async (batch: typeof entries) =>
       batch.map((e) => ({
         sourceFile: e.sourceFile,
-        type: "user" as const,
+        subject: "user",
         topicSlug: "user-preferences",
         title: "Dark Mode Preference",
         summary: e.content,
@@ -271,7 +271,7 @@ describe("classifyEntries", () => {
     const classified = await classifyEntries(entries, mockClassify);
 
     expect(classified).toHaveLength(1);
-    expect(classified[0]!.type).toBe("user");
+    expect(classified[0]!.subject).toBe("user");
     expect(classified[0]!.topicSlug).toBe("user-preferences");
     expect(classified[0]!.importance).toBe("high");
   });
@@ -295,8 +295,8 @@ describe("classifyEntries", () => {
     const classified = await classifyEntries(entries, failClassify);
 
     expect(classified).toHaveLength(1);
-    expect(classified[0]!.type).toBe("reference");
-    expect(classified[0]!.topicSlug).toBe("session");
+    expect(classified[0]!.subject).toBe("misc");
+    expect(classified[0]!.topicSlug).toBe("misc");
   });
 
   it("returns empty for empty input", async () => {
@@ -320,7 +320,7 @@ describe("routeToTopicFiles", () => {
     const classified = [
       {
         sourceFile: "2026-04-16.md",
-        type: "user" as const,
+        subject: "user",
         topicSlug: "user-preferences",
         title: "Dark Mode Preference",
         summary: "User prefers dark mode in IDE.",
@@ -343,7 +343,7 @@ describe("routeToTopicFiles", () => {
   it("updates existing topic files", async () => {
     const existingTopic = [
       "---",
-      "type: user",
+      "subject: user",
       `created: ${new Date().toISOString().slice(0, 10)}`,
       `updated: ${new Date().toISOString().slice(0, 10)}`,
       "entries: 1",
@@ -358,8 +358,8 @@ describe("routeToTopicFiles", () => {
     const classified = [
       {
         sourceFile: "2026-04-16.md",
-        type: "user" as const,
-        topicSlug: "user",
+        subject: "user",
+        topicSlug: "user-profile",
         title: "New Preference",
         summary: "User prefers vim keybindings.",
         importance: "high" as const,
@@ -385,7 +385,7 @@ describe("routeToTopicFiles", () => {
     const classified = [
       {
         sourceFile: "2026-04-16.md",
-        type: "user" as const,
+        subject: "user",
         topicSlug: "user",
         title: "Timezone",
         summary: "User is in UTC+8.",
@@ -394,7 +394,7 @@ describe("routeToTopicFiles", () => {
       },
       {
         sourceFile: "2026-04-16.md",
-        type: "project" as const,
+        subject: "project",
         topicSlug: "project",
         title: "Migration Decision",
         summary: "Decided to migrate to v2 architecture.",
@@ -572,7 +572,7 @@ describe("runMemoryMigrate", () => {
         const entry = e as { sourceFile: string; content: string };
         return {
           sourceFile: entry.sourceFile,
-          type: "feedback" as const,
+          subject: "feedback",
           topicSlug: "feedback",
           title: "Positive Feedback",
           summary: entry.content,

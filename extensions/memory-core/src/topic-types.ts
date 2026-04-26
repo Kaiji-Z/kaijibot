@@ -1,16 +1,10 @@
 /**
- * Topic file types, parsing, and serialization for the new memory system.
+ * Topic file types, parsing, and serialization for the memory system.
  *
  * Topic files are Markdown files with YAML frontmatter and ## heading entries.
- * Each topic file belongs to one of 4 MemoryType categories and lives under
- * memory/topics/{name}.md.
+ * Each topic file is named by subject (e.g. `feishu.md`, `philosophy.md`) and
+ * lives under memory/topics/{subject}.md.
  */
-
-import {
-  type MemoryType,
-  MEMORY_TYPES,
-  parseMemoryType,
-} from "./memory-types.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,7 +12,7 @@ import {
 
 export interface TopicFile {
   frontmatter: {
-    type: MemoryType;
+    subject: string;
     created: string; // YYYY-MM-DD
     updated: string; // YYYY-MM-DD
     entries: number;
@@ -34,17 +28,6 @@ export interface TopicEntry {
   importance?: "high" | "normal" | "low";
   source?: string; // e.g., "session-compact", "memory-save", "dreaming"
 }
-
-// ---------------------------------------------------------------------------
-// Default topic file mapping
-// ---------------------------------------------------------------------------
-
-export const DEFAULT_TOPIC_FILES: Record<MemoryType, string> = {
-  user: "user-profile.md",
-  feedback: "feedback.md",
-  project: "project-decisions.md",
-  reference: "reference.md",
-};
 
 // ---------------------------------------------------------------------------
 // Date helper
@@ -115,19 +98,20 @@ function parseYamlFrontmatter(yamlText: string): Record<string, string> {
 
 /**
  * Parse a complete topic file (frontmatter + entries) from raw markdown.
+ * Backward-compatible: gracefully handles old `type` frontmatter.
  */
 export function parseTopicFile(markdown: string): TopicFile {
   const fmMatch = markdown.match(FRONTMATTER_RE);
   const raw = markdown;
 
-  let type: MemoryType = "reference";
+  let subject = "";
   let created = todayIso();
   let updated = todayIso();
   let entriesCount = 0;
 
   if (fmMatch) {
     const fm = parseYamlFrontmatter(fmMatch[1]!);
-    type = parseMemoryType(fm.type) ?? "reference";
+    subject = fm.subject ?? "";
     created = fm.created ?? todayIso();
     updated = fm.updated ?? todayIso();
     entriesCount = Number(fm.entries) || 0;
@@ -161,7 +145,7 @@ export function parseTopicFile(markdown: string): TopicFile {
   }
 
   return {
-    frontmatter: { type, created, updated, entries: entriesCount },
+    frontmatter: { subject, created, updated, entries: entriesCount },
     entries,
     raw,
   };
@@ -197,7 +181,7 @@ export function serializeTopicFile(topic: TopicFile): string {
   const fm = topic.frontmatter;
   const fmBlock = [
     "---",
-    `type: ${fm.type}`,
+    `subject: ${fm.subject}`,
     `created: ${fm.created}`,
     `updated: ${fm.updated}`,
     `entries: ${topic.entries.length}`,
@@ -218,11 +202,11 @@ export function serializeTopicFile(topic: TopicFile): string {
 /**
  * Create an empty TopicFile with no entries.
  */
-export function createEmptyTopicFile(type: MemoryType, name: string): TopicFile {
+export function createEmptyTopicFile(subject: string, name: string): TopicFile {
   const today = todayIso();
   const raw = [
     "---",
-    `type: ${type}`,
+    `subject: ${subject}`,
     `created: ${today}`,
     `updated: ${today}`,
     "entries: 0",
@@ -231,7 +215,7 @@ export function createEmptyTopicFile(type: MemoryType, name: string): TopicFile 
   ].join("\n");
 
   return {
-    frontmatter: { type, created: today, updated: today, entries: 0 },
+    frontmatter: { subject, created: today, updated: today, entries: 0 },
     entries: [],
     raw,
   };

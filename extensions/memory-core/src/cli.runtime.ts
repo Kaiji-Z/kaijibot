@@ -29,7 +29,6 @@ import {
 } from "./cli.host.runtime.js";
 import type {
   MemoryCommandOptions,
-  MemoryMigrateOptions,
   MemoryPromoteCommandOptions,
   MemoryPromoteExplainOptions,
   MemoryRemBackfillOptions,
@@ -38,7 +37,6 @@ import type {
 } from "./cli.types.js";
 import { removeBackfillDiaryEntries, writeBackfillDiaryEntries } from "./dreaming-narrative.js";
 import { previewRemDreaming, seedHistoricalDailyMemorySignals } from "./dreaming-phases.js";
-import { runMemoryMigrate as runMemoryMigrateEngine, createNodeFsAdapter } from "./memory-migrate.js";
 import {
   auditDreamingArtifacts,
   repairDreamingArtifacts,
@@ -1932,76 +1930,6 @@ export async function runMemoryRemBackfill(opts: MemoryRemBackfillOptions) {
       } finally {
         await fs.rm(scratchDir, { recursive: true, force: true });
       }
-    },
-  });
-}
-
-export async function runMemoryMigrate(opts: MemoryMigrateOptions) {
-  setVerbose(Boolean(opts.verbose));
-  const { config: cfg, diagnostics } = await loadMemoryCommandConfig("memory migrate");
-  emitMemorySecretResolveDiagnostics(diagnostics, { json: Boolean(opts.json) });
-  const agentId = resolveAgent(cfg, opts.agent);
-
-  await withMemoryManagerForAgent({
-    cfg,
-    agentId,
-    purpose: "status",
-    run: async (manager) => {
-      const status = manager.status();
-      const workspaceDir = status.workspaceDir?.trim();
-      if (!workspaceDir) {
-        defaultRuntime.error("Memory migrate requires a resolvable workspace directory.");
-        process.exitCode = 1;
-        return;
-      }
-
-      const nodeFs = createNodeFsAdapter();
-
-      const result = await runMemoryMigrateEngine({
-        workspaceDir,
-        dryRun: opts.dryRun,
-        sourceDir: opts.sourceDir,
-        batchSize: opts.batchSize,
-        archive: opts.archive,
-        fs: nodeFs,
-      });
-
-      if (opts.json) {
-        defaultRuntime.writeJson({ agentId, workspaceDir, ...result });
-        return;
-      }
-
-      const rich = isRich();
-      const lines: string[] = [];
-
-      if (opts.dryRun) {
-        lines.push(colorize(rich, theme.heading, "Memory Migrate (dry-run)") + " " + colorize(rich, theme.muted, `(${agentId})`));
-      } else {
-        lines.push(colorize(rich, theme.heading, "Memory Migrate") + " " + colorize(rich, theme.muted, `(${agentId})`));
-      }
-      lines.push(colorize(rich, theme.muted, `workspace=${shortenHomePath(workspaceDir)}`));
-      lines.push(colorize(rich, theme.muted, `filesScanned=${result.filesScanned} entriesParsed=${result.entriesParsed} entriesClassified=${result.entriesClassified}`));
-
-      if (opts.dryRun) {
-        lines.push(colorize(rich, theme.info, "No files were written or moved (dry-run)."));
-      } else {
-        lines.push(colorize(rich, theme.muted, `entriesRouted=${result.entriesRouted} filesArchived=${result.filesArchived}`));
-        if (result.topicsCreated.length > 0) {
-          lines.push(colorize(rich, theme.success, `topicsCreated: ${result.topicsCreated.join(", ")}`));
-        }
-        if (result.topicsUpdated.length > 0) {
-          lines.push(colorize(rich, theme.info, `topicsUpdated: ${result.topicsUpdated.join(", ")}`));
-        }
-      }
-
-      if (result.errors.length > 0) {
-        lines.push(colorize(rich, theme.warn, "Errors:"));
-        for (const error of result.errors) {
-          lines.push(colorize(rich, theme.warn, `  ${error}`));
-        }
-      }
-
-      defaultRuntime.log(lines.join("\n"));
     },
   });
 }

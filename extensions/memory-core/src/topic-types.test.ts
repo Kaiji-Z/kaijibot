@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   type TopicFile,
   type TopicEntry,
-  DEFAULT_TOPIC_FILES,
   parseTopicFile,
   parseTopicEntry,
   parseTopicEntryHeading,
@@ -11,10 +10,9 @@ import {
   createEmptyTopicFile,
   formatEntryHeading,
 } from "./topic-types.js";
-import { MEMORY_TYPES, type MemoryType } from "./memory-types.js";
 
 const SAMPLE_TOPIC_MD = `---
-type: user
+subject: user-profile
 created: 2026-04-20
 updated: 2026-04-24
 entries: 2
@@ -28,22 +26,6 @@ User explicitly asked for shorter responses without unnecessary filler.
 
 User's primary domain is distributed tracing and observability.
 `;
-
-describe("DEFAULT_TOPIC_FILES", () => {
-  it("maps all 4 memory types to filenames", () => {
-    for (const t of MEMORY_TYPES) {
-      expect(DEFAULT_TOPIC_FILES[t]).toBeDefined();
-      expect(DEFAULT_TOPIC_FILES[t]!.endsWith(".md")).toBe(true);
-    }
-  });
-
-  it("has expected default filenames", () => {
-    expect(DEFAULT_TOPIC_FILES.user).toBe("user-profile.md");
-    expect(DEFAULT_TOPIC_FILES.feedback).toBe("feedback.md");
-    expect(DEFAULT_TOPIC_FILES.project).toBe("project-decisions.md");
-    expect(DEFAULT_TOPIC_FILES.reference).toBe("reference.md");
-  });
-});
 
 describe("parseTopicEntryHeading", () => {
   it("parses a valid heading", () => {
@@ -93,7 +75,7 @@ describe("parseTopicEntry", () => {
 describe("parseTopicFile", () => {
   it("parses a complete topic file with entries", () => {
     const topic = parseTopicFile(SAMPLE_TOPIC_MD);
-    expect(topic.frontmatter.type).toBe("user");
+    expect(topic.frontmatter.subject).toBe("user-profile");
     expect(topic.frontmatter.created).toBe("2026-04-20");
     expect(topic.frontmatter.updated).toBe("2026-04-24");
     expect(topic.entries).toHaveLength(2);
@@ -102,22 +84,22 @@ describe("parseTopicFile", () => {
   });
 
   it("handles file with no entries", () => {
-    const md = "---\ntype: reference\ncreated: 2026-04-24\nupdated: 2026-04-24\nentries: 0\n---\n";
+    const md = "---\nsubject: reference\ncreated: 2026-04-24\nupdated: 2026-04-24\nentries: 0\n---\n";
     const topic = parseTopicFile(md);
-    expect(topic.frontmatter.type).toBe("reference");
+    expect(topic.frontmatter.subject).toBe("reference");
     expect(topic.entries).toHaveLength(0);
   });
 
-  it("defaults type to reference for unknown type", () => {
-    const md = "---\ntype: banana\ncreated: 2026-04-24\nupdated: 2026-04-24\nentries: 0\n---\n";
+  it("defaults subject to empty for missing frontmatter field", () => {
+    const md = "---\ncreated: 2026-04-24\nupdated: 2026-04-24\nentries: 0\n---\n";
     const topic = parseTopicFile(md);
-    expect(topic.frontmatter.type).toBe("reference");
+    expect(topic.frontmatter.subject).toBe("");
   });
 
   it("handles file with no frontmatter", () => {
     const md = "## Some Entry (2026-04-24)\n\nContent here.\n";
     const topic = parseTopicFile(md);
-    expect(topic.frontmatter.type).toBe("reference");
+    expect(topic.frontmatter.subject).toBe("");
     expect(topic.entries).toHaveLength(1);
     expect(topic.entries[0]!.title).toBe("Some Entry");
   });
@@ -149,7 +131,7 @@ describe("serializeTopicFile", () => {
     const topic = parseTopicFile(SAMPLE_TOPIC_MD);
     const serialized = serializeTopicFile(topic);
     const reParsed = parseTopicFile(serialized);
-    expect(reParsed.frontmatter.type).toBe(topic.frontmatter.type);
+    expect(reParsed.frontmatter.subject).toBe(topic.frontmatter.subject);
     expect(reParsed.entries).toHaveLength(topic.entries.length);
     expect(reParsed.entries[0]!.title).toBe(topic.entries[0]!.title);
     expect(reParsed.entries[1]!.title).toBe(topic.entries[1]!.title);
@@ -158,16 +140,16 @@ describe("serializeTopicFile", () => {
   it("serializes empty topic file", () => {
     const empty = createEmptyTopicFile("feedback", "feedback");
     const serialized = serializeTopicFile(empty);
-    expect(serialized).toContain("type: feedback");
+    expect(serialized).toContain("subject: feedback");
     expect(serialized).toContain("entries: 0");
     expect(serialized).not.toContain("## ");
   });
 });
 
 describe("createEmptyTopicFile", () => {
-  it("creates file with correct type", () => {
+  it("creates file with correct subject", () => {
     const topic = createEmptyTopicFile("user", "user-profile");
-    expect(topic.frontmatter.type).toBe("user");
+    expect(topic.frontmatter.subject).toBe("user");
     expect(topic.entries).toHaveLength(0);
     expect(topic.frontmatter.entries).toBe(0);
   });
@@ -182,7 +164,7 @@ describe("createEmptyTopicFile", () => {
   it("raw content contains frontmatter", () => {
     const topic = createEmptyTopicFile("reference", "reference");
     expect(topic.raw).toContain("---");
-    expect(topic.raw).toContain("type: reference");
+    expect(topic.raw).toContain("subject: reference");
   });
 });
 

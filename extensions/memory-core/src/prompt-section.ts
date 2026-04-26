@@ -40,9 +40,18 @@ export const buildPromptSection: MemoryPromptSectionBuilder = ({
   lines.push(VERIFICATION_PROMPT_SECTION);
   lines.push("");
 
+  lines.push(
+    "MEMORY.md format: hybrid — high-frequency info (user identity, key feedback, active focus) is inline;",
+    "low-frequency details are in memory/topics/*.md files, organized by subject (e.g. feishu.md, philosophy.md).",
+    "Budget: 4KB. Exceeding this triggers relocation of lower-priority content to topic files.",
+  );
+  lines.push("");
+
   if (hasMemorySave) {
     lines.push(
-      "Use memory_save to record user preferences, decisions, and reference info. It auto-classifies and deduplicates.",
+      "Use memory_save to record user preferences, decisions, and reference info.",
+      "Requires a `topic` parameter (subject-based, e.g. 'feishu', 'philosophy').",
+      "The `type` parameter (user/feedback/project/reference) is optional metadata.",
     );
     lines.push("");
     lines.push(TOPIC_FILE_FORMAT_SECTION);

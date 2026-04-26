@@ -2,9 +2,9 @@
  * memory_save tool — save structured memories to topic files with automatic
  * classification and self-editing (mem0 pattern).
  *
- * Route by type → default topic file (or custom override).
- * Detect conflicts via Jaccard similarity → LLM decide → append / replace / merge.
- * Update MEMORY.md index. Importance boost is stubbed for Wave 2A.
+ * Route by subject-based topic name. Detect conflicts via Jaccard similarity
+ * → LLM decide → append / replace / merge. Update MEMORY.md index.
+ * Importance boost is stubbed for Wave 2A.
  */
 
 import { Type } from "@sinclair/typebox";
@@ -16,14 +16,10 @@ import {
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 
-import type { MemoryType } from "./memory-types.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
 import { incrementGroundedCount } from "./short-term-promotion.js";
-import {
-  DEFAULT_TOPIC_FILES,
-  type TopicEntry,
-} from "./topic-types.js";
+import { type TopicEntry } from "./topic-types.js";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import {
   getMemoryManagerContextWithPurpose,
@@ -38,21 +34,10 @@ export const MemorySaveSchema = Type.Object({
   content: Type.String({
     description: "Content to save as a memory entry",
   }),
-  type: Type.Union(
-    [
-      Type.Literal("user"),
-      Type.Literal("feedback"),
-      Type.Literal("project"),
-      Type.Literal("reference"),
-    ],
-    { description: "Memory type classification" },
-  ),
-  topic: Type.Optional(
-    Type.String({
-      description:
-        "Target topic file name (without .md). Overrides default routing.",
-    }),
-  ),
+  topic: Type.String({
+    description:
+      "Subject-based topic name (kebab-case, e.g. 'feishu', 'philosophy'). Determines the topic file.",
+  }),
   importance: Type.Optional(
     Type.Union(
       [Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")],
@@ -185,22 +170,21 @@ export function createMemorySaveTool(options: {
     label: "Memory Save",
     name: "memory_save",
     description:
-      "Mandatory write step: save structured memories to topic files with automatic classification and self-editing. " +
-      "Route by type (user\u2192user-profile, feedback\u2192feedback, project\u2192project-decisions, reference\u2192reference). " +
+      "Mandatory write step: save structured memories to subject-based topic files with automatic classification and self-editing. " +
+      "Route by topic subject (e.g. feishu, philosophy, product). " +
       "Detects and resolves conflicts with existing entries (mem0-style self-editing). Importance=high fast-tracks dreaming promotion.",
     parameters: MemorySaveSchema,
     execute: async (_toolCallId, params) => {
       const content = readStringParam(params, "content", { required: true });
-      const type = readStringParam(params, "type", { required: true }) as MemoryType;
-      const topicOverride = readStringParam(params, "topic");
+      const topicName = readStringParam(params, "topic", { required: true });
       const importance = readStringParam(params, "importance") as
         | "high"
         | "normal"
         | "low"
         | undefined;
 
-      const rawTopicName = topicOverride ?? DEFAULT_TOPIC_FILES[type];
-      const topicFile = rawTopicName.replace(/\.md$/i, "") + ".md";
+      const topicFile = topicName.replace(/\.md$/i, "") + ".md";
+      const subject = topicName.replace(/\.md$/i, "");
       const memory = await getMemoryManagerContextWithPurpose({
         cfg,
         agentId,
@@ -229,7 +213,7 @@ export function createMemorySaveTool(options: {
 
       let topic = await topicManager.getTopic(topicFile);
       if (!topic) {
-        topic = await topicManager.createTopic(type, topicFile);
+        topic = await topicManager.createTopic(subject, topicFile);
       }
 
       let action: "created" | "updated" | "merged" = "created";
@@ -278,7 +262,7 @@ export function createMemorySaveTool(options: {
       const summaryText = content.slice(0, 100).replace(/\n/g, " ").trim();
 
       await indexManager.updateSection({
-        type,
+        subject,
         title: topicTitle,
         topicFile: `memory/topics/${topicFile}`,
         summary: importance === "high" ? content : summaryText,

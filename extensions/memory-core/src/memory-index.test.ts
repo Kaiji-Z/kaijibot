@@ -50,11 +50,11 @@ function createManager(workspaceDir = "/test-workspace"): {
 
 const SAMPLE_NEW_FORMAT = `# Long-Term Memory Index
 
-## [user] 用户画像
+## 用户画像
 → memory/topics/user-profile.md
 Prefers concise replies. Works in distributed systems.
 
-## [feedback] 反馈记录
+## 反馈记录
 → memory/topics/feedback.md
 F001: Don't auto-push tech news
 
@@ -71,10 +71,10 @@ describe("parseMemoryIndex", () => {
   it("parses sections, recent sessions, and promoted content", () => {
     const index = parseMemoryIndex(SAMPLE_NEW_FORMAT);
     expect(index.sections).toHaveLength(2);
-    expect(index.sections[0]!.type).toBe("user");
+    expect(index.sections[0]!.subject).toBe("");
     expect(index.sections[0]!.title).toBe("用户画像");
     expect(index.sections[0]!.topicFile).toBe("memory/topics/user-profile.md");
-    expect(index.sections[1]!.type).toBe("feedback");
+    expect(index.sections[1]!.title).toBe("反馈记录");
     expect(index.recentSessions).toHaveLength(2);
     expect(index.recentSessions[0]!.date).toBe("2026-04-24");
     expect(index.recentSessions[0]!.title).toBe("记忆系统重设计");
@@ -97,29 +97,29 @@ describe("parseMemoryIndex", () => {
     expect(index.promotedContent).toContain("Item B");
   });
 
-  it("parses all 4 memory types", () => {
+  it("parses multiple topic sections", () => {
     const md = [
       "# Long-Term Memory Index",
       "",
-      "## [user] U",
+      "## U",
       "→ memory/topics/user-profile.md",
       "User info",
       "",
-      "## [feedback] F",
+      "## F",
       "→ memory/topics/feedback.md",
       "Feedback info",
       "",
-      "## [project] P",
+      "## P",
       "→ memory/topics/project-decisions.md",
       "Project info",
       "",
-      "## [reference] R",
+      "## R",
       "→ memory/topics/reference.md",
       "Reference info",
     ].join("\n");
     const index = parseMemoryIndex(md);
     expect(index.sections).toHaveLength(4);
-    expect(index.sections.map((s) => s.type)).toEqual(["user", "feedback", "project", "reference"]);
+    expect(index.sections.map((s) => s.title)).toEqual(["U", "F", "P", "R"]);
   });
 });
 
@@ -130,7 +130,7 @@ describe("MemoryIndexManager", () => {
       const index: MemoryIndex = {
         sections: [
           {
-            type: "user",
+            subject: "user",
             title: "用户画像",
             topicFile: "memory/topics/user-profile.md",
             summary: "Test summary",
@@ -144,7 +144,8 @@ describe("MemoryIndexManager", () => {
       await manager.writeIndex(index);
       const read = await manager.readIndex();
       expect(read.sections).toHaveLength(1);
-      expect(read.sections[0]!.type).toBe("user");
+      expect(read.sections[0]!.title).toBe("用户画像");
+      expect(read.sections[0]!.topicFile).toBe("memory/topics/user-profile.md");
       expect(read.recentSessions).toHaveLength(1);
       expect(read.promotedContent).toContain("Legacy");
     });
@@ -161,26 +162,27 @@ describe("MemoryIndexManager", () => {
     it("adds a new section", async () => {
       const { manager } = createManager();
       await manager.updateSection({
-        type: "user",
+        subject: "user",
         title: "User Profile",
         topicFile: "memory/topics/user-profile.md",
         summary: "Basic user info",
       });
       const index = await manager.readIndex();
       expect(index.sections).toHaveLength(1);
-      expect(index.sections[0]!.type).toBe("user");
+      expect(index.sections[0]!.title).toBe("User Profile");
+      expect(index.sections[0]!.topicFile).toBe("memory/topics/user-profile.md");
     });
 
-    it("updates existing section by type + topicFile", async () => {
+    it("updates existing section by topicFile", async () => {
       const { manager } = createManager();
       await manager.updateSection({
-        type: "user",
+        subject: "user",
         title: "Old Title",
         topicFile: "memory/topics/user-profile.md",
         summary: "Old",
       });
       await manager.updateSection({
-        type: "user",
+        subject: "user",
         title: "New Title",
         topicFile: "memory/topics/user-profile.md",
         summary: "Updated summary",
@@ -217,7 +219,7 @@ describe("MemoryIndexManager", () => {
       const { manager } = createManager();
       for (let i = 0; i < 10; i++) {
         await manager.updateSection({
-          type: "reference",
+          subject: "reference",
           title: `Ref ${i}`,
           topicFile: `memory/topics/ref-${i}.md`,
           summary: `Summary for ref ${i} with some padding content to make it larger`,
@@ -239,7 +241,7 @@ describe("MemoryIndexManager", () => {
       const index: MemoryIndex = {
         sections: [
           {
-            type: "user",
+            subject: "user",
             title: "U",
             topicFile: "memory/topics/u.md",
             summary: "S",
@@ -259,7 +261,7 @@ describe("MemoryIndexManager", () => {
     it("does nothing when under budget", async () => {
       const { manager } = createManager();
       await manager.updateSection({
-        type: "user",
+        subject: "user",
         title: "Small",
         topicFile: "memory/topics/u.md",
         summary: "Tiny",
@@ -280,11 +282,10 @@ describe("MemoryIndexManager", () => {
         workspaceDir: "/test",
         fs: createMemoryFs().deps,
       }).migrateLegacy(legacy);
-      expect(result).toContain("# Long-Term Memory Index");
+      expect(result).toContain("# Long-Term Memory");
       expect(result).toContain("## Promoted From Short-Term Memory (legacy)");
       expect(result).toContain("User prefers dark mode");
-      expect(result).toContain("Project uses PostgreSQL");
-    });
+      expect(result).toContain("Project uses PostgreSQL");    });
 
     it("does not modify new-format content", async () => {
       const result = await new MemoryIndexManager({

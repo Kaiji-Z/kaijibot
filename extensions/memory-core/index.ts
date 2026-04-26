@@ -26,7 +26,6 @@ export { TopicManager, createTopicManager, type TopicManagerDeps } from "./src/t
 export {
   type TopicFile,
   type TopicEntry,
-  DEFAULT_TOPIC_FILES,
   parseTopicFile,
   parseTopicEntry,
   parseTopicEntryHeading,

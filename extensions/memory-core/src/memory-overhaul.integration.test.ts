@@ -72,7 +72,7 @@ describe("Topic CRUD flow", () => {
     expect(topic!.entries).toHaveLength(1);
     expect(topic!.entries[0]!.title).toBe("Prefers dark mode");
     expect(topic!.entries[0]!.content).toBe("User explicitly prefers dark mode in IDE.");
-    expect(topic!.frontmatter.type).toBe("user");
+    expect(topic!.frontmatter.subject).toBe("user");
     expect(topic!.frontmatter.entries).toBe(1);
   });
 });
@@ -111,7 +111,7 @@ describe("Topic file persistence", () => {
     expect(parsed.entries).toHaveLength(2);
     expect(parsed.entries[0]!.title).toBe("Feedback 1");
     expect(parsed.entries[1]!.content).toBe("That approach was correct");
-    expect(parsed.frontmatter.type).toBe("feedback");
+    expect(parsed.frontmatter.subject).toBe("feedback");
     expect(parsed.frontmatter.entries).toBe(2);
   });
 });
@@ -135,7 +135,7 @@ describe("Memory index update", () => {
     const idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
 
     await idx.updateSection({
-      type: "user",
+      subject: "user",
       title: "User Profile",
       topicFile: "memory/topics/user-profile.md",
       summary: "Test user info",
@@ -149,12 +149,13 @@ describe("Memory index update", () => {
 
     const index = await idx.readIndex();
     expect(index.sections).toHaveLength(1);
-    expect(index.sections[0]!.type).toBe("user");
+    expect(index.sections[0]!.title).toBe("User Profile");
+    expect(index.sections[0]!.topicFile).toBe("memory/topics/user-profile.md");
     expect(index.recentSessions).toHaveLength(1);
     expect(index.recentSessions[0]!.title).toBe("Integration test session");
 
     const raw = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
-    expect(raw).toContain("## [user] User Profile");
+    expect(raw).toContain("## User Profile");
     expect(raw).toContain("2026-04-25 Integration test session");
   });
 });
@@ -182,7 +183,7 @@ describe("Memory index migration", () => {
     const migrated = await idx.migrateLegacy(legacyContent);
     await fs.writeFile(join(ws, "MEMORY.md"), migrated, "utf-8");
 
-    expect(migrated).toContain("# Long-Term Memory Index");
+    expect(migrated).toContain("# Long-Term Memory");
     expect(migrated).toContain("## Promoted From Short-Term Memory (legacy)");
     expect(migrated).toContain("User prefers dark mode");
     expect(migrated).toContain("Project uses PostgreSQL");
@@ -264,7 +265,7 @@ describe("memory_tidy rebalance", () => {
 
     for (let i = 0; i < 15; i++) {
       await idx.updateSection({
-        type: "reference",
+        subject: "reference",
         title: `Reference ${i}`,
         topicFile: `memory/topics/ref-${i}.md`,
         summary: `Summary for ref ${i}: ${"x".repeat(2000)}`,
@@ -322,7 +323,7 @@ describe("memory_tidy archive", () => {
 
     const idx = tidyDeps.indexManager;
     await idx.updateSection({
-      type: "reference",
+      subject: "reference",
       title: "Old Stuff",
       topicFile: "memory/topics/old-stuff.md",
       summary: "Old reference material",
@@ -398,19 +399,19 @@ describe("Cross-component flow", () => {
     });
 
     await idx.updateSection({
-      type: "user",
+      subject: "user",
       title: "User Profile",
       topicFile: "memory/topics/user-profile.md",
       summary: "Timezone UTC+8, prefers morning meetings, uses VSCode",
     });
     await idx.updateSection({
-      type: "project",
+      subject: "project",
       title: "Project Decisions",
       topicFile: "memory/topics/project-decisions.md",
       summary: "Migrated to PostgreSQL",
     });
     await idx.updateSection({
-      type: "reference",
+      subject: "reference",
       title: "Reference",
       topicFile: "memory/topics/reference.md",
       summary: "Vitest for testing",
@@ -427,9 +428,9 @@ describe("Cross-component flow", () => {
     expect(index.recentSessions).toHaveLength(1);
 
     const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
-    expect(rawMemory).toContain("## [user] User Profile");
-    expect(rawMemory).toContain("## [project] Project Decisions");
-    expect(rawMemory).toContain("## [reference] Reference");
+    expect(rawMemory).toContain("## User Profile");
+    expect(rawMemory).toContain("## Project Decisions");
+    expect(rawMemory).toContain("## Reference");
 
     const userProfile = await tm.getTopic("user-profile");
     expect(userProfile!.entries).toHaveLength(2);

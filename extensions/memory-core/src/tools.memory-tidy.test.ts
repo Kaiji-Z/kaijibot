@@ -65,7 +65,7 @@ const TOPICS_DIR = join(WS, "memory", "topics");
 
 function makeTopic(
   name: string,
-  type: string,
+  subject: string,
   entries: Array<{ title: string; date: string; content: string }>,
 ): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -75,7 +75,7 @@ function makeTopic(
         `## ${e.title} (${e.date})\n\n${e.content}`,
     )
     .join("\n\n");
-  return `---\ntype: ${type}\ncreated: ${today}\nupdated: ${today}\nentries: ${entries.length}\n---\n\n${entryMarkdown}\n`;
+  return `---\nsubject: ${subject}\ncreated: ${today}\nupdated: ${today}\nentries: ${entries.length}\n---\n\n${entryMarkdown}\n`;
 }
 
 function createTidyDeps(): {
@@ -182,7 +182,7 @@ describe("memory_tidy", () => {
 
       writeMemoryMd(
         memFs,
-        "# Long-Term Memory Index\n\n## [project] K8s Alpha\n→ memory/topics/k8s-alpha.md\n\n## [project] K8s Beta\n→ memory/topics/k8s-beta.md\n",
+        "# Long-Term Memory Index\n\n## K8s Alpha\n→ memory/topics/k8s-alpha.md\n\n## K8s Beta\n→ memory/topics/k8s-beta.md\n",
       );
 
       const result = await runMemoryTidyActions(tidyDeps, { action: "merge" });
@@ -197,7 +197,7 @@ describe("memory_tidy", () => {
     it("truncates index when exceeding 25KB", async () => {
       const { tidyDeps, memFs } = createTidyDeps();
 
-      const largeSection = `## [reference] ${"x".repeat(2000)}\n→ memory/topics/big.md\n${"s".repeat(5000)}\n\n`;
+      const largeSection = `## ${"x".repeat(2000)}\n→ memory/topics/big.md\n${"s".repeat(5000)}\n\n`;
       const sections = Array.from({ length: 10 }, (_, i) =>
         largeSection.replace("big.md", `big-${i}.md`),
       ).join("");
@@ -214,7 +214,7 @@ describe("memory_tidy", () => {
 
       writeMemoryMd(
         memFs,
-        "# Long-Term Memory Index\n\n## [user] Profile\n→ memory/topics/user-profile.md\n\n",
+        "# Long-Term Memory Index\n\n## Profile\n→ memory/topics/user-profile.md\n\n",
       );
 
       const result = await runMemoryTidyActions(tidyDeps, { action: "rebalance" });
@@ -232,12 +232,12 @@ describe("memory_tidy", () => {
       const oldDate = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000)
         .toISOString()
         .slice(0, 10);
-      const oldContent = `---\ntype: reference\ncreated: ${oldDate}\nupdated: ${oldDate}\nentries: 1\n---\n\n## Old Entry (${oldDate})\n\nStale content\n`;
+      const oldContent = `---\nsubject: reference\ncreated: ${oldDate}\nupdated: ${oldDate}\nentries: 1\n---\n\n## Old Entry (${oldDate})\n\nStale content\n`;
       memFs.files.set(join(TOPICS_DIR, "stale.md"), oldContent);
 
       writeMemoryMd(
         memFs,
-        "# Long-Term Memory Index\n\n## [reference] Stale\n→ memory/topics/stale.md\n\n",
+        "# Long-Term Memory Index\n\n## Stale\n→ memory/topics/stale.md\n\n",
       );
 
       const result = await runMemoryTidyActions(tidyDeps, { action: "archive" });
@@ -277,7 +277,7 @@ describe("memory_tidy", () => {
       memFs.files.set(join(TOPICS_DIR, "dry-run-test.md"), dupContent);
       writeMemoryMd(
         memFs,
-        "# Long-Term Memory Index\n\n## [user] Test\n→ memory/topics/dry-run-test.md\n\n",
+        "# Long-Term Memory Index\n\n## Test\n→ memory/topics/dry-run-test.md\n\n",
       );
 
       const before = memFs.files.get(join(TOPICS_DIR, "dry-run-test.md"));
@@ -306,7 +306,7 @@ describe("memory_tidy", () => {
       memFs.files.set(join(TOPICS_DIR, "full-test.md"), content);
       writeMemoryMd(
         memFs,
-        "# Long-Term Memory Index\n\n## [user] Full Test\n→ memory/topics/full-test.md\n\n",
+        "# Long-Term Memory Index\n\n## Full Test\n→ memory/topics/full-test.md\n\n",
       );
 
       const result = await runMemoryTidyActions(tidyDeps, { action: "full" });

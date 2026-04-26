@@ -1,39 +1,9 @@
 /**
- * Memory type taxonomy, exclusion rules, and write quality constants.
+ * Memory exclusion rules and write quality constants.
  *
- * Defines the 4 memory types (user, feedback, project, reference),
- * content exclusion heuristics, and prompt sections for classification,
- * quality enforcement, and verification.
+ * Prompt sections for subject-based classification, quality enforcement,
+ * and verification. Routing is by subject-based topic.
  */
-
-// ---------------------------------------------------------------------------
-// Memory Type Enum
-// ---------------------------------------------------------------------------
-
-export const MEMORY_TYPES = ["user", "feedback", "project", "reference"] as const;
-export type MemoryType = (typeof MEMORY_TYPES)[number];
-
-const VALID_MEMORY_TYPES = new Set<string>(MEMORY_TYPES);
-
-/**
- * Parse a raw string into a MemoryType. Returns null for unknown/undefined
- * values (graceful degradation).
- */
-export function parseMemoryType(raw: string | undefined): MemoryType | null {
-  if (raw === undefined) return null;
-  if (VALID_MEMORY_TYPES.has(raw)) return raw as MemoryType;
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Frontmatter
-// ---------------------------------------------------------------------------
-
-export const MEMORY_TYPE_FRONTMATTER_TEMPLATE = "---\ntype: {type}\n---\n";
-
-export function formatMemoryFrontmatter(type: MemoryType): string {
-  return MEMORY_TYPE_FRONTMATTER_TEMPLATE.replace("{type}", type);
-}
 
 // ---------------------------------------------------------------------------
 // Exclusion Patterns
@@ -130,7 +100,7 @@ These exclusions apply even when explicitly asked to save. If asked to save a li
 
 export const WRITE_QUALITY_PROMPT_SECTION = `## Memory Write Quality Rules
 
-1. **Classify**: Tag each memory with type frontmatter: ---\\ntype: user|feedback|project|reference\\n---
+1. **Classify by subject**: Tag each memory with a topic subject (English kebab-case, e.g. \`feishu\`, \`philosophy\`, \`product\`).
 2. **Absolute dates**: Convert relative dates ("yesterday", "last week") to absolute dates (2026-04-01)
 3. **Record confirmations**: When user validates an approach ("yes exactly", "keep doing that"), record it
 4. **Why + How to apply**: For feedback and project types, include WHY it matters and HOW to apply it
@@ -138,13 +108,10 @@ export const WRITE_QUALITY_PROMPT_SECTION = `## Memory Write Quality Rules
 
 export const CLASSIFICATION_PROMPT_SECTION = `## Memory Classification
 
-Tag each memory with one of 4 types using frontmatter:
-- **user**: Personal info, preferences, identity, relationships (e.g., timezone, family, privacy rules)
-- **feedback**: Corrections AND confirmations from user (e.g., "check docs first", "that approach was right")
-- **project**: Decisions, milestones, known issues NOT derivable from code/git (e.g., "migrated to v2 on 2026-03-01")
-- **reference**: External pointers (e.g., URLs, version numbers, connected services)
+For each memory, choose:
+1. **topic** (required): A subject name in English kebab-case that best categorizes this memory. Group related memories together. Examples: \`feishu\`, \`philosophy\`, \`product\`, \`football\`, \`memory-system\`, \`ai-tools\`.
 
-Format: ---\\ntype: <type>\\n---\\n<content>`;
+The topic determines which file the memory goes to.`;
 
 export const VERIFICATION_PROMPT_SECTION = `## Before Recommending from Memory
 
@@ -157,11 +124,11 @@ A memory that names a specific file, function, or flag is a claim that it existe
 
 export const TOPIC_FILE_FORMAT_SECTION = `## Topic File Format
 
-Each topic file lives under memory/topics/ and uses this structure:
+Each topic file lives under memory/topics/ and is named by subject (e.g. \`feishu.md\`, \`philosophy.md\`):
 
 \`\`\`markdown
 ---
-type: user|feedback|project|reference
+subject: feishu
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 entries: N
@@ -177,8 +144,8 @@ More content.
 \`\`\`
 
 Rules:
-- Frontmatter uses simple YAML (key: value pairs)
+- Topic files are created on demand when memories are saved — no pre-created defaults
+- Frontmatter uses \`subject\` (kebab-case) instead of type
 - Each entry is a ## heading with title and date in parentheses
 - Entry importance: "high", "normal" (default), or "low"
-- Entry source: "session-compact", "memory-save", "dreaming", etc.
-- Default topic files: user-profile.md, feedback.md, project-decisions.md, reference.md`;
+- Entry source: "session-compact", "memory-save", "dreaming", etc.`;

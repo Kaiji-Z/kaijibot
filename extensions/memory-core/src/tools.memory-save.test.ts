@@ -175,7 +175,7 @@ describe("deriveEntryTitle", () => {
 // ---------------------------------------------------------------------------
 
 describe("memory_save tool", () => {
-  it("routes type=user to user-profile.md", async () => {
+  it("routes topic=user-profile to user-profile.md", async () => {
     const tool = createMemorySaveTool({
       config: {
         agents: { list: [{ id: "main", default: true }] },
@@ -184,7 +184,7 @@ describe("memory_save tool", () => {
     expect(tool).not.toBeNull();
     const raw = await tool!.execute("tc-1", {
       content: "User prefers dark mode",
-      type: "user",
+      topic: "user-profile",
     });
     const result = parseResult(raw);
     expect(result.topicFile).toBe("user-profile.md");
@@ -192,7 +192,7 @@ describe("memory_save tool", () => {
     expect(result.action).toBe("created");
   });
 
-  it("routes type=feedback to feedback.md", async () => {
+  it("routes topic=feedback to feedback.md", async () => {
     const tool = createMemorySaveTool({
       config: {
         agents: { list: [{ id: "main", default: true }] },
@@ -200,13 +200,13 @@ describe("memory_save tool", () => {
     });
     const raw = await tool!.execute("tc-2", {
       content: "User said to always check docs first",
-      type: "feedback",
+      topic: "feedback",
     });
     const result = parseResult(raw);
     expect(result.topicFile).toBe("feedback.md");
   });
 
-  it("routes type=project to project-decisions.md", async () => {
+  it("routes topic=project-decisions to project-decisions.md", async () => {
     const tool = createMemorySaveTool({
       config: {
         agents: { list: [{ id: "main", default: true }] },
@@ -214,13 +214,13 @@ describe("memory_save tool", () => {
     });
     const raw = await tool!.execute("tc-3", {
       content: "Decided to use PostgreSQL for the main DB",
-      type: "project",
+      topic: "project-decisions",
     });
     const result = parseResult(raw);
     expect(result.topicFile).toBe("project-decisions.md");
   });
 
-  it("routes type=reference to reference.md", async () => {
+  it("routes topic=reference to reference.md", async () => {
     const tool = createMemorySaveTool({
       config: {
         agents: { list: [{ id: "main", default: true }] },
@@ -228,13 +228,13 @@ describe("memory_save tool", () => {
     });
     const raw = await tool!.execute("tc-4", {
       content: "API endpoint: https://api.example.com/v2",
-      type: "reference",
+      topic: "reference",
     });
     const result = parseResult(raw);
     expect(result.topicFile).toBe("reference.md");
   });
 
-  it("custom topic param overrides default routing", async () => {
+  it("custom topic param determines the target file", async () => {
     const tool = createMemorySaveTool({
       config: {
         agents: { list: [{ id: "main", default: true }] },
@@ -242,7 +242,6 @@ describe("memory_save tool", () => {
     });
     const raw = await tool!.execute("tc-5", {
       content: "Custom topic content",
-      type: "user",
       topic: "my-custom-notes",
     });
     const result = parseResult(raw);
@@ -260,13 +259,13 @@ describe("memory_save tool", () => {
     // First save
     await tool!.execute("tc-6a", {
       content: "Database migration completed to PostgreSQL 16",
-      type: "project",
+      topic: "project-decisions",
     });
 
     // Second save — unrelated content
     const raw = await tool!.execute("tc-6b", {
       content: "User prefers light theme in the terminal",
-      type: "user",
+      topic: "user-profile",
     });
     const result = parseResult(raw);
     expect(result.action).toBe("created");
@@ -290,14 +289,14 @@ describe("memory_save tool", () => {
     const existingContent = "User prefers dark mode in their editor and uses VSCode for development";
     await tool!.execute("tc-7a", {
       content: existingContent,
-      type: "user",
+      topic: "user-profile",
     });
 
     // Second save — near-duplicate
     const newContent = "User prefers dark mode in their editor and uses VSCode for development daily";
     const raw = await tool!.execute("tc-7b", {
       content: newContent,
-      type: "user",
+      topic: "user-profile",
     });
 
     expect(llmCalled).toBe(true);
@@ -319,12 +318,12 @@ describe("memory_save tool", () => {
     const content = "User prefers dark mode in their editor and uses VSCode for development";
     await tool!.execute("tc-8a", {
       content,
-      type: "user",
+      topic: "user-profile",
     });
 
     const raw = await tool!.execute("tc-8b", {
       content: `${content} daily`,
-      type: "user",
+      topic: "user-profile",
     });
 
     const result = parseResult(raw);
@@ -339,7 +338,7 @@ describe("memory_save tool", () => {
     });
     const raw = await tool!.execute("tc-9", {
       content: "Some content",
-      type: "reference",
+      topic: "reference",
     });
     const result = parseResult(raw);
     expect(result.importance).toBe("normal");
@@ -353,7 +352,7 @@ describe("memory_save tool", () => {
     });
     const raw = await tool!.execute("tc-10", {
       content: "Critical user preference: never share data",
-      type: "user",
+      topic: "user-profile",
       importance: "high",
     });
     const result = parseResult(raw);
@@ -368,12 +367,12 @@ describe("memory_save tool", () => {
     });
     await tool!.execute("tc-11", {
       content: "User timezone is UTC+8",
-      type: "user",
+      topic: "user-profile",
     });
 
     const topicPath = path.join(tempDir, "memory", "topics", "user-profile.md");
     const content = await readFile(topicPath, "utf-8");
-    expect(content).toContain("type: user");
+    expect(content).toContain("subject: user-profile");
     expect(content).toContain("User timezone is UTC+8");
   });
 
@@ -385,13 +384,12 @@ describe("memory_save tool", () => {
     });
     await tool!.execute("tc-12", {
       content: "Deployed v2.1 to production",
-      type: "project",
+      topic: "project-decisions",
     });
 
     const indexPath = path.join(tempDir, "MEMORY.md");
     const content = await readFile(indexPath, "utf-8");
-    expect(content).toContain("Long-Term Memory Index");
-    expect(content).toContain("project");
+    expect(content).toContain("Long-Term Memory");
     expect(content).toContain("project decisions");
   });
 
@@ -413,12 +411,12 @@ describe("memory_save tool", () => {
     const base = "User prefers dark mode in their editor and uses VSCode for development";
     await tool!.execute("tc-13a", {
       content: base,
-      type: "user",
+      topic: "user-profile",
     });
 
     const raw = await tool!.execute("tc-13b", {
       content: `${base} daily`,
-      type: "user",
+      topic: "user-profile",
     });
 
     const result = parseResult(raw);
@@ -435,7 +433,7 @@ describe("memory_save tool", () => {
     const writes = Array.from({ length: 5 }, (_, i) =>
       tool!.execute(`tc-concurrent-${i}`, {
         content: `Concurrent entry ${i}: user likes technology ${i}`,
-        type: "reference",
+        topic: "reference",
       }),
     );
 
@@ -448,7 +446,7 @@ describe("memory_save tool", () => {
 
     const topicPath = path.join(tempDir, "memory", "topics", "reference.md");
     const content = await readFile(topicPath, "utf-8");
-    expect(content).toContain("type: reference");
+    expect(content).toContain("subject: reference");
   });
 });
 
@@ -650,7 +648,7 @@ describe("memory_save groundedCount integration", () => {
 
     await tool!.execute("tc-grounded-1", {
       content: "Critical preference",
-      type: "user",
+      topic: "user-profile",
       importance: "high",
     });
 
@@ -701,7 +699,7 @@ describe("memory_save groundedCount integration", () => {
 
     await tool!.execute("tc-grounded-2", {
       content: "Normal feedback",
-      type: "feedback",
+      topic: "feedback",
       importance: "normal",
     });
 
@@ -750,7 +748,7 @@ describe("memory_save groundedCount integration", () => {
 
     await tool!.execute("tc-grounded-3", {
       content: "Low importance note",
-      type: "reference",
+      topic: "reference",
       importance: "low",
     });
 

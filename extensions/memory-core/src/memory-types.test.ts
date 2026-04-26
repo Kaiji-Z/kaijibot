@@ -1,71 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
-  MEMORY_TYPES,
-  parseMemoryType,
-  formatMemoryFrontmatter,
-  MEMORY_TYPE_FRONTMATTER_TEMPLATE,
   isExcludedMemoryContent,
   EXCLUSION_PROMPT_SECTION,
   WRITE_QUALITY_PROMPT_SECTION,
   CLASSIFICATION_PROMPT_SECTION,
   VERIFICATION_PROMPT_SECTION,
-  type MemoryType,
 } from "./memory-types.js";
-
-describe("MEMORY_TYPES", () => {
-  it("has exactly 4 types", () => {
-    expect(MEMORY_TYPES).toEqual(["user", "feedback", "project", "reference"]);
-  });
-});
-
-describe("parseMemoryType", () => {
-  const validTypes: MemoryType[] = ["user", "feedback", "project", "reference"];
-
-  for (const t of validTypes) {
-    it(`returns "${t}" for valid input "${t}"`, () => {
-      expect(parseMemoryType(t)).toBe(t);
-    });
-  }
-
-  it("returns null for undefined", () => {
-    expect(parseMemoryType(undefined)).toBeNull();
-  });
-
-  it("returns null for empty string", () => {
-    expect(parseMemoryType("")).toBeNull();
-  });
-
-  it("returns null for unknown type", () => {
-    expect(parseMemoryType("banana")).toBeNull();
-  });
-
-  it("returns null for case-sensitive mismatch", () => {
-    expect(parseMemoryType("User")).toBeNull();
-    expect(parseMemoryType("USER")).toBeNull();
-  });
-});
-
-describe("formatMemoryFrontmatter", () => {
-  it("formats user type", () => {
-    expect(formatMemoryFrontmatter("user")).toBe("---\ntype: user\n---\n");
-  });
-
-  it("formats feedback type", () => {
-    expect(formatMemoryFrontmatter("feedback")).toBe("---\ntype: feedback\n---\n");
-  });
-
-  it("formats project type", () => {
-    expect(formatMemoryFrontmatter("project")).toBe("---\ntype: project\n---\n");
-  });
-
-  it("formats reference type", () => {
-    expect(formatMemoryFrontmatter("reference")).toBe("---\ntype: reference\n---\n");
-  });
-
-  it("template contains placeholder", () => {
-    expect(MEMORY_TYPE_FRONTMATTER_TEMPLATE).toContain("{type}");
-  });
-});
 
 describe("isExcludedMemoryContent", () => {
   describe("code patterns → excluded", () => {
@@ -226,12 +166,6 @@ describe("prompt section constants", () => {
 
   it("exclusion section mentions dreaming", () => {
     expect(EXCLUSION_PROMPT_SECTION).toContain("Dreaming");
-  });
-
-  it("classification section lists all 4 types", () => {
-    for (const t of MEMORY_TYPES) {
-      expect(CLASSIFICATION_PROMPT_SECTION).toContain(t);
-    }
   });
 
   it("verification section mentions file path check", () => {

@@ -6,8 +6,7 @@ import {
   type MemoryIndexDeps,
   type MemoryIndexSection,
 } from "./memory-index.js";
-import { type TopicEntry, DEFAULT_TOPIC_FILES } from "./topic-types.js";
-import { type MemoryType } from "./memory-types.js";
+import { type TopicEntry } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,7 +23,8 @@ export interface ParsedMemoryEntry {
 
 export interface ClassifiedEntry {
   sourceFile: string;
-  type: MemoryType;
+  subject: string;
+  type?: string;
   topicSlug: string;
   title: string;
   summary: string;
@@ -92,6 +92,8 @@ const SKIP_CONTENT_PATTERNS = [
 ];
 
 const TOPIC_INDEX_HEADING_RE = /^\[/;
+
+const FALLBACK_SUBJECT = "misc";
 
 // ---------------------------------------------------------------------------
 // Fs helpers
@@ -205,6 +207,10 @@ export async function parseLegacyMemoryFiles(
 // Heuristic fallback classification
 // ---------------------------------------------------------------------------
 
+/**
+ * Minimal fallback classifier used only when no LLM classifyFn is provided.
+ * Assigns all entries to "misc" — real classification requires a LLM.
+ */
 export function heuristicClassify(entries: ParsedMemoryEntry[]): ClassifiedEntry[] {
   return entries.map((entry) => {
     const dateMatch = entry.sourceFile.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -213,13 +219,14 @@ export function heuristicClassify(entries: ParsedMemoryEntry[]): ClassifiedEntry
     const title = rawTitle.length > 60 ? `${rawTitle.slice(0, 57)}...` : rawTitle;
     return {
       sourceFile: entry.sourceFile,
-      type: "reference" as MemoryType,
-      topicSlug: "session",
+      subject: FALLBACK_SUBJECT,
+      type: undefined,
+      topicSlug: FALLBACK_SUBJECT,
       title,
       summary: entry.content.length > 120
         ? `${entry.content.slice(0, 117)}...`
         : entry.content,
-      importance: "normal" as const,
+      importance: "normal",
       originalContent: entry.content,
     };
   });
@@ -257,12 +264,9 @@ export async function classifyEntries(
 // Routing
 // ---------------------------------------------------------------------------
 
-function resolveTopicFileName(type: MemoryType, topicSlug: string): string {
-  const defaultFile = DEFAULT_TOPIC_FILES[type];
-  if (topicSlug === "session" || topicSlug === type) {
-    return defaultFile;
-  }
-  return `${topicSlug}.md`;
+function resolveTopicFileName(subject: string, topicSlug: string): string {
+  const slug = topicSlug === "session" ? subject : topicSlug;
+  return `${slug.replace(/\.md$/i, "")}.md`;
 }
 
 function buildTopicEntry(classified: ClassifiedEntry): TopicEntry {
@@ -304,12 +308,12 @@ export async function routeToTopicFiles(
   }
 
   const topicsTouched = new Set<string>();
-  const topicsBySlug = new Map<string, { type: MemoryType; file: string }>();
+  const topicsBySlug = new Map<string, { subject: string; file: string }>();
 
   for (const entry of classified) {
-    const fileName = resolveTopicFileName(entry.type, entry.topicSlug);
+    const fileName = resolveTopicFileName(entry.subject, entry.topicSlug);
     if (!topicsBySlug.has(fileName)) {
-      topicsBySlug.set(fileName, { type: entry.type, file: fileName });
+      topicsBySlug.set(fileName, { subject: entry.subject, file: fileName });
     }
   }
 
@@ -318,14 +322,14 @@ export async function routeToTopicFiles(
     try {
       const existing = await topicManager.getTopic(fileName);
       if (!existing) {
-        await topicManager.createTopic(meta.type, fileName);
+        await topicManager.createTopic(meta.subject, fileName);
         if (isNew) {
           result.topicsCreated.push(fileName);
         }
       }
     } catch {
       try {
-        await topicManager.createTopic(meta.type, fileName);
+        await topicManager.createTopic(meta.subject, fileName);
         result.topicsCreated.push(fileName);
       } catch {
         continue;
@@ -334,7 +338,7 @@ export async function routeToTopicFiles(
   }
 
   for (const entry of classified) {
-    const fileName = resolveTopicFileName(entry.type, entry.topicSlug);
+    const fileName = resolveTopicFileName(entry.subject, entry.topicSlug);
     try {
       const topicEntry = buildTopicEntry(entry);
       await topicManager.appendEntry(fileName, topicEntry);
@@ -352,17 +356,21 @@ export async function routeToTopicFiles(
   }
 
   for (const [, meta] of topicsBySlug) {
+    const highImportanceCount = classified.filter(
+      (e) => e.importance === "high" && resolveTopicFileName(e.subject, e.topicSlug) === meta.file,
+    ).length;
+    const summary = highImportanceCount > 0
+      ? `${highImportanceCount} high-priority entries`
+      : `Migrated from legacy daily files`;
+    const displayTitle = meta.subject
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
     const section: MemoryIndexSection = {
-      type: meta.type,
-      title: meta.type === "user"
-        ? "User Profile"
-        : meta.type === "feedback"
-          ? "Feedback"
-          : meta.type === "project"
-            ? "Project Decisions"
-            : "Reference",
+      subject: meta.subject,
+      title: displayTitle,
       topicFile: `${TOPICS_DIR}/${meta.file}`,
-      summary: `Migrated from legacy daily files (${result.entriesRouted} entries)`,
+      summary,
     };
     try {
       await indexManager.updateSection(section);
