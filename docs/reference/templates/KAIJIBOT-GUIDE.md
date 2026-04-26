@@ -96,19 +96,6 @@ read_when:
 | `KAIJIBOT_GATEWAY_TOKEN` | 网关认证 token |
 | `KAIJIBOT_HOME` | 数据目录 (default: ~/.kaijibot) |
 
-## 工作区文件
-
-| 文件 | 作用 |
-|------|------|
-| AGENTS.md | 工作规范和行为准则 |
-| SOUL.md | AI 人格和语气 |
-| IDENTITY.md | 名字和自我介绍 |
-| USER.md | 用户偏好信息 |
-| TOOLS.md | 工具使用笔记 |
-| HEARTBEAT.md | 定时巡检任务 |
-| MEMORY.md | 长期记忆 |
-| KAIJIBOT-GUIDE.md | 本文件 — 配置参考 |
-
 ## Agent 操作规范
 
 - 用户问"怎么配置 X" → 先查本指南

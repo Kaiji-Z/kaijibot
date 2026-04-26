@@ -42,7 +42,7 @@ title: "Features"
 **Cognitive AI (proactive layer):**
 
 - **Persona system** — per-user cognitive model that learns identity, domains, interests, communication style, and mood over time; dual extraction (rule-based fast path <50ms + LLM deep path with 5s timeout); persisted at `~/.kaijibot/cognitive/persona/`
-- **Proactive insights** — cross-domain discovery, pending-question follow-ups, domain-depth nudges, and exploration suggestions; LLM-powered with 8×8 prompt frame/structure combinations; optional web search integration (Exa/Tavily) for timely external facts
+- **Proactive insights** — cross-domain discovery, domain-depth nudges, and exploration suggestions; LLM-powered with 8×8 prompt frame/structure combinations; optional web search integration (Exa/Tavily) for timely external facts
 - **Cost-sensitive gate** — PRISM-style graded gating weighs pNeed × pAccept against disturbance cost; hard vetoes for active hours, suppression, and insufficient exchanges; calibration correction from historical outcomes
 - **Trust evolution** — SARA framework with four relationship stages (orientation → exploration → rapport → partnership); each stage has specific behavior guidance for tone and proactivity
 - **Preference learning** — Thompson Sampling per topic with Beta(α, β) posterior, optimistic prior, 90-day decay, and automatic frequency adaptation (positive → more frequent, negative → less frequent)

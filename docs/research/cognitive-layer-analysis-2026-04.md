@@ -272,7 +272,7 @@ Agent回复完成
 #### M4：搜索/识别/解决分离管道（PROBE 启发）
 
 将 `processEvent` 拆分为三阶段：
-- `search()`: 扫描机会（领域活跃度、待答问题、信息扫描结果）
+- `search()`: 扫描机会（领域活跃度、信息扫描结果）
 - `identify()`: 按 `p_need × p_accept` 排序机会
 - `resolve()`: 为最佳机会生成洞察内容
 

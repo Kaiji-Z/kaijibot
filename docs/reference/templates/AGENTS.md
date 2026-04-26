@@ -29,63 +29,12 @@ Don't ask permission. Just do it.
 
 You wake up fresh each session. Files are your continuity.
 
-### Memory Tools
-
-- **memory_search** — Search across MEMORY.md, memory/*.md, and indexed session transcripts for prior context.
-- **memory_get** — Pull specific lines from a known memory file.
-- **memory_save** — Record user preferences, decisions, and reference info. Auto-classifies by type and deduplicates against existing entries.
-- **memory_tidy** — Clean up duplicate or stale entries in topic files under memory/topics/.
-
-### Topic Files
-
-When `memory_save` is available, memories are organized into topic files under `memory/topics/`:
-
-- `user-profile.md` — Personal info, preferences, identity
-- `feedback.md` — Corrections and confirmations
-- `project-decisions.md` — Decisions, milestones, known issues
-- `reference.md` — External pointers, URLs, version numbers
-
-Each topic file uses frontmatter (`type`, `created`, `updated`, `entries`) and `## Entry Title (YYYY-MM-DD)` headings.
+Memory tool guidance (search, get, save, tidy), classification rules, topic file formats, and write quality standards are injected dynamically when memory tools are available. Follow that injected guidance for operational details.
 
 ### What to Write
 
 - **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — what happened
-- **Long-term:** `MEMORY.md` — your curated memories, like a human's long-term memory
-
-### Classification
-
-Tag every memory with one of 4 types using frontmatter:
-
-- **user**: Personal info, preferences, identity, relationships (e.g., timezone, family, privacy rules)
-- **feedback**: Corrections AND confirmations from user (e.g., "check docs first", "that approach was right")
-- **project**: Decisions, milestones, known issues NOT derivable from code/git (e.g., "migrated to v2 on 2026-03-01")
-- **reference**: External pointers (e.g., URLs, version numbers, connected services)
-
-Format: `---\ntype: <type>\n---\n<content>`
-
-### What NOT to Write
-
-- Code patterns, project structure, file paths
-- Git history, recent changes, who-changed-what
-- Ephemeral state: in-progress work, FIXME, current conversation context
-- Information tools can look up in real-time
-- Dreaming/diagnostic metadata
-
-### Write Quality
-
-- Convert relative dates to absolute dates ("yesterday" → 2026-04-22)
-- Record confirmations ("yes exactly", "keep doing that")
-- For feedback types: include WHY it matters and HOW to apply it
-- Don't duplicate — if MEMORY.md already says X, update the entry instead of adding a new one
-
-### Long-term Memory Maintenance
-
-Periodically (every few days), during a heartbeat:
-
-1. Read through recent `memory/YYYY-MM-DD.md` files
-2. Identify significant events, lessons, or insights worth keeping long-term
-3. Update `MEMORY.md` with distilled learnings
-4. Remove outdated info from MEMORY.md
+- **Long-term:** `MEMORY.md` — your curated hybrid index (high-frequency inline + pointers to topic files)
 
 ### Write It Down
 
@@ -100,6 +49,24 @@ Periodically (every few days), during a heartbeat:
 - **ONLY load** `MEMORY.md` in main session (direct chats with your human)
 - **DO NOT load** in shared contexts (group chats, sessions with other people)
 - Memory may contain personal context — never leak to third parties
+
+## Workspace Files
+
+Each file has a specific responsibility. Respect these boundaries:
+
+| File | Purpose | Managed by |
+|------|---------|-----------|
+| AGENTS.md | Behavioral rules and workspace guide (this file) | Bot + user |
+| SOUL.md | Personality, values, communication style | Bot evolves it |
+| IDENTITY.md | Name, greeting, self-introduction | User during onboarding |
+| USER.md | User preferences (timezone, language, style) | User |
+| TOOLS.md | Environment-specific tool notes (cameras, SSH, TTS) | Bot |
+| HEARTBEAT.md | Proactive task checklist (empty = skip heartbeat) | Bot |
+| MEMORY.md | Hybrid memory index (4KB: inline high-freq + topic pointers) | Bot via memory tools |
+| memory/YYYY-MM-DD.md | Daily session notes | Bot |
+| memory/topics/*.md | Classified long-term memories by topic | Bot via memory_save |
+| KAIJIBOT-GUIDE.md | Configuration reference | System template |
+| BOOTSTRAP.md | First-run ritual (delete after completion) | System |
 
 ## Red Lines
 

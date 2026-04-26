@@ -32,7 +32,6 @@ The persona module builds and maintains a per-user cognitive model called `Perso
 - **identity** — core traits (confidence-weighted), communication style, timezone, language, domain lists
 - **domains** — map of domain name to `DomainNode` (depth 1-5, recurrence count, key insights, active questions)
 - **recentFocus** — last 10 focused topics
-- **pendingQuestions** — up to 10 unanswered questions
 - **feedbackProfile** — Thompson Sampling bandits per topic, preferred style, optimal frequency, recent insight history
 - **rapport** — trust score (0-1), total exchanges, avg response length, self-disclosure level
 - **domainGraph** — learned co-occurrence graph with weighted edges

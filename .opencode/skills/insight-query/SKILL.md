@@ -28,7 +28,10 @@ Three data sources, queried in order:
 2. **Gateway logs** — `/tmp/kaijibot/kaijibot-YYYY-MM-DD.log` (JSONL, daily rotation)
     - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, insight output with source tag
     - Subsystem `"cognitive/insight"` — v2 pipeline: crystallization, quality gate, composer, dual merge
-    - Subsystem `"cognitive/insight-llm"` — v1 web search, domain matching, LLM generation
+    - Subsystem `"cognitive/insight-llm"` — v1 web search, domain matching, LLM generation, trigram dedup
+    - Subsystem `"cognitive/interest-inference"` — search query generation (extend-mode LLM query)
+    - Subsystem `"cognitive/fragment-store"` — fragment clusters, dedup, maintenance
+    - Subsystem `"cognitive/pipeline"` — dual pipeline merge, v2 crystallization results
     - Log line format: `{"0":"{\"subsystem\":\"cognitive/...\"}","1":{...meta},"2":"message","time":"ISO"}`
 
 3. **Source code** (for reference, not routine queries)
@@ -46,6 +49,7 @@ Execute these steps in sequence. Adapt date ranges and grep patterns as needed.
 PERSONA_FILE=$(ls -t ~/.kaijibot/cognitive/persona/main/*.json | head -1)
 jq '{
   lastProactiveAt: .feedbackProfile.lastProactiveAt,
+  lastProactiveAtReadable: (.feedbackProfile.lastProactiveAt / 1000 | strftime("%Y-%m-%dT%H:%M:%S")),
   insightCount: (.feedbackProfile.recentInsightIds | length),
   insightIds: .feedbackProfile.recentInsightIds[-5:],
   insightContents: .feedbackProfile.recentInsightContents,
@@ -79,7 +83,7 @@ YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)
 for LOG_FILE in "$LOG_DIR"/kaijibot-${TODAY}.log "$LOG_DIR"/kaijibot-${YESTERDAY}.log; do
   [ -f "$LOG_FILE" ] || continue
   echo "=== $(basename "$LOG_FILE") ==="
-  grep '"insight generated"' "$LOG_FILE" | jq -c '{time: .time, contentPreview: ."1".contentPreview, insightId: ."1".insightId, sourceCount: ."1".sourceCount, hasWebSources: ."1".hasWebSources, targetDomains: ."1".targetDomains}' 2>/dev/null
+  grep '"insight generated"' "$LOG_FILE" | jq -c 'select(."1".contentPreview != null) | {time: .time, contentPreview: ."1".contentPreview, insightId: ."1".insightId, sourceCount: ."1".sourceCount, hasWebSources: ."1".hasWebSources, targetDomains: ."1".targetDomains}' 2>/dev/null
 done
 ```
 
@@ -112,22 +116,96 @@ grep "cognitive/insight-llm" "$LOG_FILE" | \
 ```
 
 Key messages to look for:
+- `"extend-mode LLM query generated"` — `{query}` — the search query derived from interest inference
 - `"web search completed"` — `{query, resultCount}`
 - `"web search failed"` — `{query, error}`
 - `"web search skipped"` — reason: empty query or no dep
+- `"web search cache hit"` — `{query}` — cached result reused (identical query)
 - `"web search domain matching"` — `{totalResults, matchedDomains, unmatchedSnippets}`
 - `"LLM generated N insight candidate(s)"`
 - `"LLM returned empty response"` / `"LLM response could not be parsed"`
+- `"trigram dedup filtered candidates"` — `{before, after}` — near-duplicate filtered by trigram similarity
 
-### Step 5: Gate statistics (optional)
+### Step 5: Fragment health (v2 pipeline diagnostics)
+
+Check fragment collection and clustering status — critical for diagnosing v2 pipeline starvation:
+
+```bash
+# Fragment collection success (from conversation turns)
+grep '"fragments extracted"' "$LOG_FILE" | \
+  jq -c '{time: .time, count: ."1".count, kinds: ."1".kinds}' 2>/dev/null
+
+# Fragment store: dedup vs new inserts
+grep -E '"fragment (dedup hit|added)"' "$LOG_FILE" | \
+  jq -c '{time: .time, message: ."2", tag: ."1".structuralTag, strength: ."1".strength}' 2>/dev/null
+
+# Fragment maintenance: expiry and decay
+grep '"fragment maintenance"' "$LOG_FILE" | \
+  jq -c '{time: .time, before: ."1".before, after: ."1".after, removed: ."1".removed}' 2>/dev/null
+
+# Cluster formation (needed for crystallization)
+grep '"fragment clusters"' "$LOG_FILE" | \
+  jq -c '{time: .time, clusterCount: ."1".clusterCount, sizes: ."1".sizes}' 2>/dev/null
+
+# Current fragment state on disk (direct read, no log dependency)
+FRAG_FILE=$(ls -t ~/.kaijibot/cognitive/fragments/*.json 2>/dev/null | head -1)
+if [ -n "$FRAG_FILE" ]; then
+  echo "Fragment file: $FRAG_FILE"
+  jq '{total: length, byKind: (group_by(.kind) | map({kind: .[0].kind, count: length})), avgStrength: (map(.strength) | add / length), domains: ([.[].domains[]] | unique)}' "$FRAG_FILE"
+fi
+```
+
+Key diagnostics:
+- **Zero `"fragments extracted"` entries** → fragment collector never succeeds — check model config
+- **All `"fragment dedup hit"`** → fragments are redundant, not adding new signal
+- **`removed > 0` in maintenance** → fragments expiring faster than being collected
+- **`clusterCount: 0`** → fragments don't overlap enough to form multi-domain clusters (needs ≥2 frags sharing ≥2 domains)
+
+### Step 6: Search/identify breakdown
+
+Check opportunity type distribution and diversity penalty activity:
+
+```bash
+# Search: per-type opportunity counts
+grep '"search found opportunities"' "$LOG_FILE" | \
+  jq -c '{time: .time, count: ."1".count, byType: ."1".byType}' 2>/dev/null
+
+# Identify: selected type + recent history (shows if diversity penalty was active)
+grep '"identify selected"' "$LOG_FILE" | \
+  jq -c '{time: .time, type: ."1".type, pAct: ."1".pAct, recentTypes: ."1".recentTypes}' 2>/dev/null
+```
+
+Key patterns:
+- **`byType: {domain_depth: N}` only** → scanCrossDomain/scanExploration producing nothing
+- **`recentTypes: ["domain_depth", "domain_depth"]`** → diversity penalty should be active (×0.6)
+- **`recentTypes` matches selected `type`** → penalty was too mild, type still winning
+
+### Step 7: Quality gate pillar scores (v2 diagnostics)
+
+Check why v2 insights get parked or discarded:
+
+```bash
+grep '"quality gate assessed"' "$LOG_FILE" | \
+  jq -c '{time: .time, verdict: ."1".verdict, composite: ."1".composite, structuralNovelty: ."1".structuralNovelty, actionability: ."1".actionability, emotionalReadiness: ."1".emotionalReadiness, nonObviousness: ."1".nonObviousness, blindSpot: ."1".blindSpot}' 2>/dev/null
+```
+
+Key diagnostics:
+- **`emotionalReadiness < 0.3`** → user trust too low (new/dormant user), composite will struggle to reach 0.75
+- **`nonObviousness < 0.5`** → blind spot is too obvious, LLM rated it as common knowledge
+- **`verdict: "park"` (composite 0.60-0.74)** → close to delivering, could be rescued with lower threshold
+- **`verdict: "discard"` (composite < 0.60)** → blind spot too weak or user not ready
+
+### Step 8: Gate statistics (optional)
 
 Summary of gate decisions for a day:
 
 ```bash
 echo "Gate passed: $(grep -c '"gate passed"' "$LOG_FILE")"
 echo "Gate vetoed: $(grep -c '"gate vetoed"' "$LOG_FILE")"
-echo "Insights generated: $(grep -c '"insight generated"' "$LOG_FILE")"
+echo "Insights generated: $(grep '"insight generated"' "$LOG_FILE" | grep -c 'contentPreview')"
 echo "No insight: $(grep -c '"identify selected nothing"' "$LOG_FILE")"
+echo "Trigram dedup filtered: $(grep -c '"trigram dedup filtered"' "$LOG_FILE")"
+echo "Web search cache hits: $(grep -c '"web search cache hit"' "$LOG_FILE")"
 ```
 
 ## Report Format
@@ -157,6 +235,19 @@ Structure the report as:
 ### Gate 统计 (当日)
 - 通过: N / 否决: N (通过率 XX%)
 - 平均 pAct: X.XX
+
+### 搜索类型分布 (当日)
+- domain_depth: N 次 (XX%)
+- cross_domain: N 次 (XX%)
+- exploration: N 次 (XX%)
+- 多样性惩罚触发: N 次
+
+### v2 管线诊断
+- Fragment 库: N 个 (有效 N / 过期 N)
+- 集群: N 个 (平均大小 X.X)
+- 冷启动: 是/否 (需要 ≥5 fragments)
+- 质量门控: deliver N / park N / discard N
+- 最弱支柱: [哪个 pillar 最低，均值多少]
 
 ### 管线对比 (v1 vs v2)
 - v1 洞察: N 条 (XX%)
@@ -196,10 +287,10 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 |------|-------|-------|---------------|
 | 1 | ⏰ TICK | dim | Timer fire, user count, interval |
 | 2 | 🟢/🔴 GATE | green/red | PRISM gate pass/veto with pNeed, pAccept, pAct |
-| 3 | 🔍 SEARCH | yellow | Number of opportunities found |
-| 4 | 🎯 IDENTIFY | cyan | Selected type, target domains, pAct |
+| 3 | 🔍 SEARCH | yellow | Number of opportunities found + **per-type breakdown** (cross_domain, domain_depth, exploration) |
+| 4 | 🎯 IDENTIFY | cyan | Selected type, target domains, pAct + **recentTypes** (diversity penalty visibility) |
 | 4b | 🧊 CRYSTAL | cyan | v2: Crystallized blind spot count + mode |
-| 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite score |
+| 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite + **all 4 pillar scores** (structuralNovelty, actionability, emotionalReadiness, nonObviousness) |
 | 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching |
 | 6 | 🤖 LLM GEN | magenta | v1: Number of insight candidates |
 | 6b | 🔀 MERGE | cyan | Dual: v1=N v2=N total=N deduped=N |
@@ -216,6 +307,10 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 - **`matchedDomains: (none)`** → web search results don't match user domains, insight has no factual grounding
 - **Same `targetDomains` repeated** → always targeting the same domain
 - **Gate vetoed with low pAct** → normal (PRISM cost gate working)
+- **Zero `"fragments extracted"` in logs** → fragment collector never fires — check model config and userId in persona
+- **`clusterCount: 0` consistently** → fragments don't overlap across domains — v2 pipeline starves
+- **`emotionalReadiness < 0.3`** → new/dormant user, quality gate will park/discard v2 insights
+- **`byType` only has domain_depth** → cross-domain and exploration scan functions producing nothing
 - **🚀 SCHEDULER START** → gateway was restarted, check if interval is correct
 - **v2 `[v2]` insights appearing** → dual pipeline working, blind spot detection producing deliverable insights
 - **v2 cold start** → fragment count < 5, v2 falls back to v1

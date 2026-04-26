@@ -14,7 +14,7 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
 - **`src/`** — core engine: CLI (`src/cli`), commands (`src/commands`), gateway (`src/gateway`), agents (`src/agents`), config (`src/config`), plugin system (`src/plugins`, `src/plugin-sdk`), channels (`src/channels`), media pipeline (`src/media`), **cognitive layer (`src/cognitive`)**
 - **`src/cognitive/`** — KaijiBot's proactive AI system (unique to this fork, not in upstream OpenClaw):
   - `persona/` — per-user cognitive model (identity, domains, interests, trust), dual extraction (rule-based + LLM), persistence at `~/.kaijibot/cognitive/persona/`
-  - `insight/` — proactive insight generation (cross-domain, pending questions, domain depth), cross-domain mapper, serendipity scorer, LLM prompt builder, verification pipeline
+  - `insight/` — proactive insight generation (cross-domain connections, domain depth, exploration), cross-domain mapper, serendipity scorer, LLM prompt builder, verification pipeline
   - `evolution/` — self-evolution engine: complexity evaluator, LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
   - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
