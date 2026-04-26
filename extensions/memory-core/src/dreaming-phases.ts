@@ -1662,7 +1662,7 @@ export async function runDreamingSweepPhases(params: {
     cfg: params.cfg,
   });
   if (pruning.enabled) {
-    const storage = light.storage ?? { mode: "inline" as const, separateReports: false };
+    const storage = light.storage ?? { mode: "separate" as const, separateReports: false };
     await runPruningPhase({
       workspaceDir: params.workspaceDir,
       pluginConfig: params.pluginConfig,
