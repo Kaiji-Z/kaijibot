@@ -354,6 +354,7 @@ export async function runPreflightCompactionIfNeeded(params: {
 
   const isCli = isCliProvider(params.followupRun.run.provider, params.cfg);
   if (params.isHeartbeat || isCli) {
+    logVerbose("skipping preflight compaction and memory flush for heartbeat/cli session");
     return entry ?? params.sessionEntry;
   }
 

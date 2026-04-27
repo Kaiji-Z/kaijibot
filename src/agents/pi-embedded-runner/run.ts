@@ -8,6 +8,7 @@ import {
 import { emitAgentPlanEvent } from "../../infra/agent-events.js";
 import { sleepWithAbort } from "../../infra/backoff.js";
 import { formatErrorMessage } from "../../infra/errors.js";
+import { triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
 import { enqueueCommandInLane } from "../../process/command-queue.js";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
@@ -514,24 +515,42 @@ export async function runEmbeddedPiAgent(
           if (
             contextEngine.info.ownsCompaction !== true ||
             !compactResult.ok ||
-            !compactResult.compacted ||
-            !hookRunner?.hasHooks("after_compaction")
+            !compactResult.compacted
           ) {
             return;
           }
-          try {
-            await hookRunner.runAfterCompaction(
-              {
-                messageCount: -1,
-                compactedCount: -1,
-                tokenCount: compactResult.result?.tokensAfter,
-                sessionFile: params.sessionFile,
-              },
-              hookCtx,
-            );
-          } catch (hookErr) {
-            log.warn(`after_compaction hook failed during ${reason}: ${String(hookErr)}`);
+          if (hookRunner?.hasHooks("after_compaction")) {
+            try {
+              await hookRunner.runAfterCompaction(
+                {
+                  messageCount: -1,
+                  compactedCount: -1,
+                  tokenCount: compactResult.result?.tokensAfter,
+                  sessionFile: params.sessionFile,
+                },
+                hookCtx,
+              );
+            } catch (hookErr) {
+              log.warn(`after_compaction hook failed during ${reason}: ${String(hookErr)}`);
+            }
           }
+          void triggerInternalHook({
+            type: "compaction",
+            action: "after",
+            sessionKey: params.sessionKey ?? "",
+            context: {
+              sessionFile: params.sessionFile,
+              workspaceDir: resolvedWorkspace,
+              cfg: params.config,
+              messageCount: -1,
+              compactedCount: -1,
+              tokenCount: compactResult.result?.tokensAfter,
+            },
+            timestamp: new Date(),
+            messages: [],
+          }).catch((err) => {
+            log.warn(`compaction:after internal hook failed during ${reason}: ${String(err)}`);
+          });
         };
         let authRetryPending = false;
         // Hoisted so the retry-limit error path can use the most recent API total.

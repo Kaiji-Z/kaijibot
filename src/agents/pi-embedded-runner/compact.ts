@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import {
   createAgentSession,
   DefaultResourceLoader,
@@ -992,6 +993,103 @@ export async function compactEmbeddedPiSessionDirect(
           }
 
           if (!containsRealConversationMessages(session.messages)) {
+            if (params.force && messageCountOriginal > 50) {
+              // Overflow recovery: truncate old messages instead of summarizing.
+              // Sessions without real conversation content (e.g., heartbeat-only)
+              // don't benefit from LLM summarization but still need size reduction.
+              const keepCount = Math.min(20, messageCountOriginal);
+              try {
+                const truncSm = SessionManager.open(params.sessionFile);
+                const truncHeader = truncSm.getHeader();
+                const allEntries = truncSm.getEntries();
+                if (truncHeader && allEntries.length > keepCount) {
+                  const messageEntries = allEntries.filter((e) => e.type === "message");
+                  const removedMessageIds = new Set<string>();
+                  const keptMessageEntries =
+                    messageEntries.length > keepCount
+                      ? messageEntries.slice(-keepCount)
+                      : messageEntries;
+                  if (messageEntries.length > keepCount) {
+                    for (let i = 0; i < messageEntries.length - keepCount; i++) {
+                      removedMessageIds.add(messageEntries[i].id);
+                    }
+                  }
+                  for (const entry of allEntries) {
+                    if (
+                      entry.type === "label" &&
+                      "targetId" in entry &&
+                      removedMessageIds.has((entry as { targetId: string }).targetId)
+                    ) {
+                      removedMessageIds.add(entry.id);
+                    }
+                    if (
+                      entry.type === "branch_summary" &&
+                      "parentId" in entry &&
+                      (entry as { parentId: string | null }).parentId !== null &&
+                      removedMessageIds.has((entry as { parentId: string }).parentId)
+                    ) {
+                      removedMessageIds.add(entry.id);
+                    }
+                  }
+                  const removedIds = removedMessageIds;
+                  const entryById = new Map<string, SessionEntry>();
+                  for (const entry of allEntries) {
+                    entryById.set(entry.id, entry);
+                  }
+                  const keptEntries: SessionEntry[] = [];
+                  for (const entry of allEntries) {
+                    if (removedIds.has(entry.id)) continue;
+                    let newParentId = entry.parentId;
+                    while (newParentId !== null && removedIds.has(newParentId)) {
+                      const parent = entryById.get(newParentId);
+                      newParentId = parent?.parentId ?? null;
+                    }
+                    if (newParentId !== entry.parentId) {
+                      keptEntries.push({ ...entry, parentId: newParentId });
+                    } else {
+                      keptEntries.push(entry);
+                    }
+                  }
+                  const truncLines = [
+                    JSON.stringify(truncHeader),
+                    ...keptEntries.map((e) => JSON.stringify(e)),
+                  ];
+                  const truncContent = truncLines.join("\n") + "\n";
+                  const tmpFile = `${params.sessionFile}.truncate-tmp`;
+                  try {
+                    await fs.writeFile(tmpFile, truncContent, "utf-8");
+                    await fs.rename(tmpFile, params.sessionFile);
+                  } catch (writeErr) {
+                    try {
+                      await fs.unlink(tmpFile);
+                    } catch {
+                      // ignore cleanup error
+                    }
+                    throw writeErr;
+                  }
+                  const firstKeptMsg = keptMessageEntries[0];
+                  log.info(
+                    `[compaction] force-truncating overflow session without real conversation messages ` +
+                      `(kept=${keepCount}, removed=${removedIds.size}, sessionKey=${params.sessionKey ?? params.sessionId})`,
+                  );
+                  return {
+                    ok: true,
+                    compacted: true,
+                    reason: "force-truncated-no-real-conversation",
+                    result: {
+                      summary: "",
+                      firstKeptEntryId: firstKeptMsg?.id ?? "",
+                      tokensBefore: messageCountOriginal,
+                      tokensAfter: keepCount,
+                    },
+                  };
+                }
+              } catch (truncErr) {
+                log.warn(
+                  `[compaction] force-truncation of overflow session failed, falling back to skip: ${formatErrorMessage(truncErr)}`,
+                );
+              }
+            }
             log.info(
               `[compaction] skipping — no real conversation messages (sessionKey=${params.sessionKey ?? params.sessionId})`,
             );

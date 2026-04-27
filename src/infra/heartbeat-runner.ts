@@ -543,7 +543,7 @@ async function resolveHeartbeatPreflight(params: {
     if (!reasonFlags.isWakeReason) {
       return false;
     }
-    if (params.heartbeat?.isolatedSession !== true) {
+    if (params.heartbeat?.isolatedSession === false) {
       return true;
     }
     const configuredSession = resolveHeartbeatSession(params.cfg, params.agentId, params.heartbeat);
@@ -771,7 +771,7 @@ export async function runHeartbeatOnce(opts: {
   // a new session ID (empty transcript) each run, avoiding the cost of
   // sending the full conversation history (~100K tokens) to the LLM.
   // Delivery routing still uses the main session entry (lastChannel, lastTo).
-  const useIsolatedSession = heartbeat?.isolatedSession === true;
+  const useIsolatedSession = heartbeat?.isolatedSession !== false;
   const delivery = resolveHeartbeatDeliveryTarget({
     cfg,
     entry,

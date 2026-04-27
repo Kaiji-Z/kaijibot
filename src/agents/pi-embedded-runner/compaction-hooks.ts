@@ -263,9 +263,11 @@ export async function runAfterCompactionHooks(params: {
   firstKeptEntryId?: string;
 }) {
   try {
-    const hookEvent = createInternalHookEvent("session", "compact:after", params.hookSessionKey, {
+    const hookEvent = createInternalHookEvent("compaction", "after", params.hookSessionKey, {
       sessionId: params.sessionId,
       missingSessionKey: params.missingSessionKey,
+      sessionFile: params.sessionFile,
+      workspaceDir: params.workspaceDir,
       messageCount: params.messageCountAfter,
       tokenCount: params.tokensAfter,
       compactedCount: params.compactedCount,
@@ -276,7 +278,7 @@ export async function runAfterCompactionHooks(params: {
     });
     await triggerInternalHook(hookEvent);
   } catch (err) {
-    log.warn("session:compact:after hook failed", {
+    log.warn("compaction:after hook failed", {
       errorMessage: formatErrorMessage(err),
       errorStack: err instanceof Error ? err.stack : undefined,
     });

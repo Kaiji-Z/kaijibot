@@ -2,6 +2,7 @@ import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import { triggerInternalHook } from "../hooks/internal-hooks.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { resolveAgentWorkspaceDir } from "./agent-scope.js";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 import { makeZeroUsageSnapshot } from "./usage.js";
 
@@ -105,6 +106,10 @@ export function handleAutoCompactionEnd(
       sessionKey: ctx.params.sessionKey ?? "",
       context: {
         sessionFile: ctx.params.session.sessionFile,
+        workspaceDir:
+          ctx.params.config && ctx.params.agentId
+            ? resolveAgentWorkspaceDir(ctx.params.config, ctx.params.agentId)
+            : undefined,
         messageCount: ctx.params.session.messages?.length ?? 0,
         compactedCount: ctx.getCompactionCount(),
         cfg: ctx.params.config,

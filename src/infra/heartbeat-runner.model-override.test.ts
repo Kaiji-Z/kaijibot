@@ -171,7 +171,7 @@ describe("runHeartbeatOnce – heartbeat model override", () => {
     });
   });
 
-  it("uses main session key when isolatedSession is not set", async () => {
+  it("uses main session key when isolatedSession is explicitly disabled", async () => {
     await withHeartbeatFixture(async ({ tmpDir, storePath, replySpy, seedSession }) => {
       const cfg: KaijiBotConfig = {
         agents: {
@@ -180,6 +180,7 @@ describe("runHeartbeatOnce – heartbeat model override", () => {
             heartbeat: {
               every: "5m",
               target: "whatsapp",
+              isolatedSession: false,
             },
           },
         },

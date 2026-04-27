@@ -93,7 +93,11 @@ function wrappedCompactionArgs(overrides: Record<string, unknown> = {}) {
 const sessionHook = (action: string): SessionHookEvent | undefined =>
   triggerInternalHook.mock.calls.find((call) => {
     const event = call[0] as SessionHookEvent | undefined;
-    return event?.type === "session" && event.action === action;
+    // "compact:before" uses type "session"; "after" uses type "compaction"
+    if (action === "compact:before") {
+      return event?.type === "session" && event.action === action;
+    }
+    return event?.type === "compaction" && event.action === action;
   })?.[0] as SessionHookEvent | undefined;
 
 async function runCompactionHooks(params: { sessionKey?: string; messageProvider?: string }) {
@@ -278,7 +282,7 @@ describe("compactEmbeddedPiSessionDirect hooks", () => {
       action: "compact:before",
     });
     const beforeContext = sessionHook("compact:before")?.context;
-    const afterContext = sessionHook("compact:after")?.context;
+    const afterContext = sessionHook("after")?.context;
 
     expect(beforeContext).toMatchObject({
       messageCount: 2,
@@ -317,7 +321,7 @@ describe("compactEmbeddedPiSessionDirect hooks", () => {
     await runCompactionHooks({});
 
     expect(sessionHook("compact:before")?.sessionKey).toBe("session-1");
-    expect(sessionHook("compact:after")?.sessionKey).toBe("session-1");
+    expect(sessionHook("after")?.sessionKey).toBe("session-1");
     expect(hookRunner.runBeforeCompaction).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({ sessionKey: "session-1" }),
