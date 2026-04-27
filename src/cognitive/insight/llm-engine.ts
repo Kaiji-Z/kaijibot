@@ -207,7 +207,7 @@ export async function generateInsightCandidatesLLM(
     // Trigram dedup: filter candidates too similar to recently delivered insights
     const recentContents = input.recentInsightContents;
     const filtered = recentContents.length > 0
-      ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.85, contentWordThreshold: 0.25 }))
+      ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.85, contentWordThreshold: 0.5 }))
       : candidates;
 
     if (filtered.length < candidates.length) {

@@ -269,10 +269,15 @@ export class ProactiveScheduler {
     }
     log.info("identify selected", { userId, type: selected.type, targetDomains: selected.targetDomains, pAct: selected.pAct, recentTypes });
 
+    const attemptedDomains = [...(persona.feedbackProfile.recentInsightDomains ?? []), selected.targetDomains].slice(-5);
+    persona.feedbackProfile.recentInsightDomains = attemptedDomains;
+    const attemptedTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
+    persona.feedbackProfile.recentInsightTypes = attemptedTypes;
+
     const insight = await this.resolve(persona, selected);
     if (!insight) return undefined;
 
-    const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+    const recentDomains = attemptedDomains.slice(0, -1);
     if (recentDomains.length > 0 && isDuplicateByDomainOverlap(insight.targetDomains, recentDomains)) {
       log.info("dedup: domain overlap", {
         userId,
@@ -299,10 +304,12 @@ export class ProactiveScheduler {
     persona.feedbackProfile.recentInsightIds = ids;
     const contents = [...(persona.feedbackProfile.recentInsightContents ?? []), insight.content].slice(-5);
     persona.feedbackProfile.recentInsightContents = contents;
-    const insightDomains = [...(persona.feedbackProfile.recentInsightDomains ?? []), insight.targetDomains].slice(-5);
-    persona.feedbackProfile.recentInsightDomains = insightDomains;
-    const insightTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
-    persona.feedbackProfile.recentInsightTypes = insightTypes;
+    const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+    const replacedDomains = [...prevDomains.slice(0, -1), insight.targetDomains].slice(-5);
+    persona.feedbackProfile.recentInsightDomains = replacedDomains;
+    const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
+    const replacedTypes = [...prevTypes.slice(0, -1), selected.type].slice(-5);
+    persona.feedbackProfile.recentInsightTypes = replacedTypes;
     if (insight.searchQueryUsed) {
       const queries = [...(persona.feedbackProfile.recentInsightQueryHistory ?? []), insight.searchQueryUsed].slice(-10);
       persona.feedbackProfile.recentInsightQueryHistory = queries;

@@ -1499,7 +1499,7 @@ describe("6-cycle integration test — all fixes together", () => {
 
       const result = await scheduler.processEvent("user1", {
         type: "timer",
-        timestamp: 1000 + cycle * 10000,
+        timestamp: 1000 + cycle * 3_601_000, // >1h apart to pass minIntervalHours:1 gate
       });
 
       if (result) {
@@ -1526,9 +1526,16 @@ describe("6-cycle integration test — all fixes together", () => {
       const domainKeys = Object.keys(currentPersona.domains);
       const targetDomain = domainKeys[cycle % domainKeys.length]!;
 
+      const contents = [
+        "Transformer注意力机制正在重塑自然语言处理的工程实践范式",
+        "微服务架构中事件溯源模式与领域驱动设计的融合实践",
+        "所有权系统为并发编程提供了编译期安全保证的新思路",
+        "类型系统的图灵完备性在框架元编程中的创新应用",
+        "消息卡片交互设计中的状态管理与响应式编程理念结合",
+      ];
       const fakeInsight: InsightCandidate = {
         id: `insight-${cycle}`,
-        content: `Insight about ${targetDomain} — cycle ${cycle}`,
+        content: contents[cycle % contents.length]!,
         rationale: "test",
         targetDomains: [targetDomain],
         sourceDomains: [],
@@ -1547,7 +1554,7 @@ describe("6-cycle integration test — all fixes together", () => {
 
       const result = await scheduler.processEvent("user1", {
         type: "timer",
-        timestamp: 5000 + cycle * 7777,
+        timestamp: 5000 + cycle * 3_601_000, // >1h apart to pass minIntervalHours:1 gate
       });
 
       if (result) {
