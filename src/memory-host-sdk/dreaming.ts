@@ -9,7 +9,7 @@ import {
   normalizeStringifiedOptionalString,
 } from "../shared/string-coerce.js";
 
-export const DEFAULT_MEMORY_DREAMING_ENABLED = true;
+export const DEFAULT_MEMORY_DREAMING_ENABLED = false;
 export const DEFAULT_MEMORY_DREAMING_TIMEZONE = undefined;
 export const DEFAULT_MEMORY_DREAMING_VERBOSE_LOGGING = false;
 export const DEFAULT_MEMORY_DREAMING_STORAGE_MODE = "separate";
