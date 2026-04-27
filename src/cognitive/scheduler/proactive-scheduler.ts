@@ -198,7 +198,7 @@ export class ProactiveScheduler {
 
     // Content-level dedup (second pass after domain overlap check)
     if (candidate && recentInsightContents.length > 0) {
-      if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents)) {
+      if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, { contentWordThreshold: 0.35 })) {
         log.info("content dedup: similar to recent insight", {
           userId: persona.identity?.userId,
           contentPreview: candidate.content.slice(0, 60),
