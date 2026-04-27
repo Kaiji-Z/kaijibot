@@ -360,8 +360,9 @@ describe("computeGradedGate", () => {
 });
 
 describe("computeRepetitionDecay", () => {
-  it("returns 1 when no recent insight domains", () => {
+  it("returns 1 when only one recent insight", () => {
     const persona = createDefaultPersona();
+    persona.feedbackProfile.recentInsightDomains = [["AI/ML"]];
     expect(computeRepetitionDecay(persona)).toBe(1);
   });
 
@@ -377,6 +378,18 @@ describe("computeRepetitionDecay", () => {
     expect(computeRepetitionDecay(persona)).toBe(1);
   });
 
+  it("does not penalize a single broad insight overlapping with narrow ones", () => {
+    const persona = createDefaultPersona();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["哲学"],
+      ["AI工具链"],
+      ["产品"],
+      ["机器学习"],
+      ["认知架构", "产品", "软件架构", "机器学习", "云", "编程", "哲学", "创业"],
+    ];
+    expect(computeRepetitionDecay(persona)).toBe(1);
+  });
+
   it("decays when all recent insights target same domain", () => {
     const persona = createDefaultPersona();
     persona.feedbackProfile.recentInsightDomains = [
@@ -388,10 +401,10 @@ describe("computeRepetitionDecay", () => {
     ];
     const decay = computeRepetitionDecay(persona);
     expect(decay).toBeLessThan(1);
-    expect(decay).toBe(0.125); // 0.5^(5-1) = 0.0625, clamped to 0.125
+    expect(decay).toBeGreaterThanOrEqual(0.25);
   });
 
-  it("decays proportionally to domain repetition", () => {
+  it("decays when most insights share overlapping domains", () => {
     const persona = createDefaultPersona();
     persona.feedbackProfile.recentInsightDomains = [
       ["AI/ML", "Rust"],

@@ -244,17 +244,36 @@ function computePAccept(persona: PersonaTree): number {
  */
 export function computeRepetitionDecay(persona: PersonaTree): number {
   const recentDomains = persona.feedbackProfile.recentInsightDomains;
-  if (!recentDomains || recentDomains.length === 0) return 1;
+  if (!recentDomains || recentDomains.length < 2) return 1;
 
-  const allDomains = recentDomains.flat().map((d) => d.toLowerCase());
-  const uniqueDomains = new Set(allDomains);
-  if (uniqueDomains.size === 0) return 1;
+  // Compute pairwise Jaccard similarity between recent insight domain sets.
+  // This measures whether recent insights are about the same topics,
+  // without penalizing a single broad insight that happens to overlap
+  // with prior narrow ones.
+  const sets = recentDomains.map((ds) => new Set(ds.map((d) => d.toLowerCase())));
+  let totalSimilarity = 0;
+  let pairCount = 0;
+  for (let i = 0; i < sets.length; i++) {
+    for (let j = i + 1; j < sets.length; j++) {
+      totalSimilarity += jaccard(sets[i]!, sets[j]!);
+      pairCount++;
+    }
+  }
+  if (pairCount === 0) return 1;
 
-  const ratio = uniqueDomains.size / allDomains.length;
-  if (ratio >= 0.8) return 1;
+  const avgSimilarity = totalSimilarity / pairCount;
+  if (avgSimilarity < 0.3) return 1;
 
-  const repeatCount = allDomains.length - uniqueDomains.size;
-  return Math.max(0.125, Math.pow(0.5, repeatCount));
+  return Math.max(0.25, 1 - avgSimilarity);
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let intersection = 0;
+  for (const v of a) {
+    if (b.has(v)) intersection++;
+  }
+  return intersection / (a.size + b.size - intersection);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

@@ -250,10 +250,10 @@ export class ProactiveScheduler {
     };
     const gateResult = computeGradedGate(gateContext);
     if (!gateResult.decision) {
-      log.info("gate vetoed", { userId, pNeed: gateResult.pNeed, pAct: gateResult.pNeed * gateResult.pAccept, reasons: gateResult.reasons });
+      log.info("gate vetoed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct, reasons: gateResult.reasons });
       return undefined;
     }
-    log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pNeed * gateResult.pAccept });
+    log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct });
 
     const opportunities = this.search(persona, event);
     const byType: Record<string, number> = {};
