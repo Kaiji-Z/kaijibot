@@ -12,6 +12,9 @@ read_when:
 
 ## 快速配置
 
+> **本指南未列出的配置项** → CLI 用 `kaijibot config schema` 查看完整 schema（类型、默认值、取值范围、描述）。
+> Agent 内部可通过 `gateway` 工具的 `config.schema.lookup` action 按路径查询子树。**找不到就查 schema，不要猜。**
+
 | 操作 | 命令 |
 |------|------|
 | 换模型 | `kaijibot models set "zai/glm-5-turbo"` |
@@ -38,7 +41,7 @@ read_when:
   - `start` — 开始时间 (如 `"09:00"`, 不设置 = 不限制)
   - `end` — 结束时间 (如 `"22:00"`, 不设置 = 不限制)
   - `timezone` — 时区 (default: `"Asia/Shanghai"`)
-- `cognitive.proactive.digestMode` — 推送模式 `"realtime"` / `"daily"` / `"weekly"` (default: realtime)
+- `cognitive.proactive.digestMode` — 推送模式 `"realtime"` / `"daily"` / `"weekly"`（预留，当前均按 realtime 行为）
 
 ### 画像提取
 
@@ -91,7 +94,7 @@ read_when:
   - `"qmd"` — 外部 QMD 工具，高性能索引
 - `memory.citations` — `"auto"` | `"on"` | `"off"` — 是否在回复中标注记忆来源
 - 记忆位置: `~/.kaijibot/workspace/memory/` (每日日志) + `MEMORY.md` (长期精华, 4KB 预算)
-- 梦境系统: 默认独立存储（不污染每日记忆文件），每天凌晨 3 点自动整理
+- 梦境系统: 默认关闭（`memory.dreaming.enabled: false`）；启用后默认独立存储（不污染每日记忆文件），每天凌晨 3 点执行
 
 ## 插件与技能
 
@@ -125,10 +128,10 @@ read_when:
 | 命令 | 说明 |
 |------|------|
 | `kaijibot gateway run` | 启动网关 |
-| `kaijibot gateway health` | 健康检查 |
+| `kaijibot gateway status` | 网关状态 + 健康检查 |
 | `kaijibot config get <path>` | 查看配置 |
 | `kaijibot config set <path> <value>` | 设置配置 |
-| `kaijibot config schema` | 查看完整 schema |
+| `kaijibot config schema` | 查看完整 schema（**找不到配置项时首选**） |
 | `kaijibot models list` | 列出可用模型 |
 | `kaijibot models set <model>` | 切换模型 |
 | `kaijibot plugins list` | 查看插件 |
@@ -149,9 +152,9 @@ read_when:
 ## Agent 操作规范
 
 - 用户问"怎么配置 X" → 先查本指南
-- 需要更多 schema 细节 → 用 `config.schema.lookup(path)` 工具查询（你自己调用，不是让用户调用）
-- 读取当前值 → `config.get`
-- 修改配置 → `config.patch`（先征求用户同意！）
+- **指南里找不到 → 通过 `gateway` 工具调用 `config.schema.lookup` action 查 schema 细节（类型、默认值、范围、描述），不要凭猜测回答**
+- 读取当前值 → `gateway` 工具 `config.get` action
+- 修改配置 → `gateway` 工具 `config.patch` action（先征求用户同意！）
 - **未经用户明确许可不得修改配置**
 
 ## 常见故障排除
@@ -165,4 +168,4 @@ read_when:
 | 推送太频繁/太稀疏 | 调整 `cognitive.proactive.minIntervalHours`（默认 0.5 小时） |
 | 推送内容重复 | 检查 `cognitive.insight.engine` 是否为 `"dual"`（v2 碎片结晶提供多样性） |
 | 搜索不工作 | 检查 `EXA_API_KEY` 或 `TAVILY_API_KEY` 是否设置 |
-| 网关启动失败 | 用 `kaijibot gateway health` 查看，检查端口是否被占用 |
+| 网关启动失败 | 用 `kaijibot gateway status` 查看，检查端口是否被占用 |
