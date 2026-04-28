@@ -293,6 +293,7 @@ export function createKaijiBotTools(
       createEvolutionSuggestTool({
         config: resolvedConfig,
         sessionKey: options?.agentSessionKey,
+        deliveryTo: options?.agentTo,
       }),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),

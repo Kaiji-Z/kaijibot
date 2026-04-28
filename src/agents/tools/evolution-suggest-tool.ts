@@ -19,6 +19,7 @@ export const EvolutionSuggestSchema = Type.Object({
 export function createEvolutionSuggestTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
+  deliveryTo?: string;
 }): AnyAgentTool | null {
   if (deps.config?.cognitive?.enabled === false) return null;
   if (deps.config?.cognitive?.evolution?.enabled === false) return null;
@@ -51,8 +52,8 @@ export function createEvolutionSuggestTool(deps: {
         const store = new EvolutionStore(resolveConfigDir());
         const engine = new EvolutionEngine(store);
 
-        const userId = deps.sessionKey?.split(":").pop();
-        if (!userId || userId === "main") {
+        const userId = resolveUserId(deps.sessionKey, deps.deliveryTo);
+        if (!userId) {
           return textResult("No user session; evolution evaluation skipped.", { status: "no_session" });
         }
 
@@ -111,6 +112,17 @@ export function createEvolutionSuggestTool(deps: {
           { status: "error" },
         );
       }
-    },
-  };
+     },
+   };
+}
+
+function resolveUserId(sessionKey?: string, deliveryTo?: string): string | null {
+  if (deliveryTo) {
+    const stripped = deliveryTo.replace(/^(user:|feishu:)/, "");
+    if (stripped && stripped !== "main") return stripped;
+  }
+  if (!sessionKey) return null;
+  const tail = sessionKey.split(":").pop();
+  if (!tail || tail === "main") return null;
+  return tail;
 }

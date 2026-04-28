@@ -21,6 +21,7 @@ import {
   resolveAgentIdFromSessionKey,
   toAgentStoreSessionKey,
 } from "../../../routing/session-key.js";
+import { isHeartbeatSessionKey } from "../../../sessions/session-key-utils.js";
 import { resolveHookConfig } from "../../config.js";
 import type { HookHandler } from "../../hooks.js";
 import {
@@ -94,7 +95,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
   // Skip heartbeat sessions — they contain only system pings (HEARTBEAT_OK),
   // not user conversations worth recording.
-  if (event.sessionKey.endsWith(":heartbeat")) {
+  if (isHeartbeatSessionKey(event.sessionKey)) {
     log.debug("Skipping heartbeat session", { sessionKey: event.sessionKey });
     return;
   }

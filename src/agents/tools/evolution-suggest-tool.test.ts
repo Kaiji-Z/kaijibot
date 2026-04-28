@@ -268,5 +268,49 @@ describe("createEvolutionSuggestTool", () => {
       const candidate = mockEvaluate.mock.calls[0][0] as { userCorrections?: number };
       expect(candidate.userCorrections).toBe(4);
     });
+
+    it("prefers deliveryTo over sessionKey for userId", async () => {
+      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: false, reasoning: "ok", complexityScore: 0.2 });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:main",
+        deliveryTo: "user:ou_abc123",
+      })!;
+
+      await tool.execute("call-9", {
+        taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
+      });
+
+      expect(mockEvaluate).toHaveBeenCalledTimes(1);
+      expect(mockEvaluate.mock.calls[0][1]).toBe("ou_abc123");
+    });
+
+    it("returns no_session when both deliveryTo and sessionKey yield no userId", async () => {
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:main",
+      })!;
+
+      const result = await tool.execute("call-10", {
+        taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
+      });
+
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("No user session");
+    });
+
+    it("strips feishu: prefix from deliveryTo", async () => {
+      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: false, reasoning: "ok", complexityScore: 0.2 });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:main",
+        deliveryTo: "feishu:ou_xyz789",
+      })!;
+
+      await tool.execute("call-11", {
+        taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
+      });
+
+      expect(mockEvaluate.mock.calls[0][1]).toBe("ou_xyz789");
+    });
   });
 });

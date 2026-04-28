@@ -161,3 +161,7 @@ export function resolveThreadParentSessionKey(
   }
   return parent;
 }
+
+export function isHeartbeatSessionKey(sessionKey: string): boolean {
+  return sessionKey.endsWith(":heartbeat");
+}
