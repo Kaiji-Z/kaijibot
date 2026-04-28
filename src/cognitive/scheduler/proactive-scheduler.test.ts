@@ -1644,3 +1644,63 @@ describe("6-cycle integration test — all fixes together", () => {
     expect(uniqueQueries.size).toBeGreaterThanOrEqual(2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Fix 2: attemptedDomains persisted when insight killed by dedup
+// ---------------------------------------------------------------------------
+
+describe("processEvent — attemptedDomains persistence on dedup kill", () => {
+  it("saves persona with attemptedDomains when resolve returns null", async () => {
+    const persona = personaWithDomains();
+    let savedPersona: PersonaTree | undefined;
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async (_userId, p) => { savedPersona = p; },
+    }, { insightGenerator: async () => [] });
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeUndefined();
+    expect(savedPersona).toBeDefined();
+    expect(savedPersona!.feedbackProfile.recentInsightDomains!.length).toBeGreaterThan(0);
+  });
+
+  it("saves persona with attemptedDomains when insight killed by domain dedup", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
+
+    let savedPersona: PersonaTree | undefined;
+    const insightThatFailsDedup: InsightCandidate = {
+      id: "test-id",
+      content: "AI和机器学习的最新进展改变了整个行业",
+      rationale: "trend",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async (_userId, p) => { savedPersona = p; },
+    }, { insightGenerator: async () => [insightThatFailsDedup] });
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeUndefined();
+    expect(savedPersona).toBeDefined();
+    expect(savedPersona!.feedbackProfile.recentInsightDomains!.length).toBeGreaterThan(1);
+  });
+});

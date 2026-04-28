@@ -218,6 +218,21 @@ export async function generateInsightCandidatesLLM(
     }
 
     return filtered.map((c) => {
+      // Force-align targetDomains: LLM often deviates from the requested domains.
+      // If LLM output domains share no overlap with input.targetDomains, override
+      // with the input domains to prevent domain-overlap dedup from killing the insight.
+      const inputDomains = input.targetDomains;
+      const llmDomains = c.targetDomains;
+      const hasOverlap = llmDomains.length > 0 && llmDomains.some(d =>
+        inputDomains.some(id => id.toLowerCase() === d.toLowerCase()),
+      );
+      if (!hasOverlap && inputDomains.length > 0) {
+        log.info("force-aligned LLM output domains to input targetDomains", {
+          llmDomains,
+          inputDomains,
+        });
+        c.targetDomains = [...inputDomains];
+      }
       const enriched = enrichWithWebSources(c, webResults);
       if (queryUsed) enriched.searchQueryUsed = queryUsed;
       return enriched;
@@ -681,6 +696,17 @@ export function buildInsightPrompt(
   recentInsightContents: string[] = [],
 ): string {
   const keywordMap = buildDomainKeywordMap(persona.domains);
+  for (const td of input.targetDomains) {
+    if (!keywordMap.has(td)) {
+      const keywords = new Set<string>();
+      keywords.add(td.toLowerCase());
+      for (const part of td.split(/[\/\+]/)) {
+        const trimmed = part.trim().toLowerCase();
+        if (trimmed.length >= 2) keywords.add(trimmed);
+      }
+      keywordMap.set(td, keywords);
+    }
+  }
   const webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
   if (webResults.length > 0) {
     const matchedDomains = [...webSnippetByDomain.keys()];
@@ -799,13 +825,17 @@ ${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's
 Delivered insight IDs: ${recentInsightIds || "None"}
 ${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
 
-TASK:
+ TARGET DOMAINS (insight MUST be about these domains):
+${input.targetDomains.join(", ")}
+
+ TASK:
 ${promptFrame}
 
-STRUCTURE CONSTRAINT:
+ STRUCTURE CONSTRAINT:
 ${structureSeed}
 
-硬性要求（必须全部满足，否则拒绝输出）：
+ 硬性要求（必须全部满足，否则拒绝输出）：
+- 洞察内容必须围绕上面的"TARGET DOMAINS"展开，targetDomains字段必须包含这些域中的至少一个
 - 必须引用上面"SPECIFIC FACTS"列表中的至少一条具体事实——不能只提领域名称，要说出用户在这个领域的具体认知或关注点
 - 1-3句话，中文，语气像突然想到什么要跟朋友说
 - 不用问号结尾，不用列表或编号
@@ -834,12 +864,13 @@ Respond with ONLY a JSON array (no markdown, no code fences):
   {
     "content": "Your insight in your own voice, in Chinese",
     "rationale": "Why this is relevant to this user SPECIFICALLY (reference persona data)",
-    "targetDomains": ["domain1"],
+    "targetDomains": ["${input.targetDomains[0] ?? "domain1"}"],
     "sourceDomains": ["domain2"],
     "relevanceScore": 0.8,
     "surpriseScore": 0.6
   }
 ]
+CRITICAL: targetDomains MUST include at least one of: ${input.targetDomains.join(", ")}. Do NOT substitute other domains.
 
 Keep insights concise (1-3 sentences). Quality over quantity.`;
 }

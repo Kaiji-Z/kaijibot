@@ -1260,3 +1260,152 @@ describe("buildSearchQuery — query diversification", () => {
     expect(collected).toEqual(suffixes);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Fix 1: Force-align LLM output domains to input targetDomains
+// ---------------------------------------------------------------------------
+
+describe("generateInsightCandidatesLLM — domain force-alignment", () => {
+  it("overrides LLM targetDomains when they share no overlap with input", async () => {
+    const response = JSON.stringify([
+      {
+        content: "软件架构的微服务模式正在被重新审视",
+        rationale: "architecture trend",
+        targetDomains: ["产品思维"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.6,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ targetDomains: ["软件架构", "网络安全"] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+    expect(result[0]!.targetDomains).toEqual(["软件架构", "网络安全"]);
+  });
+
+  it("preserves LLM targetDomains when they overlap with input", async () => {
+    const response = JSON.stringify([
+      {
+        content: "TypeScript的类型推断正在向Rust的pattern matching靠拢",
+        rationale: "cross-language",
+        targetDomains: ["typescript", "wasm"],
+        sourceDomains: ["rust"],
+        relevanceScore: 0.85,
+        surpriseScore: 0.7,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ targetDomains: ["typescript", "rust"] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+    expect(result[0]!.targetDomains).toContain("typescript");
+  });
+
+  it("does not override when input targetDomains is empty", async () => {
+    const response = JSON.stringify([
+      {
+        content: "AI和机器学习正在重新定义软件架构的设计范式，尤其是分布式系统的容错机制",
+        rationale: "test",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ targetDomains: [] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+    expect(result[0]!.targetDomains).toEqual(["AI/机器学习"]);
+  });
+
+  it("force-aligns with case-insensitive match", async () => {
+    const response = JSON.stringify([
+      {
+        content: "TypeScript的类型体操和Rust的所有权模型有共鸣",
+        rationale: "cross-domain",
+        targetDomains: ["TypeScript"],
+        sourceDomains: ["Rust"],
+        relevanceScore: 0.8,
+        surpriseScore: 0.7,
+      },
+    ]);
+    const result = await generateInsightCandidatesLLM(
+      makePersona(),
+      makeInput({ targetDomains: ["typescript", "rust"] }),
+      makeConfig(),
+      successDeps(response),
+    );
+    expect(result.length).toBe(1);
+    expect(result[0]!.targetDomains).toContain("TypeScript");
+  });
+});
+
+describe("buildInsightPrompt — TARGET DOMAINS constraint", () => {
+  it("includes TARGET DOMAINS section with input targetDomains", () => {
+    const prompt = buildInsightPrompt(
+      makePersona(),
+      makeInput({ targetDomains: ["软件架构", "网络安全"] }),
+      [],
+      [],
+    );
+    expect(prompt).toContain("TARGET DOMAINS");
+    expect(prompt).toContain("软件架构");
+    expect(prompt).toContain("网络安全");
+  });
+
+  it("includes domain alignment requirement in hard constraints", () => {
+    const prompt = buildInsightPrompt(
+      makePersona(),
+      makeInput({ targetDomains: ["编程语言"] }),
+      [],
+      [],
+    );
+    expect(prompt).toContain("TARGET DOMAINS");
+    expect(prompt).toContain("targetDomains字段必须包含这些域");
+  });
+
+  it("includes CRITICAL domain constraint in JSON schema section", () => {
+    const prompt = buildInsightPrompt(
+      makePersona(),
+      makeInput({ targetDomains: ["数据科学"] }),
+      [],
+      [],
+    );
+    expect(prompt).toContain("targetDomains MUST include at least one of: 数据科学");
+  });
+});
+
+describe("buildInsightPrompt — targetDomains in keyword map", () => {
+  it("matches web results by targetDomain not in persona.domains", () => {
+    const persona = makePersona({
+      domains: {
+        typescript: {
+          depth: 5,
+          recurrence: 10,
+          lastMentioned: Date.now(),
+          keyInsights: [],
+          activeQuestions: [],
+          connections: [],
+          negationSignals: 0,
+        },
+      },
+    });
+    const input = makeInput({ targetDomains: ["网络安全"] });
+    const prompt = buildInsightPrompt(persona, input, [
+      { title: "网络安全最新漏洞", url: "https://example.com", snippet: "零日漏洞防护方案" },
+    ] as WebSearchResult[]);
+    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("零日漏洞防护方案");
+  });
+});

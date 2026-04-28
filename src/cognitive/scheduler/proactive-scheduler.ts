@@ -275,7 +275,10 @@ export class ProactiveScheduler {
     persona.feedbackProfile.recentInsightTypes = attemptedTypes;
 
     const insight = await this.resolve(persona, selected);
-    if (!insight) return undefined;
+    if (!insight) {
+      await this.callbacks.savePersona(userId, persona);
+      return undefined;
+    }
 
     const recentDomains = attemptedDomains.slice(0, -1);
     if (recentDomains.length > 0 && isDuplicateByDomainOverlap(insight.targetDomains, recentDomains)) {
@@ -284,6 +287,7 @@ export class ProactiveScheduler {
         newDomains: insight.targetDomains,
         recentDomains,
       });
+      await this.callbacks.savePersona(userId, persona);
       return undefined;
     }
 
