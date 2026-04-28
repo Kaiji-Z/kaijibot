@@ -20,9 +20,9 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
-- **`extensions/`** — 21 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks, shared
+- **`extensions/`** — 62 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks, shared
 - **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk
-- **`skills/`** — 21 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts)
+- **`skills/`** — 22 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts, memory-organize)
 - **`ui/`** — web control UI
 - **`docs/`** — documentation
 - Tests: colocated `*.test.ts`; e2e: `*.e2e.test.ts`
@@ -35,11 +35,12 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
 - Build: `pnpm build` (tsdown)
 - TypeScript check: `pnpm tsgo`
 - Lint + typecheck: `pnpm check` (runs tsgo + oxlint + boundary checks)
-- Format check: `pnpm format` (oxfmt --check)
-- Format fix: `pnpm format:fix` (oxfmt --write)
+- Format check: `pnpm format:check` (oxfmt --check)
+- Format fix: `pnpm format` (oxfmt --write)
 - Tests: `pnpm test` (vitest); coverage: `pnpm test:coverage`
 - Scoped test: `pnpm test <path-or-filter>` (e.g. `pnpm test src/cognitive/persona/store.test.ts`)
 - Run CLI in dev: `pnpm kaijibot ...` or `pnpm dev`
+- **Deploy gateway (build + restart)**: `pnpm gw:deploy` — builds latest code, stops old gateway, starts new gateway in tmux session `gw`. Use this after any code change that needs to take effect in the running gateway.
 - Live tests (real keys): `KAIJIBOT_LIVE_TEST=1 pnpm test:live` (KaijiBot-only) or `LIVE=1 pnpm test:live`
 - Pre-commit hooks: `prek install`. The hook runs `pnpm check`. Use `FAST_COMMIT=1` to skip format+check in the hook.
 - Prefer Bun for script execution: `bun <file.ts>` / `bunx <tool>`.
@@ -76,7 +77,7 @@ Event Sources (timer / persona_change / info_scan)
       → search() [scan opportunities: cross-domain, pending Qs, domain depth, exploration]
         → identify() [pick best by pAct, with domain cooldown + type cooldown]
           → resolve() [dual pipeline: v1 (LLM) + v2 (fragment crystallization) in parallel]
-            → dedup (trigram 0.85, contentWord 0.25) + verification gate
+            → dedup (trigram default 0.6, v1 output 0.85; contentWord default 0.15, v1 output 0.5) + verification gate
               → v2 insights bypass verification (partial status)
               → exploration-type insights bypass verification
             → onInsightReady callback → findSessionKeyForUserId → enqueueSystemEvent → requestHeartbeatNow
