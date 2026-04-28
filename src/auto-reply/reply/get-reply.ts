@@ -489,6 +489,22 @@ export async function getReplyFromConfig(
     });
   };
 
+  const maybeEmitAutoResetHooks = async () => {
+    if (resetTriggered || !isNewSession || !previousSessionEntry) {
+      return;
+    }
+    const { createInternalHookEvent, triggerInternalHook } = await import(
+      "../../hooks/internal-hooks.js"
+    );
+    const hookEvent = createInternalHookEvent("command", "reset", sessionKey, {
+      sessionEntry,
+      previousSessionEntry,
+      workspaceDir,
+      cfg,
+    });
+    await triggerInternalHook(hookEvent);
+  };
+
   const inlineActionResult = await handleInlineActions({
     ctx,
     sessionCtx,
@@ -531,9 +547,11 @@ export async function getReplyFromConfig(
   });
   if (inlineActionResult.kind === "reply") {
     await maybeEmitMissingResetHooks();
+    await maybeEmitAutoResetHooks();
     return inlineActionResult.reply;
   }
   await maybeEmitMissingResetHooks();
+  await maybeEmitAutoResetHooks();
   directives = inlineActionResult.directives;
   abortedLastRun = inlineActionResult.abortedLastRun ?? abortedLastRun;
 

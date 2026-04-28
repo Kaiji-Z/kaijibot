@@ -92,6 +92,13 @@ const saveSessionToMemory: HookHandler = async (event) => {
     return;
   }
 
+  // Skip heartbeat sessions — they contain only system pings (HEARTBEAT_OK),
+  // not user conversations worth recording.
+  if (event.sessionKey.endsWith(":heartbeat")) {
+    log.debug("Skipping heartbeat session", { sessionKey: event.sessionKey });
+    return;
+  }
+
   try {
     log.debug("Hook triggered for reset/new command", { action: event.action });
 
