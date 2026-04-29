@@ -121,7 +121,7 @@ LOG_FILES=()
 for f in "$LOG_DIR"/kaijibot-*.log; do [ -f "$f" ] && LOG_FILES+=("$f"); done
 
 # Pipeline keywords to trace
-PIPELINE_KW="gate passed|gate vetoed|search found opportunities|identify selected|identify selected nothing|insight generated|web search completed|surprise-mode web search completed|web search domain matching|web search cache hit|trigram dedup filtered|crystallized|quality gate assessed|dual pipeline: merged|force-aligned|fragments extracted|fragment clusters|processEvent done"
+PIPELINE_KW="gate passed|gate vetoed|search found opportunities|identify selected pool|identify selected nothing|pre-gen freshness check|resolve: quality retry|resolve: selected best candidate|insight generated|web search completed|surprise-mode web search completed|web search domain matching|web search cache hit|safety-net dedup|crystallized|quality gate assessed|dual pipeline: merged|force-aligned|fragments extracted|fragment clusters|processEvent done"
 
 # For each insight from Step 2, extract its timestamp HH:MM prefix and trace nearby events
 # Replace INSIGHT_TIMES with actual timestamps from Step 2 output (just the HH:MM part)
@@ -163,7 +163,10 @@ Key messages to look for:
 - `"force-aligned LLM output domains to input targetDomains"` — domain constraint fix activated (LLM domains → forced to input domains)
 - `"LLM generated N insight candidate(s)"`
 - `"LLM returned empty response"` / `"LLM response could not be parsed"`
-- `"trigram dedup filtered candidates"` — `{before, after}` — near-duplicate filtered by trigram similarity
+- `"resolve: quality retry"` — `{attempt, candidatesSoFar}` — quality retry attempt N
+- `"resolve: selected best candidate"` — `{attempts, finalScore, totalCandidates}` — best candidate picked from retry pool
+- `"safety-net dedup: near-identical content blocked"` — extreme similarity safety-net (0.95 trigram / 0.8 contentWord thresholds)
+- `"pre-gen freshness check: skipping stale candidate"` — `{type, targetDomains}` — topic stale before LLM call, skipped to next
 
 ### Step 5: Fragment health (v2 pipeline diagnostics)
 
@@ -222,9 +225,13 @@ for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   grep '"search found opportunities"' "$LOG_FILE" | \
     jq -c '{time: .time, count: ."1".count, byType: ."1".byType}' 2>/dev/null
 
-  # Identify: selected type + recent history (shows if diversity penalty was active)
-  grep '"identify selected"' "$LOG_FILE" | \
-    jq -c '{time: .time, type: ."1".type, pAct: ."1".pAct, recentTypes: ."1".recentTypes}' 2>/dev/null
+  # Identify: pool size + top candidate + recent history (shows if diversity penalty was active)
+  grep '"identify selected pool"' "$LOG_FILE" | \
+    jq -c '{time: .time, poolSize: ."1".poolSize, topType: ."1".topType, topTargetDomains: ."1".topTargetDomains, topPAct: ."1".topPAct, recentTypes: ."1".recentTypes}' 2>/dev/null
+
+  # Pre-gen freshness check: stale candidates skipped
+  grep '"pre-gen freshness check"' "$LOG_FILE" | \
+    jq -c '{time: .time, type: ."1".type, targetDomains: ."1".targetDomains}' 2>/dev/null
 done
 ```
 
@@ -232,6 +239,8 @@ Key patterns:
 - **`byType: {domain_depth: N}` only** → scanCrossDomain/scanExploration producing nothing
 - **`recentTypes: ["domain_depth", "domain_depth"]`** → diversity penalty should be active (×0.6)
 - **`recentTypes` matches selected `type`** → penalty was too mild, type still winning
+- **`poolSize: 1` consistently** → only one candidate survives penalties, low diversity in opportunities
+- **`pre-gen freshness check` fires frequently** → isTopicStale too aggressive, or recentInsightDomains too broad
 
 ### Step 7: Quality gate pillar scores (v2 diagnostics)
 
@@ -268,7 +277,9 @@ for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   echo "Gate vetoed: $(grep -c '"gate vetoed"' "$LOG_FILE")"
   echo "Insights generated: $(grep '"insight generated"' "$LOG_FILE" | grep -c 'contentPreview')"
   echo "No insight: $(grep -c '"identify selected nothing"' "$LOG_FILE")"
-  echo "Trigram dedup filtered: $(grep -c '"trigram dedup filtered"' "$LOG_FILE")"
+  echo "Pre-gen freshness skipped: $(grep -c '"pre-gen freshness check"' "$LOG_FILE")"
+  echo "Quality retries: $(grep -c '"resolve: quality retry"' "$LOG_FILE")"
+  echo "Safety-net blocked: $(grep -c '"safety-net dedup"' "$LOG_FILE")"
   echo "Web search cache hits: $(grep -c '"web search cache hit"' "$LOG_FILE")"
   echo "Force-alignments: $(grep -c '"force-aligned"' "$LOG_FILE")"
 done
@@ -297,7 +308,7 @@ Structure the report as:
 - **内容**: [text]
 - **时间**: [timestamp]
 - **来源**: [v1/v2]
-- **Pipeline**: [event source] → gate (pAct=X.XX) → search (N opportunities) → identify ([type]) → resolve
+- **Pipeline**: [event source] → gate (pAct=X.XX) → search (N opportunities) → identify pool (top N) → freshness check → resolve (X attempts, best score: Y.YY)
 - **Web search**: [triggered/skipped] — query: "...", N results, matched domains: [...]
 - **质量评估**: [high/medium/low] — [1-sentence rationale]
 
@@ -321,7 +332,8 @@ Structure the report as:
 ### 管线对比 (v1 vs v2)
 - v1 洞察: N 条 (XX%)
 - v2 洞察: N 条 (XX%)
-- 去重拦截: N 条
+- 前置新鲜度拦截: N 条
+- 安全网拦截: N 条
 
 ### 建议改进 (如有)
 - [Any issues noticed: repeated topics, failed web searches, etc.]
@@ -357,15 +369,17 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 | 1 | ⏰ TICK | dim | Timer fire, user count, interval |
 | 2 | 🟢/🔴 GATE | green/red | PRISM gate pass/veto with pNeed, pAccept, pAct |
 | 3 | 🔍 SEARCH | yellow | Number of opportunities found + **per-type breakdown** (cross_domain, domain_depth, exploration) |
-| 4 | 🎯 IDENTIFY | cyan | Selected type, target domains, pAct + **recentTypes** (diversity penalty visibility) |
+| 4 | 🎯 IDENTIFY | cyan | **Pool size** (top N), top candidate type/domains/pAct + **recentTypes** (diversity penalty visibility) |
+| 4a | 🧹 STALE | yellow | Pre-gen freshness check: stale candidate skipped (saves LLM tokens) |
 | 4b | 🧊 CRYSTAL | cyan | v2: Crystallized blind spot count + mode |
 | 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite + **all 4 pillar scores** (structuralNovelty, actionability, emotionalReadiness, nonObviousness) |
 | 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching |
 | 6 | 🤖 LLM GEN | magenta | v1: Number of insight candidates |
+| 6a | 🔄 RETRY + ✅ BEST | yellow/green | Quality retry: attempt count + final best score from retry pool |
 | 6b | 🔀 MERGE | cyan | Dual: v1=N v2=N total=N deduped=N |
 | 7 | ❌ PARSE FAIL | red | JSON parse errors |
 | 8 | ⚠️ VERIFY | yellow | Verification failures |
-| 9 | 🚫 DEDUP | magenta | Duplicate detection |
+| 9 | 🚫 DEDUP | magenta | Safety-net: near-identical content blocked (0.95/0.8 thresholds) |
 | 10 | 💡 INSIGHT ✓ | green | Final insight with [v1]/[v2] source tag, content preview |
 | 11 | 📨 DELIVERED | green | Successfully sent to feishu |
 | 12 | 🏁 DONE | green/dim | Pipeline completion status |
@@ -373,6 +387,8 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 ### Key patterns to watch for
 
 - **`type=domain_depth` every time** → opportunity selection is monopolized, cross_domain never wins
+- **`poolSize: 1` consistently** → only one candidate survives penalties, consider relaxing domain cooldown
+- **`pre-gen freshness check` fires every cycle** → isTopicStale too aggressive, or recentInsightDomains too broad — no LLM calls happening
 - **`matchedDomains: (none)`** → web search results don't match user domains, insight has no factual grounding
 - **Same `targetDomains` repeated** → always targeting the same domain
 - **Gate vetoed with low pAct** → normal (PRISM cost gate working)
@@ -385,6 +401,8 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 - **v2 cold start** → fragment count < 5, v2 falls back to v1
 - **🔀 MERGE v2=0 consistently** → v2 pipeline never produces candidates, check fragment count and crystallization
 - **Quality gate verdict=discard every time** → blind spots not novel enough, consider lowering thresholds
+- **`resolve: quality retry` attempt=2/3 often** → first attempt quality low, retry rescuing insights
+- **`safety-net dedup` fires frequently** → LLM generating near-identical content, check prompt diversity
 
 ## Quality Assessment Rubric
 
