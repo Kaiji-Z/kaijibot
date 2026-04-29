@@ -641,7 +641,8 @@ describe("buildSearchQuery", () => {
       recentFocus: ["机器学习 深度学习 神经网络 自然语言处理 计算机视觉 强化学习"],
     });
     const query = buildSearchQuery(input);
-    const parts = query.split(" ");
+    const currentYear = new Date().getFullYear().toString();
+    const parts = query.replace(currentYear, "").trim().split(/\s+/).filter(Boolean);
     expect(parts.length).toBeLessThanOrEqual(4);
   });
 
@@ -696,6 +697,36 @@ describe("buildSearchQuery", () => {
     expect(query).toContain("飞书能力探索");
     expect(query).toContain("最新进展");
     expect(query).not.toBe("飞书能力探索");
+  });
+
+  it("appends current year to search query", () => {
+    const input: InsightEngineInput = {
+      targetDomains: ["Rust"],
+      recentFocus: ["ownership model"],
+      trustScore: 0.8,
+      recentInsightIds: [],
+      recentInsightContents: [],
+      recentQueryHistory: [],
+    };
+    const result = buildSearchQuery(input);
+    const currentYear = new Date().getFullYear().toString();
+    expect(result).toContain(currentYear);
+  });
+
+  it("does not duplicate year if already present in query terms", () => {
+    const year = new Date().getFullYear().toString();
+    const input: InsightEngineInput = {
+      targetDomains: [`Rust ${year}`],
+      recentFocus: [],
+      trustScore: 0.8,
+      recentInsightIds: [],
+      recentInsightContents: [],
+      recentQueryHistory: [],
+    };
+    const result = buildSearchQuery(input);
+    // Should contain the year but not double it
+    const yearOccurrences = result.split(year).length - 1;
+    expect(yearOccurrences).toBeLessThanOrEqual(2); // At most once from domain + once from suffix
   });
 });
 

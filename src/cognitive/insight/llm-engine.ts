@@ -389,7 +389,13 @@ export function buildSearchQuery(input: InsightEngineInput): string {
     : -1;
   const suffix = suffixIndex >= 0 ? SUFFIXES[suffixIndex]! : "";
 
-  return (parts.join(" ") + suffix).slice(0, 120);
+  const currentYear = new Date().getFullYear().toString();
+  const baseQuery = parts.join(" ") + suffix;
+  // Only append year if not already present in the query
+  const queryWithYear = baseQuery.includes(currentYear)
+    ? baseQuery
+    : `${baseQuery} ${currentYear}`;
+  return queryWithYear.slice(0, 120);
 }
 
 function enrichWithWebSources(
