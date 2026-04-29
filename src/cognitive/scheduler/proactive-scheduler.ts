@@ -5,7 +5,7 @@ import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insig
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
 import { verifyInsight } from "../insight/verification/pipeline.js";
-import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
+import { isDuplicateBySemanticOverlap, computeTrigramSimilarity } from "../insight/content-similarity.js";
 import { pickBestTopic } from "../feedback/preference-learner.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
@@ -34,16 +34,6 @@ function getFatiguedDomains(recentInsightDomains: string[][]): Set<string> {
   return fatigued;
 }
 
-function isDuplicateByDomainOverlap(
-  newDomains: string[],
-  recentDomains: string[][],
-): boolean {
-  for (const prev of recentDomains) {
-    if (computeDomainOverlap(newDomains, prev) > 0.5) return true;
-  }
-  return false;
-}
-
 export type InsightGeneratorFn = (
   persona: PersonaTree,
   input: InsightEngineInput,
@@ -53,6 +43,35 @@ export type InsightGeneratorFn = (
     mode?: InsightMode;
   },
 ) => Promise<InsightCandidate[]>;
+
+const MAX_QUALITY_RETRIES = 3;
+
+export function isTopicStale(
+  opportunity: Opportunity,
+  recentInsightContents: string[],
+  recentInsightDomains: string[][],
+): boolean {
+  // Check domain overlap: if overlap with ANY recent domain set > 0.5 → stale
+  if (opportunity.targetDomains.length > 0 && recentInsightDomains.length > 0) {
+    for (const prev of recentInsightDomains) {
+      if (computeDomainOverlap(opportunity.targetDomains, prev) > 0.5) {
+        return true;
+      }
+    }
+  }
+
+  // Check trigram similarity against recent insight contents
+  if (opportunity.targetDomains.length > 0 && recentInsightContents.length > 0) {
+    const fingerprint = [...opportunity.targetDomains, ...opportunity.sourceDomains].join(" ");
+    for (const recent of recentInsightContents) {
+      if (computeTrigramSimilarity(fingerprint, recent) > 0.4) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 export class ProactiveScheduler {
   private timerHandle: ReturnType<typeof setTimeout> | undefined;
@@ -98,8 +117,8 @@ export class ProactiveScheduler {
     return filterBlacklistedOpportunities(opportunities, persona.domainBlacklist);
   }
 
-  identify(opportunities: Opportunity[], persona?: PersonaTree): Opportunity | null {
-    if (opportunities.length === 0) return null;
+  identify(opportunities: Opportunity[], persona?: PersonaTree): Opportunity[] {
+    if (opportunities.length === 0) return [];
 
     const cfn = this.config.costFalseNegative ?? DEFAULT_C_FN;
     const cfa = this.config.costFalseAlarm ?? DEFAULT_C_FA;
@@ -151,10 +170,8 @@ export class ProactiveScheduler {
     const sorted = [...nonFatigued].sort((a, b) => b.pAct - a.pAct);
     const pool = sorted.length > 0 ? sorted : [...penalized].sort((a, b) => b.pAct - a.pAct);
 
-    const best = pool[0];
-    if (!best || best.pAct <= threshold) return null;
-
-    return best;
+    const aboveThreshold = pool.filter(opp => opp.pAct > threshold);
+    return aboveThreshold.slice(0, 5);
   }
 
   async resolve(persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
@@ -162,8 +179,9 @@ export class ProactiveScheduler {
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
     const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
-    let candidates: InsightCandidate[] | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+
+    const allCandidates: InsightCandidate[] = [];
+    for (let attempt = 0; attempt < MAX_QUALITY_RETRIES; attempt++) {
       const result = await this.generateInsights(
         persona,
         {
@@ -184,22 +202,29 @@ export class ProactiveScheduler {
         },
       );
       if (result && result.length > 0) {
-        candidates = result;
-        break;
+        allCandidates.push(...result);
       }
-      if (attempt === 0) {
-        log.info("resolve: retrying insight generation", { userId: persona.identity?.userId });
+      if (attempt > 0) {
+        log.info("resolve: quality retry", { userId: persona.identity?.userId, attempt: attempt + 1, candidatesSoFar: allCandidates.length });
       }
     }
-    if (!candidates) return null;
 
-    const candidate = candidates[0] ?? null;
-    if (!candidate) return null;
+    if (allCandidates.length === 0) return null;
 
-    // Content-level dedup (second pass after domain overlap check)
-    if (candidate && recentInsightContents.length > 0) {
-      if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, { contentWordThreshold: 0.35 })) {
-        log.info("content dedup: similar to recent insight", {
+    const scored = allCandidates.map((c) => {
+      const score = c.compositeScore > 0
+        ? c.compositeScore
+        : c.relevanceScore * 0.4 + c.surpriseScore * 0.3 + Math.min(c.sources.length, 3) * 0.1;
+      return { candidate: c, score };
+    }).sort((a, b) => b.score - a.score);
+
+    const candidate = scored[0]!.candidate;
+    log.info("resolve: selected best candidate", { userId: persona.identity?.userId, attempts: MAX_QUALITY_RETRIES, finalScore: scored[0]!.score, totalCandidates: allCandidates.length });
+
+    // Safety-net dedup: block near-identical content only
+    if (recentInsightContents.length > 0) {
+      if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, { trigramThreshold: 0.95, contentWordThreshold: 0.8 })) {
+        log.info("safety-net dedup: near-identical content blocked", {
           userId: persona.identity?.userId,
           contentPreview: candidate.content.slice(0, 60),
         });
@@ -262,31 +287,36 @@ export class ProactiveScheduler {
     }
     log.info("search found opportunities", { userId, count: opportunities.length, byType });
     const recentTypes = persona.feedbackProfile.recentInsightTypes ?? [];
-    const selected = this.identify(opportunities, persona);
-    if (!selected) {
+    const candidates = this.identify(opportunities, persona);
+    if (candidates.length === 0) {
       log.info("identify selected nothing", { userId });
       return undefined;
     }
-    log.info("identify selected", { userId, type: selected.type, targetDomains: selected.targetDomains, pAct: selected.pAct, recentTypes });
+    log.info("identify selected pool", { userId, poolSize: candidates.length, topType: candidates[0].type, topTargetDomains: candidates[0].targetDomains, topPAct: candidates[0].pAct, recentTypes });
 
-    const attemptedDomains = [...(persona.feedbackProfile.recentInsightDomains ?? []), selected.targetDomains].slice(-5);
-    persona.feedbackProfile.recentInsightDomains = attemptedDomains;
-    const attemptedTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
-    persona.feedbackProfile.recentInsightTypes = attemptedTypes;
+    const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
+    const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
 
-    const insight = await this.resolve(persona, selected);
-    if (!insight) {
+    let insight: InsightCandidate | null = null;
+    let selected: Opportunity | undefined;
+    for (const candidate of candidates) {
+      if (isTopicStale(candidate, recentInsightContents, recentInsightDomains)) {
+        log.info("pre-gen freshness check: skipping stale candidate", { userId, type: candidate.type, targetDomains: candidate.targetDomains });
+        continue;
+      }
+
+      selected = candidate;
+      const attemptedDomains = [...(persona.feedbackProfile.recentInsightDomains ?? []), selected.targetDomains].slice(-5);
+      persona.feedbackProfile.recentInsightDomains = attemptedDomains;
+      const attemptedTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
+      persona.feedbackProfile.recentInsightTypes = attemptedTypes;
+
+      insight = await this.resolve(persona, selected);
+      if (insight) break;
       await this.callbacks.savePersona(userId, persona);
-      return undefined;
     }
 
-    const recentDomains = attemptedDomains.slice(0, -1);
-    if (recentDomains.length > 0 && isDuplicateByDomainOverlap(insight.targetDomains, recentDomains)) {
-      log.info("dedup: domain overlap", {
-        userId,
-        newDomains: insight.targetDomains,
-        recentDomains,
-      });
+    if (!insight || !selected) {
       await this.callbacks.savePersona(userId, persona);
       return undefined;
     }

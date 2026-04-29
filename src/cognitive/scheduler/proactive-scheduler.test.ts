@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ProactiveScheduler, filterBlacklistedOpportunities } from "./proactive-scheduler.js";
+import { ProactiveScheduler, filterBlacklistedOpportunities, isTopicStale } from "./proactive-scheduler.js";
 import { createDefaultPersona } from "../persona/store.js";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
 import { buildSearchQuery } from "../insight/llm-engine.js";
@@ -455,7 +455,7 @@ describe("ProactiveScheduler.search", () => {
 });
 
 describe("ProactiveScheduler.identify", () => {
-  it("ranks by pAct and returns top opportunity", () => {
+  it("ranks by pAct and returns ranked pool", () => {
     const scheduler = makeScheduler(config);
     const opportunities: Opportunity[] = [
       { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
@@ -464,12 +464,12 @@ describe("ProactiveScheduler.identify", () => {
     ];
 
     const selected = scheduler.identify(opportunities);
-    expect(selected).not.toBeNull();
-    expect(selected!.type).toBe("domain_depth");
-    expect(selected!.pAct).toBe(0.81);
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].type).toBe("domain_depth");
+    expect(selected[0].pAct).toBe(0.81);
   });
 
-  it("returns null when all pAct below threshold", () => {
+  it("returns empty array when all pAct below threshold", () => {
     const scheduler = makeScheduler(highThresholdConfig);
     const opportunities: Opportunity[] = [
       { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.1, pAccept: 0.1, pAct: 0.01 },
@@ -477,23 +477,23 @@ describe("ProactiveScheduler.identify", () => {
     ];
 
     const selected = scheduler.identify(opportunities);
-    expect(selected).toBeNull();
+    expect(selected).toEqual([]);
   });
 
-  it("returns null for empty opportunities", () => {
+  it("returns empty array for empty opportunities", () => {
     const scheduler = makeScheduler(config);
-    expect(scheduler.identify([])).toBeNull();
+    expect(scheduler.identify([])).toEqual([]);
   });
 
-  it("returns single opportunity when above threshold", () => {
+  it("returns single-element array when one opportunity above threshold", () => {
     const scheduler = makeScheduler(config);
     const opportunities: Opportunity[] = [
       { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
     ];
 
     const selected = scheduler.identify(opportunities);
-    expect(selected).not.toBeNull();
-    expect(selected!.pAct).toBe(0.64);
+    expect(selected.length).toBe(1);
+    expect(selected[0].pAct).toBe(0.64);
   });
 });
 
@@ -857,7 +857,7 @@ describe("ProactiveScheduler.search — blacklist integration", () => {
 });
 
 describe("ProactiveScheduler — semantic dedup", () => {
-  it("skips insight when targetDomains 100% overlap with recent insight", async () => {
+  it("pre-gen freshness blocks domain-overlapping candidates, exploration passes through", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
     persona.feedbackProfile.lastProactiveAt = 0;
@@ -890,7 +890,9 @@ describe("ProactiveScheduler — semantic dedup", () => {
       timestamp: Date.now(),
     });
 
-    expect(result).toBeUndefined(); // 100% overlap → dedup
+    // Domain-overlapping candidates are blocked by pre-gen freshness check,
+    // but exploration surprise (empty targetDomains) passes through
+    expect(result).toBeDefined();
   });
 
   it("allows insight when domains have no overlap", async () => {
@@ -1059,8 +1061,8 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
-    expect(selected!.pAct).toBeLessThan(0.81);
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].pAct).toBeLessThan(0.81);
   });
 
   it("selects non-overlapping opportunity when dominant one is penalized", () => {
@@ -1074,8 +1076,8 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
-    expect(selected!.targetDomains).toContain("Design");
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].targetDomains).toContain("Design");
   });
 
   it("does not penalize when persona has no recent insights", () => {
@@ -1086,8 +1088,8 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     ];
 
     const selected = scheduler.identify(opportunities);
-    expect(selected).not.toBeNull();
-    expect(selected!.pAct).toBe(0.81);
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].pAct).toBe(0.81);
   });
 
   it("penalizes repeated opportunity type with 0.5 multiplier", () => {
@@ -1101,10 +1103,10 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
+    expect(selected.length).toBeGreaterThanOrEqual(1);
     // domain_depth 0.81 * 0.5 = 0.405, cross_domain 0.49 → cross_domain wins
-    expect(selected!.pAct).toBe(0.49);
-    expect(selected!.type).toBe("cross_domain");
+    expect(selected[0].pAct).toBe(0.49);
+    expect(selected[0].type).toBe("cross_domain");
   });
 });
 
@@ -1221,8 +1223,8 @@ describe("pNeed imbalance fix", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
-    expect(selected!.pAct).toBeCloseTo(originalPAct * 0.6, 5);
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].pAct).toBeCloseTo(originalPAct * 0.6, 5);
   });
 });
 
@@ -1296,7 +1298,7 @@ describe("Domain rotation", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
+    expect(selected.length).toBeGreaterThanOrEqual(1);
     // AI/机器学习 is fatigued → filtered out. Design is non-fatigued.
     // But fallback won't be needed since Design is available.
     // The penalized AI/机器学习 pAct = 0.9 * 0.3^2 = 0.081
@@ -1304,7 +1306,7 @@ describe("Domain rotation", () => {
     // So Design wins
     const aiPenalized = originalPAct * Math.pow(0.3, 2);
     expect(aiPenalized).toBeCloseTo(0.081, 5);
-    expect(selected!.targetDomains).toContain("Design");
+    expect(selected[0].targetDomains).toContain("Design");
   });
 });
 
@@ -1360,8 +1362,8 @@ describe("Push fatigue", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
-    expect(selected!.targetDomains).toContain("Design");
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].targetDomains).toContain("Design");
   });
 
   it("identify falls back to penalized when all domains are fatigued", () => {
@@ -1384,7 +1386,7 @@ describe("Push fatigue", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
+    expect(selected.length).toBeGreaterThanOrEqual(1);
   });
 
   it("pickBestTopic integrates with exploration extend mode", () => {
@@ -1620,8 +1622,8 @@ describe("6-cycle integration test — all fixes together", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
-    expect(selected!.targetDomains).not.toContain("AI/机器学习");
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].targetDomains).not.toContain("AI/机器学习");
   });
 
   it("query diversification produces different queries across cycles", () => {
@@ -1670,29 +1672,16 @@ describe("processEvent — attemptedDomains persistence on dedup kill", () => {
     expect(savedPersona!.feedbackProfile.recentInsightDomains!.length).toBeGreaterThan(0);
   });
 
-  it("saves persona with attemptedDomains when insight killed by domain dedup", async () => {
+  it("saves persona when resolve returns null for all candidates", async () => {
     const persona = personaWithDomains();
-    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
-
+    persona.feedbackProfile.lastProactiveAt = 0;
     let savedPersona: PersonaTree | undefined;
-    const insightThatFailsDedup: InsightCandidate = {
-      id: "test-id",
-      content: "AI和机器学习的最新进展改变了整个行业",
-      rationale: "trend",
-      targetDomains: ["AI/机器学习"],
-      sourceDomains: [],
-      relevanceScore: 0.8,
-      surpriseScore: 0.5,
-      compositeScore: 0.65,
-      sources: [],
-      verificationStatus: "unverified",
-    };
 
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async () => {},
       savePersona: async (_userId, p) => { savedPersona = p; },
-    }, { insightGenerator: async () => [insightThatFailsDedup] });
+    }, { insightGenerator: async () => [] });
 
     const result = await scheduler.processEvent("user1", {
       type: "timer",
@@ -1701,6 +1690,272 @@ describe("processEvent — attemptedDomains persistence on dedup kill", () => {
 
     expect(result).toBeUndefined();
     expect(savedPersona).toBeDefined();
-    expect(savedPersona!.feedbackProfile.recentInsightDomains!.length).toBeGreaterThan(1);
+    expect(savedPersona!.feedbackProfile.recentInsightDomains!.length).toBeGreaterThan(0);
+  });
+});
+
+describe("isTopicStale", () => {
+  it("returns true for domain-overlapping opportunity", () => {
+    const opportunity: Opportunity = {
+      type: "domain_depth",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    expect(isTopicStale(opportunity, [], [["AI/机器学习"]])).toBe(true);
+  });
+
+  it("returns false for fresh opportunity", () => {
+    const opportunity: Opportunity = {
+      type: "domain_depth",
+      targetDomains: ["Design"],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    expect(isTopicStale(opportunity, [], [["AI/机器学习"]])).toBe(false);
+  });
+
+  it("returns false when no recent domains", () => {
+    const opportunity: Opportunity = {
+      type: "domain_depth",
+      targetDomains: ["Design"],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    expect(isTopicStale(opportunity, [], [])).toBe(false);
+  });
+
+  it("returns true when trigram fingerprint overlaps recent content", () => {
+    const opportunity: Opportunity = {
+      type: "domain_depth",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    expect(isTopicStale(opportunity, ["AI/机器学习的最新研究"], [])).toBe(true);
+  });
+});
+
+describe("processEvent — pre-gen freshness fallback", () => {
+  it("tries next candidate when first is stale", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
+    persona.feedbackProfile.lastProactiveAt = 0;
+
+    const fakeInsight: InsightCandidate = {
+      id: "fresh-insight",
+      content: "Design领域的全新洞察",
+      rationale: "test",
+      targetDomains: ["Design"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    let generateCallCount = 0;
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    }, {
+      insightGenerator: async () => {
+        generateCallCount++;
+        return [fakeInsight];
+      },
+    });
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeDefined();
+    expect(result!.targetDomains).toContain("Design");
+    expect(generateCallCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("skips stale candidates and falls through to exploration", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"], ["Rust"], ["Design"],
+      ["AI/机器学习"], ["Rust"], ["Design"],
+    ];
+    persona.feedbackProfile.lastProactiveAt = 0;
+
+    const fakeInsight: InsightCandidate = {
+      id: "exploration-insight",
+      content: "Exploration insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    }, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    // 10h past epoch: passes gate (sigmoid high enough) + 36000000 % 10 = 0 → surprise mode
+    const ts = 10 * 60 * 60 * 1000;
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: ts,
+    });
+
+    // Exploration surprise candidates have empty targetDomains → pass freshness check
+    expect(result).toBeDefined();
+  });
+});
+
+describe("resolve — quality retry", () => {
+  it("picks best candidate across 3 attempts", async () => {
+    const persona = personaWithDomains();
+    let callCount = 0;
+
+    const lowInsight: InsightCandidate = {
+      id: "low",
+      content: "Low quality",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.3,
+      surpriseScore: 0.2,
+      compositeScore: 0.25,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+    const highInsight: InsightCandidate = {
+      id: "high",
+      content: "High quality insight with sources",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.9,
+      surpriseScore: 0.8,
+      compositeScore: 0.85,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => {
+        callCount++;
+        if (callCount === 1) return [lowInsight];
+        return [highInsight];
+      },
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("high");
+    expect(callCount).toBe(3);
+  });
+
+  it("returns null when all 3 attempts produce nothing", async () => {
+    const persona = personaWithDomains();
+    let callCount = 0;
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => {
+        callCount++;
+        return [];
+      },
+    });
+
+    const opportunity: Opportunity = {
+      type: "domain_depth",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).toBeNull();
+    expect(callCount).toBe(3);
+  });
+
+  it("picks highest scoring candidate from mixed results", async () => {
+    const persona = personaWithDomains();
+    let callCount = 0;
+
+    const mediumInsight: InsightCandidate = {
+      id: "medium",
+      content: "Medium quality",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.6,
+      surpriseScore: 0.4,
+      compositeScore: 0.5,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+    const bestInsight: InsightCandidate = {
+      id: "best",
+      content: "Best quality",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.95,
+      surpriseScore: 0.9,
+      compositeScore: 0.93,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => {
+        callCount++;
+        if (callCount <= 2) return [mediumInsight];
+        return [bestInsight];
+      },
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("best");
   });
 });
