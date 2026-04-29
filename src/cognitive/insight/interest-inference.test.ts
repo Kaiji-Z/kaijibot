@@ -322,6 +322,35 @@ describe("inferSearchStrategy", () => {
     }
   });
 
+  it("includes recency instruction in prompt for surprise mode", () => {
+    const persona = makePersona();
+    const input: InsightEngineInput = {
+      targetDomains: ["typescript"],
+      recentFocus: [],
+      trustScore: 0.8,
+      recentInsightIds: [],
+      recentInsightContents: [],
+      recentQueryHistory: [],
+    };
+    const prompt = buildInterestInferencePrompt(persona, input, "surprise");
+    expect(prompt).toContain("recent developments");
+    expect(prompt).toContain("current year");
+  });
+
+  it("includes recency instruction in prompt for extend mode", () => {
+    const persona = makePersona();
+    const input: InsightEngineInput = {
+      targetDomains: ["typescript"],
+      recentFocus: [],
+      trustScore: 0.8,
+      recentInsightIds: [],
+      recentInsightContents: [],
+      recentQueryHistory: [],
+    };
+    const prompt = buildInterestInferencePrompt(persona, input, "extend");
+    expect(prompt).toContain("current year");
+  });
+
   it("returns ok:false on missing required fields in response", async () => {
     const incompleteJSON = JSON.stringify({
       inferredInterest: "something",

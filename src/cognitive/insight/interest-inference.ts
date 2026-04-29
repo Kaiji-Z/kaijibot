@@ -163,11 +163,13 @@ export function buildInterestInferencePrompt(
   const modeConstraints = isExtend
     ? `- The searchQuery must be 2-6 English keywords targeting practical applications or recent developments in the user's most active domain
 - The estimatedSurprise should be moderate (0.3–0.6) since this is for extending known domains
-- Prefer queries that surface actionable content: tools, case studies, benchmarks, or how-to guides`
+- Prefer queries that surface actionable content: tools, case studies, benchmarks, or how-to guides
+- Include the current year in the searchQuery to prioritize recent content`
     : `- The searchQuery must be 2-6 English keywords suitable for a web search API
 - The estimatedSurprise must be between 0.6 and 1.0 (this is for surprise-mode insights only)
 - Do NOT suggest topics the user is already an expert in
-- Prefer cross-domain bridges that connect two areas the user knows about in an unexpected way`;
+- Prefer cross-domain bridges that connect two areas the user knows about in an unexpected way
+- Include the current year in the searchQuery to surface cutting-edge developments`;
 
   return `You are an expert at identifying latent interests and knowledge gaps from a user's knowledge profile.
 
@@ -192,6 +194,7 @@ ${taskInstruction}
 Constraints:
 ${modeConstraints}
 - avoidTopics should contain the user's most-discussed domains to avoid re-treading: ${topDiscussed.join(", ")}
+- Prefer topics with recent developments (2024-2026). The searchQuery should target current trends, new tools, recent research, or emerging techniques — not general knowledge or introductory content.
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 {
