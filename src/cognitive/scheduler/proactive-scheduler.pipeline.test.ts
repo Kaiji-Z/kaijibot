@@ -228,12 +228,12 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     ];
 
     const selected = schedulerC2.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
+    expect(selected.length).toBeGreaterThanOrEqual(1);
 
     // c1Domain appears once in recentInsightDomains → overlapCount=1 → 0.3^1 = 0.3
     // penalized pAct = 0.81 * 0.3 = 0.243 < 0.25 (网络安全) → 网络安全 wins
-    expect(selected!.pAct).toBeLessThan(0.81);
-    expect(selected!.targetDomains).toContain("网络安全");
+    expect(selected[0].pAct).toBeLessThan(0.81);
+    expect(selected[0].targetDomains).toContain("网络安全");
   });
 
   // ── Test 3 ───────────────────────────────────────────────────────────
@@ -277,7 +277,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     ];
 
     const selected = scheduler.identify(opportunities, persona);
-    expect(selected).not.toBeNull();
+    expect(selected.length).toBeGreaterThanOrEqual(1);
 
     // cross_domain has last two types matching → 0.6x penalty
     // penalized cross_domain pAct = 0.56 * 0.6 = 0.336
@@ -285,7 +285,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     // exploration pAct = 0.40
     // domain_depth should win (0.42 > 0.40 > 0.336)
     // The cross_domain type should NOT be selected
-    expect(selected!.type).not.toBe("cross_domain");
+    expect(selected[0].type).not.toBe("cross_domain");
   });
 
   // ── Test 4 ───────────────────────────────────────────────────────────

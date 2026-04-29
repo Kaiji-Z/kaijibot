@@ -475,10 +475,10 @@ describe
 
         // search → identify (bypass gate)
         const opportunities = scheduler.search(persona, event);
-        const selected = scheduler.identify(opportunities, persona);
+        const selectedPool = scheduler.identify(opportunities, persona);
 
-        if (!selected) {
-          console.log(`  [Round ${round + 1}] identify returned null (${opportunities.length} opportunities)`);
+        if (selectedPool.length === 0) {
+          console.log(`  [Round ${round + 1}] identify returned empty (${opportunities.length} opportunities)`);
           results.push({
             round: round + 1,
             opportunityTypes: opportunities.map((o) => o.type),
@@ -488,6 +488,7 @@ describe
           continue;
         }
 
+        const selected = selectedPool[0]!;
         console.log(
           `  [Round ${round + 1}] identify → ${selected.type} | domains: ${selected.targetDomains.join(",")} | pAct: ${selected.pAct.toFixed(3)}`,
         );
