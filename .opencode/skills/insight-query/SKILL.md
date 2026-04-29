@@ -41,6 +41,26 @@ Three data sources, queried in order:
 
 ## Query Procedure
 
+### Step 0: Pipeline overview with cognitive-watch (MANDATORY)
+
+Run the cognitive-watch script FIRST to get a visual pipeline overview. This provides the full picture before diving into details.
+
+```bash
+# Replay specific date range (pipe the relevant log file(s))
+python3 -u ~/.kaijibot/scripts/cognitive-watch.py < /tmp/kaijibot/kaijibot-YYYY-MM-DD.log
+
+# For cross-midnight analysis, concatenate both files
+cat /tmp/kaijibot/kaijibot-2026-04-28.log /tmp/kaijibot/kaijibot-2026-04-29.log | \
+  python3 -u ~/.kaijibot/scripts/cognitive-watch.py
+```
+
+Use the output to:
+- Identify which pipeline cycles produced insights vs were vetoed
+- Spot patterns (all v1, v2 starvation, repeated domains)
+- Get exact timestamps for deeper investigation in Steps 1-8
+
+### Steps 1-8: Detailed analysis
+
 Execute these steps in sequence. Adapt date ranges and grep patterns as needed.
 
 ### Step 1: Read persona data
@@ -71,57 +91,76 @@ Report:
 
 ### Step 2: Find insight generation traces in logs
 
-Find all successful insight generations for a given date range:
+Find all successful insight generations for a given date range. The script checks ALL available log files to handle cross-midnight sessions.
 
 ```bash
 LOG_DIR="/tmp/kaijibot"
-# Adjust date as needed. For today:
-TODAY=$(date +%Y-%m-%d)
-YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)
 
-# Find "insight generated" entries (successful output)
-for LOG_FILE in "$LOG_DIR"/kaijibot-${TODAY}.log "$LOG_DIR"/kaijibot-${YESTERDAY}.log; do
+# Adapt the date range to the user's request. Examples:
+# - "yesterday": TODAY and YESTERDAY
+# - "April 28 18:00 onwards": just kaijibot-2026-04-28.log and kaijibot-2026-04-29.log
+# - "last 3 days": loop over 3 dates
+START_DATE="2026-04-28"  # ← adapt per request
+END_DATE="2026-04-29"    # ← adapt per request
+
+for LOG_FILE in "$LOG_DIR"/kaijibot-${START_DATE}.log "$LOG_DIR"/kaijibot-${END_DATE}.log; do
   [ -f "$LOG_FILE" ] || continue
   echo "=== $(basename "$LOG_FILE") ==="
-  grep '"insight generated"' "$LOG_FILE" | jq -c 'select(."1".contentPreview != null) | {time: .time, contentPreview: ."1".contentPreview, insightId: ."1".insightId, sourceCount: ."1".sourceCount, hasWebSources: ."1".hasWebSources, targetDomains: ."1".targetDomains}' 2>/dev/null
+  grep '"insight generated"' "$LOG_FILE" | jq -c 'select(."1".contentPreview != null) | {time: .time, contentPreview: ."1".contentPreview, insightId: ."1".insightId, sourceCount: ."1".sourceCount, hasWebSources: ."1".hasWebSources, targetDomains: ."1".targetDomains, source: ."1".source}' 2>/dev/null
 done
 ```
 
 ### Step 3: Trace full pipeline for each insight
 
-For each insight found in Step 2, extract the complete pipeline trace by searching for log entries within ±60 seconds of the insight timestamp:
+Auto-trace the complete pipeline for each insight found in Step 2. Handles cross-midnight log rotation by searching ALL available log files (gateway sessions spanning midnight split events across files).
 
 ```bash
-# Extract the timestamp from an insight entry, then search nearby
-TARGET_TIME="2026-04-18T02:20"  # adjust per insight
-LOG_FILE="/tmp/kaijibot/kaijibot-2026-04-18.log"
+LOG_DIR="/tmp/kaijibot"
+# Collect ALL log files that might contain relevant events
+LOG_FILES=()
+for f in "$LOG_DIR"/kaijibot-*.log; do [ -f "$f" ] && LOG_FILES+=("$f"); done
 
-# Full pipeline trace: gate → search → identify → web search → LLM → insight generated
-grep -E "(gate |search |identify |insight generated|web search|domain matching|gate vetoed|crystallized|quality gate|dual pipeline|merged)" "$LOG_FILE" | \
-  grep -A0 -B0 "cognitive/" | \
-  awk -v target="$TARGET_TIME" '{
-    # Filter for entries within ~2 minutes of target
-    if ($0 ~ target) print
-  }' | \
-  jq -c '{time: .time, subsystem: ."0", message: ."2", meta: ."1"}' 2>/dev/null
+# Pipeline keywords to trace
+PIPELINE_KW="gate passed|gate vetoed|search found opportunities|identify selected|identify selected nothing|insight generated|web search completed|surprise-mode web search completed|web search domain matching|web search cache hit|trigram dedup filtered|crystallized|quality gate assessed|dual pipeline: merged|force-aligned|fragments extracted|fragment clusters|processEvent done"
+
+# For each insight from Step 2, extract its timestamp HH:MM prefix and trace nearby events
+# Replace INSIGHT_TIMES with actual timestamps from Step 2 output (just the HH:MM part)
+INSIGHT_TIMES=("18:57" "20:46" "22:33")  # ← adapt from Step 2 results
+
+for LOG_FILE in "${LOG_FILES[@]}"; do
+  echo "=== $(basename "$LOG_FILE") ==="
+  for T in "${INSIGHT_TIMES[@]}"; do
+    echo "--- Pipeline near $T ---"
+    grep -E "($PIPELINE_KW)" "$LOG_FILE" | grep "cognitive/" | grep "$T" | \
+      jq -c '{time: .time, subsystem: ."0", message: ."2", meta: ."1"}' 2>/dev/null
+  done
+done
 ```
+
+**Important**: Gateway sessions spanning midnight split pipeline events across two daily log files. Always search ALL log files, not just the one matching the insight's date. For example, a 2026-04-29T00:15 insight may have its gate/search in `kaijibot-2026-04-28.log` but web search/merge in `kaijibot-2026-04-29.log`.
 
 ### Step 4: Check web search invocations
 
-Web search logs are under subsystem `"cognitive/insight-llm"`:
+Web search logs are under subsystem `"cognitive/insight-llm"`. Search ALL log files (cross-midnight awareness):
 
 ```bash
-grep "cognitive/insight-llm" "$LOG_FILE" | \
-  jq -c '{time: .time, message: ."2", meta: ."1"}' 2>/dev/null
+LOG_DIR="/tmp/kaijibot"
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  grep "cognitive/insight-llm" "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", meta: ."1"}' 2>/dev/null
+done
 ```
 
 Key messages to look for:
 - `"extend-mode LLM query generated"` — `{query}` — the search query derived from interest inference
+- `"surprise-mode web search completed"` — `{query, resultCount}` — web search in surprise/exploration mode
 - `"web search completed"` — `{query, resultCount}`
 - `"web search failed"` — `{query, error}`
 - `"web search skipped"` — reason: empty query or no dep
 - `"web search cache hit"` — `{query}` — cached result reused (identical query)
 - `"web search domain matching"` — `{totalResults, matchedDomains, unmatchedSnippets}`
+- `"force-aligned LLM output domains to input targetDomains"` — domain constraint fix activated (LLM domains → forced to input domains)
 - `"LLM generated N insight candidate(s)"`
 - `"LLM returned empty response"` / `"LLM response could not be parsed"`
 - `"trigram dedup filtered candidates"` — `{before, after}` — near-duplicate filtered by trigram similarity
@@ -131,27 +170,34 @@ Key messages to look for:
 Check fragment collection and clustering status — critical for diagnosing v2 pipeline starvation:
 
 ```bash
-# Fragment collection success (from conversation turns)
-grep '"fragments extracted"' "$LOG_FILE" | \
-  jq -c '{time: .time, count: ."1".count, kinds: ."1".kinds}' 2>/dev/null
+LOG_DIR="/tmp/kaijibot"
 
-# Fragment store: dedup vs new inserts
-grep -E '"fragment (dedup hit|added)"' "$LOG_FILE" | \
-  jq -c '{time: .time, message: ."2", tag: ."1".structuralTag, strength: ."1".strength}' 2>/dev/null
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
 
-# Fragment maintenance: expiry and decay
-grep '"fragment maintenance"' "$LOG_FILE" | \
-  jq -c '{time: .time, before: ."1".before, after: ."1".after, removed: ."1".removed}' 2>/dev/null
+  # Fragment collection success (from conversation turns)
+  grep '"fragments extracted"' "$LOG_FILE" | \
+    jq -c '{time: .time, count: ."1".count, kinds: ."1".kinds}' 2>/dev/null
 
-# Cluster formation (needed for crystallization)
-grep '"fragment clusters"' "$LOG_FILE" | \
-  jq -c '{time: .time, clusterCount: ."1".clusterCount, sizes: ."1".sizes}' 2>/dev/null
+  # Fragment store: dedup vs new inserts
+  grep -E '"fragment (dedup hit|added)"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", tag: ."1".structuralTag, strength: ."1".strength}' 2>/dev/null
+
+  # Fragment maintenance: expiry and decay
+  grep '"fragment maintenance"' "$LOG_FILE" | \
+    jq -c '{time: .time, before: ."1".before, after: ."1".after, removed: ."1".removed}' 2>/dev/null
+
+  # Cluster formation (needed for crystallization)
+  grep '"fragment clusters"' "$LOG_FILE" | \
+    jq -c '{time: .time, clusterCount: ."1".clusterCount, sizes: ."1".sizes}' 2>/dev/null
+done
 
 # Current fragment state on disk (direct read, no log dependency)
 FRAG_FILE=$(ls -t ~/.kaijibot/cognitive/fragments/*.json 2>/dev/null | head -1)
 if [ -n "$FRAG_FILE" ]; then
   echo "Fragment file: $FRAG_FILE"
-  jq '{total: length, byKind: (group_by(.kind) | map({kind: .[0].kind, count: length})), avgStrength: (map(.strength) | add / length), domains: ([.[].domains[]] | unique)}' "$FRAG_FILE"
+  jq '{total: (.fragments | length), byKind: (.fragments | group_by(.kind) | map({kind: .[0].kind, count: length})), avgStrength: ((.fragments | map(.strength) | add) / (.fragments | length)), domains: ([.fragments[].domains[]] | unique), byTag: (.fragments | group_by(.structuralTag) | map({tag: .[0].structuralTag, count: length})), strengthRange: {min: (.fragments | map(.strength) | min), max: (.fragments | map(.strength) | max)}}' "$FRAG_FILE"
 fi
 ```
 
@@ -166,13 +212,20 @@ Key diagnostics:
 Check opportunity type distribution and diversity penalty activity:
 
 ```bash
-# Search: per-type opportunity counts
-grep '"search found opportunities"' "$LOG_FILE" | \
-  jq -c '{time: .time, count: ."1".count, byType: ."1".byType}' 2>/dev/null
+LOG_DIR="/tmp/kaijibot"
 
-# Identify: selected type + recent history (shows if diversity penalty was active)
-grep '"identify selected"' "$LOG_FILE" | \
-  jq -c '{time: .time, type: ."1".type, pAct: ."1".pAct, recentTypes: ."1".recentTypes}' 2>/dev/null
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
+
+  # Search: per-type opportunity counts
+  grep '"search found opportunities"' "$LOG_FILE" | \
+    jq -c '{time: .time, count: ."1".count, byType: ."1".byType}' 2>/dev/null
+
+  # Identify: selected type + recent history (shows if diversity penalty was active)
+  grep '"identify selected"' "$LOG_FILE" | \
+    jq -c '{time: .time, type: ."1".type, pAct: ."1".pAct, recentTypes: ."1".recentTypes}' 2>/dev/null
+done
 ```
 
 Key patterns:
@@ -185,8 +238,14 @@ Key patterns:
 Check why v2 insights get parked or discarded:
 
 ```bash
-grep '"quality gate assessed"' "$LOG_FILE" | \
-  jq -c '{time: .time, verdict: ."1".verdict, composite: ."1".composite, structuralNovelty: ."1".structuralNovelty, actionability: ."1".actionability, emotionalReadiness: ."1".emotionalReadiness, nonObviousness: ."1".nonObviousness, blindSpot: ."1".blindSpot}' 2>/dev/null
+LOG_DIR="/tmp/kaijibot"
+
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
+  grep '"quality gate assessed"' "$LOG_FILE" | \
+    jq -c '{time: .time, verdict: ."1".verdict, composite: ."1".composite, structuralNovelty: ."1".structuralNovelty, actionability: ."1".actionability, emotionalReadiness: ."1".emotionalReadiness, nonObviousness: ."1".nonObviousness, blindSpot: ."1".blindSpot}' 2>/dev/null
+done
 ```
 
 Key diagnostics:
@@ -195,17 +254,24 @@ Key diagnostics:
 - **`verdict: "park"` (composite 0.60-0.74)** → close to delivering, could be rescued with lower threshold
 - **`verdict: "discard"` (composite < 0.60)** → blind spot too weak or user not ready
 
-### Step 8: Gate statistics (optional)
+### Step 8: Gate statistics
 
-Summary of gate decisions for a day:
+Summary of gate decisions across all log files:
 
 ```bash
-echo "Gate passed: $(grep -c '"gate passed"' "$LOG_FILE")"
-echo "Gate vetoed: $(grep -c '"gate vetoed"' "$LOG_FILE")"
-echo "Insights generated: $(grep '"insight generated"' "$LOG_FILE" | grep -c 'contentPreview')"
-echo "No insight: $(grep -c '"identify selected nothing"' "$LOG_FILE")"
-echo "Trigram dedup filtered: $(grep -c '"trigram dedup filtered"' "$LOG_FILE")"
-echo "Web search cache hits: $(grep -c '"web search cache hit"' "$LOG_FILE")"
+LOG_DIR="/tmp/kaijibot"
+
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
+  echo "Gate passed: $(grep -c '"gate passed"' "$LOG_FILE")"
+  echo "Gate vetoed: $(grep -c '"gate vetoed"' "$LOG_FILE")"
+  echo "Insights generated: $(grep '"insight generated"' "$LOG_FILE" | grep -c 'contentPreview')"
+  echo "No insight: $(grep -c '"identify selected nothing"' "$LOG_FILE")"
+  echo "Trigram dedup filtered: $(grep -c '"trigram dedup filtered"' "$LOG_FILE")"
+  echo "Web search cache hits: $(grep -c '"web search cache hit"' "$LOG_FILE")"
+  echo "Force-alignments: $(grep -c '"force-aligned"' "$LOG_FILE")"
+done
 ```
 
 ## Report Format
@@ -214,6 +280,9 @@ Structure the report as:
 
 ```
 ## 洞察报告 — [date range]
+
+### Pipeline 全景 (from cognitive-watch)
+[Brief summary from Step 0: total cycles, insight/veto counts, notable patterns visible in the visualization]
 
 ### 概况
 - 总洞察数: N
