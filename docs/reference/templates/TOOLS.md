@@ -42,7 +42,7 @@ read_when:
 - Gateway 端口: 18789
 - 配置文件: 通过 `kaijibot config path` 查看实际路径（默认 `~/.kaijibot/kaijibot.json`）
 - Workspace: 通过 `kaijibot status` 查看实际路径（默认 `~/.kaijibot/workspace/`）
-- Session 数据: `<workspace>/agents/<agentId>/qmd/sessions/*.md`
+- Session 数据: `~/.kaijibot/agents/<agentId>/sessions/*.jsonl`
 
 ## 操作习惯
 
