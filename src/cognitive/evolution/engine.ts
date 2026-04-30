@@ -36,6 +36,7 @@ export class EvolutionEngine {
   async evaluate(
     candidate: EvolutionCandidate,
     userId: string,
+    options?: { skipCooldown?: boolean },
   ): Promise<EvolutionDecision> {
     const config = await this.effectiveConfig();
 
@@ -86,7 +87,7 @@ export class EvolutionEngine {
 
     const recentInCooldown =
       await this.store.getRecentSuggestions(userId, config.cooldownHours);
-    if (recentInCooldown.length > 0) {
+    if (!options?.skipCooldown && recentInCooldown.length > 0) {
       return {
         shouldSuggest: false,
         confidence: 0,
@@ -98,7 +99,7 @@ export class EvolutionEngine {
     }
 
     const recentToday = await this.store.getRecentSuggestions(userId, 24);
-    if (recentToday.length >= config.maxSuggestionsPerDay) {
+    if (!options?.skipCooldown && recentToday.length >= config.maxSuggestionsPerDay) {
       return {
         shouldSuggest: false,
         confidence: 0,
