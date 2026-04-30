@@ -3,7 +3,7 @@ import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 
 describe("EvolutionConfig defaults", () => {
   it("has sensible default values", () => {
-    expect(DEFAULT_EVOLUTION_CONFIG.minComplexity).toBe(0.6);
+    expect(DEFAULT_EVOLUTION_CONFIG.minComplexity).toBe(0.4);
     expect(DEFAULT_EVOLUTION_CONFIG.errorComplexityThreshold).toBe(0.3);
     expect(DEFAULT_EVOLUTION_CONFIG.cooldownHours).toBe(24);
     expect(DEFAULT_EVOLUTION_CONFIG.maxSuggestionsPerDay).toBe(3);

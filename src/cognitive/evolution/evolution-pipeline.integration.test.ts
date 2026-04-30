@@ -867,7 +867,7 @@ describe("Pipeline: config persistence", () => {
 
   it("returns defaults when no config file exists", async () => {
     const config = await store.loadConfig();
-    expect(config.minComplexity).toBe(0.6);
+    expect(config.minComplexity).toBe(0.4);
     expect(config.enabled).toBe(true);
   });
 });

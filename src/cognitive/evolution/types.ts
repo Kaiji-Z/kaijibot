@@ -135,7 +135,7 @@ export type ComplexityResult = {
 
 /** Default evolution configuration. */
 export const DEFAULT_EVOLUTION_CONFIG: EvolutionConfig = {
-  minComplexity: 0.6,
+  minComplexity: 0.4,
   errorComplexityThreshold: 0.3,
   cooldownHours: 24,
   maxSuggestionsPerDay: 3,
