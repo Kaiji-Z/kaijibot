@@ -1,8 +1,8 @@
 import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi-ai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, buildInsightPrompt, buildSurpriseInsightPrompt, extractKeyTerms, buildSearchQuery, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
+import { generateInsightCandidatesLLM, buildInsightPrompt, buildSurpriseInsightPrompt, extractKeyTerms, buildSearchQuery, matchWebResultsToDomainsLLM, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput, SearchStrategy } from "./types.js";
 import type { InterestInferenceDeps } from "./interest-inference.js";
 
@@ -1476,5 +1476,48 @@ describe("buildInsightPrompt — targetDomains in keyword map", () => {
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("零日漏洞防护方案");
+  });
+});
+
+describe("matchWebResultsToDomainsLLM", () => {
+  it("classifies web results to domains via LLM", async () => {
+    const webResults: WebSearchResult[] = [
+      { title: "Rust ownership model explained", url: "https://example.com/1", snippet: "Understanding how Rust's borrow checker ensures memory safety" },
+      { title: "TypeScript 5.0 features", url: "https://example.com/2", snippet: "New type system features in TypeScript" },
+    ];
+    const mockComplete = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: '{"1": ["rust"], "2": ["typescript"]}' }],
+    });
+    const deps: LlmInsightDeps = {
+      complete: mockComplete,
+      prepareModel: vi.fn().mockResolvedValue({ model: TEST_MODEL, auth: TEST_AUTH }),
+    };
+    const result = await matchWebResultsToDomainsLLM(webResults, makePersona(), {} as KaijiBotConfig, deps);
+    expect(result.has("rust")).toBe(true);
+    expect(result.has("typescript")).toBe(true);
+  });
+
+  it("falls back to keyword matching on LLM failure", async () => {
+    const webResults: WebSearchResult[] = [
+      { title: "TypeScript tricks", url: "https://example.com/1", snippet: "Advanced TypeScript patterns" },
+    ];
+    const mockComplete = vi.fn().mockRejectedValue(new Error("LLM unavailable"));
+    const deps: LlmInsightDeps = {
+      complete: mockComplete,
+      prepareModel: vi.fn().mockResolvedValue({ model: TEST_MODEL, auth: TEST_AUTH }),
+    };
+    const result = await matchWebResultsToDomainsLLM(webResults, makePersona(), {} as KaijiBotConfig, deps);
+    expect(result).toBeDefined();
+    expect(result instanceof Map).toBe(true);
+  });
+
+  it("returns empty Map when no web results provided", async () => {
+    const deps: LlmInsightDeps = {
+      complete: vi.fn(),
+      prepareModel: vi.fn().mockResolvedValue({ model: TEST_MODEL, auth: TEST_AUTH }),
+    };
+    const result = await matchWebResultsToDomainsLLM([], makePersona(), {} as KaijiBotConfig, deps);
+    expect(result.size).toBe(0);
+    expect(deps.complete).not.toHaveBeenCalled();
   });
 });

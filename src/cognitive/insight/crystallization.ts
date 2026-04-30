@@ -223,7 +223,7 @@ async function synthesizeBlindSpot(
     );
 
     const fragmentSummaries = fragments
-      .slice(0, 6)
+      .slice(0, 10)
       .map(
         (f) =>
           `[${f.kind}] "${f.evidence}" (domains: ${f.domains.join(", ")}, strength: ${f.strength.toFixed(2)})`,

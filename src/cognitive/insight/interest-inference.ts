@@ -95,7 +95,7 @@ export function buildInterestInferencePrompt(
 
   const knownKnowledge = domainEntries.length > 0
     ? domainEntries
-        .slice(0, 10)
+        .slice(0, 20)
         .map(([name, d]) => {
           const insights = d.keyInsights.slice(0, 3).join("; ");
           return `- ${name} (depth: ${d.depth})${insights ? ` — ${insights}` : ""}`;

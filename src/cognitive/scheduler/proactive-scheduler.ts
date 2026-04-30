@@ -187,7 +187,10 @@ export class ProactiveScheduler {
         {
           targetDomains: opportunity.targetDomains.length > 0
             ? opportunity.targetDomains
-            : Object.keys(persona.domains),
+            : Object.entries(persona.domains)
+                .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+                .slice(0, 3)
+                .map(([name]) => name),
           recentFocus: persona.recentFocus,
           trustScore: persona.rapport.trustScore,
           recentInsightIds,
@@ -535,7 +538,7 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
     .map(([domainName, domain]) => {
       const daysSinceMention = (now - domain.lastMentioned) / (24 * 60 * 60 * 1000);
       const recencyBoost = Math.max(0, 1 - daysSinceMention / 7);
-      const pNeed = Math.min(0.55, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
+      const pNeed = Math.min(0.40, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
 
       return {
         type: "domain_depth" as const,

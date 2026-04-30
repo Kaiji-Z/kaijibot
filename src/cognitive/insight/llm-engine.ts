@@ -153,9 +153,23 @@ export async function generateInsightCandidatesLLM(
   }
 
   const outputLanguage = config.cognitive?.insight?.outputLanguage ?? detectOutputLanguage(persona);
+
+  let webSnippetByDomain: Map<string, string[]> | undefined;
+  if (webResults.length > 0) {
+    try {
+      webSnippetByDomain = await matchWebResultsToDomainsLLM(webResults, persona, config, deps, input.targetDomains);
+      log.info("LLM domain matching completed", {
+        matchedDomains: [...webSnippetByDomain.keys()],
+        totalResults: webResults.length,
+      });
+    } catch (err) {
+      log.warn("LLM domain matching error, will use keyword fallback in prompt builder", { error: String(err) });
+    }
+  }
+
   const prompt = mode === "surprise" && searchStrategy
-    ? buildSurpriseInsightPrompt(persona, input, webResults, input.recentInsightContents, searchStrategy, outputLanguage)
-    : buildInsightPrompt(persona, input, webResults, input.recentInsightContents);
+    ? buildSurpriseInsightPrompt(persona, input, webResults, input.recentInsightContents, searchStrategy, outputLanguage, webSnippetByDomain)
+    : buildInsightPrompt(persona, input, webResults, input.recentInsightContents, webSnippetByDomain);
 
   try {
     const modelRef =
@@ -420,9 +434,12 @@ export function buildSurpriseInsightPrompt(
   recentInsightContents: string[] = [],
   strategy: import("./types.js").SearchStrategy,
   outputLanguage: string = "zh",
+  webSnippetByDomain?: Map<string, string[]>,
 ): string {
-  const keywordMap = buildDomainKeywordMap(persona.domains);
-  const webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
+  const resolvedWebSnippetByDomain = webSnippetByDomain ?? (() => {
+    const keywordMap = buildDomainKeywordMap(persona.domains);
+    return matchWebResultsToDomains(webResults, keywordMap);
+  })();
 
   const sortedDomainEntries = Object.entries(persona.domains)
     .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
@@ -434,7 +451,7 @@ export function buildSurpriseInsightPrompt(
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
     : "  (not yet established)";
 
-  const externalFacts = buildExternalFactsEntries(webSnippetByDomain);
+  const externalFacts = buildExternalFactsEntries(resolvedWebSnippetByDomain);
   const externalFactsBlock = externalFacts.length > 0
     ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
     : "";
@@ -696,30 +713,163 @@ function matchWebResultsToDomains(
   return result;
 }
 
+/**
+ * LLM-based domain matching for web search results.
+ *
+ * Sends web result snippets to the LLM with the user's domain list and
+ * asks it to classify each result into the most relevant domain(s).
+ * Falls back to keyword/bigram matching (`matchWebResultsToDomains`) on
+ * any failure (LLM error, JSON parse error, timeout, model prep failure).
+ */
+export async function matchWebResultsToDomainsLLM(
+  webResults: WebSearchResult[],
+  persona: PersonaTree,
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  extraTargetDomains: string[] = [],
+): Promise<Map<string, string[]>> {
+  if (webResults.length === 0) return new Map();
+
+  const domainEntries: Array<{ name: string; hints: string[] }> = [];
+  const seen = new Set<string>();
+  for (const [name, domain] of Object.entries(persona.domains)) {
+    if (!seen.has(name)) {
+      seen.add(name);
+      domainEntries.push({
+        name,
+        hints: domain.keyInsights.slice(0, 2),
+      });
+    }
+  }
+  for (const td of extraTargetDomains) {
+    if (!seen.has(td)) {
+      seen.add(td);
+      domainEntries.push({ name: td, hints: [] });
+    }
+  }
+
+  const domainLines = domainEntries
+    .map((d) => {
+      const hint = d.hints.length > 0 ? `: ${d.hints.join(", ")}` : "";
+      return `- ${d.name}${hint}`;
+    })
+    .join("\n");
+
+  const resultLines = webResults
+    .map((r, i) => `${i + 1}. [${r.title}] ${r.snippet}`)
+    .join("\n");
+
+  const prompt = `Classify each web search result into the most relevant user domain(s).
+
+User domains (with known interests):
+${domainLines}
+
+Web results:
+${resultLines}
+
+For each result number, list which domain(s) it relates to. Use JSON format:
+{"1": ["typescript"], "2": ["rust", "wasm"], ...}
+If a result doesn't match any domain, skip it. Respond with ONLY the JSON object.`;
+
+  try {
+    const modelRef = config.cognitive?.persona?.extractionModel;
+    const prepared = await deps.prepareModel(config, modelRef);
+    if ("error" in prepared) {
+      throw new Error(prepared.error);
+    }
+
+    const result = await deps.complete(
+      prepared.model,
+      { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: 500,
+        temperature: 0.2,
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+
+    const text = result.content
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    if (!text) {
+      throw new Error("LLM returned empty response for domain classification");
+    }
+
+    const objStart = text.indexOf("{");
+    const objEnd = text.lastIndexOf("}");
+    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {
+      throw new Error("No JSON object found in LLM domain classification response");
+    }
+
+    const jsonStr = text.slice(objStart, objEnd + 1);
+    const parsed: Record<string, string[]> = JSON.parse(jsonStr);
+
+    const domainMap = new Map<string, string[]>();
+    for (const [idxStr, domains] of Object.entries(parsed)) {
+      const idx = Number(idxStr) - 1;
+      if (idx < 0 || idx >= webResults.length || !Array.isArray(domains)) continue;
+      const snippet = webResults[idx]!.snippet;
+      for (const domain of domains) {
+        if (typeof domain !== "string") continue;
+        const list = domainMap.get(domain) ?? [];
+        list.push(snippet);
+        domainMap.set(domain, list);
+      }
+    }
+
+    return domainMap;
+  } catch (err) {
+    log.warn("LLM domain matching failed, falling back to keyword matching", { error: String(err) });
+    const keywordMap = buildDomainKeywordMap(persona.domains);
+    for (const td of extraTargetDomains) {
+      if (!keywordMap.has(td)) {
+        const keywords = new Set<string>();
+        keywords.add(td.toLowerCase());
+        for (const part of td.split(/[\/\+]/)) {
+          const trimmed = part.trim().toLowerCase();
+          if (trimmed.length >= 2) keywords.add(trimmed);
+        }
+        keywordMap.set(td, keywords);
+      }
+    }
+    return matchWebResultsToDomains(webResults, keywordMap);
+  }
+}
+
 export function buildInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   webResults: WebSearchResult[] = [],
   recentInsightContents: string[] = [],
+  webSnippetByDomain?: Map<string, string[]>,
 ): string {
-  const keywordMap = buildDomainKeywordMap(persona.domains);
-  for (const td of input.targetDomains) {
-    if (!keywordMap.has(td)) {
-      const keywords = new Set<string>();
-      keywords.add(td.toLowerCase());
-      for (const part of td.split(/[\/\+]/)) {
-        const trimmed = part.trim().toLowerCase();
-        if (trimmed.length >= 2) keywords.add(trimmed);
+  let resolvedWebSnippetByDomain: Map<string, string[]>;
+  if (webSnippetByDomain) {
+    resolvedWebSnippetByDomain = webSnippetByDomain;
+  } else {
+    const keywordMap = buildDomainKeywordMap(persona.domains);
+    for (const td of input.targetDomains) {
+      if (!keywordMap.has(td)) {
+        const keywords = new Set<string>();
+        keywords.add(td.toLowerCase());
+        for (const part of td.split(/[\/\+]/)) {
+          const trimmed = part.trim().toLowerCase();
+          if (trimmed.length >= 2) keywords.add(trimmed);
+        }
+        keywordMap.set(td, keywords);
       }
-      keywordMap.set(td, keywords);
     }
+    resolvedWebSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
   }
-  const webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
   if (webResults.length > 0) {
-    const matchedDomains = [...webSnippetByDomain.keys()];
+    const matchedDomains = [...resolvedWebSnippetByDomain.keys()];
     const matchedUrls = new Set<string>();
     for (const result of webResults) {
-      for (const snippets of webSnippetByDomain.values()) {
+      for (const snippets of resolvedWebSnippetByDomain.values()) {
         if (snippets.some(s => s === result.snippet)) {
           matchedUrls.add(result.url);
           break;
@@ -756,7 +906,7 @@ export function buildInsightPrompt(
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
     : "  (not yet established)";
 
-  const externalFacts = buildExternalFactsEntries(webSnippetByDomain);
+  const externalFacts = buildExternalFactsEntries(resolvedWebSnippetByDomain);
   const externalFactsBlock = externalFacts.length > 0
     ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
     : "";

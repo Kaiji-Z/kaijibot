@@ -1150,7 +1150,7 @@ describe("pNeed imbalance fix", () => {
     costFalseAlarm: 1,
   };
 
-  it("scanDomainDepth never exceeds 0.55 pNeed", () => {
+    it("scanDomainDepth never exceeds 0.4 pNeed", () => {
     const persona = deepDomainPersona();
     const scheduler = makeScheduler(config, persona);
 
@@ -1163,13 +1163,13 @@ describe("pNeed imbalance fix", () => {
     expect(domainDepthOpps.length).toBeGreaterThan(0);
 
     for (const opp of domainDepthOpps) {
-      expect(opp.pNeed).toBeLessThanOrEqual(0.55);
+      expect(opp.pNeed).toBeLessThanOrEqual(0.4);
     }
 
-    // With depth=10 and recencyBoost=1: uncapped would be 0.3+0.8+0.2=1.3, now capped at 0.55
+    // With depth=10 and recencyBoost=1: uncapped would be 0.3+0.8+0.2=1.3, now capped at 0.40
     const deepOpp = domainDepthOpps.find((o) => o.targetDomains.includes("AI/机器学习"));
     expect(deepOpp).toBeDefined();
-    expect(deepOpp!.pNeed).toBe(0.55);
+    expect(deepOpp!.pNeed).toBe(0.4);
   });
 
   it("scanCrossDomain can reach 0.85 pNeed with deep domain", () => {
