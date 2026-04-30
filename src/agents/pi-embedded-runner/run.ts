@@ -1575,22 +1575,25 @@ export async function runEmbeddedPiAgent(
             `embedded run done: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - started} aborted=${aborted}`,
           );
 
-          if (!aborted && attempt.toolMetas.length >= 3 && params.sessionKey && params.config) {
-            Promise.resolve().then(async () => {
-              try {
-                const { evaluateHardTrigger } = await import("../../cognitive/evolution/hard-trigger.js");
-                await evaluateHardTrigger({
-                  toolMetas: attempt.toolMetas,
-                  sessionKey: params.sessionKey!,
-                  trigger: params.trigger,
-                  config: params.config!,
-                  senderId: params.senderId,
-                  started,
-                });
-              } catch (err) {
-                log.debug(`evolution hard trigger skipped: ${String(err)}`);
-              }
-            });
+          if (!aborted && params.sessionKey && params.config) {
+            if (attempt.toolMetas.length >= 3) {
+              Promise.resolve().then(async () => {
+                try {
+                  const { evaluateHardTrigger } = await import("../../cognitive/evolution/hard-trigger.js");
+                  await evaluateHardTrigger({
+                    toolMetas: attempt.toolMetas,
+                    sessionKey: params.sessionKey!,
+                    trigger: params.trigger,
+                    config: params.config!,
+                    senderId: params.senderId,
+                    started,
+                    userPrompt: params.prompt,
+                  });
+                } catch (err) {
+                  log.debug(`evolution hard trigger skipped: ${String(err)}`);
+                }
+              });
+            }
           }
           if (lastProfileId) {
             await markAuthProfileGood({
