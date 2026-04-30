@@ -82,12 +82,26 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
   if (!body) return generateSkillDraft(candidate);
 
   const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
-  const descMatch = frontmatter.match(/^description:\s*["']?(.+?)["']?\s*$/m);
+  const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
 
   if (!nameMatch || !descMatch) return generateSkillDraft(candidate);
 
   const name = sanitizeSkillName(nameMatch[1].trim());
-  const description = descMatch[1].trim();
+  const rawDesc = descMatch[1].trim();
+  let description: string;
+  if (rawDesc === ">" || rawDesc === "|") {
+    const afterMarker = frontmatter.slice(descMatch.index! + descMatch[0].length);
+    const lines = afterMarker.split("\n");
+    const folded: string[] = [];
+    for (const line of lines.slice(1)) {
+      if (!line.startsWith(" ") && !line.startsWith("\t") && line.trim() !== "") break;
+      folded.push(line.trim());
+    }
+    description = folded.filter(Boolean).join(" ");
+  } else {
+    description = rawDesc.replace(/^["']|["']$/g, "");
+  }
+  if (!description) return generateSkillDraft(candidate);
 
   const triggerPhrases = extractTriggerPhrases(body);
   if (triggerPhrases.length === 0) return generateSkillDraft(candidate);
