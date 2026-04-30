@@ -50,7 +50,21 @@ export function createEvolutionSuggestTool(deps: {
         const { consumeToolErrorProfile } = await import("../tool-error-summary.js");
 
         const store = new EvolutionStore(resolveConfigDir());
-        const engine = new EvolutionEngine(store);
+
+        let engine: InstanceType<typeof import("../../cognitive/evolution/engine.js").EvolutionEngine>;
+        try {
+          if (deps.config) {
+            const { createStandaloneGenerateText } = await import("../../cognitive/evolution/standalone-generate.js");
+            const { generateSkillDraftLLM } = await import("../../cognitive/evolution/llm-draft-generator.js");
+            const generateText = await createStandaloneGenerateText(deps.config, { maxTokens: 4000, timeout: 60_000 });
+            engine = new EvolutionEngine(store, undefined, undefined, (c) => generateSkillDraftLLM(c, { generateText }));
+          } else {
+            engine = new EvolutionEngine(store);
+          }
+        } catch {
+          // Falls back to deterministic draft generation.
+          engine = new EvolutionEngine(store);
+        }
 
         const userId = resolveUserId(deps.sessionKey, deps.deliveryTo);
         if (!userId) {

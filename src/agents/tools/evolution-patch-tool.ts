@@ -45,6 +45,17 @@ export function createEvolutionPatchTool(deps: {
         const configDir = resolveConfigDir();
         const store = new EvolutionStore(configDir);
         const writer = new SkillPersistenceWriter(configDir);
+
+        let generateText: ((prompt: string) => Promise<string>) | undefined;
+        try {
+          if (deps.config) {
+            const { createStandaloneGenerateText } = await import("../../cognitive/evolution/standalone-generate.js");
+            generateText = await createStandaloneGenerateText(deps.config, { maxTokens: 4000, timeout: 60_000 });
+          }
+        } catch {
+          // Falls back to direct text replacement without LLM.
+        }
+
         const engine = new EvolutionEngine(store);
 
         const result = await engine.patchSkill(
