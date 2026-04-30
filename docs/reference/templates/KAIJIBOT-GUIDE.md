@@ -93,7 +93,7 @@ read_when:
   - `"builtin"` (默认) — 内置文件存储，开箱即用
   - `"qmd"` — 外部 QMD 工具，高性能索引
 - `memory.citations` — `"auto"` | `"on"` | `"off"` — 是否在回复中标注记忆来源
-- 记忆位置: `~/.kaijibot/workspace/memory/` (每日日志) + `MEMORY.md` (长期精华, 4KB 预算)
+- 记忆位置: `<workspace>/memory/` (每日日志) + `MEMORY.md` (长期精华, 4KB 预算)
 - 梦境系统: 默认关闭（`memory.dreaming.enabled: false`）；启用后默认独立存储（不污染每日记忆文件），每天凌晨 3 点执行
 
 ## 插件与技能
