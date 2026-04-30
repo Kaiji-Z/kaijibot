@@ -243,7 +243,6 @@ describe("extractFromMessageLLM", () => {
     expect(capturedPrompt).toContain("Known persona:");
     expect(capturedPrompt).toContain("AI/机器学习");
     expect(capturedPrompt).toContain("transformer architecture");
-    expect(capturedPrompt).toContain("how does attention work?");
   });
 
   it("clamps confidence to 0-1 range", async () => {

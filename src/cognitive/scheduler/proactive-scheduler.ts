@@ -154,7 +154,7 @@ export class ProactiveScheduler {
         for (const domain of opp.targetDomains) {
           const recentCount = domainHistory.filter((d) => d === domain).length;
           if (recentCount >= 3) {
-            adjustedPAct *= 0.3;
+            adjustedPAct *= 0.5;
             break;
           }
         }
@@ -392,7 +392,7 @@ export class ProactiveScheduler {
   }
 }
 
-const DEFAULT_C_FN = 3.0;
+const DEFAULT_C_FN = 4.0;
 const DEFAULT_C_FA = 1.0;
 
 const defaultInsightGenerator: InsightGeneratorFn = (persona, input, options) => {

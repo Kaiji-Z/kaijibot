@@ -971,6 +971,44 @@ describe("parseLLMInsights robust parsing", () => {
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("TypeScript");
   });
+
+  it("handles Chinese curly quotes in content (existing repair)", async () => {
+    const raw = '[{"content":"他说\u201c你好\u201d吗，这个方向值得深入研究","rationale":"test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toContain("他说");
+  });
+
+  it("handles unescaped ASCII inner quotes via aggressive repair", async () => {
+    // Construct the string with raw unescaped quotes inside the content value
+    const raw = '[{"content":"他说"你好"吗，这个方向值得深入研究","rationale":"test rationale","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toContain("他说");
+  });
+
+  it("handles properly escaped quotes (regression)", async () => {
+    const raw = '[{"content":"他说\\\"你好\\\"吗，这个方向值得深入研究","rationale":"test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toContain("他说");
+  });
+
+  it("handles multiple inner ASCII quotes across fields", async () => {
+    const raw = '[{"content":"A说"B"和C说"D"都有道理","rationale":"multi-quote test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const result = await generateInsightCandidatesLLM(
+      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+    );
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result[0]!.content).toContain("A说");
+    expect(result[0]!.content).toContain("C说");
+  });
 });
 
 describe("buildInsightPrompt — compound domain keyword splitting", () => {

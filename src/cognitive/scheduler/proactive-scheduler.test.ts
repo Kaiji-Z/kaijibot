@@ -1278,7 +1278,7 @@ describe("Domain rotation", () => {
     }
   });
 
-  it("identify uses 0.3^n penalty exact value", () => {
+  it("identify uses 0.55^n penalty exact value", () => {
     const lowThreshold: SchedulerConfig = {
       minIntervalHours: 4,
       minTrustScore: 0.3,
@@ -1301,11 +1301,11 @@ describe("Domain rotation", () => {
     expect(selected.length).toBeGreaterThanOrEqual(1);
     // AI/机器学习 is fatigued → filtered out. Design is non-fatigued.
     // But fallback won't be needed since Design is available.
-    // The penalized AI/机器学习 pAct = 0.9 * 0.3^2 = 0.081
+    // The penalized AI/机器学习 pAct = 0.9 * 0.55^2 = 0.27225 (but fatigued → filtered out)
     // Design is not penalized, pAct = 0.25
-    // So Design wins
-    const aiPenalized = originalPAct * Math.pow(0.3, 2);
-    expect(aiPenalized).toBeCloseTo(0.081, 5);
+    // Fatigued domains are removed entirely, so Design wins regardless of penalty
+    const aiPenalized = originalPAct * Math.pow(0.55, 2);
+    expect(aiPenalized).toBeCloseTo(0.27225, 5);
     expect(selected[0].targetDomains).toContain("Design");
   });
 });

@@ -92,7 +92,6 @@ const personaTreeSchema = z.object({
   domains: z.record(z.string(), domainNodeSchema),
   recentFocus: z.array(z.string()),
   activeProjects: z.array(z.string()),
-  pendingQuestions: z.array(z.string()).optional().default([]),
   feedbackProfile: feedbackProfileSchema,
   rapport: rapportMetricsSchema,
   domainBlacklist: z.array(z.string()).optional().default([]),

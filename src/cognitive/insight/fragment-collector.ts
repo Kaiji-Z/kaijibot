@@ -133,7 +133,10 @@ export function buildFragmentPrompt(
   assistantText: string,
   persona: PersonaTree,
 ): string {
-  const domainNames = Object.keys(persona.domains).slice(0, 10);
+  const domainNames = Object.entries(persona.domains)
+    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+    .slice(0, 20)
+    .map(([name]) => name);
   const truncatedUser = userText.length > 500 ? userText.slice(0, 500) + "…" : userText;
   const truncatedAssistant = assistantText.length > 500 ? assistantText.slice(0, 500) + "…" : assistantText;
   const domainContext = domainNames.length > 0 ? domainNames.join(", ") : "(not yet established)";

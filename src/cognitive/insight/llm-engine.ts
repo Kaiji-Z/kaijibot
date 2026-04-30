@@ -507,6 +507,7 @@ Good surprise insight traits (hit at least one):
 CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
 Respond with ONLY a JSON array (no markdown, no code fences):
+IMPORTANT: In the "content" field, escape any inner quotes as \\" or use Chinese curly quotes (""). Do NOT use unescaped ASCII quotes inside string values.
 [
   {
     "content": "Your surprising insight in your own voice",
@@ -866,6 +867,7 @@ ${webResults.length > 0 ? "- 外部信息自然融入内容里，不要说'看�
 CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
 Respond with ONLY a JSON array (no markdown, no code fences):
+重要提示：在 "content" 字段中，请用 \\" 转义内部引号，或使用中文弯引号（""）。不要在字符串值中使用未转义的 ASCII 引号。
 [
   {
     "content": "Your insight in your own voice, in Chinese",
@@ -904,9 +906,15 @@ function parseLLMInsights(
       const repaired = repairJsonArray(jsonStr);
       try {
         parsed = JSON.parse(repaired);
-      } catch (repairErr) {
-        log.warn("parseLLMInsights: JSON repair failed", { error: String(repairErr), raw: jsonStr.slice(0, 200) });
-        return [];
+      } catch {
+        // Tier 3: aggressive ASCII quote repair for unescaped inner quotes
+        const aggressivelyRepaired = aggressiveAsciiQuoteRepair(repaired);
+        try {
+          parsed = JSON.parse(aggressivelyRepaired);
+        } catch (repairErr) {
+          log.warn("parseLLMInsights: JSON repair failed", { error: String(repairErr), raw: jsonStr.slice(0, 200) });
+          return [];
+        }
       }
     }
 
@@ -985,6 +993,84 @@ function repairJsonArray(raw: string): string {
   while (openBraces > 0) { s += "}"; openBraces--; }
   while (openBrackets > 0) { s += "]"; openBrackets--; }
   return s;
+}
+
+/**
+ * Aggressive repair for unescaped ASCII `"` inside JSON string values.
+ * GLM models frequently produce output like:
+ *   [{"content": "他说"你好"吗", ...}]
+ * where the inner `"你好"` breaks JSON.parse.
+ *
+ * Strategy: character-by-character state machine that tracks whether we're
+ * inside a JSON string. When inside a string and encountering an unescaped `"`,
+ * we look ahead to decide if it's a structural quote (end-of-string) or an
+ * inner quote that needs escaping.
+ */
+function aggressiveAsciiQuoteRepair(raw: string): string {
+  let result = "";
+  let i = 0;
+  let inStr = false;
+  let esc = false;
+
+  while (i < raw.length) {
+    const ch = raw[i]!;
+
+    if (esc) {
+      result += ch;
+      esc = false;
+      i++;
+      continue;
+    }
+
+    if (ch === "\\") {
+      result += ch;
+      esc = true;
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      if (!inStr) {
+        inStr = true;
+        result += ch;
+        i++;
+        continue;
+      }
+
+      if (isStructuralQuote(raw, i)) {
+        inStr = false;
+        result += ch;
+      } else {
+        result += '\\"';
+      }
+      i++;
+      continue;
+    }
+    result += ch;
+    i++;
+  }
+
+  return result;
+}
+
+/**
+ * Determine if the `"` at position `pos` in `raw` is a structural quote
+ * (i.e., terminates a JSON string value) rather than an inner quote.
+ *
+ * A `"` is structural if the next non-whitespace character is one of:
+ * `,` `}` `]` `:` — indicating the end of a string value in a JSON structure.
+ * Also structural if we're at end-of-string or end-of-input.
+ */
+function isStructuralQuote(raw: string, pos: number): boolean {
+  // Look ahead past the quote
+  for (let j = pos + 1; j < raw.length; j++) {
+    const next = raw[j]!;
+    if (next === " " || next === "\t" || next === "\n" || next === "\r") continue;
+    // Structural patterns: `,` `}` `]` or `:` (key separator)
+    return next === "," || next === "}" || next === "]" || next === ":";
+  }
+  // End of input — structural (closing string at EOF)
+  return true;
 }
 
 export const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [

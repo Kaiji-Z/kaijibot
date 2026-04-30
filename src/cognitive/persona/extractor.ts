@@ -112,7 +112,6 @@ export function extractFromMessage(
   const attributes: ExtractionResult["attributes"] = [];
   const domains: ExtractionResult["domains"] = [];
   const recentFocus: string[] = [];
-  const pendingQuestions: string[] = [];
 
   const userLower = userMessage.toLowerCase();
   const assistantLower = assistantMessage.toLowerCase();
@@ -259,21 +258,6 @@ export function extractFromMessage(
         source,
         evidence: match[0],
       });
-    }
-  }
-
-  // Detect questions as pending questions
-  const questionMatches = userMessage.match(/[^。！？,.!?;；\n\r]{2,80}[？?]/g);
-  if (questionMatches) {
-    for (const q of questionMatches.slice(0, 3)) {
-      const cleaned = q
-        .replace(/\\n/g, " ")
-        .replace(/\\[\\"]/g, "")
-        .replace(/[#*_~`>|]/g, "")
-        .trim();
-      if (cleaned.length >= 4 && cleaned.length <= 100) {
-        pendingQuestions.push(cleaned);
-      }
     }
   }
 

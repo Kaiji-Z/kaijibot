@@ -213,7 +213,10 @@ async function synthesizeBlindSpot(
   deps: CrystallizationDeps,
 ): Promise<BlindSpotCandidate | null> {
   try {
-    const domainNames = Object.keys(persona.domains).slice(0, 10);
+    const domainNames = Object.entries(persona.domains)
+      .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+      .slice(0, 20)
+      .map(([name]) => name);
     const expertDomains = persona.identity.expertDomains ?? [];
     const unusedDomains = expertDomains.filter(
       (d) => !cluster.domains.includes(d),
