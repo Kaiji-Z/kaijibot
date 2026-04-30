@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { EvolutionCandidate } from "./types.js";
 
-const debug = (...args: unknown[]) => console.log("[hard-trigger]", ...args);
+const log = createSubsystemLogger("cognitive/evolution/hard-trigger");
 
 export type HardTriggerParams = {
   toolMetas: ReadonlyArray<{ toolName?: string; meta?: string }>;
@@ -15,16 +16,16 @@ export type HardTriggerParams = {
 };
 
 export async function evaluateHardTrigger(params: HardTriggerParams): Promise<void> {
-  debug("evaluating", { trigger: params.trigger, toolMetas: params.toolMetas.length, sessionKey: params.sessionKey, senderId: params.senderId });
+  log.debug("evaluating", { trigger: params.trigger, toolMetas: params.toolMetas.length, sessionKey: params.sessionKey, senderId: params.senderId });
 
   if (params.trigger !== "user" && params.trigger !== "manual" && params.trigger !== undefined) {
-    debug("skipped: trigger mismatch", params.trigger);
+    log.debug("skipped: trigger mismatch", { trigger: params.trigger });
     return;
   }
 
   const userId = resolveUserIdFromSession(params.sessionKey, params.senderId);
   if (!userId) {
-    debug("skipped: no userId resolved", { sessionKey: params.sessionKey, senderId: params.senderId });
+    log.debug("skipped: no userId resolved", { sessionKey: params.sessionKey, senderId: params.senderId });
     return;
   }
 
@@ -32,11 +33,11 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
     .map((m) => m.toolName)
     .filter((name): name is string => typeof name === "string" && name.length > 0);
   if (toolCalls.length < 3) {
-    debug("skipped: toolCalls < 3", toolCalls.length);
+    log.debug("skipped: toolCalls < 3", { count: toolCalls.length });
     return;
   }
 
-  debug("proceeding", { userId, toolCalls: toolCalls.length, uniqueTools: new Set(toolCalls).size });
+  log.debug("proceeding", { userId, toolCalls: toolCalls.length, uniqueTools: new Set(toolCalls).size });
 
   const { EvolutionEngine } = await import("./engine.js");
   const { EvolutionStore } = await import("./store.js");
@@ -76,11 +77,11 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
   }
 
   const decision = await engine.evaluate(candidate, userId, { skipCooldown: true });
-  debug("evaluate decision", { shouldSuggest: decision.shouldSuggest, complexityScore: decision.complexityScore, reasoning: decision.reasoning });
+  log.debug("evaluate decision", { shouldSuggest: decision.shouldSuggest, complexityScore: decision.complexityScore, reasoning: decision.reasoning });
   if (!decision.shouldSuggest) return;
 
   const draft = await engine.generate(candidate);
-  debug("draft generated", { name: draft.name, description: draft.description?.slice(0, 80) });
+  log.debug("draft generated", { name: draft.name, description: draft.description?.slice(0, 80) });
 
   await store.save({
     id: randomUUID(),
@@ -91,7 +92,7 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
     timestamp: Date.now(),
   });
 
-  const suggestionText = buildSuggestionText(candidate, draft);
+  const suggestionText = buildSuggestionText(candidate, draft, params.sessionKey);
   try {
     const { resolveCognitiveDeliveryTarget } = await import("../../gateway/cognitive-delivery.js");
     const { deliverOutboundPayloads } = await import("../../infra/outbound/deliver.js");
@@ -112,12 +113,12 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
         session,
         bestEffort: true,
       });
-      debug("delivered via outbound", { name: draft.name, channel: target.channel, to: target.to });
+      log.debug("delivered via outbound", { name: draft.name, channel: target.channel, to: target.to });
     } else {
-      debug("no delivery target found for userId", userId);
+      log.debug("no delivery target found for userId", { userId });
     }
   } catch (err) {
-    debug("delivery failed", String(err));
+    log.debug("delivery failed", { error: String(err) });
   }
 }
 
@@ -131,8 +132,13 @@ function resolveUserIdFromSession(sessionKey: string, senderId?: string | null):
 function buildSuggestionText(
   candidate: EvolutionCandidate,
   draft: { name: string; description: string },
+  sessionKey: string,
 ): string {
-  const saveDir = `~/.kaijibot/workspace/skills/${draft.name}`;
+  const agentId = sessionKey.split(":")[1] ?? "main";
+  const workspaceDir = agentId === "main"
+    ? "~/.kaijibot/workspace"
+    : `~/.kaijibot/workspace-${agentId}`;
+  const saveDir = `${workspaceDir}/skills/${draft.name}`;
   return [
     `[系统提示] 刚才完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种工具），耗时 ${Math.round(candidate.durationMs / 1000)} 秒。`,
     `系统已自动生成技能「${draft.name}」：${draft.description}`,
