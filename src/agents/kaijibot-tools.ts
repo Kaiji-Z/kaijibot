@@ -16,6 +16,7 @@ import { createAgentsListTool } from "./tools/agents-list-tool.js";
 import { createCanvasTool } from "./tools/canvas-tool.js";
 import type { AnyAgentTool } from "./tools/common.js";
 import { createCognitiveFeedbackTool } from "./tools/cognitive-feedback-tool.js";
+import { createEvolutionPatchTool } from "./tools/evolution-patch-tool.js";
 import { createEvolutionSuggestTool } from "./tools/evolution-suggest-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
 import { createGatewayTool } from "./tools/gateway-tool.js";
@@ -294,6 +295,9 @@ export function createKaijiBotTools(
         config: resolvedConfig,
         sessionKey: options?.agentSessionKey,
         deliveryTo: options?.agentTo,
+      }),
+      createEvolutionPatchTool({
+        config: resolvedConfig,
       }),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),
