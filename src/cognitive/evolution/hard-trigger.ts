@@ -132,11 +132,12 @@ function buildSuggestionText(
   candidate: EvolutionCandidate,
   draft: { name: string; description: string },
 ): string {
+  const saveDir = `~/.kaijibot/workspace/skills/${draft.name}`;
   return [
     `[系统提示] 刚才完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种工具），耗时 ${Math.round(candidate.durationMs / 1000)} 秒。`,
     `系统已自动生成技能「${draft.name}」：${draft.description}`,
     "",
-    "如果觉得有用，回复\u201C保存技能\u201D；如果需要调整，告诉我怎么改；不需要的话直接忽略即可。",
+    `如果觉得有用，回复\u201C保存技能\u201D，我会保存到 ${saveDir}/SKILL.md；如果需要调整，告诉我怎么改；不需要的话直接忽略即可。`,
   ].join("\n");
 }
 
