@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { EvolutionCandidate } from "./types.js";
@@ -92,7 +93,11 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
     timestamp: Date.now(),
   });
 
-  const suggestionText = buildSuggestionText(candidate, draft, params.sessionKey);
+  const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
+  const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
+  const agentId = resolveAgentIdFromSessionKey(params.sessionKey);
+  const workspaceDir = resolveAgentWorkspaceDir(params.config, agentId);
+  const suggestionText = buildSuggestionText(candidate, draft, workspaceDir);
   try {
     const { resolveCognitiveDeliveryTarget } = await import("../../gateway/cognitive-delivery.js");
     const { deliverOutboundPayloads } = await import("../../infra/outbound/deliver.js");
@@ -132,13 +137,10 @@ function resolveUserIdFromSession(sessionKey: string, senderId?: string | null):
 function buildSuggestionText(
   candidate: EvolutionCandidate,
   draft: { name: string; description: string },
-  sessionKey: string,
+  workspaceDir: string,
 ): string {
-  const agentId = sessionKey.split(":")[1] ?? "main";
-  const workspaceDir = agentId === "main"
-    ? "~/.kaijibot/workspace"
-    : `~/.kaijibot/workspace-${agentId}`;
-  const saveDir = `${workspaceDir}/skills/${draft.name}`;
+  const displayDir = workspaceDir.replace(homedir(), "~");
+  const saveDir = `${displayDir}/skills/${draft.name}`;
   return [
     `[系统提示] 刚才完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种工具），耗时 ${Math.round(candidate.durationMs / 1000)} 秒。`,
     `系统已自动生成技能「${draft.name}」：${draft.description}`,

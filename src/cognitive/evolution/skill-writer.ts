@@ -9,10 +9,10 @@ const SKILL_FILE = "SKILL.md";
 const STALE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export class SkillPersistenceWriter {
-  constructor(private readonly configDir: string) {}
+  constructor(private readonly skillBaseDir: string) {}
 
   private skillDir(name: string): string {
-    return join(this.configDir, SKILLS_DIR, name);
+    return join(this.skillBaseDir, SKILLS_DIR, name);
   }
 
   async writeSkill(draft: SkillDraft): Promise<string> {
@@ -136,7 +136,7 @@ export class SkillPersistenceWriter {
   }
 
   async listSkillNames(): Promise<string[]> {
-    const skillsDir = join(this.configDir, SKILLS_DIR);
+    const skillsDir = join(this.skillBaseDir, SKILLS_DIR);
     let entries: string[];
     try {
       entries = await readdir(skillsDir);

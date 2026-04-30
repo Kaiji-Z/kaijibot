@@ -298,6 +298,7 @@ export function createKaijiBotTools(
       }),
       createEvolutionPatchTool({
         config: resolvedConfig,
+        sessionKey: options?.agentSessionKey,
       }),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),

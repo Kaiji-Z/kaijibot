@@ -25,6 +25,14 @@ vi.mock("../../utils.js", async (importOriginal) => {
   };
 });
 
+vi.mock("../../routing/session-key.js", () => ({
+  resolveAgentIdFromSessionKey: vi.fn().mockReturnValue("main"),
+}));
+
+vi.mock("../../agents/agent-scope.js", () => ({
+  resolveAgentWorkspaceDir: vi.fn().mockReturnValue("/home/test/.kaijibot/workspace"),
+}));
+
 describe("createEvolutionPatchTool", () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -120,6 +128,49 @@ describe("createEvolutionPatchTool", () => {
       expect(patchArg.replacements).toEqual([
         { oldText: "old description", newText: "new description" },
       ]);
+    });
+
+    it("resolves workspace dir from sessionKey for non-default agent", async () => {
+      const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
+      const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
+      (resolveAgentIdFromSessionKey as ReturnType<typeof vi.fn>).mockReturnValue("custom-agent");
+      (resolveAgentWorkspaceDir as ReturnType<typeof vi.fn>).mockReturnValue("/custom/workspace");
+
+      mockPatchSkill.mockResolvedValueOnce({
+        ok: true,
+        updatedPath: "/custom/workspace/skills/test-skill/SKILL.md",
+      });
+
+      const tool = createEvolutionPatchTool({
+        config: { cognitive: { enabled: true } } as never,
+        sessionKey: "agent:custom-agent:ou_123",
+      })!;
+      const result = await tool.execute("call-4", {
+        name: "test-skill",
+        instructions: "fix it",
+      });
+
+      const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+      expect(payload.status).toBe("patched");
+      expect(resolveAgentIdFromSessionKey).toHaveBeenCalledWith("agent:custom-agent:ou_123");
+      expect(resolveAgentWorkspaceDir).toHaveBeenCalled();
+    });
+
+    it("falls back to configDir when config is undefined", async () => {
+      const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
+
+      mockPatchSkill.mockResolvedValueOnce({
+        ok: true,
+        updatedPath: "/home/test/.kaijibot/skills/fallback-skill/SKILL.md",
+      });
+
+      const tool = createEvolutionPatchTool({})!;
+      await tool.execute("call-5", {
+        name: "fallback-skill",
+        instructions: "update",
+      });
+
+      expect(resolveAgentWorkspaceDir).not.toHaveBeenCalled();
     });
   });
 });

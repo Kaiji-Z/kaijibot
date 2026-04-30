@@ -19,6 +19,7 @@ export const EvolutionPatchSchema = Type.Object({
 
 export function createEvolutionPatchTool(deps: {
   config?: KaijiBotConfig;
+  sessionKey?: string;
 }): AnyAgentTool | null {
   if (deps.config?.cognitive?.enabled === false) return null;
   if (deps.config?.cognitive?.evolution?.enabled === false) return null;
@@ -44,7 +45,15 @@ export function createEvolutionPatchTool(deps: {
 
         const configDir = resolveConfigDir();
         const store = new EvolutionStore(configDir);
-        const writer = new SkillPersistenceWriter(configDir);
+
+        let skillBaseDir = configDir;
+        if (deps.config) {
+          const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
+          const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
+          const agentId = resolveAgentIdFromSessionKey(deps.sessionKey);
+          skillBaseDir = resolveAgentWorkspaceDir(deps.config, agentId);
+        }
+        const writer = new SkillPersistenceWriter(skillBaseDir);
 
         let generateText: ((prompt: string) => Promise<string>) | undefined;
         try {
