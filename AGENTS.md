@@ -15,7 +15,7 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
 - **`src/cognitive/`** — KaijiBot's proactive AI system (unique to this fork, not in upstream OpenClaw):
   - `persona/` — per-user cognitive model (identity, domains, interests, trust), dual extraction (rule-based + LLM), persistence at `~/.kaijibot/cognitive/persona/`
   - `insight/` — proactive insight generation (cross-domain connections, domain depth, exploration), cross-domain mapper, serendipity scorer, LLM prompt builder, verification pipeline
-  - `evolution/` — self-evolution engine: complexity evaluator, LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
+  - `evolution/` — agent-driven self-evolution: hard-trigger detects complex tasks (≥3 tool calls), enqueues system event for agent to evaluate; LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
   - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
@@ -106,28 +106,45 @@ Event Sources (timer / persona_change / info_scan)
 
 ### Self-Evolution Pipeline
 
+Agent-driven architecture: code detects complexity, agent decides whether to act.
+
 ```
-Task completed (with errors/retries OR complex)
-  → handleToolExecutionEnd() detects isError → accumulateToolError(sessionKey, {toolName, mutatingAction})
-  → context-writer injected hint: "when errors or 3+ tools, call evaluate_skill_evolution"
-    → Agent calls evaluate_skill_evolution tool
-      → consumeToolErrorProfile(sessionKey) reads + resets accumulated errors
-      → engine.evaluate(): dual-threshold gate + cooldown + daily cap
-        → errors/retries detected → use errorComplexityThreshold (0.3)
-        → no errors → use minComplexity (0.6)
-          → complexity-evaluator: base factors + toolErrors(w=0.50) + toolRetries(w=0.40) + trial-error boost
-        → Passes: engine.generate() → LLM (with full skill-creator spec) → SKILL.md draft
-          → Tool returns suggestionText (Chinese) + full bodyMarkdown
-            → Agent asks user: "要不要做成技能？"
-              → Confirm → skill-writer saves to ~/.kaijibot/skills/
-              → Modify → patch_skill tool → text replace or LLM patch
-              → Reject → recordResponse("rejected") → preference learning
-Before creation: engine.checkBeforeGenerate() → lifecycle.checkDuplicate()
-  → Similar exists → suggest updating instead
-  → Unique → proceed with creation
-After creation: frontmatter tracks createdAt/lastUsedAt/usageCount
-  → touchSkill() per use → removeStale(30) cleans skills unused 30+ days with 0 usage
+Agent turn completes (≥3 tool calls)
+  → hard-trigger.ts: evaluateHardTrigger()
+    → resolveUserIdFromSession()
+    → build EvolutionCandidate (toolCalls, duration, errorProfile)
+    → EvolutionEngine.evaluate(candidate, userId)
+      → evaluateComplexity(): base factors + toolErrors(w=0.50) + toolRetries(w=0.40) + trial-error boost
+      → dual threshold: errorComplexityThreshold (0.3) when errors, minComplexity (0.6) otherwise
+      → fetch recentSuggestions from store (48h, for agent context only — NOT a gate)
+    → shouldSuggest=true → buildEvolutionSignal()
+    → enqueueSystemEvent("[Evolution Signal]...", { sessionKey })
+    → requestHeartbeatNow({ reason: "cognitive-evolution", sessionKey })
+      → heartbeat-runner triggers agent turn
+        → Agent sees signal + recentSuggestions context in system prompt
+        → Agent decides based on full conversation context:
+            Worth it → calls evaluate_skill_evolution → generateSkillDraftLLM → tells user or silently creates
+            Not worth it → ignores signal
+            Wants to silently create → creates skill, mentions later at a natural moment
 ```
+
+**No code-level gating**: There is no cooldown, daily cap, or rate limit in code. The agent receives `recentSuggestions` (last 48h records with domain, skillName, hoursAgo, userResponse) as context and makes its own decision about frequency.
+
+**Hard-trigger detection** (`src/cognitive/evolution/hard-trigger.ts`):
+- Called from `src/agents/pi-embedded-runner/run.ts` after tool execution
+- Skips non-user/non-manual triggers
+- Requires ≥3 tool calls
+- Resolves userId from sessionKey or senderId
+- Consumes accumulated tool error profile via `consumeToolErrorProfile(sessionKey)`
+
+**Agent tools**:
+- `evaluate_skill_evolution` — complexity evaluation + LLM draft generation, returns suggestionText + bodyMarkdown + recentSuggestions
+- `patch_skill` — text replace or LLM-guided patch on existing skills (NOTE: not yet registered in `kaijibot-tools.ts`)
+
+**Skill lifecycle**:
+- Before creation: `engine.checkBeforeGenerate()` → `lifecycle.checkDuplicate()` → suggest updating if similar exists
+- After creation: frontmatter tracks `createdAt`/`lastUsedAt`/`usageCount`
+- `touchSkill()` per use → `removeStale(30)` cleans skills unused 30+ days with 0 usage
 
 ### Key Integration Points
 
@@ -137,11 +154,13 @@ Insight delivery:
 - `src/infra/heartbeat-reason.ts` — classifies `"cognitive-insight"` as `"wake"` kind to bypass HEARTBEAT.md gate
 - `src/infra/heartbeat-runner.ts` — `hasCognitiveEvents` check for `shouldInspectPendingEvents`
 
-Evolution (inline during agent turns, no gateway wiring):
-- `src/agents/tools/evolution-suggest-tool.ts` — `evaluate_skill_evolution` agent tool
+Evolution (signal-driven via system events):
+- `src/cognitive/evolution/hard-trigger.ts` — post-turn hook: detects ≥3 tool calls, evaluates complexity, enqueues [Evolution Signal] system event
+- `src/agents/tools/evolution-suggest-tool.ts` — `evaluate_skill_evolution` agent tool (used when agent decides to act on signal)
 - `src/agents/tools/evolution-patch-tool.ts` — `patch_skill` agent tool (NOTE: not yet registered in `kaijibot-tools.ts`)
 - `src/cognitive/context-writer.ts` — injects "Skill Evolution" system prompt section when `evolutionEnabled`
 - `src/auto-reply/reply/get-reply-run.ts` — passes `evolutionEnabled` to context-writer
+- `src/infra/heartbeat-reason.ts` — classifies `"cognitive-evolution"` as `"wake"` kind to bypass HEARTBEAT.md gate
 
 Shared:
 - `src/agents/tools/cognitive-feedback-tool.ts` — agent tool for collecting explicit feedback
@@ -196,6 +215,7 @@ Shared:
 - Do not modify baseline, snapshot, or expected-failure files to silence failing checks without explicit approval.
 - **Cognitive layer live tests** — after modifying `src/cognitive/evolution/` or `src/cognitive/insight/`, run the live quality tests to verify real LLM output:
   - Evolution: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-quality.test.ts`
+  - Evolution E2E: `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY pnpm test src/cognitive/evolution/evolution-live-e2e.test.ts`
   - Insight: `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-live-quality.test.ts`
   - Pipeline eval (5-round dual pipeline): `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-pipeline-live-eval.test.ts`
   - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
@@ -224,7 +244,7 @@ Shared:
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
-- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.minComplexity` (0-1, default 0.6), `cognitive.evolution.errorComplexityThreshold` (0-1, default 0.3), `cognitive.evolution.cooldownHours` (default 24), `cognitive.evolution.maxSuggestionsPerDay` (default 3), `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
+- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.minComplexity` (0-1, default 0.6), `cognitive.evolution.errorComplexityThreshold` (0-1, default 0.3), `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.
