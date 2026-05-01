@@ -10,6 +10,8 @@ describe("buildCognitiveModePrompt", () => {
     });
     expect(prompt).toContain("Skill Evolution");
     expect(prompt).toContain("evaluate_skill_evolution");
+    expect(prompt).toContain("[Evolution Signal]");
+    expect(prompt).toContain("patch_skill");
   });
 
   it("includes Skill Evolution hint when evolutionEnabled is undefined (default)", () => {

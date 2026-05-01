@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { EvolutionCandidate } from "./types.js";
@@ -42,8 +40,6 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 
   const { EvolutionEngine } = await import("./engine.js");
   const { EvolutionStore } = await import("./store.js");
-  const { generateSkillDraftLLM } = await import("./llm-draft-generator.js");
-  const { createStandaloneGenerateText } = await import("./standalone-generate.js");
   const { consumeToolErrorProfile } = await import("../../agents/tool-error-summary.js");
   const { resolveConfigDir } = await import("../../utils.js");
 
@@ -51,8 +47,7 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
   const uniqueTools = new Set(toolCalls);
 
   const candidate: EvolutionCandidate = {
-    taskSummary: extractUserText(params.userPrompt)
-      ?? `Multi-step task with ${toolCalls.length} tool calls (${uniqueTools.size} unique)`,
+    taskSummary: "auto",
     toolCalls,
     uniqueToolCount: uniqueTools.size,
     durationMs: Date.now() - params.started,
@@ -63,67 +58,30 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 
   const configDir = resolveConfigDir();
   const store = new EvolutionStore(configDir);
-
-  let engine: InstanceType<typeof EvolutionEngine>;
-  try {
-    const generateText = await createStandaloneGenerateText(params.config, {
-      maxTokens: 4000,
-      timeout: 60_000,
-    });
-    engine = new EvolutionEngine(store, undefined, undefined, (c) =>
-      generateSkillDraftLLM(c, { generateText }),
-    );
-  } catch {
-    engine = new EvolutionEngine(store);
-  }
+  const engine = new EvolutionEngine(store);
 
   const decision = await engine.evaluate(candidate, userId, { skipCooldown: true });
   log.debug("evaluate decision", { shouldSuggest: decision.shouldSuggest, complexityScore: decision.complexityScore, reasoning: decision.reasoning });
   if (!decision.shouldSuggest) return;
 
-  const draft = await engine.generate(candidate);
-  log.debug("draft generated", { name: draft.name, description: draft.description?.slice(0, 80) });
+  // Instead of generating a draft and delivering outbound, enqueue a system event
+  // that the agent will pick up in its next heartbeat turn. The agent has full
+  // conversation context and can naturally decide whether to suggest a skill.
+  const signalText = buildEvolutionSignal(candidate);
+  const targetSessionKey = resolveTargetSessionKey(params.sessionKey, params.config, userId);
 
-  await store.save({
-    id: randomUUID(),
-    userId,
-    candidate,
-    decision,
-    draft,
-    timestamp: Date.now(),
-  });
-
-  const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
-  const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
-  const agentId = resolveAgentIdFromSessionKey(params.sessionKey);
-  const workspaceDir = resolveAgentWorkspaceDir(params.config, agentId);
-  const suggestionText = buildSuggestionText(candidate, draft, workspaceDir);
   try {
-    const { resolveCognitiveDeliveryTarget } = await import("../../gateway/cognitive-delivery.js");
-    const { deliverOutboundPayloads } = await import("../../infra/outbound/deliver.js");
-    const { buildOutboundSessionContext } = await import("../../infra/outbound/session-context.js");
+    const { enqueueSystemEvent } = await import("../../infra/system-events.js");
+    const { requestHeartbeatNow } = await import("../../infra/heartbeat-wake.js");
 
-    const target = resolveCognitiveDeliveryTarget(params.config, userId);
-    if (target) {
-      const session = buildOutboundSessionContext({
-        cfg: params.config,
-        sessionKey: target.sessionKey,
-      });
-      await deliverOutboundPayloads({
-        cfg: params.config,
-        channel: target.channel,
-        to: target.to,
-        accountId: target.accountId,
-        payloads: [{ text: suggestionText }],
-        session,
-        bestEffort: true,
-      });
-      log.debug("delivered via outbound", { name: draft.name, channel: target.channel, to: target.to });
-    } else {
-      log.debug("no delivery target found for userId", { userId });
-    }
+    enqueueSystemEvent(signalText, { sessionKey: targetSessionKey });
+    requestHeartbeatNow({
+      reason: "cognitive-evolution",
+      sessionKey: targetSessionKey,
+    });
+    log.debug("evolution signal enqueued", { sessionKey: targetSessionKey, signalLength: signalText.length });
   } catch (err) {
-    log.debug("delivery failed", { error: String(err) });
+    log.debug("failed to enqueue evolution signal", { error: String(err) });
   }
 }
 
@@ -134,56 +92,36 @@ function resolveUserIdFromSession(sessionKey: string, senderId?: string | null):
   return tail;
 }
 
-function buildSuggestionText(
-  candidate: EvolutionCandidate,
-  draft: { name: string; description: string },
-  workspaceDir: string,
-): string {
-  const displayDir = workspaceDir.replace(homedir(), "~");
-  const saveDir = `${displayDir}/skills/${draft.name}`;
-  return [
-    `[系统提示] 刚才完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种工具），耗时 ${Math.round(candidate.durationMs / 1000)} 秒。`,
-    `系统已自动生成技能「${draft.name}」：${draft.description}`,
-    "",
-    `如果觉得有用，回复\u201C保存技能\u201D，我会保存到 ${saveDir}/SKILL.md；如果需要调整，告诉我怎么改；不需要的话直接忽略即可。`,
-  ].join("\n");
+/**
+ * Resolve the session key to use for the evolution signal.
+ * Falls back to the current session key if no dedicated target is found.
+ */
+function resolveTargetSessionKey(sessionKey: string, config: KaijiBotConfig, userId: string): string {
+  try {
+    // Attempt to resolve a dedicated cognitive delivery session for this user
+    // (same pattern as insight delivery). If unavailable, use the current session.
+    const { resolveCognitiveDeliveryTarget } = require("../../gateway/cognitive-delivery.js") as typeof import("../../gateway/cognitive-delivery.js");
+    const target = resolveCognitiveDeliveryTarget(config, userId);
+    return target?.sessionKey ?? sessionKey;
+  } catch {
+    return sessionKey;
+  }
 }
 
-function extractUserText(prompt?: string): string | null {
-  if (!prompt) return null;
-  const lines = prompt.split("\n");
-  const userLines: string[] = [];
-  let inCodeBlock = false;
-  let foundUserContent = false;
-  for (const line of lines) {
-    if (line.startsWith("```")) {
-      inCodeBlock = !inCodeBlock;
-      continue;
-    }
-    if (inCodeBlock) continue;
-    if (
-      line.startsWith("Conversation info") ||
-      line.startsWith("Sender (untrusted") ||
-      line.startsWith("[message_id:") ||
-      line.startsWith("Recipients") ||
-      line.startsWith("Channel") ||
-      line.startsWith("#")
-    ) {
-      if (foundUserContent) userLines.push(line);
-      continue;
-    }
-    const trimmed = line.trim();
-    if (
-      !foundUserContent &&
-      (trimmed.startsWith("ou_") || trimmed.match(/^[a-f0-9]{32}:/))
-    ) {
-      continue;
-    }
-    if (trimmed === "" && !foundUserContent) continue;
-    foundUserContent = true;
-    userLines.push(line);
-  }
-  const result = userLines.join("\n").trim();
-  if (!result || result.length < 5) return null;
-  return result.slice(0, 500);
+/**
+ * Build the evolution signal that the agent will see as a system event.
+ * This is an instruction to the agent, not a user-facing message.
+ * The agent decides whether to act on it based on conversation context.
+ */
+function buildEvolutionSignal(candidate: EvolutionCandidate): string {
+  const durationSec = Math.round(candidate.durationMs / 1000);
+  const toolSeq = candidate.toolCalls.join(", ");
+  return [
+    `[Evolution Signal] 刚完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
+    `工具序列: ${toolSeq}`,
+    "",
+    "请评估：这个任务模式是否值得做成可复用技能？",
+    "如果是，用自然语言告诉用户你的想法，然后调用 evaluate_skill_evolution 工具生成技能草稿。",
+    "如果觉得不值得，忽略即可。",
+  ].join("\n");
 }

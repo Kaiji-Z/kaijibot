@@ -60,7 +60,8 @@ export class EvolutionEngine {
 
     const hasErrors = (candidate.errorProfile?.errorCount ?? 0) > 0;
     const uniqueSet = new Set(candidate.toolCalls);
-    const retryCount = candidate.toolCalls.length - uniqueSet.size;
+    const rawRetryCount = candidate.toolCalls.length - uniqueSet.size;
+    const retryCount = hasErrors ? rawRetryCount : 0;
     const hasRetries = retryCount > 0;
 
     const threshold = (hasErrors || hasRetries)

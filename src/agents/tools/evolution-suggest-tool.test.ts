@@ -135,8 +135,10 @@ describe("createEvolutionSuggestTool", () => {
       expect(payload.skillName).toBe("feishu-wiki-archive");
       expect(payload.complexityScore).toBe(0.85);
       expect(payload.bodyMarkdown).toBe("## When to use\n\nUse when archiving wiki.\n\n## Workflow\n\n1. Scan\n2. Move");
-      expect(payload.suggestionText).toContain("刚才帮你完成了");
-      expect(payload.suggestionText).toContain("complex workflow");
+      expect(payload.suggestionText).toContain("3 个工具");
+      expect(payload.suggestionText).toContain("8 轮推理");
+      expect(payload.suggestionText).toContain("feishu-wiki-archive");
+      expect(payload.suggestionText).toContain("要不要保存");
       expect(mockSave).toHaveBeenCalledTimes(1);
     });
 
@@ -191,6 +193,8 @@ describe("createEvolutionSuggestTool", () => {
       const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
       expect(payload.suggestionText).toContain("5 个工具");
       expect(payload.suggestionText).toContain("12 轮推理");
+      expect(payload.suggestionText).toContain("multi-tool-skill");
+      expect(payload.suggestionText).toContain("要不要保存");
     });
 
     it("passes transcript to candidate in engine.evaluate", async () => {

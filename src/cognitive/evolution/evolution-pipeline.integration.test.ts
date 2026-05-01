@@ -1082,7 +1082,7 @@ describe("Pipeline: error-driven evolution for simple tasks", () => {
     expect(decision.reasoning).toContain("error threshold");
   });
 
-  it("simple task with retries triggers suggestion", async () => {
+  it("retries without errors do NOT trigger error threshold", async () => {
     const candidate: EvolutionCandidate = {
       taskSummary: "查询天气（重试了3次）",
       toolCalls: ["weather_get", "weather_get", "weather_get", "weather_get"],
@@ -1092,8 +1092,7 @@ describe("Pipeline: error-driven evolution for simple tasks", () => {
       domain: "weather",
     };
     const decision = await engine.evaluate(candidate, "user-retry-simple");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.reasoning).toContain("error threshold");
+    expect(decision.shouldSuggest).toBe(false);
   });
 
   it("simple task without errors does NOT trigger (backward compat)", async () => {

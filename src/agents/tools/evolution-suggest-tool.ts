@@ -28,7 +28,10 @@ export function createEvolutionSuggestTool(deps: {
     name: "evaluate_skill_evolution",
     label: "Evaluate Skill Evolution",
     description:
-      "Evaluate whether a completed complex task should be preserved as a reusable Skill. Call this after completing multi-step tasks that involved multiple tools or took significant time. The engine decides whether to suggest a skill to the user.",
+      "Evaluate whether a completed complex task should be preserved as a reusable Skill. " +
+      "When you see an [Evolution Signal] system event, call this tool to generate a skill draft. " +
+      "You can also call it proactively after complex tasks. The engine evaluates complexity and generates a skill draft. " +
+      "If suggested, present the draft to the user naturally. If they want to modify an existing skill, use patch_skill instead.",
     parameters: EvolutionSuggestSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
       const params = rawParams as {
@@ -118,7 +121,7 @@ export function createEvolutionSuggestTool(deps: {
           description: draft.description,
           triggerPhrases: draft.triggerPhrases,
           bodyMarkdown: draft.bodyMarkdown,
-          suggestionText: `刚才帮你完成了「${params.taskSummary}」（用了 ${params.toolCalls.length} 个工具，经历了 ${params.reasoningTurns} 轮推理）。这个流程比较复杂，下次遇到类似问题可以直接套用。我已经帮你起草了一个技能「${draft.name}」，你看看有没有要调整的？`,
+          suggestionText: `这个任务用了 ${params.toolCalls.length} 个工具、${params.reasoningTurns} 轮推理，比较复杂。我起草了一个技能「${draft.name}」—— ${draft.description}。要不要保存？要调整的话告诉我怎么改。`,
         });
       } catch (err) {
         return textResult(

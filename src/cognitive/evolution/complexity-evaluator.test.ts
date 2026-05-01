@@ -302,13 +302,27 @@ describe("evaluateComplexity with error profile", () => {
     expect(withErrors.score).toBeGreaterThan(base.score);
   });
 
-  it("adds toolRetries factor when tool calls contain duplicates", () => {
+  it("does not add toolRetries factor without errorProfile errors", () => {
     const result = evaluateComplexity(
       makeCandidate({
         toolCalls: ["tool_a", "tool_a", "tool_b", "tool_b", "tool_b"],
         uniqueToolCount: 2,
         reasoningTurns: 1,
         durationMs: 5_000,
+      }),
+    );
+    const retryFactor = result.factors.find((f) => f.name === "toolRetries");
+    expect(retryFactor).toBeUndefined();
+  });
+
+  it("adds toolRetries factor when errorProfile has errors and tool calls contain duplicates", () => {
+    const result = evaluateComplexity(
+      makeCandidate({
+        toolCalls: ["tool_a", "tool_a", "tool_b", "tool_b", "tool_b"],
+        uniqueToolCount: 2,
+        reasoningTurns: 1,
+        durationMs: 5_000,
+        errorProfile: { errorCount: 1, failedToolNames: ["tool_a"], hasMutatingErrors: false },
       }),
     );
     const retryFactor = result.factors.find((f) => f.name === "toolRetries");

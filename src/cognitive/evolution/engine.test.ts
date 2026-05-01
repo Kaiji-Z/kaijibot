@@ -208,18 +208,32 @@ describe("EvolutionEngine", () => {
       expect(decision.reasoning).toContain("error threshold");
     });
 
-    it("uses errorComplexityThreshold when retries are detected", async () => {
+    it("uses errorComplexityThreshold when retries exist with errors", async () => {
       const candidate = makeCandidate({
-        taskSummary: "Simple task with retries",
+        taskSummary: "Simple task with retries and errors",
+        toolCalls: ["tool_a", "tool_a", "tool_a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 3,
+        durationMs: 10_000,
+        domain: "test",
+        errorProfile: { errorCount: 1, failedToolNames: ["tool_a"], hasMutatingErrors: false },
+      });
+      const decision = await engine.evaluate(candidate, "user-retry-err");
+      expect(decision.shouldSuggest).toBe(true);
+      expect(decision.reasoning).toContain("error threshold");
+    });
+
+    it("does not use errorComplexityThreshold for retries without errors", async () => {
+      const candidate = makeCandidate({
+        taskSummary: "Simple task with retries but no errors",
         toolCalls: ["tool_a", "tool_a", "tool_a"],
         uniqueToolCount: 1,
         reasoningTurns: 3,
         durationMs: 10_000,
         domain: "test",
       });
-      const decision = await engine.evaluate(candidate, "user-retry-1");
-      expect(decision.shouldSuggest).toBe(true);
-      expect(decision.reasoning).toContain("error threshold");
+      const decision = await engine.evaluate(candidate, "user-retry-noerr");
+      expect(decision.complexityScore).toBeLessThan(DEFAULT_EVOLUTION_CONFIG.minComplexity);
     });
 
     it("uses minComplexity when no errors or retries", async () => {

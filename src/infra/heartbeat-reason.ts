@@ -48,6 +48,9 @@ export function resolveHeartbeatReasonKind(reason?: string): HeartbeatReasonKind
   if (trimmed.startsWith("cognitive-insight")) {
     return "wake";
   }
+  if (trimmed.startsWith("cognitive-evolution")) {
+    return "wake";
+  }
   return "other";
 }
 

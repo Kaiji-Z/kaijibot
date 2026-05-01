@@ -161,9 +161,11 @@ export function evaluateComplexity(candidate: EvolutionCandidate): ComplexityRes
     });
   }
 
-  // Retry factor: same tool called multiple times suggests wrong-params or wrong-result
+  // Retry factor: only count when errors exist — repeated tool names without errors
+  // are normal multi-step usage (e.g. tavily_search × 4 for different queries)
   const uniqueSet = new Set(candidate.toolCalls);
-  const retryCount = candidate.toolCalls.length - uniqueSet.size;
+  const rawRetryCount = candidate.toolCalls.length - uniqueSet.size;
+  const retryCount = (ep && ep.errorCount > 0) ? rawRetryCount : 0;
   if (retryCount > 0) {
     const retryNorm = Math.min(retryCount / 3, 1);
     factors.push({

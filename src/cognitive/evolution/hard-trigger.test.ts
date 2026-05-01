@@ -1,35 +1,22 @@
-import { homedir } from "node:os";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./engine.js", () => ({
-  EvolutionEngine: class {
-    evaluate = vi.fn().mockResolvedValue({
-      shouldSuggest: true,
-      complexityScore: 0.8,
-      reasoning: "complex",
-      confidence: 0.9,
-    });
-    generate = vi.fn().mockResolvedValue({
-      name: "test-skill",
-      description: "A test skill",
-      triggerPhrases: ["test"],
-      bodyMarkdown: "# Test",
-    });
-  },
-}));
+vi.mock("./engine.js", () => {
+  const evaluate = vi.fn().mockResolvedValue({
+    shouldSuggest: true,
+    complexityScore: 0.8,
+    reasoning: "complex",
+    confidence: 0.9,
+  });
+  return {
+    EvolutionEngine: class {
+      evaluate = evaluate;
+    },
+    __mockEvaluate: evaluate,
+  };
+});
 
 vi.mock("./store.js", () => ({
-  EvolutionStore: class {
-    save = vi.fn().mockResolvedValue(undefined);
-  },
-}));
-
-vi.mock("./llm-draft-generator.js", () => ({
-  generateSkillDraftLLM: vi.fn(),
-}));
-
-vi.mock("./standalone-generate.js", () => ({
-  createStandaloneGenerateText: vi.fn().mockRejectedValue("no llm"),
+  EvolutionStore: class {},
 }));
 
 vi.mock("../../agents/tool-error-summary.js", () => ({
@@ -41,25 +28,14 @@ vi.mock("../../utils.js", async (orig) => ({
   resolveConfigDir: vi.fn().mockReturnValue("/home/test/.kaijibot"),
 }));
 
-vi.mock("../../agents/agent-scope.js", async (orig) => {
-  const actual = await orig<typeof import("../../agents/agent-scope.js")>();
-  return {
-    ...actual,
-    resolveAgentWorkspaceDir: vi.fn().mockReturnValue("/home/test/.kaijibot/workspace"),
-  };
-});
+const mockEnqueue = vi.fn().mockReturnValue(true);
+vi.mock("../../infra/system-events.js", () => ({
+  enqueueSystemEvent: mockEnqueue,
+}));
 
-vi.mock("../../routing/session-key.js", async (orig) => {
-  const actual = await orig<typeof import("../../routing/session-key.js")>();
-  return {
-    ...actual,
-    resolveAgentIdFromSessionKey: vi.fn().mockReturnValue("main"),
-  };
-});
-
-const mockDeliver = vi.fn().mockResolvedValue(undefined);
-vi.mock("../../infra/outbound/deliver.js", () => ({
-  deliverOutboundPayloads: mockDeliver,
+const mockHeartbeat = vi.fn();
+vi.mock("../../infra/heartbeat-wake.js", () => ({
+  requestHeartbeatNow: mockHeartbeat,
 }));
 
 vi.mock("../../gateway/cognitive-delivery.js", () => ({
@@ -71,21 +47,11 @@ vi.mock("../../gateway/cognitive-delivery.js", () => ({
   }),
 }));
 
-vi.mock("../../infra/outbound/session-context.js", () => ({
-  buildOutboundSessionContext: vi.fn().mockReturnValue({}),
-}));
-
 describe("evaluateHardTrigger", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("delivers suggestion with resolved workspace path using ~ notation", async () => {
+  it("enqueues evolution signal and requests heartbeat when shouldSuggest is true", async () => {
     const { evaluateHardTrigger } = await import("./hard-trigger.js");
-    const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
-    const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
-
-    (resolveAgentWorkspaceDir as ReturnType<typeof vi.fn>).mockReturnValue(
-      `${homedir()}/.kaijibot/workspace`,
-    );
 
     await evaluateHardTrigger({
       toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }, { toolName: "d" }],
@@ -96,41 +62,35 @@ describe("evaluateHardTrigger", () => {
       started: Date.now() - 5000,
     });
 
-    expect(resolveAgentIdFromSessionKey).toHaveBeenCalledWith("agent:main:ou_test");
-    expect(resolveAgentWorkspaceDir).toHaveBeenCalled();
-    expect(mockDeliver).toHaveBeenCalledTimes(1);
-    const payload = mockDeliver.mock.calls[0][0];
-    const text: string = payload.payloads[0].text;
-    expect(text).toContain("~/");
-    expect(text).toContain("skills/test-skill");
+    expect(mockEnqueue).toHaveBeenCalledTimes(1);
+    const [signalText, opts] = mockEnqueue.mock.calls[0];
+    expect(signalText).toContain("[Evolution Signal]");
+    expect(signalText).toContain("4 次工具调用");
+    expect(opts.sessionKey).toBeTruthy();
+
+    expect(mockHeartbeat).toHaveBeenCalledTimes(1);
+    expect(mockHeartbeat.mock.calls[0][0].reason).toBe("cognitive-evolution");
   });
 
-  it("uses resolveAgentWorkspaceDir with correct agentId for non-default agent", async () => {
+  it("uses resolved cognitive delivery session key", async () => {
     const { evaluateHardTrigger } = await import("./hard-trigger.js");
-    const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
-    const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
-
-    (resolveAgentIdFromSessionKey as ReturnType<typeof vi.fn>).mockReturnValue("custom");
-    (resolveAgentWorkspaceDir as ReturnType<typeof vi.fn>).mockReturnValue("/data/custom-workspace");
 
     await evaluateHardTrigger({
-      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }, { toolName: "d" }],
-      sessionKey: "agent:custom:ou_test",
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:ou_test",
       trigger: "user",
       config: {} as never,
       senderId: "ou_test",
-      started: Date.now() - 5000,
+      started: Date.now() - 1000,
     });
 
-    expect(resolveAgentIdFromSessionKey).toHaveBeenCalledWith("agent:custom:ou_test");
-    expect(resolveAgentWorkspaceDir).toHaveBeenCalledWith({}, "custom");
-    const text: string = mockDeliver.mock.calls[0][0].payloads[0].text;
-    expect(text).toContain("/data/custom-workspace/skills/test-skill");
+    expect(mockEnqueue).toHaveBeenCalledTimes(1);
+    expect(mockEnqueue.mock.calls[0][1].sessionKey).toBe("agent:main:ou_test");
+    expect(mockHeartbeat.mock.calls[0][0].sessionKey).toBe("agent:main:ou_test");
   });
 
   it("skips when trigger is not user/manual/undefined", async () => {
     const { evaluateHardTrigger } = await import("./hard-trigger.js");
-    const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
 
     await evaluateHardTrigger({
       toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
@@ -140,8 +100,8 @@ describe("evaluateHardTrigger", () => {
       started: Date.now(),
     });
 
-    expect(resolveAgentWorkspaceDir).not.toHaveBeenCalled();
-    expect(mockDeliver).not.toHaveBeenCalled();
+    expect(mockEnqueue).not.toHaveBeenCalled();
+    expect(mockHeartbeat).not.toHaveBeenCalled();
   });
 
   it("skips when toolMetas has fewer than 3 items", async () => {
@@ -155,6 +115,69 @@ describe("evaluateHardTrigger", () => {
       started: Date.now(),
     });
 
-    expect(mockDeliver).not.toHaveBeenCalled();
+    expect(mockEnqueue).not.toHaveBeenCalled();
+  });
+
+  it("does not enqueue when engine decides not to suggest", async () => {
+    const engineModule = await import("./engine.js") as typeof import("./engine.js") & { __mockEvaluate: ReturnType<typeof vi.fn> };
+    engineModule.__mockEvaluate.mockResolvedValueOnce({
+      shouldSuggest: false,
+      complexityScore: 0.1,
+      reasoning: "too simple",
+    });
+
+    const { evaluateHardTrigger } = await import("./hard-trigger.js");
+
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:ou_test",
+      trigger: "user",
+      config: {} as never,
+      senderId: "ou_test",
+      started: Date.now(),
+    });
+
+    expect(mockEnqueue).not.toHaveBeenCalled();
+    expect(mockHeartbeat).not.toHaveBeenCalled();
+  });
+
+  it("signal text includes tool sequence", async () => {
+    const { evaluateHardTrigger } = await import("./hard-trigger.js");
+
+    await evaluateHardTrigger({
+      toolMetas: [
+        { toolName: "web_search" },
+        { toolName: "read_file" },
+        { toolName: "web_search" },
+      ],
+      sessionKey: "agent:main:ou_test",
+      trigger: "user",
+      config: {} as never,
+      senderId: "ou_test",
+      started: Date.now() - 3000,
+    });
+
+    const signalText = mockEnqueue.mock.calls[0][0] as string;
+    expect(signalText).toContain("web_search, read_file, web_search");
+    expect(signalText).toContain("evaluate_skill_evolution");
+  });
+
+  it("falls back to current sessionKey when cognitive delivery target is unavailable", async () => {
+    const { resolveCognitiveDeliveryTarget } = await import("../../gateway/cognitive-delivery.js");
+    (resolveCognitiveDeliveryTarget as ReturnType<typeof vi.fn>).mockReturnValueOnce(null);
+
+    const { evaluateHardTrigger } = await import("./hard-trigger.js");
+
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:ou_test",
+      trigger: "user",
+      config: {} as never,
+      senderId: "ou_test",
+      started: Date.now(),
+    });
+
+    expect(mockEnqueue).toHaveBeenCalledTimes(1);
+    expect(mockEnqueue.mock.calls[0][1].sessionKey).toBe("agent:main:ou_test");
   });
 });
