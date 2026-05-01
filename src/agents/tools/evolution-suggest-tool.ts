@@ -98,6 +98,7 @@ export function createEvolutionSuggestTool(deps: {
             status: "skipped",
             reason: decision.reasoning,
             complexityScore: decision.complexityScore,
+            recentSuggestions: decision.recentSuggestions,
           });
         }
 
@@ -121,6 +122,7 @@ export function createEvolutionSuggestTool(deps: {
           description: draft.description,
           triggerPhrases: draft.triggerPhrases,
           bodyMarkdown: draft.bodyMarkdown,
+          recentSuggestions: decision.recentSuggestions,
           suggestionText: `这个任务用了 ${params.toolCalls.length} 个工具、${params.reasoningTurns} 轮推理，比较复杂。我起草了一个技能「${draft.name}」—— ${draft.description}。要不要保存？要调整的话告诉我怎么改。`,
         });
       } catch (err) {

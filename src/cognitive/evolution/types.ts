@@ -56,9 +56,17 @@ export type SkillDraft = {
   references?: Record<string, string>;
 };
 
+/** Summary of a recent skill suggestion, provided as context for the agent. */
+export type RecentSuggestionSummary = {
+  skillName?: string;
+  domain: string;
+  hoursAgo: number;
+  userResponse?: EvolutionUserResponse;
+};
+
 /** The engine's decision on whether to suggest a skill. */
 export type EvolutionDecision = {
-  /** Whether to proactively suggest a skill to the user */
+  /** Whether the task is complex enough for skill evolution */
   shouldSuggest: boolean;
   /** Confidence of the suggestion (0-1) */
   confidence: number;
@@ -66,6 +74,8 @@ export type EvolutionDecision = {
   complexityScore: number;
   /** Human-readable explanation of the decision */
   reasoning: string;
+  /** Recent suggestions for this user (context for the agent, not a gate) */
+  recentSuggestions?: RecentSuggestionSummary[];
 };
 
 /** User's response to a skill suggestion. */
@@ -93,14 +103,10 @@ export type EvolutionRecord = {
 
 /** Configuration for the evolution engine. */
 export type EvolutionConfig = {
-  /** Minimum complexity score to trigger a suggestion (0-1, default 0.6) */
+  /** Minimum complexity score to trigger a suggestion (0-1, default 0.4) */
   minComplexity: number;
   /** Lower threshold used when tool errors or retries were detected (0-1, default 0.3) */
   errorComplexityThreshold: number;
-  /** Minimum hours between suggestions for a user (default 24) */
-  cooldownHours: number;
-  /** Maximum suggestions per user per day (default 3) */
-  maxSuggestionsPerDay: number;
   /** Minimum trust score to allow suggestions (0-1, default 0.5) */
   minTrustScore: number;
   /** Whether the evolution engine is active (default true) */
@@ -137,8 +143,6 @@ export type ComplexityResult = {
 export const DEFAULT_EVOLUTION_CONFIG: EvolutionConfig = {
   minComplexity: 0.4,
   errorComplexityThreshold: 0.3,
-  cooldownHours: 24,
-  maxSuggestionsPerDay: 3,
   minTrustScore: 0.5,
   enabled: true,
   clawhubEnabled: false,

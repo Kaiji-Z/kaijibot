@@ -60,8 +60,6 @@ export const CognitiveEvolutionSchema = z
     enabled: z.boolean().default(true),
     minComplexity: z.number().min(0).max(1).default(0.6),
     errorComplexityThreshold: z.number().min(0).max(1).default(0.3),
-    cooldownHours: z.number().min(1).max(168).default(24),
-    maxSuggestionsPerDay: z.number().min(1).max(50).default(3),
     clawhubEnabled: z.boolean().optional(),
     clawhubRegistry: z.string().url().optional(),
     clawhubAutoPublish: z.boolean().optional(),

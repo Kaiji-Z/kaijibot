@@ -8,12 +8,12 @@ import type {
   EvolutionDecision,
   EvolutionRecord,
   EvolutionUserResponse,
+  RecentSuggestionSummary,
   SkillDraft,
   SkillPatch,
   SkillPatchResult,
 } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
-import { randomUUID } from "node:crypto";
 import type { SkillPersistenceWriter } from "./skill-writer.js";
 import type { SkillLifecycleManager } from "./skill-lifecycle.js";
 
@@ -36,7 +36,6 @@ export class EvolutionEngine {
   async evaluate(
     candidate: EvolutionCandidate,
     userId: string,
-    options?: { skipCooldown?: boolean },
   ): Promise<EvolutionDecision> {
     const config = await this.effectiveConfig();
 
@@ -75,6 +74,15 @@ export class EvolutionEngine {
       reasoningParts.push(`Tool retries detected (${retryCount} retries), using error threshold ${threshold}`);
     }
 
+    // Fetch recent suggestions as context for the agent (not a gate)
+    const recentRecords = await this.store.getRecentSuggestions(userId, 48);
+    const recentSuggestions: RecentSuggestionSummary[] = recentRecords.map((r) => ({
+      skillName: r.draft?.name,
+      domain: r.candidate.domain,
+      hoursAgo: Math.round((Date.now() - r.timestamp) / 3_600_000),
+      userResponse: r.userResponse,
+    }));
+
     if (complexity.score < threshold) {
       return {
         shouldSuggest: false,
@@ -83,31 +91,7 @@ export class EvolutionEngine {
         reasoning: reasoningParts.length > 0
           ? `${reasoningParts.join("; ")}; Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`
           : `Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`,
-      };
-    }
-
-    const recentInCooldown =
-      await this.store.getRecentSuggestions(userId, config.cooldownHours);
-    if (!options?.skipCooldown && recentInCooldown.length > 0) {
-      return {
-        shouldSuggest: false,
-        confidence: 0,
-        complexityScore: complexity.score,
-        reasoning: reasoningParts.length > 0
-          ? `${reasoningParts.join("; ")}; Suggested recently (cooldown ${config.cooldownHours}h)`
-          : `Suggested recently (cooldown ${config.cooldownHours}h)`,
-      };
-    }
-
-    const recentToday = await this.store.getRecentSuggestions(userId, 24);
-    if (!options?.skipCooldown && recentToday.length >= config.maxSuggestionsPerDay) {
-      return {
-        shouldSuggest: false,
-        confidence: 0,
-        complexityScore: complexity.score,
-        reasoning: reasoningParts.length > 0
-          ? `${reasoningParts.join("; ")}; Daily limit reached (${config.maxSuggestionsPerDay}/day)`
-          : `Daily limit reached (${config.maxSuggestionsPerDay}/day)`,
+        recentSuggestions,
       };
     }
 
@@ -124,6 +108,7 @@ export class EvolutionEngine {
       confidence,
       complexityScore: complexity.score,
       reasoning: reasoningParts.join("; "),
+      recentSuggestions,
     };
   }
 

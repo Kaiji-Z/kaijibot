@@ -86,54 +86,36 @@ describe("EvolutionEngine", () => {
     expect(decision.reasoning).toContain("disabled");
   });
 
-  it("returns shouldSuggest:false when in cooldown period", async () => {
-    const recentRecord = makeRecord({
-      userId: "user-1",
-      decision: {
-        shouldSuggest: true,
-        confidence: 0.8,
-        complexityScore: 0.7,
-        reasoning: "Recent",
-      },
-      timestamp: Date.now() - 1000,
-    });
-    await store.save(recentRecord);
-
-    const decision = await engine.evaluate(complexCandidate, "user-1");
-    expect(decision.shouldSuggest).toBe(false);
-    expect(decision.reasoning).toContain("cooldown");
-  });
-
-  it("returns shouldSuggest:false when daily limit reached", async () => {
-    const maxPerDay = DEFAULT_EVOLUTION_CONFIG.maxSuggestionsPerDay;
-    const shortCooldownEngine = new EvolutionEngine(store, {
-      cooldownHours: 0,
-    });
-
-    for (let i = 0; i < maxPerDay; i++) {
-      const record = makeRecord({
-        id: `rec-daily-${i}`,
-        userId: "user-2",
-        timestamp: Date.now() - 1000,
-      });
-      await store.save(record);
-    }
-
-    const decision = await shortCooldownEngine.evaluate(
-      complexCandidate,
-      "user-2",
-    );
-    expect(decision.shouldSuggest).toBe(false);
-    expect(decision.reasoning).toContain("Daily limit");
-  });
-
-  it("returns shouldSuggest:true for complex tasks with no cooldown/limit issues", async () => {
+  it("returns shouldSuggest:true for complex tasks", async () => {
     const decision = await engine.evaluate(complexCandidate, "user-fresh");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.confidence).toBeGreaterThan(0);
     expect(decision.complexityScore).toBeGreaterThanOrEqual(
       DEFAULT_EVOLUTION_CONFIG.minComplexity,
     );
+  });
+
+  it("returns recentSuggestions context even when shouldSuggest is false", async () => {
+    const decision = await engine.evaluate(simpleCandidate, "user-ctx");
+    expect(decision.shouldSuggest).toBe(false);
+    expect(decision.recentSuggestions).toEqual([]);
+  });
+
+  it("populates recentSuggestions with prior records", async () => {
+    const recentRecord = makeRecord({
+      userId: "user-recent",
+      candidate: { ...complexCandidate, domain: "feishu-wiki" },
+      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "ok" },
+      draft: { name: "wiki-tool", description: "d", triggerPhrases: ["wiki"], bodyMarkdown: "# W" },
+      timestamp: Date.now() - 3_600_000,
+    });
+    await store.save(recentRecord);
+
+    const decision = await engine.evaluate(complexCandidate, "user-recent");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.recentSuggestions).toHaveLength(1);
+    expect(decision.recentSuggestions![0].domain).toBe("feishu-wiki");
+    expect(decision.recentSuggestions![0].hoursAgo).toBeGreaterThanOrEqual(1);
   });
 
   it("includes correct confidence and reasoning when suggesting", async () => {
@@ -250,7 +232,7 @@ describe("EvolutionEngine", () => {
       expect(decision.complexityScore).toBeLessThan(DEFAULT_EVOLUTION_CONFIG.minComplexity);
     });
 
-    it("error candidate still respects cooldown", async () => {
+    it("error candidate still suggests when recent suggestions exist", async () => {
       const candidate = makeCandidate({
         taskSummary: "Error task",
         toolCalls: ["tool_a", "tool_a", "tool_a"],
@@ -261,19 +243,19 @@ describe("EvolutionEngine", () => {
         errorProfile: { errorCount: 3, failedToolNames: ["tool_a"], hasMutatingErrors: false },
       });
 
-      const decision1 = await engine.evaluate(candidate, "user-err-cooldown");
+      const decision1 = await engine.evaluate(candidate, "user-err-persist");
       expect(decision1.shouldSuggest).toBe(true);
 
       const recentRecord = makeRecord({
-        userId: "user-err-cooldown",
+        userId: "user-err-persist",
         decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.5, reasoning: "err" },
         timestamp: Date.now() - 1000,
       });
       await store.save(recentRecord);
 
-      const decision2 = await engine.evaluate(candidate, "user-err-cooldown");
-      expect(decision2.shouldSuggest).toBe(false);
-      expect(decision2.reasoning).toContain("cooldown");
+      const decision2 = await engine.evaluate(candidate, "user-err-persist");
+      expect(decision2.shouldSuggest).toBe(true);
+      expect(decision2.recentSuggestions).toHaveLength(1);
     });
   });
 

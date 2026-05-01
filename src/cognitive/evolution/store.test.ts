@@ -109,7 +109,7 @@ describe("EvolutionStore", () => {
     const loaded = await store.loadConfig();
     expect(loaded.minComplexity).toBe(0.9);
     expect(loaded.enabled).toBe(false);
-    expect(loaded.cooldownHours).toBe(DEFAULT_EVOLUTION_CONFIG.cooldownHours);
+    expect(loaded.errorComplexityThreshold).toBe(DEFAULT_EVOLUTION_CONFIG.errorComplexityThreshold);
   });
 
   it("handles empty/missing user files gracefully", async () => {

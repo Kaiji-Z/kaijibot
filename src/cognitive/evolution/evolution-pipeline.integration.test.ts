@@ -249,51 +249,48 @@ describe("Pipeline: trial-and-error detection boosts complexity", () => {
 });
 
 // ===========================================================================
-// SCENARIO 3: Cooldown and daily limit
+// SCENARIO 3: Recent suggestions context (no longer blocks)
 // ===========================================================================
-describe("Pipeline: cooldown and rate limiting", () => {
-  it("rejects suggestion within cooldown period", async () => {
-    const userId = "user-cooldown";
+describe("Pipeline: recent suggestions as context", () => {
+  it("provides recentSuggestions even after prior suggestions", async () => {
+    const userId = "user-recent-ctx";
 
-    // First suggestion
     const decision1 = await engine.evaluate(complexCandidate(), userId);
     expect(decision1.shouldSuggest).toBe(true);
+    expect(decision1.recentSuggestions).toEqual([]);
 
-    // Save a recent suggestion
-    const recentRecord: EvolutionRecord = {
+    await store.save({
       id: "rec-recent",
       userId,
       candidate: complexCandidate(),
       decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "test" },
+      draft: { name: "test-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
       timestamp: Date.now() - 1000,
-    };
-    await store.save(recentRecord);
+    });
 
-    // Second suggestion within cooldown → should be blocked
     const decision2 = await engine.evaluate(complexCandidate(), userId);
-    expect(decision2.shouldSuggest).toBe(false);
-    expect(decision2.reasoning).toContain("cooldown");
+    expect(decision2.shouldSuggest).toBe(true);
+    expect(decision2.recentSuggestions).toHaveLength(1);
+    expect(decision2.recentSuggestions![0].skillName).toBe("test-skill");
   });
 
-  it("respects daily limit", async () => {
-    const userId = "user-daily";
-    const maxPerDay = 3;
-    const noCooldownEngine = new EvolutionEngine(store, { cooldownHours: 0 });
+  it("continues suggesting regardless of prior suggestion count", async () => {
+    const userId = "user-no-block";
 
-    // Fill up daily quota
-    for (let i = 0; i < maxPerDay; i++) {
+    for (let i = 0; i < 5; i++) {
       await store.save({
-        id: `rec-daily-${i}`,
+        id: `rec-many-${i}`,
         userId,
         candidate: complexCandidate(),
         decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "fill" },
+        draft: { name: `skill-${i}`, description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
         timestamp: Date.now() - 1000,
       });
     }
 
-    const decision = await noCooldownEngine.evaluate(complexCandidate(), userId);
-    expect(decision.shouldSuggest).toBe(false);
-    expect(decision.reasoning).toContain("Daily limit");
+    const decision = await engine.evaluate(complexCandidate(), userId);
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.recentSuggestions).toHaveLength(5);
   });
 });
 
@@ -1136,17 +1133,18 @@ describe("Pipeline: error priority vs smooth complexity", () => {
 });
 
 // ===========================================================================
-// SCENARIO 20: Error-driven trigger respects cooldown
+// SCENARIO 20: Error-driven trigger provides context
 // ===========================================================================
-describe("Pipeline: error-driven trigger respects cooldown", () => {
-  it("error-based suggestion still blocked by cooldown", async () => {
-    const userId = "user-err-cooldown";
+describe("Pipeline: error-driven trigger provides recent context", () => {
+  it("error-based suggestion includes recentSuggestions context", async () => {
+    const userId = "user-err-ctx";
 
     const recentRecord: EvolutionRecord = {
       id: "rec-err-recent",
       userId,
       candidate: simpleCandidate(),
       decision: { shouldSuggest: true, confidence: 0.5, complexityScore: 0.4, reasoning: "err" },
+      draft: { name: "prev-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
       timestamp: Date.now() - 1000,
     };
     await store.save(recentRecord);
@@ -1158,8 +1156,9 @@ describe("Pipeline: error-driven trigger respects cooldown", () => {
       hasMutatingErrors: false,
     };
     const decision = await engine.evaluate(candidate, userId);
-    expect(decision.shouldSuggest).toBe(false);
-    expect(decision.reasoning).toContain("cooldown");
+    expect(decision.shouldSuggest).toBe(true);
+    expect(decision.recentSuggestions).toHaveLength(1);
+    expect(decision.recentSuggestions![0].skillName).toBe("prev-skill");
   });
 });
 

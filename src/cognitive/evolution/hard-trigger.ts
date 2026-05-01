@@ -60,7 +60,7 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
   const store = new EvolutionStore(configDir);
   const engine = new EvolutionEngine(store);
 
-  const decision = await engine.evaluate(candidate, userId, { skipCooldown: true });
+  const decision = await engine.evaluate(candidate, userId);
   log.debug("evaluate decision", { shouldSuggest: decision.shouldSuggest, complexityScore: decision.complexityScore, reasoning: decision.reasoning });
   if (!decision.shouldSuggest) return;
 

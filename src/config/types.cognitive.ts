@@ -60,10 +60,6 @@ export type CognitiveConfig = {
     enabled?: boolean;
     /** Minimum complexity score to consider (default: 0.5) */
     minComplexity?: number;
-    /** Cooldown between suggestions in hours (default: 24) */
-    cooldownHours?: number;
-    /** Max suggestions per user per day (default: 3) */
-    maxSuggestionsPerDay?: number;
     /** Enable ClawHub skill sharing (default: false) */
     clawhubEnabled?: boolean;
     /** ClawHub registry URL */
