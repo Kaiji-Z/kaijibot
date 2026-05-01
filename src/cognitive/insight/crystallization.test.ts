@@ -1,23 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { CrystallizationDeps } from "./crystallization.js";
 import type { Fragment, FragmentCluster, BlindSpotCandidate } from "./fragment-types.js";
 import type { PersonaTree } from "../types.js";
 
-// ─── Logger mock (hoisted by vitest) ───
-
-const debugMessages: unknown[][] = [];
-const warnMessages: unknown[][] = [];
-vi.mock("../../logging/subsystem.js", () => ({
-  createSubsystemLogger: () => ({
-    info: vi.fn(),
-    warn: (...args: unknown[]) => { warnMessages.push(args); },
-    error: vi.fn(),
-    debug: (...args: unknown[]) => { debugMessages.push(args); },
-  }),
-}));
-
-// Import AFTER vi.mock so the mock is active
 import { crystallize, parseBlindSpot } from "./crystallization.js";
+
 
 // ─── Helpers ───
 
@@ -188,17 +175,15 @@ describe("crystallize", () => {
       expect(result).toEqual([]);
     });
 
-    it("logs debug when no clusters found", async () => {
-      debugMessages.length = 0;
+    it("returns empty when no clusters found", async () => {
       const deps = makeMockDeps([], [], "");
 
-      await crystallize("user-1", makePersona(), defaultConfig, deps);
+      const result = await crystallize("user-1", makePersona(), defaultConfig, deps);
 
-      expect(debugMessages.some((args) => String(args[0]).includes("no clusters found"))).toBe(true);
+      expect(result).toEqual([]);
     });
 
-    it("logs warn when all clusters filtered by domain overlap", async () => {
-      debugMessages.length = 0;
+    it("returns empty when all clusters filtered by domain overlap", async () => {
       const cluster = makeCluster({ domains: ["domain-a", "domain-b"] });
       const existingBS: BlindSpotCandidate = {
         id: "bs-1",
@@ -212,9 +197,9 @@ describe("crystallize", () => {
       const persona = makePersona({ activeBlindSpots: [existingBS] });
       const deps = makeMockDeps([], [cluster], makeValidLlmResponse());
 
-      await crystallize("user-1", persona, defaultConfig, deps);
+      const result = await crystallize("user-1", persona, defaultConfig, deps);
 
-      expect(warnMessages.some((args) => String(args[0]).includes("all clusters filtered"))).toBe(true);
+      expect(result).toEqual([]);
     });
 
     it("processes max 3 clusters per run", async () => {

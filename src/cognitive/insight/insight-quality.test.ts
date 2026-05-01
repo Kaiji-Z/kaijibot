@@ -383,7 +383,7 @@ describe("insight pipeline validation (mock LLM)", () => {
     const frames = new Set<string>();
     for (let i = 0; i < 20; i++) {
       const prompt = buildInsightPrompt(persona, input, [], []);
-      const taskMatch = prompt.match(/TASK:\n([\s\S]*?)\n\nSTRUCTURE/);
+      const taskMatch = prompt.match(/TASK:\n([\s\S]*?)\n\n ?STRUCTURE/);
       if (taskMatch) frames.add(taskMatch[1]!.trim());
     }
     // With 8 frames × random pick × random keyInsight, we should see variety

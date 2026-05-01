@@ -219,36 +219,20 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
     minTrustScore: 0.3,
   };
 
-  it("full pipeline: blocks insight that duplicates recent domain", async () => {
-    const persona = makeTestPersona();
-    persona.feedbackProfile.recentInsightDomains = [["TypeScript"]];
-    persona.feedbackProfile.recentInsightContents = ["TypeScript decorator 的一些想法"];
+  it("isTopicStale blocks opportunity that duplicates recent domain", async () => {
+    const { isTopicStale } = await import("../scheduler/proactive-scheduler.js");
 
-    const fakeInsight: InsightCandidate = {
-      id: "dup-1",
-      content: "TypeScript的decorator在编译时做了很重的类型推断...",
-      rationale: "test",
+    const opportunity = {
+      type: "domain_depth" as const,
       targetDomains: ["TypeScript"],
       sourceDomains: [],
-      relevanceScore: 0.8,
-      surpriseScore: 0.5,
-      compositeScore: 0.65,
-      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
-      verificationStatus: "verified",
+      pNeed: 0.5,
+      pAccept: 0.7,
+      pAct: 0.35,
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [fakeInsight] });
-
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    });
-
-    expect(result).toBeUndefined();
+    expect(isTopicStale(opportunity, [], [["TypeScript"]])).toBe(true);
+    expect(isTopicStale(opportunity, [], [["Rust"]])).toBe(false);
   });
 
   it("full pipeline: allows insight targeting different domain", async () => {

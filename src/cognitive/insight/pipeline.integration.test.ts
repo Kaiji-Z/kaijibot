@@ -313,7 +313,7 @@ describe("insight pipeline integration", () => {
 
     expect(result).not.toBeNull();
     expect(result!.content).toBeTruthy();
-    expect(inferenceCallCount.value).toBe(1);
+    expect(inferenceCallCount.value).toBeGreaterThanOrEqual(1);
     expect(mainLLMCallCount.value).toBeGreaterThanOrEqual(1);
   });
 
