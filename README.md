@@ -2,7 +2,7 @@
 
 > **你的 AI 助手会主动找你聊天，而不是干等着你提问。**
 
-Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 智谱 GLM · 认知层让 AI 从被动变主动
+Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 30+ LLM 提供商 · 认知层让 AI 从被动变主动
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
@@ -70,7 +70,7 @@ KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动
 
 | 国内（推荐） | 国际主流 | 聚合 / 自部署 |
 |---|---|---|
-| 智谱 GLM（默认）· DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · SGLang · vLLM · Ollama · LMStudio |
+| 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · SGLang · vLLM · Ollama · LMStudio |
 
 切换模型只需一行：
 
@@ -98,9 +98,15 @@ kaijibot skills install <skill-name>
 
 ## 🚀 快速开始
 
-**前置要求**：Node.js >= 22（推荐 24）、pnpm
+**前置要求**：Node.js >= 22（推荐 24）、pnpm、git
 
-**方式一：Docker（推荐）**
+**方式一：一键安装**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Kaiji-Z/kaijibot/main/install.sh | bash
+```
+
+**方式二：Docker**
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
@@ -108,7 +114,7 @@ cd kaijibot
 docker compose up -d
 ```
 
-**方式二：本地安装**
+**方式三：手动安装**
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
@@ -132,8 +138,8 @@ kaijibot gateway --port 18789 --verbose
 **必需**：至少一个 LLM 提供商的 API Key + 飞书机器人凭证。
 
 ```bash
-# LLM API Key（任选一个）
-export ZAI_API_KEY="your-key"              # 智谱 GLM（默认）
+# LLM API Key（任选一个，模型用哪个就配哪个）
+export ZAI_API_KEY="your-key"              # 智谱 GLM
 # export DEEPSEEK_API_KEY="your-key"       # DeepSeek
 # export DASHSCOPE_API_KEY="your-key"      # 通义千问
 # export MOONSHOT_API_KEY="your-key"       # Kimi
@@ -247,7 +253,7 @@ Agent 系统实现完整的推理循环：系统提示组装（上下文文件 +
 
 ### 开源依赖
 
-[智谱 GLM](https://open.bigmodel.cn/)、[飞书开放平台](https://open.feishu.cn/)、[Vitest](https://vitest.dev/)、[Playwright](https://playwright.dev/)、[tsdown](https://github.com/nicepkg/tsdown)、[Zod](https://zod.dev/)。
+[飞书开放平台](https://open.feishu.cn/)、[Vitest](https://vitest.dev/)、[Playwright](https://playwright.dev/)、[tsdown](https://github.com/nicepkg/tsdown)、[Zod](https://zod.dev/)。
 
 ## 许可证
 
