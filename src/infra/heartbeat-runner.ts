@@ -892,6 +892,23 @@ export async function runHeartbeatOnce(opts: {
     }
     runSessionKey = isolatedSessionKey;
   }
+  // When running in an isolated session, system events were enqueued to the base
+  // sessionKey but the agent turn drains from the isolated sessionKey. Re-enqueue
+  // preflight-peeked events into the isolated session so the agent can see them.
+  if (runSessionKey !== sessionKey && preflight.pendingEventEntries.length > 0) {
+    const { enqueueSystemEvent: reEnqueue } = await import("./system-events.js");
+    for (const event of preflight.pendingEventEntries) {
+      reEnqueue(event.text, {
+        sessionKey: runSessionKey,
+        contextKey: event.contextKey,
+        deliveryContext: event.deliveryContext,
+        trusted: event.trusted,
+      });
+    }
+    // Drain originals from base sessionKey so they aren't orphaned
+    const { consumeSystemEventEntries } = await import("./system-events.js");
+    consumeSystemEventEntries(sessionKey, preflight.pendingEventEntries);
+  }
   const activeSessionPendingEventEntries =
     runSessionKey === sessionKey
       ? preflight.pendingEventEntries
