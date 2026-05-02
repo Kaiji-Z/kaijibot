@@ -1,8 +1,19 @@
 {
   "name": "kaijibot",
-  "version": "2026.4.17",
-  "description": "Proactive AI assistant gateway for Chinese users — Feishu + Z.AI (智谱 GLM) with cognitive insight system",
-  "keywords": ["ai", "feishu", "lark", "zhipu", "glm", "ollama", "lmstudio", "chatbot", "proactive-ai", "cognitive"],
+  "version": "2026.5.2",
+  "description": "Proactive cognitive AI assistant — learns your interests, pushes insights, evolves skills autonomously",
+  "keywords": [
+    "ai",
+    "feishu",
+    "lark",
+    "zhipu",
+    "glm",
+    "ollama",
+    "lmstudio",
+    "chatbot",
+    "proactive-ai",
+    "cognitive"
+  ],
   "homepage": "https://github.com/Kaiji-Z/kaijibot#readme",
   "bugs": {
     "url": "https://github.com/Kaiji-Z/kaijibot/issues"
@@ -393,7 +404,7 @@
       "types": "./dist/plugin-sdk/allowlist-config-edit.d.ts",
       "default": "./dist/plugin-sdk/allowlist-config-edit.js"
     },
-"./plugin-sdk/browser-cdp": {
+    "./plugin-sdk/browser-cdp": {
       "types": "./dist/plugin-sdk/browser-cdp.d.ts",
       "default": "./dist/plugin-sdk/browser-cdp.js"
     },
@@ -593,7 +604,7 @@
       "types": "./dist/plugin-sdk/directory-runtime.d.ts",
       "default": "./dist/plugin-sdk/directory-runtime.js"
     },
-"./plugin-sdk/media-generation-runtime-shared": {
+    "./plugin-sdk/media-generation-runtime-shared": {
       "types": "./dist/plugin-sdk/media-generation-runtime-shared.d.ts",
       "default": "./dist/plugin-sdk/media-generation-runtime-shared.js"
     },
@@ -629,7 +640,7 @@
       "types": "./dist/plugin-sdk/video-generation-core.d.ts",
       "default": "./dist/plugin-sdk/video-generation-core.js"
     },
-"./plugin-sdk/reply-history": {
+    "./plugin-sdk/reply-history": {
       "types": "./dist/plugin-sdk/reply-history.d.ts",
       "default": "./dist/plugin-sdk/reply-history.js"
     },
@@ -673,11 +684,11 @@
       "types": "./dist/plugin-sdk/keyed-async-queue.d.ts",
       "default": "./dist/plugin-sdk/keyed-async-queue.js"
     },
-"./plugin-sdk/llm-task": {
+    "./plugin-sdk/llm-task": {
       "types": "./dist/plugin-sdk/llm-task.d.ts",
       "default": "./dist/plugin-sdk/llm-task.js"
     },
-"./plugin-sdk/memory-core": {
+    "./plugin-sdk/memory-core": {
       "types": "./dist/plugin-sdk/memory-core.d.ts",
       "default": "./dist/plugin-sdk/memory-core.js"
     },
@@ -761,7 +772,7 @@
       "types": "./dist/plugin-sdk/memory-lancedb.d.ts",
       "default": "./dist/plugin-sdk/memory-lancedb.js"
     },
-"./plugin-sdk/models-provider-runtime": {
+    "./plugin-sdk/models-provider-runtime": {
       "types": "./dist/plugin-sdk/models-provider-runtime.d.ts",
       "default": "./dist/plugin-sdk/models-provider-runtime.js"
     },
@@ -773,7 +784,7 @@
       "types": "./dist/plugin-sdk/native-command-registry.d.ts",
       "default": "./dist/plugin-sdk/native-command-registry.js"
     },
-"./plugin-sdk/provider-auth": {
+    "./plugin-sdk/provider-auth": {
       "types": "./dist/plugin-sdk/provider-auth.d.ts",
       "default": "./dist/plugin-sdk/provider-auth.js"
     },
@@ -917,7 +928,7 @@
       "types": "./dist/plugin-sdk/target-resolver-runtime.d.ts",
       "default": "./dist/plugin-sdk/target-resolver-runtime.js"
     },
-"./plugin-sdk/tool-payload": {
+    "./plugin-sdk/tool-payload": {
       "types": "./dist/plugin-sdk/tool-payload.d.ts",
       "default": "./dist/plugin-sdk/tool-payload.js"
     },
@@ -925,7 +936,7 @@
       "types": "./dist/plugin-sdk/tool-send.d.ts",
       "default": "./dist/plugin-sdk/tool-send.js"
     },
-"./plugin-sdk/webhook-ingress": {
+    "./plugin-sdk/webhook-ingress": {
       "types": "./dist/plugin-sdk/webhook-ingress.d.ts",
       "default": "./dist/plugin-sdk/webhook-ingress.js"
     },
@@ -949,7 +960,7 @@
       "types": "./dist/plugin-sdk/voice-call.d.ts",
       "default": "./dist/plugin-sdk/voice-call.js"
     },
-"./plugin-sdk/zod": {
+    "./plugin-sdk/zod": {
       "types": "./dist/plugin-sdk/zod.d.ts",
       "default": "./dist/plugin-sdk/zod.js"
     },
