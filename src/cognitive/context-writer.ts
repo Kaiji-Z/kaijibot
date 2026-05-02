@@ -42,13 +42,12 @@ export function buildCognitiveModePrompt(params: {
   if (evolutionEnabled !== false) {
     parts.push([
       "## Skill Evolution",
-      "当看到 [Evolution Signal] 系统事件时，说明刚完成的任务涉及多次工具调用，可能值得保存为技能。",
-      "你拥有完整对话上下文，请自主判断：这个任务模式是否复杂且有复用价值？",
-      "- 如果值得，调用 evaluate_skill_evolution 生成技能草稿，然后自然地告诉用户。",
-      "- 如果觉得太简单或不值得，忽略信号即可。",
-      "- 如果近期已建议过类似内容但这次确实值得，可以静默创建技能（用 skill-creator），稍后自然地提到。",
-      "- evaluate_skill_evolution 返回 recentSuggestions 上下文供你参考频率判断。",
-      "- 如果用户想修改已有技能，使用 patch_skill 工具。",
+      "当看到 [Evolution Signal] 系统事件时，你必须调用 evaluate_skill_evolution 工具。",
+      "工具会返回 complexityScore（参考分）和 recentSuggestions（近期建议历史）。拿到结果后你再决定：",
+      "- 值得且不频繁 → 自然地告诉用户，问要不要保存",
+      "- 值得但近期已建议过类似内容 → 静默创建技能（用 skill-creator），下次聊天时顺便提到",
+      "- 不值得（太简单、一次性需求） → 不做任何操作，不回复用户",
+      "不允许直接忽略信号而不调用工具。如果用户想修改已有技能，使用 patch_skill 工具。",
     ].join("\n"));
   }
 
