@@ -28,10 +28,10 @@ export function createEvolutionSuggestTool(deps: {
     name: "evaluate_skill_evolution",
     label: "Evaluate Skill Evolution",
     description:
-      "Evaluate whether a completed complex task should be preserved as a reusable Skill. " +
-      "When you see an [Evolution Signal] system event, call this tool to generate a skill draft. " +
-      "You can also call it proactively after complex tasks. The engine evaluates complexity and generates a skill draft. " +
-      "If suggested, present the draft to the user naturally. If they want to modify an existing skill, use patch_skill instead.",
+      "Generates a reusable Skill draft from a complex task pattern. Call this when you see an [Evolution Signal] " +
+      "system event or after any complex multi-step task. The tool provides recentSuggestions context to help you " +
+      "decide timing (e.g., whether to tell the user now or create the skill silently). " +
+      "If they want to modify an existing skill, use patch_skill instead.",
     parameters: EvolutionSuggestSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
       const params = rawParams as {
@@ -92,15 +92,6 @@ export function createEvolutionSuggestTool(deps: {
         };
 
         const decision = await engine.evaluate(candidate, userId);
-
-        if (!decision.shouldSuggest) {
-          return jsonResult({
-            status: "skipped",
-            reason: decision.reasoning,
-            complexityScore: decision.complexityScore,
-            recentSuggestions: decision.recentSuggestions,
-          });
-        }
 
         const draft = await engine.generate(candidate);
 

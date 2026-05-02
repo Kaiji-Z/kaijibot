@@ -106,39 +106,36 @@ Event Sources (timer / persona_change / info_scan)
 
 ### Self-Evolution Pipeline
 
-Agent-driven architecture: code detects complexity, agent decides whether to act.
+Agent-driven architecture: code only detects 3+ tool calls (noise filter), Agent decides everything else.
 
 ```
 Agent turn completes (≥3 tool calls)
   → hard-trigger.ts: evaluateHardTrigger()
     → resolveUserIdFromSession()
-    → build EvolutionCandidate (toolCalls, duration, errorProfile)
-    → EvolutionEngine.evaluate(candidate, userId)
-      → evaluateComplexity(): base factors + toolErrors(w=0.50) + toolRetries(w=0.40) + trial-error boost
-      → dual threshold: errorComplexityThreshold (0.3) when errors, minComplexity (0.6) otherwise
-      → fetch recentSuggestions from store (48h, for agent context only — NOT a gate)
-    → shouldSuggest=true → buildEvolutionSignal()
+    → consumeToolErrorProfile(sessionKey) — error info as reference context (NOT a gate)
+    → buildEvolutionSignal(toolCalls, duration, errorInfo)
     → enqueueSystemEvent("[Evolution Signal]...", { sessionKey })
     → requestHeartbeatNow({ reason: "cognitive-evolution", sessionKey })
       → heartbeat-runner triggers agent turn
-        → Agent sees signal + recentSuggestions context in system prompt
+        → Agent sees signal with tool sequence + optional error info
         → Agent decides based on full conversation context:
             Worth it → calls evaluate_skill_evolution → generateSkillDraftLLM → tells user or silently creates
             Not worth it → ignores signal
             Wants to silently create → creates skill, mentions later at a natural moment
 ```
 
-**No code-level gating**: There is no cooldown, daily cap, or rate limit in code. The agent receives `recentSuggestions` (last 48h records with domain, skillName, hoursAgo, userResponse) as context and makes its own decision about frequency.
+**No code-level gating**: No complexity score threshold, no cooldown, no daily cap, no rate limit. The only code-level filter is ≥3 tool calls (noise reduction, not quality judgment). The Agent receives `recentSuggestions` (last 48h records with domain, skillName, hoursAgo, userResponse) as context and makes its own decision about frequency and worthiness.
 
 **Hard-trigger detection** (`src/cognitive/evolution/hard-trigger.ts`):
 - Called from `src/agents/pi-embedded-runner/run.ts` after tool execution
 - Skips non-user/non-manual triggers
-- Requires ≥3 tool calls
+- Requires ≥3 tool calls (noise filter only)
 - Resolves userId from sessionKey or senderId
-- Consumes accumulated tool error profile via `consumeToolErrorProfile(sessionKey)`
+- Collects tool error profile as optional signal context (not used for any decision)
+- Does NOT call `EvolutionEngine.evaluate()` — no code-level complexity gating
 
 **Agent tools**:
-- `evaluate_skill_evolution` — complexity evaluation + LLM draft generation, returns suggestionText + bodyMarkdown + recentSuggestions
+- `evaluate_skill_evolution` — always generates a skill draft when called; returns suggestionText + bodyMarkdown + recentSuggestions + complexityScore (as reference info, not a gate)
 - `patch_skill` — text replace or LLM-guided patch on existing skills (NOTE: not yet registered in `kaijibot-tools.ts`)
 
 **Skill lifecycle**:
@@ -155,7 +152,7 @@ Insight delivery:
 - `src/infra/heartbeat-runner.ts` — `hasCognitiveEvents` check for `shouldInspectPendingEvents`
 
 Evolution (signal-driven via system events):
-- `src/cognitive/evolution/hard-trigger.ts` — post-turn hook: detects ≥3 tool calls, evaluates complexity, enqueues [Evolution Signal] system event
+- `src/cognitive/evolution/hard-trigger.ts` — post-turn hook: detects ≥3 tool calls (noise filter), enqueues [Evolution Signal] with error context
 - `src/agents/tools/evolution-suggest-tool.ts` — `evaluate_skill_evolution` agent tool (used when agent decides to act on signal)
 - `src/agents/tools/evolution-patch-tool.ts` — `patch_skill` agent tool
 - `src/cognitive/context-writer.ts` — injects "Skill Evolution" system prompt section when `evolutionEnabled`
@@ -244,7 +241,8 @@ Shared:
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
-- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.minComplexity` (0-1, default 0.6), `cognitive.evolution.errorComplexityThreshold` (0-1, default 0.3), `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
+- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
+- Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.

@@ -1,6 +1,5 @@
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
-import type { EvolutionCandidate } from "./types.js";
 
 const log = createSubsystemLogger("cognitive/evolution/hard-trigger");
 
@@ -38,36 +37,30 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 
   log.debug("proceeding", { userId, toolCalls: toolCalls.length, uniqueTools: new Set(toolCalls).size });
 
-  const { EvolutionEngine } = await import("./engine.js");
-  const { EvolutionStore } = await import("./store.js");
-  const { consumeToolErrorProfile } = await import("../../agents/tool-error-summary.js");
-  const { resolveConfigDir } = await import("../../utils.js");
+  // Get error profile as reference context for the Agent (NOT used for gating)
+  let errorInfo: { errorCount: number; failedToolNames: string[] } | undefined;
+  try {
+    const { consumeToolErrorProfile } = await import("../../agents/tool-error-summary.js");
+    const profile = consumeToolErrorProfile(params.sessionKey);
+    if (profile && profile.errorCount > 0) {
+      errorInfo = { errorCount: profile.errorCount, failedToolNames: profile.failedToolNames };
+    }
+  } catch {
+    // Non-critical: error info is optional context
+  }
 
-  const errorProfile = consumeToolErrorProfile(params.sessionKey);
   const uniqueTools = new Set(toolCalls);
+  const durationMs = Date.now() - params.started;
 
-  const candidate: EvolutionCandidate = {
-    taskSummary: "auto",
+  // 3+ tool calls → directly enqueue evolution signal.
+  // The Agent decides worthiness based on full conversation context.
+  const signalText = buildEvolutionSignal({
     toolCalls,
     uniqueToolCount: uniqueTools.size,
-    durationMs: Date.now() - params.started,
-    reasoningTurns: Math.max(1, Math.floor(toolCalls.length / 2)),
-    domain: "auto",
-    errorProfile,
-  };
+    durationMs,
+    errorInfo,
+  });
 
-  const configDir = resolveConfigDir();
-  const store = new EvolutionStore(configDir);
-  const engine = new EvolutionEngine(store);
-
-  const decision = await engine.evaluate(candidate, userId);
-  log.debug("evaluate decision", { shouldSuggest: decision.shouldSuggest, complexityScore: decision.complexityScore, reasoning: decision.reasoning });
-  if (!decision.shouldSuggest) return;
-
-  // Instead of generating a draft and delivering outbound, enqueue a system event
-  // that the agent will pick up in its next heartbeat turn. The agent has full
-  // conversation context and can naturally decide whether to suggest a skill.
-  const signalText = buildEvolutionSignal(candidate);
   const targetSessionKey = resolveTargetSessionKey(params.sessionKey, params.config, userId);
 
   try {
@@ -108,20 +101,26 @@ function resolveTargetSessionKey(sessionKey: string, config: KaijiBotConfig, use
   }
 }
 
-/**
- * Build the evolution signal that the agent will see as a system event.
- * This is an instruction to the agent, not a user-facing message.
- * The agent decides whether to act on it based on conversation context.
- */
-function buildEvolutionSignal(candidate: EvolutionCandidate): string {
-  const durationSec = Math.round(candidate.durationMs / 1000);
-  const toolSeq = candidate.toolCalls.join(", ");
-  return [
-    `[Evolution Signal] 刚完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
+function buildEvolutionSignal(params: {
+  toolCalls: string[];
+  uniqueToolCount: number;
+  durationMs: number;
+  errorInfo?: { errorCount: number; failedToolNames: string[] };
+}): string {
+  const durationSec = Math.round(params.durationMs / 1000);
+  const toolSeq = params.toolCalls.join(", ");
+  const lines = [
+    `[Evolution Signal] 刚完成的任务涉及 ${params.toolCalls.length} 次工具调用（${params.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
     `工具序列: ${toolSeq}`,
+  ];
+  if (params.errorInfo) {
+    lines.push(`⚠ 工具错误: ${params.errorInfo.errorCount} 次错误（${params.errorInfo.failedToolNames.join(", ")}）`);
+  }
+  lines.push(
     "",
-    "请评估：这个任务模式是否值得做成可复用技能？",
+    "请根据完整对话上下文自主判断：这个任务模式是否值得做成可复用技能？",
     "如果是，用自然语言告诉用户你的想法，然后调用 evaluate_skill_evolution 工具生成技能草稿。",
     "如果觉得不值得，忽略即可。",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }

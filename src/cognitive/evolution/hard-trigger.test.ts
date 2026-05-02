@@ -1,31 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./engine.js", () => {
-  const evaluate = vi.fn().mockResolvedValue({
-    shouldSuggest: true,
-    complexityScore: 0.8,
-    reasoning: "complex",
-    confidence: 0.9,
-  });
-  return {
-    EvolutionEngine: class {
-      evaluate = evaluate;
-    },
-    __mockEvaluate: evaluate,
-  };
-});
-
-vi.mock("./store.js", () => ({
-  EvolutionStore: class {},
-}));
-
+const mockConsumeToolErrorProfile = vi.fn().mockReturnValue(undefined);
 vi.mock("../../agents/tool-error-summary.js", () => ({
-  consumeToolErrorProfile: vi.fn().mockReturnValue(undefined),
-}));
-
-vi.mock("../../utils.js", async (orig) => ({
-  ...(await orig<typeof import("../../utils.js")>()),
-  resolveConfigDir: vi.fn().mockReturnValue("/home/test/.kaijibot"),
+  consumeToolErrorProfile: mockConsumeToolErrorProfile,
 }));
 
 const mockEnqueue = vi.fn().mockReturnValue(true);
@@ -50,7 +27,7 @@ vi.mock("../../gateway/cognitive-delivery.js", () => ({
 describe("evaluateHardTrigger", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("enqueues evolution signal and requests heartbeat when shouldSuggest is true", async () => {
+  it("enqueues evolution signal and requests heartbeat for 3+ tool calls", async () => {
     const { evaluateHardTrigger } = await import("./hard-trigger.js");
 
     await evaluateHardTrigger({
@@ -118,29 +95,6 @@ describe("evaluateHardTrigger", () => {
     expect(mockEnqueue).not.toHaveBeenCalled();
   });
 
-  it("does not enqueue when engine decides not to suggest", async () => {
-    const engineModule = await import("./engine.js") as typeof import("./engine.js") & { __mockEvaluate: ReturnType<typeof vi.fn> };
-    engineModule.__mockEvaluate.mockResolvedValueOnce({
-      shouldSuggest: false,
-      complexityScore: 0.1,
-      reasoning: "too simple",
-    });
-
-    const { evaluateHardTrigger } = await import("./hard-trigger.js");
-
-    await evaluateHardTrigger({
-      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
-      sessionKey: "agent:main:ou_test",
-      trigger: "user",
-      config: {} as never,
-      senderId: "ou_test",
-      started: Date.now(),
-    });
-
-    expect(mockEnqueue).not.toHaveBeenCalled();
-    expect(mockHeartbeat).not.toHaveBeenCalled();
-  });
-
   it("signal text includes tool sequence", async () => {
     const { evaluateHardTrigger } = await import("./hard-trigger.js");
 
@@ -160,6 +114,46 @@ describe("evaluateHardTrigger", () => {
     const signalText = mockEnqueue.mock.calls[0][0] as string;
     expect(signalText).toContain("web_search, read_file, web_search");
     expect(signalText).toContain("evaluate_skill_evolution");
+  });
+
+  it("includes error info in signal when errorProfile has errors", async () => {
+    mockConsumeToolErrorProfile.mockReturnValueOnce({
+      errorCount: 2,
+      failedToolNames: ["web_search", "read_file"],
+    });
+
+    const { evaluateHardTrigger } = await import("./hard-trigger.js");
+
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:ou_test",
+      trigger: "user",
+      config: {} as never,
+      senderId: "ou_test",
+      started: Date.now() - 2000,
+    });
+
+    expect(mockEnqueue).toHaveBeenCalledTimes(1);
+    const signalText = mockEnqueue.mock.calls[0][0] as string;
+    expect(signalText).toContain("工具错误");
+    expect(signalText).toContain("2 次错误");
+    expect(signalText).toContain("web_search, read_file");
+  });
+
+  it("skips error info when no errors", async () => {
+    const { evaluateHardTrigger } = await import("./hard-trigger.js");
+
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:ou_test",
+      trigger: "user",
+      config: {} as never,
+      senderId: "ou_test",
+      started: Date.now(),
+    });
+
+    const signalText = mockEnqueue.mock.calls[0][0] as string;
+    expect(signalText).not.toContain("工具错误");
   });
 
   it("falls back to current sessionKey when cognitive delivery target is unavailable", async () => {

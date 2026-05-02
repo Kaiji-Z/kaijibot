@@ -34,7 +34,7 @@ vi.mock("../../utils.js", async (importOriginal) => {
 describe("createEvolutionSuggestTool", () => {
   afterEach(() => {
     vi.clearAllMocks();
-    mockEvaluate.mockResolvedValue({ shouldSuggest: false, reasoning: "too simple", complexityScore: 0.2 });
+    mockEvaluate.mockResolvedValue({ shouldSuggest: true, reasoning: "complex enough", complexityScore: 0.7, confidence: 0.8 });
   });
 
   it("returns null when cognitive.enabled is false", () => {
@@ -81,26 +81,6 @@ describe("createEvolutionSuggestTool", () => {
       const text = (result.content as Array<{ text: string }>)[0].text;
       expect(text).toContain("No user session");
       expect(mockEvaluate).not.toHaveBeenCalled();
-    });
-
-    it("returns skipped when engine decides not to suggest", async () => {
-      const tool = createEvolutionSuggestTool({
-        sessionKey: "agent:main:user-1",
-      })!;
-
-      const result = await tool.execute("call-2", {
-        taskSummary: "simple task",
-        toolCalls: ["tool_a"],
-        uniqueToolCount: 1,
-        reasoningTurns: 2,
-        durationMs: 500,
-        domain: "test",
-      });
-
-      const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
-      expect(payload.status).toBe("skipped");
-      expect(mockEvaluate).toHaveBeenCalledTimes(1);
-      expect(mockSave).not.toHaveBeenCalled();
     });
 
     it("returns suggested when engine decides to suggest", async () => {
@@ -199,9 +179,10 @@ describe("createEvolutionSuggestTool", () => {
 
     it("passes transcript to candidate in engine.evaluate", async () => {
       mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: false,
-        reasoning: "too simple",
-        complexityScore: 0.2,
+        shouldSuggest: true,
+        reasoning: "complex enough",
+        complexityScore: 0.7,
+        confidence: 0.8,
       });
 
       const tool = createEvolutionSuggestTool({
@@ -221,13 +202,15 @@ describe("createEvolutionSuggestTool", () => {
       expect(mockEvaluate).toHaveBeenCalledTimes(1);
       const candidate = mockEvaluate.mock.calls[0][0] as { transcript?: string };
       expect(candidate.transcript).toBe("User asked about feishu wiki archiving, bot listed pages and moved them.");
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
 
     it("passes hasTrialAndError to candidate", async () => {
       mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: false,
-        reasoning: "too simple",
-        complexityScore: 0.2,
+        shouldSuggest: true,
+        reasoning: "complex enough",
+        complexityScore: 0.7,
+        confidence: 0.8,
       });
 
       const tool = createEvolutionSuggestTool({
@@ -246,13 +229,15 @@ describe("createEvolutionSuggestTool", () => {
 
       const candidate = mockEvaluate.mock.calls[0][0] as { hasTrialAndError?: boolean };
       expect(candidate.hasTrialAndError).toBe(true);
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
 
     it("passes userCorrections to candidate", async () => {
       mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: false,
-        reasoning: "too simple",
-        complexityScore: 0.2,
+        shouldSuggest: true,
+        reasoning: "complex enough",
+        complexityScore: 0.7,
+        confidence: 0.8,
       });
 
       const tool = createEvolutionSuggestTool({
@@ -271,10 +256,11 @@ describe("createEvolutionSuggestTool", () => {
 
       const candidate = mockEvaluate.mock.calls[0][0] as { userCorrections?: number };
       expect(candidate.userCorrections).toBe(4);
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
 
     it("prefers deliveryTo over sessionKey for userId", async () => {
-      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: false, reasoning: "ok", complexityScore: 0.2 });
+      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: true, reasoning: "ok", complexityScore: 0.7, confidence: 0.8 });
 
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:main",
@@ -303,7 +289,7 @@ describe("createEvolutionSuggestTool", () => {
     });
 
     it("strips feishu: prefix from deliveryTo", async () => {
-      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: false, reasoning: "ok", complexityScore: 0.2 });
+      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: true, reasoning: "ok", complexityScore: 0.7, confidence: 0.8 });
 
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:main",
