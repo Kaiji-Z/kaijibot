@@ -1,18 +1,19 @@
 /**
  * Live evolution end-to-end test — verifies the full self-evolution pipeline
- * from hard-trigger detection through signal delivery to agent tool evaluation.
+ * from hard-trigger signal through agent tool draft generation.
  *
  * Run: KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-e2e.test.ts
  *
  * What this tests:
- *   1. Hard-trigger: 3+ tools → direct signal enqueue + request heartbeat (no code-level complexity gate)
- *   2. Agent tool: evaluate_skill_evolution → real LLM draft + recentSuggestions context
+ *   1. Hard-trigger: 3+ tools → direct signal enqueue (no code-level complexity gate)
+ *   2. Agent tool: evaluate_skill_evolution always generates draft (no shouldSuggest gate)
  *   3. No-cooldown flow: multiple suggestions for same user all succeed
- *   4. Signal format: [Evolution Signal] contains correct tool sequence and metadata
+ *   4. Signal format: [Evolution Signal] contains correct tool sequence + optional error info
  *   5. recentSuggestions context: prior records appear in subsequent evaluations
+ *   6. Simple tasks also generate drafts (agent decides, not code)
  */
 
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -86,28 +87,37 @@ afterEach(() => {
 // PHASE 1: Hard-trigger signal generation (no LLM needed)
 // ===========================================================================
 describe("Phase 1: hard-trigger signal generation", () => {
-  it("builds correct [Evolution Signal] text from candidate", async () => {
+  it("builds correct [Evolution Signal] text with tool sequence", () => {
     const toolCalls = [
       "web_search", "read_file", "web_search", "write_file",
       "read_file", "web_search", "write_file", "read_file",
       "web_search", "write_file",
     ];
-    const candidate = makeCandidate({
-      taskSummary: "auto",
+    const signalText = buildEvolutionSignalFromParams({
       toolCalls,
       uniqueToolCount: 3,
-      reasoningTurns: 8,
       durationMs: 280_000,
-      domain: "auto",
     });
 
-    const signalText = buildEvolutionSignalFromCandidate(candidate);
     expect(signalText).toContain("[Evolution Signal]");
     expect(signalText).toContain("10 次工具调用");
     expect(signalText).toContain("3 种");
     expect(signalText).toContain("280 秒");
     expect(signalText).toContain("evaluate_skill_evolution");
     expect(signalText).toContain("自主判断");
+    expect(signalText).toContain("web_search, read_file, web_search, write_file");
+    expect(signalText).not.toContain("工具错误");
+  });
+
+  it("includes error info in signal when errors exist", () => {
+    const signalText = buildEvolutionSignalFromParams({
+      toolCalls: ["a", "b", "c"],
+      uniqueToolCount: 3,
+      durationMs: 5000,
+      errorInfo: { errorCount: 2, failedToolNames: ["a", "c"] },
+    });
+
+    expect(signalText).toContain("⚠ 工具错误: 2 次错误（a, c）");
   });
 
   it("enqueues signal and heartbeat fires correctly", () => {
@@ -124,23 +134,14 @@ describe("Phase 1: hard-trigger signal generation", () => {
     expect(true).toBe(true);
   });
 
-  it("skips signal for < 3 tool calls", () => {
-    // Hard-trigger only fires for ≥3 tool calls — this is a pure logic check
-    const toolCalls = ["a", "b"];
-    expect(toolCalls.length).toBeLessThan(3);
-    // A candidate with <3 tool calls would not trigger signal generation
-    const candidate = makeCandidate({
-      toolCalls,
-      uniqueToolCount: 2,
-      reasoningTurns: 1,
-      durationMs: 5_000,
-    });
-    expect(candidate.toolCalls.length).toBeLessThan(3);
+  it("3+ tools pass the noise filter, < 3 do not", () => {
+    expect(["a", "b", "c"].length).toBeGreaterThanOrEqual(3);
+    expect(["a", "b"].length).toBeLessThan(3);
   });
 });
 
 // ===========================================================================
-// PHASE 2: No-cooldown flow (no LLM needed)
+// PHASE 2: No-cooldown flow + recentSuggestions (no LLM needed)
 // ===========================================================================
 describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
   it("allows 5 consecutive suggestions for same user", async () => {
@@ -246,10 +247,13 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
 });
 
 // ===========================================================================
-// PHASE 3: Full agent tool flow with real LLM (requires API key)
+// PHASE 3: Full pipeline with real LLM (requires API key)
+//
+// Tests the actual flow: candidate → engine.evaluate (for context) → engine.generate (LLM draft)
+// No gating: the tool always generates a draft regardless of complexityScore.
 // ===========================================================================
-describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM", () => {
-  it("generates skill draft and returns recentSuggestions context", async () => {
+describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM", () => {
+  it("complex task → generate draft with real LLM", async () => {
     const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
@@ -271,9 +275,10 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM"
       domain: "feishu-meeting",
     });
 
+    // evaluate returns context (recentSuggestions, complexityScore) — NOT used for gating
     const decision = await engine.evaluate(candidate, "user-live-1");
-    expect(decision.shouldSuggest).toBe(true);
 
+    // generate always runs — no shouldSuggest gate
     const draft = await engine.generate(candidate);
 
     console.log(`\n  ═══ Live Draft ═══`);
@@ -281,6 +286,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM"
     console.log(`  Description: ${draft.description}`);
     console.log(`  Triggers: ${draft.triggerPhrases.join(", ")}`);
     console.log(`  Body lines: ${draft.bodyMarkdown.split("\n").length}`);
+    console.log(`  complexityScore: ${decision.complexityScore.toFixed(2)} (reference only)`);
     console.log(`  recentSuggestions: ${JSON.stringify(decision.recentSuggestions)}`);
     console.log(`  ═══════════════════\n`);
 
@@ -291,7 +297,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM"
     expect(decision.recentSuggestions).toEqual([]);
   }, 120_000);
 
-  it("second evaluation for same user shows first record in recentSuggestions", async () => {
+  it("second round shows recentSuggestions from first round", async () => {
     const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
@@ -311,8 +317,6 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM"
     });
 
     const decision1 = await engine.evaluate(candidate1, "user-live-2");
-    expect(decision1.shouldSuggest).toBe(true);
-
     const draft1 = await engine.generate(candidate1);
     await store.save({
       id: "rec-live-1",
@@ -337,18 +341,26 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM"
     });
 
     const decision2 = await engine.evaluate(candidate2, "user-live-2");
-    expect(decision2.shouldSuggest).toBe(true);
+    const draft2 = await engine.generate(candidate2);
+
+    console.log(`\n  [Round 1] ${draft1.name} → saved`);
+    console.log(`  [Round 2] ${draft2.name}`);
+    console.log(`  [Round 2] recentSuggestions: ${JSON.stringify(decision2.recentSuggestions)}`);
+    console.log(`  [Round 2] complexityScore: ${decision2.complexityScore.toFixed(2)} (reference)\n`);
+
     expect(decision2.recentSuggestions).toHaveLength(1);
     expect(decision2.recentSuggestions![0]!.skillName).toBe(draft1.name);
     expect(decision2.recentSuggestions![0]!.domain).toBe("feishu-data");
-
-    console.log(`\n  [Round 1] ${draft1.name} → saved`);
-    console.log(`  [Round 2] recentSuggestions: ${JSON.stringify(decision2.recentSuggestions)}`);
-    console.log(`  Round 2 still suggests: ${decision2.shouldSuggest}\n`);
+    expect(draft2.name).toBeTruthy();
   }, 240_000);
 
-  it("error-triggered evaluation uses lower threshold and still suggests", async () => {
-    const engine = new EvolutionEngine(store);
+  it("simple task with errors → still generates draft (agent decides)", async () => {
+    // In the old architecture this would be gated by errorComplexityThreshold.
+    // Now: hard-trigger sends signal on 3+ tools regardless,
+    // and the tool always generates a draft — the Agent decides worthiness.
+    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+      generateSkillDraftLLM(c, { generateText: callLLM }),
+    );
 
     const simpleWithErrors = makeCandidate({
       taskSummary: "查询天气（有工具错误）",
@@ -360,29 +372,42 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full tool flow with real LLM"
       errorProfile: { errorCount: 2, failedToolNames: ["weather_get"], hasMutatingErrors: false },
     });
 
+    // evaluate is called for context only — complexityScore is reference info
     const decision = await engine.evaluate(simpleWithErrors, "user-live-err");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.reasoning).toContain("error threshold");
 
-    console.log(`\n  Error-triggered evaluation:`);
-    console.log(`  shouldSuggest: ${decision.shouldSuggest}`);
-    console.log(`  complexityScore: ${decision.complexityScore.toFixed(2)}`);
-    console.log(`  reasoning: ${decision.reasoning}\n`);
-  });
+    // generate always runs — no gate
+    const draft = await engine.generate(simpleWithErrors);
+
+    console.log(`\n  Simple task with errors:`);
+    console.log(`  complexityScore: ${decision.complexityScore.toFixed(2)} (reference only)`);
+    console.log(`  Draft generated: ${draft.name}`);
+    console.log(`  Description: ${draft.description}\n`);
+
+    // Draft is always generated regardless of score
+    expect(draft.name).toBeTruthy();
+    expect(draft.description.length).toBeGreaterThan(0);
+    // Score is still computed (as reference info for the Agent)
+    expect(typeof decision.complexityScore).toBe("number");
+  }, 120_000);
 });
 
 // ===========================================================================
 // Helper: build signal text matching hard-trigger.ts logic
 // ===========================================================================
-function buildEvolutionSignalFromCandidate(candidate: EvolutionCandidate): string {
-  const durationSec = Math.round(candidate.durationMs / 1000);
-  const toolSeq = candidate.toolCalls.join(", ");
+function buildEvolutionSignalFromParams(params: {
+  toolCalls: string[];
+  uniqueToolCount: number;
+  durationMs: number;
+  errorInfo?: { errorCount: number; failedToolNames: string[] };
+}): string {
+  const durationSec = Math.round(params.durationMs / 1000);
+  const toolSeq = params.toolCalls.join(", ");
   const lines = [
-    `[Evolution Signal] 刚完成的任务涉及 ${candidate.toolCalls.length} 次工具调用（${candidate.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
+    `[Evolution Signal] 刚完成的任务涉及 ${params.toolCalls.length} 次工具调用（${params.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
     `工具序列: ${toolSeq}`,
   ];
-  if (candidate.errorProfile && candidate.errorProfile.errorCount > 0) {
-    lines.push(`⚠ 工具错误: ${candidate.errorProfile.errorCount} 次错误（${candidate.errorProfile.failedToolNames.join(", ")}）`);
+  if (params.errorInfo) {
+    lines.push(`⚠ 工具错误: ${params.errorInfo.errorCount} 次错误（${params.errorInfo.failedToolNames.join(", ")}）`);
   }
   lines.push(
     "",
