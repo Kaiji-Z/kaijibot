@@ -157,7 +157,7 @@ Insight delivery:
 Evolution (signal-driven via system events):
 - `src/cognitive/evolution/hard-trigger.ts` — post-turn hook: detects ≥3 tool calls, evaluates complexity, enqueues [Evolution Signal] system event
 - `src/agents/tools/evolution-suggest-tool.ts` — `evaluate_skill_evolution` agent tool (used when agent decides to act on signal)
-- `src/agents/tools/evolution-patch-tool.ts` — `patch_skill` agent tool (NOTE: not yet registered in `kaijibot-tools.ts`)
+- `src/agents/tools/evolution-patch-tool.ts` — `patch_skill` agent tool
 - `src/cognitive/context-writer.ts` — injects "Skill Evolution" system prompt section when `evolutionEnabled`
 - `src/auto-reply/reply/get-reply-run.ts` — passes `evolutionEnabled` to context-writer
 - `src/infra/heartbeat-reason.ts` — classifies `"cognitive-evolution"` as `"wake"` kind to bypass HEARTBEAT.md gate
