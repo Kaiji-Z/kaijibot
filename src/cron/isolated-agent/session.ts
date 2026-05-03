@@ -77,12 +77,17 @@ export function resolveCronSession(params: {
     // replies instead of channel top-level messages.
     // deliveryContext must also be cleared because normalizeSessionEntryDelivery
     // repopulates lastThreadId from deliveryContext.threadId on store writes.
+    //
+    // sessionFile must be cleared so resolveSessionFilePath derives a fresh
+    // path from the new sessionId; otherwise ...entry spread reuses the old
+    // .jsonl and isolated sessions accumulate context across runs.
     ...(isNewSession && {
       lastChannel: undefined,
       lastTo: undefined,
       lastAccountId: undefined,
       lastThreadId: undefined,
       deliveryContext: undefined,
+      sessionFile: undefined,
     }),
   };
   return { storePath, store, sessionEntry, systemSent, isNewSession };

@@ -167,6 +167,23 @@ describe("resolveCronSession", () => {
       expect(clearBootstrapSnapshot).toHaveBeenCalledWith("webhook:stable-key");
     });
 
+    it("clears sessionFile when forceNew is true so a fresh .jsonl is used", () => {
+      const result = resolveWithStoredEntry({
+        entry: {
+          sessionId: "existing-session-id-456",
+          updatedAt: NOW_MS - 1000,
+          systemSent: true,
+          sessionFile: "/old/sessions/existing-session-id-456.jsonl",
+        },
+        fresh: true,
+        forceNew: true,
+      });
+
+      expect(result.isNewSession).toBe(true);
+      expect(result.sessionEntry.sessionId).not.toBe("existing-session-id-456");
+      expect(result.sessionEntry.sessionFile).toBeUndefined();
+    });
+
     it("clears delivery routing metadata and deliveryContext when forceNew is true", () => {
       const result = resolveWithStoredEntry({
         entry: {
