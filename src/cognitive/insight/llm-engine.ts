@@ -10,7 +10,7 @@ import type { PersonaTree } from "../types.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
-import { isDuplicateByContent, isDuplicateBySemanticOverlap } from "./content-similarity.js";
+import { isDuplicateByContent, isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
@@ -502,6 +502,8 @@ ${anchorBlock}
 ${externalFactsBlock ? `\nEXTERNAL_FACTS (fresh web findings):\n${externalFactsBlock}` : ""}
 
 ${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
+${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
+${(input.recentInsightDomains?.length ?? 0) > 0 ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these):\n${input.recentInsightDomains!.slice(-5).map((domains, i) => `${i + 1}. ${domains.join(" + ")}`).join("\n")}` : ""}
 
 TASK:
 Share a specific, surprising insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory. The insight should feel like a genuine discovery, not a recommendation or tutorial.
@@ -879,7 +881,7 @@ export function buildInsightPrompt(
     const unmatched = webResults.length - matchedUrls.size;
     log.info("web search domain matching", {
       totalResults: webResults.length,
-      matchedDomains: matchedDomains.length > 0 ? matchedDomains : "(none)",
+      matchedDomains,
       unmatchedSnippets: unmatched,
     });
   }
@@ -979,10 +981,12 @@ ${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's
 
  Recent focus: ${recentFocus || "None"}
  Trust: ${persona.rapport.trustScore.toFixed(2)} / 1.0
-Delivered insight IDs: ${recentInsightIds || "None"}
+ Delivered insight IDs: ${recentInsightIds || "None"}
 ${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
+${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
+${(input.recentInsightDomains?.length ?? 0) > 0 ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these domain angles):\n${input.recentInsightDomains!.slice(-5).map((domains, i) => `${i + 1}. ${domains.join(" + ")}`).join("\n")}` : ""}
 
- TARGET DOMAINS (insight MUST be about these domains):
+  TARGET DOMAINS (insight MUST be about these domains):
 ${input.targetDomains.join(", ")}
 
  TASK:

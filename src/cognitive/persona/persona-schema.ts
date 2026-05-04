@@ -105,7 +105,7 @@ const personaTreeSchema = z.object({
   moodHistory: z.array(z.any()).optional().default([]),
   calibrationHistory: z.array(calibrationRecordSchema).optional().default([]),
   contradictionLog: z.array(contradictionRecordSchema).optional().default([]),
-}).passthrough();
+}).strip();
 
 export function safeParsePersona(json: unknown): PersonaTree | null {
   const result = personaTreeSchema.safeParse(json);

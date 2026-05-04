@@ -105,7 +105,11 @@ export class FragmentStore {
   }
 
   async findClusters(userId: string): Promise<FragmentCluster[]> {
-    const fragments = await this.load(userId);
+    const allFragments = await this.load(userId);
+    if (allFragments.length === 0) return [];
+
+    const CLUSTER_MIN_STRENGTH = 0.05;
+    const fragments = allFragments.filter(f => f.strength >= CLUSTER_MIN_STRENGTH);
     if (fragments.length === 0) return [];
 
     // Union-find for domain-overlap clustering
@@ -207,6 +211,7 @@ export class FragmentStore {
     const target = fragments.find(f => f.id === fragmentId);
     if (target) {
       target.strength = Math.min(1.0, target.strength + 0.1);
+      target.initialStrength = Math.min(1.0, (target.initialStrength ?? target.strength) + 0.1);
       await this.save(userId, fragments);
     }
   }

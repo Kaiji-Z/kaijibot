@@ -242,6 +242,7 @@ export function parseFragments(text: string): Fragment[] {
           domains,
           structuralTag: String(item.structuralTag),
           strength,
+          initialStrength: strength,
         } satisfies Fragment;
       });
   } catch (err) {

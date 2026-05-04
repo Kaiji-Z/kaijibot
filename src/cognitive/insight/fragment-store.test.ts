@@ -8,7 +8,7 @@ import type { Fragment } from "./fragment-types.js";
 import { FRAGMENT_TTL_MS } from "./fragment-types.js";
 
 function makeFragment(overrides: Partial<Fragment> = {}): Fragment {
-  return {
+  const result: Fragment = {
     id: randomUUID(),
     userId: "test-user",
     createdAt: Date.now(),
@@ -20,6 +20,8 @@ function makeFragment(overrides: Partial<Fragment> = {}): Fragment {
     strength: 0.5,
     ...overrides,
   };
+  result.initialStrength = result.initialStrength ?? result.strength;
+  return result;
 }
 
 describe("FragmentStore", () => {
@@ -379,6 +381,97 @@ describe("FragmentStore", () => {
       await store.touchFragment("test-user", "max-str");
       const loaded = await store.load("test-user");
       expect(loaded[0].strength).toBeCloseTo(1.0, 1);
+    });
+  });
+
+  // ─── Cascading decay regression ───
+
+  describe("cascading decay prevention", () => {
+    it("strength does not compound on repeated save/load cycles", async () => {
+      vi.useFakeTimers();
+      try {
+        const threeDays = 3 * 24 * 60 * 60 * 1000;
+        const fiveDays = 5 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        const fragment = makeFragment({
+          id: "decay-test",
+          createdAt: now,
+          expiresAt: now + FRAGMENT_TTL_MS,
+          strength: 0.8,
+          initialStrength: 0.8,
+        });
+
+        await store.save("test-user", [fragment]);
+
+        vi.advanceTimersByTime(threeDays);
+        const loaded3d = await store.load("test-user");
+        await store.save("test-user", loaded3d);
+
+        vi.advanceTimersByTime(fiveDays - threeDays);
+        const loaded5d = await store.load("test-user");
+
+        // Correct: 0.8 * 0.5^(5/7) ≈ 0.488
+        // Buggy (compound): (0.8 * 0.5^(3/7)) * 0.5^(5/7) ≈ 0.363
+        const expectedAt5d = 0.8 * Math.pow(0.5, fiveDays / (7 * 24 * 60 * 60 * 1000));
+        expect(loaded5d[0].strength).toBeCloseTo(expectedAt5d, 3);
+        expect(loaded5d[0].strength).toBeGreaterThan(0.45);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("initialStrength is preserved across load/save cycles", async () => {
+      vi.useFakeTimers();
+      try {
+        const now = Date.now();
+        const fragment = makeFragment({
+          createdAt: now,
+          expiresAt: now + FRAGMENT_TTL_MS,
+          strength: 0.8,
+          initialStrength: 0.8,
+        });
+
+        await store.save("test-user", [fragment]);
+        vi.advanceTimersByTime(3 * 24 * 60 * 60 * 1000);
+        const loaded = await store.load("test-user");
+        await store.save("test-user", loaded);
+
+        const raw = readFileSync(join(tempDir, "cognitive/fragments/test-user.json"), "utf-8");
+        const parsed = JSON.parse(raw);
+        expect(parsed.fragments[0].initialStrength).toBe(0.8);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  // ─── Clustering pre-filter ───
+
+  describe("clustering pre-filter", () => {
+    it("findClusters excludes fragments below CLUSTER_MIN_STRENGTH from clusters", async () => {
+      const fragments = [
+        makeFragment({ id: "strong1", domains: ["A", "B"], strength: 0.5, initialStrength: 0.5 }),
+        makeFragment({ id: "strong2", domains: ["A", "C"], strength: 0.6, initialStrength: 0.6 }),
+        makeFragment({ id: "weak1", domains: ["A", "D"], strength: 0.03, initialStrength: 0.03 }),
+        makeFragment({ id: "weak2", domains: ["A", "E"], strength: 0.01, initialStrength: 0.01 }),
+      ];
+      await store.save("test-user", fragments);
+      const clusters = await store.findClusters("test-user");
+      expect(clusters).toHaveLength(1);
+      expect(clusters[0].fragmentIds).toHaveLength(2);
+      expect(clusters[0].fragmentIds).not.toContain("weak1");
+      expect(clusters[0].fragmentIds).not.toContain("weak2");
+    });
+
+    it("findClusters returns empty when all fragments are sub-threshold", async () => {
+      const fragments = [
+        makeFragment({ domains: ["A", "B"], strength: 0.03 }),
+        makeFragment({ domains: ["A", "C"], strength: 0.04 }),
+      ];
+      await store.save("test-user", fragments);
+      const clusters = await store.findClusters("test-user");
+      expect(clusters).toHaveLength(0);
     });
   });
 });

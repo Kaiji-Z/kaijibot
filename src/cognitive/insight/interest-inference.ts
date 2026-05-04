@@ -157,7 +157,7 @@ export function buildInterestInferencePrompt(
       ? `Generate a focused search query to deepen understanding of "${input.targetDomains[0]}". Find a surprising angle, recent development, or lesser-known aspect within this specific domain.`
       : `Analyze this user's knowledge structure. Identify their MOST ACTIVE domain and generate a focused search query to deepen understanding of it. The query should target practical applications or recent developments in that domain.`
     : hasTargetDomains
-      ? `The pipeline has selected "${input.targetDomains[0]}" as the focus area. Find a LATENT interest within or adjacent to this domain — something the user would find surprising and valuable, but hasn't explicitly explored within ${input.targetDomains[0]}.`
+      ? `The pipeline has selected "${input.targetDomains.join('" or "')}" as the focus area. Find a SURPRISINGLY ADJACENT angle — the searchQuery MUST include at least one recognizable keyword from "${input.targetDomains.join('" or "')}" to stay grounded in the user's knowledge. The surprise should come from the ANGLE, not from drifting to an unrelated topic. Something the user would find surprising and valuable, but hasn't explicitly explored.`
       : `Analyze this user's knowledge structure. Identify a LATENT interest — something they would find surprising and valuable, but that they haven't explicitly explored. The latent interest should bridge from what they know to something adjacent but unexpected.`;
 
   const modeConstraints = isExtend
@@ -167,6 +167,7 @@ export function buildInterestInferencePrompt(
 - Include the current year in the searchQuery to prioritize recent content`
     : `- The searchQuery must be 2-6 English keywords suitable for a web search API
 - The estimatedSurprise must be between 0.6 and 1.0 (this is for surprise-mode insights only)
+- The searchQuery MUST contain at least one keyword from the target domains to prevent drift
 - Do NOT suggest topics the user is already an expert in
 - Prefer cross-domain bridges that connect two areas the user knows about in an unexpected way
 - Include the current year in the searchQuery to surface cutting-edge developments`;

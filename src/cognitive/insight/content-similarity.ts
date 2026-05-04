@@ -62,6 +62,22 @@ export function computeContentWordOverlap(a: string, b: string): number {
   return union > 0 ? intersection / union : 0;
 }
 
+export function extractContentThemes(contents: string[]): string[] {
+  if (contents.length === 0) return [];
+
+  const freq = new Map<string, number>();
+  for (const text of contents) {
+    for (const phrase of extractChinesePhrases(text)) {
+      freq.set(phrase, (freq.get(phrase) ?? 0) + 1);
+    }
+  }
+
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([phrase]) => phrase);
+}
+
 export function isDuplicateBySemanticOverlap(
   newContent: string,
   recentContents: string[],

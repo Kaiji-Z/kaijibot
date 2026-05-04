@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractTrigrams, computeTrigramSimilarity, isDuplicateByContent, extractChinesePhrases, computeContentWordOverlap, isDuplicateBySemanticOverlap } from "./content-similarity.js";
+import { extractTrigrams, computeTrigramSimilarity, isDuplicateByContent, extractChinesePhrases, computeContentWordOverlap, isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
 
 describe("extractTrigrams", () => {
   it("extracts trigrams from text", () => {
@@ -132,5 +132,44 @@ describe("isDuplicateBySemanticOverlap", () => {
 
   it("catches identical content via trigram", () => {
     expect(isDuplicateBySemanticOverlap("hello world", ["hello world"])).toBe(true);
+  });
+});
+
+describe("extractContentThemes", () => {
+  it("returns empty array for empty input", () => {
+    expect(extractContentThemes([])).toEqual([]);
+  });
+
+  it("returns phrases sorted by frequency descending", () => {
+    const contents = [
+      "机器学习的算法优化是核心问题",
+      "深度学习是机器学习的一个分支，专注于算法优化",
+      "机器学习算法优化的新方法",
+    ];
+    const themes = extractContentThemes(contents);
+    expect(themes.length).toBeGreaterThan(0);
+    // "机器学习" and "算法优化" appear in all 3, so they should come first
+    const first = themes[0];
+    expect(["机器学习", "算法优化"]).toContain(first);
+  });
+
+  it("limits to 15 themes", () => {
+    const contents = Array.from({ length: 20 }, (_, i) =>
+      `主题${i}主题${i}话题${i}讨论${i}分析${i}`,
+    );
+    const themes = extractContentThemes(contents);
+    expect(themes.length).toBeLessThanOrEqual(15);
+  });
+
+  it("uses extractChinesePhrases internally", () => {
+    const contents = ["React组件的设计模式和最佳实践"];
+    const themes = extractContentThemes(contents);
+    expect(themes).toContain("React组件");
+    expect(themes).toContain("设计模式");
+  });
+
+  it("handles single content string", () => {
+    const themes = extractContentThemes(["人工智能核心算法研究与实际应用"]);
+    expect(themes.length).toBeGreaterThan(0);
   });
 });

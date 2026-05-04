@@ -20,6 +20,7 @@ export type Fragment = {
   domains: string[];
   structuralTag: string;
   strength: number;
+  initialStrength?: number;
 };
 
 // ─── FragmentCluster ───
@@ -87,6 +88,7 @@ export type FragmentStoreFile = {
 // ─── Constants ───
 
 export const FRAGMENT_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+export const FRAGMENT_HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ─── Helper Functions ───
 
@@ -115,18 +117,21 @@ export function createDefaultFragment(
   overrides: Partial<Fragment> & Pick<Fragment, "userId" | "kind" | "evidence" | "domains" | "structuralTag">,
 ): Fragment {
   const createdAt = Date.now();
-  return {
+  const result: Fragment = {
     id: randomUUID(),
     createdAt,
     expiresAt: createdAt + FRAGMENT_TTL_MS,
     strength: 0.5,
     ...overrides,
   };
+  result.initialStrength = result.initialStrength ?? result.strength;
+  return result;
 }
 
 export function computeFragmentDecay(fragment: Fragment, now?: number): number {
   const current = now ?? Date.now();
   const elapsed = current - fragment.createdAt;
   if (elapsed >= FRAGMENT_TTL_MS) return 0;
-  return Math.max(0, fragment.strength * (1 - elapsed / FRAGMENT_TTL_MS));
+  const base = fragment.initialStrength ?? fragment.strength;
+  return Math.max(0, base * Math.pow(0.5, elapsed / FRAGMENT_HALF_LIFE_MS));
 }

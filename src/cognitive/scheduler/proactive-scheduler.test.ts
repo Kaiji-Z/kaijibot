@@ -1110,6 +1110,124 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
   });
 });
 
+describe("ProactiveScheduler.identify — starvation bonus", () => {
+  const lowThresholdConfig: SchedulerConfig = {
+    minIntervalHours: 4,
+    minTrustScore: 0.3,
+    costFalseNegative: 10,
+    costFalseAlarm: 1,
+  };
+
+  it("boosts opportunities targeting domains absent from recent history", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"],
+      ["AI/机器学习"], ["AI/机器学习"],
+    ];
+
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].targetDomains).toContain("Design");
+    expect(selected[0].pAct).toBeGreaterThan(0.25);
+  });
+
+  it("boosts proportional to starved domain ratio", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"], ["Rust"], ["AI/机器学习"],
+      ["Rust"], ["AI/机器学习"],
+    ];
+
+    const basePAct = 0.3;
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.6, pAccept: 0.5, pAct: basePAct },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected.length).toBe(1);
+    const starvedRatio = 1.0;
+    const expectedBoost = basePAct * (1 + 1.5 * starvedRatio);
+    expect(selected[0].pAct).toBeCloseTo(expectedBoost, 5);
+  });
+
+  it("no boost when all target domains appear in recent history", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"], ["Rust"], ["AI/机器学习"],
+    ];
+
+    const basePAct = 0.5;
+    const opportunities: Opportunity[] = [
+      { type: "cross_domain", targetDomains: ["AI/机器学习", "Rust"], sourceDomains: [], pNeed: 0.7, pAccept: 0.7, pAct: basePAct },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected.length).toBeGreaterThanOrEqual(1);
+    expect(selected[0].pAct).toBeLessThanOrEqual(basePAct);
+  });
+
+  it("skips opportunities with empty targetDomains", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"], ["Rust"],
+    ];
+
+    const basePAct = 0.3;
+    const opportunities: Opportunity[] = [
+      { type: "exploration", targetDomains: [], sourceDomains: [], pNeed: 0.5, pAccept: 0.6, pAct: basePAct },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected.length).toBe(1);
+    expect(selected[0].pAct).toBe(basePAct);
+  });
+
+  it("no boost when persona has no recent insight domains", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+
+    const basePAct = 0.3;
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.6, pAccept: 0.5, pAct: basePAct },
+    ];
+
+    const selected = scheduler.identify(opportunities);
+    expect(selected.length).toBe(1);
+    expect(selected[0].pAct).toBe(basePAct);
+  });
+
+  it("uses last 8 insight domain sets as starvation window", () => {
+    const scheduler = makeScheduler(lowThresholdConfig);
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"], ["Rust"], ["Design"], ["AI/机器学习"],
+      ["Rust"], ["Design"], ["AI/机器学习"], ["Rust"],
+      ["Z-域"],
+    ];
+
+    // High base to survive domain-overlap penalty (0.3^1 multiplier from the one Z-域 entry)
+    const basePAct = 0.9;
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["Z-域"], sourceDomains: [], pNeed: 0.95, pAccept: 0.95, pAct: basePAct },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    expect(selected.length).toBe(1);
+    // Z-域 is in the 9th entry (index 8), window is last 8 (indices 1-8)
+    // Last 8: [["Rust"], ["Design"], ["AI/机器学习"], ["Rust"], ["Design"], ["AI/机器学习"], ["Rust"], ["Z-域"]]
+    // Z-域 IS in the window → no boost, only domain-overlap penalty: 0.9 * 0.3 = 0.27
+    expect(selected[0].pAct).toBeCloseTo(basePAct * 0.3, 5);
+  });
+});
+
 describe("pNeed imbalance fix", () => {
   function deepDomainPersona(): PersonaTree {
     const persona = createDefaultPersona();
@@ -1880,7 +1998,7 @@ describe("resolve — quality retry", () => {
     const result = await scheduler.resolve(persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.id).toBe("high");
-    expect(callCount).toBe(3);
+    expect(callCount).toBe(2);
   });
 
   it("returns null when all 3 attempts produce nothing", async () => {

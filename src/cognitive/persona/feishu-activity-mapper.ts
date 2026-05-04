@@ -91,34 +91,6 @@ function buildRecentFocus(data: FeishuActivityData): string[] {
   return [...new Set(themes)].slice(0, 5);
 }
 
-function buildPendingQuestions(data: FeishuActivityData): string[] {
-  const questions: string[] = [];
-  const task = data.taskActivity;
-  const doc = data.docActivity;
-  const meeting = data.meetingActivity;
-
-  if (task.overdue > 0) {
-    const domainNames = [
-      ...data.docActivity.documentThemes,
-      ...data.taskActivity.taskListNames,
-    ];
-    const domains = domainNames.length > 0
-      ? domainNames.slice(0, 3).join(", ")
-      : "assigned lists";
-    questions.push(`Has ${task.overdue} overdue tasks across ${domains}`);
-  }
-
-  if (doc.viewed > 5 && doc.edited < 2) {
-    questions.push("Reading extensively but not editing documents");
-  }
-
-  if (meeting.organized > meeting.attended * 0.5) {
-    questions.push("Organizing many meetings — potential coordination burden");
-  }
-
-  return questions;
-}
-
 function buildAttributes(data: FeishuActivityData): ExtractionResult["attributes"] {
   const attributes: ExtractionResult["attributes"] = [];
   const doc = data.docActivity;

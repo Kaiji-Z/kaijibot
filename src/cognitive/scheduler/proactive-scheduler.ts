@@ -45,6 +45,7 @@ export type InsightGeneratorFn = (
 ) => Promise<InsightCandidate[]>;
 
 const MAX_QUALITY_RETRIES = 3;
+const QUALITY_EARLY_EXIT_THRESHOLD = 0.85;
 
 export function isTopicStale(
   opportunity: Opportunity,
@@ -163,12 +164,28 @@ export class ProactiveScheduler {
       return { ...opp, pAct: adjustedPAct };
     });
 
+    const STARVATION_WINDOW = 8;
+    const STARVATION_BONUS = 1.5;
+
+    const recentInsightDomainsAll = persona?.feedbackProfile?.recentInsightDomains ?? [];
+    const windowDomains = new Set(recentInsightDomainsAll.slice(-STARVATION_WINDOW).flat());
+
+    const boosted = recentInsightDomainsAll.length === 0
+      ? penalized
+      : penalized.map(opp => {
+          if (opp.targetDomains.length === 0) return opp;
+          const starvedDomains = opp.targetDomains.filter(d => !windowDomains.has(d));
+          if (starvedDomains.length === 0) return opp;
+          const starvedRatio = starvedDomains.length / opp.targetDomains.length;
+          return { ...opp, pAct: opp.pAct * (1 + STARVATION_BONUS * starvedRatio) };
+        });
+
     const fatigued = getFatiguedDomains(recentDomains);
     const nonFatigued = fatigued.size > 0
-      ? penalized.filter(opp => !opp.targetDomains.some(d => fatigued.has(d)))
-      : penalized;
+      ? boosted.filter(opp => !opp.targetDomains.some(d => fatigued.has(d)))
+      : boosted;
     const sorted = [...nonFatigued].sort((a, b) => b.pAct - a.pAct);
-    const pool = sorted.length > 0 ? sorted : [...penalized].sort((a, b) => b.pAct - a.pAct);
+    const pool = sorted.length > 0 ? sorted : [...boosted].sort((a, b) => b.pAct - a.pAct);
 
     const aboveThreshold = pool.filter(opp => opp.pAct > threshold);
     return aboveThreshold.slice(0, 5);
@@ -178,6 +195,7 @@ export class ProactiveScheduler {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
+    const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
     const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
 
     const allCandidates: InsightCandidate[] = [];
@@ -197,6 +215,7 @@ export class ProactiveScheduler {
           recentInsightContents,
           mode,
           recentQueryHistory,
+          recentInsightDomains,
         },
         {
           verificationLevel: "basic",
@@ -210,6 +229,17 @@ export class ProactiveScheduler {
       if (attempt > 0) {
         log.info("resolve: quality retry", { userId: persona.identity?.userId, attempt: attempt + 1, candidatesSoFar: allCandidates.length });
       }
+      if (allCandidates.length > 0 && attempt < MAX_QUALITY_RETRIES - 1) {
+        const bestSoFar = Math.max(...allCandidates.map((c) =>
+          c.compositeScore > 0
+            ? c.compositeScore
+            : c.relevanceScore * 0.4 + c.surpriseScore * 0.3 + Math.min(c.sources.length, 3) * 0.1,
+        ));
+        if (bestSoFar >= QUALITY_EARLY_EXIT_THRESHOLD) {
+          log.info("resolve: early exit — quality threshold met", { userId: persona.identity?.userId, attempt: attempt + 1, bestScore: bestSoFar });
+          break;
+        }
+      }
     }
 
     if (allCandidates.length === 0) return null;
@@ -222,7 +252,7 @@ export class ProactiveScheduler {
     }).sort((a, b) => b.score - a.score);
 
     const candidate = scored[0]!.candidate;
-    log.info("resolve: selected best candidate", { userId: persona.identity?.userId, attempts: MAX_QUALITY_RETRIES, finalScore: scored[0]!.score, totalCandidates: allCandidates.length });
+    log.info("resolve: selected best candidate", { userId: persona.identity?.userId, finalScore: scored[0]!.score, totalCandidates: allCandidates.length });
 
     // Safety-net dedup: block near-identical content only
     if (recentInsightContents.length > 0) {

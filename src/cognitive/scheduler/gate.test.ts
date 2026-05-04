@@ -416,24 +416,4 @@ describe("computeRepetitionDecay", () => {
     expect(decay).toBeGreaterThan(0);
   });
 
-  it("pAct is reduced by repetition decay in graded gate", () => {
-    const now = Date.now();
-    const basePersona = () => {
-      const p = createDefaultPersona();
-      p.rapport.trustScore = 0.7;
-      p.rapport.totalExchanges = 10;
-      p.feedbackProfile.lastProactiveAt = 0;
-      p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0 } };
-      return p;
-    };
-
-    const freshPersona = basePersona();
-    const repeatedPersona = basePersona();
-    repeatedPersona.feedbackProfile.recentInsightDomains = [["AI"], ["AI"], ["AI"], ["AI"]];
-
-    const freshResult = computeGradedGate(makeGateContext({ persona: freshPersona, event: { type: "timer", timestamp: now } }));
-    const repeatedResult = computeGradedGate(makeGateContext({ persona: repeatedPersona, event: { type: "timer", timestamp: now } }));
-
-    expect(freshResult.pAct).toBeGreaterThan(repeatedResult.pAct);
-  });
 });

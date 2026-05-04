@@ -156,8 +156,7 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
   let pAccept = computePAccept(persona);
   const calibrationSlope = computeCalibrationSlope(persona.calibrationHistory);
   pAccept = applyCalibrationCorrection(pAccept, calibrationSlope);
-  const repetitionDecay = computeRepetitionDecay(persona);
-  const pAct = pNeed * pAccept * repetitionDecay;
+  const pAct = pNeed * pAccept;
 
   // Cost-sensitive threshold: τ = C_FA / (C_FN + C_FA)
   const cfn = config.costFalseNegative ?? DEFAULT_C_FN;
