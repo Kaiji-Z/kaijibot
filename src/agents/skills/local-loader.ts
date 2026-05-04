@@ -90,7 +90,7 @@ function listCandidateSkillDirs(dir: string): string[] {
       .readdirSync(dir, { withFileTypes: true })
       .filter(
         (entry) =>
-          entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules",
+          entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "_archive",
       )
       .map((entry) => path.join(dir, entry.name))
       .sort((left, right) => left.localeCompare(right));

@@ -1,4 +1,3 @@
-import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/evolution/hard-trigger");
@@ -7,10 +6,9 @@ export type HardTriggerParams = {
   toolMetas: ReadonlyArray<{ toolName?: string; meta?: string }>;
   sessionKey: string;
   trigger?: string;
-  config: KaijiBotConfig;
   senderId?: string | null;
   started: number;
-  userPrompt?: string;
+  configDir?: string;
 };
 
 export async function evaluateHardTrigger(params: HardTriggerParams): Promise<void> {
@@ -37,42 +35,43 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 
   log.debug("proceeding", { userId, toolCalls: toolCalls.length, uniqueTools: new Set(toolCalls).size });
 
-  // Get error profile as reference context for the Agent (NOT used for gating)
-  let errorInfo: { errorCount: number; failedToolNames: string[] } | undefined;
-  try {
-    const { consumeToolErrorProfile } = await import("../../agents/tool-error-summary.js");
-    const profile = consumeToolErrorProfile(params.sessionKey);
-    if (profile && profile.errorCount > 0) {
-      errorInfo = { errorCount: profile.errorCount, failedToolNames: profile.failedToolNames };
-    }
-  } catch {
-    // Non-critical: error info is optional context
-  }
-
   const uniqueTools = new Set(toolCalls);
   const durationMs = Date.now() - params.started;
 
-  // 3+ tool calls → directly enqueue evolution signal.
-  // The Agent decides worthiness based on full conversation context.
+  let existingSkills: Array<{ name: string; description: string }> | undefined;
+  if (params.configDir) {
+    try {
+      const { SkillPersistenceWriter } = await import("./skill-writer.js");
+      const writer = new SkillPersistenceWriter(params.configDir);
+      const names = await writer.listSkillNames();
+      const skills: Array<{ name: string; description: string }> = [];
+      for (const name of names) {
+        const meta = await writer.readSkillMeta(name);
+        if (meta) skills.push({ name: meta.name, description: meta.description });
+      }
+      existingSkills = skills.length > 0 ? skills : undefined;
+    } catch {
+      // Non-critical; proceed without skill list
+    }
+  }
+
   const signalText = buildEvolutionSignal({
     toolCalls,
     uniqueToolCount: uniqueTools.size,
     durationMs,
-    errorInfo,
+    existingSkills,
   });
-
-  const targetSessionKey = resolveTargetSessionKey(params.sessionKey, params.config, userId);
 
   try {
     const { enqueueSystemEvent } = await import("../../infra/system-events.js");
     const { requestHeartbeatNow } = await import("../../infra/heartbeat-wake.js");
 
-    enqueueSystemEvent(signalText, { sessionKey: targetSessionKey });
+    enqueueSystemEvent(signalText, { sessionKey: params.sessionKey });
     requestHeartbeatNow({
       reason: "cognitive-evolution",
-      sessionKey: targetSessionKey,
+      sessionKey: params.sessionKey,
     });
-    log.debug("evolution signal enqueued", { sessionKey: targetSessionKey, signalLength: signalText.length });
+    log.debug("evolution signal enqueued", { sessionKey: params.sessionKey, signalLength: signalText.length });
   } catch (err) {
     log.debug("failed to enqueue evolution signal", { error: String(err) });
   }
@@ -85,42 +84,29 @@ function resolveUserIdFromSession(sessionKey: string, senderId?: string | null):
   return tail;
 }
 
-/**
- * Resolve the session key to use for the evolution signal.
- * Falls back to the current session key if no dedicated target is found.
- */
-function resolveTargetSessionKey(sessionKey: string, config: KaijiBotConfig, userId: string): string {
-  try {
-    // Attempt to resolve a dedicated cognitive delivery session for this user
-    // (same pattern as insight delivery). If unavailable, use the current session.
-    const { resolveCognitiveDeliveryTarget } = require("../../gateway/cognitive-delivery.js") as typeof import("../../gateway/cognitive-delivery.js");
-    const target = resolveCognitiveDeliveryTarget(config, userId);
-    return target?.sessionKey ?? sessionKey;
-  } catch {
-    return sessionKey;
-  }
-}
-
 function buildEvolutionSignal(params: {
   toolCalls: string[];
   uniqueToolCount: number;
   durationMs: number;
-  errorInfo?: { errorCount: number; failedToolNames: string[] };
+  existingSkills?: Array<{ name: string; description: string }>;
 }): string {
   const durationSec = Math.round(params.durationMs / 1000);
-  const toolSeq = params.toolCalls.join(", ");
   const lines = [
     `[Evolution Signal] 刚完成的任务涉及 ${params.toolCalls.length} 次工具调用（${params.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
-    `工具序列: ${toolSeq}`,
-  ];
-  if (params.errorInfo) {
-    lines.push(`⚠ 工具错误: ${params.errorInfo.errorCount} 次错误（${params.errorInfo.failedToolNames.join(", ")}）`);
-  }
-  lines.push(
     "",
-    "请根据完整对话上下文自主判断：这个任务模式是否值得做成可复用技能？",
-    "如果是，用自然语言告诉用户你的想法，然后调用 evaluate_skill_evolution 工具生成技能草稿。",
+    "请根据对话上下文自主判断：这个任务模式是否值得做成可复用技能？",
+    "优先检查已有技能是否能覆盖——如果能，用 patch_skill 改进已有技能。",
+    "如果确实需要新技能，调用 evaluate_skill_evolution 工具生成技能草稿，然后让用户审核。",
     "如果觉得不值得，忽略即可。",
-  );
+  ];
+
+  if (params.existingSkills && params.existingSkills.length > 0) {
+    lines.push("");
+    lines.push("已有技能：");
+    for (const skill of params.existingSkills) {
+      lines.push(`- ${skill.name}: ${skill.description}`);
+    }
+  }
+
   return lines.join("\n");
 }

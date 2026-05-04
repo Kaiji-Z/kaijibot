@@ -778,7 +778,8 @@ export async function runHeartbeatOnce(opts: {
   // a new session ID (empty transcript) each run, avoiding the cost of
   // sending the full conversation history (~100K tokens) to the LLM.
   // Delivery routing still uses the main session entry (lastChannel, lastTo).
-  const useIsolatedSession = heartbeat?.isolatedSession !== false;
+  const useIsolatedSession = heartbeat?.isolatedSession !== false &&
+    opts.reason !== "cognitive-evolution";
   const delivery = resolveHeartbeatDeliveryTarget({
     cfg,
     entry,

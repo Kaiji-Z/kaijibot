@@ -95,6 +95,49 @@ export function createEvolutionSuggestTool(deps: {
 
         const draft = await engine.generate(candidate);
 
+        let existingSkills: Array<{ name: string; description: string }> | undefined;
+        try {
+          const { SkillPersistenceWriter: SW } = await import("../../cognitive/evolution/skill-writer.js");
+          const writer = new SW(resolveConfigDir());
+          const names = await writer.listSkillNames();
+          const skills: Array<{ name: string; description: string }> = [];
+          for (const name of names) {
+            const meta = await writer.readSkillMeta(name);
+            if (meta) skills.push({ name: meta.name, description: meta.description });
+          }
+          if (skills.length > 0) existingSkills = skills;
+        } catch {
+          // Non-critical
+        }
+
+        let duplicateExisting: string | undefined;
+        try {
+          const { SkillLifecycleManager } = await import("../../cognitive/evolution/skill-lifecycle.js");
+          const { SkillPersistenceWriter: SW2 } = await import("../../cognitive/evolution/skill-writer.js");
+          const writer = new SW2(resolveConfigDir());
+          const lifecycle = new SkillLifecycleManager(writer);
+
+          let generateTextForDedup: ((prompt: string) => Promise<string>) | undefined;
+          try {
+            if (deps.config) {
+              const { createStandaloneGenerateText } = await import("../../cognitive/evolution/standalone-generate.js");
+              generateTextForDedup = await createStandaloneGenerateText(deps.config, { maxTokens: 200, timeout: 30_000 });
+            }
+          } catch {}
+
+          const dedupResult = await engine.checkBeforeGenerate(
+            candidate,
+            lifecycle,
+            existingSkills,
+            generateTextForDedup ? { generateText: generateTextForDedup } : undefined,
+          );
+          if (!dedupResult.shouldCreate && dedupResult.existingSkill) {
+            duplicateExisting = dedupResult.existingSkill;
+          }
+        } catch {
+          // Non-critical; proceed with creation
+        }
+
         const record = {
           id: randomUUID(),
           userId,
@@ -114,7 +157,9 @@ export function createEvolutionSuggestTool(deps: {
           triggerPhrases: draft.triggerPhrases,
           bodyMarkdown: draft.bodyMarkdown,
           recentSuggestions: decision.recentSuggestions,
-          suggestionText: `这个任务用了 ${params.toolCalls.length} 个工具、${params.reasoningTurns} 轮推理，比较复杂。我起草了一个技能「${draft.name}」—— ${draft.description}。要不要保存？要调整的话告诉我怎么改。`,
+          existingSkills,
+          duplicateExisting,
+          suggestionText: `这个任务用了 ${params.toolCalls.length} 个工具、${params.reasoningTurns} 轮推理，比较复杂。我起草了一个技能「${draft.name}」—— ${draft.description}。要不要保存？要调整的话告诉我怎么改。${duplicateExisting ? ` 注意：已有类似技能「${duplicateExisting}」，建议用 patch_skill 改进。` : ""}`,
         });
       } catch (err) {
         return textResult(

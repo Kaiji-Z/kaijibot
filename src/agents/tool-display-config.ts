@@ -558,6 +558,31 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "TTS",
       detailKeys: ["text", "channel"],
     },
+    cognitive_feedback: {
+      emoji: "💬",
+      title: "Cognitive Feedback",
+      detailKeys: ["targetId", "sentiment", "topic"],
+    },
+    evaluate_skill_evolution: {
+      emoji: "🧬",
+      title: "Evaluate Skill Evolution",
+      detailKeys: ["taskSummary", "domain", "uniqueToolCount", "reasoningTurns"],
+    },
+    manage_archived_skills: {
+      emoji: "🗄️",
+      title: "Manage Archived Skills",
+      detailKeys: ["action", "name"],
+    },
+    mcp_config: {
+      emoji: "🔌",
+      title: "MCP Config",
+      detailKeys: ["action", "name"],
+    },
+    patch_skill: {
+      emoji: "🩹",
+      title: "Patch Skill",
+      detailKeys: ["name", "instructions"],
+    },
   },
 };
 

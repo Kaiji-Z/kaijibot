@@ -97,6 +97,64 @@ export class SkillLifecycleManager {
     return { duplicate: false };
   }
 
+  async checkSemanticDuplicate(
+    taskSummary: string,
+    candidateDescription: string,
+    existingSkills: Array<{ name: string; description: string }>,
+    deps?: { generateText: (prompt: string) => Promise<string> },
+  ): Promise<DedupCheckResult> {
+    // No LLM available — fall back to lexical dedup
+    if (!deps?.generateText) {
+      return this.checkDuplicate(taskSummary, candidateDescription);
+    }
+
+    if (existingSkills.length === 0) {
+      return { duplicate: false };
+    }
+
+    const skillsList = existingSkills
+      .map((s, i) => `${i + 1}. ${s.name}: ${s.description}`)
+      .join("\n");
+
+    const prompt = `You are a skill deduplication assistant. Determine if the following task pattern is semantically equivalent to any existing skill.
+
+Task pattern: ${taskSummary}
+Candidate skill description: ${candidateDescription}
+
+Existing skills:
+${skillsList}
+
+Respond with ONLY a JSON object (no markdown fences):
+- If semantically equivalent to an existing skill: {"duplicate": true, "skillName": "<exact name>", "confidence": 0.0-1.0}
+- If not equivalent: {"duplicate": false, "confidence": 0.0-1.0}
+
+Consider two skills duplicates if they solve the same class of problems, even if wording differs. Different tools or different domains = not duplicates.`;
+
+    try {
+      const response = await deps.generateText(prompt);
+      const cleaned = response.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+      const parsed = JSON.parse(cleaned);
+
+      if (parsed.duplicate === true && typeof parsed.skillName === "string" && (parsed.confidence ?? 0) > 0.7) {
+        // Verify the skillName actually exists in the list
+        const match = existingSkills.find((s) => s.name === parsed.skillName);
+        if (match) {
+          // Compute similarity score for the result
+          const maxLen = Math.max(taskSummary.length, match.name.length);
+          const nameSim = maxLen === 0 ? 1 : 1 - levenshtein(taskSummary, match.name) / maxLen;
+          const descSim = jaccard(candidateDescription, match.description);
+          const similarity = 0.4 * nameSim + 0.6 * descSim;
+          return { duplicate: true, existingName: match.name, similarity };
+        }
+      }
+
+      return { duplicate: false };
+    } catch {
+      // LLM parsing failed — fall back to lexical
+      return this.checkDuplicate(taskSummary, candidateDescription);
+    }
+  }
+
   async markStale(name: string): Promise<void> {
     const raw = await this.writer.readRawSkill(name);
     if (!raw) return;
@@ -111,15 +169,16 @@ export class SkillLifecycleManager {
   async removeStale(olderThanDays: number): Promise<number> {
     const allMeta = await this.listSkills();
     const threshold = Date.now() - olderThanDays * 86400000;
-    let removed = 0;
+    let archived = 0;
 
     for (const meta of allMeta) {
+      if (meta.provenance !== "agent") continue;
       if (meta.lastUsedAt < threshold && meta.usageCount === 0) {
-        await this.writer.removeSkill(meta.name);
-        removed++;
+        await this.writer.archiveSkill(meta.name);
+        archived++;
       }
     }
 
-    return removed;
+    return archived;
   }
 }

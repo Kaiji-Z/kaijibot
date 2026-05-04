@@ -5,31 +5,40 @@
  * Run: KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-e2e.test.ts
  *
  * What this tests:
- *   1. Hard-trigger: 3+ tools → direct signal enqueue (no code-level complexity gate)
+ *   1. Hard-trigger: evaluateHardTrigger enqueues signal for 3+ user tools (real function, no helper)
  *   2. Agent tool: evaluate_skill_evolution always generates draft (no shouldSuggest gate)
  *   3. No-cooldown flow: multiple suggestions for same user all succeed
- *   4. Signal format: [Evolution Signal] contains correct tool sequence + optional error info
+ *   4. Signal format: [Evolution Signal] contains concise summary + guidance (no tool sequence or error info)
  *   5. recentSuggestions context: prior records appear in subsequent evaluations
  *   6. Simple tasks also generate drafts (agent decides, not code)
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EvolutionCandidate } from "./types.js";
 import { EvolutionEngine } from "./engine.js";
 import { EvolutionStore } from "./store.js";
+import { evaluateHardTrigger } from "./hard-trigger.js";
 import { generateSkillDraftLLM } from "./llm-draft-generator.js";
 import {
-  enqueueSystemEvent,
   peekSystemEventEntries,
   resetSystemEventsForTest,
 } from "../../infra/system-events.js";
-import {
-  requestHeartbeatNow,
-  resetHeartbeatWakeStateForTests,
-} from "../../infra/heartbeat-wake.js";
+import { resetHeartbeatWakeStateForTests } from "../../infra/heartbeat-wake.js";
+
+const { mockRequestHeartbeatNow } = vi.hoisted(() => ({
+  mockRequestHeartbeatNow: vi.fn(),
+}));
+
+vi.mock("../../infra/heartbeat-wake.js", async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    requestHeartbeatNow: mockRequestHeartbeatNow,
+  };
+});
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
@@ -75,6 +84,7 @@ beforeEach(() => {
   store = new EvolutionStore(tempDir);
   resetSystemEventsForTest();
   resetHeartbeatWakeStateForTests();
+  mockRequestHeartbeatNow.mockClear();
 });
 
 afterEach(() => {
@@ -86,57 +96,109 @@ afterEach(() => {
 // ===========================================================================
 // PHASE 1: Hard-trigger signal generation (no LLM needed)
 // ===========================================================================
-describe("Phase 1: hard-trigger signal generation", () => {
-  it("builds correct [Evolution Signal] text with tool sequence", () => {
-    const toolCalls = [
-      "web_search", "read_file", "web_search", "write_file",
-      "read_file", "web_search", "write_file", "read_file",
-      "web_search", "write_file",
-    ];
-    const signalText = buildEvolutionSignalFromParams({
-      toolCalls,
-      uniqueToolCount: 3,
-      durationMs: 280_000,
+describe("Phase 1: hard-trigger signal generation via evaluateHardTrigger", () => {
+  const testSessionKey = "agent:main:ou_test_user";
+
+  it("enqueues concise signal for 3+ user-triggered tool calls", async () => {
+    await evaluateHardTrigger({
+      toolMetas: [
+        { toolName: "web_search" }, { toolName: "read_file" }, { toolName: "web_search" },
+        { toolName: "write_file" }, { toolName: "read_file" }, { toolName: "web_search" },
+        { toolName: "write_file" }, { toolName: "read_file" }, { toolName: "web_search" },
+        { toolName: "write_file" },
+      ],
+      sessionKey: testSessionKey,
+      trigger: "user",
+      started: Date.now() - 280_000,
     });
 
+    const events = peekSystemEventEntries(testSessionKey);
+    expect(events).toHaveLength(1);
+    const signalText = events[0]!.text;
     expect(signalText).toContain("[Evolution Signal]");
     expect(signalText).toContain("10 次工具调用");
     expect(signalText).toContain("3 种");
     expect(signalText).toContain("280 秒");
     expect(signalText).toContain("evaluate_skill_evolution");
     expect(signalText).toContain("自主判断");
-    expect(signalText).toContain("web_search, read_file, web_search, write_file");
+    expect(signalText).not.toContain("web_search, read_file");
     expect(signalText).not.toContain("工具错误");
+    expect(signalText).not.toContain("工具序列");
   });
 
-  it("includes error info in signal when errors exist", () => {
-    const signalText = buildEvolutionSignalFromParams({
-      toolCalls: ["a", "b", "c"],
-      uniqueToolCount: 3,
-      durationMs: 5000,
-      errorInfo: { errorCount: 2, failedToolNames: ["a", "c"] },
+  it("signal omits tool sequence even when tool metas contain error info", async () => {
+    await evaluateHardTrigger({
+      toolMetas: [
+        { toolName: "feishu_doc_fetch" },
+        { toolName: "feishu_doc_fetch", meta: "Error: permission denied" },
+        { toolName: "feishu_wiki_create" },
+      ],
+      sessionKey: testSessionKey,
+      trigger: "manual",
+      started: Date.now() - 15_000,
     });
 
-    expect(signalText).toContain("⚠ 工具错误: 2 次错误（a, c）");
-  });
-
-  it("enqueues signal and heartbeat fires correctly", () => {
-    const sessionKey = "agent:main:ou_test_user";
-    const signalText = "[Evolution Signal] test signal";
-
-    enqueueSystemEvent(signalText, { sessionKey });
-
-    const events = peekSystemEventEntries(sessionKey);
+    const events = peekSystemEventEntries(testSessionKey);
     expect(events).toHaveLength(1);
-    expect(events[0]!.text).toBe(signalText);
-
-    requestHeartbeatNow({ reason: "cognitive-evolution", sessionKey });
-    expect(true).toBe(true);
+    const signalText = events[0]!.text;
+    expect(signalText).not.toContain("feishu_doc_fetch");
+    expect(signalText).not.toContain("permission denied");
+    expect(signalText).not.toContain("⚠");
   });
 
-  it("3+ tools pass the noise filter, < 3 do not", () => {
-    expect(["a", "b", "c"].length).toBeGreaterThanOrEqual(3);
-    expect(["a", "b"].length).toBeLessThan(3);
+  it("requests heartbeat with cognitive-evolution reason on original sessionKey", async () => {
+    const customKey = "agent:main:user_abc123";
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: customKey,
+      trigger: "user",
+      started: Date.now() - 5000,
+    });
+
+    expect(mockRequestHeartbeatNow).toHaveBeenCalledTimes(1);
+    expect(mockRequestHeartbeatNow).toHaveBeenCalledWith({
+      reason: "cognitive-evolution",
+      sessionKey: customKey,
+    });
+    expect(peekSystemEventEntries(customKey)).toHaveLength(1);
+  });
+
+  it("skips for non-user triggers (cron, system, heartbeat)", async () => {
+    for (const trigger of ["cron", "system", "heartbeat"]) {
+      await evaluateHardTrigger({
+        toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+        sessionKey: testSessionKey,
+        trigger,
+        started: Date.now() - 5000,
+      });
+    }
+
+    expect(peekSystemEventEntries(testSessionKey)).toHaveLength(0);
+    expect(mockRequestHeartbeatNow).not.toHaveBeenCalled();
+  });
+
+  it("skips for fewer than 3 tool calls", async () => {
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }],
+      sessionKey: testSessionKey,
+      trigger: "user",
+      started: Date.now() - 5000,
+    });
+
+    expect(peekSystemEventEntries(testSessionKey)).toHaveLength(0);
+    expect(mockRequestHeartbeatNow).not.toHaveBeenCalled();
+  });
+
+  it("skips when no userId can be resolved from sessionKey", async () => {
+    await evaluateHardTrigger({
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:main",
+      trigger: "user",
+      started: Date.now() - 5000,
+    });
+
+    expect(peekSystemEventEntries("agent:main:main")).toHaveLength(0);
+    expect(mockRequestHeartbeatNow).not.toHaveBeenCalled();
   });
 });
 
@@ -391,29 +453,4 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM",
   }, 120_000);
 });
 
-// ===========================================================================
-// Helper: build signal text matching hard-trigger.ts logic
-// ===========================================================================
-function buildEvolutionSignalFromParams(params: {
-  toolCalls: string[];
-  uniqueToolCount: number;
-  durationMs: number;
-  errorInfo?: { errorCount: number; failedToolNames: string[] };
-}): string {
-  const durationSec = Math.round(params.durationMs / 1000);
-  const toolSeq = params.toolCalls.join(", ");
-  const lines = [
-    `[Evolution Signal] 刚完成的任务涉及 ${params.toolCalls.length} 次工具调用（${params.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
-    `工具序列: ${toolSeq}`,
-  ];
-  if (params.errorInfo) {
-    lines.push(`⚠ 工具错误: ${params.errorInfo.errorCount} 次错误（${params.errorInfo.failedToolNames.join(", ")}）`);
-  }
-  lines.push(
-    "",
-    "请根据完整对话上下文自主判断：这个任务模式是否值得做成可复用技能？",
-    "如果是，用自然语言告诉用户你的想法，然后调用 evaluate_skill_evolution 工具生成技能草稿。",
-    "如果觉得不值得，忽略即可。",
-  );
-  return lines.join("\n");
-}
+

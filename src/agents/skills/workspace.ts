@@ -112,6 +112,7 @@ function listChildDirectories(dir: string): string[] {
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
       if (entry.name === "node_modules") continue;
+      if (entry.name === "_archive") continue;
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         dirs.push(entry.name);
@@ -435,6 +436,11 @@ function loadSkillEntries(
     dir: managedSkillsDir,
     source: "kaijibot-managed",
   });
+  const agentSkillsDir = path.join(workspaceDir, "skills", "agent");
+  const agentSkills = loadSkills({
+    dir: agentSkillsDir,
+    source: "kaijibot-agent-created",
+  });
   const personalAgentsSkillsDir = path.resolve(os.homedir(), ".agents", "skills");
   const personalAgentsSkills = loadSkills({
     dir: personalAgentsSkillsDir,
@@ -451,7 +457,7 @@ function loadSkillEntries(
   });
 
   const merged = new Map<string, Skill>();
-  // Precedence: extra < bundled < managed < agents-skills-personal < agents-skills-project < workspace
+  // Precedence: extra < bundled < managed < agent-created < agents-skills-personal < agents-skills-project < workspace
   for (const skill of extraSkills) {
     merged.set(skill.name, skill);
   }
@@ -459,6 +465,9 @@ function loadSkillEntries(
     merged.set(skill.name, skill);
   }
   for (const skill of managedSkills) {
+    merged.set(skill.name, skill);
+  }
+  for (const skill of agentSkills) {
     merged.set(skill.name, skill);
   }
   for (const skill of personalAgentsSkills) {

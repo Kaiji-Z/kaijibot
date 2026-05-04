@@ -1579,21 +1579,33 @@ export async function runEmbeddedPiAgent(
             if (attempt.toolMetas.length >= 3) {
               Promise.resolve().then(async () => {
                 try {
+                  const { resolveConfigDir } = await import("../../utils.js");
                   const { evaluateHardTrigger } = await import("../../cognitive/evolution/hard-trigger.js");
                   await evaluateHardTrigger({
                     toolMetas: attempt.toolMetas,
                     sessionKey: params.sessionKey!,
                     trigger: params.trigger,
-                    config: params.config!,
                     senderId: params.senderId,
                     started,
-                    userPrompt: params.prompt,
-                  });
+                  configDir: resolveConfigDir(),
+                });
                 } catch (err) {
                   log.debug(`evolution hard trigger skipped: ${String(err)}`);
                 }
               });
             }
+            Promise.resolve().then(async () => {
+              try {
+                const { resolveConfigDir } = await import("../../utils.js");
+                const { trackSkillUsage } = await import("../../cognitive/evolution/skill-usage-tracker.js");
+                await trackSkillUsage({
+                  toolMetas: attempt.toolMetas,
+                  configDir: resolveConfigDir(),
+                });
+              } catch (err) {
+                log.debug(`skill usage tracking skipped: ${String(err)}`);
+              }
+            });
           }
           if (lastProfileId) {
             await markAuthProfileGood({

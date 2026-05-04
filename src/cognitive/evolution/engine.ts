@@ -120,15 +120,21 @@ export class EvolutionEngine {
   async checkBeforeGenerate(
     candidate: EvolutionCandidate,
     lifecycle?: SkillLifecycleManager,
+    existingSkills?: Array<{ name: string; description: string }>,
+    deps?: { generateText: (prompt: string) => Promise<string> },
   ): Promise<{ shouldCreate: boolean; existingSkill?: string }> {
     if (!lifecycle) {
       return { shouldCreate: true };
     }
 
-    const result = await lifecycle.checkDuplicate(
-      candidate.domain,
-      candidate.taskSummary,
-    );
+    const result = deps?.generateText && existingSkills
+      ? await lifecycle.checkSemanticDuplicate(
+          candidate.taskSummary,
+          candidate.taskSummary,
+          existingSkills,
+          deps,
+        )
+      : await lifecycle.checkDuplicate(candidate.domain, candidate.taskSummary);
 
     if (result.duplicate) {
       return { shouldCreate: false, existingSkill: result.existingName };

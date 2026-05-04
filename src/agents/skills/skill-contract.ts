@@ -57,6 +57,9 @@ export function formatSkillsForPrompt(skills: Skill[]): string {
     lines.push(`    <name>${escapeXml(skill.name)}</name>`);
     lines.push(`    <description>${escapeXml(skill.description)}</description>`);
     lines.push(`    <location>${escapeXml(skill.filePath)}</location>`);
+    if (skill.source === "kaijibot-agent-created") {
+      lines.push(`    <provenance>agent</provenance>`);
+    }
     lines.push("  </skill>");
   }
   lines.push("</available_skills>");

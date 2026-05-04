@@ -1,7 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
 import { SkillPersistenceWriter } from "./skill-writer.js";
 import { SkillLifecycleManager } from "./skill-lifecycle.js";
 import type { SkillDraft } from "./types.js";
@@ -61,6 +62,7 @@ describe("SkillLifecycleManager", () => {
         expect(skill.lastUsedAt).toBeGreaterThan(0);
         expect(skill.usageCount).toBe(0);
         expect(skill.isStale).toBe(false);
+        expect(skill.provenance).toBe("agent");
       }
     });
   });
@@ -149,7 +151,7 @@ describe("SkillLifecycleManager", () => {
   });
 
   describe("removeStale()", () => {
-    it("removes only old unused skills and returns count", async () => {
+    it("archives old unused agent skills and returns count", async () => {
       await writer.writeSkill(
         makeDraft({ name: "old-unused-skill", description: "Old skill" }),
       );
@@ -157,8 +159,7 @@ describe("SkillLifecycleManager", () => {
         makeDraft({ name: "recent-unused-skill", description: "Recent skill" }),
       );
 
-      const skillsDir = join(tempDir, "skills", "old-unused-skill", "SKILL.md");
-      const { readFile, writeFile } = await import("node:fs/promises");
+      const skillsDir = join(tempDir, "skills", "agent", "old-unused-skill", "SKILL.md");
       let content = await readFile(skillsDir, "utf-8");
       content = content.replace(
         /^lastUsedAt:\s*\d+/m,
@@ -166,9 +167,11 @@ describe("SkillLifecycleManager", () => {
       );
       await writeFile(skillsDir, content, "utf-8");
 
-      const removed = await lifecycle.removeStale(30);
-      expect(removed).toBe(1);
+      const archived = await lifecycle.removeStale(30);
+      expect(archived).toBe(1);
       expect(await writer.skillExists("old-unused-skill")).toBe(false);
+      const archivePath = join(tempDir, "skills", "agent", "_archive", "old-unused-skill");
+      expect(existsSync(archivePath)).toBe(true);
       expect(await writer.skillExists("recent-unused-skill")).toBe(true);
     });
 
@@ -178,9 +181,28 @@ describe("SkillLifecycleManager", () => {
       );
       await writer.touchSkill("used-skill");
 
-      const removed = await lifecycle.removeStale(30);
-      expect(removed).toBe(0);
+      const archived = await lifecycle.removeStale(30);
+      expect(archived).toBe(0);
       expect(await writer.skillExists("used-skill")).toBe(true);
+    });
+
+    it("does not archive non-agent skills", async () => {
+      const userWriter = new SkillPersistenceWriter(tempDir, { agentSkills: false });
+      await userWriter.writeSkill(
+        makeDraft({ name: "user-skill", description: "User skill" }),
+      );
+
+      const skillPath = join(tempDir, "skills", "user-skill", "SKILL.md");
+      let content = await readFile(skillPath, "utf-8");
+      content = content.replace(
+        /^lastUsedAt:\s*\d+/m,
+        `lastUsedAt: ${Date.now() - 60 * 86400000}`,
+      );
+      await writeFile(skillPath, content, "utf-8");
+
+      const archived = await lifecycle.removeStale(30);
+      expect(archived).toBe(0);
+      expect(await userWriter.skillExists("user-skill")).toBe(true);
     });
   });
 
@@ -210,6 +232,87 @@ describe("SkillLifecycleManager", () => {
 
       const similar = await lifecycle.findSimilar("zzz", "aaa bbb ccc");
       expect(similar).toEqual([]);
+    });
+  });
+
+  describe("checkSemanticDuplicate()", () => {
+    it("returns duplicate when LLM says yes with high confidence", async () => {
+      await writer.writeSkill(
+        makeDraft({ name: "feishu-wiki-archive", description: "归档飞书知识库文档" }),
+      );
+
+      const generateText = vi.fn().mockResolvedValue(
+        JSON.stringify({ duplicate: true, skillName: "feishu-wiki-archive", confidence: 0.9 }),
+      );
+
+      const result = await lifecycle.checkSemanticDuplicate(
+        "归档会议纪要到知识库",
+        "整理并归档飞书知识库中的会议文档",
+        [{ name: "feishu-wiki-archive", description: "归档飞书知识库文档" }],
+        { generateText },
+      );
+
+      expect(result.duplicate).toBe(true);
+      if (result.duplicate) {
+        expect(result.existingName).toBe("feishu-wiki-archive");
+      }
+    });
+
+    it("returns no-duplicate when LLM says no", async () => {
+      const generateText = vi.fn().mockResolvedValue(
+        JSON.stringify({ duplicate: false, confidence: 0.8 }),
+      );
+
+      const result = await lifecycle.checkSemanticDuplicate(
+        "查询天气",
+        "获取城市天气预报",
+        [{ name: "feishu-wiki-archive", description: "归档飞书知识库文档" }],
+        { generateText },
+      );
+
+      expect(result.duplicate).toBe(false);
+    });
+
+    it("falls back to lexical when no generateText provided", async () => {
+      await writer.writeSkill(
+        makeDraft({ name: "weather-forecast", description: "Get weather forecasts for any city" }),
+      );
+
+      const result = await lifecycle.checkSemanticDuplicate(
+        "weather-forecast",
+        "Get weather forecasts for any city",
+        [{ name: "weather-forecast", description: "Get weather forecasts for any city" }],
+      );
+
+      expect(result.duplicate).toBe(true);
+    });
+
+    it("falls back when LLM returns unparseable response", async () => {
+      await writer.writeSkill(
+        makeDraft({ name: "exact-match", description: "Identical description text here" }),
+      );
+
+      const generateText = vi.fn().mockResolvedValue("not valid json {{{");
+
+      const result = await lifecycle.checkSemanticDuplicate(
+        "exact-match",
+        "Identical description text here",
+        [{ name: "exact-match", description: "Identical description text here" }],
+        { generateText },
+      );
+
+      expect(result.duplicate).toBe(true);
+    });
+
+    it("returns no duplicate when no existing skills", async () => {
+      const result = await lifecycle.checkSemanticDuplicate(
+        "some task",
+        "some description",
+        [],
+        { generateText: vi.fn() },
+      );
+
+      expect(result.duplicate).toBe(false);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateSkillDraftLLM, buildPrompt, validateAndRepair } from "./llm-draft-generator.js";
+import { generateSkillDraftLLM, buildPrompt, validateAndRepair, extractTaggedBlocks } from "./llm-draft-generator.js";
 import type { LlmDraftDeps } from "./llm-draft-generator.js";
 import type { EvolutionCandidate } from "./types.js";
 import { generateSkillDraft } from "./skill-draft-generator.js";
@@ -200,5 +200,64 @@ describe("generateSkillDraftLLM", () => {
     const noFm = "## Triggers\n- something\n\n## Workflow\n1. Do it";
     const draft = await generateSkillDraftLLM(candidate, mockDeps(noFm));
     expect(draft).toEqual(generateSkillDraft(candidate));
+  });
+});
+
+describe("extractTaggedBlocks", () => {
+  it("extracts python:scripts/main.py blocks into scripts map", () => {
+    const body = "## Workflow\n\nSome text\n\n```python:scripts/main.py\nprint('hello')\n```\n\nMore text";
+    const result = extractTaggedBlocks(body);
+    expect(result.scripts).toEqual({ "main.py": "print('hello')" });
+    expect(result.references).toBeUndefined();
+    expect(result.assets).toBeUndefined();
+    expect(result.body).not.toContain("```python:scripts/main.py");
+    expect(result.body).toContain("Some text");
+    expect(result.body).toContain("More text");
+  });
+
+  it("extracts markdown:references/api.md blocks into references map", () => {
+    const body = "## Usage\n\nSee docs:\n\n```markdown:references/api.md\n# API\nGET /foo\n```\n";
+    const result = extractTaggedBlocks(body);
+    expect(result.references).toEqual({ "api.md": "# API\nGET /foo" });
+    expect(result.scripts).toBeUndefined();
+  });
+
+  it("extracts mixed scripts + references + assets", () => {
+    const body = [
+      "## Workflow",
+      "",
+      "```python:scripts/main.py\nprint('run')\n```",
+      "",
+      "```markdown:references/api.md\n# API\n```",
+      "",
+      "```json:assets/data.json\n{\"key\": 1}\n```",
+      "",
+      "End text",
+    ].join("\n");
+    const result = extractTaggedBlocks(body);
+    expect(result.scripts).toEqual({ "main.py": "print('run')" });
+    expect(result.references).toEqual({ "api.md": "# API" });
+    expect(result.assets).toEqual({ "data.json": "{\"key\": 1}" });
+    expect(result.body).not.toContain("```python:scripts");
+    expect(result.body).toContain("End text");
+  });
+
+  it("returns undefined maps when no tagged blocks present", () => {
+    const body = "## Workflow\n\n1. Step one\n2. Step two\n";
+    const result = extractTaggedBlocks(body);
+    expect(result.scripts).toBeUndefined();
+    expect(result.references).toBeUndefined();
+    expect(result.assets).toBeUndefined();
+    expect(result.body).toBe(body.trim());
+  });
+
+  it("cleans body of tagged blocks after extraction", () => {
+    const body = "## Intro\n\n```python:scripts/run.py\nprint('x')\n```\n\n## Outro\n";
+    const result = extractTaggedBlocks(body);
+    expect(result.body).not.toContain("```python:scripts/run.py");
+    expect(result.body).not.toContain("print('x')");
+    expect(result.body).toContain("## Intro");
+    expect(result.body).toContain("## Outro");
+    expect(result.body.match(/\n{3,}/)).toBeNull();
   });
 });

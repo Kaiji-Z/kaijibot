@@ -52,8 +52,12 @@ export type SkillDraft = {
   triggerPhrases: string[];
   /** Full SKILL.md body markdown (excluding frontmatter) */
   bodyMarkdown: string;
-  /** Optional reference files to include */
+  /** Optional reference files to include (filename → content) */
   references?: Record<string, string>;
+  /** Optional script files to include (filename → content) */
+  scripts?: Record<string, string>;
+  /** Optional asset files to include (filename → content) */
+  assets?: Record<string, string>;
 };
 
 /** Summary of a recent skill suggestion, provided as context for the agent. */
@@ -185,6 +189,8 @@ export type SkillMeta = {
   lastUsedAt: number;
   usageCount: number;
   isStale: boolean;
+  /** "agent" = auto-created by evolution system, "user" = user-created/installed */
+  provenance?: "agent" | "user";
 };
 
 export type DedupCheckResult =

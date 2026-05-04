@@ -29,9 +29,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("cognitive-evolution system event delivery through isolated heartbeat session", () => {
+describe("cognitive-evolution system event delivery through base session (no isolation)", () => {
   const EVOLUTION_SIGNAL_TEXT =
-    "[Evolution Signal] Tool sequence: wiki_search → doc_create → task_create (3 calls, 4.2s). Evaluate whether this recurring pattern warrants a new skill.";
+    "[Evolution Signal] 刚完成的任务涉及 3 次工具调用（3 种），持续 4.2 秒。";
 
   const createConfig = async (
     tmpDir: string,
@@ -58,7 +58,7 @@ describe("cognitive-evolution system event delivery through isolated heartbeat s
     return { cfg, sessionKey };
   };
 
-  it("runs agent turn with isolated :heartbeat session key for cognitive-evolution reason", async () => {
+  it("runs agent turn directly in base session (no :heartbeat suffix) for cognitive-evolution reason", async () => {
     await withTempHeartbeatSandbox(
       async ({ tmpDir, storePath, replySpy }) => {
         const { cfg, sessionKey } = await createConfig(tmpDir, storePath);
@@ -87,14 +87,14 @@ describe("cognitive-evolution system event delivery through isolated heartbeat s
         expect(replySpy).toHaveBeenCalledTimes(1);
         const calledSessionKey = replySpy.mock.calls[0]?.[0]?.SessionKey as string | undefined;
         expect(calledSessionKey).toBeTruthy();
-        expect(calledSessionKey).toContain(":heartbeat");
+        expect(calledSessionKey).not.toContain(":heartbeat");
         expect(sendTelegram).toHaveBeenCalled();
       },
       { prefix: "kaijibot-evo-1-", unsetEnvVars: ["TELEGRAM_BOT_TOKEN"] },
     );
   });
 
-  it("consumes base session events after re-enqueue to isolated session", async () => {
+  it("consumes events from base session after agent turn", async () => {
     await withTempHeartbeatSandbox(
       async ({ tmpDir, storePath, replySpy }) => {
         const { cfg, sessionKey } = await createConfig(tmpDir, storePath);
@@ -126,7 +126,7 @@ describe("cognitive-evolution system event delivery through isolated heartbeat s
     );
   });
 
-  it("re-enqueues multiple events from base to isolated session", async () => {
+  it("consumes multiple events from base session", async () => {
     await withTempHeartbeatSandbox(
       async ({ tmpDir, storePath, replySpy }) => {
         const { cfg, sessionKey } = await createConfig(tmpDir, storePath);
@@ -138,9 +138,9 @@ describe("cognitive-evolution system event delivery through isolated heartbeat s
           text: "我看到这个任务涉及多次工具调用，我来自主判断是否值得进化为技能。",
         });
         const signal1 =
-          "[Evolution Signal] Tool sequence: base_query → base_update → sheets_write (3 calls).";
+          "[Evolution Signal] 刚完成的任务涉及 3 次工具调用（3 种），持续 2.1 秒。";
         const signal2 =
-          "[Evolution Signal] Tool sequence: web_fetch → doc_create → wiki_move (3 calls, 6.1s).";
+          "[Evolution Signal] 刚完成的任务涉及 4 次工具调用（2 种），持续 6.1 秒。";
         enqueueSystemEvent(signal1, { sessionKey });
         enqueueSystemEvent(signal2, { sessionKey });
 

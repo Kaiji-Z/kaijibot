@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -311,6 +311,65 @@ describe("EvolutionEngine", () => {
 
       const result = await engine.checkBeforeGenerate(candidate, lifecycle);
       expect(result.shouldCreate).toBe(true);
+    });
+
+    it("uses semantic dedup when deps and existingSkills provided", async () => {
+      const writer = new SkillPersistenceWriter(tempDir);
+      await writer.writeSkill({
+        name: "feishu-wiki-archive",
+        description: "Archive feishu wiki documents",
+        triggerPhrases: ["archive"],
+        bodyMarkdown: "# Archive\n\nArchives docs.",
+      });
+
+      const lifecycle = new SkillLifecycleManager(writer);
+      const candidate = makeCandidate({
+        taskSummary: "归档会议纪要到飞书知识库",
+        domain: "feishu-wiki",
+        toolCalls: Array.from({ length: 10 }, (_, i) => `tool_${i}`),
+        uniqueToolCount: 8,
+        reasoningTurns: 10,
+        durationMs: 300_000,
+      });
+
+      const mockGenerateText = vi.fn().mockResolvedValue(
+        JSON.stringify({ duplicate: true, skillName: "feishu-wiki-archive", confidence: 0.9 }),
+      );
+
+      const result = await engine.checkBeforeGenerate(
+        candidate,
+        lifecycle,
+        [{ name: "feishu-wiki-archive", description: "Archive feishu wiki documents" }],
+        { generateText: mockGenerateText },
+      );
+
+      expect(result.shouldCreate).toBe(false);
+      expect(result.existingSkill).toBe("feishu-wiki-archive");
+      expect(mockGenerateText).toHaveBeenCalledTimes(1);
+    });
+
+    it("falls back to lexical dedup when no deps provided", async () => {
+      const writer = new SkillPersistenceWriter(tempDir);
+      await writer.writeSkill({
+        name: "feishu-wiki-archive",
+        description: "Archive feishu wiki documents automatically",
+        triggerPhrases: ["archive"],
+        bodyMarkdown: "# Archive\n\nArchives docs.",
+      });
+
+      const lifecycle = new SkillLifecycleManager(writer);
+      const candidate = makeCandidate({
+        taskSummary: "Archive feishu wiki documents with scheduling",
+        domain: "feishu-wiki-archiver",
+        toolCalls: Array.from({ length: 10 }, (_, i) => `tool_${i}`),
+        uniqueToolCount: 8,
+        reasoningTurns: 10,
+        durationMs: 300_000,
+      });
+
+      const result = await engine.checkBeforeGenerate(candidate, lifecycle);
+      expect(result.shouldCreate).toBe(false);
+      expect(result.existingSkill).toBe("feishu-wiki-archive");
     });
   });
 });

@@ -57,6 +57,9 @@ function buildPrompt(candidate: EvolutionCandidate): string {
     "- Do NOT include Steps 3/5 from skill-creator (init_skill.py, package_skill.py) — those are manual workflow steps",
     "- Use imperative/infinitive form throughout",
     "- Include workflow steps and concise usage guidance",
+    "- If the skill needs executable helper scripts, include a ## Scripts section with fenced code blocks tagged with the filename (e.g., ```python:scripts/main.py)",
+    "- If the skill needs reference docs, include a ## References section with tagged blocks (e.g., ```markdown:references/api.md)",
+    "- If neither is needed, omit them — body-only skills are perfectly valid",
   );
 
   return sections.join("\n");
@@ -106,7 +109,9 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
   const triggerPhrases = extractTriggerPhrases(body);
   if (triggerPhrases.length === 0) return generateSkillDraft(candidate);
 
-  return { name, description, triggerPhrases, bodyMarkdown: body };
+  const { body: cleanBody, scripts, references, assets } = extractTaggedBlocks(body);
+
+  return { name, description, triggerPhrases, bodyMarkdown: cleanBody, scripts, references, assets };
 }
 
 function extractTriggerPhrases(body: string): string[] {
@@ -125,6 +130,43 @@ function extractTriggerPhrases(body: string): string[] {
     }
   }
   return phrases;
+}
+
+export function extractTaggedBlocks(body: string): {
+  body: string;
+  scripts?: Record<string, string>;
+  references?: Record<string, string>;
+  assets?: Record<string, string>;
+} {
+  const scripts: Record<string, string> = {};
+  const references: Record<string, string> = {};
+  const assets: Record<string, string> = {};
+
+  const fencedBlockRegex = /^```[\w]*:([\w/.-]+)\s*\n([\s\S]*?)\n\s*```/gm;
+  let match: RegExpExecArray | null;
+  let cleanBody = body;
+
+  while ((match = fencedBlockRegex.exec(body)) !== null) {
+    const filePath = match[1];
+    const content = match[2];
+
+    if (filePath.startsWith("scripts/")) {
+      scripts[filePath.replace("scripts/", "")] = content;
+    } else if (filePath.startsWith("references/")) {
+      references[filePath.replace("references/", "")] = content;
+    } else if (filePath.startsWith("assets/")) {
+      assets[filePath.replace("assets/", "")] = content;
+    }
+
+    cleanBody = cleanBody.replace(match[0], "");
+  }
+
+  return {
+    body: cleanBody.replace(/\n{3,}/g, "\n\n").trim(),
+    scripts: Object.keys(scripts).length > 0 ? scripts : undefined,
+    references: Object.keys(references).length > 0 ? references : undefined,
+    assets: Object.keys(assets).length > 0 ? assets : undefined,
+  };
 }
 
 export async function generateSkillDraftLLM(
