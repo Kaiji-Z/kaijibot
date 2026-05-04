@@ -111,3 +111,42 @@ describe("SkillPersistenceWriter archive recovery", () => {
     await expect(writer.recoverSkill("../etc/passwd")).rejects.toThrow("Invalid skill name");
   });
 });
+
+describe("SkillPersistenceWriter remove operations", () => {
+  let writer: SkillPersistenceWriter;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "kaijibot-archive-remove-test-"));
+    writer = new SkillPersistenceWriter(tempDir);
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("removes an active skill via removeSkill", async () => {
+    await writer.writeSkill(makeDraft({ name: "remove-me" }));
+    expect(await writer.skillExists("remove-me")).toBe(true);
+
+    await writer.removeSkill("remove-me");
+    expect(await writer.skillExists("remove-me")).toBe(false);
+  });
+
+  it("removes an archived skill from archive directory", async () => {
+    await writer.writeSkill(makeDraft({ name: "archived-remove" }));
+    await writer.archiveSkill("archived-remove");
+    expect(await writer.skillExists("archived-remove")).toBe(false);
+    expect(await writer.listArchivedSkillNames()).toContain("archived-remove");
+
+    // Remove from archive
+    const { rm } = await import("node:fs/promises");
+    const archivePath = join(tempDir, "skills/agent/_archive/archived-remove");
+    await rm(archivePath, { recursive: true, force: true });
+
+    expect(await writer.listArchivedSkillNames()).not.toContain("archived-remove");
+  });
+
+  it("removeSkill rejects path traversal", async () => {
+    await expect(writer.removeSkill("../etc/passwd")).rejects.toThrow("Invalid skill name");
+  });
+});

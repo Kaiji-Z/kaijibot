@@ -25,7 +25,7 @@ export function createEvolutionArchiveTool(deps: {
       "'recover' to restore one. Archived skills were auto-removed because they were unused for 30+ days.",
     parameters: EvolutionArchiveSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
-      const params = rawParams as { action: "list" | "recover"; name?: string };
+      const params = rawParams as { action: "list" | "recover" | "remove"; name?: string };
 
       try {
         const { SkillPersistenceWriter } = await import("../../cognitive/evolution/skill-writer.js");

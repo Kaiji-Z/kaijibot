@@ -42,10 +42,12 @@ export function buildCognitiveModePrompt(params: {
   if (evolutionEnabled !== false) {
     parts.push([
       "## Skill Evolution",
-      "当看到 [Evolution Signal] 系统事件时，评估是否值得做成可复用技能。",
-      "优先检查已有技能是否可以覆盖这个场景——如果可以，用 patch_skill 改进已有技能，而不是创建新的。",
-      "如果确实需要新技能，调用 evaluate_skill_evolution 工具生成技能草稿，然后让用户审核。",
-      "如果觉得不值得，忽略即可。如果用户想修改已有技能，使用 patch_skill 工具。",
+      "当看到 [Evolution Signal] 系统事件时，根据对话上下文自主判断这个任务模式是否值得做成可复用技能。",
+      "优先检查已有技能是否可以覆盖——如果可以，用 patch_skill 改进已有技能。",
+      "如果确实值得做成新技能，调用 evaluate_skill_evolution 工具，它会自动生成并保存技能。保存后告诉用户你自主进化了什么。",
+      "如果觉得不值得，直接告诉用户原因。",
+      "无论哪种结果，都必须告知用户，绝不能静默处理。",
+      "如果用户对已保存的技能不满意，可以说「删除技能 xxx」来移除。",
     ].join("\n"));
   }
 

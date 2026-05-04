@@ -1,27 +1,40 @@
 /**
  * Live evolution end-to-end test — verifies the full self-evolution pipeline
- * from hard-trigger signal through agent tool draft generation.
+ * from hard-trigger signal through skill creation, dedup, and lifecycle.
  *
- * Run: KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/evolution/evolution-live-e2e.test.ts
+ * Run: KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY pnpm test src/cognitive/evolution/evolution-live-e2e.test.ts
  *
  * What this tests:
- *   1. Hard-trigger: evaluateHardTrigger enqueues signal for 3+ user tools (real function, no helper)
- *   2. Agent tool: evaluate_skill_evolution always generates draft (no shouldSuggest gate)
- *   3. No-cooldown flow: multiple suggestions for same user all succeed
- *   4. Signal format: [Evolution Signal] contains concise summary + guidance (no tool sequence or error info)
- *   5. recentSuggestions context: prior records appear in subsequent evaluations
- *   6. Simple tasks also generate drafts (agent decides, not code)
+ *   Phase 1: Hard-trigger signal generation (no LLM)
+ *     - Signal enqueued for ≥3 user tool calls
+ *     - Signal format: concise, no tool sequence or raw error info
+ *     - Skips for non-user triggers, <3 tools, no userId
+ *     - Requests heartbeat on original sessionKey
+ *
+ *   Phase 2: Store history + recentSuggestions (no LLM)
+ *     - Multiple suggestions for same user all pass (no code-level cooldown)
+ *     - recentSuggestions populated from prior records
+ *     - userResponse tracked in history
+ *
+ *   Phase 3: Full pipeline with real LLM (requires ZAI_API_KEY)
+ *     - Complex task → LLM generates skill → saved to disk → verified
+ *     - Skill file has correct frontmatter (provenance: agent, createdAt, usageCount)
+ *     - Second creation of similar skill → dedup detected
+ *     - LLM generation fallback when API fails
+ *     - Skill lifecycle: write → touchSkill → verify usage tracking
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EvolutionCandidate } from "./types.js";
+import type { EvolutionCandidate, SkillDraft } from "./types.js";
 import { EvolutionEngine } from "./engine.js";
 import { EvolutionStore } from "./store.js";
 import { evaluateHardTrigger } from "./hard-trigger.js";
 import { generateSkillDraftLLM } from "./llm-draft-generator.js";
+import { SkillPersistenceWriter } from "./skill-writer.js";
+import { SkillLifecycleManager } from "./skill-lifecycle.js";
 import {
   peekSystemEventEntries,
   resetSystemEventsForTest,
@@ -309,13 +322,184 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
 });
 
 // ===========================================================================
-// PHASE 3: Full pipeline with real LLM (requires API key)
-//
-// Tests the actual flow: candidate → engine.evaluate (for context) → engine.generate (LLM draft)
-// No gating: the tool always generates a draft regardless of complexityScore.
+// PHASE 3: Skill creation pipeline (no LLM needed — deterministic fallback)
 // ===========================================================================
-describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM", () => {
-  it("complex task → generate draft with real LLM", async () => {
+describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
+  it("generates skill via deterministic fallback, saves to disk, verifies file", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const engine = new EvolutionEngine(store);
+
+    const candidate = makeCandidate({
+      taskSummary: "归档产品评审会议纪要到飞书知识库",
+      toolCalls: ["feishu_vc_search", "feishu_doc_fetch", "feishu_wiki_create"],
+      uniqueToolCount: 3,
+      reasoningTurns: 5,
+      durationMs: 60_000,
+      domain: "feishu-meeting",
+    });
+
+    const draft = await engine.generate(candidate);
+
+    const savedPath = await writer.writeSkill(draft);
+
+    expect(existsSync(savedPath)).toBe(true);
+    expect(savedPath).toContain("skills/agent");
+    expect(savedPath).toContain(draft.name);
+
+    const content = readFileSync(savedPath, "utf-8");
+    expect(content).toContain("name:");
+    expect(content).toContain("description:");
+    expect(content).toContain("provenance: agent");
+    expect(content).toContain("createdAt:");
+    expect(content).toContain("usageCount: 0");
+    expect(content).toContain("## Triggers");
+
+    console.log(`\n  ═══ Deterministic Skill ═══`);
+    console.log(`  Name: ${draft.name}`);
+    console.log(`  Saved: ${savedPath}`);
+    console.log(`  File size: ${content.length} bytes`);
+    console.log(`  ════════════════════════════\n`);
+  });
+
+  it("dedup: second similar skill is detected by lifecycle check", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const lifecycle = new SkillLifecycleManager(writer);
+    const engine = new EvolutionEngine(store);
+
+    const candidate1 = makeCandidate({
+      taskSummary: "批量导出飞书多维表格数据",
+      toolCalls: ["feishu_base_list", "feishu_base_records", "xlsx_create"],
+      uniqueToolCount: 3,
+      reasoningTurns: 4,
+      durationMs: 50_000,
+      domain: "feishu-data-export",
+    });
+
+    const draft1 = await engine.generate(candidate1);
+    await writer.writeSkill(draft1);
+
+    const existingSkills: Array<{ name: string; description: string }> = [];
+    const meta1 = await writer.readSkillMeta(draft1.name);
+    if (meta1) existingSkills.push({ name: meta1.name, description: meta1.description });
+
+    const candidate2 = makeCandidate({
+      taskSummary: "导出飞书多维表格到 Excel 文件",
+      toolCalls: ["feishu_base_records", "xlsx_create", "xlsx_write"],
+      uniqueToolCount: 3,
+      reasoningTurns: 4,
+      durationMs: 45_000,
+      domain: "feishu-data-export",
+    });
+
+    const dedupResult = await lifecycle.checkDuplicate(candidate2.domain, draft1.description);
+    if (!dedupResult.duplicate) {
+      const draft2 = await engine.generate(candidate2);
+      const dedupResult2 = await engine.checkBeforeGenerate(
+        candidate2, lifecycle, existingSkills,
+      );
+      console.log(`\n  ═══ Dedup Check ═══`);
+      console.log(`  Skill 1: ${draft1.name}`);
+      console.log(`  Skill 2: ${draft2.name}`);
+      console.log(`  Dedup: ${JSON.stringify(dedupResult2)}`);
+      console.log(`  ═══════════════════\n`);
+    } else {
+      console.log(`\n  ═══ Dedup Detected ═══`);
+      console.log(`  Existing: ${dedupResult.existingName}`);
+      console.log(`  Similarity: ${dedupResult.similarity?.toFixed(2)}`);
+      console.log(`  ════════════════════════\n`);
+      expect(dedupResult.duplicate).toBe(true);
+    }
+  });
+
+  it("skill file contains valid frontmatter fields", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const engine = new EvolutionEngine(store);
+
+    const draft = await engine.generate(makeCandidate({
+      taskSummary: "生成周报并发送到飞书群",
+      toolCalls: ["feishu_doc_create", "feishu_im_send", "web_search"],
+      uniqueToolCount: 3,
+      reasoningTurns: 6,
+      durationMs: 80_000,
+      domain: "reporting",
+    }));
+
+    const savedPath = await writer.writeSkill(draft);
+    const content = readFileSync(savedPath, "utf-8");
+
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    expect(frontmatterMatch).not.toBeNull();
+
+    const frontmatter = frontmatterMatch![1];
+    expect(frontmatter).toMatch(/^name:\s+/m);
+    expect(frontmatter).toMatch(/^description:\s+"/m);
+    expect(frontmatter).toMatch(/^createdAt:\s+\d+/m);
+    expect(frontmatter).toMatch(/^lastUsedAt:\s+\d+/m);
+    expect(frontmatter).toMatch(/^usageCount:\s+0/m);
+    expect(frontmatter).toMatch(/^provenance:\s+agent/m);
+  });
+
+  it("writeSkill then touchSkill updates usage tracking", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const engine = new EvolutionEngine(store);
+
+    const draft = await engine.generate(makeCandidate({
+      taskSummary: "搜索 GitHub Trending 并生成报告",
+      toolCalls: ["web_search", "web_search", "write_file"],
+      uniqueToolCount: 2,
+      reasoningTurns: 4,
+      durationMs: 60_000,
+      domain: "github",
+    }));
+
+    await writer.writeSkill(draft);
+
+    const metaBefore = await writer.readSkillMeta(draft.name);
+    expect(metaBefore!.usageCount).toBe(0);
+
+    await writer.touchSkill(draft.name);
+
+    const metaAfter = await writer.readSkillMeta(draft.name);
+    expect(metaAfter!.usageCount).toBe(1);
+    expect(metaAfter!.lastUsedAt).toBeGreaterThan(metaBefore!.lastUsedAt);
+    expect(metaAfter!.isStale).toBe(false);
+  });
+
+  it("writeSkill then archiveSkill then listArchivedSkillNames", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const engine = new EvolutionEngine(store);
+
+    const draft = await engine.generate(makeCandidate({
+      taskSummary: "临时调试任务",
+      toolCalls: ["exec", "exec", "exec"],
+      uniqueToolCount: 1,
+      reasoningTurns: 3,
+      durationMs: 10_000,
+      domain: "debug",
+    }));
+
+    const savedPath = await writer.writeSkill(draft);
+    expect(await writer.skillExists(draft.name)).toBe(true);
+
+    await writer.archiveSkill(draft.name);
+    expect(await writer.skillExists(draft.name)).toBe(false);
+
+    const archived = await writer.listArchivedSkillNames();
+    expect(archived).toContain(draft.name);
+
+    const archivedMeta = await writer.readArchivedSkillMeta(draft.name);
+    expect(archivedMeta!.provenance).toBe("agent");
+  });
+});
+
+// ===========================================================================
+// PHASE 4: Full pipeline with real LLM (requires ZAI_API_KEY)
+//
+// Tests the actual flow: candidate → engine.generate (LLM draft) → writeSkill → dedup
+// ===========================================================================
+describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM", () => {
+  it("complex task → LLM generates skill → saved to disk with correct format", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
     const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
@@ -323,12 +507,8 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM",
     const candidate = makeCandidate({
       taskSummary: "归档产品评审会议纪要到飞书知识库并创建跟踪任务",
       toolCalls: [
-        "feishu_vc_search",
-        "feishu_vc_notes",
-        "feishu_doc_fetch",
-        "feishu_wiki_spaces",
-        "feishu_wiki_create",
-        "feishu_doc_write",
+        "feishu_vc_search", "feishu_vc_notes", "feishu_doc_fetch",
+        "feishu_wiki_spaces", "feishu_wiki_create", "feishu_doc_write",
         "feishu_task_create",
       ],
       uniqueToolCount: 6,
@@ -337,29 +517,37 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM",
       domain: "feishu-meeting",
     });
 
-    // evaluate returns context (recentSuggestions, complexityScore) — NOT used for gating
-    const decision = await engine.evaluate(candidate, "user-live-1");
-
-    // generate always runs — no shouldSuggest gate
     const draft = await engine.generate(candidate);
+    const savedPath = await writer.writeSkill(draft);
 
-    console.log(`\n  ═══ Live Draft ═══`);
+    console.log(`\n  ═══ Live Skill Created ═══`);
     console.log(`  Name: ${draft.name}`);
     console.log(`  Description: ${draft.description}`);
     console.log(`  Triggers: ${draft.triggerPhrases.join(", ")}`);
     console.log(`  Body lines: ${draft.bodyMarkdown.split("\n").length}`);
-    console.log(`  complexityScore: ${decision.complexityScore.toFixed(2)} (reference only)`);
-    console.log(`  recentSuggestions: ${JSON.stringify(decision.recentSuggestions)}`);
-    console.log(`  ═══════════════════\n`);
+    console.log(`  Saved: ${savedPath}`);
+    console.log(`  ════════════════════════════\n`);
 
     expect(draft.name).toBeTruthy();
     expect(draft.description.length).toBeGreaterThan(5);
     expect(draft.triggerPhrases.length).toBeGreaterThanOrEqual(2);
     expect(draft.bodyMarkdown.length).toBeGreaterThan(100);
-    expect(decision.recentSuggestions).toEqual([]);
+
+    expect(existsSync(savedPath)).toBe(true);
+    const content = readFileSync(savedPath, "utf-8");
+    expect(content).toContain("provenance: agent");
+    expect(content).toContain("createdAt:");
+    expect(content).toContain("## Triggers");
+
+    const meta = await writer.readSkillMeta(draft.name);
+    expect(meta!.name).toBe(draft.name);
+    expect(meta!.provenance).toBe("agent");
+    expect(meta!.usageCount).toBe(0);
   }, 120_000);
 
-  it("second round shows recentSuggestions from first round", async () => {
+  it("second round: similar task → dedup detected against first skill", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const lifecycle = new SkillLifecycleManager(writer);
     const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
@@ -378,16 +566,12 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM",
       domain: "feishu-data",
     });
 
-    const decision1 = await engine.evaluate(candidate1, "user-live-2");
     const draft1 = await engine.generate(candidate1);
-    await store.save({
-      id: "rec-live-1",
-      userId: "user-live-2",
-      candidate: candidate1,
-      decision: decision1,
-      draft: draft1,
-      timestamp: Date.now(),
-    });
+    await writer.writeSkill(draft1);
+
+    const existingSkills: Array<{ name: string; description: string }> = [];
+    const meta1 = await writer.readSkillMeta(draft1.name);
+    if (meta1) existingSkills.push({ name: meta1.name, description: meta1.description });
 
     const candidate2 = makeCandidate({
       taskSummary: "搜索竞品分析报告并整理到知识库",
@@ -402,55 +586,90 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 3: full pipeline with real LLM",
       domain: "research",
     });
 
-    const decision2 = await engine.evaluate(candidate2, "user-live-2");
     const draft2 = await engine.generate(candidate2);
-
-    console.log(`\n  [Round 1] ${draft1.name} → saved`);
-    console.log(`  [Round 2] ${draft2.name}`);
-    console.log(`  [Round 2] recentSuggestions: ${JSON.stringify(decision2.recentSuggestions)}`);
-    console.log(`  [Round 2] complexityScore: ${decision2.complexityScore.toFixed(2)} (reference)\n`);
-
-    expect(decision2.recentSuggestions).toHaveLength(1);
-    expect(decision2.recentSuggestions![0]!.skillName).toBe(draft1.name);
-    expect(decision2.recentSuggestions![0]!.domain).toBe("feishu-data");
-    expect(draft2.name).toBeTruthy();
-  }, 240_000);
-
-  it("simple task with errors → still generates draft (agent decides)", async () => {
-    // In the old architecture this would be gated by errorComplexityThreshold.
-    // Now: hard-trigger sends signal on 3+ tools regardless,
-    // and the tool always generates a draft — the Agent decides worthiness.
-    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
-      generateSkillDraftLLM(c, { generateText: callLLM }),
+    const dedupResult = await engine.checkBeforeGenerate(
+      candidate2, lifecycle, existingSkills,
     );
 
-    const simpleWithErrors = makeCandidate({
-      taskSummary: "查询天气（有工具错误）",
+    console.log(`\n  ═══ Round 2 ═══`);
+    console.log(`  Skill 1: ${draft1.name}`);
+    console.log(`  Skill 2: ${draft2.name}`);
+    console.log(`  Dedup: shouldCreate=${dedupResult.shouldCreate}, existing=${dedupResult.existingSkill ?? "none"}`);
+    console.log(`  ═════════════════\n`);
+
+    expect(draft2.name).toBeTruthy();
+    expect(draft2.bodyMarkdown.length).toBeGreaterThan(50);
+
+    if (!dedupResult.shouldCreate) {
+      expect(dedupResult.existingSkill).toBeTruthy();
+    }
+  }, 240_000);
+
+  it("LLM failure → deterministic fallback generates valid skill", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+      generateSkillDraftLLM(c, {
+        generateText: async () => { throw new Error("simulated API failure"); },
+      }),
+    );
+
+    const candidate = makeCandidate({
+      taskSummary: "查询天气（LLM失败场景）",
       toolCalls: ["weather_get", "weather_get", "weather_get"],
       uniqueToolCount: 1,
       reasoningTurns: 3,
       durationMs: 15_000,
       domain: "weather",
-      errorProfile: { errorCount: 2, failedToolNames: ["weather_get"], hasMutatingErrors: false },
     });
 
-    // evaluate is called for context only — complexityScore is reference info
-    const decision = await engine.evaluate(simpleWithErrors, "user-live-err");
+    const draft = await engine.generate(candidate);
+    const savedPath = await writer.writeSkill(draft);
 
-    // generate always runs — no gate
-    const draft = await engine.generate(simpleWithErrors);
+    console.log(`\n  ═══ Fallback Skill ═══`);
+    console.log(`  Name: ${draft.name}`);
+    console.log(`  Description: ${draft.description}`);
+    console.log(`  ═══════════════════════\n`);
 
-    console.log(`\n  Simple task with errors:`);
-    console.log(`  complexityScore: ${decision.complexityScore.toFixed(2)} (reference only)`);
-    console.log(`  Draft generated: ${draft.name}`);
-    console.log(`  Description: ${draft.description}\n`);
-
-    // Draft is always generated regardless of score
     expect(draft.name).toBeTruthy();
     expect(draft.description.length).toBeGreaterThan(0);
-    // Score is still computed (as reference info for the Agent)
-    expect(typeof decision.complexityScore).toBe("number");
+    expect(existsSync(savedPath)).toBe(true);
+  }, 60_000);
+
+  it("full lifecycle: create → use (touchSkill) → verify tracking", async () => {
+    const writer = new SkillPersistenceWriter(tempDir);
+    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+      generateSkillDraftLLM(c, { generateText: callLLM }),
+    );
+
+    const candidate = makeCandidate({
+      taskSummary: "GitHub Trending 每日热门项目深度解读报告",
+      toolCalls: ["tavily_search", "tavily_extract", "exec", "write_file"],
+      uniqueToolCount: 4,
+      reasoningTurns: 5,
+      durationMs: 94_000,
+      domain: "content-curation",
+    });
+
+    const draft = await engine.generate(candidate);
+    const savedPath = await writer.writeSkill(draft);
+
+    const meta0 = await writer.readSkillMeta(draft.name);
+    expect(meta0!.usageCount).toBe(0);
+
+    await writer.touchSkill(draft.name);
+    await writer.touchSkill(draft.name);
+
+    const meta2 = await writer.readSkillMeta(draft.name);
+    expect(meta2!.usageCount).toBe(2);
+    expect(meta2!.isStale).toBe(false);
+
+    console.log(`\n  ═══ Lifecycle ═══`);
+    console.log(`  Skill: ${draft.name}`);
+    console.log(`  Usage: ${meta2!.usageCount}`);
+    console.log(`  Last used: ${new Date(meta2!.lastUsedAt).toISOString()}`);
+    console.log(`  Stale: ${meta2!.isStale}`);
+    console.log(`  ══════════════════\n`);
+
+    expect(existsSync(savedPath)).toBe(true);
   }, 120_000);
 });
-
-

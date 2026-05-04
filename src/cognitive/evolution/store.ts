@@ -50,7 +50,7 @@ export class EvolutionStore {
     const records = await this.loadRecords(userId);
     const cutoff = Date.now() - hours * 3_600_000;
     return records.filter(
-      (r) => r.timestamp > cutoff && r.decision.shouldSuggest === true,
+      (r) => r.timestamp > cutoff && r.decision?.shouldSuggest === true,
     );
   }
 

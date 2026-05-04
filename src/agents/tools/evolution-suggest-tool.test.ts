@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEvolutionSuggestTool } from "./evolution-suggest-tool.js";
 
-const mockEvaluate = vi.fn();
-const mockGenerate = vi.fn().mockReturnValue({
+const mockGenerate = vi.fn().mockResolvedValue({
   name: "test-skill",
   description: "A test skill",
   triggerPhrases: ["test trigger"],
   bodyMarkdown: "## When to use\n\nUse when testing.\n\n## Workflow\n\n1. Step one\n2. Step two",
 });
 const mockSave = vi.fn().mockResolvedValue(undefined);
+const mockCheckBeforeGenerate = vi.fn().mockResolvedValue({ shouldCreate: true });
 
 vi.mock("../../cognitive/evolution/engine.js", () => ({
   EvolutionEngine: class {
-    evaluate = mockEvaluate;
     generate = mockGenerate;
+    checkBeforeGenerate = mockCheckBeforeGenerate;
   },
 }));
 
@@ -21,6 +21,22 @@ vi.mock("../../cognitive/evolution/store.js", () => ({
   EvolutionStore: class {
     save = mockSave;
   },
+}));
+
+const mockWriteSkill = vi.fn().mockResolvedValue("/home/test/.kaijibot/skills/agent/test-skill/SKILL.md");
+const mockListSkillNames = vi.fn().mockResolvedValue([]);
+const mockReadSkillMeta = vi.fn().mockResolvedValue(null);
+
+vi.mock("../../cognitive/evolution/skill-writer.js", () => ({
+  SkillPersistenceWriter: class {
+    writeSkill = mockWriteSkill;
+    listSkillNames = mockListSkillNames;
+    readSkillMeta = mockReadSkillMeta;
+  },
+}));
+
+vi.mock("../../cognitive/evolution/skill-lifecycle.js", () => ({
+  SkillLifecycleManager: class {},
 }));
 
 vi.mock("../../utils.js", async (importOriginal) => {
@@ -34,7 +50,10 @@ vi.mock("../../utils.js", async (importOriginal) => {
 describe("createEvolutionSuggestTool", () => {
   afterEach(() => {
     vi.clearAllMocks();
-    mockEvaluate.mockResolvedValue({ shouldSuggest: true, reasoning: "complex enough", complexityScore: 0.7, confidence: 0.8 });
+    mockWriteSkill.mockResolvedValue("/home/test/.kaijibot/skills/agent/test-skill/SKILL.md");
+    mockListSkillNames.mockResolvedValue([]);
+    mockReadSkillMeta.mockResolvedValue(null);
+    mockCheckBeforeGenerate.mockResolvedValue({ shouldCreate: true });
   });
 
   it("returns null when cognitive.enabled is false", () => {
@@ -80,16 +99,10 @@ describe("createEvolutionSuggestTool", () => {
 
       const text = (result.content as Array<{ text: string }>)[0].text;
       expect(text).toContain("No user session");
-      expect(mockEvaluate).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
-    it("returns suggested when engine decides to suggest", async () => {
-      mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: true,
-        reasoning: "complex multi-step workflow",
-        complexityScore: 0.85,
-        confidence: 0.9,
-      });
+    it("generates, saves, and returns saved status", async () => {
       mockGenerate.mockResolvedValueOnce({
         name: "feishu-wiki-archive",
         description: "Archive wiki pages",
@@ -111,19 +124,18 @@ describe("createEvolutionSuggestTool", () => {
       });
 
       const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
-      expect(payload.status).toBe("suggested");
+      expect(payload.status).toBe("saved");
       expect(payload.skillName).toBe("feishu-wiki-archive");
-      expect(payload.complexityScore).toBe(0.85);
-      expect(payload.bodyMarkdown).toBe("## When to use\n\nUse when archiving wiki.\n\n## Workflow\n\n1. Scan\n2. Move");
-      expect(payload.suggestionText).toContain("3 个工具");
-      expect(payload.suggestionText).toContain("8 轮推理");
+      expect(payload.bodyMarkdown).toBeUndefined();
+      expect(payload.savedPath).toBeDefined();
+      expect(payload.suggestionText).toContain("自主进化");
       expect(payload.suggestionText).toContain("feishu-wiki-archive");
-      expect(payload.suggestionText).toContain("要不要保存");
+      expect(mockWriteSkill).toHaveBeenCalledTimes(1);
       expect(mockSave).toHaveBeenCalledTimes(1);
     });
 
-    it("returns error when engine throws", async () => {
-      mockEvaluate.mockRejectedValueOnce(new Error("engine failure"));
+    it("returns error when generate throws", async () => {
+      mockGenerate.mockRejectedValueOnce(new Error("generation failure"));
 
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:user-3",
@@ -139,17 +151,11 @@ describe("createEvolutionSuggestTool", () => {
       });
 
       const text = (result.content as Array<{ text: string }>)[0].text;
-      expect(text).toContain("Evolution evaluation failed");
-      expect(text).toContain("engine failure");
+      expect(text).toContain("Skill creation failed");
+      expect(text).toContain("generation failure");
     });
 
-    it("suggestionText includes tool count and reasoning turns", async () => {
-      mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: true,
-        reasoning: "complex",
-        complexityScore: 0.9,
-        confidence: 0.95,
-      });
+    it("suggestionText includes skill name and description", async () => {
       mockGenerate.mockResolvedValueOnce({
         name: "multi-tool-skill",
         description: "Multi-tool skill",
@@ -171,18 +177,17 @@ describe("createEvolutionSuggestTool", () => {
       });
 
       const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
-      expect(payload.suggestionText).toContain("5 个工具");
-      expect(payload.suggestionText).toContain("12 轮推理");
+      expect(payload.status).toBe("saved");
+      expect(payload.suggestionText).toContain("自主进化");
       expect(payload.suggestionText).toContain("multi-tool-skill");
-      expect(payload.suggestionText).toContain("要不要保存");
     });
 
-    it("passes transcript to candidate in engine.evaluate", async () => {
-      mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: true,
-        reasoning: "complex enough",
-        complexityScore: 0.7,
-        confidence: 0.8,
+    it("passes transcript to generate via candidate", async () => {
+      mockGenerate.mockResolvedValueOnce({
+        name: "transcript-skill",
+        description: "Transcript skill",
+        triggerPhrases: ["test"],
+        bodyMarkdown: "# Test",
       });
 
       const tool = createEvolutionSuggestTool({
@@ -199,20 +204,12 @@ describe("createEvolutionSuggestTool", () => {
         transcript: "User asked about feishu wiki archiving, bot listed pages and moved them.",
       });
 
-      expect(mockEvaluate).toHaveBeenCalledTimes(1);
-      const candidate = mockEvaluate.mock.calls[0][0] as { transcript?: string };
-      expect(candidate.transcript).toBe("User asked about feishu wiki archiving, bot listed pages and moved them.");
       expect(mockGenerate).toHaveBeenCalledTimes(1);
+      const candidate = mockGenerate.mock.calls[0][0] as { transcript?: string };
+      expect(candidate.transcript).toBe("User asked about feishu wiki archiving, bot listed pages and moved them.");
     });
 
-    it("passes hasTrialAndError to candidate", async () => {
-      mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: true,
-        reasoning: "complex enough",
-        complexityScore: 0.7,
-        confidence: 0.8,
-      });
-
+    it("passes hasTrialAndError to generate via candidate", async () => {
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:user-6",
       })!;
@@ -227,19 +224,11 @@ describe("createEvolutionSuggestTool", () => {
         hasTrialAndError: true,
       });
 
-      const candidate = mockEvaluate.mock.calls[0][0] as { hasTrialAndError?: boolean };
+      const candidate = mockGenerate.mock.calls[0][0] as { hasTrialAndError?: boolean };
       expect(candidate.hasTrialAndError).toBe(true);
-      expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
 
-    it("passes userCorrections to candidate", async () => {
-      mockEvaluate.mockResolvedValueOnce({
-        shouldSuggest: true,
-        reasoning: "complex enough",
-        complexityScore: 0.7,
-        confidence: 0.8,
-      });
-
+    it("passes userCorrections to generate via candidate", async () => {
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:user-7",
       })!;
@@ -254,14 +243,11 @@ describe("createEvolutionSuggestTool", () => {
         userCorrections: 4,
       });
 
-      const candidate = mockEvaluate.mock.calls[0][0] as { userCorrections?: number };
+      const candidate = mockGenerate.mock.calls[0][0] as { userCorrections?: number };
       expect(candidate.userCorrections).toBe(4);
-      expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
 
     it("prefers deliveryTo over sessionKey for userId", async () => {
-      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: true, reasoning: "ok", complexityScore: 0.7, confidence: 0.8 });
-
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:main",
         deliveryTo: "user:ou_abc123",
@@ -271,8 +257,7 @@ describe("createEvolutionSuggestTool", () => {
         taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
       });
 
-      expect(mockEvaluate).toHaveBeenCalledTimes(1);
-      expect(mockEvaluate.mock.calls[0][1]).toBe("ou_abc123");
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
     });
 
     it("returns no_session when both deliveryTo and sessionKey yield no userId", async () => {
@@ -289,8 +274,6 @@ describe("createEvolutionSuggestTool", () => {
     });
 
     it("strips feishu: prefix from deliveryTo", async () => {
-      mockEvaluate.mockResolvedValueOnce({ shouldSuggest: true, reasoning: "ok", complexityScore: 0.7, confidence: 0.8 });
-
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:main",
         deliveryTo: "feishu:ou_xyz789",
@@ -300,7 +283,64 @@ describe("createEvolutionSuggestTool", () => {
         taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
       });
 
-      expect(mockEvaluate.mock.calls[0][1]).toBe("ou_xyz789");
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns duplicate when dedup finds existing", async () => {
+      mockGenerate.mockResolvedValueOnce({
+        name: "dupe",
+        description: "dupe",
+        triggerPhrases: ["t"],
+        bodyMarkdown: "#",
+      });
+      mockCheckBeforeGenerate.mockResolvedValueOnce({ shouldCreate: false, existingSkill: "existing-one" });
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:user-dedup",
+      })!;
+
+      const result = await tool.execute("call-dedup", {
+        taskSummary: "dedup task",
+        toolCalls: ["tool_a", "tool_b", "tool_c"],
+        uniqueToolCount: 3,
+        reasoningTurns: 3,
+        durationMs: 1000,
+        domain: "test",
+      });
+
+      const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+      expect(payload.status).toBe("duplicate");
+      expect(payload.suggestionText).toContain("已有技能");
+      expect(payload.suggestionText).toContain("existing-one");
+      expect(mockWriteSkill).not.toHaveBeenCalled();
+    });
+
+    it("saves record with savedSkillPath", async () => {
+      mockGenerate.mockResolvedValueOnce({
+        name: "path-test",
+        description: "Path test",
+        triggerPhrases: ["test"],
+        bodyMarkdown: "# Test",
+      });
+      mockWriteSkill.mockResolvedValueOnce("/home/test/.kaijibot/skills/agent/path-test/SKILL.md");
+
+      const tool = createEvolutionSuggestTool({
+        sessionKey: "agent:main:user-path",
+      })!;
+
+      await tool.execute("call-path", {
+        taskSummary: "path test",
+        toolCalls: ["a", "b", "c"],
+        uniqueToolCount: 3,
+        reasoningTurns: 3,
+        durationMs: 1000,
+        domain: "test",
+      });
+
+      expect(mockSave).toHaveBeenCalledTimes(1);
+      const savedRecord = mockSave.mock.calls[0][0];
+      expect(savedRecord.savedSkillPath).toBe("/home/test/.kaijibot/skills/agent/path-test/SKILL.md");
+      expect(savedRecord.draft.name).toBe("path-test");
     });
   });
 });

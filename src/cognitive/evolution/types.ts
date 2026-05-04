@@ -93,8 +93,8 @@ export type EvolutionRecord = {
   userId: string;
   /** The candidate that triggered the evaluation */
   candidate: EvolutionCandidate;
-  /** The engine's decision */
-  decision: EvolutionDecision;
+  /** The engine's decision (omitted when agent evaluates directly without engine.evaluate) */
+  decision?: EvolutionDecision;
   /** The drafted skill (only when shouldSuggest=true) */
   draft?: SkillDraft;
   /** User's response (undefined until user acts) */
