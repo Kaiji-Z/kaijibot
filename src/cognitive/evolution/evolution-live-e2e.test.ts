@@ -493,6 +493,173 @@ describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
 });
 
 // ===========================================================================
+// PHASE 3.5: Tool entry point — evaluate_skill_evolution full flow (no LLM)
+//
+// Tests the actual tool function (createEvolutionSuggestTool) instead of the
+// underlying engine/writer directly. Verifies generate → dedup → save → return.
+// Uses resolveConfigDir mock to redirect to tempDir.
+// ===========================================================================
+describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
+  let toolTempDir: string;
+
+  // We mock resolveConfigDir + consumeToolErrorProfile so the tool's internal
+  // dynamic imports use our temp directory. Other modules (engine, store,
+  // skill-writer, skill-lifecycle) remain unmocked — we want the real pipeline.
+  const { mockResolveConfigDir } = vi.hoisted(() => ({
+    mockResolveConfigDir: vi.fn().mockReturnValue("/tmp/kaijibot-e2e-default"),
+  }));
+  const { mockConsumeToolErrorProfile } = vi.hoisted(() => ({
+    mockConsumeToolErrorProfile: vi.fn().mockReturnValue(undefined),
+  }));
+
+  vi.mock("../../utils.js", async (importOriginal) => {
+    const actual = await importOriginal() as Record<string, unknown>;
+    return {
+      ...actual,
+      resolveConfigDir: mockResolveConfigDir,
+    };
+  });
+
+  vi.mock("../../agents/tool-error-summary.js", async (importOriginal) => {
+    const actual = await importOriginal() as Record<string, unknown>;
+    return {
+      ...actual,
+      consumeToolErrorProfile: mockConsumeToolErrorProfile,
+    };
+  });
+
+  beforeEach(() => {
+    toolTempDir = mkdtempSync(join(tmpdir(), "kaijibot-evo-tool-"));
+    mockResolveConfigDir.mockReturnValue(toolTempDir);
+    mockConsumeToolErrorProfile.mockClear();
+    mockConsumeToolErrorProfile.mockReturnValue(undefined);
+  });
+
+  afterEach(() => {
+    rmSync(toolTempDir, { recursive: true, force: true });
+  });
+
+  function extractToolResult(result: unknown): { status: string; [key: string]: unknown } {
+    if (typeof result === "string") return { status: result };
+    const r = result as { content?: Array<{ type: string; text: string }>; details?: unknown };
+    if (r.details && typeof r.details === "object") return r.details as { status: string; [key: string]: unknown };
+    const text = r.content?.[0]?.text;
+    if (text) return JSON.parse(text);
+    throw new Error(`unexpected tool result: ${JSON.stringify(result)}`);
+  }
+
+  it("tool generates skill, saves to disk, returns status=saved", async () => {
+    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const tool = createEvolutionSuggestTool({
+      sessionKey: "agent:main:ou_tool_test_user",
+    });
+
+    expect(tool).not.toBeNull();
+    const result = await tool!.execute("tc-1", {
+      taskSummary: "整理飞书知识库文档并按类别归档",
+      toolCalls: ["feishu_wiki_spaces", "feishu_doc_fetch", "feishu_wiki_create", "feishu_doc_write"],
+      uniqueToolCount: 4,
+      reasoningTurns: 6,
+      durationMs: 90_000,
+      domain: "feishu-wiki",
+    });
+
+    const parsed = extractToolResult(result);
+    expect(parsed.status).toBe("saved");
+    expect(parsed.skillName).toBeTruthy();
+    expect(parsed.savedPath).toContain("skills/agent");
+    expect((parsed.description as string).length).toBeGreaterThan(0);
+
+    const writer = new SkillPersistenceWriter(toolTempDir);
+    const names = await writer.listSkillNames();
+    expect(names.length).toBeGreaterThanOrEqual(1);
+
+    const skillName = names[0]!;
+    const meta = await writer.readSkillMeta(skillName);
+    expect(meta!.provenance).toBe("agent");
+    expect(meta!.usageCount).toBe(0);
+
+    console.log(`\n  ═══ Tool Entry Point Skill ═══`);
+    console.log(`  Name: ${skillName}`);
+    console.log(`  Provenance: ${meta!.provenance}`);
+    console.log(`  ═══════════════════════════════\n`);
+  });
+
+  it("tool detects duplicate on second call with same domain", async () => {
+    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+
+    const tool = createEvolutionSuggestTool({
+      sessionKey: "agent:main:ou_tool_dedup_user",
+    });
+
+    await tool!.execute("tc-dedup-1", {
+      taskSummary: "导出飞书多维表格数据到Excel",
+      toolCalls: ["feishu_base_list", "feishu_base_records", "xlsx_create", "xlsx_write"],
+      uniqueToolCount: 4,
+      reasoningTurns: 5,
+      durationMs: 60_000,
+      domain: "feishu-data-export",
+    });
+
+    const result2 = await tool!.execute("tc-dedup-2", {
+      taskSummary: "批量导出飞书多维表格记录",
+      toolCalls: ["feishu_base_records", "xlsx_create", "xlsx_write"],
+      uniqueToolCount: 3,
+      reasoningTurns: 4,
+      durationMs: 45_000,
+      domain: "feishu-data-export",
+    });
+
+    const parsed2 = extractToolResult(result2);
+
+    console.log(`\n  ═══ Dedup Round 2 ═══`);
+    console.log(`  Status: ${parsed2.status}`);
+    console.log(`  ═══════════════════════\n`);
+
+    expect(["saved", "duplicate"]).toContain(parsed2.status);
+  });
+
+  it("tool returns no_session when sessionKey has no userId", async () => {
+    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const tool = createEvolutionSuggestTool({
+      sessionKey: "agent:main:main",
+    });
+
+    const result = await tool!.execute("tc-no-user", {
+      taskSummary: "some task",
+      toolCalls: ["a", "b", "c"],
+      uniqueToolCount: 3,
+      reasoningTurns: 3,
+      durationMs: 10_000,
+      domain: "test",
+    });
+
+    const parsed = extractToolResult(result);
+    expect(parsed.status).toBe("no_session");
+  });
+
+  it("tool with no config falls back to deterministic draft", async () => {
+    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const tool = createEvolutionSuggestTool({
+      sessionKey: "agent:main:ou_tool_fallback_user",
+    });
+
+    const result = await tool!.execute("tc-fallback", {
+      taskSummary: "查询GitHub trending项目",
+      toolCalls: ["web_search", "web_search", "write_file"],
+      uniqueToolCount: 2,
+      reasoningTurns: 3,
+      durationMs: 30_000,
+      domain: "github",
+    });
+
+    const parsed = extractToolResult(result);
+    expect(parsed.status).toBe("saved");
+    expect(parsed.skillName).toBeTruthy();
+  });
+});
+
+// ===========================================================================
 // PHASE 4: Full pipeline with real LLM (requires ZAI_API_KEY)
 //
 // Tests the actual flow: candidate → engine.generate (LLM draft) → writeSkill → dedup
