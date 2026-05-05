@@ -297,11 +297,16 @@ export async function generateStructuredSummary(params: {
  * Format a StructuredSummary as a markdown document with YAML frontmatter,
  * suitable for appending to a daily memory file.
  */
+export interface SessionPointer {
+  sessionId: string;
+  sessionsDir: string;
+}
+
 export function formatSummaryAsMarkdown(
   summary: StructuredSummary,
   dateStr: string,
   sessionKey?: string,
-  sessionFile?: string,
+  sessionPointer?: SessionPointer,
 ): string {
   const frontmatter = [
     "---",
@@ -319,8 +324,12 @@ export function formatSummaryAsMarkdown(
     sections.push(`- **Session Key**: ${sessionKey}`, "");
   }
 
-  if (sessionFile) {
-    sections.push(`- **完整会话**: ${sessionFile}`, "");
+  if (sessionPointer) {
+    sections.push(
+      `- **Session ID**: ${sessionPointer.sessionId}`,
+      `- **会话目录**: ${sessionPointer.sessionsDir}`,
+      "",
+    );
   }
 
   sections.push("## 摘要", "", summary.summary, "");

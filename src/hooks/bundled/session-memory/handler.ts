@@ -28,7 +28,7 @@ import {
   findPreviousSessionFile,
   getRecentSessionContentWithResetFallback,
 } from "./transcript.js";
-import { generateStructuredSummary, formatSummaryAsMarkdown } from "./summary.js";
+import { generateStructuredSummary, formatSummaryAsMarkdown, type SessionPointer } from "./summary.js";
 import type { StructuredSummary } from "./summary.js";
 // Inline type — memory-core types are loaded dynamically to respect the extension boundary.
 interface TopicEntry {
@@ -162,6 +162,16 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
     const sessionFile = currentSessionFile || undefined;
 
+    // Build session pointer (sessionId + sessionsDir) for stable resolution.
+    // Unlike an absolute file path, this survives /reset renaming (.reset.{ts}).
+    const sessionPointer: SessionPointer | undefined =
+      sessionFile && currentSessionId
+        ? {
+            sessionId: currentSessionId,
+            sessionsDir: path.dirname(sessionFile),
+          }
+        : undefined;
+
     const hookConfig = resolveHookConfig(cfg, "session-memory");
     const messageCount =
       typeof hookConfig?.messages === "number" && hookConfig.messages > 0
@@ -216,7 +226,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
       summary,
       dateStr,
       displaySessionKey,
-      sessionFile,
+      sessionPointer,
     );
 
     await appendFileWithinRoot({

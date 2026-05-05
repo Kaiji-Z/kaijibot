@@ -93,6 +93,37 @@ export function stripResetSuffix(fileName: string): string {
   return resetIndex === -1 ? fileName : fileName.slice(0, resetIndex);
 }
 
+/**
+ * Resolve a sessionId to its actual transcript file, including archived
+ * variants (.reset.{ts}, .deleted.{ts}). Returns the newest match.
+ */
+export async function findSessionFileById(
+  sessionId: string,
+  sessionsDir: string,
+): Promise<string | null> {
+  const canonical = path.join(sessionsDir, `${sessionId}.jsonl`);
+  try {
+    await fs.access(canonical);
+    return canonical;
+  } catch {}
+
+  try {
+    const files = await fs.readdir(sessionsDir);
+    const prefix = `${sessionId}.jsonl.`;
+
+    const archived = files
+      .filter((name) => name.startsWith(prefix))
+      .toSorted()
+      .toReversed();
+
+    if (archived.length > 0) {
+      return path.join(sessionsDir, archived[0]);
+    }
+  } catch {}
+
+  return null;
+}
+
 export async function findPreviousSessionFile(params: {
   sessionsDir: string;
   currentSessionFile?: string;

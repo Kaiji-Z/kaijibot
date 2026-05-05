@@ -99,24 +99,23 @@ describe("formatSummaryAsMarkdown", () => {
     expect(md).toContain("- **Session Key**: agent:main:main");
   });
 
-  it("renders sessionFile pointer when provided", () => {
+  it("renders session pointer when provided", () => {
     const summary = makeSummary();
-    const md = formatSummaryAsMarkdown(
-      summary,
-      "2026-04-24",
-      undefined,
-      "~/.kaijibot/agents/default/sessions/abc-123.jsonl",
-    );
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24", undefined, {
+      sessionId: "abc-123",
+      sessionsDir: "~/.kaijibot/agents/default/sessions",
+    });
 
-    expect(md).toContain("- **完整会话**: ~/.kaijibot/agents/default/sessions/abc-123.jsonl");
+    expect(md).toContain("- **Session ID**: abc-123");
+    expect(md).toContain("- **会话目录**: ~/.kaijibot/agents/default/sessions");
   });
 
-  it("omits sessionKey and sessionFile when not provided", () => {
+  it("omits sessionKey and session pointer when not provided", () => {
     const summary = makeSummary();
     const md = formatSummaryAsMarkdown(summary, "2026-04-24");
 
     expect(md).not.toContain("**Session Key**");
-    expect(md).not.toContain("**完整会话**");
+    expect(md).not.toContain("**Session ID**");
   });
 
   it("renders 核心请求 when primaryRequest is set", () => {
