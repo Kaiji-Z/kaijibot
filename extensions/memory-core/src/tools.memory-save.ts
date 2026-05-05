@@ -19,7 +19,7 @@ import {
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
 import { incrementGroundedCount } from "./short-term-promotion.js";
-import { type TopicEntry } from "./topic-types.js";
+import { type MemoryType, type TopicEntry } from "./topic-types.js";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import {
   getMemoryManagerContextWithPurpose,
@@ -42,6 +42,12 @@ export const MemorySaveSchema = Type.Object({
     Type.Union(
       [Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")],
       { description: "Importance level. High importance fast-tracks dreaming promotion." },
+    ),
+  ),
+  type: Type.Optional(
+    Type.Union(
+      [Type.Literal("user"), Type.Literal("feedback"), Type.Literal("project"), Type.Literal("reference")],
+      { description: "Memory classification type: user (personal info), feedback (about assistant), project (work-related), reference (factual knowledge)." },
     ),
   ),
 });
@@ -172,6 +178,7 @@ export function createMemorySaveTool(options: {
     description:
       "Mandatory write step: save structured memories to subject-based topic files with automatic classification and self-editing. " +
       "Route by topic subject (e.g. feishu, philosophy, product). " +
+      "Use 'type' to classify: user (personal info), feedback (about assistant), project (work), reference (facts). " +
       "Detects and resolves conflicts with existing entries (mem0-style self-editing). Importance=high fast-tracks dreaming promotion.",
     parameters: MemorySaveSchema,
     execute: async (_toolCallId, params) => {
@@ -218,6 +225,8 @@ export function createMemorySaveTool(options: {
 
       let action: "created" | "updated" | "merged" = "created";
 
+      const typeValue = readStringParam(params, "type") as MemoryType | undefined;
+
       const today = new Date().toISOString().slice(0, 10);
       const newEntry: TopicEntry = {
         title: deriveEntryTitle(content),
@@ -225,6 +234,7 @@ export function createMemorySaveTool(options: {
         content,
         importance,
         source: "memory-save",
+        type: typeValue,
       };
 
       const { maxSim, maxSimIdx } = computeMaxSimilarity(content, topic.entries);
@@ -267,6 +277,36 @@ export function createMemorySaveTool(options: {
         topicFile: `memory/topics/${topicFile}`,
         summary: importance === "high" ? content : summaryText,
       });
+
+      // Route typed memories to inline section in MEMORY.md
+      if (typeValue) {
+        const TYPE_TO_INLINE_HEADING: Record<string, string> = {
+          user: "👤 User",
+          feedback: "💬 Key Feedback",
+          project: "🎯 Active Focus",
+          reference: "🔗 Reference",
+        };
+        const heading = TYPE_TO_INLINE_HEADING[typeValue];
+        if (heading) {
+          try {
+            const index = await indexManager.readIndex();
+            const inlineSections = index.inlineSections ?? [];
+            const existingSection = inlineSections.find(s => s.section === heading);
+            if (existingSection) {
+              existingSection.lines.push(`- ${content.slice(0, 120).replace(/\n/g, " ").trim()}`);
+            } else {
+              inlineSections.push({
+                section: heading,
+                lines: [`- ${content.slice(0, 120).replace(/\n/g, " ").trim()}`],
+              });
+            }
+            index.inlineSections = inlineSections;
+            await indexManager.writeIndex(index);
+          } catch {
+            // Best-effort inline section update
+          }
+        }
+      }
 
       if (importance === "high" || importance === "normal") {
         const boost = importance === "high" ? 3 : 1;

@@ -1,8 +1,8 @@
 /**
  * MemoryIndexManager — reads, writes, and maintains the MEMORY.md index file.
  *
- * Hybrid format: the first 3 sections (👤 User, 💬 Key Feedback, 🎯 Active
- * Focus) contain INLINE content directly in MEMORY.md. Remaining sections
+ * Hybrid format: the first 4 sections (👤 User, 💬 Key Feedback, 🎯 Active
+ * Focus, 🔗 Reference) contain INLINE content directly in MEMORY.md. Remaining sections
  * are topic pointers under `## Title`. Legacy promoted content is always
  * preserved below new-format sections.
  */
@@ -28,7 +28,7 @@ export interface RecentSession {
 }
 
 export interface InlineContent {
-  section: string; // heading like "👤 User", "💬 Key Feedback", "🎯 Active Focus"
+  section: string; // heading like "👤 User", "💬 Key Feedback", "🎯 Active Focus", "🔗 Reference"
   lines: string[]; // actual content lines (high-frequency info)
 }
 
@@ -56,19 +56,20 @@ export interface MemoryIndexDeps {
 
 const MEMORY_MD = "MEMORY.md";
 const TOPIC_FILE_PREFIX = "memory/topics/";
-const DEFAULT_MAX_BYTES = 4096;
+const DEFAULT_MAX_BYTES = 8192;
 
 const SECTION_HEADING_RE = /^## (.+)$/;
 const RECENT_SESSIONS_HEADING = "## Recent Sessions";
 const PROMOTED_HEADING = "## Promoted From Short-Term Memory";
 const INDEX_TITLE = "# Long-Term Memory";
 
-const INLINE_SECTION_HEADINGS = ["👤 User", "💬 Key Feedback", "🎯 Active Focus"] as const;
+const INLINE_SECTION_HEADINGS = ["👤 User", "💬 Key Feedback", "🎯 Active Focus", "🔗 Reference"] as const;
 
 const INLINE_SECTION_SUBJECTS: Record<string, string> = {
   "👤 User": "user",
   "💬 Key Feedback": "feedback",
   "🎯 Active Focus": "project",
+  "🔗 Reference": "reference",
 };
 
 // ---------------------------------------------------------------------------

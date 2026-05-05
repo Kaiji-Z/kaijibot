@@ -29,8 +29,22 @@ const log = createSubsystemLogger("hooks/session-memory/summary");
 // ---------------------------------------------------------------------------
 
 export interface StructuredSummary {
-  /** 2-3 sentence overview of the conversation */
+  /** 2-3 sentence enriched overview of the conversation */
   summary: string;
+  /** What the user explicitly asked for */
+  primaryRequest?: string;
+  /** Key technical concepts, technologies, frameworks discussed */
+  technicalConcepts?: string[];
+  /** Files read, modified, or created with brief descriptions */
+  filesAndChanges?: string[];
+  /** Errors encountered and how they were fixed */
+  errorsAndFixes?: string[];
+  /** Approaches tried, problems solved */
+  problemSolving?: string[];
+  /** What was in progress when session ended */
+  currentWork?: string;
+  /** Suggested next action */
+  nextStep?: string;
   /** Key decisions made during the conversation */
   decisions: string[];
   /** Pending action items / follow-ups */
@@ -49,7 +63,14 @@ export interface StructuredSummary {
 
 const SUMMARY_SYSTEM_PROMPT = `You are a structured conversation summarizer. Analyze the conversation and produce a JSON object with exactly these fields:
 
-- "summary": 2-3 sentence overview in the same language as the conversation (Chinese or English).
+- "summary": 2-3 sentence enriched overview in the same language as the conversation (Chinese or English). Cover what happened, key outcomes, and current state.
+- "primaryRequest": string — what the user explicitly asked for. Omit if unclear.
+- "technicalConcepts": array of key technical concepts, technologies, frameworks discussed (as strings). Empty if none.
+- "filesAndChanges": array of strings describing files read, modified, or created (e.g. "src/index.ts: added retry logic"). Empty if none.
+- "errorsAndFixes": array of strings describing errors encountered and how they were resolved (e.g. "TypeError on null → added null check"). Empty if none.
+- "problemSolving": array of strings describing approaches tried and problems solved. Empty if none.
+- "currentWork": string — what was in progress when the session ended. Omit if nothing in progress.
+- "nextStep": string — suggested next action. Omit if none.
 - "decisions": array of key decisions made (as strings). Empty if none.
 - "followups": array of pending action items (as strings). Empty if none.
 - "topics": array of 1-3 short topic tags (lowercase, hyphenated, e.g. "api-design", "user-preferences"). Empty if none.
@@ -84,7 +105,7 @@ function extractJsonObject(text: string): string | null {
   return text.slice(firstBrace, lastBrace + 1);
 }
 
-function parseStructuredSummaryResponse(raw: string, transcript: string): StructuredSummary | null {
+function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
   const jsonStr = extractJsonObject(raw);
   if (!jsonStr) return null;
 
@@ -97,6 +118,31 @@ function parseStructuredSummaryResponse(raw: string, transcript: string): Struct
 
   const summary = typeof parsed.summary === "string" ? parsed.summary : "";
   if (!summary) return null;
+
+  const primaryRequest =
+    typeof parsed.primaryRequest === "string" && parsed.primaryRequest.trim() ? parsed.primaryRequest : undefined;
+
+  const technicalConcepts = Array.isArray(parsed.technicalConcepts)
+    ? parsed.technicalConcepts.filter((c): c is string => typeof c === "string")
+    : undefined;
+
+  const filesAndChanges = Array.isArray(parsed.filesAndChanges)
+    ? parsed.filesAndChanges.filter((f): f is string => typeof f === "string")
+    : undefined;
+
+  const errorsAndFixes = Array.isArray(parsed.errorsAndFixes)
+    ? parsed.errorsAndFixes.filter((e): e is string => typeof e === "string")
+    : undefined;
+
+  const problemSolving = Array.isArray(parsed.problemSolving)
+    ? parsed.problemSolving.filter((p): p is string => typeof p === "string")
+    : undefined;
+
+  const currentWork =
+    typeof parsed.currentWork === "string" && parsed.currentWork.trim() ? parsed.currentWork : undefined;
+
+  const nextStep =
+    typeof parsed.nextStep === "string" && parsed.nextStep.trim() ? parsed.nextStep : undefined;
 
   const decisions = Array.isArray(parsed.decisions)
     ? parsed.decisions.filter((d): d is string => typeof d === "string")
@@ -125,6 +171,13 @@ function parseStructuredSummaryResponse(raw: string, transcript: string): Struct
 
   return {
     summary,
+    primaryRequest,
+    technicalConcepts: technicalConcepts?.length ? technicalConcepts : undefined,
+    filesAndChanges: filesAndChanges?.length ? filesAndChanges : undefined,
+    errorsAndFixes: errorsAndFixes?.length ? errorsAndFixes : undefined,
+    problemSolving: problemSolving?.length ? problemSolving : undefined,
+    currentWork,
+    nextStep,
     decisions,
     followups,
     topics,
@@ -142,6 +195,13 @@ function createFallbackSummary(transcript: string): StructuredSummary {
   const truncated = firstLine.length > 200 ? `${firstLine.slice(0, 200)}…` : firstLine;
   return {
     summary: truncated || "(session transcript too short to summarize)",
+    primaryRequest: undefined,
+    technicalConcepts: undefined,
+    filesAndChanges: undefined,
+    errorsAndFixes: undefined,
+    problemSolving: undefined,
+    currentWork: undefined,
+    nextStep: undefined,
     decisions: [],
     followups: [],
     topics: [],
@@ -205,7 +265,7 @@ export async function generateStructuredSummary(params: {
     if (result.payloads && result.payloads.length > 0) {
       const text = result.payloads[0]?.text;
       if (text) {
-        const summary = parseStructuredSummaryResponse(text, transcript);
+        const summary = parseStructuredSummaryResponse(text);
         if (summary) {
           return summary;
         }
@@ -241,7 +301,7 @@ export function formatSummaryAsMarkdown(
   summary: StructuredSummary,
   dateStr: string,
   sessionKey?: string,
-  rawTranscript?: string,
+  sessionFile?: string,
 ): string {
   const frontmatter = [
     "---",
@@ -259,7 +319,47 @@ export function formatSummaryAsMarkdown(
     sections.push(`- **Session Key**: ${sessionKey}`, "");
   }
 
-  sections.push(`## 摘要`, "", summary.summary, "");
+  if (sessionFile) {
+    sections.push(`- **完整会话**: ${sessionFile}`, "");
+  }
+
+  sections.push("## 摘要", "", summary.summary, "");
+
+  if (summary.primaryRequest) {
+    sections.push("## 核心请求", "", summary.primaryRequest, "");
+  }
+
+  if (summary.technicalConcepts && summary.technicalConcepts.length > 0) {
+    sections.push("## 技术概念");
+    for (const c of summary.technicalConcepts) {
+      sections.push(`- ${c}`);
+    }
+    sections.push("");
+  }
+
+  if (summary.filesAndChanges && summary.filesAndChanges.length > 0) {
+    sections.push("## 文件与变更");
+    for (const f of summary.filesAndChanges) {
+      sections.push(`- ${f}`);
+    }
+    sections.push("");
+  }
+
+  if (summary.errorsAndFixes && summary.errorsAndFixes.length > 0) {
+    sections.push("## 错误与修复");
+    for (const e of summary.errorsAndFixes) {
+      sections.push(`- ${e}`);
+    }
+    sections.push("");
+  }
+
+  if (summary.problemSolving && summary.problemSolving.length > 0) {
+    sections.push("## 问题解决");
+    for (const p of summary.problemSolving) {
+      sections.push(`- ${p}`);
+    }
+    sections.push("");
+  }
 
   if (summary.decisions.length > 0) {
     sections.push("## 关键决策");
@@ -277,10 +377,12 @@ export function formatSummaryAsMarkdown(
     sections.push("");
   }
 
-  if (rawTranscript && rawTranscript.trim()) {
-    sections.push("## 原始对话", "", "<details>", "<summary>点击展开完整对话记录</summary>", "");
-    sections.push(rawTranscript);
-    sections.push("", "</details>", "");
+  if (summary.currentWork) {
+    sections.push("## 当前工作", "", summary.currentWork, "");
+  }
+
+  if (summary.nextStep) {
+    sections.push("## 下一步", "", summary.nextStep, "");
   }
 
   if (summary.topicSlug) {

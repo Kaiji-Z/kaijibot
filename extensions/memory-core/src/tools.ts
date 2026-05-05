@@ -108,6 +108,36 @@ function resolveActiveMemoryQmdSearchModeOverride(
   return searchMode === "inherit" ? undefined : searchMode;
 }
 
+const FRESHNESS_WARNING_THRESHOLD_DAYS = 30;
+
+function checkFreshness(path: string): string | undefined {
+  const dateMatch = path.match(/(\d{4}-\d{2}-\d{2})/);
+  if (!dateMatch) return undefined;
+
+  const fileDate = new Date(dateMatch[1]!);
+  const now = new Date();
+  const diffMs = now.getTime() - fileDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays > FRESHNESS_WARNING_THRESHOLD_DAYS) {
+    return `Memory from ${diffDays} days ago — verify current accuracy before relying on specific details.`;
+  }
+  return undefined;
+}
+
+function computeSearchFreshnessWarnings(
+  results: Array<{ path: string }>,
+): { _warnings: string[] } | Record<string, never> {
+  const warnings: string[] = [];
+  for (const r of results) {
+    const warning = checkFreshness(r.path);
+    if (warning && !warnings.includes(warning)) {
+      warnings.push(warning);
+    }
+  }
+  return warnings.length > 0 ? { _warnings: warnings } : {};
+}
+
 async function getSupplementMemoryReadResult(params: {
   relPath: string;
   from?: number;
@@ -163,9 +193,11 @@ async function executeMemoryReadResult<T>(params: {
   from?: number;
   lines?: number;
   agentSessionKey?: string;
+  extraFields?: Record<string, unknown>;
 }) {
   try {
-    return jsonResult(await params.read());
+    const result = await params.read();
+    return jsonResult({ ...result, ...params.extraFields });
   } catch (error) {
     return await resolveMemoryReadFailureResult({
       error,
@@ -308,6 +340,7 @@ export function createMemorySearchTool(options: {
             citations: citationsMode,
             mode: searchMode,
             debug: searchDebug,
+            ...(computeSearchFreshnessWarnings(results)),
           });
         } catch (err) {
           const message = formatErrorMessage(err);
@@ -340,6 +373,7 @@ export function createMemoryGetTool(options: {
           | "all"
           | undefined;
         const { readAgentMemoryFile, resolveMemoryBackendConfig } = await loadMemoryToolRuntime();
+        const freshnessWarning = checkFreshness(relPath);
         if (requestedCorpus === "wiki") {
           const supplement = await getSupplementMemoryReadResult({
             relPath,
@@ -348,14 +382,15 @@ export function createMemoryGetTool(options: {
             agentSessionKey: options.agentSessionKey,
             corpus: requestedCorpus,
           });
-          return jsonResult(
-            supplement ?? {
+          return jsonResult({
+            ...(supplement ?? {
               path: relPath,
               text: "",
               disabled: true,
               error: "wiki corpus result not found",
-            },
-          );
+            }),
+            ...(freshnessWarning ? { _warning: freshnessWarning } : {}),
+          });
         }
         const resolved = resolveMemoryBackendConfig({ cfg, agentId });
         if (resolved.backend === "builtin") {
@@ -373,6 +408,7 @@ export function createMemoryGetTool(options: {
             from: from ?? undefined,
             lines: lines ?? undefined,
             agentSessionKey: options.agentSessionKey,
+            extraFields: freshnessWarning ? { _warning: freshnessWarning } : undefined,
           });
         }
         const memory = await getMemoryManagerContextWithPurpose({
@@ -395,6 +431,7 @@ export function createMemoryGetTool(options: {
           from: from ?? undefined,
           lines: lines ?? undefined,
           agentSessionKey: options.agentSessionKey,
+          extraFields: freshnessWarning ? { _warning: freshnessWarning } : undefined,
         });
       },
   });

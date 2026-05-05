@@ -91,4 +91,111 @@ describe("formatSummaryAsMarkdown", () => {
     expect(md).not.toContain("## 关键决策");
     expect(md).not.toContain("## 待跟进");
   });
+
+  it("renders sessionKey when provided", () => {
+    const summary = makeSummary();
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24", "agent:main:main");
+
+    expect(md).toContain("- **Session Key**: agent:main:main");
+  });
+
+  it("renders sessionFile pointer when provided", () => {
+    const summary = makeSummary();
+    const md = formatSummaryAsMarkdown(
+      summary,
+      "2026-04-24",
+      undefined,
+      "~/.kaijibot/agents/default/sessions/abc-123.jsonl",
+    );
+
+    expect(md).toContain("- **完整会话**: ~/.kaijibot/agents/default/sessions/abc-123.jsonl");
+  });
+
+  it("omits sessionKey and sessionFile when not provided", () => {
+    const summary = makeSummary();
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).not.toContain("**Session Key**");
+    expect(md).not.toContain("**完整会话**");
+  });
+
+  it("renders 核心请求 when primaryRequest is set", () => {
+    const summary = makeSummary({ primaryRequest: "设计一个 RESTful API" });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 核心请求");
+    expect(md).toContain("设计一个 RESTful API");
+  });
+
+  it("omits 核心请求 when primaryRequest is undefined", () => {
+    const summary = makeSummary();
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).not.toContain("## 核心请求");
+  });
+
+  it("renders 技术概念 when technicalConcepts is set", () => {
+    const summary = makeSummary({ technicalConcepts: ["REST", "OAuth2"] });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 技术概念");
+    expect(md).toContain("- REST");
+    expect(md).toContain("- OAuth2");
+  });
+
+  it("omits 技术概念 when technicalConcepts is empty", () => {
+    const summary = makeSummary({ technicalConcepts: [] });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).not.toContain("## 技术概念");
+  });
+
+  it("renders 文件与变更 when filesAndChanges is set", () => {
+    const summary = makeSummary({ filesAndChanges: ["src/index.ts: added retry logic"] });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 文件与变更");
+    expect(md).toContain("- src/index.ts: added retry logic");
+  });
+
+  it("renders 错误与修复 when errorsAndFixes is set", () => {
+    const summary = makeSummary({ errorsAndFixes: ["TypeError on null → added null check"] });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 错误与修复");
+    expect(md).toContain("- TypeError on null → added null check");
+  });
+
+  it("renders 问题解决 when problemSolving is set", () => {
+    const summary = makeSummary({ problemSolving: ["Tried batch insert → switched to streaming"] });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 问题解决");
+    expect(md).toContain("- Tried batch insert → switched to streaming");
+  });
+
+  it("renders 当前工作 when currentWork is set", () => {
+    const summary = makeSummary({ currentWork: "正在实现认证中间件" });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 当前工作");
+    expect(md).toContain("正在实现认证中间件");
+  });
+
+  it("renders 下一步 when nextStep is set", () => {
+    const summary = makeSummary({ nextStep: "完成 API 文档编写" });
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).toContain("## 下一步");
+    expect(md).toContain("完成 API 文档编写");
+  });
+
+  it("does not render raw transcript details block", () => {
+    const summary = makeSummary();
+    const md = formatSummaryAsMarkdown(summary, "2026-04-24");
+
+    expect(md).not.toContain("<details>");
+    expect(md).not.toContain("</details>");
+    expect(md).not.toContain("## 原始对话");
+  });
 });

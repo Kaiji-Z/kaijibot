@@ -71,7 +71,7 @@ export interface TidyResult {
 const DEDUP_THRESHOLD = 0.85;
 const MERGE_THRESHOLD = 0.7;
 const ARCHIVE_THRESHOLD_DAYS = 90;
-const REBALANCE_BUDGET_BYTES = 4_096;
+const REBALANCE_BUDGET_BYTES = 8_192;
 
 // ---------------------------------------------------------------------------
 // Utilities

@@ -21,12 +21,15 @@ export interface TopicFile {
   raw: string; // original markdown for round-trip
 }
 
+export type MemoryType = "user" | "feedback" | "project" | "reference";
+
 export interface TopicEntry {
   title: string;
   date: string; // YYYY-MM-DD
   content: string;
   importance?: "high" | "normal" | "low";
   source?: string; // e.g., "session-compact", "memory-save", "dreaming"
+  type?: MemoryType; // memory classification
 }
 
 // ---------------------------------------------------------------------------
@@ -75,9 +78,25 @@ export function parseTopicEntry(entryMarkdown: string): TopicEntry {
   if (contentLines.length > 0 && contentLines[0]?.trim() === "") {
     contentLines.shift();
   }
+
+  // Extract type from content if present
+  let type: MemoryType | undefined;
+  const typeLineIdx = contentLines.findIndex((l) =>
+    l.trim().match(/^- \*\*Type\*\*: (user|feedback|project|reference)$/),
+  );
+  if (typeLineIdx >= 0) {
+    const typeMatch = contentLines[typeLineIdx]!
+      .trim()
+      .match(/^- \*\*Type\*\*: (user|feedback|project|reference)$/);
+    if (typeMatch) {
+      type = typeMatch[1] as MemoryType;
+      contentLines.splice(typeLineIdx, 1);
+    }
+  }
+
   const content = contentLines.join("\n").trimEnd();
 
-  return { title, date, content };
+  return { title, date, content, type };
 }
 
 /**
@@ -167,8 +186,13 @@ export function formatEntryHeading(entry: TopicEntry): string {
  */
 export function serializeTopicEntry(entry: TopicEntry): string {
   const parts: string[] = [formatEntryHeading(entry)];
-  if (entry.content) {
+  if (entry.content || entry.type) {
     parts.push("");
+  }
+  if (entry.type) {
+    parts.push(`- **Type**: ${entry.type}`);
+  }
+  if (entry.content) {
     parts.push(entry.content);
   }
   return parts.join("\n");

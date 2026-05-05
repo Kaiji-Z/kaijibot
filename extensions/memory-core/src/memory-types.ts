@@ -110,8 +110,13 @@ export const CLASSIFICATION_PROMPT_SECTION = `## Memory Classification
 
 For each memory, choose:
 1. **topic** (required): A subject name in English kebab-case that best categorizes this memory. Group related memories together. Examples: \`feishu\`, \`philosophy\`, \`product\`, \`football\`, \`memory-system\`, \`ai-tools\`.
+2. **type** (required): One of four categories:
+   - \`user\` — Personal information about the user: preferences, interests, background, personality traits, communication style, goals
+   - \`feedback\` — Explicit or implicit feedback about the assistant: corrections, praise, complaints, preferences about AI behavior
+   - \`project\` — Work/project-related information: decisions, requirements, status updates, architecture choices, constraints
+   - \`reference\` — Factual reference material: articles, concepts, definitions, how-to knowledge, best practices
 
-The topic determines which file the memory goes to.`;
+The topic determines the file; the type determines the section within MEMORY.md.`;
 
 export const VERIFICATION_PROMPT_SECTION = `## Before Recommending from Memory
 
@@ -147,5 +152,6 @@ Rules:
 - Topic files are created on demand when memories are saved — no pre-created defaults
 - Frontmatter uses \`subject\` (kebab-case) instead of type
 - Each entry is a ## heading with title and date in parentheses
+- Entry type: optional \`- **Type**: user|feedback|project|reference\` line
 - Entry importance: "high", "normal" (default), or "low"
 - Entry source: "session-compact", "memory-save", "dreaming", etc.`;

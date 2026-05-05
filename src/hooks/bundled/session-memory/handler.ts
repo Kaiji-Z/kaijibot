@@ -216,7 +216,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
       summary,
       dateStr,
       displaySessionKey,
-      sessionContent ?? undefined,
+      sessionFile,
     );
 
     await appendFileWithinRoot({
