@@ -106,17 +106,17 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
   }
   if (!description) return generateSkillDraft(candidate);
 
-  const triggerPhrases = extractTriggerPhrases(body);
+  const { phrases: triggerPhrases, stripped: bodyNoTriggers } = extractAndStripTriggers(body);
   if (triggerPhrases.length === 0) return generateSkillDraft(candidate);
 
-  const { body: cleanBody, scripts, references, assets } = extractTaggedBlocks(body);
+  const { body: cleanBody, scripts, references, assets } = extractTaggedBlocks(bodyNoTriggers);
 
   return { name, description, triggerPhrases, bodyMarkdown: cleanBody, scripts, references, assets };
 }
 
-function extractTriggerPhrases(body: string): string[] {
+function extractAndStripTriggers(body: string): { phrases: string[]; stripped: string } {
   const triggerHeading = body.match(/^##\s+Triggers\s*$/m);
-  if (!triggerHeading || triggerHeading.index === undefined) return [];
+  if (!triggerHeading || triggerHeading.index === undefined) return { phrases: [], stripped: body };
 
   const afterHeading = body.slice(triggerHeading.index + triggerHeading[0].length);
   const nextHeading = afterHeading.match(/^##\s/m);
@@ -129,7 +129,14 @@ function extractTriggerPhrases(body: string): string[] {
       phrases.push(bulletMatch[1].trim());
     }
   }
-  return phrases;
+
+  const sectionEnd = nextHeading?.index ?? section.length;
+  const fullSectionLength = triggerHeading[0].length + sectionEnd;
+  const stripped =
+    body.slice(0, triggerHeading.index) + body.slice(triggerHeading.index + fullSectionLength);
+  const normalized = stripped.replace(/\n{3,}/g, "\n\n").trim();
+
+  return { phrases, stripped: normalized };
 }
 
 export function extractTaggedBlocks(body: string): {
