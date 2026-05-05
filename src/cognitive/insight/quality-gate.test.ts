@@ -7,8 +7,6 @@ import { QUALITY_PILLAR_WEIGHTS } from "./fragment-types.js";
 import type { QualityGateDeps } from "./quality-gate.js";
 import {
   assessQuality,
-  computeStructuralNovelty,
-  computeActionability,
   computeEmotionalReadiness,
 } from "./quality-gate.js";
 
@@ -51,9 +49,13 @@ function assistantMessage(text: string): AssistantMessage {
   };
 }
 
-function makeSuccessDeps(responseText: string): QualityGateDeps {
+function makeDualCallDeps(noveltyResponse: string, nonObviousResponse: string): QualityGateDeps {
+  let callCount = 0;
   return {
-    complete: vi.fn(async () => assistantMessage(responseText)),
+    complete: vi.fn(async () => {
+      callCount++;
+      return assistantMessage(callCount === 1 ? noveltyResponse : nonObviousResponse);
+    }),
     prepareModel: vi.fn(async () => ({ model: TEST_MODEL, auth: TEST_AUTH })),
   };
 }
@@ -122,18 +124,18 @@ function makeConfig(): KaijiBotConfig {
 // ─── Composite scoring ───
 
 describe("assessQuality — composite scoring", () => {
-  it("returns 'deliver' when composite >= 0.75", async () => {
+  it("returns 'deliver' when composite >= 0.65 and llmVerdict=yes", async () => {
     const result = await assessQuality(
       makeBlindSpot(),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("0.9"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.9", "0.9"),
     );
     expect(result.verdict).toBe("deliver");
-    expect(result.composite).toBeGreaterThanOrEqual(0.75);
+    expect(result.composite).toBeGreaterThanOrEqual(0.65);
   });
 
-  it("returns 'park' when composite 0.60-0.74", async () => {
+  it("returns 'park' when composite 0.45-0.64", async () => {
     const result = await assessQuality(
       makeBlindSpot({ potentialImpact: "direction_change", domains: ["typescript"], unusedDomains: [] }),
       makePersona({
@@ -141,14 +143,14 @@ describe("assessQuality — composite scoring", () => {
         lifecycle: { stage: "active", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 5 },
       }),
       makeConfig(),
-      makeSuccessDeps("0.6"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.5", "0.5"),
     );
     expect(result.verdict).toBe("park");
-    expect(result.composite).toBeGreaterThanOrEqual(0.60);
-    expect(result.composite).toBeLessThan(0.75);
+    expect(result.composite).toBeGreaterThanOrEqual(0.45);
+    expect(result.composite).toBeLessThan(0.65);
   });
 
-  it("returns 'discard' when composite < 0.60", async () => {
+  it("returns 'discard' when composite < 0.45", async () => {
     const result = await assessQuality(
       makeBlindSpot({ potentialImpact: "connection_reveal", domains: ["typescript"], unusedDomains: [] }),
       makePersona({
@@ -164,10 +166,10 @@ describe("assessQuality — composite scoring", () => {
         rapport: { trustScore: 0.1, totalExchanges: 2, avgResponseLength: 30, selfDisclosureLevel: 0.1 },
       }),
       makeConfig(),
-      makeSuccessDeps("0.2"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.2", "0.2"),
     );
     expect(result.verdict).toBe("discard");
-    expect(result.composite).toBeLessThan(0.60);
+    expect(result.composite).toBeLessThan(0.45);
   });
 
   it("computes composite as weighted sum", async () => {
@@ -175,74 +177,133 @@ describe("assessQuality — composite scoring", () => {
       makeBlindSpot(),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("0.8"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.8", "0.8"),
     );
     const expectedComposite =
-      result.structuralNovelty * QUALITY_PILLAR_WEIGHTS.structuralNovelty +
-      result.actionability * QUALITY_PILLAR_WEIGHTS.actionability +
+      result.llmNoveltyActionable * QUALITY_PILLAR_WEIGHTS.llmNoveltyActionable +
       result.emotionalReadiness * QUALITY_PILLAR_WEIGHTS.emotionalReadiness +
       result.nonObviousness * QUALITY_PILLAR_WEIGHTS.nonObviousness;
     expect(result.composite).toBeCloseTo(expectedComposite, 10);
   });
 
-  it("nonObviousness (weight 0.4) dominates", async () => {
-    const highNo = await assessQuality(
+  it("llmNoveltyActionable (weight 0.60) dominates composite", async () => {
+    const highNa = await assessQuality(
       makeBlindSpot({ domains: ["typescript"], unusedDomains: [] }),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("1.0"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 1.0", "0.3"),
     );
-    const lowNo = await assessQuality(
+    const lowNa = await assessQuality(
       makeBlindSpot({ potentialImpact: "efficiency_gain", domains: ["typescript", "rust", "go", "python", "java"], unusedDomains: ["ai", "ml", "data"] }),
       makePersona({
         rapport: { trustScore: 1.0, totalExchanges: 100, avgResponseLength: 200, selfDisclosureLevel: 0.8 },
         lifecycle: { stage: "active", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 50 },
       }),
       makeConfig(),
-      makeSuccessDeps("0.0"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.1", "1.0"),
     );
-    expect(highNo.composite).toBeGreaterThan(lowNo.composite);
+    expect(highNa.composite).toBeGreaterThan(lowNa.composite);
+  });
+
+  it("LLM verdict 'no' forces discard regardless of composite", async () => {
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona({
+        rapport: { trustScore: 1.0, totalExchanges: 100, avgResponseLength: 200, selfDisclosureLevel: 0.8 },
+        lifecycle: { stage: "active", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 50 },
+      }),
+      makeConfig(),
+      makeDualCallDeps("VERDICT: NO\nSCORE: 0.9", "0.9"),
+    );
+    expect(result.verdict).toBe("discard");
+    expect(result.llmVerdict).toBe("no");
   });
 });
 
-// ─── structuralNovelty ───
+// ─── computeNoveltyAndActionability ───
 
-describe("computeStructuralNovelty", () => {
-  it("increases with domain diversity", () => {
-    const single = computeStructuralNovelty(makeBlindSpot({ domains: ["typescript"] }));
-    const multi = computeStructuralNovelty(makeBlindSpot({ domains: ["typescript", "rust", "go"] }));
-    expect(multi).toBeGreaterThan(single);
+describe("computeNoveltyAndActionability", () => {
+  it("parses valid VERDICT: YES / SCORE: 0.85 response", async () => {
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona(),
+      makeConfig(),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.85", "0.5"),
+    );
+    expect(result.llmNoveltyActionable).toBe(0.85);
+    expect(result.llmVerdict).toBe("yes");
   });
 
-  it("increases with unused expert domains", () => {
-    const none = computeStructuralNovelty(makeBlindSpot({ unusedDomains: [] }));
-    const withUnused = computeStructuralNovelty(makeBlindSpot({ unusedDomains: ["ai", "ml"] }));
-    expect(withUnused).toBeGreaterThan(none);
+  it("parses valid VERDICT: NO / SCORE: 0.3 response", async () => {
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona(),
+      makeConfig(),
+      makeDualCallDeps("VERDICT: NO\nSCORE: 0.3", "0.5"),
+    );
+    expect(result.llmNoveltyActionable).toBe(0.3);
+    expect(result.llmVerdict).toBe("no");
   });
 
-  it("returns base 0.3 for single-domain, no unused domains", () => {
-    const result = computeStructuralNovelty(makeBlindSpot({ domains: ["typescript"], unusedDomains: [] }));
-    expect(result).toBeCloseTo(0.45, 10);
+  it("returns score 0.5 and verdict yes on LLM throw", async () => {
+    let callCount = 0;
+    const deps: QualityGateDeps = {
+      complete: vi.fn(async () => {
+        callCount++;
+        if (callCount === 1) throw new Error("LLM unavailable");
+        return assistantMessage("0.5");
+      }),
+      prepareModel: vi.fn(async () => ({ model: TEST_MODEL, auth: TEST_AUTH })),
+    };
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona(),
+      makeConfig(),
+      deps,
+    );
+    expect(result.llmNoveltyActionable).toBe(0.5);
+    expect(result.llmVerdict).toBe("yes");
   });
-});
 
-// ─── actionability ───
-
-describe("computeActionability", () => {
-  it("efficiency_gain → 0.9", () => {
-    expect(computeActionability(makeBlindSpot({ potentialImpact: "efficiency_gain" }))).toBe(0.9);
+  it("returns score 0.5 and verdict yes on prepareModel error", async () => {
+    let callCount = 0;
+    const deps: QualityGateDeps = {
+      complete: vi.fn(async () => {
+        callCount++;
+        return assistantMessage(callCount === 1 ? "VERDICT: YES\nSCORE: 0.9" : "0.9");
+      }),
+      prepareModel: vi.fn(async () => ({ error: "No API key" })),
+    };
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona(),
+      makeConfig(),
+      deps,
+    );
+    expect(result.llmNoveltyActionable).toBe(0.5);
+    expect(result.llmVerdict).toBe("yes");
   });
 
-  it("direction_change → 0.8", () => {
-    expect(computeActionability(makeBlindSpot({ potentialImpact: "direction_change" }))).toBe(0.8);
+  it("returns fallback score 0.5 with verdict still parsed when score non-numeric", async () => {
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona(),
+      makeConfig(),
+      makeDualCallDeps("VERDICT: NO\nSCORE: abc", "0.5"),
+    );
+    expect(result.llmNoveltyActionable).toBe(0.5);
+    expect(result.llmVerdict).toBe("no");
   });
 
-  it("risk_avoidance → 0.7", () => {
-    expect(computeActionability(makeBlindSpot({ potentialImpact: "risk_avoidance" }))).toBe(0.7);
-  });
-
-  it("connection_reveal → 0.5", () => {
-    expect(computeActionability(makeBlindSpot({ potentialImpact: "connection_reveal" }))).toBe(0.5);
+  it("defaults to verdict yes when verdict missing", async () => {
+    const result = await assessQuality(
+      makeBlindSpot(),
+      makePersona(),
+      makeConfig(),
+      makeDualCallDeps("SCORE: 0.7", "0.5"),
+    );
+    expect(result.llmNoveltyActionable).toBe(0.7);
+    expect(result.llmVerdict).toBe("yes");
   });
 });
 
@@ -310,14 +371,19 @@ describe("assessQuality — nonObviousness LLM", () => {
       makeBlindSpot(),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("0.85"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.5", "0.85"),
     );
     expect(result.nonObviousness).toBe(0.85);
   });
 
   it("returns 0.5 on LLM throw", async () => {
+    let callCount = 0;
     const deps: QualityGateDeps = {
-      complete: vi.fn(async () => { throw new Error("LLM unavailable"); }),
+      complete: vi.fn(async () => {
+        callCount++;
+        if (callCount === 2) throw new Error("LLM unavailable");
+        return assistantMessage("VERDICT: YES\nSCORE: 0.5");
+      }),
       prepareModel: vi.fn(async () => ({ model: TEST_MODEL, auth: TEST_AUTH })),
     };
     const result = await assessQuality(
@@ -349,7 +415,7 @@ describe("assessQuality — nonObviousness LLM", () => {
       makeBlindSpot(),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("not a number"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.5", "not a number"),
     );
     expect(result.nonObviousness).toBe(0.5);
   });
@@ -359,7 +425,7 @@ describe("assessQuality — nonObviousness LLM", () => {
       makeBlindSpot(),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("1.5"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.5", "1.5"),
     );
     expect(overOne.nonObviousness).toBe(1.0);
 
@@ -367,7 +433,7 @@ describe("assessQuality — nonObviousness LLM", () => {
       makeBlindSpot(),
       makePersona(),
       makeConfig(),
-      makeSuccessDeps("-0.3"),
+      makeDualCallDeps("VERDICT: YES\nSCORE: 0.5", "-0.3"),
     );
     expect(underZero.nonObviousness).toBe(0.0);
   });

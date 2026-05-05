@@ -56,8 +56,8 @@ export type BlindSpotCandidate = {
 // ─── QualityAssessment ───
 
 export type QualityAssessment = {
-  structuralNovelty: number;
-  actionability: number;
+  llmNoveltyActionable: number;
+  llmVerdict: "yes" | "no";
   emotionalReadiness: number;
   nonObviousness: number;
   composite: number;
@@ -65,10 +65,9 @@ export type QualityAssessment = {
 };
 
 export const QUALITY_PILLAR_WEIGHTS = {
-  structuralNovelty: 0.20,
-  actionability: 0.25,
+  llmNoveltyActionable: 0.60,
   emotionalReadiness: 0.15,
-  nonObviousness: 0.40,
+  nonObviousness: 0.25,
 } as const;
 
 // ─── ParkedBlindSpot ───
@@ -92,9 +91,10 @@ export const FRAGMENT_HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ─── Helper Functions ───
 
-export function computeQualityVerdict(composite: number): "deliver" | "park" | "discard" {
-  if (composite >= 0.75) return "deliver";
-  if (composite >= 0.60) return "park";
+export function computeQualityVerdict(composite: number, llmVerdict?: "yes" | "no"): "deliver" | "park" | "discard" {
+  if (llmVerdict === "no") return "discard";
+  if (composite >= 0.65) return "deliver";
+  if (composite >= 0.45) return "park";
   return "discard";
 }
 
@@ -102,8 +102,7 @@ export function computeComposite(
   assessment: Omit<QualityAssessment, "composite" | "verdict">,
 ): number {
   return (
-    assessment.structuralNovelty * QUALITY_PILLAR_WEIGHTS.structuralNovelty +
-    assessment.actionability * QUALITY_PILLAR_WEIGHTS.actionability +
+    assessment.llmNoveltyActionable * QUALITY_PILLAR_WEIGHTS.llmNoveltyActionable +
     assessment.emotionalReadiness * QUALITY_PILLAR_WEIGHTS.emotionalReadiness +
     assessment.nonObviousness * QUALITY_PILLAR_WEIGHTS.nonObviousness
   );

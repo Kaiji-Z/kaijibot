@@ -10,36 +10,44 @@ import {
 } from "./fragment-types.js";
 
 describe("computeQualityVerdict", () => {
-  it("returns 'deliver' at exactly 0.75", () => {
-    expect(computeQualityVerdict(0.75)).toBe("deliver");
+  it("returns 'deliver' at exactly 0.65", () => {
+    expect(computeQualityVerdict(0.65)).toBe("deliver");
   });
 
-  it("returns 'deliver' above 0.75", () => {
+  it("returns 'deliver' above 0.65", () => {
     expect(computeQualityVerdict(0.90)).toBe("deliver");
   });
 
-  it("returns 'park' at exactly 0.60", () => {
-    expect(computeQualityVerdict(0.60)).toBe("park");
+  it("returns 'park' at exactly 0.45", () => {
+    expect(computeQualityVerdict(0.45)).toBe("park");
   });
 
-  it("returns 'park' between 0.60 and 0.75", () => {
-    expect(computeQualityVerdict(0.68)).toBe("park");
+  it("returns 'park' between 0.45 and 0.65", () => {
+    expect(computeQualityVerdict(0.55)).toBe("park");
   });
 
-  it("returns 'discard' below 0.60", () => {
-    expect(computeQualityVerdict(0.59)).toBe("discard");
+  it("returns 'discard' below 0.45", () => {
+    expect(computeQualityVerdict(0.44)).toBe("discard");
   });
 
   it("returns 'discard' at 0.0", () => {
     expect(computeQualityVerdict(0)).toBe("discard");
+  });
+
+  it("returns 'discard' when llmVerdict is 'no'", () => {
+    expect(computeQualityVerdict(0.9, "no")).toBe("discard");
+  });
+
+  it("returns 'deliver' when llmVerdict is 'yes' and composite high", () => {
+    expect(computeQualityVerdict(0.7, "yes")).toBe("deliver");
   });
 });
 
 describe("computeComposite", () => {
   it("returns 1.0 when all pillars are 1.0", () => {
     const result = computeComposite({
-      structuralNovelty: 1,
-      actionability: 1,
+      llmNoveltyActionable: 1,
+      llmVerdict: "yes",
       emotionalReadiness: 1,
       nonObviousness: 1,
     });
@@ -48,28 +56,28 @@ describe("computeComposite", () => {
 
   it("returns 0.0 when all pillars are 0.0", () => {
     const result = computeComposite({
-      structuralNovelty: 0,
-      actionability: 0,
+      llmNoveltyActionable: 0,
+      llmVerdict: "yes",
       emotionalReadiness: 0,
       nonObviousness: 0,
     });
     expect(result).toBe(0);
   });
 
-  it("weights nonObviousness heaviest", () => {
-    const onlyNovel = computeComposite({
-      structuralNovelty: 1,
-      actionability: 0,
+  it("weights llmNoveltyActionable heaviest", () => {
+    const onlyNoveltyActionable = computeComposite({
+      llmNoveltyActionable: 1,
+      llmVerdict: "yes",
       emotionalReadiness: 0,
       nonObviousness: 0,
     });
     const onlyNonObvious = computeComposite({
-      structuralNovelty: 0,
-      actionability: 0,
+      llmNoveltyActionable: 0,
+      llmVerdict: "yes",
       emotionalReadiness: 0,
       nonObviousness: 1,
     });
-    expect(onlyNonObvious).toBeGreaterThan(onlyNovel);
+    expect(onlyNoveltyActionable).toBeGreaterThan(onlyNonObvious);
   });
 });
 

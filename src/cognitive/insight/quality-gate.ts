@@ -29,27 +29,83 @@ export function createDefaultQualityGateDeps(): QualityGateDeps {
   };
 }
 
-// ─── Heuristic: structuralNovelty ───
+// ─── LLM: novelty + actionability ───
 
-function computeStructuralNovelty(candidate: BlindSpotCandidate): number {
-  const uniqueDomainCount = new Set(candidate.domains).size;
-  const unusedDomainCount = candidate.unusedDomains.length;
-  const domainBonus = Math.min(uniqueDomainCount * 0.15, 0.4);
-  const unusedBonus = Math.min(unusedDomainCount * 0.1, 0.3);
-  return Math.min(0.3 + domainBonus + unusedBonus, 1.0);
+function buildNoveltyActionablePrompt(candidate: BlindSpotCandidate, persona: PersonaTree): string {
+  const domainInsights = Object.entries(persona.domains)
+    .filter(([domain]) => candidate.domains.includes(domain))
+    .slice(0, 5)
+    .map(([domain, node]) => `${domain}: ${node.keyInsights.slice(0, 3).join("; ")}`)
+    .join("\n");
+
+  return `Evaluate whether this insight is genuinely novel and actionable for THIS specific user.
+
+User's existing knowledge in relevant domains:
+${domainInsights || "(no domain context available)"}
+
+Insight: ${candidate.blindSpot}
+Domains: ${candidate.domains.join(", ")}
+Impact type: ${candidate.potentialImpact}
+
+Reason step by step:
+1. Would this user already know this? (consider their domain expertise)
+2. Could they act on this insight? (is it concrete or abstract?)
+3. Does it connect to their actual interests in a non-obvious way?
+
+Then answer in EXACTLY this format:
+VERDICT: YES
+SCORE: 0.85`;
 }
 
-// ─── Heuristic: actionability ───
+async function computeNoveltyAndActionability(
+  candidate: BlindSpotCandidate,
+  persona: PersonaTree,
+  config: KaijiBotConfig,
+  deps: QualityGateDeps,
+): Promise<{ score: number; verdict: "yes" | "no" }> {
+  try {
+    const modelRef = config.cognitive?.persona?.extractionModel;
+    const prepared = await deps.prepareModel(config, modelRef);
+    if ("error" in prepared) {
+      log.warn("noveltyActionable model preparation failed, returning neutral", { error: prepared.error });
+      return { score: 0.5, verdict: "yes" };
+    }
 
-const IMPACT_SCORES: Record<BlindSpotCandidate["potentialImpact"], number> = {
-  efficiency_gain: 0.9,
-  direction_change: 0.8,
-  risk_avoidance: 0.7,
-  connection_reveal: 0.5,
-};
+    const prompt = buildNoveltyActionablePrompt(candidate, persona);
+    const messages: Array<{ role: "user"; content: string; timestamp: number }> = [
+      { role: "user", content: prompt, timestamp: Date.now() },
+    ];
 
-function computeActionability(candidate: BlindSpotCandidate): number {
-  return IMPACT_SCORES[candidate.potentialImpact] ?? 0.5;
+    const result = await deps.complete(
+      prepared.model,
+      { messages },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: 200,
+        temperature: 0.4,
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+
+    const text = result.content
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    const verdictMatch = text.match(/VERDICT:\s*(YES|NO)/i);
+    const scoreMatch = text.match(/SCORE:\s*([\d.]+)/);
+
+    const verdict = verdictMatch?.[1]?.toUpperCase() === "NO" ? "no" as const : "yes" as const;
+    const parsedScore = scoreMatch?.[1] ? parseFloat(scoreMatch[1]) : NaN;
+    const score = Number.isNaN(parsedScore) ? 0.5 : Math.max(0, Math.min(parsedScore, 1));
+
+    return { score, verdict };
+  } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+    log.warn(`noveltyActionable ${isTimeout ? "timed out" : "failed"}: ${String(err)}, returning neutral`);
+    return { score: 0.5, verdict: "yes" };
+  }
 }
 
 // ─── Heuristic: emotionalReadiness ───
@@ -149,7 +205,7 @@ async function computeNonObviousness(
 // ─── Main: assessQuality ───
 
 /**
- * Evaluate a BlindSpotCandidate against 4 quality pillars.
+ * Evaluate a BlindSpotCandidate against quality pillars.
  *
  * This function **never throws** — all errors degrade gracefully.
  */
@@ -159,26 +215,24 @@ export async function assessQuality(
   config: KaijiBotConfig,
   deps: QualityGateDeps,
 ): Promise<QualityAssessment> {
-  const structuralNovelty = computeStructuralNovelty(candidate);
-  const actionability = computeActionability(candidate);
+  const { score: llmNoveltyActionable, verdict: llmVerdict } = await computeNoveltyAndActionability(candidate, persona, config, deps);
   const emotionalReadiness = computeEmotionalReadiness(persona);
   const nonObviousness = await computeNonObviousness(candidate, persona, config, deps);
 
-  const composite = computeComposite({ structuralNovelty, actionability, emotionalReadiness, nonObviousness });
-  const verdict = computeQualityVerdict(composite);
+  const composite = computeComposite({ llmNoveltyActionable, llmVerdict, emotionalReadiness, nonObviousness });
+  const verdict = computeQualityVerdict(composite, llmVerdict);
 
   log.info("quality gate assessed", {
     verdict,
     composite: composite.toFixed(2),
-    structuralNovelty: structuralNovelty.toFixed(2),
-    actionability: actionability.toFixed(2),
+    llmNoveltyActionable: llmNoveltyActionable.toFixed(2),
+    llmVerdict,
     emotionalReadiness: emotionalReadiness.toFixed(2),
     nonObviousness: nonObviousness.toFixed(2),
     blindSpot: candidate.blindSpot.slice(0, 60),
   });
 
-  return { structuralNovelty, actionability, emotionalReadiness, nonObviousness, composite, verdict };
+  return { llmNoveltyActionable, llmVerdict, emotionalReadiness, nonObviousness, composite, verdict };
 }
 
-// Exported for direct testing of individual pillars
-export { computeStructuralNovelty, computeActionability, computeEmotionalReadiness };
+export { computeEmotionalReadiness };
