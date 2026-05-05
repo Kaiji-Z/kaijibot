@@ -126,7 +126,6 @@ export class ProactiveScheduler {
     const threshold = cfa / (cfn + cfa);
 
     const recentDomains = persona?.feedbackProfile.recentInsightDomains ?? [];
-    const recentTypes = persona?.feedbackProfile.recentInsightTypes ?? [];
 
     const penalized = opportunities.map((opp) => {
       let adjustedPAct = opp.pAct;
@@ -137,27 +136,7 @@ export class ProactiveScheduler {
           return count + (overlap > 0.5 ? 1 : 0);
         }, 0);
         if (overlapCount > 0) {
-          adjustedPAct *= Math.pow(0.3, overlapCount);
-        }
-      }
-
-      if (recentTypes.length >= 2) {
-        const lastTwo = recentTypes.slice(-2);
-        if (lastTwo[0] === opp.type && lastTwo[1] === opp.type) {
-          adjustedPAct *= 0.6;
-        }
-      } else if (recentTypes.length === 1 && recentTypes[0] === opp.type) {
-        adjustedPAct *= 0.75;
-      }
-
-      const domainHistory = (persona?.feedbackProfile?.recentInsightDomains ?? []).flat();
-      if (domainHistory.length > 0) {
-        for (const domain of opp.targetDomains) {
-          const recentCount = domainHistory.filter((d) => d === domain).length;
-          if (recentCount >= 3) {
-            adjustedPAct *= 0.5;
-            break;
-          }
+          adjustedPAct *= Math.pow(0.5, overlapCount);
         }
       }
 

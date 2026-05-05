@@ -230,17 +230,18 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     const selected = schedulerC2.identify(opportunities, persona);
     expect(selected.length).toBeGreaterThanOrEqual(1);
 
-    // c1Domain appears once in recentInsightDomains → overlapCount=1 → 0.3^1 = 0.3
-    // penalized pAct = 0.81 * 0.3 = 0.243 < 0.25 (网络安全) → 网络安全 wins
+    // c1Domain appears once in recentInsightDomains → overlapCount=1 → 0.5^1 = 0.5
+    // penalized pAct = 0.81 * 0.5 = 0.405
+    // 网络安全 gets starvation bonus (absent from window) → 0.25 * (1 + 1.5*1) = 0.625
+    // 0.625 > 0.405 → 网络安全 wins
     expect(selected[0].pAct).toBeLessThan(0.81);
     expect(selected[0].targetDomains).toContain("网络安全");
   });
 
   // ── Test 3 ───────────────────────────────────────────────────────────
 
-  it("type cooldown penalizes repeated types", () => {
+  it("type cooldown removed — same-type opportunities are not penalized", () => {
     const persona = richPersona();
-    // Pre-populate with two consecutive cross_domain types
     persona.feedbackProfile.recentInsightTypes = ["cross_domain", "cross_domain"];
 
     const scheduler = new ProactiveScheduler(pipelineConfig, {
@@ -266,26 +267,13 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
         pAccept: 0.7,
         pAct: 0.42,
       },
-      {
-        type: "exploration",
-        targetDomains: ["TypeScript"],
-        sourceDomains: [],
-        pNeed: 0.5,
-        pAccept: 0.8,
-        pAct: 0.40,
-      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
     expect(selected.length).toBeGreaterThanOrEqual(1);
-
-    // cross_domain has last two types matching → 0.6x penalty
-    // penalized cross_domain pAct = 0.56 * 0.6 = 0.336
-    // domain_depth pAct = 0.42 (no type cooldown, but check for recentInsightDomains overlap)
-    // exploration pAct = 0.40
-    // domain_depth should win (0.42 > 0.40 > 0.336)
-    // The cross_domain type should NOT be selected
-    expect(selected[0].type).not.toBe("cross_domain");
+    // No type penalty — cross_domain keeps pAct=0.56, wins over domain_depth 0.42
+    expect(selected[0].type).toBe("cross_domain");
+    expect(selected[0].pAct).toBe(0.56);
   });
 
   // ── Test 4 ───────────────────────────────────────────────────────────

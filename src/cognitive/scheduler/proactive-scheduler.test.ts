@@ -1092,22 +1092,6 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     expect(selected[0].pAct).toBe(0.81);
   });
 
-  it("penalizes repeated opportunity type with 0.5 multiplier", () => {
-    const scheduler = makeScheduler(lowThresholdConfig);
-    const persona = personaWithDomains();
-    persona.feedbackProfile.recentInsightTypes = ["domain_depth", "domain_depth", "domain_depth"];
-
-    const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["Rust"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Rust"], sourceDomains: ["Design"], pNeed: 0.7, pAccept: 0.7, pAct: 0.49 },
-    ];
-
-    const selected = scheduler.identify(opportunities, persona);
-    expect(selected.length).toBeGreaterThanOrEqual(1);
-    // domain_depth 0.81 * 0.5 = 0.405, cross_domain 0.49 → cross_domain wins
-    expect(selected[0].pAct).toBe(0.49);
-    expect(selected[0].type).toBe("cross_domain");
-  });
 });
 
 describe("ProactiveScheduler.identify — starvation bonus", () => {
@@ -1213,7 +1197,7 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
       ["Z-域"],
     ];
 
-    // High base to survive domain-overlap penalty (0.3^1 multiplier from the one Z-域 entry)
+    // High base to survive domain-overlap penalty (0.5^1 multiplier from the one Z-域 entry)
     const basePAct = 0.9;
     const opportunities: Opportunity[] = [
       { type: "domain_depth", targetDomains: ["Z-域"], sourceDomains: [], pNeed: 0.95, pAccept: 0.95, pAct: basePAct },
@@ -1223,8 +1207,8 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
     expect(selected.length).toBe(1);
     // Z-域 is in the 9th entry (index 8), window is last 8 (indices 1-8)
     // Last 8: [["Rust"], ["Design"], ["AI/机器学习"], ["Rust"], ["Design"], ["AI/机器学习"], ["Rust"], ["Z-域"]]
-    // Z-域 IS in the window → no boost, only domain-overlap penalty: 0.9 * 0.3 = 0.27
-    expect(selected[0].pAct).toBeCloseTo(basePAct * 0.3, 5);
+    // Z-域 IS in the window → no boost, only domain-overlap penalty: 0.9 * 0.5 = 0.45
+    expect(selected[0].pAct).toBeCloseTo(basePAct * 0.5, 5);
   });
 });
 
@@ -1329,10 +1313,10 @@ describe("pNeed imbalance fix", () => {
     }
   });
 
-  it("identify applies 0.6 same-type penalty for consecutive same types", () => {
+  it("identify applies no type penalty (removed)", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
-    // Last two types are both domain_depth → domain_depth gets 0.6 penalty
+    // Last two types are both domain_depth → no penalty (type cooldown removed)
     persona.feedbackProfile.recentInsightTypes = ["domain_depth", "domain_depth"];
 
     const originalPAct = 0.8;
@@ -1342,7 +1326,8 @@ describe("pNeed imbalance fix", () => {
 
     const selected = scheduler.identify(opportunities, persona);
     expect(selected.length).toBeGreaterThanOrEqual(1);
-    expect(selected[0].pAct).toBeCloseTo(originalPAct * 0.6, 5);
+    // No type cooldown applied — pAct unchanged
+    expect(selected[0].pAct).toBe(originalPAct);
   });
 });
 
@@ -1396,7 +1381,7 @@ describe("Domain rotation", () => {
     }
   });
 
-  it("identify uses 0.55^n penalty exact value", () => {
+  it("identify uses 0.5^n domain overlap penalty", () => {
     const lowThreshold: SchedulerConfig = {
       minIntervalHours: 4,
       minTrustScore: 0.3,
@@ -1405,8 +1390,6 @@ describe("Domain rotation", () => {
     };
     const scheduler = makeScheduler(lowThreshold);
     const persona = personaWithDomains();
-    // Only 2 recent entries → count=2 for AI/机器学习 → fatigued, but test focuses on penalty
-    // Use a domain NOT in persona.domains so it doesn't overlap with fatigue check
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["AI/机器学习"]];
 
     const originalPAct = 0.9;
@@ -1418,12 +1401,8 @@ describe("Domain rotation", () => {
     const selected = scheduler.identify(opportunities, persona);
     expect(selected.length).toBeGreaterThanOrEqual(1);
     // AI/机器学习 is fatigued → filtered out. Design is non-fatigued.
-    // But fallback won't be needed since Design is available.
-    // The penalized AI/机器学习 pAct = 0.9 * 0.55^2 = 0.27225 (but fatigued → filtered out)
-    // Design is not penalized, pAct = 0.25
-    // Fatigued domains are removed entirely, so Design wins regardless of penalty
-    const aiPenalized = originalPAct * Math.pow(0.55, 2);
-    expect(aiPenalized).toBeCloseTo(0.27225, 5);
+    const aiPenalized = originalPAct * Math.pow(0.5, 2);
+    expect(aiPenalized).toBeCloseTo(0.225, 5);
     expect(selected[0].targetDomains).toContain("Design");
   });
 });
