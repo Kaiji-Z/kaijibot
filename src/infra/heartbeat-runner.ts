@@ -36,7 +36,6 @@ import {
 import { resolveStorePath } from "../config/sessions/paths.js";
 import { loadSessionStore } from "../config/sessions/store-load.js";
 import {
-  archiveRemovedSessionTranscripts,
   saveSessionStore,
   updateSessionStore,
 } from "../config/sessions/store.js";
@@ -386,25 +385,6 @@ function resolveIsolatedHeartbeatSessionKey(params: {
     isolatedSessionKey: `${params.sessionKey}:heartbeat`,
     isolatedBaseSessionKey: params.sessionKey,
   };
-}
-
-function resolveStaleHeartbeatIsolatedSessionKey(params: {
-  sessionKey: string;
-  isolatedSessionKey: string;
-  isolatedBaseSessionKey: string;
-}) {
-  if (params.sessionKey === params.isolatedSessionKey) {
-    return undefined;
-  }
-  const suffix = params.sessionKey.slice(params.isolatedBaseSessionKey.length);
-  if (
-    params.sessionKey.startsWith(params.isolatedBaseSessionKey) &&
-    suffix.length > 0 &&
-    /^(:heartbeat)+$/.test(suffix)
-  ) {
-    return params.sessionKey;
-  }
-  return undefined;
 }
 
 function resolveHeartbeatReasoningPayloads(
@@ -773,12 +753,13 @@ export async function runHeartbeatOnce(opts: {
 
   const previousUpdatedAt = entry?.updatedAt;
 
-  // When isolatedSession is enabled, create a fresh session via the same
-  // pattern as cron sessionTarget: "isolated". This gives the heartbeat
-  // a new session ID (empty transcript) each run, avoiding the cost of
-  // sending the full conversation history (~100K tokens) to the LLM.
+  // When isolatedSession is enabled, reuse a dedicated session via the same
+  // pattern as cron sessionTarget: "isolated". The session follows the normal
+  // compact/reset lifecycle, so context stays bounded automatically.
   // Delivery routing still uses the main session entry (lastChannel, lastTo).
-  const useIsolatedSession = heartbeat?.isolatedSession !== false &&
+  // Evolution signals always run in the user's base session (not isolated).
+  const useIsolatedSession =
+    heartbeat?.isolatedSession === true &&
     opts.reason !== "cognitive-evolution";
   const delivery = resolveHeartbeatDeliveryTarget({
     cfg,
@@ -859,45 +840,11 @@ export async function runHeartbeatOnce(opts: {
       sessionKey: isolatedSessionKey,
       agentId,
       nowMs: startedAt,
-      forceNew: true,
+      forceNew: false,
     });
-    const staleIsolatedSessionKey = resolveStaleHeartbeatIsolatedSessionKey({
-      sessionKey,
-      isolatedSessionKey,
-      isolatedBaseSessionKey,
-    });
-    const removedSessionFiles = new Map<string, string | undefined>();
-    if (staleIsolatedSessionKey) {
-      const staleEntry = cronSession.store[staleIsolatedSessionKey];
-      if (staleEntry?.sessionId) {
-        removedSessionFiles.set(staleEntry.sessionId, staleEntry.sessionFile);
-      }
-      delete cronSession.store[staleIsolatedSessionKey];
-    }
     cronSession.sessionEntry.heartbeatIsolatedBaseSessionKey = isolatedBaseSessionKey;
     cronSession.store[isolatedSessionKey] = cronSession.sessionEntry;
     await saveSessionStore(cronSession.storePath, cronSession.store);
-    if (removedSessionFiles.size > 0) {
-      try {
-        const referencedSessionIds = new Set(
-          Object.values(cronSession.store)
-            .map((sessionEntry) => sessionEntry?.sessionId)
-            .filter((sessionId): sessionId is string => Boolean(sessionId)),
-        );
-        await archiveRemovedSessionTranscripts({
-          removedSessionFiles,
-          referencedSessionIds,
-          storePath: cronSession.storePath,
-          reason: "deleted",
-          restrictToStoreDir: true,
-        });
-      } catch (err) {
-        log.warn("heartbeat: failed to archive stale isolated session transcript", {
-          err: String(err),
-          sessionKey: staleIsolatedSessionKey,
-        });
-      }
-    }
     runSessionKey = isolatedSessionKey;
   }
   // When running in an isolated session, system events were enqueued to the base
@@ -977,6 +924,7 @@ export async function runHeartbeatOnce(opts: {
     MessageThreadId: delivery.threadId,
     Provider: hasEvolutionSignal ? "evolution-event" : hasExecCompletion ? "exec-event" : hasCronEvents ? "cron-event" : "heartbeat",
     SessionKey: runSessionKey,
+    ForceSenderIsOwnerFalse: hasExecCompletion || hasUntrustedPendingEvents || hasEvolutionSignal,
   };
   if (!visibility.showAlerts && !visibility.showOk && !visibility.useIndicator) {
     emitHeartbeatEvent({

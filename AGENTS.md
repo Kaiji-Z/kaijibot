@@ -80,8 +80,7 @@ Event Sources (timer / persona_change / info_scan)
             → dedup (trigram default 0.6, v1 output 0.85; contentWord default 0.15, v1 output 0.5) + verification gate
               → v2 insights bypass verification (partial status)
               → exploration-type insights bypass verification
-            → onInsightReady callback → findSessionKeyForUserId → enqueueSystemEvent → requestHeartbeatNow
-              → heartbeat-runner → agent turn → deliverOutboundPayloads → user receives message
+            → onInsightReady callback → resolveCognitiveDeliveryTarget → deliverOutboundPayloads → user receives message (direct channel delivery, NOT through heartbeat-runner)
 ```
 
 **Dual Pipeline (v1 + v2):**
