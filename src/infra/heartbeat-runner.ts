@@ -753,13 +753,15 @@ export async function runHeartbeatOnce(opts: {
 
   const previousUpdatedAt = entry?.updatedAt;
 
-  // When isolatedSession is enabled, reuse a dedicated session via the same
-  // pattern as cron sessionTarget: "isolated". The session follows the normal
-  // compact/reset lifecycle, so context stays bounded automatically.
-  // Delivery routing still uses the main session entry (lastChannel, lastTo).
-  // Evolution signals always run in the user's base session (not isolated).
+  // isolatedSession: true → always isolated (explicit config).
+  // isolatedSession: false → never isolated (explicit opt-out).
+  // isolatedSession: undefined (default) → isolated for timer/cron ticks,
+  //   non-isolated for wake reasons (needs delivery context for routing).
+  // Evolution always runs in user's base session regardless.
+  const isolatedExplicit = heartbeat?.isolatedSession;
   const useIsolatedSession =
-    heartbeat?.isolatedSession === true &&
+    (isolatedExplicit === true ||
+      (isolatedExplicit == null && !preflight.isWakeReason)) &&
     opts.reason !== "cognitive-evolution";
   const delivery = resolveHeartbeatDeliveryTarget({
     cfg,
