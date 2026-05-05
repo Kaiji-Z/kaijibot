@@ -2,7 +2,7 @@ import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi
 import { describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, buildInsightPrompt, buildSurpriseInsightPrompt, extractKeyTerms, buildSearchQuery, matchWebResultsToDomainsLLM, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
+import { generateInsightCandidatesLLM, buildInsightPrompt, buildSurpriseInsightPrompt, buildVoiceSection, extractKeyTerms, buildSearchQuery, matchWebResultsToDomainsLLM, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput, SearchStrategy } from "./types.js";
 import type { InterestInferenceDeps } from "./interest-inference.js";
 
@@ -159,7 +159,7 @@ describe("generateInsightCandidatesLLM", () => {
     expect(candidate.sourceDomains).toContain("rust");
     expect(candidate.relevanceScore).toBeCloseTo(0.85);
     expect(candidate.surpriseScore).toBeCloseTo(0.7);
-    expect(candidate.compositeScore).toBe(0);
+    expect(candidate.compositeScore).toBeCloseTo((0.85 + 0.7) / 2);
     expect(candidate.verificationStatus).toBe("unverified");
     expect(candidate.id).toBeTruthy();
     expect(candidate.sources).toEqual([]);
@@ -1519,5 +1519,170 @@ describe("matchWebResultsToDomainsLLM", () => {
     const result = await matchWebResultsToDomainsLLM([], makePersona(), {} as KaijiBotConfig, deps);
     expect(result.size).toBe(0);
     expect(deps.complete).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Voice section and communicationStyle
+// ---------------------------------------------------------------------------
+
+describe("buildVoiceSection", () => {
+  it("includes casual tone instruction when formality is casual", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+      },
+    });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("casual");
+    expect(section).toContain("你 not 您");
+  });
+
+  it("includes formal tone instruction when formality is formal", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "beginner", preferredLanguage: "zh" },
+      },
+    });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("professional but warm");
+    expect(section).toContain("您");
+  });
+
+  it("includes expert instruction when technicalLevel is expert", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+      },
+    });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("deep technical literacy");
+    expect(section).toContain("technical terms freely");
+  });
+
+  it("includes beginner instruction when technicalLevel is beginner", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "mixed", verbosity: "moderate", technicalLevel: "beginner", preferredLanguage: "zh" },
+      },
+    });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("Explain technical concepts briefly");
+    expect(section).toContain("Avoid jargon");
+  });
+
+  it("includes concise instruction when verbosity is concise", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+      },
+    });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("1-2 sentences maximum");
+    expect(section).toContain("Every word earns its place");
+  });
+
+  it("includes detailed instruction when verbosity is detailed", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "intermediate", preferredLanguage: "zh" },
+      },
+    });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("2-3 sentences");
+    expect(section).toContain("self-contained");
+  });
+
+  it("uses 'the user' when no displayName", () => {
+    const persona = makePersona({ identity: { ...makePersona().identity, displayName: undefined } });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("the user");
+  });
+
+  it("uses displayName when available", () => {
+    const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Kaiji" } });
+    const section = buildVoiceSection(persona);
+    expect(section).toContain("Kaiji");
+  });
+});
+
+describe("buildInsightPrompt — communicationStyle", () => {
+  it("includes communicationStyle in prompt when available", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+      },
+    });
+    const prompt = buildInsightPrompt(persona, makeInput());
+    expect(prompt).toContain("casual");
+    expect(prompt).toContain("1-2 sentences maximum");
+    expect(prompt).toContain("deep technical literacy");
+  });
+
+  it("includes few-shot examples", () => {
+    const prompt = buildInsightPrompt(makePersona(), makeInput());
+    expect(prompt).toContain("EXAMPLES of ideal insights");
+    expect(prompt).toContain("WebAssembly");
+    expect(prompt).toContain("DPO");
+  });
+
+  it("has voice section at top of prompt", () => {
+    const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Alice" } });
+    const prompt = buildInsightPrompt(persona, makeInput());
+    const firstLine = prompt.split("\n")[0]!;
+    expect(firstLine).toContain("Alice");
+  });
+});
+
+describe("buildSurpriseInsightPrompt — communicationStyle", () => {
+  it("includes communicationStyle in surprise prompt when available", () => {
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "beginner", preferredLanguage: "en" },
+      },
+    });
+    const prompt = buildSurpriseInsightPrompt(
+      persona,
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+    expect(prompt).toContain("professional but warm");
+    expect(prompt).toContain("2-3 sentences");
+    expect(prompt).toContain("Avoid jargon");
+  });
+
+  it("includes few-shot examples in surprise prompt", () => {
+    const prompt = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+    expect(prompt).toContain("EXAMPLES of ideal insights");
+    expect(prompt).toContain("DPO");
+  });
+
+  it("has voice section at top of surprise prompt", () => {
+    const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Bob" } });
+    const prompt = buildSurpriseInsightPrompt(
+      persona,
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+    const firstLine = prompt.split("\n")[0]!;
+    expect(firstLine).toContain("Bob");
   });
 });

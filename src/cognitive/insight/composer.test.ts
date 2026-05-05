@@ -48,6 +48,7 @@ function assistantMessage(text: string): AssistantMessage {
 function makeSuccessDeps(
   responseText: string,
   onCall?: (prompt: string) => void,
+  onSystemPrompt?: (sp: string | undefined) => void,
 ): ComposerDeps {
   return {
     complete: async (_model, opts) => {
@@ -57,6 +58,10 @@ function makeSuccessDeps(
           ? userMsg.content
           : JSON.stringify(userMsg.content);
         onCall(content);
+      }
+      if (onSystemPrompt) {
+        const sp = (opts as unknown as Record<string, unknown>).systemPrompt as string | undefined;
+        onSystemPrompt(sp);
       }
       return assistantMessage(responseText);
     },
@@ -400,5 +405,67 @@ describe("containsFactualClaims", () => {
   it("returns false for vague text", () => {
     expect(containsFactualClaims("something about the user")).toBe(false);
     expect(containsFactualClaims("a general impression")).toBe(false);
+  });
+});
+
+describe("communicationStyle in prompt", () => {
+  it("injects communicationStyle into prompt when available", async () => {
+    let capturedPrompt = "";
+    const deps = makeSuccessDeps("DPO 取代 RLHF 的代码量只有十分之一，对你之前试的 LoRA 微调路线是个很好的补充。", (p) => { capturedPrompt = p; });
+    const persona = makePersona({
+      identity: {
+        ...makePersona().identity,
+        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+      },
+    });
+
+    await composeInsight(makeBlindSpot(), persona, makeConfig(), deps);
+
+    expect(capturedPrompt).toContain("casual");
+    expect(capturedPrompt).toContain("1-2 sentences maximum");
+    expect(capturedPrompt).toContain("deep technical literacy");
+  });
+
+  it("includes few-shot examples in prompt", async () => {
+    let capturedPrompt = "";
+    const deps = makeSuccessDeps("Rust embassy 框架用 async/await 做嵌入式并发。", (p) => { capturedPrompt = p; });
+
+    await composeInsight(makeBlindSpot(), makePersona(), makeConfig(), deps);
+
+    expect(capturedPrompt).toContain("EXAMPLES of ideal insights");
+    expect(capturedPrompt).toContain("DPO");
+  });
+});
+
+describe("systemContext passed to LLM", () => {
+  it("passes systemContext as systemPrompt when provided", async () => {
+    let capturedSystemPrompt: string | undefined;
+    const deps: ComposerDeps = {
+      complete: async (_model, opts) => {
+        capturedSystemPrompt = (opts as unknown as Record<string, unknown>).systemPrompt as string | undefined;
+        return assistantMessage("Rust 的所有权模型在编译期就完成了借用检查。");
+      },
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+      systemContext: "You are a helpful AI with a playful personality.",
+    };
+
+    await composeInsight(makeBlindSpot(), makePersona(), makeConfig(), deps);
+
+    expect(capturedSystemPrompt).toBe("You are a helpful AI with a playful personality.");
+  });
+
+  it("passes undefined systemPrompt when no systemContext", async () => {
+    let capturedSystemPrompt: string | undefined;
+    const deps: ComposerDeps = {
+      complete: async (_model, opts) => {
+        capturedSystemPrompt = (opts as unknown as Record<string, unknown>).systemPrompt as string | undefined;
+        return assistantMessage("Rust 的所有权模型在编译期就完成了借用检查。");
+      },
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
+    };
+
+    await composeInsight(makeBlindSpot(), makePersona(), makeConfig(), deps);
+
+    expect(capturedSystemPrompt).toBeUndefined();
   });
 });

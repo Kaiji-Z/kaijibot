@@ -6,8 +6,21 @@ import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
 import type { BlindSpotCandidate } from "./fragment-types.js";
-import { isSubstantiveContent } from "./llm-engine.js";
+import { isSubstantiveContent, buildVoiceSection } from "./llm-engine.js";
 import type { InsightCandidate } from "./types.js";
+
+const FEW_SHOT_FOR_COMPOSER = [
+  {
+    context: "User tracks LLM fine-tuning. New: DPO",
+    chinese: "你之前试过 LoRA 微调，最近 DPO 在大多数场景下已经能替代 RLHF 了——不需要 reward model，代码量是 PPO 的十分之一。",
+    english: "You tried LoRA fine-tuning before — DPO now replaces RLHF in most scenarios. No reward model needed, code is 10x simpler than PPO.",
+  },
+  {
+    context: "User knows TypeScript + embedded. Bridge: Rust RTOS",
+    chinese: "你同时在看 TypeScript 和嵌入式，Rust 写 RTOS 内核的 embassy 框架用 async/await 模型做嵌入式并发——跟你写 TS 的思维模型完全一致，但跑在裸机上。",
+    english: "You're into TypeScript and embedded — the embassy RTOS framework in Rust uses async/await for embedded concurrency. Same mental model as TS, but running on bare metal.",
+  },
+];
 
 const log = createSubsystemLogger("cognitive/composer");
 
@@ -21,6 +34,7 @@ export type ComposerDeps = {
     | { error: string }
   >;
   webSearch?: (query: string) => Promise<Array<{ title: string; url: string; snippet: string }>>;
+  systemContext?: string;
 };
 
 export function createDefaultComposerDeps(): ComposerDeps {
@@ -106,11 +120,15 @@ export async function composeInsight(
 
   const avoidanceLine = getRecentInsightAvoidance(persona);
 
-  const prompt = `You are a proactive AI assistant sharing a brief insight with the user.
+  const voiceSection = buildVoiceSection(persona);
+  const fewShotBlock = FEW_SHOT_FOR_COMPOSER.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
 
-${nameLine}
+  const prompt = `${voiceSection}
 
-BLIND SPOT:
+EXAMPLES of ideal insights (match this quality, specificity, and tone):
+${fewShotBlock}
+
+${nameLine ? nameLine + "\n" : ""}BLIND SPOT:
 ${candidate.blindSpot}
 
 DOMAINS: ${candidate.domains.join(", ")}
@@ -118,12 +136,8 @@ IMPACT TYPE: ${candidate.potentialImpact}
 ${webContext ? `\nWEB CONTEXT (use naturally, do NOT say 'saw'/'read'/'reportedly'):\n${webContext}` : ""}
 ${avoidanceLine ? `\n${avoidanceLine}` : ""}
 
-TASK:
-Craft a 1-3 sentence insight about this blind spot.
-- Start with a revelation or concrete observation — never with generic phrases like "值得注意的是" or "值得关注"
-- NO question marks, NO numbering, NO lists
-- Content must be a specific judgment, observation, or discovery — not vague feelings
-- ${langInstruction}
+Write 1-3 sentences. Start with something specific — a fact, number, or concrete observation.
+${langInstruction}
 
 Respond with ONLY the insight text (no JSON, no markdown, no code fences).`;
 
@@ -138,10 +152,11 @@ Respond with ONLY the insight text (no JSON, no markdown, no code fences).`;
     const messages: Array<{ role: "user"; content: string; timestamp: number }> = [
       { role: "user", content: prompt, timestamp: Date.now() },
     ];
+    const systemPrompt = deps.systemContext || undefined;
 
     const result = await deps.complete(
       prepared.model,
-      { messages },
+      { messages, systemPrompt },
       {
         apiKey: prepared.auth.apiKey,
         maxTokens: 300,

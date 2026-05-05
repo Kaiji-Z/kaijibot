@@ -29,6 +29,7 @@ export type CrystallizationDeps = {
   saveFragments: (userId: string, fragments: Fragment[]) => Promise<void>;
   findClusters: (userId: string) => Promise<FragmentCluster[]>;
   touchFragments: (userId: string, fragmentIds: string[]) => Promise<void>;
+  systemContext?: string;
 };
 
 export function createCrystallizationDepsFromStore(
@@ -261,10 +262,13 @@ Respond with ONLY a JSON object (no markdown, no code fences):
       return null;
     }
 
+    const systemPrompt = deps.systemContext || undefined;
+
     const result = await deps.complete(
       prepared.model,
       {
         messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
+        systemPrompt,
       },
       {
         apiKey: prepared.auth.apiKey,
