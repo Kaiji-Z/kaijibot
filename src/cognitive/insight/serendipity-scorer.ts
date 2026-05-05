@@ -1,4 +1,7 @@
 /**
+ * @deprecated Unused in production. Only referenced by the deprecated template engine
+ * (`engine.ts`). The LLM-based pipeline (`llm-engine.ts`) handles scoring inline.
+ *
  * Scores insights based on relevance × surprise × novelty.
  *
  * Serendipity = finding valuable things you weren't looking for.
