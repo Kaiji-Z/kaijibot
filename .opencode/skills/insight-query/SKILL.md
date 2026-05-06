@@ -212,7 +212,7 @@ Key diagnostics:
 
 ### Step 6: Search/identify breakdown
 
-Check opportunity type distribution and diversity penalty activity:
+Check opportunity type distribution and domain cooldown activity:
 
 ```bash
 LOG_DIR="/tmp/kaijibot"
@@ -225,7 +225,7 @@ for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   grep '"search found opportunities"' "$LOG_FILE" | \
     jq -c '{time: .time, count: ."1".count, byType: ."1".byType}' 2>/dev/null
 
-  # Identify: pool size + top candidate + recent history (shows if diversity penalty was active)
+  # Identify: pool size + top candidate + recent history (shows domain cooldown activity)
   grep '"identify selected pool"' "$LOG_FILE" | \
     jq -c '{time: .time, poolSize: ."1".poolSize, topType: ."1".topType, topTargetDomains: ."1".topTargetDomains, topPAct: ."1".topPAct, recentTypes: ."1".recentTypes}' 2>/dev/null
 
@@ -237,14 +237,13 @@ done
 
 Key patterns:
 - **`byType: {domain_depth: N}` only** → scanCrossDomain/scanExploration producing nothing
-- **`recentTypes: ["domain_depth", "domain_depth"]`** → diversity penalty should be active (×0.6)
-- **`recentTypes` matches selected `type`** → penalty was too mild, type still winning
+- **`recentTypes` shows repeated types** → informational only (type cooldown removed; domain cooldown still active via 0.5^n)
 - **`poolSize: 1` consistently** → only one candidate survives penalties, low diversity in opportunities
 - **`pre-gen freshness check` fires frequently** → isTopicStale too aggressive, or recentInsightDomains too broad
 
-### Step 7: Quality gate pillar scores (v2 diagnostics)
+### Step 7: Quality gate scores (v2 diagnostics)
 
-Check why v2 insights get parked or discarded:
+Check why v2 insights get parked or discarded. Quality gate uses LLM-as-judge for novelty+actionability (60% weight) + code formula for emotional readiness (15%) + LLM for non-obviousness (25%). LLM verdict "no" forces discard regardless of composite score.
 
 ```bash
 LOG_DIR="/tmp/kaijibot"
@@ -253,15 +252,17 @@ for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   [ -f "$LOG_FILE" ] || continue
   echo "=== $(basename "$LOG_FILE") ==="
   grep '"quality gate assessed"' "$LOG_FILE" | \
-    jq -c '{time: .time, verdict: ."1".verdict, composite: ."1".composite, structuralNovelty: ."1".structuralNovelty, actionability: ."1".actionability, emotionalReadiness: ."1".emotionalReadiness, nonObviousness: ."1".nonObviousness, blindSpot: ."1".blindSpot}' 2>/dev/null
+    jq -c '{time: .time, verdict: ."1".verdict, composite: ."1".composite, llmNoveltyActionable: ."1".llmNoveltyActionable, llmVerdict: ."1".llmVerdict, emotionalReadiness: ."1".emotionalReadiness, nonObviousness: ."1".nonObviousness, blindSpot: ."1".blindSpot}' 2>/dev/null
 done
 ```
 
 Key diagnostics:
-- **`emotionalReadiness < 0.3`** → user trust too low (new/dormant user), composite will struggle to reach 0.75
-- **`nonObviousness < 0.5`** → blind spot is too obvious, LLM rated it as common knowledge
-- **`verdict: "park"` (composite 0.60-0.74)** → close to delivering, could be rescued with lower threshold
-- **`verdict: "discard"` (composite < 0.60)** → blind spot too weak or user not ready
+- **`llmVerdict: "no"`** → LLM judged insight as not novel/actionable for this user — forced discard
+- **`llmNoveltyActionable < 0.3`** → insight too obvious or not actionable (60% weight dominates composite)
+- **`emotionalReadiness < 0.3`** → user trust too low (new/dormant user) or suppressUntil active
+- **`nonObviousness < 0.5`** → LLM rated the blind spot as common knowledge
+- **`verdict: "park"` (composite 0.45-0.64)** → close to delivering, could be rescued with lower threshold
+- **`verdict: "discard"` (composite < 0.45 or llmVerdict=no)** → blind spot too weak or LLM rejected
 
 ### Step 8: Gate statistics
 
@@ -320,7 +321,7 @@ Structure the report as:
 - domain_depth: N 次 (XX%)
 - cross_domain: N 次 (XX%)
 - exploration: N 次 (XX%)
-- 多样性惩罚触发: N 次
+- 多样性惩罚触发: N 次 (domain cooldown only, 0.5^n)
 
 ### v2 管线诊断
 - Fragment 库: N 个 (有效 N / 过期 N)
@@ -372,7 +373,7 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 | 4 | 🎯 IDENTIFY | cyan | **Pool size** (top N), top candidate type/domains/pAct + **recentTypes** (diversity penalty visibility) |
 | 4a | 🧹 STALE | yellow | Pre-gen freshness check: stale candidate skipped (saves LLM tokens) |
 | 4b | 🧊 CRYSTAL | cyan | v2: Crystallized blind spot count + mode |
-| 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite + **all 4 pillar scores** (structuralNovelty, actionability, emotionalReadiness, nonObviousness) |
+| 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite + LLM novelty/actionable score + LLM verdict (yes/no) + emotionalReadiness + nonObviousness |
 | 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching |
 | 6 | 🤖 LLM GEN | magenta | v1: Number of insight candidates |
 | 6a | 🔄 RETRY + ✅ BEST | yellow/green | Quality retry: attempt count + final best score from retry pool |
@@ -394,7 +395,7 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 - **Gate vetoed with low pAct** → normal (PRISM cost gate working)
 - **Zero `"fragments extracted"` in logs** → fragment collector never fires — check model config and userId in persona
 - **`clusterCount: 0` consistently** → fragments don't overlap across domains — v2 pipeline starves
-- **`emotionalReadiness < 0.3`** → new/dormant user, quality gate will park/discard v2 insights
+- **`llmVerdict: "no"` every time** → LLM consistently rejecting insights as not novel/actionable for this user; check prompt or persona data
 - **`byType` only has domain_depth** → cross-domain and exploration scan functions producing nothing
 - **🚀 SCHEDULER START** → gateway was restarted, check if interval is correct
 - **v2 `[v2]` insights appearing** → dual pipeline working, blind spot detection producing deliverable insights
