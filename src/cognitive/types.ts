@@ -72,6 +72,7 @@ export type FeedbackProfile = {
   recentInsightDomains?: string[][];
   recentInsightTypes?: string[];
   recentInsightQueryHistory?: string[];
+  promptBandits?: Record<string, TopicBandit>;
 };
 
 // Trust/rapport metrics
@@ -173,4 +174,10 @@ export type InsightRecord = {
   feedback?: "positive" | "negative" | "neutral" | "engaged";
   deliveredAt?: number;
   userResponse?: string;
+  promptVariant?: {
+    fewShotSet: number;
+    frameIndex: number;
+    structureSeed?: number;
+    patternFrame?: number;
+  };
 };

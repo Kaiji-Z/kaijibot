@@ -173,6 +173,73 @@ export function adaptFrequency(
   return Math.max(1, Math.min(48, currentHours + delta));
 }
 
+/**
+ * Pick the best prompt variant by Thompson Sampling over prompt bandits.
+ * For each armKey, get or create a TopicBandit from profile.promptBandits
+ * (cold start: optimistic prior { alpha: 2, beta: 1 }).
+ * Returns the 0-based index of the arm with the highest sampled score.
+ */
+export function pickPromptVariant(
+  profile: { promptBandits?: Record<string, TopicBandit> },
+  armKeys: string[],
+  rng?: () => number,
+): number {
+  const random = rng ?? Math.random;
+  const bandits = profile.promptBandits ?? {};
+  let bestIndex = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < armKeys.length; i++) {
+    const bandit = bandits[armKeys[i]] ?? { alpha: OPTIMISTIC_ALPHA, beta: OPTIMISTIC_BETA };
+    const score = sampleBeta(bandit.alpha, bandit.beta, random);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+}
+
+/**
+ * Update the prompt bandit for a specific arm based on feedback.
+ * Returns a new promptBandits record (does NOT mutate the input).
+ * Update logic matches updateBanditFromFeedback:
+ *   positive/engaged → alpha += 1
+ *   negative → beta += 1
+ *   neutral → beta += 0.5
+ */
+export function updatePromptBandit(
+  profile: { promptBandits?: Record<string, TopicBandit> },
+  armKey: string,
+  feedback: "positive" | "negative" | "neutral" | "engaged",
+  timestamp: number,
+): Record<string, TopicBandit> {
+  const existing = profile.promptBandits ?? {};
+  const rawBandit: TopicBandit = existing[armKey] ?? { alpha: OPTIMISTIC_ALPHA, beta: OPTIMISTIC_BETA };
+
+  let newAlpha = rawBandit.alpha;
+  let newBeta = rawBandit.beta;
+
+  switch (feedback) {
+    case "positive":
+    case "engaged":
+      newAlpha += 1;
+      break;
+    case "negative":
+      newBeta += 1;
+      break;
+    case "neutral":
+      newBeta += 0.5;
+      break;
+  }
+
+  return {
+    ...existing,
+    [armKey]: { alpha: newAlpha, beta: newBeta, lastUpdated: timestamp },
+  };
+}
+
 // --- Beta distribution sampling using Marsaglia and Tsang's method ---
 
 function sampleBeta(alpha: number, beta: number, rng: () => number): number {

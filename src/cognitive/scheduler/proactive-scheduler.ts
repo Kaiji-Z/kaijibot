@@ -4,10 +4,15 @@ import { computeGradedGate } from "./gate.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
-import { verifyInsight } from "../insight/verification/pipeline.js";
 import { isDuplicateBySemanticOverlap, computeTrigramSimilarity } from "../insight/content-similarity.js";
 import { pickBestTopic } from "../feedback/preference-learner.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { FragmentStore } from "../insight/fragment-store.js";
+import { critiqueInsightWithLLM, refineInsightWithLLM, verifyInsightWithLLM, checkSemanticNoveltyWithLLM } from "../insight/llm-engine.js";
+import type { LlmInsightDeps } from "../insight/llm-engine.js";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 const log = createSubsystemLogger("cognitive/scheduler");
 
@@ -47,6 +52,12 @@ export type InsightGeneratorFn = (
 const MAX_QUALITY_RETRIES = 3;
 const QUALITY_EARLY_EXIT_THRESHOLD = 0.85;
 
+function scoreCandidate(c: InsightCandidate): number {
+  return c.compositeScore > 0
+    ? c.compositeScore
+    : c.relevanceScore * 0.4 + c.surpriseScore * 0.3 + Math.min(c.sources.length, 3) * 0.1;
+}
+
 export function isTopicStale(
   opportunity: Opportunity,
   recentInsightContents: string[],
@@ -77,6 +88,9 @@ export function isTopicStale(
 export class ProactiveScheduler {
   private timerHandle: ReturnType<typeof setTimeout> | undefined;
   private readonly generateInsights: InsightGeneratorFn;
+  private readonly fragmentStore: FragmentStore;
+  private readonly llmDeps: LlmInsightDeps | undefined;
+  private readonly botConfig: KaijiBotConfig | undefined;
 
   constructor(
     private readonly config: SchedulerConfig,
@@ -87,12 +101,18 @@ export class ProactiveScheduler {
     },
     deps?: {
       insightGenerator?: InsightGeneratorFn;
+      fragmentStore?: FragmentStore;
+      llmDeps?: LlmInsightDeps;
+      botConfig?: KaijiBotConfig;
     },
   ) {
     this.generateInsights = deps?.insightGenerator ?? defaultInsightGenerator;
+    this.fragmentStore = deps?.fragmentStore ?? new FragmentStore(join(homedir(), ".kaijibot"));
+    this.llmDeps = deps?.llmDeps;
+    this.botConfig = deps?.botConfig;
   }
 
-  search(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
+  async search(persona: PersonaTree, event: SchedulerEvent): Promise<Opportunity[]> {
     const opportunities: Opportunity[] = [];
     const domains = Object.keys(persona.domains);
 
@@ -113,7 +133,7 @@ export class ProactiveScheduler {
         break;
     }
 
-    opportunities.push(...scanExploration(persona, event));
+    opportunities.push(...await this.scanExploration(persona, event));
 
     return filterBlacklistedOpportunities(opportunities, persona.domainBlacklist);
   }
@@ -177,61 +197,172 @@ export class ProactiveScheduler {
     const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
     const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
 
-    const allCandidates: InsightCandidate[] = [];
-    for (let attempt = 0; attempt < MAX_QUALITY_RETRIES; attempt++) {
+    if (mode === "pattern") {
+      const userId = persona.identity?.userId;
+      if (!userId) return null;
+
+      const [fragments, clusters] = await Promise.all([
+        this.fragmentStore.load(userId),
+        this.fragmentStore.findClusters(userId),
+      ]);
+
+      if (clusters.length === 0) return null;
+
       const result = await this.generateInsights(
         persona,
         {
-          targetDomains: opportunity.targetDomains.length > 0
-            ? opportunity.targetDomains
-            : Object.entries(persona.domains)
-                .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
-                .slice(0, 3)
-                .map(([name]) => name),
+          targetDomains: [],
           recentFocus: persona.recentFocus,
           trustScore: persona.rapport.trustScore,
           recentInsightIds,
           recentInsightContents,
-          mode,
+          mode: "pattern",
           recentQueryHistory,
           recentInsightDomains,
+          fragmentClusters: clusters,
+          fragments,
         },
         {
           verificationLevel: "basic",
           maxCandidates: 1,
-          mode,
+          mode: "pattern",
         },
       );
-      if (result && result.length > 0) {
-        allCandidates.push(...result);
-      }
-      if (attempt > 0) {
-        log.info("resolve: quality retry", { userId: persona.identity?.userId, attempt: attempt + 1, candidatesSoFar: allCandidates.length });
-      }
-      if (allCandidates.length > 0 && attempt < MAX_QUALITY_RETRIES - 1) {
-        const bestSoFar = Math.max(...allCandidates.map((c) =>
-          c.compositeScore > 0
-            ? c.compositeScore
-            : c.relevanceScore * 0.4 + c.surpriseScore * 0.3 + Math.min(c.sources.length, 3) * 0.1,
-        ));
-        if (bestSoFar >= QUALITY_EARLY_EXIT_THRESHOLD) {
-          log.info("resolve: early exit — quality threshold met", { userId: persona.identity?.userId, attempt: attempt + 1, bestScore: bestSoFar });
-          break;
+
+      if (!result || result.length === 0) return null;
+
+      const candidate = result[0]!;
+
+      if (recentInsightContents.length > 0) {
+        if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, { trigramThreshold: 0.95, contentWordThreshold: 0.8 })) {
+          log.info("safety-net dedup: near-identical content blocked", {
+            userId,
+            contentPreview: candidate.content.slice(0, 60),
+          });
+          return null;
         }
       }
+
+      if (this.llmDeps && this.botConfig && this.config.llmFreshnessCheck !== false && recentInsightContents.length >= 2) {
+        const freshness = await checkSemanticNoveltyWithLLM(
+          candidate, recentInsightContents, this.botConfig, this.llmDeps,
+        );
+        if (!freshness.isNovel) {
+          log.info("LLM freshness check: semantically repetitive", { userId, reason: freshness.reason });
+          return null;
+        }
+      }
+
+      candidate.verificationStatus = "partial";
+
+      if (this.llmDeps && this.botConfig && this.config.patternVerification !== false) {
+        const verification = await verifyInsightWithLLM(
+          candidate, persona, this.botConfig, this.llmDeps,
+        );
+        candidate.verificationStatus = verification.status;
+      }
+
+      log.info("pattern-mode insight verification complete", {
+        userId,
+        content: candidate.content.slice(0, 60),
+        clusterCount: clusters.length,
+        fragmentCount: fragments.length,
+        verificationStatus: candidate.verificationStatus,
+      });
+      return candidate;
     }
 
-    if (allCandidates.length === 0) return null;
+    // Knowledge mode: generate with self-refine (or blind retry fallback)
+    const input: InsightEngineInput = {
+      targetDomains: opportunity.targetDomains.length > 0
+        ? opportunity.targetDomains
+        : Object.entries(persona.domains)
+            .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+            .slice(0, 3)
+            .map(([name]) => name),
+      recentFocus: persona.recentFocus,
+      trustScore: persona.rapport.trustScore,
+      recentInsightIds,
+      recentInsightContents,
+      mode,
+      recentQueryHistory,
+      recentInsightDomains,
+    };
 
-    const scored = allCandidates.map((c) => {
-      const score = c.compositeScore > 0
-        ? c.compositeScore
-        : c.relevanceScore * 0.4 + c.surpriseScore * 0.3 + Math.min(c.sources.length, 3) * 0.1;
-      return { candidate: c, score };
-    }).sort((a, b) => b.score - a.score);
+    const genOpts = {
+      verificationLevel: "basic" as const,
+      maxCandidates: 1,
+      mode,
+    };
 
-    const candidate = scored[0]!.candidate;
-    log.info("resolve: selected best candidate", { userId: persona.identity?.userId, finalScore: scored[0]!.score, totalCandidates: allCandidates.length });
+    let candidate: InsightCandidate;
+
+    if (this.llmDeps && this.botConfig) {
+      // Self-refine path: generate → critique → refine → evaluate
+      const initialResult = await this.generateInsights(persona, input, genOpts);
+
+      if (!initialResult || initialResult.length === 0) {
+        log.warn("insight generation produced no candidates", { userId: persona.identity?.userId, mode });
+        return null;
+      }
+
+      let bestCandidate: InsightCandidate = initialResult[0]!;
+      let bestScore = scoreCandidate(bestCandidate);
+
+      if (bestScore < QUALITY_EARLY_EXIT_THRESHOLD) {
+        for (let refine = 0; refine < MAX_QUALITY_RETRIES - 1; refine++) {
+          const critique = await critiqueInsightWithLLM(
+            bestCandidate, persona, this.botConfig, this.llmDeps,
+          );
+          if (!critique) break;
+
+          const refined = await refineInsightWithLLM(
+            "", bestCandidate, critique,
+            persona, this.botConfig, this.llmDeps,
+          );
+          if (!refined) break;
+
+          const refinedScore = scoreCandidate(refined);
+          if (refinedScore > bestScore) {
+            bestCandidate = refined;
+            bestScore = refinedScore;
+          }
+          if (bestScore >= QUALITY_EARLY_EXIT_THRESHOLD) break;
+        }
+      }
+
+      candidate = bestCandidate;
+      log.info("resolve: self-refine selected candidate", { userId: persona.identity?.userId, finalScore: bestScore });
+    } else {
+      // Blind retry fallback (no LLM deps)
+      const allCandidates: InsightCandidate[] = [];
+      for (let attempt = 0; attempt < MAX_QUALITY_RETRIES; attempt++) {
+        const result = await this.generateInsights(persona, input, genOpts);
+        if (result && result.length > 0) {
+          allCandidates.push(...result);
+        }
+        if (attempt > 0) {
+          log.info("resolve: quality retry", { userId: persona.identity?.userId, attempt: attempt + 1, candidatesSoFar: allCandidates.length });
+        }
+        if (allCandidates.length > 0 && attempt < MAX_QUALITY_RETRIES - 1) {
+          const bestSoFar = Math.max(...allCandidates.map(scoreCandidate));
+          if (bestSoFar >= QUALITY_EARLY_EXIT_THRESHOLD) {
+            log.info("resolve: early exit — quality threshold met", { userId: persona.identity?.userId, attempt: attempt + 1, bestScore: bestSoFar });
+            break;
+          }
+        }
+      }
+
+      if (allCandidates.length === 0) return null;
+
+      const scored = allCandidates.map((c) => ({
+        candidate: c,
+        score: scoreCandidate(c),
+      })).sort((a, b) => b.score - a.score);
+
+      candidate = scored[0]!.candidate;
+      log.info("resolve: selected best candidate", { userId: persona.identity?.userId, finalScore: scored[0]!.score, totalCandidates: allCandidates.length });
+    }
 
     // Safety-net dedup: block near-identical content only
     if (recentInsightContents.length > 0) {
@@ -244,22 +375,24 @@ export class ProactiveScheduler {
       }
     }
 
-    // v2 insights are crystallized from conversation fragments — skip web-source verification
-    if (candidate.source === "v2") {
-      candidate.verificationStatus = "partial";
-      log.info("v2 insight bypasses verification gate", {
-        source: candidate.source,
-        content: candidate.content.slice(0, 60),
-      });
-      return candidate;
+    if (this.llmDeps && this.botConfig && this.config.llmFreshnessCheck !== false && recentInsightContents.length >= 2) {
+      const freshness = await checkSemanticNoveltyWithLLM(
+        candidate, recentInsightContents, this.botConfig, this.llmDeps,
+      );
+      if (!freshness.isNovel) {
+        log.info("LLM freshness check: semantically repetitive", { userId: persona.identity?.userId, reason: freshness.reason });
+        return null;
+      }
     }
 
-    const verification = verifyInsight({
-      content: candidate.content,
-      sources: candidate.sources,
-      verificationLevel: "basic",
-    });
-    candidate.verificationStatus = verification.status;
+    if (this.llmDeps && this.botConfig) {
+      const verification = await verifyInsightWithLLM(
+        candidate, persona, this.botConfig, this.llmDeps,
+      );
+      candidate.verificationStatus = verification.status;
+    } else {
+      candidate.verificationStatus = candidate.sources.length > 0 ? "verified" : "unverified";
+    }
 
     if (opportunity.type !== "exploration" && candidate.verificationStatus === "unverified") {
       log.warn("insight candidate has no verifiable sources, skipping delivery", {
@@ -292,7 +425,7 @@ export class ProactiveScheduler {
     }
     log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct });
 
-    const opportunities = this.search(persona, event);
+    const opportunities = await this.search(persona, event);
     const byType: Record<string, number> = {};
     for (const opp of opportunities) {
       byType[opp.type] = (byType[opp.type] ?? 0) + 1;
@@ -394,6 +527,73 @@ export class ProactiveScheduler {
     };
 
     scheduleNext();
+  }
+
+  private async scanExploration(persona: PersonaTree, event: SchedulerEvent): Promise<Opportunity[]> {
+    const ratio = this.config.patternModeRatio ?? 0.5;
+    const knowledgeRatio = 1 - ratio;
+    const surpriseWeight = knowledgeRatio * 0.8;
+    const roll = (event.timestamp % 100) / 100;
+
+    const userDomainKeys = Object.keys(persona.domains);
+    if (userDomainKeys.length === 0) return [];
+
+    const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
+    const baseline = computeBaselinePAccept(persona, fatigued.size > 0 ? fatigued : undefined);
+
+    if (roll < ratio) {
+      const userId = persona.identity?.userId;
+      if (userId) {
+        const clusters = await this.fragmentStore.findClusters(userId);
+        const hasEnoughFragments = clusters.some(c => c.fragmentIds.length >= 2);
+        if (!hasEnoughFragments) {
+          return [{
+            type: "exploration" as const,
+            targetDomains: [],
+            sourceDomains: [],
+            pNeed: 0.55,
+            pAccept: baseline,
+            pAct: 0.55 * baseline,
+            metadata: { mode: "surprise" },
+          }];
+        }
+      }
+      return [{
+        type: "exploration" as const,
+        targetDomains: [],
+        sourceDomains: [],
+        pNeed: 0.55,
+        pAccept: baseline,
+        pAct: 0.55 * baseline,
+        metadata: { mode: "pattern" },
+      }];
+    }
+
+    if (roll < ratio + surpriseWeight) {
+      return [{
+        type: "exploration" as const,
+        targetDomains: [],
+        sourceDomains: [],
+        pNeed: 0.55,
+        pAccept: baseline,
+        pAct: 0.55 * baseline,
+        metadata: { mode: "surprise" },
+      }];
+    }
+
+    const fatiguedList = [...fatigued];
+    const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
+    const targetDomain = bestTopic ?? userDomainKeys[Math.floor((event.timestamp / 7) % userDomainKeys.length)];
+    if (!targetDomain) return [];
+    return [{
+      type: "exploration" as const,
+      targetDomains: [targetDomain],
+      sourceDomains: [],
+      pNeed: 0.5,
+      pAccept: baseline,
+      pAct: 0.5 * baseline,
+      metadata: { mode: "extend" },
+    }];
   }
 
   stop(): void {
@@ -632,43 +832,6 @@ function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
 
-function scanExploration(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
-  const surpriseRatio = 0.8;
-  const roll = (event.timestamp % 10) / 10;
-  const mode: InsightMode = roll < surpriseRatio ? "surprise" : "extend";
-
-  const userDomainKeys = Object.keys(persona.domains);
-  if (userDomainKeys.length === 0) return [];
-
-  const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
-  const baseline = computeBaselinePAccept(persona, fatigued.size > 0 ? fatigued : undefined);
-
-  if (mode === "surprise") {
-    return [{
-      type: "exploration" as const,
-      targetDomains: [],
-      sourceDomains: [],
-      pNeed: 0.55,
-      pAccept: baseline,
-      pAct: 0.55 * baseline,
-      metadata: { mode: "surprise" },
-    }];
-  }
-
-  const fatiguedList = [...fatigued];
-  const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
-  const targetDomain = bestTopic ?? userDomainKeys[Math.floor((event.timestamp / 7) % userDomainKeys.length)];
-  if (!targetDomain) return [];
-  return [{
-    type: "exploration" as const,
-    targetDomains: [targetDomain],
-    sourceDomains: [],
-    pNeed: 0.5,
-    pAccept: baseline,
-    pAct: 0.5 * baseline,
-    metadata: { mode: "extend" },
-  }];
-}
 
 export function filterBlacklistedOpportunities(
   opportunities: Opportunity[],

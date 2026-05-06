@@ -54,6 +54,13 @@ function makeInsight(overrides: Partial<InsightRecord> = {}): InsightRecord {
   };
 }
 
+function makeInsightWithVariant(overrides: Partial<InsightRecord> = {}): InsightRecord {
+  return makeInsight({
+    promptVariant: { fewShotSet: 1, frameIndex: 2, structureSeed: 42 },
+    ...overrides,
+  });
+}
+
 describe("processInsightFeedback", () => {
   it("increases bandit alpha for target domains on positive feedback", () => {
     const persona = makePersona();
@@ -196,6 +203,75 @@ describe("processInsightFeedback", () => {
     expect(persona.feedbackProfile.topicBandits["AI/机器学习"]).toBe(originalBanditRef);
     expect(persona.rapport.trustScore).toBe(originalTrust);
     expect(persona.feedbackProfile.optimalFrequencyHours).toBe(originalFreq);
+  });
+
+  it("updates prompt bandit alpha for all variant arms on positive feedback", () => {
+    const persona = makePersona();
+    const insight = makeInsightWithVariant();
+
+    const result = processInsightFeedback(persona, insight, "positive");
+
+    const pb = result.feedbackProfile.promptBandits!;
+    expect(pb["fewShot:1"].alpha).toBe(3);
+    expect(pb["fewShot:1"].beta).toBe(1);
+    expect(pb["frame:2"].alpha).toBe(3);
+    expect(pb["frame:2"].beta).toBe(1);
+    expect(pb["seed:42"].alpha).toBe(3);
+    expect(pb["seed:42"].beta).toBe(1);
+  });
+
+  it("updates prompt bandit beta for all variant arms on negative feedback", () => {
+    const persona = makePersona();
+    const insight = makeInsightWithVariant();
+
+    const result = processInsightFeedback(persona, insight, "negative");
+
+    const pb = result.feedbackProfile.promptBandits!;
+    expect(pb["fewShot:1"].alpha).toBe(2);
+    expect(pb["fewShot:1"].beta).toBe(2);
+    expect(pb["frame:2"].alpha).toBe(2);
+    expect(pb["frame:2"].beta).toBe(2);
+    expect(pb["seed:42"].alpha).toBe(2);
+    expect(pb["seed:42"].beta).toBe(2);
+  });
+
+  it("does not create prompt bandits when insight has no promptVariant", () => {
+    const persona = makePersona();
+    const insight = makeInsight();
+
+    const result = processInsightFeedback(persona, insight, "positive");
+
+    expect(result.feedbackProfile.promptBandits).toBeUndefined();
+  });
+
+  it("creates new arm entries when prompt bandit does not exist yet", () => {
+    const persona = makePersona({
+      promptBandits: { "fewShot:0": { alpha: 5, beta: 3, lastUpdated: 100 } },
+    });
+    const insight = makeInsightWithVariant();
+
+    const result = processInsightFeedback(persona, insight, "engaged");
+
+    const pb = result.feedbackProfile.promptBandits!;
+    expect(pb["fewShot:0"]).toEqual({ alpha: 5, beta: 3, lastUpdated: 100 });
+    expect(pb["fewShot:1"].alpha).toBe(3);
+    expect(pb["frame:2"].alpha).toBe(3);
+    expect(pb["seed:42"].alpha).toBe(3);
+  });
+
+  it("includes patternFrame arm when present in promptVariant", () => {
+    const persona = makePersona();
+    const insight = makeInsightWithVariant({
+      promptVariant: { fewShotSet: 0, frameIndex: 1, patternFrame: 3 },
+    });
+
+    const result = processInsightFeedback(persona, insight, "positive");
+
+    const pb = result.feedbackProfile.promptBandits!;
+    expect(pb["fewShot:0"].alpha).toBe(3);
+    expect(pb["frame:1"].alpha).toBe(3);
+    expect(pb["pattern:3"].alpha).toBe(3);
+    expect(pb["seed:3"]).toBeUndefined();
   });
 });
 

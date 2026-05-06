@@ -33,21 +33,14 @@ export type { LlmInsightDeps, LlmInsightOptions } from "./insight/llm-engine.js"
 export { findCrossDomainConnections, semanticDistance, discoverDomainsFromPersona, extendDomainGraph } from "./insight/cross-domain-mapper.js";
 export type { DomainGraph } from "./insight/cross-domain-mapper.js";
 export { scoreSerendipity } from "./insight/serendipity-scorer.js";
-export { verifyInsight } from "./insight/verification/pipeline.js";
 export type { InsightEngineInput, InsightCandidate, VerificationResult } from "./insight/types.js";
 
-// Insight v2 module
+// Insight module
 export { FragmentStore } from "./insight/fragment-store.js";
 export { collectFragments, shouldSkipTurn, createDefaultFragmentCollectorDeps } from "./insight/fragment-collector.js";
 export type { FragmentCollectorDeps } from "./insight/fragment-collector.js";
-export { assessQuality, createDefaultQualityGateDeps } from "./insight/quality-gate.js";
-export type { QualityGateDeps } from "./insight/quality-gate.js";
-export { crystallize, createCrystallizationDepsFromStore } from "./insight/crystallization.js";
-export type { CrystallizationDeps, CrystallizationMode } from "./insight/crystallization.js";
-export { composeInsight, createDefaultComposerDeps } from "./insight/composer.js";
-export type { ComposerDeps } from "./insight/composer.js";
-export { InsightV2Pipeline, createPipelineDeps, createV2InsightGenerator, collectFragmentsForTurn } from "./insight/pipeline.js";
-export type { PipelineDeps, PipelineResult } from "./insight/pipeline.js";
+export { createPipelineDeps } from "./insight/pipeline.js";
+export type { PipelineDeps } from "./insight/pipeline.js";
 export type {
   Fragment,
   FragmentKind,

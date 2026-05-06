@@ -5,10 +5,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { buildInsightPrompt, generateInsightCandidatesLLM, isSubstantiveContent, GENERIC_INSIGHT_PATTERNS } from "./llm-engine.js";
+import { buildInsightPrompt, buildPatternInsightPrompt, generateInsightCandidatesLLM, isSubstantiveContent, GENERIC_INSIGHT_PATTERNS } from "./llm-engine.js";
 import type { LlmInsightDeps, WebSearchResult } from "./llm-engine.js";
 import type { PersonaTree } from "../types.js";
 import type { InsightEngineInput } from "./types.js";
+import type { Fragment, FragmentCluster } from "./fragment-types.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
@@ -188,7 +189,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live insight qualit
       const searchQuery = `${targetDomain} 最新进展 2026`;
       const webResults = await tavilySearch(searchQuery);
 
-      const prompt = buildInsightPrompt(persona, input, webResults, persona.feedbackProfile.recentInsightContents);
+      const { prompt } = buildInsightPrompt(persona, input, webResults, persona.feedbackProfile.recentInsightContents);
       const raw = await callLLM(prompt);
       const insights = parseInsights(raw);
 
@@ -253,4 +254,97 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live insight qualit
     const uniqueOpenings = new Set(openings);
     expect(uniqueOpenings.size).toBeGreaterThanOrEqual(Math.ceil(rawInsights.length * 0.5));
   }, 300_000);
+});
+
+// ═════════════════════════════════════════════════════════════════════════
+
+describe.skipIf(!isLive || !ZAI_API_KEY)("pattern mode", () => {
+  function makeFragments(): Fragment[] {
+    const now = Date.now();
+    return [
+      { id: "f1", userId: "u1", createdAt: now - 3600000, expiresAt: now + 86400000, kind: "methodological_habit" as const, evidence: "每次遇到性能问题都先加缓存而不是分析瓶颈", domains: ["TypeScript", "认知系统设计"], structuralTag: "default_solution", strength: 0.7 },
+      { id: "f2", userId: "u1", createdAt: now - 7200000, expiresAt: now + 86400000, kind: "implicit_priority" as const, evidence: "嘴上说想快速上线，但架构选择都优化完备性", domains: ["软件架构"], structuralTag: "stated_vs_actual", strength: 0.8 },
+      { id: "f3", userId: "u1", createdAt: now - 10800000, expiresAt: now + 86400000, kind: "assumption" as const, evidence: "默认认为所有问题都有优雅的抽象解法", domains: ["Rust", "TypeScript"], structuralTag: "hidden_assumption", strength: 0.6 },
+    ];
+  }
+
+  function makeFragmentClusters(): FragmentCluster[] {
+    const now = Date.now();
+    return [
+      { id: "c1", fragmentIds: ["f1", "f3"], domains: ["TypeScript", "Rust"], structuralPattern: "over_engineering_tendency", averageStrength: 0.65, createdAt: now },
+    ];
+  }
+
+  function makePatternInput(): InsightEngineInput {
+    return {
+      targetDomains: ["认知系统设计", "TypeScript"],
+      recentFocus: ["认知层洞察质量优化"],
+      trustScore: 0.85,
+      recentInsightIds: [],
+      recentInsightContents: [
+        "Python的GIL被人骂了这么多年，但换个角度看它其实做对了一件事...",
+      ],
+      mode: "pattern",
+      fragments: makeFragments(),
+      fragmentClusters: makeFragmentClusters(),
+    };
+  }
+
+  it("generates behavioral insight from fragments", async () => {
+    const persona = makePersona();
+    const input = makePatternInput();
+
+    const { prompt } = buildPatternInsightPrompt(persona, input, persona.feedbackProfile.recentInsightContents);
+    const raw = await callLLM(prompt);
+    const insights = parseInsights(raw);
+
+    console.log(`\n  [pattern mode] LLM returned ${insights.length} insight(s)`);
+    for (const ins of insights) {
+      console.log(`  洞察: ${ins.content}`);
+    }
+
+    expect(insights.length).toBeGreaterThanOrEqual(1);
+
+    const content = insights[0]!.content ?? "";
+    expect(content.length).toBeGreaterThan(20);
+    expect(isSubstantiveContent(content)).toBe(true);
+
+    const bannedHits = GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(content));
+    expect(bannedHits.length).toBe(0);
+  }, 120_000);
+
+  it("buildPatternInsightPrompt includes fragment observations", () => {
+    const persona = makePersona();
+    const input = makePatternInput();
+
+    const { prompt } = buildPatternInsightPrompt(persona, input, []);
+
+    expect(prompt).toContain("OBSERVED THINKING PATTERNS");
+    expect(prompt).toContain("methodological_habit");
+    expect(prompt).toContain("default_solution");
+    expect(prompt).toContain("TypeScript");
+    expect(prompt).toContain("behavioral observation");
+  });
+
+  it("pattern prompt avoids formulaic structure across rounds", async () => {
+    const persona = makePersona();
+    const openings: string[] = [];
+
+    for (let round = 0; round < 3; round++) {
+      const input = makePatternInput();
+      const { prompt } = buildPatternInsightPrompt(persona, input, persona.feedbackProfile.recentInsightContents);
+      const raw = await callLLM(prompt);
+      const insights = parseInsights(raw);
+
+      if (insights.length > 0 && insights[0]!.content) {
+        openings.push(insights[0]!.content.trim().slice(0, 10));
+        console.log(`  [pattern round ${round + 1}] 开头: ${insights[0]!.content.trim().slice(0, 20)}...`);
+      }
+    }
+
+    expect(openings.length).toBeGreaterThanOrEqual(2);
+
+    const uniqueOpenings = new Set(openings);
+    expect(uniqueOpenings.size).toBeGreaterThanOrEqual(2);
+  }, 360_000);
 });

@@ -400,7 +400,7 @@ describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
       },
     });
     const input = makeInput({ targetDomains: ["TypeScript"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "TypeScript 5.5", url: "https://example.com", snippet: "New type predicates" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -424,7 +424,7 @@ describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
       },
     });
     const input = makeInput({ targetDomains: ["Rust"] });
-    const prompt = buildInsightPrompt(persona, input, []);
+    const { prompt } = buildInsightPrompt(persona, input, []);
     expect(prompt).not.toContain("EXTERNAL_FACTS");
   });
 
@@ -443,7 +443,7 @@ describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
       },
     });
     const input = makeInput({ targetDomains: ["Rust"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "Rust async", url: "https://example.com", snippet: "Tokio runtime update" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("prioritize building the insight around those external facts");
@@ -466,7 +466,7 @@ describe("buildInsightPrompt — domain alias matching", () => {
       },
     });
     const input = makeInput({ targetDomains: ["TypeScript"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "New TC39 decorator metadata", url: "https://example.com", snippet: "Stage 3 decorator proposal" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -488,7 +488,7 @@ describe("buildInsightPrompt — domain alias matching", () => {
       },
     });
     const input = makeInput({ targetDomains: ["TypeScript"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "TypeScript 5.5 Release", url: "https://example.com", snippet: "New type predicates" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -510,7 +510,7 @@ describe("buildInsightPrompt — domain alias matching", () => {
       },
     });
     const input = makeInput({ targetDomains: ["MCP"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "Model Context Protocol spec v2", url: "https://example.com", snippet: "MCP spec updated" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -744,13 +744,11 @@ const TEST_STRATEGY: SearchStrategy = {
 
 describe("buildSurpriseInsightPrompt", () => {
   it("includes INFERRED LATENT INTEREST section with strategy fields", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,);
 
     expect(prompt).toContain("INFERRED LATENT INTEREST");
     expect(prompt).toContain("eBPF distributed tracing");
@@ -759,13 +757,11 @@ describe("buildSurpriseInsightPrompt", () => {
   });
 
   it("includes SPECIFIC FACTS and anchor block", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,);
 
     expect(prompt).toContain("SPECIFIC FACTS YOU KNOW ABOUT THIS USER");
     expect(prompt).toContain("type narrowing");
@@ -777,64 +773,54 @@ describe("buildSurpriseInsightPrompt", () => {
       { title: "eBPF Tracing Guide", url: "https://example.com/ebpf", snippet: "Rust-based eBPF distributed tracing" },
     ];
 
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      webResults,
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    webResults,
+    [],
+    TEST_STRATEGY,);
 
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("Rust-based eBPF distributed tracing");
   });
 
   it("includes language instruction for Chinese by default", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,);
 
     expect(prompt).toContain("用中文输出。");
   });
 
   it("includes English language instruction when outputLanguage is 'en'", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-      "en",
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,
+    "en",);
 
     expect(prompt).toContain("Output in English.");
   });
 
   it("includes PAST INSIGHTS when recentInsightContents provided", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      ["Rust的所有权模型在并发场景下有独特的优势", "TypeScript 5.5新增了类型推断的改进"],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    ["Rust的所有权模型在并发场景下有独特的优势", "TypeScript 5.5新增了类型推断的改进"],
+    TEST_STRATEGY,);
 
     expect(prompt).toContain("PAST INSIGHTS");
     expect(prompt).toContain("Rust的所有权模型在并发场景下有独特的优势");
   });
 
   it("includes opening bans from recent insight contents", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      ["最近发现了一个有趣的技术", "你有没有想过eBPF"],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    ["最近发现了一个有趣的技术", "你有没有想过eBPF"],
+    TEST_STRATEGY,);
 
     expect(prompt).toContain("不要以");
   });
@@ -1027,7 +1013,7 @@ describe("buildInsightPrompt — compound domain keyword splitting", () => {
       },
     });
     const input = makeInput({ targetDomains: ["AI/机器学习"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "机器学习最新突破", url: "https://example.com", snippet: "深度学习模型优化" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -1051,7 +1037,7 @@ describe("buildInsightPrompt — bigram similarity matching", () => {
       },
     });
     const input = makeInput({ targetDomains: ["artificialintelligence"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "New breakthroughs in artificial intelligence", url: "https://example.com", snippet: "AI research advances" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -1422,35 +1408,29 @@ describe("generateInsightCandidatesLLM — domain force-alignment", () => {
 
 describe("buildInsightPrompt — TARGET DOMAINS constraint", () => {
   it("includes TARGET DOMAINS section with input targetDomains", () => {
-    const prompt = buildInsightPrompt(
-      makePersona(),
-      makeInput({ targetDomains: ["软件架构", "网络安全"] }),
-      [],
-      [],
-    );
+    const { prompt } = buildInsightPrompt(makePersona(),
+    makeInput({ targetDomains: ["软件架构", "网络安全"] }),
+    [],
+    [],);
     expect(prompt).toContain("TARGET DOMAINS");
     expect(prompt).toContain("软件架构");
     expect(prompt).toContain("网络安全");
   });
 
   it("includes domain alignment requirement in hard constraints", () => {
-    const prompt = buildInsightPrompt(
-      makePersona(),
-      makeInput({ targetDomains: ["编程语言"] }),
-      [],
-      [],
-    );
+    const { prompt } = buildInsightPrompt(makePersona(),
+    makeInput({ targetDomains: ["编程语言"] }),
+    [],
+    [],);
     expect(prompt).toContain("TARGET DOMAINS");
     expect(prompt).toContain("targetDomains字段必须包含这些域");
   });
 
   it("includes CRITICAL domain constraint in JSON schema section", () => {
-    const prompt = buildInsightPrompt(
-      makePersona(),
-      makeInput({ targetDomains: ["数据科学"] }),
-      [],
-      [],
-    );
+    const { prompt } = buildInsightPrompt(makePersona(),
+    makeInput({ targetDomains: ["数据科学"] }),
+    [],
+    [],);
     expect(prompt).toContain("targetDomains MUST include at least one of: 数据科学");
   });
 });
@@ -1471,7 +1451,7 @@ describe("buildInsightPrompt — targetDomains in keyword map", () => {
       },
     });
     const input = makeInput({ targetDomains: ["网络安全"] });
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "网络安全最新漏洞", url: "https://example.com", snippet: "零日漏洞防护方案" },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -1620,22 +1600,21 @@ describe("buildInsightPrompt — communicationStyle", () => {
         communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
       },
     });
-    const prompt = buildInsightPrompt(persona, makeInput());
+    const { prompt } = buildInsightPrompt(persona, makeInput());
     expect(prompt).toContain("casual");
     expect(prompt).toContain("1-2 sentences maximum");
     expect(prompt).toContain("deep technical literacy");
   });
 
-  it("includes few-shot examples", () => {
-    const prompt = buildInsightPrompt(makePersona(), makeInput());
+  it("includes diverse few-shot examples", () => {
+    const { prompt } = buildInsightPrompt(makePersona(), makeInput());
     expect(prompt).toContain("EXAMPLES of ideal insights");
-    expect(prompt).toContain("WebAssembly");
-    expect(prompt).toContain("DPO");
+    expect(prompt).toContain("Do NOT copy their structure");
   });
 
   it("has voice section at top of prompt", () => {
     const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Alice" } });
-    const prompt = buildInsightPrompt(persona, makeInput());
+    const { prompt } = buildInsightPrompt(persona, makeInput());
     const firstLine = prompt.split("\n")[0]!;
     expect(firstLine).toContain("Alice");
   });
@@ -1649,39 +1628,33 @@ describe("buildSurpriseInsightPrompt — communicationStyle", () => {
         communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "beginner", preferredLanguage: "en" },
       },
     });
-    const prompt = buildSurpriseInsightPrompt(
-      persona,
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(persona,
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,);
     expect(prompt).toContain("professional but warm");
     expect(prompt).toContain("2-3 sentences");
     expect(prompt).toContain("Avoid jargon");
   });
 
   it("includes few-shot examples in surprise prompt", () => {
-    const prompt = buildSurpriseInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,);
     expect(prompt).toContain("EXAMPLES of ideal insights");
     expect(prompt).toContain("DPO");
   });
 
   it("has voice section at top of surprise prompt", () => {
     const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Bob" } });
-    const prompt = buildSurpriseInsightPrompt(
-      persona,
-      makeInput(),
-      [],
-      [],
-      TEST_STRATEGY,
-    );
+    const { prompt } = buildSurpriseInsightPrompt(persona,
+    makeInput(),
+    [],
+    [],
+    TEST_STRATEGY,);
     const firstLine = prompt.split("\n")[0]!;
     expect(firstLine).toContain("Bob");
   });

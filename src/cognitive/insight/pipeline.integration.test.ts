@@ -181,11 +181,11 @@ function explorationOpportunity(mode: InsightMode): Opportunity {
 // Realistic timestamp: enough elapsed time for the gate, with last digit controlling mode.
 // 10 hours in ms = 36_000_000; +7 ensures timestamp % 10 < 8 (surprise).
 function surpriseTimestamp(): number {
-  return 36_000_000 + 7;
+  return 36_000_000 + 65;
 }
 
 function extendTimestamp(): number {
-  return 36_000_000 + 9;
+  return 36_000_000 + 95;
 }
 
 // ---------------------------------------------------------------------------
@@ -448,7 +448,7 @@ describe("insight pipeline integration", () => {
     expect(delivered[0]!.id).toBe(result!.id);
   });
 
-  it("search produces exploration opportunity with correct mode based on timestamp", () => {
+  it("search produces exploration opportunity with correct mode based on timestamp", async () => {
     const persona = makePersona();
     const scheduler = new ProactiveScheduler(
       makeSchedulerConfig(),
@@ -460,13 +460,13 @@ describe("insight pipeline integration", () => {
     );
 
     const surpriseEvent: SchedulerEvent = { type: "timer", timestamp: surpriseTimestamp() };
-    const surpriseOpps = scheduler.search(persona, surpriseEvent);
+    const surpriseOpps = await scheduler.search(persona, surpriseEvent);
     const explorationSurprise = surpriseOpps.find((o) => o.type === "exploration");
     expect(explorationSurprise).toBeDefined();
     expect((explorationSurprise!.metadata as Record<string, unknown>)?.mode).toBe("surprise");
 
     const extendEvent: SchedulerEvent = { type: "timer", timestamp: extendTimestamp() };
-    const extendOpps = scheduler.search(persona, extendEvent);
+    const extendOpps = await scheduler.search(persona, extendEvent);
     const explorationExtend = extendOpps.find((o) => o.type === "exploration");
     expect(explorationExtend).toBeDefined();
     expect((explorationExtend!.metadata as Record<string, unknown>)?.mode).toBe("extend");

@@ -1319,42 +1319,12 @@ export async function startGatewayServer(
         infoScanSource = new InfoScanSource(scanIntervalMs);
 
         // ── Insight engine setup ──
-        let insightGeneratorOverride: import("../cognitive/scheduler/proactive-scheduler.js").InsightGeneratorFn | undefined;
-        let fragmentStoreForDeepScan: import("../cognitive/insight/fragment-store.js").FragmentStore | undefined;
+        const { FragmentStore: FragmentStoreCtor } = await import("../cognitive/insight/fragment-store.js");
+        const sharedFragmentStore = new FragmentStoreCtor(resolveConfigDir());
 
         const engineMode = cfgAtStart.cognitive?.insight?.engine ?? "dual";
-
-        if (engineMode === "v2" || engineMode === "dual") {
-          const { InsightV2Pipeline, createPipelineDeps, createV2InsightGenerator } = await import("../cognitive/insight/pipeline.js");
-          const { FragmentStore } = await import("../cognitive/insight/fragment-store.js");
-
-          const pipelineDeps = createPipelineDeps(resolveConfigDir());
-          fragmentStoreForDeepScan = new FragmentStore(resolveConfigDir());
-
-          const v1FallbackForV2 = async (persona: import("../cognitive/types.js").PersonaTree, input: import("../cognitive/insight/types.js").InsightEngineInput) => {
-            return generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
-              maxCandidates: 3,
-              timeout: 20_000,
-              systemContext: workspacePersonaContext || undefined,
-            });
-          };
-
-          const pipeline = new InsightV2Pipeline(pipelineDeps, v1FallbackForV2);
-          const v2Generator = createV2InsightGenerator(pipeline, cfgAtStart);
-
-          if (engineMode === "v2") {
-            insightGeneratorOverride = v2Generator;
-            log.info("cognitive insight engine: v2 (blind spot detection) active");
-          } else {
-            const { createDualInsightGenerator } = await import("../cognitive/insight/pipeline.js");
-            insightGeneratorOverride = createDualInsightGenerator(v1FallbackForV2, v2Generator);
-            log.info("cognitive insight engine: dual (v1 external + v2 internal) active");
-          }
-        }
-
-        if (engineMode === "v1") {
-          log.info("cognitive insight engine: v1 (external search) active");
-        }
+        const normalizedMode = engineMode === "v2" ? "pattern" : engineMode === "v1" ? "knowledge" : engineMode === "dual" ? "unified" : engineMode;
+        log.info(`cognitive insight engine: ${normalizedMode} active (requested: ${engineMode})`);
 
         const proactiveScheduler = new ProactiveScheduler(
           {
@@ -1363,6 +1333,9 @@ export async function startGatewayServer(
             activeHoursStart: cfgAtStart.cognitive?.proactive?.activeHours?.start,
             activeHoursEnd: cfgAtStart.cognitive?.proactive?.activeHours?.end,
             timezone: cfgAtStart.cognitive?.proactive?.activeHours?.timezone,
+            patternModeRatio: cfgAtStart.cognitive?.insight?.patternModeRatio,
+            patternVerification: cfgAtStart.cognitive?.insight?.patternVerification,
+            llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
           },
           {
             loadPersona: async (userId) => cognitiveStore.load("main", userId),
@@ -1411,13 +1384,15 @@ export async function startGatewayServer(
             },
           },
           {
-            insightGenerator: insightGeneratorOverride
-              ?? (async (persona, input, options) =>
-                generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
-                  maxCandidates: options?.maxCandidates,
-                  timeout: 20_000,
-                  systemContext: workspacePersonaContext || undefined,
-                })),
+            insightGenerator: async (persona, input, options) =>
+              generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
+                maxCandidates: options?.maxCandidates,
+                timeout: 20_000,
+                systemContext: workspacePersonaContext || undefined,
+              }),
+            fragmentStore: sharedFragmentStore,
+            llmDeps: insightDeps,
+            botConfig: cfgAtStart,
           },
         );
 
@@ -1443,31 +1418,6 @@ export async function startGatewayServer(
           async () => (await cognitiveStore.listUserIds("main")).filter((id) => !id.startsWith("kaijibot-")),
           schedulerIntervalMs,
         );
-
-        // Deep-scan timer for v2 crystallization (every 4-8 hours)
-        if (fragmentStoreForDeepScan && (engineMode === "v2" || engineMode === "dual")) {
-          const { crystallize, createCrystallizationDepsFromStore } = await import("../cognitive/insight/crystallization.js");
-          const deepScanIntervalMs = (4 + Math.random() * 4) * 3600_000; // 4-8h with jitter
-          const deepScanTimer = setInterval(async () => {
-            const userIds = (await cognitiveStore.listUserIds("main")).filter(id => !id.startsWith("kaijibot-"));
-            for (const userId of userIds) {
-              try {
-                const persona = await cognitiveStore.load("main", userId);
-                if (!persona) continue;
-                const crystDeps = createCrystallizationDepsFromStore(fragmentStoreForDeepScan!);
-                const candidates = await crystallize(userId, persona, cfgAtStart, crystDeps, "deep_scan");
-                if (candidates.length > 0) {
-                  persona.activeBlindSpots = [...(persona.activeBlindSpots ?? []), ...candidates].slice(-10);
-                  await cognitiveStore.save("main", userId, persona);
-                  log.info(`deep scan crystallized ${candidates.length} blind spot(s) for ${userId}`);
-                }
-              } catch (e) {
-                log.warn(`deep scan failed for ${userId}: ${String(e)}`);
-              }
-            }
-          }, deepScanIntervalMs);
-          deepScanTimer.unref();
-        }
 
         log.info(`cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`);
       } catch (err) {

@@ -7,10 +7,11 @@ import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
+import type { InsightCandidate, InsightEngineInput, InsightMode, LlmCritiqueResult, PromptBuildResult, VerificationResult } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
 import { isDuplicateByContent, isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
+import { pickPromptVariant } from "../feedback/preference-learner.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
@@ -30,6 +31,77 @@ export function buildVoiceSection(persona: PersonaTree): string {
   }
   return parts.join("\n");
 }
+
+const DIVERSE_FEW_SHOT_SETS = [
+  {
+    name: "Cross-domain bridge",
+    examples: [
+      {
+        context: "User knows React and Rust. Bridge: WebAssembly",
+        chinese: "Rust 编译到 WASM 的性能实测比 JS 快 3-10 倍，但你之前关注的 React 组件库有个完全不同的路线——编译时提取计算到 Worker，不碰 WASM。这对你同时写 Rust 和 React 的场景可能更有启发。",
+        english: "Rust-to-WASM benchmarks show 3-10x over JS, but the React lib you follow takes a different approach — compile-time extraction to Workers, no WASM. Might be more relevant for your Rust+React stack.",
+      },
+      {
+        context: "User tracks LLM fine-tuning. New: DPO",
+        chinese: "你之前试过 LoRA 微调，最近 DPO 在大多数场景下已经能替代 RLHF 了——不需要 reward model，代码量是 PPO 的十分之一。",
+        english: "You tried LoRA fine-tuning before — DPO now replaces RLHF in most scenarios. No reward model needed, code is 10x simpler than PPO.",
+      },
+    ],
+  },
+  {
+    name: "Counter-intuitive observation",
+    examples: [
+      {
+        context: "User optimizes for architecture flexibility",
+        chinese: "你一直在用'先搭架子再填细节'的方式做架构，但你最近的几个技术选择都在优化灵活性——你实际上在回避什么时候该做硬编码决策这个问题。",
+        english: "You keep using the 'scaffold first, fill in details later' approach to architecture, but your recent tech choices all optimize for flexibility — you're actually avoiding the question of when to make hardcoded decisions.",
+      },
+      {
+        context: "User says they want to ship fast but invests in tooling",
+        chinese: "你说要快速上线，但花了三周搭基础设施。这不算矛盾——你真正在意的是上线之后能不能快速迭代，而不是上线这个动作本身。",
+        english: "You say you want to ship fast, but spent three weeks on infrastructure. Not a contradiction — what you actually care about is whether you can iterate fast after launch, not the act of launching itself.",
+      },
+    ],
+  },
+  {
+    name: "Behavioral pattern",
+    examples: [
+      {
+        context: "User asks AI for confirmation rather than challenge",
+        chinese: "你问 AI 的方式暴露了一个倾向：你总是在确认自己已经怀疑的方向，而不是让 AI 挑战你的假设。试试反过来问它'我可能哪里想错了'。",
+        english: "The way you ask AI reveals a pattern: you keep confirming directions you already suspect, rather than letting AI challenge your assumptions. Try asking it 'what might I be getting wrong' instead.",
+      },
+      {
+        context: "User explores breadth but avoids going deep in any one area",
+        chinese: "你每次深入一个方向到六七成就会切换到新话题。这不是缺乏专注——你是在用广度给自己找正确的深度方向。但你已经看了够多了，该选一个往下挖了。",
+        english: "Every time you reach 60-70% depth in a direction, you switch to a new topic. Not lack of focus — you're using breadth to find the right direction for depth. But you've seen enough, it's time to pick one and dig.",
+      },
+    ],
+  },
+  {
+    name: "Hidden priority",
+    examples: [
+      {
+        context: "User says they want speed but always chooses completeness",
+        chinese: "你嘴上说想快速迭代，但你每次的架构选择都在追求完备性。这不是矛盾——你其实更在乎系统的可预测性，而不是速度。",
+        english: "You say you want fast iteration, but every architecture choice you make optimizes for completeness. Not a contradiction — you actually care more about system predictability than speed.",
+      },
+      {
+        context: "User claims to value simplicity but gravitates toward complex solutions",
+        chinese: "你说喜欢简单方案，但每次都选了更复杂的那个。不是你口是心非——你真正想要的是'可以自己掌控的复杂'，而不是黑箱式的简单。",
+        english: "You say you prefer simple solutions, but always pick the more complex one. Not hypocrisy — what you actually want is 'complexity you can control yourself', not black-box simplicity.",
+      },
+    ],
+  },
+] as const;
+
+const DIVERSITY_INSTRUCTION = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user.`;
+
+export const CONTRASTIVE_INSTRUCTION = `CONTRASTIVE FRAMEWORK — your insight MUST be genuinely NEW relative to past insights:
+- COUNTER-EXAMPLE: If a past insight said "X is good", find a case where X fails or the opposite holds.
+- INVERSE FRAMING: If a past insight opened with a fact, open with a question/stakes/paradox instead.
+- ORTHOGONAL OBSERVATION: If past insights covered domain A∩B, find a completely different angle (historical, ethical, practical, cross-cultural) on the same intersection.
+- NOVELTY TEST: Before finalizing, check: "Could this insight be mistaken for a paraphrase of any past insight?" If yes, rewrite.`;
 
 const FEW_SHOT_INSIGHTS = [
   {
@@ -130,6 +202,90 @@ export async function generateInsightCandidatesLLM(
   const maxCandidates = options?.maxCandidates ?? 3;
   const mode = input.mode ?? "extend";
 
+  if (mode === "pattern") {
+    const { prompt, variant } = buildPatternInsightPrompt(persona, input, input.recentInsightContents);
+    try {
+      const modelRef =
+        options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+      const prepared = await deps.prepareModel(config, modelRef);
+
+      if ("error" in prepared) {
+        log.warn(`LLM model preparation failed: ${prepared.error}, skipping insight`);
+        return [];
+      }
+
+      const timeoutMs = options?.timeout ?? 20_000;
+      const systemPrompt = options?.systemContext || undefined;
+      const messages: Array<{ role: "user"; content: string; timestamp: number }> = [];
+      messages.push({ role: "user", content: prompt, timestamp: Date.now() });
+
+      const result = await deps.complete(
+        prepared.model,
+        { messages, systemPrompt },
+        {
+          apiKey: prepared.auth.apiKey,
+          maxTokens: options?.maxTokens ?? 2000,
+          temperature: 0.85,
+          signal: AbortSignal.timeout(timeoutMs),
+        },
+      );
+
+      const text = result.content
+        .filter(
+          (block): block is { type: "text"; text: string } =>
+            block.type === "text",
+        )
+        .map((block) => block.text)
+        .join("")
+        .trim();
+
+      if (!text) {
+        log.warn("LLM returned empty response for pattern mode, skipping insight");
+        return [];
+      }
+
+      const candidates = parseLLMInsights(text, maxCandidates);
+      if (candidates.length === 0) {
+        log.warn("LLM response could not be parsed as insights (pattern mode)", { raw: text.slice(0, 300) });
+        return [];
+      }
+      log.info(`Pattern-mode LLM generated ${candidates.length} insight candidate(s)`);
+
+      const recentContents = input.recentInsightContents;
+      const filtered = recentContents.length > 0
+        ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.85, contentWordThreshold: 0.5 }))
+        : candidates;
+
+      if (filtered.length < candidates.length) {
+        log.info("pattern-mode trigram dedup filtered candidates", {
+          before: candidates.length,
+          after: filtered.length,
+        });
+      }
+
+      return filtered.map(c => {
+        const inputDomains = input.targetDomains;
+        const llmDomains = c.targetDomains;
+        const hasOverlap = llmDomains.length > 0 && llmDomains.some(d =>
+          inputDomains.some(id => id.toLowerCase() === d.toLowerCase()),
+        );
+        if (!hasOverlap && inputDomains.length > 0) {
+          log.info("force-aligned pattern-mode LLM output domains to input targetDomains", {
+            llmDomains,
+            inputDomains,
+          });
+          c.targetDomains = [...inputDomains];
+        }
+        c.promptVariant = variant;
+        return c;
+      });
+    } catch (err) {
+      const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+      log.warn(`Pattern-mode LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
+      return [];
+    }
+  }
+
   let webResults: WebSearchResult[] = [];
   let searchStrategy: import("./types.js").SearchStrategy | undefined;
   let queryUsed: string | undefined;
@@ -202,7 +358,7 @@ export async function generateInsightCandidatesLLM(
     }
   }
 
-  const prompt = mode === "surprise" && searchStrategy
+  const { prompt, variant } = mode === "surprise" && searchStrategy
     ? buildSurpriseInsightPrompt(persona, input, webResults, input.recentInsightContents, searchStrategy, outputLanguage, webSnippetByDomain)
     : buildInsightPrompt(persona, input, webResults, input.recentInsightContents, webSnippetByDomain);
 
@@ -284,6 +440,7 @@ export async function generateInsightCandidatesLLM(
       }
       const enriched = enrichWithWebSources(c, webResults);
       if (queryUsed) enriched.searchQueryUsed = queryUsed;
+      enriched.promptVariant = variant;
       return enriched;
     });
   } catch (err) {
@@ -470,7 +627,7 @@ export function buildSurpriseInsightPrompt(
   strategy: import("./types.js").SearchStrategy,
   outputLanguage: string = "zh",
   webSnippetByDomain?: Map<string, string[]>,
-): string {
+): PromptBuildResult {
   const resolvedWebSnippetByDomain = webSnippetByDomain ?? (() => {
     const keywordMap = buildDomainKeywordMap(persona.domains);
     return matchWebResultsToDomains(webResults, keywordMap);
@@ -507,11 +664,11 @@ export function buildSurpriseInsightPrompt(
     : "";
 
   const pastInsightBlock = recentInsightContents.length > 0
-    ? recentInsightContents.slice(-3).map((c, i) => `${i + 1}. ${truncate(c, 80)}`).join("\n")
+    ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
     : "";
 
   const bannedOpenings = recentInsightContents
-    .slice(-3)
+    .slice(-5)
     .map((c) => c.trim().slice(0, 8))
     .filter((o) => o.length >= 4);
 
@@ -523,12 +680,18 @@ export function buildSurpriseInsightPrompt(
     ? "Output in English."
     : "用中文输出。";
 
-  const fewShotBlock = FEW_SHOT_INSIGHTS.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
+  const fewShotIdx = input.feedbackProfile
+    ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
+    : Math.floor(Math.random() * DIVERSE_FEW_SHOT_SETS.length);
+  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
+    .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
 
-  return `${buildVoiceSection(persona)}
+  return { prompt: `${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
+
+${DIVERSITY_INSTRUCTION}
 
 CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
@@ -545,7 +708,7 @@ SPECIFIC FACTS YOU KNOW ABOUT THIS USER:
 ${anchorBlock}
  ${externalFactsBlock ? `\nEXTERNAL_FACTS (fresh web findings):\n${externalFactsBlock}` : ""}
 
-${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
+${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
 ${(input.recentInsightDomains?.length ?? 0) > 0 ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these):\n${input.recentInsightDomains!.slice(-5).map((domains, i) => `${i + 1}. ${domains.join(" + ")}`).join("\n")}` : ""}
 
@@ -578,7 +741,7 @@ IMPORTANT: In the "content" field, escape any inner quotes as \\" or use Chinese
     "relevanceScore": 0.8,
     "surpriseScore": 0.7
   }
-]`;
+]`, variant: { fewShotSet: fewShotIdx, frameIndex: 0 } };
 }
 
 /** Extended context for prompt frame generation. */
@@ -658,10 +821,14 @@ function pickPromptFrame(
   keyInsights: string[],
   recentFocus: string[],
   userName: string,
-): string {
+  feedbackProfile?: InsightEngineInput["feedbackProfile"],
+): { text: string; frameIndex: number } {
   const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
-  const frame = PROMPT_FRAMES[Math.floor(Math.random() * PROMPT_FRAMES.length)];
-  return frame(topic, { domains: domainNames, keyInsights, recentFocus, userName });
+  const frameIdx = feedbackProfile
+    ? pickPromptVariant(feedbackProfile, PROMPT_FRAMES.map((_, i) => `frame:${i}`))
+    : Math.floor(Math.random() * PROMPT_FRAMES.length);
+  const frame = PROMPT_FRAMES[frameIdx]!;
+  return { text: frame(topic, { domains: domainNames, keyInsights, recentFocus, userName }), frameIndex: frameIdx };
 }
 
 const STRUCTURE_SEEDS = [
@@ -884,13 +1051,123 @@ If a result doesn't match any domain, skip it. Respond with ONLY the JSON object
   }
 }
 
+const PATTERN_PROMPT_FRAMES = [
+  (_topic: string, _extra: PromptFrameExtra) =>
+    "You notice a recurring thinking pattern across the user's conversations — describe what it is, when it helps, and when it becomes a limitation.",
+  (_topic: string, _extra: PromptFrameExtra) =>
+    "The user has an implicit priority or value ranking visible across their decisions — name it and explain what it costs them.",
+  (_topic: string, _extra: PromptFrameExtra) =>
+    "There's a contradiction between what the user says they want and what they actually do — point it out directly.",
+  (_topic: string, _extra: PromptFrameExtra) =>
+    "There's a perspective or approach the user never considers — name it and explain why they're missing it.",
+] as const;
+
+export function buildPatternInsightPrompt(
+  persona: PersonaTree,
+  input: InsightEngineInput,
+  recentInsightContents: string[],
+): PromptBuildResult {
+  const fewShotIdx = input.feedbackProfile
+    ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
+    : Math.floor(Math.random() * DIVERSE_FEW_SHOT_SETS.length);
+  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
+    .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`)
+    .join("\n\n");
+
+  const fragments = input.fragments ?? [];
+  const sortedFragments = [...fragments]
+    .sort((a, b) => b.strength - a.strength)
+    .slice(0, 8);
+  const fragmentBlock = sortedFragments.length > 0
+    ? sortedFragments
+      .map(f => `[${f.kind}] ${f.structuralTag}: "${truncate(f.evidence, 120)}" (strength: ${f.strength.toFixed(2)}, domains: ${f.domains.join(", ")})`)
+      .join("\n")
+    : "(no fragments collected yet)";
+
+  const sortedDomainEntries = Object.entries(persona.domains)
+    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+
+  const anchorFacts = sortedDomainEntries
+    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .slice(0, 6);
+  const anchorBlock = anchorFacts.length > 0
+    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "  (not yet established)";
+
+  const pastInsightBlock = recentInsightContents.length > 0
+    ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
+    : "";
+
+  const bannedOpenings = recentInsightContents
+    .slice(-5)
+    .map((c) => c.trim().slice(0, 8))
+    .filter((o) => o.length >= 4);
+
+  const openingBans = bannedOpenings.length > 0
+    ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
+    : "";
+
+  const patternFrameIdx = input.feedbackProfile
+    ? pickPromptVariant(input.feedbackProfile, PATTERN_PROMPT_FRAMES.map((_, i) => `pattern:${i}`))
+    : Math.floor(Math.random() * PATTERN_PROMPT_FRAMES.length);
+  const frame = PATTERN_PROMPT_FRAMES[patternFrameIdx]!;
+  const taskInstruction = frame(input.targetDomains.join(", "), { domains: input.targetDomains, keyInsights: anchorFacts, recentFocus: input.recentFocus, userName: persona.identity?.displayName ?? "" });
+
+  return { prompt: `${buildVoiceSection(persona)}
+
+EXAMPLES of ideal behavioral observations (match this quality, specificity, and depth):
+${fewShotBlock}
+
+${DIVERSITY_INSTRUCTION}
+
+CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification, NOT a therapy session.
+
+You are the AI assistant speaking in your own voice and personality. You are proactively sharing a behavioral observation — something you noticed about how this user thinks, decides, or acts across their conversations.
+
+OBSERVED THINKING PATTERNS (from recent conversations):
+${fragmentBlock}
+
+SPECIFIC FACTS YOU KNOW ABOUT THIS USER:
+${anchorBlock}
+ ${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
+${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
+
+TASK:
+${taskInstruction}
+
+Constraints:
+- 1-3 sentences, Chinese
+- No question marks, no lists, no numbering
+- Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
+- Start with a concrete observation — never with "关于", "在...领域", "结合你", "作为"
+- ${openingBans ? `Also do NOT start with: ${openingBans}` : ""}
+- Do NOT mention "patterns", "blind spots", "cognitive biases", or use meta-analytical language. Speak as a friend sharing an observation, not as a therapist diagnosing.
+- Content must reference AT LEAST ONE specific fragment from the OBSERVED THINKING PATTERNS section above
+- Content must be a specific, honest observation — not vague encouragement or generic advice
+
+Respond with ONLY a JSON array (no markdown, no code fences):
+重要提示：在 "content" 字段中，请用 \\" 转义内部引号，或使用中文弯引号（""）。不要在字符串值中使用未转义的 ASCII 引号。
+[
+  {
+    "content": "Your behavioral observation in your own voice, in Chinese",
+    "rationale": "Which fragments and persona data led to this observation",
+    "targetDomains": ["domain-from-fragments"],
+    "sourceDomains": ["observed-pattern"],
+    "relevanceScore": 0.8,
+    "surpriseScore": 0.7
+  }
+]
+
+Keep insights concise (1-3 sentences). Quality over quantity.`, variant: { fewShotSet: fewShotIdx, frameIndex: 0, patternFrame: patternFrameIdx } };
+}
+
 export function buildInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   webResults: WebSearchResult[] = [],
   recentInsightContents: string[] = [],
   webSnippetByDomain?: Map<string, string[]>,
-): string {
+): PromptBuildResult {
   let resolvedWebSnippetByDomain: Map<string, string[]>;
   if (webSnippetByDomain) {
     resolvedWebSnippetByDomain = webSnippetByDomain;
@@ -980,11 +1257,11 @@ export function buildInsightPrompt(
     : "";
 
   const pastInsightBlock = recentInsightContents.length > 0
-    ? recentInsightContents.slice(-3).map((c, i) => `${i + 1}. ${truncate(c, 80)}`).join("\n")
+    ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
     : "";
 
   const bannedOpenings = recentInsightContents
-    .slice(-3)
+    .slice(-5)
     .map((c) => c.trim().slice(0, 8))
     .filter((o) => o.length >= 4);
 
@@ -999,22 +1276,32 @@ export function buildInsightPrompt(
 
   const domainNames = sortedDomainEntries.map(([name]) => name);
   const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) => d.keyInsights.slice(0, 2));
-  const promptFrame = pickPromptFrame(
+  const { text: promptFrame, frameIndex } = pickPromptFrame(
     input.targetDomains, domainNames,
     flatKeyInsights, persona.recentFocus, userName,
+    input.feedbackProfile,
   );
 
-  const structureSeed = STRUCTURE_SEEDS[Math.floor(Math.random() * STRUCTURE_SEEDS.length)]!;
+  const structureSeedIdx = input.feedbackProfile
+    ? pickPromptVariant(input.feedbackProfile, STRUCTURE_SEEDS.map((_, i) => `seed:${i}`))
+    : Math.floor(Math.random() * STRUCTURE_SEEDS.length);
+  const structureSeed = STRUCTURE_SEEDS[structureSeedIdx]!;
   const openingBans = bannedOpenings.length > 0
     ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
     : "";
 
-  const fewShotBlock = FEW_SHOT_INSIGHTS.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
+  const fewShotIdx = input.feedbackProfile
+    ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
+    : Math.floor(Math.random() * DIVERSE_FEW_SHOT_SETS.length);
+  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
+    .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
 
-  return `${buildVoiceSection(persona)}
+  return { prompt: `${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
+
+${DIVERSITY_INSTRUCTION}
 
 CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
@@ -1033,7 +1320,7 @@ ${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's
  Recent focus: ${recentFocus || "None"}
   Trust: ${persona.rapport.trustScore.toFixed(2)} / 1.0
   Delivered insight IDs: ${recentInsightIds || "None"}
-${pastInsightBlock ? `\nPAST INSIGHTS (content AND sentence structure must be completely different):\n${pastInsightBlock}` : ""}
+${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
 ${(input.recentInsightDomains?.length ?? 0) > 0 ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these domain angles):\n${input.recentInsightDomains!.slice(-5).map((domains, i) => `${i + 1}. ${domains.join(" + ")}`).join("\n")}` : ""}
 
@@ -1078,7 +1365,7 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 ]
 CRITICAL: targetDomains MUST include at least one of: ${input.targetDomains.join(", ")}. Do NOT substitute other domains.
 
-Keep insights concise (1-3 sentences). Quality over quantity.`;
+Keep insights concise (1-3 sentences). Quality over quantity.`, variant: { fewShotSet: fewShotIdx, frameIndex, structureSeed: structureSeedIdx } };
 }
 
 function parseLLMInsights(
@@ -1326,4 +1613,458 @@ export async function loadWorkspacePersonaContext(
     }
   }
   return parts.join("\n\n");
+}
+
+export function buildCritiquePrompt(
+  candidate: InsightCandidate,
+  persona: PersonaTree,
+): string {
+  const sortedDomainEntries = Object.entries(persona.domains)
+    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+
+  const anchorFacts = sortedDomainEntries
+    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .slice(0, 6);
+  const anchorBlock = anchorFacts.length > 0
+    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "(not yet established)";
+
+  const userName = persona.identity?.displayName ?? "the user";
+
+  return `You are a strict quality evaluator for AI-generated insights about a user.
+
+USER: ${userName}
+EXPERT DOMAINS: ${persona.identity?.expertDomains?.join(", ") ?? "unknown"}
+INTEREST DOMAINS: ${persona.identity?.interestDomains?.join(", ") ?? "unknown"}
+
+KNOWN FACTS ABOUT THIS USER:
+${anchorBlock}
+
+INSIGHT TO EVALUATE:
+---
+${candidate.content}
+---
+Target domains: ${candidate.targetDomains.join(", ")}
+Rationale: ${candidate.rationale}
+---
+
+Evaluate this insight on 5 dimensions (each 0.0-1.0):
+
+1. SPECIFICITY: Does the insight contain concrete, verifiable claims? Or is it vague platitudes?
+2. PERSONA RELEVANCE: Does it reference known facts about THIS user? Or generic advice anyone could receive?
+3. ACTIONABILITY: Can the user act on this? Or is it an abstract observation with no next step?
+4. SURPRISE: Is this genuinely new information the user likely doesn't know? Or obvious/common knowledge?
+5. VOICE MATCH: Does it sound natural for a helpful AI companion? Or stiff/formal/system-notification-like?
+
+Also provide an overallScore (0.0-1.0), a textual critique, and specific improvement suggestions.
+
+Respond with ONLY a JSON object (no markdown, no code fences):
+{
+  "specificity": 0.0-1.0,
+  "personaRelevance": 0.0-1.0,
+  "actionability": 0.0-1.0,
+  "surprise": 0.0-1.0,
+  "voiceMatch": 0.0-1.0,
+  "overallScore": 0.0-1.0,
+  "critique": "textual feedback explaining the scores",
+  "improvementSuggestions": ["specific suggestion 1", "specific suggestion 2"]
+}`;
+}
+
+export function buildRefinePrompt(
+  originalPrompt: string,
+  candidate: InsightCandidate,
+  critique: LlmCritiqueResult,
+  persona: PersonaTree,
+): string {
+  const suggestions = critique.improvementSuggestions
+    .map((s, i) => `${i + 1}. ${s}`)
+    .join("\n");
+
+  return `${buildVoiceSection(persona)}
+
+ORIGINAL GENERATION PROMPT:
+---
+${originalPrompt}
+---
+
+ORIGINAL INSIGHT:
+---
+${candidate.content}
+---
+
+CRITIQUE (overall score: ${critique.overallScore.toFixed(2)}/1.0):
+${critique.critique}
+
+IMPROVEMENT SUGGESTIONS:
+${suggestions}
+
+Generate a REVISED insight that addresses these specific weaknesses. Keep the strengths, fix the problems. The revised insight should feel like it could ONLY be about THIS specific user.
+
+Constraints:
+- 1-3 sentences, Chinese
+- No question marks, no lists, no numbering
+- Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
+- Start with a concrete fact, observation, or judgment — never with "关于", "在...领域", "结合你", "作为"
+
+Respond with ONLY a JSON array (no markdown, no code fences):
+[
+  {
+    "content": "Your revised insight in your own voice, in Chinese",
+    "rationale": "Why this revision is better",
+    "targetDomains": ${JSON.stringify(candidate.targetDomains)},
+    "sourceDomains": ${JSON.stringify(candidate.sourceDomains)},
+    "relevanceScore": 0.8,
+    "surpriseScore": 0.7
+  }
+]`;
+}
+
+export async function critiqueInsightWithLLM(
+  candidate: InsightCandidate,
+  persona: PersonaTree,
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  options?: LlmInsightOptions,
+): Promise<LlmCritiqueResult | null> {
+  try {
+    const prompt = buildCritiquePrompt(candidate, persona);
+    const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+    const prepared = await deps.prepareModel(config, modelRef);
+
+    if ("error" in prepared) {
+      log.warn("critiqueInsightWithLLM: model preparation failed", { error: prepared.error });
+      return null;
+    }
+
+    const result = await deps.complete(
+      prepared.model,
+      { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: options?.maxTokens ?? 500,
+        temperature: 0.3,
+        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+      },
+    );
+
+    const text = result.content
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    if (!text) return null;
+
+    const objStart = text.indexOf("{");
+    const objEnd = text.lastIndexOf("}");
+    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) return null;
+
+    const parsed: Record<string, unknown> = JSON.parse(text.slice(objStart, objEnd + 1));
+
+    const requiredFields = ["specificity", "personaRelevance", "actionability", "surprise", "voiceMatch", "overallScore", "critique", "improvementSuggestions"];
+    for (const field of requiredFields) {
+      if (!(field in parsed)) return null;
+    }
+
+    const improvementSuggestions = parsed.improvementSuggestions;
+    if (!Array.isArray(improvementSuggestions)) return null;
+
+    return {
+      specificity: clamp01(Number(parsed.specificity) || 0),
+      personaRelevance: clamp01(Number(parsed.personaRelevance) || 0),
+      actionability: clamp01(Number(parsed.actionability) || 0),
+      surprise: clamp01(Number(parsed.surprise) || 0),
+      voiceMatch: clamp01(Number(parsed.voiceMatch) || 0),
+      overallScore: clamp01(Number(parsed.overallScore) || 0),
+      critique: String(parsed.critique ?? ""),
+      improvementSuggestions: improvementSuggestions.map(String),
+    };
+  } catch (err) {
+    log.warn("critiqueInsightWithLLM: failed", { error: String(err) });
+    return null;
+  }
+}
+
+export async function refineInsightWithLLM(
+  originalPrompt: string,
+  candidate: InsightCandidate,
+  critique: LlmCritiqueResult,
+  persona: PersonaTree,
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  options?: LlmInsightOptions,
+): Promise<InsightCandidate | null> {
+  try {
+    const prompt = buildRefinePrompt(originalPrompt, candidate, critique, persona);
+    const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+    const prepared = await deps.prepareModel(config, modelRef);
+
+    if ("error" in prepared) {
+      log.warn("refineInsightWithLLM: model preparation failed", { error: prepared.error });
+      return null;
+    }
+
+    const result = await deps.complete(
+      prepared.model,
+      { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: options?.maxTokens ?? 500,
+        temperature: 0.85,
+        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+      },
+    );
+
+    const text = result.content
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    if (!text) return null;
+
+    const candidates = parseLLMInsights(text, 1);
+    if (candidates.length === 0) return null;
+
+    const refined = candidates[0]!;
+    return {
+      ...refined,
+      id: candidate.id,
+      targetDomains: candidate.targetDomains,
+      sources: candidate.sources,
+      promptVariant: candidate.promptVariant,
+    };
+  } catch (err) {
+    log.warn("refineInsightWithLLM: failed", { error: String(err) });
+    return null;
+  }
+}
+
+export function buildVerificationPrompt(
+  candidate: InsightCandidate,
+  persona: PersonaTree,
+): string {
+  const sortedDomainEntries = Object.entries(persona.domains)
+    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+
+  const anchorFacts = sortedDomainEntries
+    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .slice(0, 6);
+  const anchorBlock = anchorFacts.length > 0
+    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+    : "(not yet established)";
+
+  const sourceBlock = candidate.sources.length > 0
+    ? candidate.sources.map((s, i) => `${i + 1}. [${s.title}](${s.url}) (credibility: ${s.credibility})`).join("\n")
+    : "(no sources)";
+
+  const userName = persona.identity?.displayName ?? "the user";
+
+  return `You are a quality gate judge for AI-generated proactive insights.
+
+USER: ${userName}
+EXPERT DOMAINS: ${persona.identity?.expertDomains?.join(", ") ?? "unknown"}
+INTEREST DOMAINS: ${persona.identity?.interestDomains?.join(", ") ?? "unknown"}
+
+KNOWN FACTS:
+${anchorBlock}
+
+INSIGHT TO VERIFY:
+---
+${candidate.content}
+---
+Target domains: ${candidate.targetDomains.join(", ")}
+Rationale: ${candidate.rationale}
+
+SOURCES:
+${sourceBlock}
+---
+
+Evaluate: Is this insight worth delivering to the user?
+
+Criteria for each status:
+- "verified": High quality — specific, relevant to THIS user, actionable, consistent with sources
+- "partial": Decent quality but missing some elements — still acceptable for delivery
+- "unverified": Generic, vague, or not relevant enough to this specific user
+- "contradicted": Contains factual errors or contradicts known information about the user
+
+Respond with ONLY a JSON object (no markdown, no code fences):
+{
+  "approved": true/false,
+  "confidence": 0.0-1.0,
+  "status": "verified" | "partial" | "unverified" | "contradicted",
+  "notes": "Brief explanation of the verdict"
+}`;
+}
+
+export async function verifyInsightWithLLM(
+  candidate: InsightCandidate,
+  persona: PersonaTree,
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  options?: LlmInsightOptions,
+): Promise<VerificationResult> {
+  const unverified: VerificationResult = {
+    status: "unverified",
+    sources: candidate.sources,
+    confidence: 0,
+    notes: "Verification unavailable",
+  };
+
+  try {
+    const prompt = buildVerificationPrompt(candidate, persona);
+    const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+    const prepared = await deps.prepareModel(config, modelRef);
+
+    if ("error" in prepared) {
+      log.warn("verifyInsightWithLLM: model preparation failed", { error: prepared.error });
+      return unverified;
+    }
+
+    const result = await deps.complete(
+      prepared.model,
+      { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: options?.maxTokens ?? 300,
+        temperature: 0.2,
+        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+      },
+    );
+
+    const text = result.content
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    if (!text) return unverified;
+
+    const objStart = text.indexOf("{");
+    const objEnd = text.lastIndexOf("}");
+    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) return unverified;
+
+    const parsed: Record<string, unknown> = JSON.parse(text.slice(objStart, objEnd + 1));
+
+    const confidence = clamp01(Number(parsed.confidence) || 0);
+    const llmStatus = String(parsed.status ?? "");
+
+    let status: VerificationResult["status"];
+    if (llmStatus === "contradicted") {
+      status = "contradicted";
+    } else if (confidence >= 0.7) {
+      status = "verified";
+    } else if (confidence >= 0.4) {
+      status = "partial";
+    } else {
+      status = "unverified";
+    }
+
+    return {
+      status,
+      sources: candidate.sources,
+      confidence,
+      notes: String(parsed.notes ?? ""),
+    };
+  } catch (err) {
+    log.warn("verifyInsightWithLLM: failed", { error: String(err) });
+    return unverified;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Semantic freshness check (LLM-based novelty detection)
+// ---------------------------------------------------------------------------
+
+function buildFreshnessPrompt(
+  candidate: InsightCandidate,
+  recentInsightContents: string[],
+): string {
+  const MAX_PER_INSIGHT = 120;
+  const shown = recentInsightContents.slice(0, 5);
+
+  const pastBlock = shown
+    .map((text, i) => `${i + 1}. ${text.length > MAX_PER_INSIGHT ? text.slice(0, MAX_PER_INSIGHT) : text}`)
+    .join("\n");
+
+  return `SYSTEM: You are a semantic novelty evaluator. Your job is to determine if a new insight says something genuinely new compared to past insights.
+
+NEW INSIGHT:
+${candidate.content}
+
+PAST INSIGHTS (last ${shown.length}):
+${pastBlock}
+
+Is this new insight semantically equivalent to or a paraphrase of any past insight? Or does it say something genuinely new?
+
+Respond ONLY with valid JSON:
+{ "isNovel": boolean, "similarityToClosest": 0-1, "reason": string }
+
+Criteria:
+- isNovel = true: the insight covers genuinely different ground, introduces a new angle, or connects ideas in a way not seen in past insights.
+- isNovel = false: the insight is semantically the same as a past insight even if worded differently. Paraphrases, restatements, and near-duplicates should be marked as not novel.
+- similarityToClosest: 0 = completely different topic, 1 = essentially the same insight.
+- reason: one concise sentence explaining your decision.`;
+}
+
+const FRESHNESS_FALLBACK = { isNovel: true, reason: "LLM freshness check unavailable" } as const;
+
+export async function checkSemanticNoveltyWithLLM(
+  candidate: InsightCandidate,
+  recentInsightContents: string[],
+  config: KaijiBotConfig,
+  deps: LlmInsightDeps,
+  options?: LlmInsightOptions,
+): Promise<{ isNovel: boolean; reason: string }> {
+  if (recentInsightContents.length < 2) {
+    return { isNovel: true, reason: "Insufficient history for comparison" };
+  }
+
+  try {
+    const prompt = buildFreshnessPrompt(candidate, recentInsightContents);
+    const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+    const prepared = await deps.prepareModel(config, modelRef);
+
+    if ("error" in prepared) {
+      log.warn("checkSemanticNoveltyWithLLM: model preparation failed", { error: prepared.error });
+      return { isNovel: true, reason: "LLM freshness check unavailable" };
+    }
+
+    const result = await deps.complete(
+      prepared.model,
+      { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
+      {
+        apiKey: prepared.auth.apiKey,
+        maxTokens: options?.maxTokens ?? 200,
+        temperature: 0.2,
+        signal: AbortSignal.timeout(options?.timeout ?? 6_000),
+      },
+    );
+
+    const text = result.content
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+
+    if (!text) return { isNovel: true, reason: "LLM freshness check unavailable" };
+
+    const objStart = text.indexOf("{");
+    const objEnd = text.lastIndexOf("}");
+    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {
+      return { isNovel: true, reason: "LLM freshness check unavailable" };
+    }
+
+    const parsed: Record<string, unknown> = JSON.parse(text.slice(objStart, objEnd + 1));
+
+    if (typeof parsed.isNovel !== "boolean" || typeof parsed.reason !== "string") {
+      return { isNovel: true, reason: "LLM freshness check unavailable" };
+    }
+
+    return { isNovel: parsed.isNovel, reason: parsed.reason };
+  } catch (err) {
+    log.warn("checkSemanticNoveltyWithLLM: failed", { error: String(err) });
+    return { isNovel: true, reason: "LLM freshness check unavailable" };
+  }
 }

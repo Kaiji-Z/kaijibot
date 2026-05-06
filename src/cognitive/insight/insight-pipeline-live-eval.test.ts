@@ -17,16 +17,10 @@ import {
   type LlmInsightDeps,
   type WebSearchResult,
 } from "./llm-engine.js";
-import {
-  InsightV2Pipeline,
-  createPipelineDeps,
-  createV2InsightGenerator,
-  createDualInsightGenerator,
-} from "./pipeline.js";
 import { FragmentStore } from "./fragment-store.js";
 import type { Fragment } from "./fragment-types.js";
 import type { PersonaTree } from "../types.js";
-import type { InsightCandidate, InsightEngineInput } from "./types.js";
+import type { InsightCandidate } from "./types.js";
 import type { SchedulerConfig, SchedulerEvent } from "../scheduler/types.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveConfigDir } from "../../utils.js";
@@ -192,7 +186,7 @@ function loadRealPersona(): PersonaTree {
   return JSON.parse(fs.readFileSync(personaPath, "utf8")) as PersonaTree;
 }
 
-// ─── Helpers: seed fragments for v2 ───
+// ─── Helpers: seed fragments for pattern mode ───
 
 async function seedFragments(userId: string, store: FragmentStore): Promise<void> {
   const now = Date.now();
@@ -368,9 +362,10 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
     `  域分布: ${uniqueDomains.size} unique domains: ${[...uniqueDomains].join(", ")}`,
   );
 
-  // 4. V2 activation
-  const v2Count = resolved.filter((r) => r.insight?.source === "v2").length;
-  console.log(`  V2 洞察: ${v2Count}/${resolved.length}`);
+  // 4. Source diversity
+  const patternCount = resolved.filter((r) => r.insight?.source === "v2").length;
+  const knowledgeCount = resolved.filter((r) => r.insight?.source !== "v2").length;
+  console.log(`  Knowledge 洞察: ${knowledgeCount}/${resolved.length}, Pattern 洞察: ${patternCount}/${resolved.length}`);
 
   // 5. Content quality — banned pattern check
   const allKeyInsights = Object.values(persona.domains).flatMap((d) => d.keyInsights);
@@ -419,7 +414,7 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
 
 describe
   .skipIf(!isLive || !ZAI_API_KEY)
-  ("live pipeline evaluation — real persona + real LLM + web search", () => {
+  ("live pipeline evaluation — unified pipeline, real persona + real LLM + web search", () => {
     it(`runs ${ROUNDS} rounds of search→identify→resolve and evaluates`, async () => {
       const persona = loadRealPersona();
       const domainCount = Object.keys(persona.domains).length;
@@ -427,33 +422,25 @@ describe
       console.log(`\n  Persona: ${domainCount} domains, trust=${trust.toFixed(2)}`);
       console.log(`  Domains: ${Object.keys(persona.domains).join(", ")}`);
 
-      // 2. Seed fragments for v2
+      // 2. Seed fragments for pattern mode
       const userId = persona.identity?.userId ?? "test-user";
       const configDir = resolveConfigDir();
       const fragmentStore = new FragmentStore(configDir);
       await seedFragments(userId, fragmentStore);
       console.log(`  Seeded fragments for userId=${userId}`);
 
-      // 3. Build dual pipeline
+      // 3. Build unified pipeline
       const llmDeps = makeRealLlmDeps();
       const config = makeMinimalConfig();
 
-      // v1 generator: LLM-based insight generation
-      const v1Generator: InsightGeneratorFn = (p, input, options) => {
+      const unifiedGenerator: InsightGeneratorFn = (p, input, options) => {
         return generateInsightCandidatesLLM(p, input, config, llmDeps, {
           maxCandidates: options?.maxCandidates,
+          timeout: 30_000,
         });
       };
 
-      // v2 generator: fragment crystallization pipeline
-      const pipelineDeps = createPipelineDeps(configDir, fragmentStore);
-      const v2Pipeline = new InsightV2Pipeline(pipelineDeps, v1Generator);
-      const v2Generator = createV2InsightGenerator(v2Pipeline, config);
-
-      // Dual: v1 + v2 in parallel with dedup
-      const dualGenerator = createDualInsightGenerator(v1Generator, v2Generator);
-
-      // 4. Create scheduler with dual pipeline
+      // 4. Create scheduler with fragment store for pattern mode
       const scheduler = new ProactiveScheduler(
         makeSchedulerConfig(),
         {
@@ -461,7 +448,7 @@ describe
           onInsightReady: async () => {},
           savePersona: async () => {},
         },
-        { insightGenerator: dualGenerator },
+        { insightGenerator: unifiedGenerator, fragmentStore },
       );
 
       // 5. Run 5 rounds
@@ -474,7 +461,7 @@ describe
         };
 
         // search → identify (bypass gate)
-        const opportunities = scheduler.search(persona, event);
+        const opportunities = await scheduler.search(persona, event);
         const selectedPool = scheduler.identify(opportunities, persona);
 
         if (selectedPool.length === 0) {

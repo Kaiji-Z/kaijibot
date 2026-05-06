@@ -39,13 +39,19 @@ export type CognitiveConfig = {
     /** Fact verification strictness */
     verificationLevel?: "basic" | "strict" | "paranoid";
     /** Insight engine version (default: v1) */
-    engine?: "v1" | "v2" | "dual";
+    engine?: "v1" | "v2" | "dual" | "knowledge" | "pattern" | "unified";
     /** Model used for interest inference and insight generation (default: uses main model). */
     inferenceModel?: string;
     /** Ratio of surprise-mode insights vs extend-mode (0-1, default 0.8 = 80% surprise). */
     surpriseRatio?: number;
+    /** Ratio of pattern-mode (behavioral) vs knowledge-mode insights (0-1, default 0.5). */
+    patternModeRatio?: number;
     /** Output language for generated insights (default: "zh"). Auto-detected from persona if omitted. */
     outputLanguage?: string;
+    /** Use LLM-as-Judge to verify pattern-mode insights (default: true). */
+    patternVerification?: boolean;
+    /** Use LLM to check semantic novelty after trigram dedup passes (default: true). */
+    llmFreshnessCheck?: boolean;
   };
   /** Feedback settings */
   feedback?: {

@@ -26,18 +26,44 @@ Three data sources, queried in order:
    - `pendingQuestions`, `recentFocus`
 
 2. **Gateway logs** — `/tmp/kaijibot/kaijibot-YYYY-MM-DD.log` (JSONL, daily rotation)
-    - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, insight output with source tag
-    - Subsystem `"cognitive/insight"` — v2 pipeline: crystallization, quality gate, composer, dual merge
-    - Subsystem `"cognitive/insight-llm"` — v1 web search, domain matching, LLM generation, trigram dedup
-    - Subsystem `"cognitive/interest-inference"` — search query generation (extend-mode LLM query)
-    - Subsystem `"cognitive/fragment-store"` — fragment clusters, dedup, maintenance
-    - Subsystem `"cognitive/pipeline"` — dual pipeline merge, v2 crystallization results
-    - Log line format: `{"0":"{\"subsystem\":\"cognitive/...\"}","1":{...meta},"2":"message","time":"ISO"}`
+   - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, resolve, insight output, processEvent done
+   - Subsystem `"cognitive/insight-llm"` — web search, domain matching, LLM generation (both knowledge and pattern modes), trigram dedup
+   - Subsystem `"cognitive/interest-inference"` — search query generation (extend-mode LLM query)
+   - Subsystem `"cognitive/fragment-store"` — fragment clusters, dedup, maintenance
+   - Subsystem `"cognitive/fragment-collector"` — per-turn fragment extraction
+   - Subsystem `"cognitive/pipeline"` — fragment store factory operations
+   - Log line format: `{"0":"{\"subsystem\":\"cognitive/...\"}","1":{...meta},"2":"message","time":"ISO"}`
 
 3. **Source code** (for reference, not routine queries)
-   - `src/cognitive/insight/llm-engine.ts` — LLM insight generation + web search
-   - `src/cognitive/scheduler/proactive-scheduler.ts` — SIRI loop
+   - `src/cognitive/insight/llm-engine.ts` — `generateInsightCandidatesLLM()` handles both knowledge and pattern modes; `buildPatternInsightPrompt()` with 4 behavioral frames; web search logic
+   - `src/cognitive/scheduler/proactive-scheduler.ts` — `search()` (async), `identify()`, `resolve()` (pattern branch + knowledge branch), `scanExploration` (3-mode routing)
    - `src/cognitive/scheduler/gate.ts` — PRISM gate
+
+## Pipeline Architecture
+
+The unified pipeline uses two modes selected during the exploration scan phase:
+
+**Knowledge mode** (surprise or extend sub-mode):
+- Web search for external sources → LLM generates insight candidates from search results + persona
+- Quality retries (up to 3 attempts) if first candidate scores below threshold
+- Verification based on source presence: `verified` (has web sources) or `unverified` (no sources)
+- Non-exploration unverified insights are skipped (delivery blocked)
+
+**Pattern mode**:
+- Loads conversation fragments from `FragmentStore` → finds multi-domain clusters
+- LLM generates behavioral insight from fragment clusters (no web search)
+- No quality retries (single attempt)
+- Always `partial` verification status (behavioral inference, not fact-checked)
+- Bypasses the source verification gate entirely
+
+**Mode selection** happens in `scanExploration()` via `timestamp % 100`:
+```
+roll < patternModeRatio (default 0.5) → pattern mode
+roll < patternModeRatio + surpriseWeight → surprise mode (knowledge, web search)
+else → extend mode (knowledge, user domains)
+```
+
+Pattern mode falls back to surprise mode when fragment clusters are insufficient (no cluster with ≥2 fragments).
 
 ## Query Procedure
 
@@ -56,7 +82,7 @@ cat /tmp/kaijibot/kaijibot-2026-04-28.log /tmp/kaijibot/kaijibot-2026-04-29.log 
 
 Use the output to:
 - Identify which pipeline cycles produced insights vs were vetoed
-- Spot patterns (all v1, v2 starvation, repeated domains)
+- Spot patterns (all knowledge, pattern starvation, repeated domains)
 - Get exact timestamps for deeper investigation in Steps 1-8
 
 ### Steps 1-8: Detailed analysis
@@ -121,7 +147,7 @@ LOG_FILES=()
 for f in "$LOG_DIR"/kaijibot-*.log; do [ -f "$f" ] && LOG_FILES+=("$f"); done
 
 # Pipeline keywords to trace
-PIPELINE_KW="gate passed|gate vetoed|search found opportunities|identify selected pool|identify selected nothing|pre-gen freshness check|resolve: quality retry|resolve: selected best candidate|insight generated|web search completed|surprise-mode web search completed|web search domain matching|web search cache hit|safety-net dedup|crystallized|quality gate assessed|dual pipeline: merged|force-aligned|fragments extracted|fragment clusters|processEvent done"
+PIPELINE_KW="gate passed|gate vetoed|search found opportunities|identify selected pool|identify selected nothing|pre-gen freshness check|resolve: quality retry|resolve: early exit|resolve: selected best candidate|insight generated|pattern-mode insight bypasses verification gate|web search completed|surprise-mode web search completed|web search domain matching|web search cache hit|safety-net dedup|Pattern-mode LLM generated|force-aligned|fragments extracted|fragment clusters|processEvent done"
 
 # For each insight from Step 2, extract its timestamp HH:MM prefix and trace nearby events
 # Replace INSIGHT_TIMES with actual timestamps from Step 2 output (just the HH:MM part)
@@ -137,11 +163,11 @@ for LOG_FILE in "${LOG_FILES[@]}"; do
 done
 ```
 
-**Important**: Gateway sessions spanning midnight split pipeline events across two daily log files. Always search ALL log files, not just the one matching the insight's date. For example, a 2026-04-29T00:15 insight may have its gate/search in `kaijibot-2026-04-28.log` but web search/merge in `kaijibot-2026-04-29.log`.
+**Important**: Gateway sessions spanning midnight split pipeline events across two daily log files. Always search ALL log files, not just the one matching the insight's date. For example, a 2026-04-29T00:15 insight may have its gate/search in `kaijibot-2026-04-28.log` but web search in `kaijibot-2026-04-29.log`.
 
-### Step 4: Check web search invocations
+### Step 4: Check knowledge-mode pipeline (web search + LLM)
 
-Web search logs are under subsystem `"cognitive/insight-llm"`. Search ALL log files (cross-midnight awareness):
+Knowledge-mode logs are under subsystem `"cognitive/insight-llm"`. Search ALL log files (cross-midnight awareness):
 
 ```bash
 LOG_DIR="/tmp/kaijibot"
@@ -160,17 +186,23 @@ Key messages to look for:
 - `"web search skipped"` — reason: empty query or no dep
 - `"web search cache hit"` — `{query}` — cached result reused (identical query)
 - `"web search domain matching"` — `{totalResults, matchedDomains, unmatchedSnippets}`
-- `"force-aligned LLM output domains to input targetDomains"` — domain constraint fix activated (LLM domains → forced to input domains)
-- `"LLM generated N insight candidate(s)"`
-- `"LLM returned empty response"` / `"LLM response could not be parsed"`
-- `"resolve: quality retry"` — `{attempt, candidatesSoFar}` — quality retry attempt N
-- `"resolve: selected best candidate"` — `{attempts, finalScore, totalCandidates}` — best candidate picked from retry pool
+- `"force-aligned LLM output domains to input targetDomains"` — domain constraint fix activated
+- `"force-aligned pattern-mode LLM output domains to input targetDomains"` — pattern-mode domain constraint fix
+- `"LLM generated N insight candidate(s)"` — knowledge-mode generation
+- `"Pattern-mode LLM generated N insight candidate(s)"` — pattern-mode generation
+- `"LLM returned empty response"` / `"LLM response could not be parsed as insights"` — knowledge mode parse failure
+- `"LLM returned empty response for pattern mode"` / `"LLM response could not be parsed as insights (pattern mode)"` — pattern mode parse failure
+- `"resolve: quality retry"` — `{attempt, candidatesSoFar}` — quality retry attempt N (knowledge mode only)
+- `"resolve: early exit — quality threshold met"` — `{attempt, bestScore}` — retry stopped early because quality was good enough
+- `"resolve: selected best candidate"` — `{finalScore, totalCandidates}` — best candidate picked from retry pool
 - `"safety-net dedup: near-identical content blocked"` — extreme similarity safety-net (0.95 trigram / 0.8 contentWord thresholds)
+- `"pattern-mode insight bypasses verification gate"` — `{content, clusterCount, fragmentCount}` — pattern insight accepted without source check
+- `"pattern-mode trigram dedup filtered candidates"` — `{before, after}` — pattern-mode internal dedup
 - `"pre-gen freshness check: skipping stale candidate"` — `{type, targetDomains}` — topic stale before LLM call, skipped to next
 
-### Step 5: Fragment health (v2 pipeline diagnostics)
+### Step 5: Fragment health (pattern mode diagnostics)
 
-Check fragment collection and clustering status — critical for diagnosing v2 pipeline starvation:
+Check fragment collection and clustering status, critical for diagnosing pattern mode starvation:
 
 ```bash
 LOG_DIR="/tmp/kaijibot"
@@ -191,7 +223,7 @@ for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   grep '"fragment maintenance"' "$LOG_FILE" | \
     jq -c '{time: .time, before: ."1".before, after: ."1".after, removed: ."1".removed}' 2>/dev/null
 
-  # Cluster formation (needed for crystallization)
+  # Cluster formation (needed for pattern mode)
   grep '"fragment clusters"' "$LOG_FILE" | \
     jq -c '{time: .time, clusterCount: ."1".clusterCount, sizes: ."1".sizes}' 2>/dev/null
 done
@@ -205,10 +237,10 @@ fi
 ```
 
 Key diagnostics:
-- **Zero `"fragments extracted"` entries** → fragment collector never succeeds — check model config
-- **All `"fragment dedup hit"`** → fragments are redundant, not adding new signal
-- **`removed > 0` in maintenance** → fragments expiring faster than being collected
-- **`clusterCount: 0`** → fragments don't overlap enough to form multi-domain clusters (needs ≥2 frags sharing ≥2 domains)
+- **Zero `"fragments extracted"` entries** → fragment collector never succeeds. Check model config and that `collectFragmentsForTurn` is being called after conversation turns.
+- **All `"fragment dedup hit"`** → fragments are redundant, not adding new signal.
+- **`removed > 0` in maintenance** → fragments expiring faster than being collected.
+- **`clusterCount: 0`** → fragments don't overlap enough to form multi-domain clusters (needs ≥2 fragments sharing ≥2 domains in a cluster). Pattern mode will fall back to surprise mode.
 
 ### Step 6: Search/identify breakdown
 
@@ -236,14 +268,18 @@ done
 ```
 
 Key patterns:
-- **`byType: {domain_depth: N}` only** → scanCrossDomain/scanExploration producing nothing
-- **`recentTypes` shows repeated types** → informational only (type cooldown removed; domain cooldown still active via 0.5^n)
-- **`poolSize: 1` consistently** → only one candidate survives penalties, low diversity in opportunities
-- **`pre-gen freshness check` fires frequently** → isTopicStale too aggressive, or recentInsightDomains too broad
+- **`byType: {domain_depth: N}` only** → scanCrossDomain/scanExploration producing nothing.
+- **`recentTypes` shows repeated types** → informational only (type cooldown removed; domain cooldown still active via 0.5^n).
+- **`poolSize: 1` consistently** → only one candidate survives penalties, low diversity in opportunities.
+- **`pre-gen freshness check` fires frequently** → isTopicStale too aggressive, or recentInsightDomains too broad.
 
-### Step 7: Quality gate scores (v2 diagnostics)
+### Step 7: Verification status breakdown
 
-Check why v2 insights get parked or discarded. Quality gate uses LLM-as-judge for novelty+actionability (60% weight) + code formula for emotional readiness (15%) + LLM for non-obviousness (25%). LLM verdict "no" forces discard regardless of composite score.
+Check how insights are being verified (or not). The pipeline uses three verification statuses:
+
+- `"verified"` — knowledge mode with web sources found
+- `"unverified"` — knowledge mode with no web sources (non-exploration insights are blocked)
+- `"partial"` — pattern mode (behavioral inference, always bypasses verification gate)
 
 ```bash
 LOG_DIR="/tmp/kaijibot"
@@ -251,18 +287,21 @@ LOG_DIR="/tmp/kaijibot"
 for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   [ -f "$LOG_FILE" ] || continue
   echo "=== $(basename "$LOG_FILE") ==="
-  grep '"quality gate assessed"' "$LOG_FILE" | \
-    jq -c '{time: .time, verdict: ."1".verdict, composite: ."1".composite, llmNoveltyActionable: ."1".llmNoveltyActionable, llmVerdict: ."1".llmVerdict, emotionalReadiness: ."1".emotionalReadiness, nonObviousness: ."1".nonObviousness, blindSpot: ."1".blindSpot}' 2>/dev/null
+
+  # Pattern mode: bypasses verification
+  grep '"pattern-mode insight bypasses verification gate"' "$LOG_FILE" | \
+    jq -c '{time: .time, clusterCount: ."1".clusterCount, fragmentCount: ."1".fragmentCount, content: ."1".content}' 2>/dev/null
+
+  # Knowledge mode: blocked for lack of sources
+  grep '"insight candidate has no verifiable sources"' "$LOG_FILE" | \
+    jq -c '{time: .time, sources: ."1".sources, content: ."1".content}' 2>/dev/null
 done
 ```
 
 Key diagnostics:
-- **`llmVerdict: "no"`** → LLM judged insight as not novel/actionable for this user — forced discard
-- **`llmNoveltyActionable < 0.3`** → insight too obvious or not actionable (60% weight dominates composite)
-- **`emotionalReadiness < 0.3`** → user trust too low (new/dormant user) or suppressUntil active
-- **`nonObviousness < 0.5`** → LLM rated the blind spot as common knowledge
-- **`verdict: "park"` (composite 0.45-0.64)** → close to delivering, could be rescued with lower threshold
-- **`verdict: "discard"` (composite < 0.45 or llmVerdict=no)** → blind spot too weak or LLM rejected
+- **Frequent `"insight candidate has no verifiable sources"`** → web search consistently returning no results for targeted domains. Check search API config.
+- **Many `"pattern-mode insight bypasses verification gate"`** with low `clusterCount`** → pattern mode producing insights from weak clusters.
+- **No pattern mode entries at all** → patternModeRatio is 0, or fragment clusters are always empty (falls back to surprise).
 
 ### Step 8: Gate statistics
 
@@ -280,9 +319,12 @@ for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
   echo "No insight: $(grep -c '"identify selected nothing"' "$LOG_FILE")"
   echo "Pre-gen freshness skipped: $(grep -c '"pre-gen freshness check"' "$LOG_FILE")"
   echo "Quality retries: $(grep -c '"resolve: quality retry"' "$LOG_FILE")"
+  echo "Early exits: $(grep -c '"resolve: early exit"' "$LOG_FILE")"
   echo "Safety-net blocked: $(grep -c '"safety-net dedup"' "$LOG_FILE")"
+  echo "Pattern mode bypasses: $(grep -c '"pattern-mode insight bypasses verification gate"' "$LOG_FILE")"
   echo "Web search cache hits: $(grep -c '"web search cache hit"' "$LOG_FILE")"
   echo "Force-alignments: $(grep -c '"force-aligned"' "$LOG_FILE")"
+  echo "Unverified blocked: $(grep -c '"no verifiable sources"' "$LOG_FILE")"
 done
 ```
 
@@ -308,9 +350,10 @@ Structure the report as:
 #### 洞察 #[N]
 - **内容**: [text]
 - **时间**: [timestamp]
-- **来源**: [v1/v2]
+- **模式**: [knowledge/pattern]
+- **验证状态**: [verified/unverified/partial]
 - **Pipeline**: [event source] → gate (pAct=X.XX) → search (N opportunities) → identify pool (top N) → freshness check → resolve (X attempts, best score: Y.YY)
-- **Web search**: [triggered/skipped] — query: "...", N results, matched domains: [...]
+- **Web search**: [triggered/skipped/n/a for pattern] — query: "...", N results, matched domains: [...]
 - **质量评估**: [high/medium/low] — [1-sentence rationale]
 
 ### Gate 统计 (当日)
@@ -321,28 +364,32 @@ Structure the report as:
 - domain_depth: N 次 (XX%)
 - cross_domain: N 次 (XX%)
 - exploration: N 次 (XX%)
+  - pattern: N 次
+  - surprise: N 次
+  - extend: N 次
 - 多样性惩罚触发: N 次 (domain cooldown only, 0.5^n)
 
-### v2 管线诊断
-- Fragment 库: N 个 (有效 N / 过期 N)
-- 集群: N 个 (平均大小 X.X)
-- 冷启动: 是/否 (需要 ≥5 fragments)
-- 质量门控: deliver N / park N / discard N
-- 最弱支柱: [哪个 pillar 最低，均值多少]
-
-### 管线对比 (v1 vs v2)
-- v1 洞察: N 条 (XX%)
-- v2 洞察: N 条 (XX%)
+### 模式对比 (knowledge vs pattern)
+- Knowledge 洞察: N 条 (XX%)
+  - verified: N / unverified: N (blocked: N)
+- Pattern 洞察: N 条 (XX%)
 - 前置新鲜度拦截: N 条
 - 安全网拦截: N 条
+- Quality retry 平均轮次: X.X
+
+### Fragment 诊断 (pattern mode 健康)
+- Fragment 库: N 个 (有效 N / 过期 N)
+- 集群: N 个 (平均大小 X.X)
+- 冷启动: 是/否 (pattern mode needs clusters with ≥2 fragments)
+- Pattern mode fallback: N 次 (clusters insufficient → surprise)
 
 ### 建议改进 (如有)
-- [Any issues noticed: repeated topics, failed web searches, etc.]
+- [Any issues noticed: repeated topics, failed web searches, pattern starvation, etc.]
 ```
 
 ## Real-time Pipeline Monitor
 
-A Python script provides real-time 15-step pipeline visualization with color-coded output.
+A Python script provides real-time pipeline visualization with color-coded output.
 
 ### Script location
 
@@ -372,16 +419,14 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 | 3 | 🔍 SEARCH | yellow | Number of opportunities found + **per-type breakdown** (cross_domain, domain_depth, exploration) |
 | 4 | 🎯 IDENTIFY | cyan | **Pool size** (top N), top candidate type/domains/pAct + **recentTypes** (diversity penalty visibility) |
 | 4a | 🧹 STALE | yellow | Pre-gen freshness check: stale candidate skipped (saves LLM tokens) |
-| 4b | 🧊 CRYSTAL | cyan | v2: Crystallized blind spot count + mode |
-| 4c | 📊 QGATE | green/yellow/red | v2: Quality gate verdict (deliver/park/discard) + composite + LLM novelty/actionable score + LLM verdict (yes/no) + emotionalReadiness + nonObviousness |
-| 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching |
-| 6 | 🤖 LLM GEN | magenta | v1: Number of insight candidates |
-| 6a | 🔄 RETRY + ✅ BEST | yellow/green | Quality retry: attempt count + final best score from retry pool |
-| 6b | 🔀 MERGE | cyan | Dual: v1=N v2=N total=N deduped=N |
+| 4b | 🧩 PATTERN | cyan | Pattern mode: fragment cluster count + fragment count loaded |
+| 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching (knowledge mode only) |
+| 6 | 🤖 LLM GEN | magenta | Number of insight candidates (knowledge or pattern mode) |
+| 6a | 🔄 RETRY + ✅ BEST | yellow/green | Quality retry: attempt count + early exit + final best score (knowledge mode only) |
 | 7 | ❌ PARSE FAIL | red | JSON parse errors |
-| 8 | ⚠️ VERIFY | yellow | Verification failures |
+| 8 | ⚠️ VERIFY | yellow | Verification failures (unverified knowledge insights blocked) |
 | 9 | 🚫 DEDUP | magenta | Safety-net: near-identical content blocked (0.95/0.8 thresholds) |
-| 10 | 💡 INSIGHT ✓ | green | Final insight with [v1]/[v2] source tag, content preview |
+| 10 | 💡 INSIGHT ✓ | green | Final insight with source tag, content preview |
 | 11 | 📨 DELIVERED | green | Successfully sent to feishu |
 | 12 | 🏁 DONE | green/dim | Pipeline completion status |
 
@@ -389,26 +434,34 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 
 - **`type=domain_depth` every time** → opportunity selection is monopolized, cross_domain never wins
 - **`poolSize: 1` consistently** → only one candidate survives penalties, consider relaxing domain cooldown
-- **`pre-gen freshness check` fires every cycle** → isTopicStale too aggressive, or recentInsightDomains too broad — no LLM calls happening
+- **`pre-gen freshness check` fires every cycle** → isTopicStale too aggressive, or recentInsightDomains too broad. No LLM calls happening.
 - **`matchedDomains: (none)`** → web search results don't match user domains, insight has no factual grounding
 - **Same `targetDomains` repeated** → always targeting the same domain
 - **Gate vetoed with low pAct** → normal (PRISM cost gate working)
-- **Zero `"fragments extracted"` in logs** → fragment collector never fires — check model config and userId in persona
-- **`clusterCount: 0` consistently** → fragments don't overlap across domains — v2 pipeline starves
-- **`llmVerdict: "no"` every time** → LLM consistently rejecting insights as not novel/actionable for this user; check prompt or persona data
+- **Zero `"fragments extracted"` in logs** → fragment collector never fires. Check model config and userId in persona.
+- **`clusterCount: 0` consistently** → fragments don't overlap across domains. Pattern mode falls back to surprise.
+- **No pattern-mode insights appearing** → patternModeRatio may be 0, or fragments/clusters insufficient for pattern mode
 - **`byType` only has domain_depth** → cross-domain and exploration scan functions producing nothing
 - **🚀 SCHEDULER START** → gateway was restarted, check if interval is correct
-- **v2 `[v2]` insights appearing** → dual pipeline working, blind spot detection producing deliverable insights
-- **v2 cold start** → fragment count < 5, v2 falls back to v1
-- **🔀 MERGE v2=0 consistently** → v2 pipeline never produces candidates, check fragment count and crystallization
-- **Quality gate verdict=discard every time** → blind spots not novel enough, consider lowering thresholds
+- **Pattern mode STEP 4b showing low cluster/fragment counts** → pattern mode running but with weak data, insights may be generic
+- **`insight candidate has no verifiable sources` fires often** → web search failing or returning irrelevant results. Knowledge-mode non-exploration insights get blocked.
 - **`resolve: quality retry` attempt=2/3 often** → first attempt quality low, retry rescuing insights
 - **`safety-net dedup` fires frequently** → LLM generating near-identical content, check prompt diversity
+- **Pattern mode insights all partial** → expected behavior. Pattern insights are behavioral inferences, not fact-checked.
+
+## Config
+
+Relevant config fields for tuning the pipeline:
+
+- `cognitive.insight.patternModeRatio` — 0 to 1, default 0.5. Controls the ratio of pattern mode vs knowledge mode in exploration scans. Higher = more behavioral insights from conversation fragments.
+- `cognitive.insight.engine` — accepts "v1"/"v2"/"dual"/"knowledge"/"pattern"/"unified". Controls which pipeline engine is active.
+- `cognitive.proactive.minIntervalHours` — minimum interval between proactive insight cycles
+- `cognitive.proactive.activeHours` — hours when proactive insights are allowed
 
 ## Quality Assessment Rubric
 
 Rate each insight on a 3-level scale:
 
-- **高**: Cross-domain surprise OR resolves a pending question OR challenges an assumption with external evidence
-- **中**: Useful but relies on recombining known knowledge without external input, or is a best-practice reminder
+- **高**: Cross-domain surprise OR resolves a pending question OR challenges an assumption with external evidence, OR reveals a non-obvious behavioral pattern from conversation history
+- **中**: Useful but relies on recombining known knowledge without external input, or is a best-practice reminder, OR a plausible behavioral observation that lacks specificity
 - **低**: Semantically duplicates a recent insight, is generic advice, or has no grounding in user's specific context

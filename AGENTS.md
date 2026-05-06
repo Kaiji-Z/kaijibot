@@ -74,34 +74,31 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
 Event Sources (timer / persona_change / info_scan)
   → ProactiveScheduler.processEvent(userId, event)
     → computeGradedGate() [pNeed × pAccept vs cost threshold]
-      → search() [scan opportunities: cross-domain, pending Qs, domain depth, exploration]
+      → search() [scan opportunities: cross-domain, domain depth, exploration]
+        → scanExploration: 3-mode routing via timestamp % 100:
+            roll < patternModeRatio → pattern mode (fragment clusters → behavioral insight)
+            roll < patternModeRatio + surpriseWeight → surprise mode (knowledge, web search)
+            else → extend mode (knowledge, user domains)
         → identify() [pick best by pAct, with domain cooldown + type cooldown]
-          → resolve() [dual pipeline: v1 (LLM) + v2 (fragment crystallization) in parallel]
-            → dedup (trigram default 0.6, v1 output 0.85; contentWord default 0.15, v1 output 0.5) + verification gate
-              → v2 insights bypass verification (partial status)
-              → exploration-type insights bypass verification
-            → onInsightReady callback → resolveCognitiveDeliveryTarget → deliverOutboundPayloads → user receives message (direct channel delivery, NOT through heartbeat-runner)
+          → resolve():
+              pattern mode: load fragments+clusters → generateInsightCandidatesLLM(mode="pattern") → partial status, no verification
+              knowledge mode: generateInsightCandidatesLLM(mode="surprise"/"extend") → quality retries (up to 3) → verification (sources present = verified)
+            → safety-net trigram dedup → onInsightReady callback → resolveCognitiveDeliveryTarget → deliverOutboundPayloads → user receives message
 ```
 
-**Dual Pipeline (v1 + v2):**
+**Unified Pipeline (knowledge + pattern modes):**
 
-- **v1** (`generateInsightCandidatesLLM`): LLM generates insight candidates directly from persona + web search results. Optional surprise mode uses `inferSearchStrategy` (another LLM call) to plan web search queries.
-- **v2** (`InsightV2Pipeline`): Conversation fragments collected per-turn via `collectFragmentsForTurn` → stored in `FragmentStore` → `findClusters` (avg strength ≥ 0.15, min 2 fragments) → `crystallize` into insight candidates → `qualityGate` assessment → `compose` final output. Falls back to v1 when no clusters are available.
-- **Merge**: `createDualInsightGenerator` runs both in parallel (`Promise.allSettled`), tags each candidate `.source = "v1"/"v2"`, deduplicates via `isDuplicateBySemanticOverlap` (trigram 0.6), sorts by compositeScore.
+- **Knowledge mode** (`generateInsightCandidatesLLM`): LLM generates insight candidates from persona + web search results. Uses `DIVERSE_FEW_SHOT_SETS` (4 sets × 2 examples, randomly selected) with `DIVERSITY_INSTRUCTION` to avoid formulaic output. Optional surprise mode uses `inferSearchStrategy` to plan web search queries. Quality retries up to 3 attempts with early exit at score ≥ 0.85.
+- **Pattern mode** (`buildPatternInsightPrompt`): Fragment clusters loaded from `FragmentStore` → top fragments by strength → `PATTERN_PROMPT_FRAMES` (4 behavioral observation frames, randomly selected) → LLM generates behavioral insight about the user's thinking patterns. No web search, no verification. Verification status is always `"partial"`.
+- **Mode routing**: `scanExploration()` uses deterministic 3-band routing via `event.timestamp % 100`. Default: 50% pattern, 40% surprise, 10% extend. Configurable via `cognitive.insight.patternModeRatio`.
 
 **Scheduler Diversification:**
 
-- `identify()` applies domain cooldown: `Math.pow(0.3, overlapCount)` for domains overlapping with recent insights, plus `0.3x` penalty when a domain appears ≥3 times in history.
-- Type cooldown: `0.6x` if last two were same type, `0.75x` if last one was same type.
-- Fatigued domains are filtered out entirely before selection.
-- `scanCrossDomain` uses 1-hop (userDomain → non-userDomain) and 2-hop (userDomain → userDomain neighbor → non-userDomain) connections from the domain graph. Falls back to `semanticDistance()` to find the most distant user-domain pair when both produce zero results.
+- `identify()` applies domain cooldown: `Math.pow(0.5, overlapCount)` for domains overlapping with recent insights.
+- Fatigued domains (≥2 appearances in last 5) are filtered out entirely before selection.
+- Starvation boost: domains absent from last 8 insights get 1.5× bonus.
+- `scanCrossDomain` uses 1-hop and 2-hop connections from the domain graph. Falls back to `semanticDistance()` to find the most distant user-domain pair when both produce zero results.
 - `scanDomainDepth` filters out recently targeted domains, falls back to all depth-3+ domains when none remain.
-
-**Blind Spot Lifecycle:**
-
-- `activeBlindSpots` entries carry `createdAt` / `expiresAt` (24h TTL via `BLIND_SPOT_TTL_MS`).
-- `crystallize()` auto-expires stale entries, deduplicates new candidates against existing (>0.8 domain overlap), and marks candidates for delivery.
-- `removeDeliveredBlindSpots()` is called after v2 insight delivery to clear resolved blind spots.
 
 ### Self-Evolution Pipeline
 
@@ -145,7 +142,7 @@ Agent turn completes (≥3 tool calls)
 ### Key Integration Points
 
 Insight delivery:
-- `src/gateway/server.impl.ts` (cognitive section) — bootstraps ProactiveScheduler, wires event sources and delivery
+- `src/gateway/server.impl.ts` (cognitive section) — bootstraps ProactiveScheduler with shared FragmentStore, wires event sources and delivery
 - `src/gateway/cognitive-delivery.ts` — resolves userId to session key for delivery routing
 - `src/infra/heartbeat-reason.ts` — classifies `"cognitive-insight"` as `"wake"` kind to bypass HEARTBEAT.md gate
 - `src/infra/heartbeat-runner.ts` — `hasCognitiveEvents` check for `shouldInspectPendingEvents`
@@ -240,6 +237,7 @@ Shared:
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
+- Insight config: `cognitive.insight.patternModeRatio` (0-1, default 0.5), `cognitive.insight.engine` ("v1"/"v2"/"dual"/"knowledge"/"pattern"/"unified")
 - Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config

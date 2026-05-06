@@ -27,7 +27,6 @@ import {
   discoverDomainsFromPersona,
   extendDomainGraph,
 } from "./cross-domain-mapper.js";
-import { verifyInsight } from "./verification/pipeline.js";
 import {
   buildInsightPrompt,
   buildSearchQuery,
@@ -340,98 +339,6 @@ describe("Pipeline: serendipity scoring", () => {
 });
 
 // ===========================================================================
-// SCENARIO 3: Verification pipeline
-// ===========================================================================
-describe("Pipeline: insight verification", () => {
-  it("returns unverified with no sources", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [],
-      verificationLevel: "basic",
-    });
-
-    expect(result.status).toBe("unverified");
-    expect(result.confidence).toBe(0);
-  });
-
-  it("returns partial with one credible source at basic level", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [{ url: "https://example.com", title: "Test", credibility: 0.8 }],
-      verificationLevel: "basic",
-    });
-
-    expect(result.status).toBe("partial");
-    expect(result.confidence).toBeGreaterThan(0);
-  });
-
-  it("returns verified with 2+ credible sources at strict level", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [
-        { url: "https://a.com", title: "A", credibility: 0.8 },
-        { url: "https://b.com", title: "B", credibility: 0.7 },
-      ],
-      verificationLevel: "strict",
-    });
-
-    expect(result.status).toBe("verified");
-  });
-
-  it("returns partial with only 1 source at strict level", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [{ url: "https://a.com", title: "A", credibility: 0.8 }],
-      verificationLevel: "strict",
-    });
-
-    expect(result.status).toBe("partial");
-  });
-
-  it("paranoid level requires 3+ high-credibility sources", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [
-        { url: "https://a.com", title: "A", credibility: 0.6 },
-        { url: "https://b.com", title: "B", credibility: 0.7 },
-        { url: "https://c.com", title: "C", credibility: 0.8 },
-      ],
-      verificationLevel: "paranoid",
-    });
-
-    expect(result.status).toBe("verified");
-  });
-
-  it("paranoid level returns partial with low-credibility sources", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [
-        { url: "https://a.com", title: "A", credibility: 0.3 },
-        { url: "https://b.com", title: "B", credibility: 0.3 },
-        { url: "https://c.com", title: "C", credibility: 0.3 },
-      ],
-      verificationLevel: "paranoid",
-    });
-
-    expect(result.status).toBe("partial");
-  });
-
-  it("rejects all low-credibility sources", () => {
-    const result = verifyInsight({
-      content: "Test",
-      sources: [
-        { url: "https://a.com", title: "A", credibility: 0.1 },
-        { url: "https://b.com", title: "B", credibility: 0.2 },
-      ],
-      verificationLevel: "basic",
-    });
-
-    expect(result.status).toBe("unverified");
-    expect(result.confidence).toBeLessThanOrEqual(0.1);
-  });
-});
-
-// ===========================================================================
 // SCENARIO 4: Domain graph evolution
 // ===========================================================================
 describe("Pipeline: domain graph evolution", () => {
@@ -562,7 +469,7 @@ describe("Pipeline: LLM prompt construction", () => {
   it("builds a prompt with persona data", () => {
     const persona = richPersona();
     const input = baseInput();
-    const prompt = buildInsightPrompt(persona, input);
+    const { prompt } = buildInsightPrompt(persona, input);
 
     expect(prompt).toContain("AI/机器学习");
     expect(prompt).toContain("Transformer架构");
@@ -577,7 +484,7 @@ describe("Pipeline: LLM prompt construction", () => {
       { title: "Transformer优化技术", url: "https://example.com", snippet: "AI/机器学习领域的注意力机制突破" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults);
+    const { prompt } = buildInsightPrompt(persona, input, webResults);
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("注意力机制突破");
   });
@@ -587,7 +494,7 @@ describe("Pipeline: LLM prompt construction", () => {
     const input = baseInput();
     const recentInsightContents = ["上次说的关于Transformer的洞察"];
 
-    const prompt = buildInsightPrompt(persona, input, [], recentInsightContents);
+    const { prompt } = buildInsightPrompt(persona, input, [], recentInsightContents);
     expect(prompt).toContain("PAST INSIGHTS");
     expect(prompt).toContain("Transformer");
   });
@@ -600,13 +507,13 @@ describe("Pipeline: LLM prompt construction", () => {
     }
     persona.domainGraph = graph;
 
-    const prompt = buildInsightPrompt(persona, baseInput());
+    const { prompt } = buildInsightPrompt(persona, baseInput());
     expect(prompt).toContain("CROSS-DOMAIN CONNECTIONS");
   });
 
   it("prompt works with minimal persona (no identity, no domains)", () => {
     const persona = createDefaultPersona();
-    const prompt = buildInsightPrompt(persona, baseInput());
+    const { prompt } = buildInsightPrompt(persona, baseInput());
     expect(prompt).toContain("SPECIFIC FACTS");
     expect(prompt.length).toBeGreaterThan(100);
   });

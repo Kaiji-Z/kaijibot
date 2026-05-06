@@ -1,6 +1,6 @@
 import type { PersonaTree, InsightRecord } from "../types.js";
 import type { FeedbackEvent, ImplicitFeedbackSignal } from "./types.js";
-import { updateBanditFromFeedback, adaptFrequency } from "./preference-learner.js";
+import { updateBanditFromFeedback, adaptFrequency, updatePromptBandit } from "./preference-learner.js";
 import { updateTrustFromFeedback, updateTrustFromImplicit } from "./trust-calculator.js";
 import { recordCalibration } from "./calibration.js";
 
@@ -123,6 +123,23 @@ export function processInsightFeedback(
     }
   }
 
+  let promptBandits = persona.feedbackProfile.promptBandits;
+  if (insight.promptVariant) {
+    const v = insight.promptVariant;
+    const armKeys = [
+      `fewShot:${v.fewShotSet}`,
+      `frame:${v.frameIndex}`,
+      ...(v.structureSeed !== undefined ? [`seed:${v.structureSeed}`] : []),
+      ...(v.patternFrame !== undefined ? [`pattern:${v.patternFrame}`] : []),
+    ];
+    let updated = { ...(promptBandits ?? {}) };
+    const timestamp = insight.deliveredAt ?? Date.now();
+    for (const key of armKeys) {
+      updated = updatePromptBandit({ promptBandits: updated }, key, feedback, timestamp);
+    }
+    promptBandits = updated;
+  }
+
   const trustDelta = feedback === "positive"
     ? 0.03
     : feedback === "engaged"
@@ -156,6 +173,7 @@ export function processInsightFeedback(
     feedbackProfile: {
       ...persona.feedbackProfile,
       topicBandits: updatedBandits,
+      promptBandits,
       optimalFrequencyHours: newFrequency,
       lastProactiveAt,
     },

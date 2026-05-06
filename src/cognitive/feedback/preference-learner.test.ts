@@ -7,6 +7,8 @@ import {
   decayBandit,
   decayAllBandits,
   DECAY_HALF_LIFE_MS,
+  pickPromptVariant,
+  updatePromptBandit,
 } from "./preference-learner.js";
 import type { FeedbackProfile, TopicBandit } from "../types.js";
 import type { FeedbackEvent } from "./types.js";
@@ -218,5 +220,139 @@ describe("adaptFrequency", () => {
   it("clamps to maximum of 48 hours", () => {
     const result = adaptFrequency(47, { targetId: "1", type: "negative", mechanism: "button", timestamp: Date.now() });
     expect(result).toBe(48);
+  });
+});
+
+describe("pickPromptVariant", () => {
+  const arms = ["casual", "formal", "concise", "detailed"];
+
+  it("cold start: all equal priors produce roughly uniform selection", () => {
+    const counts = new Array(arms.length).fill(0);
+    const profile = makeProfile();
+    for (let i = 0; i < 1000; i++) {
+      counts[pickPromptVariant(profile, arms)]++;
+    }
+    for (const count of counts) {
+      expect(count).toBeGreaterThan(150);
+    }
+  });
+
+  it("exploits: arm with high alpha/low beta wins >80% over 1000 draws", () => {
+    const profile = makeProfile();
+    profile.promptBandits = {
+      casual: { alpha: 20, beta: 1 },
+      formal: { alpha: 2, beta: 1 },
+      concise: { alpha: 2, beta: 1 },
+      detailed: { alpha: 2, beta: 1 },
+    };
+    let wins = 0;
+    for (let i = 0; i < 1000; i++) {
+      if (pickPromptVariant(profile, arms) === 0) wins++;
+    }
+    expect(wins).toBeGreaterThan(700);
+  });
+
+  it("explores: arm with very few trials occasionally beats established arm", () => {
+    const profile = makeProfile();
+    profile.promptBandits = {
+      casual: { alpha: 20, beta: 20 },
+      formal: { alpha: 2, beta: 1 },
+    };
+    let formalWins = 0;
+    for (let i = 0; i < 1000; i++) {
+      if (pickPromptVariant(profile, ["casual", "formal"]) === 1) formalWins++;
+    }
+    expect(formalWins).toBeGreaterThan(50);
+  });
+
+  it("works with undefined promptBandits (empty profile)", () => {
+    const profile = makeProfile();
+    expect(profile.promptBandits).toBeUndefined();
+    const idx = pickPromptVariant(profile, ["a", "b"]);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(idx).toBeLessThan(2);
+  });
+
+  it("returns 0 for single arm", () => {
+    const profile = makeProfile();
+    expect(pickPromptVariant(profile, ["only"])).toBe(0);
+  });
+
+  it("uses rng parameter for deterministic selection", () => {
+    const profile = makeProfile();
+    profile.promptBandits = {
+      a: { alpha: 5, beta: 1 },
+      b: { alpha: 1, beta: 5 },
+    };
+    const results = new Set<number>();
+    for (let i = 0; i < 10; i++) {
+      results.add(pickPromptVariant(profile, ["a", "b"], () => 0.5));
+    }
+    expect(results.size).toBe(1);
+  });
+});
+
+describe("updatePromptBandit", () => {
+  const ts = 1700000000000;
+
+  it("positive feedback increments alpha by 1, beta unchanged", () => {
+    const profile = makeProfile();
+    profile.promptBandits = { style: { alpha: 3, beta: 2 } };
+    const result = updatePromptBandit(profile, "style", "positive", ts);
+    expect(result["style"]!.alpha).toBe(4);
+    expect(result["style"]!.beta).toBe(2);
+  });
+
+  it("negative feedback increments beta by 1, alpha unchanged", () => {
+    const profile = makeProfile();
+    profile.promptBandits = { style: { alpha: 3, beta: 2 } };
+    const result = updatePromptBandit(profile, "style", "negative", ts);
+    expect(result["style"]!.alpha).toBe(3);
+    expect(result["style"]!.beta).toBe(3);
+  });
+
+  it("neutral feedback increments beta by 0.5", () => {
+    const profile = makeProfile();
+    profile.promptBandits = { style: { alpha: 3, beta: 2 } };
+    const result = updatePromptBandit(profile, "style", "neutral", ts);
+    expect(result["style"]!.alpha).toBe(3);
+    expect(result["style"]!.beta).toBeCloseTo(2.5);
+  });
+
+  it("engaged feedback increments alpha by 1", () => {
+    const profile = makeProfile();
+    profile.promptBandits = { style: { alpha: 3, beta: 2 } };
+    const result = updatePromptBandit(profile, "style", "engaged", ts);
+    expect(result["style"]!.alpha).toBe(4);
+    expect(result["style"]!.beta).toBe(2);
+  });
+
+  it("creates new arm with optimistic prior then updates", () => {
+    const profile = makeProfile();
+    const result = updatePromptBandit(profile, "newArm", "positive", ts);
+    expect(result["newArm"]!.alpha).toBe(3); // prior 2 + 1
+    expect(result["newArm"]!.beta).toBe(1);
+  });
+
+  it("does NOT mutate original profile", () => {
+    const profile = makeProfile();
+    profile.promptBandits = { style: { alpha: 3, beta: 2 } };
+    const originalAlpha = profile.promptBandits["style"]!.alpha;
+    updatePromptBandit(profile, "style", "positive", ts);
+    expect(profile.promptBandits["style"]!.alpha).toBe(originalAlpha);
+  });
+
+  it("sets lastUpdated to the provided timestamp", () => {
+    const profile = makeProfile();
+    const result = updatePromptBandit(profile, "style", "positive", ts);
+    expect(result["style"]!.lastUpdated).toBe(ts);
+  });
+
+  it("works with undefined promptBandits on profile", () => {
+    const profile = makeProfile();
+    expect(profile.promptBandits).toBeUndefined();
+    const result = updatePromptBandit(profile, "arm", "negative", ts);
+    expect(result["arm"]!.alpha).toBe(2);
+    expect(result["arm"]!.beta).toBe(2); // prior 1 + 1
   });
 });

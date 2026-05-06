@@ -150,7 +150,7 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
       { title: "TypeScript 5.5 decorators are stable", url: "https://example.com/ts", snippet: "Stage 3 decorator proposal is now stable" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults, []);
+    const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     // Should have EXTERNAL_FACTS block
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -165,7 +165,7 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
     const persona = makeTestPersona();
     const input = makeInput(["TypeScript"]);
 
-    const prompt = buildInsightPrompt(persona, input, [], []);
+    const { prompt } = buildInsightPrompt(persona, input, [], []);
 
     expect(prompt).not.toContain("EXTERNAL_FACTS");
     // SPECIFIC FACTS should still be present
@@ -201,7 +201,7 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
       { title: "Rust borrow checker", url: "https://b.com", snippet: "New borrow checker rules" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults, []);
+    const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("TS type predicates");
@@ -373,7 +373,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
       { title: "Model Context Protocol specification v2.0", url: "https://example.com", snippet: "The MCP spec has been updated with new tool schemas" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults, []);
+    const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     // Should match via "model context protocol" alias from keyInsight
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -390,7 +390,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
       { title: "New TC39 decorator stage 3 update", url: "https://example.com", snippet: "Decorator metadata reflection API progresses" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults, []);
+    const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("Decorator metadata reflection");
@@ -405,7 +405,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
       { title: "Best restaurants in San Francisco", url: "https://example.com", snippet: "Top 10 places to eat in the bay area" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults, []);
+    const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     // Should NOT match (no keyword overlap)
     expect(prompt).not.toContain("EXTERNAL_FACTS");
@@ -422,7 +422,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
       { title: "Rust 2026 edition roadmap", url: "https://example.com", snippet: "What's coming in the next Rust edition" },
     ];
 
-    const prompt = buildInsightPrompt(persona, input, webResults, []);
+    const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("next Rust edition");
@@ -481,7 +481,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
 
     // Step 1: Generate prompt and verify alias matching + EXTERNAL_FACTS
     const input = makeInput(["MCP", "Rust"]);
-    const prompt = buildInsightPrompt(persona, input, [
+    const { prompt } = buildInsightPrompt(persona, input, [
       { title: "Model Context Protocol v2 tools", url: "https://example.com/1", snippet: "MCP tool schema supports async validation" },
       { title: "Rust borrow checker update", url: "https://example.com/2", snippet: "New NLL rules in Rust 2026" },
     ], persona.feedbackProfile.recentInsightContents);

@@ -61,4 +61,10 @@ export type SchedulerConfig = {
   costFalseNegative?: number;
   /** Cost of false alarm (unnecessary interruption). Default 1.0 */
   costFalseAlarm?: number;
+  /** Ratio of pattern-mode opportunities vs knowledge-mode (0-1, default 0.5) */
+  patternModeRatio?: number;
+  /** Use LLM-as-Judge to verify pattern-mode insights (default: true) */
+  patternVerification?: boolean;
+  /** Use LLM to check semantic novelty after trigram dedup passes (default: true) */
+  llmFreshnessCheck?: boolean;
 };

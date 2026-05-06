@@ -161,7 +161,7 @@ describe("insight quality (prompt structure)", () => {
   it("buildInsightPrompt includes SPECIFIC FACTS anchor block", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
-    const prompt = buildInsightPrompt(persona, input, [], []);
+    const { prompt } = buildInsightPrompt(persona, input, [], []);
 
     expect(prompt).toContain("SPECIFIC FACTS");
     expect(prompt).toContain("PRISM门控");
@@ -172,7 +172,7 @@ describe("insight quality (prompt structure)", () => {
   it("buildInsightPrompt includes STRUCTURE CONSTRAINT", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
-    const prompt = buildInsightPrompt(persona, input, [], []);
+    const { prompt } = buildInsightPrompt(persona, input, [], []);
 
     expect(prompt).toContain("STRUCTURE CONSTRAINT");
   });
@@ -180,7 +180,7 @@ describe("insight quality (prompt structure)", () => {
   it("buildInsightPrompt sorts domains by recency (most active first)", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
-    const prompt = buildInsightPrompt(persona, input, [], []);
+    const { prompt } = buildInsightPrompt(persona, input, [], []);
 
     const tsIdx = prompt.indexOf("TypeScript");
     const feishuIdx = prompt.indexOf("飞书集成");
@@ -190,18 +190,18 @@ describe("insight quality (prompt structure)", () => {
   it("buildInsightPrompt includes banned patterns list", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
-    const prompt = buildInsightPrompt(persona, input, [], []);
+    const { prompt } = buildInsightPrompt(persona, input, [], []);
 
-    expect(prompt).toContain("被人X但换个角度");
     expect(prompt).toContain("值得关注");
     expect(prompt).toContain("你有没有想过");
+    expect(prompt).toContain("有趣的是");
   });
 
   it("buildInsightPrompt includes past insights for anti-repetition", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
     const pastInsights = ["Python的GIL被人骂了这么多年，但换个角度看..."];
-    const prompt = buildInsightPrompt(persona, input, [], pastInsights);
+    const { prompt } = buildInsightPrompt(persona, input, [], pastInsights);
 
     expect(prompt).toContain("PAST INSIGHTS");
     expect(prompt).toContain("Python");
@@ -211,7 +211,7 @@ describe("insight quality (prompt structure)", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
     const pastInsights = ["Rust的借用检查器被骂学习曲线陡"];
-    const prompt = buildInsightPrompt(persona, input, [], pastInsights);
+    const { prompt } = buildInsightPrompt(persona, input, [], pastInsights);
 
     expect(prompt).toContain("不要以");
   });
@@ -233,7 +233,7 @@ describe("insight quality (prompt structure)", () => {
   it("buildInsightPrompt includes domain depth in recency tags", () => {
     const persona = makeFullStackDevPersona();
     const input = makeInput(["认知系统设计"]);
-    const prompt = buildInsightPrompt(persona, input, [], []);
+    const { prompt } = buildInsightPrompt(persona, input, [], []);
 
     expect(prompt).toContain("depth: 5");
     expect(prompt).toContain("depth: 3");
@@ -249,7 +249,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("insight quality (live LLM)", () => {
 
     for (let round = 1; round <= ROUNDS; round++) {
       const input = makeInput(["认知系统设计"]);
-      const prompt = buildInsightPrompt(persona, input, [], persona.feedbackProfile.recentInsightContents);
+      const { prompt } = buildInsightPrompt(persona, input, [], persona.feedbackProfile.recentInsightContents);
       const raw = await callLLM(prompt);
       const insights = parseInsights(raw);
 
@@ -361,7 +361,7 @@ describe("insight pipeline validation (mock LLM)", () => {
   });
 
   it("prompt contains enough context for the LLM to produce GOOD-style insights", () => {
-    const prompt = buildInsightPrompt(persona, input, [], persona.feedbackProfile.recentInsightContents);
+    const { prompt } = buildInsightPrompt(persona, input, [], persona.feedbackProfile.recentInsightContents);
 
     // Must include specific facts that GOOD insights reference
     expect(prompt).toContain("PRISM门控");
@@ -372,7 +372,6 @@ describe("insight pipeline validation (mock LLM)", () => {
     expect(prompt).not.toContain("如何让洞察更个性化而非模板化");
 
     // Must include anti-patterns
-    expect(prompt).toContain("被人X但换个角度");
     expect(prompt).toContain("值得关注");
 
     // Must include structure constraint
@@ -382,7 +381,7 @@ describe("insight pipeline validation (mock LLM)", () => {
   it("generates different prompt frames across multiple calls (structural variety)", () => {
     const frames = new Set<string>();
     for (let i = 0; i < 20; i++) {
-      const prompt = buildInsightPrompt(persona, input, [], []);
+      const { prompt } = buildInsightPrompt(persona, input, [], []);
       const taskMatch = prompt.match(/TASK:\n([\s\S]*?)\n\n ?STRUCTURE/);
       if (taskMatch) frames.add(taskMatch[1]!.trim());
     }
@@ -393,7 +392,7 @@ describe("insight pipeline validation (mock LLM)", () => {
   it("generates different structure seeds across multiple calls", () => {
     const seeds = new Set<string>();
     for (let i = 0; i < 20; i++) {
-      const prompt = buildInsightPrompt(persona, input, [], []);
+      const { prompt } = buildInsightPrompt(persona, input, [], []);
       const seedMatch = prompt.match(/STRUCTURE CONSTRAINT:\n(.*)/);
       if (seedMatch) seeds.add(seedMatch[1]!.trim());
     }

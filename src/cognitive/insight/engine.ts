@@ -2,7 +2,6 @@ import type { PersonaTree } from "../types.js";
 import type { InsightEngineInput, InsightCandidate } from "./types.js";
 import { scoreSerendipity } from "./serendipity-scorer.js";
 import { findCrossDomainConnections, semanticDistance } from "./cross-domain-mapper.js";
-import { verifyInsight } from "./verification/pipeline.js";
 import { isDuplicateBySemanticOverlap } from "./content-similarity.js";
 import { randomUUID } from "node:crypto";
 
@@ -83,19 +82,11 @@ export function generateInsightCandidates(
     };
   });
 
-  // Verify and return top candidates
   return scored
     .filter((c) => !isCandidateBlacklisted(c, persona.domainBlacklist))
     .sort((a, b) => b.compositeScore - a.compositeScore)
     .slice(0, maxCandidates)
-    .map((c) => {
-      const verification = verifyInsight({
-        content: c.content,
-        sources: c.sources,
-        verificationLevel,
-      });
-      return { ...c, verificationStatus: verification.status };
-    });
+    .map((c) => ({ ...c, verificationStatus: "unverified" as const }));
 }
 
 function buildCrossDomainCandidate(
