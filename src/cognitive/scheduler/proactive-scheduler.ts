@@ -273,6 +273,21 @@ export class ProactiveScheduler {
     }
 
     // Knowledge mode: generate with self-refine (or blind retry fallback)
+    const userId = persona.identity?.userId;
+    let knowledgeFragments: import("../insight/fragment-types.js").Fragment[] | undefined;
+    if (userId) {
+      try {
+        const allFragments = await this.fragmentStore.load(userId);
+        const allowedKinds = new Set(["knowledge_gap", "assumption", "implicit_priority"]);
+        knowledgeFragments = allFragments.filter(f => allowedKinds.has(f.kind));
+        if (knowledgeFragments.length > 0) {
+          log.info("knowledge-mode fragments loaded", { userId, count: knowledgeFragments.length });
+        }
+      } catch (err) {
+        log.warn("failed to load fragments for knowledge mode", { userId, error: String(err) });
+      }
+    }
+
     const input: InsightEngineInput = {
       targetDomains: opportunity.targetDomains.length > 0
         ? opportunity.targetDomains
@@ -287,6 +302,8 @@ export class ProactiveScheduler {
       mode,
       recentQueryHistory,
       recentInsightDomains,
+      fragments: knowledgeFragments,
+      feedbackProfile: persona.feedbackProfile,
     };
 
     const genOpts = {

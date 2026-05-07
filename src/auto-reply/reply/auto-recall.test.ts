@@ -14,10 +14,8 @@ function makePersona(recentFocus: string[]): PersonaTree {
     },
     domains: {},
     recentFocus,
-    activeProjects: [],
     feedbackProfile: {
       topicBandits: {},
-      preferredStyle: "observation",
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
       recentInsightIds: [],
@@ -36,11 +34,9 @@ function makePersona(recentFocus: string[]): PersonaTree {
       stage: "new",
       lastActiveAt: 0,
       lastStageTransitionAt: 0,
-      consecutiveSilentDays: 0,
       totalActiveDays: 0,
     },
     calibrationHistory: [],
-    contradictionLog: [],
     moodHistory: [],
   };
 }

@@ -1,3 +1,5 @@
+import type { InsightCategory as InsightCategoryBase, SentimentResult as SentimentResultBase, CommunicationStyle as CommunicationStyleBase } from "../types.js";
+
 export type {
   PersonaTree,
   DomainNode,
@@ -7,9 +9,10 @@ export type {
   FeedbackProfile,
   RapportMetrics,
   SentimentResult,
+  TypedInsight,
+  InsightCategory,
 } from "../types.js";
 
-/** Extracted attribute with dot-path field, 0-1 confidence, and evidence text */
 export type ExtractedAttribute = {
   field: string;
   value: string;
@@ -18,19 +21,26 @@ export type ExtractedAttribute = {
   evidence: string;
 };
 
-/** Structured result from a persona extraction pass */
+export type ExtractedInsight = {
+  text: string;
+  category: InsightCategoryBase;
+  confidence: number;
+  source: "explicit" | "inferred" | "observed";
+};
+
 export type ExtractionResult = {
   attributes: ExtractedAttribute[];
   domains: Array<{
     name: string;
     depth: number;
     insights: string[];
+    /** Typed insights from LLM extraction with category metadata. */
+    typedInsights?: ExtractedInsight[];
     questions: string[];
     negated?: boolean;
   }>;
   recentFocus: string[];
-  /** Domain names the user explicitly wants blacklisted */
   blacklistRequests?: string[];
-  sentiment?: import("../types.js").SentimentResult;
-  communicationStyle?: import("../types.js").CommunicationStyle;
+  sentiment?: SentimentResultBase;
+  communicationStyle?: CommunicationStyleBase;
 };

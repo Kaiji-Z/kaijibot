@@ -1,7 +1,43 @@
-import type { BlindSpotCandidate, ParkedBlindSpot } from "./insight/fragment-types.js";
-
 // Conversation mode — determines agent behavior
 export type CognitiveMode = "task" | "insight" | "hybrid" | "proactive";
+
+/**
+ * Category of a typed insight extracted from user interactions.
+ * Used to classify and filter insights for downstream consumers.
+ *
+ * - domain_knowledge: Factual knowledge the user has about a domain
+ * - behavioral_pattern: Repeated behaviors or thinking patterns observed
+ * - stated_preference: Explicit preferences the user has expressed
+ * - tool_config: Configuration/usage of tools (excluded from insight prompts)
+ * - contextual_fact: Situational facts (e.g. "currently at work") — short-lived
+ * - goal_or_aspiration: Long-term goals or aspirations the user mentioned
+ */
+export type InsightCategory =
+  | "domain_knowledge"
+  | "behavioral_pattern"
+  | "stated_preference"
+  | "tool_config"
+  | "contextual_fact"
+  | "goal_or_aspiration";
+
+export type TypedInsight = {
+  text: string;
+  category: InsightCategory;
+  confidence: number;
+  source: "explicit" | "inferred" | "observed";
+  firstObserved: number;
+  lastReinforced: number;
+  evidenceCount: number;
+  halfLifeDays: number;
+};
+
+/** Lifecycle phase of a user's interest in a domain. */
+export type InterestPhase =
+  | "emergent"
+  | "stable"
+  | "declining"
+  | "dormant"
+  | "revived";
 
 // Result from mode classification
 export type ModeClassification = {
@@ -33,10 +69,15 @@ export type DomainNode = {
   recurrence: number;
   lastMentioned: number;
   keyInsights: string[];
+  /** Typed insights with category, confidence, and decay metadata. */
+  insights?: TypedInsight[];
   activeQuestions: string[];
-  connections: string[];
   negationSignals: number;
   lastNegatedAt?: number;
+  /** Current lifecycle phase of user interest in this domain. */
+  phase?: InterestPhase;
+  /** Timestamp when the current phase was entered. */
+  phaseEnteredAt?: number;
 };
 
 // Thompson Sampling arm for a topic
@@ -63,7 +104,6 @@ export type MoodSnapshot = {
 // User's feedback profile
 export type FeedbackProfile = {
   topicBandits: Record<string, TopicBandit>;
-  preferredStyle: "question" | "observation" | "connection";
   optimalFrequencyHours: number;
   lastProactiveAt: number;
   suppressUntil?: number;
@@ -90,7 +130,6 @@ export type UserLifecycle = {
   stage: UserLifecycleStage;
   lastActiveAt: number;
   lastStageTransitionAt: number;
-  consecutiveSilentDays: number;
   totalActiveDays: number;
 };
 
@@ -123,7 +162,6 @@ export type PersonaTree = {
     displayName?: string;
     coreTraits: Record<string, ConfidenceValue>;
     communicationStyle?: CommunicationStyle;
-    timezone?: string;
     primaryLanguage?: string;
     expertDomains: string[];
     interestDomains: string[];
@@ -132,17 +170,13 @@ export type PersonaTree = {
   };
   domains: Record<string, DomainNode>;
   recentFocus: string[];
-  activeProjects: string[];
   feedbackProfile: FeedbackProfile;
   rapport: RapportMetrics;
   domainGraph?: LearnedDomainGraph;
   moodHistory: MoodSnapshot[];
-  activeBlindSpots?: BlindSpotCandidate[];
-  parkedBlindSpots?: ParkedBlindSpot[];
   domainBlacklist: string[];
   lifecycle: UserLifecycle;
   calibrationHistory: CalibrationRecord[];
-  contradictionLog: ContradictionRecord[];
 };
 
 // Weighted edge in a learned domain co-occurrence graph

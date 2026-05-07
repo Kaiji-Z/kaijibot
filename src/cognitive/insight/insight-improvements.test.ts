@@ -40,7 +40,6 @@ function makeTestPersona(): PersonaTree {
         lastMentioned: now - 1000 * 60 * 10,
         keyInsights: ["decorator pattern", "template literal types", "Zod schema validation"],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
       "MCP": {
@@ -49,7 +48,6 @@ function makeTestPersona(): PersonaTree {
         lastMentioned: now - 1000 * 60 * 60,
         keyInsights: ["Model Context Protocol", "tool schema design"],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
       "Rust": {
@@ -58,15 +56,12 @@ function makeTestPersona(): PersonaTree {
         lastMentioned: now - 1000 * 60 * 30,
         keyInsights: ["borrow checker", "zero-cost abstractions"],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
     },
     recentFocus: ["认知层改进", "洞察质量"],
-    activeProjects: [],
     feedbackProfile: {
       topicBandits: {},
-      preferredStyle: "observation",
       optimalFrequencyHours: 2,
       lastProactiveAt: 0,
       recentInsightIds: [],
@@ -84,9 +79,8 @@ function makeTestPersona(): PersonaTree {
     },
     moodHistory: [],
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, consecutiveSilentDays: 0, totalActiveDays: 30 },
+    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, totalActiveDays: 30 },
     calibrationHistory: [],
-    contradictionLog: [],
   };
 }
 

@@ -1303,11 +1303,21 @@ export async function startGatewayServer(
                 args: { query, count: 3 },
               });
               const results = (result as Record<string, unknown>).results as Array<{ title: string; url: string; snippet?: string; description?: string }> | undefined;
-              return (results ?? []).map((r) => ({
-                title: String(r.title ?? ""),
-                url: String(r.url ?? ""),
-                snippet: String(r.snippet ?? r.description ?? ""),
-              }));
+              const SEARCH_PROVIDER_HOSTS = new Set(["exa.ai", "api.exa.ai", "tavily.com", "api.tavily.com", "search.brave.com"]);
+              return (results ?? [])
+                .filter((r) => {
+                  try {
+                    const hostname = new URL(r.url).hostname.toLowerCase();
+                    return !SEARCH_PROVIDER_HOSTS.has(hostname);
+                  } catch {
+                    return true;
+                  }
+                })
+                .map((r) => ({
+                  title: String(r.title ?? ""),
+                  url: String(r.url ?? ""),
+                  snippet: String(r.snippet ?? r.description ?? ""),
+                }));
             } catch {
               return [];
             }

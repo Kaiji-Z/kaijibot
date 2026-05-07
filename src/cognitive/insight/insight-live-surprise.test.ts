@@ -37,17 +37,15 @@ function makePersona(): PersonaTree {
       curiosityDomains: ["量子计算", "生物信息学"],
     },
     domains: {
-      "认知系统设计": { depth: 5, recurrence: 12, lastMentioned: now - 1800000, keyInsights: ["PRISM门控", "SIRI循环", "Persona双通道提取"], activeQuestions: [], connections: ["Prompt工程"], negationSignals: 0 },
-      "TypeScript": { depth: 5, recurrence: 20, lastMentioned: now - 600000, keyInsights: ["decorator pattern", "Zod schema validation"], activeQuestions: [], connections: [], negationSignals: 0 },
-      "MCP": { depth: 3, recurrence: 5, lastMentioned: now - 3600000, keyInsights: ["Model Context Protocol", "tool schema design"], activeQuestions: [], connections: [], negationSignals: 0 },
-      "Rust": { depth: 4, recurrence: 8, lastMentioned: now - 2700000, keyInsights: ["borrow checker", "zero-cost abstractions"], activeQuestions: [], connections: [], negationSignals: 0 },
-      "飞书集成": { depth: 4, recurrence: 8, lastMentioned: now - 3600000, keyInsights: ["WebSocket长连接", "消息卡片"], activeQuestions: [], connections: [], negationSignals: 0 },
+      "认知系统设计": { depth: 5, recurrence: 12, lastMentioned: now - 1800000, keyInsights: ["PRISM门控", "SIRI循环", "Persona双通道提取"], activeQuestions: [], negationSignals: 0 },
+      "TypeScript": { depth: 5, recurrence: 20, lastMentioned: now - 600000, keyInsights: ["decorator pattern", "Zod schema validation"], activeQuestions: [], negationSignals: 0 },
+      "MCP": { depth: 3, recurrence: 5, lastMentioned: now - 3600000, keyInsights: ["Model Context Protocol", "tool schema design"], activeQuestions: [], negationSignals: 0 },
+      "Rust": { depth: 4, recurrence: 8, lastMentioned: now - 2700000, keyInsights: ["borrow checker", "zero-cost abstractions"], activeQuestions: [], negationSignals: 0 },
+      "飞书集成": { depth: 4, recurrence: 8, lastMentioned: now - 3600000, keyInsights: ["WebSocket长连接", "消息卡片"], activeQuestions: [], negationSignals: 0 },
     },
     recentFocus: ["认知层洞察质量优化", "Web UI 精简", "LLM prompt调试"],
-    activeProjects: [],
     feedbackProfile: {
       topicBandits: {},
-      preferredStyle: "observation",
       optimalFrequencyHours: 2,
       lastProactiveAt: 0,
       recentInsightIds: [],
@@ -69,9 +67,8 @@ function makePersona(): PersonaTree {
     },
     moodHistory: [],
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, consecutiveSilentDays: 0, totalActiveDays: 30 },
+    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, totalActiveDays: 30 },
     calibrationHistory: [],
-    contradictionLog: [],
   };
 }
 

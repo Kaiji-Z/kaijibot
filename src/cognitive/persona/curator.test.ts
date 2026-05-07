@@ -109,7 +109,6 @@ describe("prunePersona", () => {
         lastMentioned: thirtyOneDaysAgo,
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
       活跃领域: {
@@ -118,7 +117,6 @@ describe("prunePersona", () => {
         lastMentioned: Date.now(),
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
     };
@@ -166,7 +164,6 @@ describe("mergeExtraction — domainBlacklist", () => {
         lastMentioned: now,
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 3,
         lastNegatedAt: now,
       },
@@ -192,7 +189,6 @@ describe("mergeExtraction — domainBlacklist", () => {
         lastMentioned: now,
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 2,
         lastNegatedAt: now,
       },
@@ -219,7 +215,6 @@ describe("mergeExtraction — domainBlacklist", () => {
         lastMentioned: now,
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 5,
         lastNegatedAt: thirtyOneDaysAgo,
       },
@@ -245,7 +240,6 @@ describe("mergeExtraction — domainBlacklist", () => {
         lastMentioned: now,
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
       "软件架构": {
@@ -254,7 +248,6 @@ describe("mergeExtraction — domainBlacklist", () => {
         lastMentioned: now,
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
     };

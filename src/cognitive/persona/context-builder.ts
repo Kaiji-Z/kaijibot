@@ -31,11 +31,45 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   const activeDomains = Object.entries(persona.domains)
     .filter(([, d]) => d.depth >= 3)
     .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
-    .slice(0, 5)
-    .map(([name, d]) => `${name} (depth: ${d.depth})`);
+    .slice(0, 5);
+
   if (activeDomains.length > 0) {
     lines.push("### Active Topics");
-    lines.push(...activeDomains);
+    for (const [name, d] of activeDomains) {
+      const phaseLabel = d.phase ?? "stable";
+      lines.push(`- ${name} (depth: ${d.depth}, phase: ${phaseLabel})`);
+
+      if (d.insights && d.insights.length > 0) {
+        const topInsights = d.insights
+          .slice()
+          .sort((a, b) => b.confidence - a.confidence)
+          .slice(0, 3);
+        for (const ins of topInsights) {
+          lines.push(`  - ${ins.category}: ${ins.text} (${Math.round(ins.confidence * 100)}%)`);
+        }
+      } else if (d.keyInsights.length > 0) {
+        for (const ins of d.keyInsights.slice(0, 3)) {
+          lines.push(`  - ${ins}`);
+        }
+      }
+    }
+  }
+
+  // User Goals and Aspirations
+  const goalInsights: Array<{ domain: string; insight: import("../types.js").TypedInsight }> = [];
+  for (const [domainName, d] of Object.entries(persona.domains)) {
+    if (!d.insights) continue;
+    for (const ins of d.insights) {
+      if (ins.category === "goal_or_aspiration") {
+        goalInsights.push({ domain: domainName, insight: ins });
+      }
+    }
+  }
+  if (goalInsights.length > 0) {
+    lines.push("### User Goals and Aspirations");
+    for (const { domain, insight } of goalInsights.slice(0, 5)) {
+      lines.push(`- [${domain}] ${insight.text} (${Math.round(insight.confidence * 100)}%)`);
+    }
   }
 
   // Recent focus

@@ -18,7 +18,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["Transformer架构"],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
     "Rust": {
@@ -27,7 +26,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: [],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
     "Design": {
@@ -36,7 +34,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: [],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
   };
@@ -1227,7 +1224,6 @@ describe("pNeed imbalance fix", () => {
         lastMentioned: Date.now(),
         keyInsights: ["Transformer架构", "注意力机制"],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
       "软件架构": {
@@ -1236,7 +1232,6 @@ describe("pNeed imbalance fix", () => {
         lastMentioned: Date.now(),
         keyInsights: [],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
     };
@@ -1520,27 +1515,27 @@ describe("6-cycle integration test — all fixes together", () => {
       "AI/机器学习": {
         depth: 6, recurrence: 12, lastMentioned: Date.now(),
         keyInsights: ["Transformer架构", "注意力机制"], activeQuestions: [],
-        connections: ["软件架构"], negationSignals: 0,
+        negationSignals: 0,
       },
       "软件架构": {
         depth: 5, recurrence: 8, lastMentioned: Date.now() - 1000,
         keyInsights: ["微服务", "事件驱动"], activeQuestions: [],
-        connections: ["AI/机器学习"], negationSignals: 0,
+        negationSignals: 0,
       },
       "Rust": {
         depth: 4, recurrence: 6, lastMentioned: Date.now() - 2000,
         keyInsights: ["所有权模型", "零成本抽象"], activeQuestions: [],
-        connections: ["软件架构"], negationSignals: 0,
+        negationSignals: 0,
       },
       "TypeScript": {
         depth: 5, recurrence: 10, lastMentioned: Date.now() - 500,
         keyInsights: ["类型体操", "装饰器模式"], activeQuestions: [],
-        connections: ["Rust"], negationSignals: 0,
+        negationSignals: 0,
       },
       "飞书开发": {
         depth: 3, recurrence: 4, lastMentioned: Date.now() - 3000,
         keyInsights: ["Skill开发", "消息卡片"], activeQuestions: [],
-        connections: [], negationSignals: 0,
+        negationSignals: 0,
       },
     };
     persona.feedbackProfile.topicBandits = {

@@ -34,25 +34,6 @@ export type FragmentCluster = {
   createdAt: number;
 };
 
-// ─── BlindSpotCandidate ───
-
-export type BlindSpotCandidate = {
-  id: string;
-  blindSpot: string;
-  supportingFragmentIds: string[];
-  potentialImpact:
-    | "direction_change"
-    | "efficiency_gain"
-    | "risk_avoidance"
-    | "connection_reveal";
-  domains: string[];
-  unusedDomains: string[];
-  crystallizationScore: number;
-  // lifecycle tracking
-  createdAt?: number;
-  expiresAt?: number;
-};
-
 // ─── QualityAssessment ───
 
 export type QualityAssessment = {
@@ -69,13 +50,6 @@ export const QUALITY_PILLAR_WEIGHTS = {
   emotionalReadiness: 0.15,
   nonObviousness: 0.25,
 } as const;
-
-// ─── ParkedBlindSpot ───
-
-export type ParkedBlindSpot = BlindSpotCandidate & {
-  parkedAt: number;
-  reassessmentCount: number;
-};
 
 // ─── File Format ───
 

@@ -20,7 +20,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["Transformer架构", "注意力机制"],
       activeQuestions: [],
-      connections: ["软件架构", "Rust", "TypeScript", "飞书开发", "网络安全"],
       negationSignals: 0,
     },
     "软件架构": {
@@ -29,7 +28,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["微服务", "事件驱动"],
       activeQuestions: [],
-      connections: ["AI/机器学习", "Rust", "TypeScript", "飞书开发", "网络安全"],
       negationSignals: 0,
     },
     "Rust": {
@@ -38,7 +36,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["所有权模型", "零成本抽象"],
       activeQuestions: [],
-      connections: ["AI/机器学习", "软件架构", "TypeScript"],
       negationSignals: 0,
     },
     "TypeScript": {
@@ -47,7 +44,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["类型体操", "装饰器模式"],
       activeQuestions: [],
-      connections: ["AI/机器学习", "软件架构", "Rust"],
       negationSignals: 0,
     },
     "网络安全": {
@@ -56,7 +52,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["零信任架构", "沙箱隔离"],
       activeQuestions: [],
-      connections: ["AI/机器学习", "软件架构"],
       negationSignals: 0,
     },
   };
@@ -71,7 +66,6 @@ function richPersona(): PersonaTree {
     stage: "active",
     lastActiveAt: Date.now(),
     lastStageTransitionAt: Date.now() - 86400000,
-    consecutiveSilentDays: 0,
     totalActiveDays: 30,
   };
   return persona;

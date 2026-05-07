@@ -4,8 +4,17 @@ import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { extractFromMessage } from "./extractor.js";
-import type { PersonaTree } from "../types.js";
+import type { PersonaTree, InsightCategory } from "../types.js";
 import type { ExtractionResult } from "./types.js";
+
+const VALID_INSIGHT_CATEGORIES: ReadonlySet<string> = new Set<InsightCategory>([
+  "domain_knowledge",
+  "behavioral_pattern",
+  "stated_preference",
+  "tool_config",
+  "contextual_fact",
+  "goal_or_aspiration",
+]);
 
 export type LlmExtractorDeps = {
   complete: typeof completeSimple;
@@ -22,7 +31,7 @@ export type LlmExtractorOptions = {
 };
 
 const DEFAULT_TIMEOUT_MS = 5_000;
-const DEFAULT_MAX_TOKENS = 300;
+const DEFAULT_MAX_TOKENS = 500;
 
 function isTextContentBlock(block: { type: string }): block is TextContent {
   return block.type === "text";
@@ -157,7 +166,16 @@ Extract and respond with ONLY a JSON object in this exact format (no markdown, n
     {"field": "identity.communicationStyle.technicalLevel", "value": "expert", "confidence": 0.7, "source": "inferred", "evidence": "..."}
   ],
   "domains": [
-    {"name": "AI/机器学习", "depth": 3, "insights": [], "questions": []}
+    {
+      "name": "AI/机器学习",
+      "depth": 3,
+      "insights": ["user understands transformer architecture"],
+      "typedInsights": [
+        {"text": "user understands transformer architecture", "category": "domain_knowledge", "confidence": 0.8, "source": "inferred"},
+        {"text": "user prefers Rust for systems programming", "category": "stated_preference", "confidence": 0.9, "source": "explicit"}
+      ],
+      "questions": []
+    }
   ],
   "recentFocus": ["topic1", "topic2"]
 }
@@ -171,6 +189,15 @@ Rules:
 - source: "explicit" (user stated it), "inferred" (strongly implied from user's words), "observed" (from user behavior)
 - domain depth: 1=mentioned, 3=familiar, 5=expert
 - Only include domains that are actually discussed by the USER
+- Discover domains dynamically — do NOT limit to a predefined list. Name domains naturally in Chinese or English based on the conversation content (e.g. "前端开发", "DevOps", "量化交易", "游戏设计", "区块链")
+- Each domain MUST include typedInsights. Classify every insight into exactly one category:
+  - domain_knowledge: Factual knowledge the user demonstrates about a domain
+  - behavioral_pattern: Repeated behaviors or thinking patterns observed in the user
+  - stated_preference: Explicit preferences the user has expressed
+  - tool_config: Configuration or usage of specific tools and technologies
+  - contextual_fact: Situational, short-lived facts (e.g. "currently at work", "using laptop")
+  - goal_or_aspiration: Long-term goals, career aspirations, or learning objectives
+- typedInsights must have: text (string), category (one of the 6 above), confidence (0-1), source (explicit/inferred/observed)
 - If nothing meaningful can be extracted, return empty arrays
 - Respond with ONLY the JSON, nothing else`;
 }
@@ -199,6 +226,16 @@ function parseLLMExtraction(text: string): ExtractionResult {
             name: String(d.name ?? ""),
             depth: clampDepth(Number(d.depth ?? 1)),
             insights: Array.isArray(d.insights) ? d.insights.map(String) : [],
+            typedInsights: Array.isArray(d.typedInsights)
+              ? d.typedInsights
+                  .filter((ti: Record<string, unknown>) => typeof ti.text === "string" && ti.text.length > 0)
+                  .map((ti: Record<string, unknown>) => ({
+                    text: String(ti.text),
+                    category: validInsightCategory(ti.category),
+                    confidence: clamp01(Number(ti.confidence ?? 0.5)),
+                    source: validSource(ti.source),
+                  }))
+              : undefined,
             questions: Array.isArray(d.questions) ? d.questions.map(String) : [],
           }))
         : [],
@@ -225,4 +262,10 @@ function validSource(
   const s = String(value);
   if (s === "explicit" || s === "inferred" || s === "observed") return s;
   return "inferred";
+}
+
+function validInsightCategory(value: unknown): InsightCategory {
+  const s = String(value);
+  if (VALID_INSIGHT_CATEGORIES.has(s)) return s as InsightCategory;
+  return "domain_knowledge";
 }

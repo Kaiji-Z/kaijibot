@@ -15,7 +15,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["Transformer架构", "注意力机制"],
       activeQuestions: ["如何优化推理速度？"],
-      connections: [],
       negationSignals: 0,
     },
     "软件架构": {
@@ -24,7 +23,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["微服务", "事件驱动"],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
   };
@@ -107,7 +105,7 @@ describe("generateInsightCandidates", () => {
     for (const defaultTarget of ["数据科学", "编程语言", "云/基础设施", "网络安全"]) {
       persona.domains[defaultTarget] = {
         depth: 1, recurrence: 1, lastMentioned: Date.now(),
-        keyInsights: [], activeQuestions: [], connections: [], negationSignals: 0,
+        keyInsights: [], activeQuestions: [], negationSignals: 0,
       };
     }
     persona.domainGraph = {

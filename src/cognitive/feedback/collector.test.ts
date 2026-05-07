@@ -12,13 +12,11 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
     },
     domains: {},
     recentFocus: [],
-    activeProjects: [],
     feedbackProfile: {
       topicBandits: {
         "AI/机器学习": { alpha: 3, beta: 2 },
         "软件架构": { alpha: 2, beta: 1 },
       },
-      preferredStyle: "observation",
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
       recentInsightIds: [],
@@ -32,9 +30,8 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
       selfDisclosureLevel: 0.3,
     },
     domainBlacklist: [],
-    lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 0 },
+    lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, totalActiveDays: 0 },
     calibrationHistory: [],
-    contradictionLog: [],
     moodHistory: [],
   };
 }

@@ -11,10 +11,8 @@ const mockPersona: PersonaTree = {
   },
   domains: {},
   recentFocus: [],
-  activeProjects: [],
   feedbackProfile: {
     topicBandits: {},
-    preferredStyle: "observation",
     optimalFrequencyHours: 4,
     lastProactiveAt: 0,
     recentInsightIds: [],
@@ -27,9 +25,8 @@ const mockPersona: PersonaTree = {
     selfDisclosureLevel: 0,
   },
   domainBlacklist: [],
-  lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 0 },
+  lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, totalActiveDays: 0 },
   calibrationHistory: [],
-  contradictionLog: [],
   moodHistory: [],
 };
 

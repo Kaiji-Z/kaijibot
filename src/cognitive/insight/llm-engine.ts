@@ -6,7 +6,8 @@ import path from "node:path";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
-import type { PersonaTree } from "../types.js";
+import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
+import type { Fragment } from "./fragment-types.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode, LlmCritiqueResult, PromptBuildResult, VerificationResult } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
@@ -14,6 +15,48 @@ import { isDuplicateByContent, isDuplicateBySemanticOverlap, extractContentTheme
 import { pickPromptVariant } from "../feedback/preference-learner.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
+
+const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set(["tool_config", "contextual_fact"]);
+
+export function getFilteredInsights(
+  domain: DomainNode,
+  exclude: ReadonlySet<InsightCategory> = EXCLUDED_INSIGHT_CATEGORIES,
+): string[] {
+  if (domain.insights && domain.insights.length > 0) {
+    return domain.insights
+      .filter((i) => !exclude.has(i.category))
+      .map((i) => i.text);
+  }
+  return domain.keyInsights;
+}
+
+const SEARCH_PROVIDER_DOMAINS = new Set([
+  "exa.ai",
+  "tavily.com",
+  "search.brave.com",
+  "api.exa.ai",
+  "api.tavily.com",
+]);
+
+function isSearchProviderUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return SEARCH_PROVIDER_DOMAINS.has(host) || [...SEARCH_PROVIDER_DOMAINS].some((d) => host.endsWith(`.${d}`) || host === d);
+  } catch {
+    return false;
+  }
+}
+
+const FRAGMENT_KINDS_FOR_PROMPT: ReadonlySet<string> = new Set(["knowledge_gap", "assumption", "implicit_priority"]);
+
+function buildFragmentSection(fragments: Fragment[]): string {
+  const relevant = fragments.filter((f) => FRAGMENT_KINDS_FOR_PROMPT.has(f.kind));
+  if (relevant.length === 0) return "";
+  return relevant
+    .slice(0, 6)
+    .map((f) => `- [${f.kind}] ${f.evidence}`)
+    .join("\n");
+}
 
 export function buildVoiceSection(persona: PersonaTree): string {
   const style = persona.identity?.communicationStyle;
@@ -297,7 +340,8 @@ export async function generateInsightCandidatesLLM(
       if (deps.webSearch && searchStrategy.searchQuery) {
         queryUsed = searchStrategy.searchQuery;
         try {
-          webResults = await cachedWebSearch(deps.webSearch, searchStrategy.searchQuery);
+          const raw = await cachedWebSearch(deps.webSearch, searchStrategy.searchQuery);
+          webResults = raw.filter((r) => !isSearchProviderUrl(r.url));
           log.info("surprise-mode web search completed", { query: searchStrategy.searchQuery, resultCount: webResults.length });
         } catch (err) {
           log.warn("surprise-mode web search failed", { query: searchStrategy.searchQuery, error: String(err) });
@@ -329,7 +373,8 @@ export async function generateInsightCandidatesLLM(
       queryUsed = query;
       if (query) {
         try {
-          webResults = await cachedWebSearch(deps.webSearch, query);
+          const raw = await cachedWebSearch(deps.webSearch, query);
+          webResults = raw.filter((r) => !isSearchProviderUrl(r.url));
           log.info("web search completed", { query, resultCount: webResults.length });
         } catch (err) {
           log.warn("web search failed, proceeding without web results", { query, error: String(err) });
@@ -637,7 +682,7 @@ export function buildSurpriseInsightPrompt(
     .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
     .slice(0, 6);
   const anchorBlock = anchorFacts.length > 0
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
@@ -872,7 +917,7 @@ function buildDomainKeywordMap(
       const trimmed = part.trim().toLowerCase();
       if (trimmed.length >= 2) keywords.add(trimmed);
     }
-    for (const insight of domain.keyInsights.slice(0, 3)) {
+    for (const insight of getFilteredInsights(domain).slice(0, 3)) {
       const lower = insight.toLowerCase();
       keywords.add(lower);
       for (const word of lower.split(/\s+/)) {
@@ -948,7 +993,7 @@ export async function matchWebResultsToDomainsLLM(
       seen.add(name);
       domainEntries.push({
         name,
-        hints: domain.keyInsights.slice(0, 2),
+        hints: getFilteredInsights(domain).slice(0, 2),
       });
     }
   }
@@ -1088,7 +1133,7 @@ export function buildPatternInsightPrompt(
     .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
     .slice(0, 6);
   const anchorBlock = anchorFacts.length > 0
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
@@ -1213,15 +1258,16 @@ export function buildInsightPrompt(
     .map(([name, d]) => {
       const recencyTag = getTimeTag(d.lastMentioned);
       const parts: string[] = [`${name} [${recencyTag}, depth: ${d.depth}]`];
-      if (d.keyInsights.length > 0) {
-        parts.push(`known: ${d.keyInsights.slice(0, 3).join("; ")}`);
+      const filtered = getFilteredInsights(d);
+      if (filtered.length > 0) {
+        parts.push(`known: ${filtered.slice(0, 3).join("; ")}`);
       }
       return parts.join(" | ");
     })
     .join("\n");
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
     .slice(0, 6);
   const anchorBlock = anchorFacts.length > 0
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
@@ -1275,7 +1321,7 @@ export function buildInsightPrompt(
     : "";
 
   const domainNames = sortedDomainEntries.map(([name]) => name);
-  const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) => d.keyInsights.slice(0, 2));
+  const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) => getFilteredInsights(d).slice(0, 2));
   const { text: promptFrame, frameIndex } = pickPromptFrame(
     input.targetDomains, domainNames,
     flatKeyInsights, persona.recentFocus, userName,
@@ -1296,6 +1342,9 @@ export function buildInsightPrompt(
   const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
     .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
 
+  const fragments = input.fragments ?? [];
+  const fragmentSection = buildFragmentSection(fragments);
+
   return { prompt: `${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
@@ -1315,7 +1364,8 @@ ${userDomains || "Not yet established"}
 
 SPECIFIC FACTS YOU KNOW ABOUT THIS USER (your insight MUST reference at least one):
 ${anchorBlock}
-${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's domains):\n${externalFactsBlock}\n\nIMPORTANT: If EXTERNAL_FACTS contains information relevant to the user's focus areas, prioritize building the insight around those external facts rather than recombining known keyInsights.` : ""}
+${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's domains):\n${externalFactsBlock}\n\nIMPORTANT: Use external facts as supporting evidence, not the primary focus. The insight should still be grounded in the user's specific knowledge and interests. External facts complement, not replace, persona-based reasoning.` : ""}
+${fragmentSection ? `\nUSER CONVERSATION FRAGMENTS (what the user has been discussing recently):\n${fragmentSection}` : ""}
 
  Recent focus: ${recentFocus || "None"}
   Trust: ${persona.rapport.trustScore.toFixed(2)} / 1.0
@@ -1623,7 +1673,7 @@ export function buildCritiquePrompt(
     .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
     .slice(0, 6);
   const anchorBlock = anchorFacts.length > 0
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
@@ -1849,7 +1899,7 @@ export function buildVerificationPrompt(
     .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => d.keyInsights.slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
     .slice(0, 6);
   const anchorBlock = anchorFacts.length > 0
     ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")

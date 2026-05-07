@@ -35,16 +35,14 @@ function makeFullStackDevPersona(): PersonaTree {
       curiosityDomains: [],
     },
     domains: {
-      "认知系统设计": { depth: 5, recurrence: 12, lastMentioned: now - 1000 * 60 * 30, keyInsights: ["PRISM门控", "SIRI循环", "Persona双通道提取"], activeQuestions: [], connections: ["Prompt工程"], negationSignals: 0 },
-      "飞书集成": { depth: 4, recurrence: 8, lastMentioned: now - 1000 * 60 * 60, keyInsights: ["WebSocket长连接", "消息卡片"], activeQuestions: [], connections: [], negationSignals: 0 },
-      "TypeScript": { depth: 5, recurrence: 20, lastMentioned: now - 1000 * 60 * 10, keyInsights: ["Zod验证", "插件SDK类型设计"], activeQuestions: [], connections: [], negationSignals: 0 },
-      "Prompt工程": { depth: 3, recurrence: 5, lastMentioned: now - 1000 * 60 * 60 * 2, keyInsights: ["JSON mode", "anti-repetition"], activeQuestions: [], connections: ["认知系统设计"], negationSignals: 0 },
+      "认知系统设计": { depth: 5, recurrence: 12, lastMentioned: now - 1000 * 60 * 30, keyInsights: ["PRISM门控", "SIRI循环", "Persona双通道提取"], activeQuestions: [], negationSignals: 0 },
+      "飞书集成": { depth: 4, recurrence: 8, lastMentioned: now - 1000 * 60 * 60, keyInsights: ["WebSocket长连接", "消息卡片"], activeQuestions: [], negationSignals: 0 },
+      "TypeScript": { depth: 5, recurrence: 20, lastMentioned: now - 1000 * 60 * 10, keyInsights: ["Zod验证", "插件SDK类型设计"], activeQuestions: [], negationSignals: 0 },
+      "Prompt工程": { depth: 3, recurrence: 5, lastMentioned: now - 1000 * 60 * 60 * 2, keyInsights: ["JSON mode", "anti-repetition"], activeQuestions: [], negationSignals: 0 },
     },
     recentFocus: ["认知层洞察质量优化", "Persona提取过滤器", "LLM prompt调试"],
-    activeProjects: [],
     feedbackProfile: {
       topicBandits: {},
-      preferredStyle: "observation",
       optimalFrequencyHours: 2,
       lastProactiveAt: now - 1000 * 60 * 60,
       recentInsightIds: ["id1", "id2"],
@@ -65,9 +63,8 @@ function makeFullStackDevPersona(): PersonaTree {
     },
     moodHistory: [],
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, consecutiveSilentDays: 0, totalActiveDays: 30 },
+    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, totalActiveDays: 30 },
     calibrationHistory: [],
-    contradictionLog: [],
   };
 }
 

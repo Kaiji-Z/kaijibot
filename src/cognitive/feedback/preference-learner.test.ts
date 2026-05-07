@@ -16,7 +16,6 @@ import type { FeedbackEvent } from "./types.js";
 function makeProfile(bandits?: Record<string, TopicBandit>): FeedbackProfile {
   return {
     topicBandits: bandits ?? {},
-    preferredStyle: "observation",
     optimalFrequencyHours: 4,
     lastProactiveAt: 0,
     recentInsightIds: [],

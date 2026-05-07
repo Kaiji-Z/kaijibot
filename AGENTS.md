@@ -13,8 +13,8 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
 
 - **`src/`** — core engine: CLI (`src/cli`), commands (`src/commands`), gateway (`src/gateway`), agents (`src/agents`), config (`src/config`), plugin system (`src/plugins`, `src/plugin-sdk`), channels (`src/channels`), media pipeline (`src/media`), **cognitive layer (`src/cognitive`)**
 - **`src/cognitive/`** — KaijiBot's proactive AI system (unique to this fork, not in upstream OpenClaw):
-  - `persona/` — per-user cognitive model (identity, domains, interests, trust), dual extraction (rule-based + LLM), persistence at `~/.kaijibot/cognitive/persona/`
-  - `insight/` — proactive insight generation (cross-domain connections, domain depth, exploration), cross-domain mapper, serendipity scorer, LLM prompt builder, verification pipeline
+  - `persona/` — per-user cognitive model (identity, domains, interests, trust). LLM-driven extraction with structured `TypedInsight` (6 categories: domain_knowledge, behavioral_pattern, stated_preference, tool_config, contextual_fact, goal_or_aspiration). Dynamic domain discovery via LLM (no hardcoded keywords). Interest lifecycle tracking (emergent/stable/declining/dormant/revived). Category-aware decay (`HALF_LIFE_BY_CATEGORY`). Persistence at `~/.kaijibot/cognitive/persona/`
+  - `insight/` — proactive insight generation (cross-domain connections, domain depth, exploration). Unified pipeline with contrastive dedup, LLM self-refine loop (critique→rewrite), LLM-as-judge verification, semantic freshness check. Knowledge mode consumes TypedInsights (filtered by category) + cognitive fragments. Pattern mode uses dialog fragment clusters. Web search results serve as supporting evidence (not primary content). `FragmentStore` for behavioral pattern mining
   - `evolution/` — agent-driven self-evolution: hard-trigger detects complex tasks (≥3 tool calls), enqueues system event for agent to evaluate; LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
   - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
@@ -81,15 +81,22 @@ Event Sources (timer / persona_change / info_scan)
             else → extend mode (knowledge, user domains)
         → identify() [pick best by pAct, with domain cooldown + type cooldown]
           → resolve():
-              pattern mode: load fragments+clusters → generateInsightCandidatesLLM(mode="pattern") → partial status, no verification
-              knowledge mode: generateInsightCandidatesLLM(mode="surprise"/"extend") → quality retries (up to 3) → verification (sources present = verified)
+              pattern mode: load fragments+clusters → buildPatternInsightPrompt → generateInsightCandidatesLLM(mode="pattern") → partial status, no verification
+              knowledge mode (surprise/extend):
+                1. checkSemanticNoveltyWithLLM — reject semantically repetitive candidates early
+                2. generateInsightCandidatesLLM — LLM generates from TypedInsights (getFilteredInsights, excludes tool_config/contextual_fact) + fragments + web search results
+                3. pickPromptVariant — Thompson Sampling selects prompt variant from feedbackProfile.topicBandits
+                4. CONTRASTIVE_INSTRUCTION — past insights injected, LLM must generate contrastively different content
+                5. critiqueInsightWithLLM → refineInsightWithLLM — self-refine loop (critique→rewrite, up to 3 quality retries, early exit at score ≥ 0.85)
+                6. verifyInsightWithLLM — LLM-as-judge verification (sources present = verified)
+                7. checkSemanticNoveltyWithLLM — post-generation freshness gate
             → safety-net trigram dedup → onInsightReady callback → resolveCognitiveDeliveryTarget → deliverOutboundPayloads → user receives message
 ```
 
 **Unified Pipeline (knowledge + pattern modes):**
 
-- **Knowledge mode** (`generateInsightCandidatesLLM`): LLM generates insight candidates from persona + web search results. Uses `DIVERSE_FEW_SHOT_SETS` (4 sets × 2 examples, randomly selected) with `DIVERSITY_INSTRUCTION` to avoid formulaic output. Optional surprise mode uses `inferSearchStrategy` to plan web search queries. Quality retries up to 3 attempts with early exit at score ≥ 0.85.
-- **Pattern mode** (`buildPatternInsightPrompt`): Fragment clusters loaded from `FragmentStore` → top fragments by strength → `PATTERN_PROMPT_FRAMES` (4 behavioral observation frames, randomly selected) → LLM generates behavioral insight about the user's thinking patterns. No web search, no verification. Verification status is always `"partial"`.
+- **Knowledge mode** (`generateInsightCandidatesLLM`): LLM generates insight candidates from TypedInsights + cognitive fragments + web search results. `getFilteredInsights()` selects up to N insights per domain, excluding `tool_config` and `contextual_fact` categories. Uses `DIVERSE_FEW_SHOT_SETS` (4 sets × 2 examples) with `DIVERSITY_INSTRUCTION` to avoid formulaic output. `pickPromptVariant` selects prompt variant via Thompson Sampling from `feedbackProfile.topicBandits`. `CONTRASTIVE_INSTRUCTION` ensures each insight differs from past insights. Surprise mode uses `inferSearchStrategy` for web search queries (web results serve as supporting evidence, not primary content). After generation: `critiqueInsightWithLLM` → `refineInsightWithLLM` self-refine loop, quality retries up to 3 attempts with early exit at score ≥ 0.85. Post-generation: `checkSemanticNoveltyWithLLM` freshness gate.
+- **Pattern mode** (`buildPatternInsightPrompt`): Fragment clusters loaded from `FragmentStore` → top fragments by strength → `PATTERN_PROMPT_FRAMES` (4 behavioral observation frames, randomly selected) → LLM generates behavioral insight about the user's thinking patterns. Also uses `pickPromptVariant` for Thompson Sampling prompt selection and `CONTRASTIVE_INSTRUCTION` for dedup. No web search, no verification. Verification status is always `"partial"`.
 - **Mode routing**: `scanExploration()` uses deterministic 3-band routing via `event.timestamp % 100`. Default: 50% pattern, 40% surprise, 10% extend. Configurable via `cognitive.insight.patternModeRatio`.
 
 **Scheduler Diversification:**
@@ -99,6 +106,17 @@ Event Sources (timer / persona_change / info_scan)
 - Starvation boost: domains absent from last 8 insights get 1.5× bonus.
 - `scanCrossDomain` uses 1-hop and 2-hop connections from the domain graph. Falls back to `semanticDistance()` to find the most distant user-domain pair when both produce zero results.
 - `scanDomainDepth` filters out recently targeted domains, falls back to all depth-3+ domains when none remain.
+
+**Persona TypedInsight System:**
+
+- `InsightCategory`: 6 categories — `domain_knowledge`, `behavioral_pattern`, `stated_preference`, `tool_config`, `contextual_fact`, `goal_or_aspiration`
+- `TypedInsight`: each insight carries `category`, `confidence`, `source` (explicit/inferred/observed), `evidenceCount`, `halfLifeDays` (category-aware), `firstObserved`, `lastReinforced`
+- `HALF_LIFE_BY_CATEGORY`: category-specific decay — behavioral_pattern (60d), domain_knowledge (90d), stated_preference (120d), goal_or_aspiration (120d), contextual_fact (45d), tool_config (180d)
+- `InterestPhase` lifecycle: emergent → stable → declining → dormant → revived, tracked via `computeInterestPhase()`
+- `mergeTypedInsights`: deduplication by semantic similarity + category merge with evidence accumulation
+- `getFilteredInsights`: filters out `tool_config` and `contextual_fact` from insight consumption (not useful for insight generation)
+- `displayName`: synced from `coreTraits["称呼"]` to `identity.displayName` by curator
+- Dynamic domain discovery: `llm-extractor.ts` uses LLM to discover new domains from conversations — no hardcoded keyword tables
 
 ### Self-Evolution Pipeline
 
@@ -238,12 +256,13 @@ Shared:
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
 - Insight config: `cognitive.insight.patternModeRatio` (0-1, default 0.5), `cognitive.insight.engine` ("v1"/"v2"/"dual"/"knowledge"/"pattern"/"unified")
+- Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
 - Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.
-- Persona data stored at `~/.kaijibot/cognitive/persona/{userId}.json`.
+- Persona data stored at `~/.kaijibot/cognitive/persona/{userId}.json`. Schema includes TypedInsights with category-aware decay and InterestPhase lifecycle per domain.
 - Evolution records stored at `~/.kaijibot/cognitive/evolution/{userId}.json`; skills at `~/.kaijibot/skills/{name}/SKILL.md`.
 - Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl`.
 - Never commit real phone numbers, API keys, or live config values.

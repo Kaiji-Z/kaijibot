@@ -57,7 +57,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: ["Transformer架构"],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
     "Rust": {
@@ -66,7 +65,6 @@ function personaWithDomains(): PersonaTree {
       lastMentioned: Date.now(),
       keyInsights: [],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
   };

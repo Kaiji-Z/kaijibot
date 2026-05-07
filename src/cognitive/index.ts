@@ -45,9 +45,7 @@ export type {
   Fragment,
   FragmentKind,
   FragmentCluster,
-  BlindSpotCandidate,
   QualityAssessment,
-  ParkedBlindSpot,
   FragmentStoreFile,
 } from "./insight/fragment-types.js";
 export {

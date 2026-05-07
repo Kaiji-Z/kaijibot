@@ -1,4 +1,4 @@
-import type { PersonaTree } from "../types.js";
+import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
 import { mkdir, readFile, readdir, rename, stat, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
@@ -14,6 +14,46 @@ const MIGRATION_SKIP_USER_IDS = new Set([
   "kaijibot-tui",
   "slug-generator",
 ]);
+
+function inferPhase(domain: DomainNode): { phase: InterestPhase; phaseEnteredAt: number } {
+  const now = Date.now();
+  const age = now - domain.lastMentioned;
+  const dayMs = 86_400_000;
+  if (domain.depth <= 1 && domain.recurrence <= 1) {
+    return { phase: "emergent", phaseEnteredAt: domain.lastMentioned };
+  }
+  if (domain.negationSignals >= 3) {
+    return { phase: "declining", phaseEnteredAt: domain.lastNegatedAt ?? domain.lastMentioned };
+  }
+  if (age > 30 * dayMs) {
+    return { phase: "dormant", phaseEnteredAt: domain.lastMentioned + 30 * dayMs };
+  }
+  return { phase: "stable", phaseEnteredAt: domain.lastMentioned };
+}
+
+export function migrateToTypedInsights(persona: PersonaTree): PersonaTree {
+  for (const domain of Object.values(persona.domains)) {
+    if (domain.insights && domain.insights.length > 0) continue;
+
+    domain.insights = domain.keyInsights.map((text) => ({
+      text,
+      category: "domain_knowledge" as const,
+      confidence: 0.5,
+      source: "inferred" as const,
+      firstObserved: domain.lastMentioned,
+      lastReinforced: domain.lastMentioned,
+      evidenceCount: 1,
+      halfLifeDays: 30,
+    }));
+
+    if (domain.phase === undefined) {
+      const { phase, phaseEnteredAt } = inferPhase(domain);
+      domain.phase = phase;
+      domain.phaseEnteredAt = phaseEnteredAt;
+    }
+  }
+  return persona;
+}
 
 function shouldMigrateFlatFile(userId: string, persona: PersonaTree | null): boolean {
   if (MIGRATION_SKIP_USER_IDS.has(userId)) return false;
@@ -101,7 +141,7 @@ export class PersonaStore {
     if (!validated.identity.userId) {
       validated.identity.userId = userId;
     }
-    return validated;
+    return migrateToTypedInsights(validated);
   }
 
   async save(agentId: string, userId: string, persona: PersonaTree): Promise<void> {
@@ -116,7 +156,7 @@ export class PersonaStore {
   async loadOrCreate(agentId: string, userId: string): Promise<PersonaTree> {
     const existing = await this.load(agentId, userId);
     if (existing) return existing;
-    const persona = createDefaultPersona();
+    const persona = migrateToTypedInsights(createDefaultPersona());
     persona.identity.userId = userId;
     return persona;
   }
@@ -161,11 +201,9 @@ export function createDefaultPersona(): PersonaTree {
     },
     domains: {},
     recentFocus: [],
-    activeProjects: [],
     moodHistory: [],
     feedbackProfile: {
       topicBandits: {},
-      preferredStyle: "observation",
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
       recentInsightIds: [],
@@ -184,10 +222,8 @@ export function createDefaultPersona(): PersonaTree {
       stage: "new",
       lastActiveAt: 0,
       lastStageTransitionAt: 0,
-      consecutiveSilentDays: 0,
       totalActiveDays: 0,
     },
     calibrationHistory: [],
-    contradictionLog: [],
   };
 }

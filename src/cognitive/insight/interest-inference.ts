@@ -5,6 +5,8 @@ import { prepareSimpleCompletionModel } from "../../agents/simple-completion-run
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
+import type { Fragment } from "./fragment-types.js";
+import { getFilteredInsights } from "./llm-engine.js";
 import type { InferenceResult, InsightEngineInput, SearchStrategy } from "./types.js";
 
 const log = createSubsystemLogger("cognitive/interest-inference");
@@ -88,6 +90,7 @@ export function buildInterestInferencePrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   mode: "surprise" | "extend" = "surprise",
+  fragments?: Fragment[],
 ): string {
   // Section 1: Known knowledge
   const domainEntries = Object.entries(persona.domains)
@@ -97,7 +100,7 @@ export function buildInterestInferencePrompt(
     ? domainEntries
         .slice(0, 20)
         .map(([name, d]) => {
-          const insights = d.keyInsights.slice(0, 3).join("; ");
+          const insights = getFilteredInsights(d).slice(0, 3).join("; ");
           return `- ${name} (depth: ${d.depth})${insights ? ` — ${insights}` : ""}`;
         })
         .join("\n")
@@ -120,8 +123,25 @@ export function buildInterestInferencePrompt(
   const curiositySet = new Set(curiosityDomains);
   const knownDomainSet = new Set(Object.keys(persona.domains));
   const gaps = [...curiositySet].filter((d) => !knownDomainSet.has(d) || (persona.domains[d]?.depth ?? 0) < 2);
-  const gapsBlock = gaps.length > 0
-    ? gaps.map((d) => `- ${d}`).join("\n")
+
+  const fragmentGaps = (fragments ?? [])
+    .filter((f) => f.kind === "knowledge_gap")
+    .slice(0, 4)
+    .map((f) => f.evidence);
+
+  const activeQuestions = domainEntries
+    .slice(0, 5)
+    .flatMap(([, d]) => d.activeQuestions ?? [])
+    .slice(0, 4);
+
+  const allGaps = [
+    ...gaps,
+    ...fragmentGaps.filter((g) => !gaps.some((existing) => existing.toLowerCase() === g.toLowerCase())),
+    ...activeQuestions.filter((q) => !gaps.some((e) => e.toLowerCase() === q.toLowerCase())
+      && !fragmentGaps.some((f) => f.toLowerCase() === q.toLowerCase())),
+  ];
+  const gapsBlock = allGaps.length > 0
+    ? allGaps.map((d) => `- ${d}`).join("\n")
     : "(no clear gaps identified)";
 
   // Section 4: Domain connections

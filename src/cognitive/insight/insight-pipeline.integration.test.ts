@@ -60,10 +60,8 @@ function createDefaultPersona(): PersonaTree {
     },
     domains: {},
     recentFocus: [],
-    activeProjects: [],
     feedbackProfile: {
       topicBandits: {},
-      preferredStyle: "observation",
       optimalFrequencyHours: 24,
       lastProactiveAt: 0,
       recentInsightIds: [],
@@ -81,11 +79,9 @@ function createDefaultPersona(): PersonaTree {
       stage: "new",
       lastActiveAt: Date.now(),
       lastStageTransitionAt: Date.now(),
-      consecutiveSilentDays: 0,
       totalActiveDays: 0,
     },
     calibrationHistory: [],
-    contradictionLog: [],
   };
 }
 
@@ -103,7 +99,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now() - 3600000,
       keyInsights: ["Transformer架构", "注意力机制", "RAG系统设计"],
       activeQuestions: ["如何优化推理延迟？"],
-      connections: ["软件架构"],
       negationSignals: 0,
     },
     "软件架构": {
@@ -112,7 +107,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now() - 86400000,
       keyInsights: ["微服务拆分策略", "事件驱动架构"],
       activeQuestions: [],
-      connections: ["AI/机器学习"],
       negationSignals: 0,
     },
     "创业/商业": {
@@ -121,7 +115,6 @@ function richPersona(): PersonaTree {
       lastMentioned: Date.now() - 172800000,
       keyInsights: ["PMF验证"],
       activeQuestions: [],
-      connections: [],
       negationSignals: 0,
     },
   };
@@ -767,7 +760,6 @@ describe("Pipeline: empty persona produces no candidates", () => {
         lastMentioned: Date.now(),
         keyInsights: ["test"],
         activeQuestions: [],
-        connections: [],
         negationSignals: 0,
       },
     };

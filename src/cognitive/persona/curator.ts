@@ -1,13 +1,27 @@
-import type { PersonaTree, ConfidenceValue, DomainNode, RapportMetrics } from "../types.js";
-import type { ExtractionResult, ExtractedAttribute } from "./types.js";
+import type { PersonaTree, ConfidenceValue, DomainNode, RapportMetrics, TypedInsight, InsightCategory, InterestPhase } from "../types.js";
+import type { ExtractionResult, ExtractedAttribute, ExtractedInsight } from "./types.js";
 import { observeCoOccurrence, seedDomainGraph, decayEdges } from "../insight/cross-domain-mapper.js";
 import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
-import { detectContradictions, pruneContradictionLog } from "./contradiction-resolver.js";
+import { detectContradictions } from "./contradiction-resolver.js";
 
 const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
 const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
 const AUTO_BLACKLIST_NEGATION_THRESHOLD = 3;
 const AUTO_BLACKLIST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+const HALF_LIFE_BY_CATEGORY: Record<InsightCategory, number> = {
+  tool_config: 7,
+  contextual_fact: 14,
+  domain_knowledge: 30,
+  stated_preference: 60,
+  behavioral_pattern: 90,
+  goal_or_aspiration: 90,
+};
+
+const BACKWARD_COMPAT_EXCLUDE_CATEGORIES: ReadonlySet<InsightCategory> = new Set([
+  "tool_config",
+  "contextual_fact",
+]);
 
 const INSIGHT_ECHO_PATTERNS: ReadonlyArray<RegExp> = [
   /receives?\s+(automated\s+)?cognitive\s+insight/i,
@@ -17,6 +31,97 @@ const INSIGHT_ECHO_PATTERNS: ReadonlyArray<RegExp> = [
   /cognitive insight (notifications?|alerts?)/i,
   /new (trends|directions) in this (field|domain)/i,
 ];
+
+function computeInterestPhase(domain: DomainNode, nowMs: number): InterestPhase {
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  const ageSinceLastMention = nowMs - domain.lastMentioned;
+  const prevPhase = domain.phase;
+
+  const wasInactive = prevPhase === "dormant" || prevPhase === "declining";
+  const isNowActive = ageSinceLastMention < SEVEN_DAYS_MS;
+
+  if (wasInactive && isNowActive) return "revived";
+  if (ageSinceLastMention > THIRTY_DAYS_MS) return "dormant";
+  if (ageSinceLastMention > FOURTEEN_DAYS_MS) return "declining";
+  if (domain.recurrence <= 2) return "emergent";
+  if (domain.recurrence > 5 && ageSinceLastMention < SEVEN_DAYS_MS) return "stable";
+
+  return prevPhase ?? "emergent";
+}
+
+function toTypedInsight(extracted: ExtractedInsight, nowMs: number): TypedInsight {
+  return {
+    text: extracted.text,
+    category: extracted.category,
+    confidence: extracted.confidence,
+    source: extracted.source,
+    firstObserved: nowMs,
+    lastReinforced: nowMs,
+    evidenceCount: 1,
+    halfLifeDays: HALF_LIFE_BY_CATEGORY[extracted.category],
+  };
+}
+
+function textSimilar(a: string, b: string): boolean {
+  const normA = a.trim().toLowerCase();
+  const normB = b.trim().toLowerCase();
+  if (normA === normB) return true;
+  const maxLen = Math.max(normA.length, normB.length);
+  if (maxLen === 0) return true;
+  const distance = levenshteinDistance(normA, normB);
+  return distance / maxLen < 0.3;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[] = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    const prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      if (a[i - 1] === b[j - 1]) {
+        dp[j] = prev;
+      } else {
+        dp[j] = 1 + Math.min(prev, dp[j], dp[j - 1]);
+      }
+    }
+  }
+  return dp[n];
+}
+
+function mergeTypedInsights(existing: TypedInsight[], incoming: TypedInsight[]): TypedInsight[] {
+  const result = [...existing];
+  for (const inc of incoming) {
+    let matched = false;
+    for (let i = 0; i < result.length; i++) {
+      if (textSimilar(result[i]!.text, inc.text)) {
+        const ex = result[i]!;
+        const totalEvidence = ex.evidenceCount + 1;
+        const existingWeight = ex.evidenceCount / totalEvidence;
+        const incomingWeight = 1 / totalEvidence;
+        result[i] = {
+          ...ex,
+          confidence: Math.min(1, ex.confidence * existingWeight + inc.confidence * incomingWeight),
+          evidenceCount: totalEvidence,
+          lastReinforced: inc.lastReinforced,
+          source: inc.source === "explicit" ? "explicit" : ex.source,
+        };
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      result.push(inc);
+    }
+  }
+  return result.slice(-20);
+}
 
 /**
  * Merge extraction results into an existing PersonaTree.
@@ -96,26 +201,46 @@ export function mergeExtraction(
       continue;
     }
 
+    const incomingTyped = (domain.typedInsights ?? []).map(ei => toTypedInsight(ei, now));
+    const backwardCompatTexts = incomingTyped
+      .filter(ti => !BACKWARD_COMPAT_EXCLUDE_CATEGORIES.has(ti.category))
+      .map(ti => ti.text)
+      .filter(isPlausibleKeyInsight);
+
     if (existing) {
+      const mergedInsights = incomingTyped.length > 0
+        ? mergeTypedInsights(existing.insights ?? [], incomingTyped)
+        : existing.insights;
+
+      const prevPhase = existing.phase;
+      const newPhase = computeInterestPhase({ ...existing, recurrence: existing.recurrence + 1, lastMentioned: now }, now);
+      const phaseChanged = prevPhase !== newPhase;
+
       newDomains[domain.name] = {
         ...existing,
         depth: Math.max(existing.depth, domain.depth),
         recurrence: existing.recurrence + 1,
         lastMentioned: now,
-        keyInsights: [...new Set([...existing.keyInsights, ...domain.insights.filter(isPlausibleKeyInsight)])].slice(-20),
+        keyInsights: [...new Set([...existing.keyInsights, ...domain.insights.filter(isPlausibleKeyInsight), ...backwardCompatTexts])].slice(-20),
+        insights: mergedInsights,
         activeQuestions: [...new Set([...existing.activeQuestions, ...domain.questions])].slice(-10),
         negationSignals: existing.negationSignals ?? 0,
+        phase: newPhase,
+        phaseEnteredAt: phaseChanged ? now : existing.phaseEnteredAt,
       };
     } else {
-      newDomains[domain.name] = {
+      const freshNode: DomainNode = {
         depth: domain.depth,
         recurrence: 1,
         lastMentioned: now,
-        keyInsights: domain.insights.filter(isPlausibleKeyInsight),
+        keyInsights: [...domain.insights.filter(isPlausibleKeyInsight), ...backwardCompatTexts],
+        insights: incomingTyped.length > 0 ? incomingTyped : undefined,
         activeQuestions: domain.questions,
-        connections: [],
         negationSignals: 0,
-      } satisfies DomainNode;
+      };
+      freshNode.phase = computeInterestPhase(freshNode, now);
+      freshNode.phaseEnteredAt = now;
+      newDomains[domain.name] = freshNode;
     }
   }
 
@@ -235,9 +360,14 @@ export function mergeExtraction(
     else if (node.depth >= 1) curiosityDomains.push(name);
   }
 
+  const displayName = newCoreTraits["称呼"]?.confidence >= 0.5
+    ? String(newCoreTraits["称呼"].value)
+    : persona.identity.displayName;
+
   const newIdentity = {
     ...persona.identity,
     coreTraits: newCoreTraits,
+    displayName,
     expertDomains: expertDomains.length > 0 ? expertDomains : persona.identity.expertDomains,
     interestDomains: interestDomains.length > 0 ? interestDomains : persona.identity.interestDomains,
     curiosityDomains: curiosityDomains.length > 0 ? curiosityDomains : persona.identity.curiosityDomains,
@@ -253,7 +383,6 @@ export function mergeExtraction(
     moodHistory: newMoodHistory.slice(-10),
     domainBlacklist: newBlacklist,
     lifecycle: newLifecycle,
-    contradictionLog: pruneContradictionLog([...persona.contradictionLog, ...contradictions]),
   };
 }
 
@@ -312,7 +441,19 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
       for (const pat of INSIGHT_ECHO_PATTERNS) { if (pat.test(s)) return false; }
       return true;
     });
-    prunedDomains[name] = { ...domain, keyInsights: cleanedInsights };
+    const decayedTypedInsights = (domain.insights ?? [])
+      .map(ti => {
+        const ageMs = now - ti.lastReinforced;
+        const halfLifeMs = ti.halfLifeDays * 24 * 60 * 60 * 1000;
+        const decayFactor = Math.exp((-Math.LN2 * ageMs) / halfLifeMs);
+        return { ...ti, confidence: ti.confidence * decayFactor };
+      })
+      .filter(ti => ti.confidence >= 0.1);
+    const updatedDomain: DomainNode = { ...domain, keyInsights: cleanedInsights };
+    if (domain.insights !== undefined || decayedTypedInsights.length > 0) {
+      updatedDomain.insights = decayedTypedInsights.length > 0 ? decayedTypedInsights : undefined;
+    }
+    prunedDomains[name] = updatedDomain;
   }
 
   return {

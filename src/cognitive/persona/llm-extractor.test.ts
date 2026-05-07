@@ -211,15 +211,12 @@ describe("extractFromMessageLLM", () => {
           lastMentioned: Date.now(),
           keyInsights: ["uses PyTorch"],
           activeQuestions: ["how to scale?"],
-          connections: [],
           negationSignals: 0,
         },
       },
       recentFocus: ["transformer architecture"],
-      activeProjects: [],
       feedbackProfile: {
         topicBandits: {},
-        preferredStyle: "question",
         optimalFrequencyHours: 4,
         lastProactiveAt: 0,
         recentInsightIds: [],
@@ -232,9 +229,8 @@ describe("extractFromMessageLLM", () => {
         selfDisclosureLevel: 0.3,
       },
       domainBlacklist: [],
-      lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, consecutiveSilentDays: 0, totalActiveDays: 0 },
+      lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, totalActiveDays: 0 },
       calibrationHistory: [],
-      contradictionLog: [],
       moodHistory: [],
     };
 

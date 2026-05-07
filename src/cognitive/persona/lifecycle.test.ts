@@ -14,7 +14,6 @@ function makeLifecycle(overrides: Partial<UserLifecycle> = {}): UserLifecycle {
     stage: "new",
     lastActiveAt: Date.now(),
     lastStageTransitionAt: Date.now(),
-    consecutiveSilentDays: 0,
     totalActiveDays: 1,
     ...overrides,
   };
