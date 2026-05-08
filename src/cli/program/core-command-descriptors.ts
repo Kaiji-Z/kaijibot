@@ -51,6 +51,11 @@ const coreCliCommandCatalog = defineCommandDescriptorCatalog([
     hasSubcommands: false,
   },
   {
+    name: "migrate",
+    description: "Migrate data from OpenClaw or legacy installations to KaijiBot",
+    hasSubcommands: false,
+  },
+  {
     name: "message",
     description: "Send, read, and manage messages",
     hasSubcommands: true,

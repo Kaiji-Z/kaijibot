@@ -1,3 +1,5 @@
+import os from "node:os";
+import path from "node:path";
 import { formatCliCommand } from "../cli/command-format.js";
 import type {
   GatewayAuthChoice,
@@ -10,11 +12,18 @@ import { readConfigFileSnapshot, resolveGatewayPort, writeConfigFile } from "../
 import { normalizeSecretInputString } from "../config/types.secrets.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import {
+  detectMigrationSource,
+  enumerateSourceAgents,
+  enumerateSourceSkills,
+  runFreshMigration,
+} from "../infra/openclaw-migrator/index.js";
+import {
   buildPluginCompatibilityNotices,
   formatPluginCompatibilityNotice,
 } from "../plugins/status.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
+import { theme } from "../terminal/theme.js";
 import { resolveUserPath } from "../utils.js";
 import { WizardCancelledError, type WizardPrompter } from "./prompts.js";
 import { resolveSetupSecretInputString } from "./setup.secret-input.js";
@@ -158,6 +167,46 @@ export async function runSetupWizard(
       ].join("\n"),
       "Plugin compatibility",
     );
+  }
+
+  if (!snapshot.exists) {
+    const migrationSource = detectMigrationSource();
+    if (migrationSource) {
+      const agentList = await enumerateSourceAgents(migrationSource);
+      const skillsList = await enumerateSourceSkills(migrationSource);
+
+      runtime.log(`  ${theme.info("→")} Found ${migrationSource.brand} installation at: ${migrationSource.dir}`);
+      runtime.log(`    Agents: ${agentList.length > 0 ? agentList.map((a) => a.id).join(", ") : "main"}`);
+      runtime.log(`    Skills: ${skillsList.length}`);
+      runtime.log("");
+
+      const shouldMigrate = await prompter.confirm({
+        message: `Import data from ${migrationSource.brand}?`,
+        initialValue: true,
+      });
+
+      if (shouldMigrate) {
+        runtime.log("Running migration...");
+        const migrationLog = (msg: string) => runtime.log(`  ${theme.muted(msg)}`);
+        const report = await runFreshMigration(
+          migrationSource,
+          path.resolve(os.homedir(), ".kaijibot"),
+          {
+            dryRun: false,
+            overwrite: false,
+            migrateSecrets: false,
+            log: migrationLog,
+          },
+        );
+
+        runtime.log("");
+        runtime.log(theme.success(`Migration complete: ${report.totalChanges} change(s), ${report.totalSkipped} skipped.`));
+        if (report.totalWarnings > 0) {
+          runtime.log(theme.warn(`  ${report.totalWarnings} warning(s).`));
+        }
+        runtime.log("");
+      }
+    }
   }
 
   const quickstartHint = `Configure details later via ${formatCliCommand("kaijibot configure")}.`;
