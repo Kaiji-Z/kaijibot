@@ -90,3 +90,13 @@ export type {
   ComplexityResult,
 } from "./evolution/index.js";
 export type { AuditEntry } from "./evolution/index.js";
+
+// Correction module
+export { CorrectionStore } from "./correction/index.js";
+export { formatCorrectionsPrompt, MAX_INJECTED_CORRECTIONS } from "./correction/index.js";
+export { hasCorrectionSignals, extractCorrectionsFromTranscript } from "./correction/index.js";
+export type {
+  CorrectionRecord,
+  CorrectionProvenance,
+  CorrectionStoreData,
+} from "./correction/index.js";

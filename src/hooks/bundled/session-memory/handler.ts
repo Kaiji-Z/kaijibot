@@ -290,6 +290,39 @@ const saveSessionToMemory: HookHandler = async (event) => {
       }
     }
 
+    // --- Post-session correction extraction ---
+    if (sessionContent && cfg && allowLlm) {
+      try {
+        const { hasCorrectionSignals, extractCorrectionsFromTranscript } = await import(
+          "../../../cognitive/correction/extractor.js"
+        );
+        if (hasCorrectionSignals(sessionContent)) {
+          const userId = extractUserIdFromSessionKey(event.sessionKey);
+          if (userId) {
+            const { createStandaloneGenerateText } = await import(
+              "../../../cognitive/evolution/standalone-generate.js"
+            );
+            const { CorrectionStore } = await import("../../../cognitive/correction/store.js");
+            const { resolveConfigDir } = await import("../../../utils.js");
+
+            const generateText = await createStandaloneGenerateText(cfg, { maxTokens: 2000 });
+            const corrections = await extractCorrectionsFromTranscript(sessionContent, generateText);
+
+            if (corrections.length > 0) {
+              const corrStore = new CorrectionStore(resolveConfigDir());
+              for (const corr of corrections) {
+                await corrStore.addOrReinforce(userId, corr);
+              }
+              log.debug("Correction extraction complete", { count: corrections.length });
+            }
+          }
+        }
+      } catch (corrErr) {
+        const msg = corrErr instanceof Error ? corrErr.message : String(corrErr);
+        log.debug("Correction extraction skipped", { error: msg });
+      }
+    }
+
     const relPath = path.join(memoryDir, dailyFilename).replace(os.homedir(), "~");
     log.info(`Session summary saved to ${relPath}`);
   } catch (err) {
@@ -304,5 +337,13 @@ const saveSessionToMemory: HookHandler = async (event) => {
     }
   }
 };
+
+function extractUserIdFromSessionKey(sessionKey: string): string | null {
+  const parts = sessionKey.split(":");
+  if (parts.length >= 3 && parts[1] && parts[1] !== "main") {
+    return parts[1];
+  }
+  return null;
+}
 
 export default saveSessionToMemory;

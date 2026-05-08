@@ -269,6 +269,7 @@ export async function runPreparedReply(
 
   // Cognitive layer: classify mode, load persona, inject context into system prompt.
   let cognitivePersona: import("../../cognitive/types.js").PersonaTree | undefined;
+  let corrections: import("../../cognitive/correction/types.js").CorrectionRecord[] | undefined;
   try {
     const { buildCognitiveModePrompt } = await import("../../cognitive/context-writer.js");
     const { PersonaStore } = await import("../../cognitive/persona/store.js");
@@ -279,11 +280,20 @@ export async function runPreparedReply(
       const store = new PersonaStore(resolveConfigDir());
       cognitivePersona = await store.load("main", userId);
     }
+    try {
+      const { CorrectionStore } = await import("../../cognitive/correction/store.js");
+      if (userId) {
+        const corrStore = new CorrectionStore(resolveConfigDir());
+        corrections = await corrStore.listActive(userId);
+      }
+    } catch {
+    }
     const { prompt: cognitivePrompt } = buildCognitiveModePrompt({
       message: rawBodyTrimmed,
       cognitiveEnabled: cognitiveCfg?.enabled,
       evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
       persona: cognitivePersona,
+      corrections,
     });
     if (cognitivePrompt) {
       extraSystemPromptParts.push(cognitivePrompt);

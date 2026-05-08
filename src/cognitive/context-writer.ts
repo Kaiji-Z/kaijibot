@@ -2,6 +2,8 @@ import { classifyMode, buildModePromptSection } from "./mode-router.js";
 import type { CognitiveMode, ModeClassification, PersonaTree } from "./types.js";
 import { buildPersonaContext } from "./persona/context-builder.js";
 import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
+import type { CorrectionRecord } from "./correction/types.js";
+import { formatCorrectionsPrompt } from "./correction/injector.js";
 
 export function buildCognitiveModePrompt(params: {
   message: string;
@@ -11,8 +13,9 @@ export function buildCognitiveModePrompt(params: {
   cognitiveEnabled?: boolean;
   evolutionEnabled?: boolean;
   persona?: PersonaTree;
+  corrections?: CorrectionRecord[];
 }): { prompt: string; classification: ModeClassification } {
-  const { message, isHeartbeat, isCron, recentModes, cognitiveEnabled, evolutionEnabled, persona } = params;
+  const { message, isHeartbeat, isCron, recentModes, cognitiveEnabled, evolutionEnabled, persona, corrections } = params;
 
   const classification = classifyMode(message, {
     isHeartbeat,
@@ -30,7 +33,7 @@ export function buildCognitiveModePrompt(params: {
 
   if (persona) {
     const personaCtx = buildPersonaContext(persona);
-    if (personaCtx) parts.push(personaCtx);
+    if (personaCtx) { parts.push(personaCtx); }
 
     const phase = getInteractionPhase(persona.rapport.trustScore);
     const advice = getPhaseBehaviorAdvice(phase);
@@ -49,6 +52,10 @@ export function buildCognitiveModePrompt(params: {
       "无论哪种结果，都必须告知用户，绝不能静默处理。",
       "如果用户对已保存的技能不满意，可以说「删除技能 xxx」来移除。",
     ].join("\n"));
+  }
+
+  if (corrections && corrections.length > 0) {
+    parts.push(formatCorrectionsPrompt(corrections));
   }
 
   return { prompt: parts.join("\n\n"), classification };

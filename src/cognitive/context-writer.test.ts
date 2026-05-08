@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCognitiveModePrompt } from "./context-writer.js";
+import type { CorrectionRecord } from "./correction/types.js";
 
 describe("buildCognitiveModePrompt", () => {
   it("includes Skill Evolution hint when evolutionEnabled is true", () => {
@@ -51,5 +52,35 @@ describe("buildCognitiveModePrompt", () => {
     });
     expect(classification.mode).toBe("task");
     expect(classification.confidence).toBeGreaterThan(0);
+  });
+
+  it("includes correction section when corrections provided", () => {
+    const corrections: CorrectionRecord[] = [
+      {
+        id: "test",
+        domain: "test",
+        trigger: "创建飞书文档",
+        mistake: "只传标题",
+        correction: "要写入正文",
+        provenance: "user",
+        reinforcedCount: 1,
+        createdAt: Date.now(),
+        lastReinforced: Date.now(),
+      },
+    ];
+    const { prompt } = buildCognitiveModePrompt({
+      message: "test",
+      corrections,
+    });
+    expect(prompt).toContain("Known Corrections");
+    expect(prompt).toContain("创建飞书文档");
+  });
+
+  it("omits correction section when corrections array is empty", () => {
+    const { prompt } = buildCognitiveModePrompt({
+      message: "test",
+      corrections: [],
+    });
+    expect(prompt).not.toContain("Known Corrections");
   });
 });
