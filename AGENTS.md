@@ -18,8 +18,11 @@ KaijiBot is an independent project — a proactive cognitive AI assistant target
   - `evolution/` — agent-driven self-evolution: hard-trigger detects complex tasks (≥3 tool calls), enqueues system event for agent to evaluate; LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
   - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
+  - `correction/` — error-correction self-evolution: dual-path detection (agent self-report via `record_correction` tool + post-session LLM extraction on `/new`/`/reset`), `CorrectionStore` with Jaccard-based dedup and reinforcement (TTL=90d, MAX=50, threshold=0.6), system prompt injection via `context-writer.ts` (top 15 corrections sorted by reinforcement count). Persistence at `~/.kaijibot/cognitive/corrections/{userId}.json`
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
+- **`src/infra/openclaw-migrator/`** — OpenClaw → KaijiBot migration: auto-detect OpenClaw installation, import agents/workspace/skills/config with dry-run support, onboard wizard integration
+- **`src/commands/migrate.ts`** — `kaijibot migrate` CLI command
 - **`extensions/`** — 62 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks, shared
 - **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk
 - **`skills/`** — 22 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts, memory-organize)
@@ -157,6 +160,44 @@ Agent turn completes (≥3 tool calls)
 - After creation: frontmatter tracks `createdAt`/`lastUsedAt`/`usageCount`
 - `touchSkill()` per use → `removeStale(30)` cleans skills unused 30+ days with 0 usage
 
+### Correction Self-Evolution Pipeline
+
+Dual-path correction detection with system prompt injection:
+
+```
+Path A: Agent self-report          Path B: Post-session extraction
+  Agent calls record_correction      /new or /reset triggered
+  (provenance: "self")               → hasCorrectionSignals() regex pre-screen
+         ↓                           → extractCorrectionsFromTranscript() LLM call
+         ↓                           (provenance: "user")
+         ↓                                    ↓
+         CorrectionStore.addOrReinforce(userId, record)
+           → findSimilar() Jaccard ≥ 0.6 + same domain → reinforce existing
+           → else → add new record (max 50 per user, TTL 90 days)
+                ↓
+         Next conversation: get-reply-run loads listActive(userId)
+                ↓
+         context-writer → formatCorrectionsPrompt (top 15, sorted by reinforcedCount)
+                ↓
+         "## Known Corrections" injected into system prompt
+```
+
+**CorrectionStore** (`src/cognitive/correction/store.ts`):
+- `addOrReinforce(userId, record)` — Jaccard dedup: same domain + mistake similarity > 0.6 → increment `reinforcedCount`
+- `findSimilar(userId, domain, text)` — token-level Jaccard similarity
+- `listActive(userId)` — returns records within TTL, sorted by `reinforcedCount` desc
+- `removeStale()` — deletes records older than TTL
+- Atomic file write to `~/.kaijibot/cognitive/corrections/{userId}.json`
+
+**Agent tool**: `record_correction` — called when agent recognizes it made a mistake; returns `saved` or `reinforced` status
+
+**Post-session extraction** (`src/cognitive/correction/extractor.ts`):
+- `hasCorrectionSignals(transcript)` — regex pre-screen with 30 Chinese/English/apology patterns (skips LLM call if no signals)
+- `extractCorrectionsFromTranscript(transcript, generateText)` — LLM extracts structured corrections; capped at 8K chars; JSON parsing with markdown code block handling
+
+**System prompt injection** (`src/cognitive/correction/injector.ts`):
+- `formatCorrectionsPrompt(corrections)` — sorts by `reinforcedCount` desc → `lastReinforced` desc; truncates to `MAX_INJECTED_CORRECTIONS` (15); formats as markdown section
+
 ### Key Integration Points
 
 Insight delivery:
@@ -177,9 +218,18 @@ Shared:
 - `src/agents/tools/cognitive-feedback-tool.ts` — agent tool for collecting explicit feedback
 - `src/agents/system-prompt.ts` — injects cognitive mode prompt into agent system prompt
 
+Correction (system prompt injection):
+- `src/cognitive/correction/store.ts` — CorrectionStore: per-user persistence with Jaccard dedup
+- `src/cognitive/correction/injector.ts` — formatCorrectionsPrompt: sorts + truncates + formats for system prompt
+- `src/cognitive/correction/extractor.ts` — hasCorrectionSignals (regex pre-screen) + extractCorrectionsFromTranscript (LLM)
+- `src/agents/tools/correction-report-tool.ts` — record_correction agent tool
+- `src/cognitive/context-writer.ts` — injects "## Known Corrections" section when corrections exist
+- `src/auto-reply/reply/get-reply-run.ts` — loads listActive corrections, passes to context-writer
+- `src/hooks/bundled/session-memory/handler.ts` — post-session correction extraction (regex pre-screen → LLM → store)
+
 ### Session Memory
 
-- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`
+- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`; also runs post-session correction extraction (regex pre-screen → LLM → CorrectionStore)
 - `src/hooks/bundled/session-memory/summary.ts` — `formatSummaryAsMarkdown(summary, dateStr, sessionKey?, rawTranscript?)` outputs YAML frontmatter + structured sections + folded `<details>` raw transcript; `generateStructuredSummary` calls LLM to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug)
 - Dual output: structured summary for search/retrieval + raw transcript preserved in collapsible block for context recovery
 
@@ -230,6 +280,7 @@ Shared:
   - Insight: `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-live-quality.test.ts`
   - Pipeline eval (5-round dual pipeline): `KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY pnpm test src/cognitive/insight/insight-pipeline-live-eval.test.ts`
   - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
+  - Correction: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/correction/` (38 tests, unit only — no live LLM tests currently)
 - `pnpm test` (full suite) uses a custom runner (`scripts/test-projects.mjs`) that spawns vitest as child processes. **stdout is empty except for the pnpm header**; test output goes to stderr. Judge success by exit code only — do not wait for stdout feedback. For targeted output, use `pnpm test <path-or-filter>`.
 - Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
 
@@ -259,6 +310,8 @@ Shared:
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
 - Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only
+- Correction config: enabled by default when `cognitive.enabled` is true; no separate config key
+- Correction data stored at `~/.kaijibot/cognitive/corrections/{userId}.json`. Schema: CorrectionStoreData with records array, each CorrectionRecord has id, domain, trigger, mistake, correction, provenance, reinforcedCount, createdAt, lastReinforced.
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.

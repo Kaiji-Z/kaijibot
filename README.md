@@ -7,7 +7,7 @@ Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 30+ LLM 提
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6.svg)](https://www.typescriptlang.org/)
-[![Vitest 420+ tests](https://img.shields.io/badge/Vitest-420%2B%20tests-6DA55F.svg)](https://vitest.dev/)
+[![Vitest 450+ tests](https://img.shields.io/badge/Vitest-450%2B%20tests-6DA55F.svg)](https://vitest.dev/)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-red.svg)]()
 
 ## 为什么是 KaijiBot
@@ -63,6 +63,20 @@ KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动
 - **无冷却无上限** — 没有代码级的频率限制或复杂度门槛。Agent 看到近期建议历史，自己决定频率。如果觉得频繁但确实值得，就默默创建技能、不打扰你，等合适时机再提。
 - **完整生命周期** — 创建前去重检查、创建后跟踪使用频率、30 天不用自动清理。
 
+### 🔄 纠错自进化 — 同样的错误不犯第二次
+
+你有没有遇到过这种情况：AI 助手每次新建会话都犯同样的错。比如每次都试图创建一个空白的飞书文档，被你骂了之后改正，下次会话又忘了，照犯不误。
+
+KaijiBot 不会这样。它有一套纠错记忆系统，保证同样的错误只犯一次。
+
+它怎么做到的：
+
+- **双路径检测** — 错误来源有两条路：Path A 是 Agent 自己发现了错误，主动调用 `record_correction` 工具上报；Path B 是你执行 `/new` 或 `/reset` 开启新会话时，系统用正则预筛再交 LLM 分析上一轮对话，自动提取纠错点。
+- **Jaccard 去重 + 强化** — 纠错记录存入 `~/.kaijibot/cognitive/corrections/{userId}.json`，用 Jaccard 相似度判断新错误是否和已有记录重复。重复的不会新建，而是增加 `reinforcedCount`，说明这个错误反复出现，优先级更高。
+- **系统提示注入** — 这是关键设计。纠错记录被注入到系统提示的 "Known Corrections" 区域，按强化次数排序，最多 15 条。Agent 每一轮对话都能看到它们。为什么不放在技能文件或 MEMORY.md 里？因为技能不一定被读取，MEMORY.md 只在启动时加载，只有系统提示是 Agent 每一轮必定看到的。
+
+同样的坑，踩过一次就够了。
+
 ### 🔌 62 个扩展开箱即用
 
 不绑死任何一家。国内国际随意切换，`kaijibot onboard` 向导自动发现已配置的 API Key。
@@ -85,7 +99,7 @@ kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
 
 **内置工具**：代码执行、网页抓取、PDF 操作、图片/视频/音乐生成、TTS 语音合成、Canvas 画布、文件读写、cron 定时任务，共 20+。支持模型故障转移和 API Key 轮换。
 
-**记忆系统**：三种存储后端（内存、LanceDB 向量库、Wiki 知识库），语义搜索历史对话，定期整理巩固记忆（类似人类睡眠时的记忆处理），短期重要信息自动晋升为长期知识。梦境系统独立存储，不污染每日记忆文件。会话记忆双输出：结构化摘要用于搜索检索 + 折叠的原始对话用于上下文恢复。
+**记忆系统**：三种存储后端（内存、LanceDB 向量库、Wiki 知识库），语义搜索历史对话，定期整理巩固记忆（类似人类睡眠时的记忆处理），短期重要信息自动晋升为长期知识。梦境系统独立存储，不污染每日记忆文件。会话记忆双输出：结构化摘要用于搜索检索 + 折叠的原始对话用于上下文恢复。纠错记忆独立存储，系统提示自动注入，确保 Agent 每次对话都能看到过去的纠错。
 
 **定时任务**：`at`（一次性）、`every`（间隔）、`cron`（cron 表达式 + 时区），支持消息投递、webhook 回调或静默执行，失败自动重试。
 
@@ -121,7 +135,9 @@ cd kaijibot
 # 国内镜像加速
 pnpm install --registry https://registry.npmmirror.com
 pnpm build
-kaijibot onboard   # 交互式向导，自动配置
+kaijibot onboard   # 交互式向导，自动配置（首次运行会检测 OpenClaw 并提示迁移）
+# 从 OpenClaw 迁移？运行：
+kaijibot migrate
 ```
 
 **启动**
@@ -190,13 +206,28 @@ Agent 完成任务（≥3 次工具调用）
         → 太频繁但值得？→ 默默创建，稍后告知
 ```
 
+### 纠错自进化流程
+
+```
+双路径检测
+  Path A: Agent 自报（record_correction 工具）    Path B: 会话后 LLM 提取（/new 或 /reset）
+              ↓                                              ↓
+        CorrectionStore.addOrReinforce（Jaccard 去重 + 强化）
+              ↓
+        ~/.kaijibot/cognitive/corrections/{userId}.json
+              ↓
+        下次对话 → context-writer 注入系统提示
+              ↓
+        Agent 看到历史纠错 → 避免重复
+```
+
 ### 技术架构
 
 Gateway 提供 WebSocket + HTTP 双协议，100+ RPC 方法，兼容 OpenAI API（`/v1/chat/completions`）和 MCP 协议。插件 SDK 支持 20+ 生命周期钩子，扩展可按 npm 包、Git 仓库或内置方式加载。会话按渠道 + 对话方隔离。
 
 Agent 系统实现完整的推理循环：系统提示组装（上下文文件 + 认知模式 + 工具描述 + 记忆搜索）→ LLM 推理 → 工具调用 → 观察 → 继续推理 → 流式输出。支持上下文压缩、子 agent 并行派生、模型故障转移和 API Key 轮换。
 
-项目规模：`src/agents/`（762 文件）、`src/infra/`（484）、`src/gateway/`（356）、`src/plugin-sdk/`（341）、`src/plugins/`（256）、`src/cognitive/`（9+ 模块）。
+项目规模：`src/agents/`（762 文件）、`src/infra/`（484）、`src/gateway/`（356）、`src/plugin-sdk/`（341）、`src/plugins/`（256）、`src/cognitive/`（10+ 模块）。
 
 ## 📦 扩展与技能
 
