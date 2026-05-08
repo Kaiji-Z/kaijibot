@@ -206,7 +206,10 @@ export class ProactiveScheduler {
         this.fragmentStore.findClusters(userId),
       ]);
 
-      if (clusters.length === 0) return null;
+      if (clusters.length === 0) {
+        log.info("pattern mode: no clusters available", { userId, clusterCount: clusters.length });
+        return null;
+      }
 
       const result = await this.generateInsights(
         persona,
@@ -229,7 +232,10 @@ export class ProactiveScheduler {
         },
       );
 
-      if (!result || result.length === 0) return null;
+      if (!result || result.length === 0) {
+        log.info("pattern mode: LLM generated no candidates", { userId });
+        return null;
+      }
 
       const candidate = result[0]!;
 
@@ -313,6 +319,14 @@ export class ProactiveScheduler {
     };
 
     let candidate: InsightCandidate;
+
+    const canSelfRefine = !!(this.llmDeps && this.botConfig);
+    log.info("resolve: knowledge mode path selected", {
+      userId: persona.identity?.userId,
+      path: canSelfRefine ? "self-refine" : "blind-retry",
+      mode,
+      targetDomains: opportunity.targetDomains,
+    });
 
     if (this.llmDeps && this.botConfig) {
       // Self-refine path: generate → critique → refine → evaluate
@@ -407,6 +421,11 @@ export class ProactiveScheduler {
         candidate, persona, this.botConfig, this.llmDeps,
       );
       candidate.verificationStatus = verification.status;
+      log.info("knowledge-mode insight verification complete", {
+        userId: persona.identity?.userId,
+        verificationStatus: candidate.verificationStatus,
+        hasSources: candidate.sources.length > 0,
+      });
     } else {
       candidate.verificationStatus = candidate.sources.length > 0 ? "verified" : "unverified";
     }
@@ -437,10 +456,10 @@ export class ProactiveScheduler {
     };
     const gateResult = computeGradedGate(gateContext);
     if (!gateResult.decision) {
-      log.info("gate vetoed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct, reasons: gateResult.reasons });
+      log.info("gate vetoed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct, reasons: gateResult.reasons, eventType: event.type });
       return undefined;
     }
-    log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct });
+    log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct, eventType: event.type });
 
     const opportunities = await this.search(persona, event);
     const byType: Record<string, number> = {};
@@ -491,6 +510,9 @@ export class ProactiveScheduler {
       hasWebSources: insight.sources.length > 0,
       targetDomains: insight.targetDomains,
       source: insight.source ?? "v1",
+      verificationStatus: insight.verificationStatus,
+      mode: selected.metadata?.mode ?? "knowledge",
+      opportunityType: selected.type,
     });
 
     await this.callbacks.onInsightReady(userId, insight);
@@ -557,6 +579,14 @@ export class ProactiveScheduler {
 
     const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
     const baseline = computeBaselinePAccept(persona, fatigued.size > 0 ? fatigued : undefined);
+
+    log.info("exploration mode routed", {
+      userId: persona.identity?.userId,
+      roll: roll.toFixed(3),
+      ratio,
+      selectedMode: roll < ratio ? "pattern" : roll < ratio + surpriseWeight ? "surprise" : "extend",
+      fatiguedDomains: [...fatigued],
+    });
 
     if (roll < ratio) {
       const userId = persona.identity?.userId;

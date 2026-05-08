@@ -150,7 +150,7 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("Stage 3 decorator proposal is now stable");
     // Should have prioritization instruction
-    expect(prompt).toContain("prioritize building the insight around those external facts");
+    expect(prompt).toContain("Use external facts as supporting evidence");
     // Should NOT have inline news:
     expect(prompt).not.toMatch(/news:.*decorator/);
   });
@@ -485,7 +485,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
     // Domain name "Rust" should match the second result
     expect(prompt).toContain("New NLL rules");
     // Prioritization instruction present
-    expect(prompt).toContain("prioritize building the insight around those external facts");
+    expect(prompt).toContain("Use external facts as supporting evidence");
 
     // Step 2: Run full pipeline
     const insight1: InsightCandidate = {

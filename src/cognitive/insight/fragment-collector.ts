@@ -72,6 +72,9 @@ export async function collectFragments(
 ): Promise<Fragment[]> {
   try {
     if (shouldSkipTurn(userText)) {
+      const trimmed = userText.trim();
+      const reason = trimmed.length < 20 ? "too_short" : "trivial";
+      log.info("fragment collection: turn skipped", { reason, userLength: userText.length });
       return [];
     }
 

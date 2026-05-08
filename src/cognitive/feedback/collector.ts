@@ -3,6 +3,8 @@ import type { FeedbackEvent, ImplicitFeedbackSignal } from "./types.js";
 import { updateBanditFromFeedback, adaptFrequency, updatePromptBandit } from "./preference-learner.js";
 import { updateTrustFromFeedback, updateTrustFromImplicit } from "./trust-calculator.js";
 import { recordCalibration } from "./calibration.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+const log = createSubsystemLogger("cognitive/feedback-collector");
 
 /**
  * Process a feedback event and return an updated PersonaTree.
@@ -50,6 +52,11 @@ export function processImplicitFeedback(
       const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
       updatedBandits[signal.topic] = { alpha: bandit.alpha, beta: bandit.beta + 0.3 };
     }
+  }
+
+  const updatedTopics = Object.keys(updatedBandits).filter(t => !(t in persona.feedbackProfile.topicBandits) || persona.feedbackProfile.topicBandits[t]!.alpha !== updatedBandits[t]!.alpha || persona.feedbackProfile.topicBandits[t]!.beta !== updatedBandits[t]!.beta);
+  if (updatedTopics.length > 0) {
+    log.info("implicit feedback bandits updated", { signalCount: signals.length, updatedTopics, topicProvided: signals[0]?.topic ?? false });
   }
 
   return {
@@ -111,6 +118,14 @@ export function processInsightFeedback(
   insight: InsightRecord,
   feedback: "positive" | "negative" | "neutral" | "engaged",
 ): PersonaTree {
+  const trustDelta = feedback === "positive"
+    ? 0.03
+    : feedback === "engaged"
+      ? 0.05
+      : feedback === "negative"
+        ? -0.05
+        : 0;
+  log.info("explicit insight feedback processed", { domains: insight.targetDomains, feedback, trustDelta });
   const updatedBandits = { ...persona.feedbackProfile.topicBandits };
   for (const domain of insight.targetDomains) {
     const bandit = updatedBandits[domain];
@@ -139,14 +154,6 @@ export function processInsightFeedback(
     }
     promptBandits = updated;
   }
-
-  const trustDelta = feedback === "positive"
-    ? 0.03
-    : feedback === "engaged"
-      ? 0.05
-      : feedback === "negative"
-        ? -0.05
-        : 0;
 
   const newTrustScore = Math.max(0.1, Math.min(1.0, persona.rapport.trustScore + trustDelta));
 
@@ -189,6 +196,7 @@ export function processInsightDeliverySignal(
   persona: PersonaTree,
   insight: InsightRecord,
 ): PersonaTree {
+  log.info("insight delivery signal recorded", { insightId: insight.id, domains: insight.targetDomains });
   const lastProactiveAt = insight.deliveredAt
     ? Math.max(persona.feedbackProfile.lastProactiveAt, insight.deliveredAt)
     : persona.feedbackProfile.lastProactiveAt;

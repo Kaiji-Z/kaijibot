@@ -6,6 +6,8 @@ import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { extractFromMessage } from "./extractor.js";
 import type { PersonaTree, InsightCategory } from "../types.js";
 import type { ExtractionResult } from "./types.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+const log = createSubsystemLogger("cognitive/persona-extractor");
 
 const VALID_INSIGHT_CATEGORIES: ReadonlySet<string> = new Set<InsightCategory>([
   "domain_knowledge",
@@ -86,6 +88,7 @@ export async function extractFromMessageLLM(
     const prepared = await deps.prepareModel(config, modelRef);
 
     if ("error" in prepared) {
+      log.warn("persona extraction fell back to rule-based", { reason: "error" });
       return extractFromMessage(userMessage, assistantMessage, existingPersona);
     }
 
@@ -122,6 +125,7 @@ export async function extractFromMessageLLM(
       .trim();
 
     if (!text) {
+      log.warn("persona extraction fell back to rule-based", { reason: "empty" });
       return extractFromMessage(userMessage, assistantMessage, existingPersona);
     }
 
@@ -132,11 +136,14 @@ export async function extractFromMessageLLM(
       parsed.domains.length === 0 &&
       parsed.recentFocus.length === 0
     ) {
+      log.warn("persona extraction fell back to rule-based", { reason: "parse-failed" });
       return extractFromMessage(userMessage, assistantMessage, existingPersona);
     }
 
+    log.info("persona extraction completed", { method: "llm", domainsFound: parsed.domains.length, attributesFound: Object.keys(parsed.attributes).length, hasFocus: parsed.recentFocus.length > 0 });
     return parsed;
   } catch {
+    log.warn("persona extraction fell back to rule-based", { reason: "timeout" });
     return extractFromMessage(userMessage, assistantMessage, existingPersona);
   }
 }

@@ -438,7 +438,7 @@ describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
     const { prompt } = buildInsightPrompt(persona, input, [
       { title: "Rust async", url: "https://example.com", snippet: "Tokio runtime update" },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("prioritize building the insight around those external facts");
+    expect(prompt).toContain("Use external facts as supporting evidence");
   });
 });
 
@@ -1631,7 +1631,7 @@ describe("buildSurpriseInsightPrompt — communicationStyle", () => {
     [],
     TEST_STRATEGY,);
     expect(prompt).toContain("EXAMPLES of ideal insights");
-    expect(prompt).toContain("DPO");
+    expect(prompt).toContain("Context:");
   });
 
   it("has voice section at top of surprise prompt", () => {

@@ -26,12 +26,15 @@ Three data sources, queried in order:
    - `pendingQuestions`, `recentFocus`
 
 2. **Gateway logs** — `/tmp/kaijibot/kaijibot-YYYY-MM-DD.log` (JSONL, daily rotation)
-   - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, resolve, insight output, processEvent done
+   - Subsystem `"cognitive/scheduler"` — gate decisions, search, identify, resolve, insight output, processEvent done, exploration mode routing, knowledge-mode path, pattern-mode empty fallbacks, verification complete
    - Subsystem `"cognitive/insight-llm"` — web search, domain matching, LLM generation (both knowledge and pattern modes), trigram dedup
    - Subsystem `"cognitive/interest-inference"` — search query generation (extend-mode LLM query)
    - Subsystem `"cognitive/fragment-store"` — fragment clusters, dedup, maintenance
-   - Subsystem `"cognitive/fragment-collector"` — per-turn fragment extraction
+   - Subsystem `"cognitive/fragment-collector"` — per-turn fragment extraction, turn-skip reasons
    - Subsystem `"cognitive/pipeline"` — fragment store factory operations
+   - Subsystem `"cognitive/feedback-collector"` — implicit bandit updates, explicit feedback processing, delivery signal recording
+   - Subsystem `"cognitive/persona-curator"` — domain discovery, domain phase transitions, displayName sync
+   - Subsystem `"cognitive/persona-extractor"` — LLM/rule-based extraction results, fallback reasons
    - Log line format: `{"0":"{\"subsystem\":\"cognitive/...\"}","1":{...meta},"2":"message","time":"ISO"}`
 
 3. **Source code** (for reference, not routine queries)
@@ -198,7 +201,48 @@ Key messages to look for:
 - `"safety-net dedup: near-identical content blocked"` — extreme similarity safety-net (0.95 trigram / 0.8 contentWord thresholds)
 - `"pattern-mode insight bypasses verification gate"` — `{content, clusterCount, fragmentCount}` — pattern insight accepted without source check
 - `"pattern-mode trigram dedup filtered candidates"` — `{before, after}` — pattern-mode internal dedup
-- `"pre-gen freshness check: skipping stale candidate"` — `{type, targetDomains}` — topic stale before LLM call, skipped to next
+  - `"pre-gen freshness check: skipping stale candidate"` — `{type, targetDomains}` — topic stale before LLM call, skipped to next
+
+### Step 4a: Scheduler routing and path diagnostics
+
+New diagnostic logs that reveal mode selection and path decisions:
+
+```bash
+LOG_DIR="/tmp/kaijibot"
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
+
+  # Exploration mode routing (pattern vs surprise vs extend)
+  grep '"exploration mode routed"' "$LOG_FILE" | \
+    jq -c '{time: .time, roll: ."1".roll, ratio: ."1".ratio, selectedMode: ."1".selectedMode, fatiguedDomains: ."1".fatiguedDomains}' 2>/dev/null
+
+  # Knowledge mode path (self-refine vs blind-retry)
+  grep '"resolve: knowledge mode path selected"' "$LOG_FILE" | \
+    jq -c '{time: .time, path: ."1".path, mode: ."1".mode, targetDomains: ."1".targetDomains}' 2>/dev/null
+
+  # Pattern mode fallbacks
+  grep -E '"pattern mode: no clusters|pattern mode: LLM generated no"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", clusterCount: ."1".clusterCount}' 2>/dev/null
+
+  # Verification results
+  grep -E '"knowledge-mode insight verification complete|pattern-mode insight verification complete"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", verificationStatus: ."1".verificationStatus, hasSources: ."1".hasSources, clusterCount: ."1".clusterCount}' 2>/dev/null
+
+  # Gate with event type
+  grep -E '"gate (passed|vetoed)"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", eventType: ."1".eventType, pAct: ."1".pAct}' 2>/dev/null
+done
+```
+
+Key messages:
+- `"exploration mode routed"` — `{roll, ratio, selectedMode, fatiguedDomains}` — which exploration sub-mode was selected (pattern/surprise/extend) and which domains are fatigued
+- `"resolve: knowledge mode path selected"` — `{path, mode, targetDomains}` — whether self-refine or blind-retry path is used, with the target domains
+- `"pattern mode: no clusters available"` — `{userId, clusterCount}` — pattern mode can't run, falling back to surprise
+- `"pattern mode: LLM generated no candidates"` — `{userId}` — pattern LLM returned nothing
+- `"knowledge-mode insight verification complete"` — `{verificationStatus, hasSources}` — verification result for knowledge-mode insights
+- `"pattern-mode insight verification complete"` — `{verificationStatus, clusterCount, fragmentCount}` — verification result for pattern-mode insights
+- Gate messages now include `eventType` field showing which event source triggered this cycle
 
 ### Step 5: Fragment health (pattern mode diagnostics)
 
@@ -302,6 +346,49 @@ Key diagnostics:
 - **Frequent `"insight candidate has no verifiable sources"`** → web search consistently returning no results for targeted domains. Check search API config.
 - **Many `"pattern-mode insight bypasses verification gate"`** with low `clusterCount`** → pattern mode producing insights from weak clusters.
 - **No pattern mode entries at all** → patternModeRatio is 0, or fragment clusters are always empty (falls back to surprise).
+
+### Step 7a: Feedback collector diagnostics
+
+```bash
+LOG_DIR="/tmp/kaijibot"
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
+
+  grep '"cognitive/feedback-collector"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", meta: ."1"}' 2>/dev/null
+done
+```
+
+Key messages:
+- `"implicit feedback bandits updated"` — `{signalCount, updatedTopics, topicProvided}` — implicit feedback from user response behavior. If `topicProvided: false` consistently, the `topic=undefined` bug is still present (see known issues).
+- `"explicit insight feedback processed"` — `{domains, feedback, trustDelta}` — user explicitly liked/disliked an insight
+- `"insight delivery signal recorded"` — `{insightId, domains}` — insight delivery recorded for feedback tracking
+
+### Step 7b: Persona pipeline diagnostics
+
+```bash
+LOG_DIR="/tmp/kaijibot"
+for LOG_FILE in "$LOG_DIR"/kaijibot-*.log; do
+  [ -f "$LOG_FILE" ] || continue
+  echo "=== $(basename "$LOG_FILE") ==="
+
+  # Curator: domain discovery and phase transitions
+  grep '"cognitive/persona-curator"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", meta: ."1"}' 2>/dev/null
+
+  # Extractor: LLM vs rule-based extraction
+  grep '"cognitive/persona-extractor"' "$LOG_FILE" | \
+    jq -c '{time: .time, message: ."2", meta: ."1"}' 2>/dev/null
+done
+```
+
+Key messages:
+- `"new domain discovered"` — `{domain, depth, insights}` — new domain added to user's persona
+- `"domain phase transition"` — `{domain, from, to}` — domain lifecycle phase change (emergent→stable→declining→dormant→revived)
+- `"displayName synced"` — `{displayName, source}` — user's display name synchronized from coreTraits
+- `"persona extraction completed"` — `{method, domainsFound, attributesFound, hasFocus}` — successful LLM extraction with counts
+- `"persona extraction fell back to rule-based"` — `{reason}` — LLM failed, reason is one of: `error`, `empty`, `parse-failed`, `timeout`
 
 ### Step 8: Gate statistics
 
@@ -415,20 +502,27 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 | Step | Label | Color | What it shows |
 |------|-------|-------|---------------|
 | 1 | ⏰ TICK | dim | Timer fire, user count, interval |
-| 2 | 🟢/🔴 GATE | green/red | PRISM gate pass/veto with pNeed, pAccept, pAct |
+| 2 | 🟢/🔴 GATE | green/red | PRISM gate pass/veto with pNeed, pAccept, pAct + eventType |
 | 3 | 🔍 SEARCH | yellow | Number of opportunities found + **per-type breakdown** (cross_domain, domain_depth, exploration) |
+| 3a | 🎲 ROUTE | yellow | Exploration mode routing: roll value, patternModeRatio, selectedMode (pattern/surprise/extend), fatigued domains |
 | 4 | 🎯 IDENTIFY | cyan | **Pool size** (top N), top candidate type/domains/pAct + **recentTypes** (diversity penalty visibility) |
 | 4a | 🧹 STALE | yellow | Pre-gen freshness check: stale candidate skipped (saves LLM tokens) |
 | 4b | 🧩 PATTERN | cyan | Pattern mode: fragment cluster count + fragment count loaded |
 | 5 | 🌐 WEB + 📊 MATCH | blue | Web search query, result count, domain matching (knowledge mode only) |
 | 6 | 🤖 LLM GEN | magenta | Number of insight candidates (knowledge or pattern mode) |
 | 6a | 🔄 RETRY + ✅ BEST | yellow/green | Quality retry: attempt count + early exit + final best score (knowledge mode only) |
+| 6b | 🔀 PATH | blue | Knowledge mode path selection: self-refine vs blind-retry, mode, target domains |
+| 6c | ⚠️ PATTERN ∅ | yellow | Pattern mode fallback: no clusters or no LLM output |
 | 7 | ❌ PARSE FAIL | red | JSON parse errors |
-| 8 | ⚠️ VERIFY | yellow | Verification failures (unverified knowledge insights blocked) |
+| 8 | ✅/⚠️ VERIFY | green/yellow | Verification results for both knowledge and pattern modes (pass + fail) |
 | 9 | 🚫 DEDUP | magenta | Safety-net: near-identical content blocked (0.95/0.8 thresholds) |
-| 10 | 💡 INSIGHT ✓ | green | Final insight with source tag, content preview |
+| 10 | 💡 INSIGHT ✓ | green | Final insight with mode tag (from new `mode` field), source tag, content preview, opportunityType |
 | 11 | 📨 DELIVERED | green | Successfully sent to feishu |
 | 12 | 🏁 DONE | green/dim | Pipeline completion status |
+| — | 📊 FEEDBACK | cyan | Implicit bandit updates, explicit feedback, delivery signals |
+| — | 🆕 PERSONA | blue | Domain discovery, phase transitions, displayName sync |
+| — | 🧠 EXTRACTOR | green/yellow | LLM extraction results and fallback reasons |
+| — | ✂️ FRAGMENT | dim | Turn-skip reasons (short messages, non-user turns) |
 
 ### Key patterns to watch for
 
@@ -448,6 +542,14 @@ tmux new-session -s cog-watch "~/.kaijibot/scripts/cognitive-watch.sh"
 - **`resolve: quality retry` attempt=2/3 often** → first attempt quality low, retry rescuing insights
 - **`safety-net dedup` fires frequently** → LLM generating near-identical content, check prompt diversity
 - **Pattern mode insights all partial** → expected behavior. Pattern insights are behavioral inferences, not fact-checked.
+- **`exploration mode routed` always same mode** → patternModeRatio misconfigured or surpriseWeight=0
+- **`pattern mode: no clusters available` every pattern roll** → fragment data insufficient, clusters never form. Pattern mode is dead.
+- **`pattern mode: LLM generated no candidates`** → pattern LLM returning empty, check model and prompt
+- **`resolve: knowledge mode path selected` path=blind-retry** → self-refine disabled (no llmDeps or botConfig)
+- **`knowledge-mode insight verification complete` status=unverified** → web search returning no results for the target domains
+- **`persona extraction fell back to rule-based`** frequently → LLM extraction failing (check model, timeout, parse errors)
+- **`feedback-collector: bandits` topicProvided=false** → the `topic=undefined` bug (known issue, bandit updates happening but topic field is always empty)
+- **`domain phase transition` to dormant** → user's interest domains decaying, may need refresh from new conversations
 
 ## Config
 

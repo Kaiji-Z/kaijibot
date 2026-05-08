@@ -3,6 +3,8 @@ import type { ExtractionResult, ExtractedAttribute, ExtractedInsight } from "./t
 import { observeCoOccurrence, seedDomainGraph, decayEdges } from "../insight/cross-domain-mapper.js";
 import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
 import { detectContradictions } from "./contradiction-resolver.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+const log = createSubsystemLogger("cognitive/persona-curator");
 
 const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
 const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -215,6 +217,9 @@ export function mergeExtraction(
       const prevPhase = existing.phase;
       const newPhase = computeInterestPhase({ ...existing, recurrence: existing.recurrence + 1, lastMentioned: now }, now);
       const phaseChanged = prevPhase !== newPhase;
+      if (phaseChanged) {
+        log.info("domain phase transition", { domain: domain.name, from: prevPhase, to: newPhase });
+      }
 
       newDomains[domain.name] = {
         ...existing,
@@ -240,6 +245,7 @@ export function mergeExtraction(
       };
       freshNode.phase = computeInterestPhase(freshNode, now);
       freshNode.phaseEnteredAt = now;
+      log.info("new domain discovered", { domain: domain.name, depth: freshNode.depth.toFixed(1), insights: freshNode.insights?.length ?? 0 });
       newDomains[domain.name] = freshNode;
     }
   }
@@ -363,6 +369,7 @@ export function mergeExtraction(
   const displayName = newCoreTraits["称呼"]?.confidence >= 0.5
     ? String(newCoreTraits["称呼"].value)
     : persona.identity.displayName;
+  log.info("displayName synced", { displayName, source: newCoreTraits["称呼"]?.confidence >= 0.5 ? "coreTraits" : "existing" });
 
   const newIdentity = {
     ...persona.identity,
