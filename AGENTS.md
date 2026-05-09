@@ -192,8 +192,8 @@ Path A: Agent self-report          Path B: Post-session extraction
 **Agent tool**: `record_correction` — called when agent recognizes it made a mistake; returns `saved` or `reinforced` status
 
 **Post-session extraction** (`src/cognitive/correction/extractor.ts`):
-- `hasCorrectionSignals(transcript)` — regex pre-screen with 30 Chinese/English/apology patterns (skips LLM call if no signals)
-- `extractCorrectionsFromTranscript(transcript, generateText)` — LLM extracts structured corrections; capped at 8K chars; JSON parsing with markdown code block handling
+- `hasCorrectionSignals(transcript)` — regex pre-screen with ~60 Chinese/English/apology patterns covering direct correction (`搞错`/`wrong`), action-oriented (`改成`/`重做`), questioning tone (`怎么回事`/`为什么不`), problem identification (`有问题`/`出问题了`), and agent apology (`抱歉`/`sorry`); skips LLM call if no signals
+- `extractCorrectionsFromTranscript(transcript, generateText)` — LLM extracts structured corrections; capped at 16K chars; uses `createStandaloneGenerateText` for single-turn LLM call
 
 **System prompt injection** (`src/cognitive/correction/injector.ts`):
 - `formatCorrectionsPrompt(corrections)` — sorts by `reinforcedCount` desc → `lastReinforced` desc; truncates to `MAX_INJECTED_CORRECTIONS` (15); formats as markdown section
@@ -229,9 +229,9 @@ Correction (system prompt injection):
 
 ### Session Memory
 
-- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`; also runs post-session correction extraction (regex pre-screen → LLM → CorrectionStore)
-- `src/hooks/bundled/session-memory/summary.ts` — `formatSummaryAsMarkdown(summary, dateStr, sessionKey?, rawTranscript?)` outputs YAML frontmatter + structured sections + folded `<details>` raw transcript; `generateStructuredSummary` calls LLM to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug)
-- Dual output: structured summary for search/retrieval + raw transcript preserved in collapsible block for context recovery
+- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`; also runs post-session correction extraction (regex pre-screen → LLM → CorrectionStore). `extractUserIdFromSessionKey` extracts `ou_xxx` from feishu session keys for per-user correction storage.
+- `src/hooks/bundled/session-memory/summary.ts` — `generateStructuredSummary` uses `createStandaloneGenerateText` (single-turn LLM call, 60s timeout) to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug); transcript budget 16K chars; `formatSummaryAsMarkdown` outputs YAML frontmatter + structured sections
+- `src/hooks/bundled/session-memory/transcript.ts` — `getRecentSessionContent` reads JSONL session files, extracts user/assistant text, strips feishu metadata (`Conversation info`/`Sender` JSON blocks + `ou_xxx:` prefix) via `stripMessageMetadata`; `getRecentSessionContentWithResetFallback` falls back to `.reset.` archived files
 
 ### Dreaming
 
