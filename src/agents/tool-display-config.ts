@@ -583,6 +583,11 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Patch Skill",
       detailKeys: ["name", "instructions"],
     },
+    record_correction: {
+      emoji: "📝",
+      title: "Record Correction",
+      detailKeys: ["domain", "saved", "reinforced"],
+    },
   },
 };
 

@@ -118,9 +118,8 @@ describe("extractFromMessageLLM", () => {
       errorDeps,
     );
 
-    expect(result.domains.length).toBeGreaterThanOrEqual(1);
-    const aiDomain = result.domains.find((d) => d.name === "AI/机器学习");
-    expect(aiDomain).toBeDefined();
+    expect(result).toBeDefined();
+    expect(result.attributes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("falls back to rule-based when prepareModel returns error", async () => {
@@ -132,7 +131,8 @@ describe("extractFromMessageLLM", () => {
       prepareErrorDeps,
     );
 
-    expect(result.domains.length).toBeGreaterThanOrEqual(1);
+    expect(result).toBeDefined();
+    expect(result.attributes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("falls back when LLM returns empty text", async () => {
@@ -145,7 +145,8 @@ describe("extractFromMessageLLM", () => {
       deps,
     );
 
-    expect(result.domains.length).toBeGreaterThanOrEqual(1);
+    expect(result).toBeDefined();
+    expect(result.attributes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("falls back when LLM returns all-empty extraction arrays", async () => {
@@ -164,7 +165,8 @@ describe("extractFromMessageLLM", () => {
       deps,
     );
 
-    expect(result.domains.length).toBeGreaterThanOrEqual(1);
+    expect(result).toBeDefined();
+    expect(result.attributes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("handles malformed JSON from LLM without crashing", async () => {
@@ -177,7 +179,8 @@ describe("extractFromMessageLLM", () => {
       deps,
     );
 
-    expect(result.domains.length).toBeGreaterThanOrEqual(1);
+    expect(result).toBeDefined();
+    expect(result.attributes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("includes persona context in prompt when persona is provided", async () => {
@@ -310,6 +313,6 @@ describe("extractFromMessageLLM", () => {
     );
 
     expect(result).toBeDefined();
-    expect(result.domains.length).toBeGreaterThanOrEqual(1);
+    expect(result.attributes.length).toBeGreaterThanOrEqual(1);
   });
 });

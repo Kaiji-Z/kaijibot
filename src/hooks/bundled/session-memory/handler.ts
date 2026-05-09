@@ -340,6 +340,13 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
 function extractUserIdFromSessionKey(sessionKey: string): string | null {
   const parts = sessionKey.split(":");
+  // agent:main:feishu:direct:ou_xxx → ou_xxx
+  // agent:main:feishu:group:oc_xxx:...:sender:ou_xxx → ou_xxx
+  const tail = parts[parts.length - 1];
+  if (tail && tail !== "main" && tail.startsWith("ou_")) {
+    return tail;
+  }
+  // Fallback: agent:ou_xxx:rest → ou_xxx
   if (parts.length >= 3 && parts[1] && parts[1] !== "main") {
     return parts[1];
   }

@@ -1,23 +1,12 @@
 /**
  * Structured summary generation for session memory.
  *
- * Uses the embedded pi-agent LLM to extract a structured summary from
+ * Uses a single-turn LLM call to extract a structured summary from
  * conversation transcripts. Falls back to a minimal raw-dump structure on
  * LLM failure so that no session is lost.
  */
 
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import {
-  resolveDefaultAgentId,
-  resolveAgentWorkspaceDir,
-  resolveAgentDir,
-  resolveAgentEffectiveModelPrimary,
-} from "../../../agents/agent-scope.js";
-import { DEFAULT_PROVIDER, DEFAULT_MODEL } from "../../../agents/defaults.js";
-import { parseModelRef } from "../../../agents/model-selection.js";
-import { runEmbeddedPiAgent } from "../../../agents/pi-embedded.js";
+import { createStandaloneGenerateText } from "../../../cognitive/evolution/standalone-generate.js";
 import type { KaijiBotConfig } from "../../../config/config.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import { normalizeLowercaseStringOrEmpty } from "../../../shared/string-coerce.js";
@@ -225,67 +214,37 @@ export async function generateStructuredSummary(params: {
 }): Promise<StructuredSummary> {
   const { transcript, cfg } = params;
 
-  // Short-circuit: no meaningful content
   if (!transcript.trim()) {
     return createFallbackSummary(transcript);
   }
 
-  let tempSessionFile: string | null = null;
-
   try {
-    const agentId = resolveDefaultAgentId(cfg);
-    const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
-    const agentDir = resolveAgentDir(cfg, agentId);
+    const transcriptSlice = transcript.slice(0, 16_000);
+    log.debug("Generating structured summary", { transcriptLength: transcriptSlice.length });
 
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-summary-"));
-    tempSessionFile = path.join(tempDir, "session.jsonl");
-
-    const prompt = `${SUMMARY_SYSTEM_PROMPT}\n\nConversation transcript:\n${transcript.slice(0, 6000)}`;
-
-    const modelRef = resolveAgentEffectiveModelPrimary(cfg, agentId);
-    const parsed = modelRef ? parseModelRef(modelRef, DEFAULT_PROVIDER) : null;
-    const provider = parsed?.provider ?? DEFAULT_PROVIDER;
-    const model = parsed?.model ?? DEFAULT_MODEL;
-
-    const result = await runEmbeddedPiAgent({
-      sessionId: `summary-gen-${Date.now()}`,
-      sessionKey: "temp:summary-generator",
-      agentId,
-      sessionFile: tempSessionFile,
-      workspaceDir,
-      agentDir,
-      config: cfg,
-      prompt,
-      provider,
-      model,
-      timeoutMs: 30_000,
-      runId: `summary-gen-${Date.now()}`,
+    const generateText = await createStandaloneGenerateText(cfg, {
+      maxTokens: 4000,
+      timeout: 60_000,
     });
 
-    if (result.payloads && result.payloads.length > 0) {
-      const text = result.payloads[0]?.text;
-      if (text) {
-        const summary = parseStructuredSummaryResponse(text);
-        if (summary) {
-          return summary;
-        }
-      }
+    const prompt = `${SUMMARY_SYSTEM_PROMPT}\n\nConversation transcript:\n${transcriptSlice}`;
+    const rawResponse = await generateText(prompt);
+
+    log.debug("LLM response received", { responseLength: rawResponse.length });
+
+    const summary = parseStructuredSummaryResponse(rawResponse);
+    if (summary) {
+      return summary;
     }
 
-    log.debug("LLM response could not be parsed, using fallback");
+    log.debug("LLM response could not be parsed, using fallback", {
+      responseLength: rawResponse.length,
+    });
     return createFallbackSummary(transcript);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error(`Failed to generate structured summary: ${message}`);
     return createFallbackSummary(transcript);
-  } finally {
-    if (tempSessionFile) {
-      try {
-        await fs.rm(path.dirname(tempSessionFile), { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
   }
 }
 

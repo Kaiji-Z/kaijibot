@@ -32,8 +32,8 @@ export type LlmExtractorOptions = {
   maxTokens?: number;
 };
 
-const DEFAULT_TIMEOUT_MS = 5_000;
-const DEFAULT_MAX_TOKENS = 500;
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_MAX_TOKENS = 1_500;
 
 function isTextContentBlock(block: { type: string }): block is TextContent {
   return block.type === "text";
@@ -211,12 +211,19 @@ Rules:
 
 function parseLLMExtraction(text: string): ExtractionResult {
   try {
-    // Strip markdown code fences if present
-    const cleaned = text
-      .replace(/^```(?:json)?\s*/m, "")
-      .replace(/\s*```$/m, "")
-      .trim();
-    const parsed = JSON.parse(cleaned);
+    const jsonStr = extractJSONFromMixedText(text);
+    if (!jsonStr) {
+      log.warn("parseLLMExtraction: no JSON object found in response", { raw: text.slice(0, 200) });
+      return { attributes: [], domains: [], recentFocus: [] };
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+    } catch {
+      log.warn("parseLLMExtraction: JSON parse failed", { raw: jsonStr.slice(0, 200) });
+      return { attributes: [], domains: [], recentFocus: [] };
+    }
 
     return {
       attributes: Array.isArray(parsed.attributes)
@@ -252,6 +259,108 @@ function parseLLMExtraction(text: string): ExtractionResult {
     };
   } catch {
     return { attributes: [], domains: [], recentFocus: [] };
+  }
+}
+
+function extractJSONFromMixedText(text: string): string | null {
+  const trimmed = text.trim();
+  try {
+    JSON.parse(trimmed);
+    return trimmed;
+  } catch {
+    // continue to extraction
+  }
+
+  const stripped = trimmed
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?\s*```\s*$/i, "")
+    .trim();
+  try {
+    JSON.parse(stripped);
+    return stripped;
+  } catch {
+    // continue to extraction
+  }
+
+  const firstBrace = stripped.indexOf("{");
+  const lastBrace = stripped.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = stripped.slice(firstBrace, lastBrace + 1);
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      const fixed = tryFixTruncatedJSON(candidate);
+      if (fixed) {
+        return fixed;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Attempt to fix truncated JSON by closing open brackets.
+ */
+function tryFixTruncatedJSON(jsonStr: string): string | null {
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escape = false;
+
+  for (const ch of jsonStr) {
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      if (inString) {
+        escape = true;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) {
+      continue;
+    }
+    if (ch === "{") {
+      openBraces++;
+    } else if (ch === "}") {
+      openBraces--;
+    } else if (ch === "[") {
+      openBrackets++;
+    } else if (ch === "]") {
+      openBrackets--;
+    }
+  }
+
+  if (openBraces < 0 || openBrackets < 0) {
+    return null;
+  }
+
+  let fixed = jsonStr;
+  if (inString) {
+    fixed += '"';
+  }
+
+  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*$/s, "");
+
+  for (let i = 0; i < openBrackets; i++) {
+    fixed += "]";
+  }
+  for (let i = 0; i < openBraces; i++) {
+    fixed += "}";
+  }
+
+  try {
+    JSON.parse(fixed);
+    return fixed;
+  } catch {
+    return null;
   }
 }
 

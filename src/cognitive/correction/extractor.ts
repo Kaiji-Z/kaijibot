@@ -2,36 +2,69 @@ import { randomUUID } from "node:crypto";
 import type { CorrectionRecord } from "./types.js";
 
 const CORRECTION_SIGNAL_PATTERNS: RegExp[] = [
-  // Chinese correction patterns
+  // Chinese: direct correction
   /不对[，。]?/,
+  /不对[吧啊劲]?/,
   /不是这个/,
-  /换一个/,
+  /不是这样的/,
   /错了/,
-  /不对[吧啊]?/,
   /搞错/,
-  /重新来/,
-  /不要[用这那样]/,
+  /没弄对/,
+  /没搞对/,
+  /纠正/,
+  /更正/,
+  /换一个/,
   /应该是/,
+  /应该用/,
+  /答案不对/,
+  /好像不对/,
+  /看起来不对/,
+  /不符合/,
+  // Chinese: action-oriented correction
+  /重新来/,
+  /重新[做试写]/,
+  /改[成一]*/,
+  /重做/,
+  /不要[用这那样]/,
   /别[用这那样]/,
   /不能[这样那样]/,
   /不[是对]这样/,
-  /应该用/,
   /怎么还是/,
+  /还是不行/,
+  /又不行了/,
+  /这不是我要的/,
+  // Chinese: 怎么 + negative context
+  /怎么回事/,
+  /怎么搞的/,
+  /怎么又/,
+  /怎么会/,
+  /怎么不对/,
+  // Chinese: 为什么 + negative context
+  /为什么不/,
+  /为什么还是/,
+  /为什么又/,
+  /为什么没/,
+  // Chinese: 问题
+  /有问题/,
+  /出问题了/,
+  // Chinese: agent apology
+  /抱歉[，。]?/,
+  /对不起[，。]?/,
+  /我错了/,
+  /是我的[错失误]/,
   // English correction patterns
   /\bwrong\b/i,
-  /\bnot (that|this|right|correct)\b/i,
+  /\bnot (that|this|right|correct|quite right)\b/i,
+  /\bthat's not right\b/i,
   /\btry (again|a different)\b/i,
   /\bincorrect\b/i,
   /\bshould (use|be|do)\b/i,
   /\bdon't use\b/i,
   /\buse .* instead\b/i,
-  // Agent apology patterns (signals that agent acknowledged an error)
-  /抱歉[，。]?/,
-  /对不起[，。]?/,
+  /\bfix that\b/i,
+  /\bmissed it\b/i,
+  // English: agent apology
   /\bsorry\b/i,
-  /我错了/,
-  /是我的[错失误]/,
-  /重新[做试写]/,
 ];
 
 export function hasCorrectionSignals(transcript: string): boolean {
@@ -50,8 +83,8 @@ export async function extractCorrectionsFromTranscript(
   transcript: string,
   generateText: (prompt: string) => Promise<string>,
 ): Promise<CorrectionRecord[]> {
-  const cappedTranscript = transcript.length > 8000
-    ? transcript.slice(0, 8000)
+  const cappedTranscript = transcript.length > 16_000
+    ? transcript.slice(0, 16_000)
     : transcript;
 
   const prompt = buildExtractionPrompt(cappedTranscript);

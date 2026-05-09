@@ -21,6 +21,23 @@ function extractTextMessageContent(content: unknown): string | undefined {
   return undefined;
 }
 
+const MESSAGE_ID_LINE_RE = /\[message_id:\s*\S+\]\s*\n/;
+const SENDER_ID_PREFIX_RE = /^ou_\w+:\s*/;
+
+export function stripMessageMetadata(text: string): string {
+  if (!text.includes("Conversation info (untrusted metadata):")) {
+    return text;
+  }
+
+  let cleaned = text;
+  const messageIdMatch = MESSAGE_ID_LINE_RE.exec(cleaned);
+  if (messageIdMatch) {
+    cleaned = cleaned.slice(messageIdMatch.index + messageIdMatch[0].length);
+  }
+
+  return cleaned.replace(SENDER_ID_PREFIX_RE, "");
+}
+
 export async function getRecentSessionContent(
   sessionFilePath: string,
   messageCount: number = 15,
@@ -44,7 +61,9 @@ export async function getRecentSessionContent(
             if (role === "user" && hasInterSessionUserProvenance(msg)) {
               continue;
             }
-            const text = extractTextMessageContent(msg.content);
+            const rawText = extractTextMessageContent(msg.content);
+            if (!rawText) { continue; }
+            const text = msg.role === "user" ? stripMessageMetadata(rawText) : rawText;
             if (text && !text.startsWith("/")) {
               allMessages.push(`${role}: ${text}`);
             }
