@@ -11,6 +11,7 @@ import { FragmentStore } from "../insight/fragment-store.js";
 import { critiqueInsightWithLLM, refineInsightWithLLM, verifyInsightWithLLM, checkSemanticNoveltyWithLLM } from "../insight/llm-engine.js";
 import type { LlmInsightDeps } from "../insight/llm-engine.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -91,6 +92,7 @@ export class ProactiveScheduler {
   private readonly fragmentStore: FragmentStore;
   private readonly llmDeps: LlmInsightDeps | undefined;
   private readonly botConfig: KaijiBotConfig | undefined;
+  private readonly processEventQueue = new KeyedAsyncQueue();
 
   constructor(
     private readonly config: SchedulerConfig,
@@ -442,6 +444,13 @@ export class ProactiveScheduler {
   }
 
   async processEvent(
+    userId: string,
+    event: SchedulerEvent,
+  ): Promise<InsightCandidate | undefined> {
+    return this.processEventQueue.enqueue(userId, () => this._processEventInner(userId, event));
+  }
+
+  private async _processEventInner(
     userId: string,
     event: SchedulerEvent,
   ): Promise<InsightCandidate | undefined> {

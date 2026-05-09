@@ -2054,3 +2054,97 @@ describe("resolve — quality retry", () => {
     expect(result!.id).toBe("best");
   });
 });
+
+describe("processEvent per-user queue", () => {
+  it("should serialize concurrent processEvent calls for the same user", async () => {
+    const executionOrder: string[] = [];
+    let personaSnapshot = personaWithDomains();
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => personaSnapshot,
+        onInsightReady: async () => {
+          executionOrder.push("delivered");
+        },
+        savePersona: async (_userId, persona) => {
+          personaSnapshot = persona;
+        },
+      },
+      {
+        insightGenerator: async () => {
+          executionOrder.push("generate-start");
+          await new Promise((r) => setTimeout(r, 50));
+          executionOrder.push("generate-end");
+          return [{
+            id: `insight-${Date.now()}`,
+            content: "test insight content",
+            relevanceScore: 0.8,
+            surpriseScore: 0.6,
+            compositeScore: 0.7,
+            sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+            verificationStatus: "unverified",
+            targetDomains: ["AI/机器学习"],
+            sourceDomains: ["Rust"],
+          }];
+        },
+      },
+    );
+
+    const event1: import("./types.js").SchedulerEvent = { type: "timer", timestamp: Date.now() };
+    const event2: import("./types.js").SchedulerEvent = { type: "persona_change", timestamp: Date.now() };
+
+    const [result1, result2] = await Promise.all([
+      scheduler.processEvent("user-a", event1),
+      scheduler.processEvent("user-a", event2),
+    ]);
+
+    const deliveredCount = executionOrder.filter((e) => e === "delivered").length;
+    expect(deliveredCount).toBeLessThanOrEqual(1);
+  });
+
+  it("should allow concurrent processEvent for different users", async () => {
+    const started: string[] = [];
+    const personaA = personaWithDomains();
+    const personaB = personaWithDomains();
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async (userId) => {
+          if (userId === "user-a") return personaA;
+          if (userId === "user-b") return personaB;
+          return undefined;
+        },
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async (persona) => {
+          started.push("gen");
+          await new Promise((r) => setTimeout(r, 30));
+          return [{
+            id: `insight-${started.length}`,
+            content: "test",
+            relevanceScore: 0.8,
+            surpriseScore: 0.6,
+            compositeScore: 0.7,
+            sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+            verificationStatus: "unverified",
+            targetDomains: Object.keys(persona.domains).slice(0, 1),
+            sourceDomains: [],
+          }];
+        },
+      },
+    );
+
+    const event: import("./types.js").SchedulerEvent = { type: "timer", timestamp: Date.now() };
+
+    await Promise.all([
+      scheduler.processEvent("user-a", event),
+      scheduler.processEvent("user-b", event),
+    ]);
+
+    expect(started.length).toBeGreaterThanOrEqual(2);
+  });
+});
