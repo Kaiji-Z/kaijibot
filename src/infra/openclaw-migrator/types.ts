@@ -10,6 +10,7 @@ export type MigrationSource = {
 export type MigrationOptions = {
   dryRun: boolean;
   source?: string;
+  targetDir?: string;
   overwrite: boolean;
   migrateSecrets: boolean;
   log?: (msg: string) => void;

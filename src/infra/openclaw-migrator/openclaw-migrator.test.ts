@@ -876,6 +876,7 @@ describe("migrateSessions", () => {
 describe("runMigration", () => {
   it("runs full migration end-to-end", async () => {
     const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
 
     await fs.writeFile(
       path.join(sourceDir, "openclaw.json"),
@@ -902,6 +903,7 @@ describe("runMigration", () => {
       overwrite: false,
       migrateSecrets: false,
       source: sourceDir,
+      targetDir,
       log: () => {},
     });
 
@@ -911,6 +913,7 @@ describe("runMigration", () => {
 
   it("creates backup marker and report JSON", async () => {
     const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
 
     await fs.writeFile(
       path.join(sourceDir, "openclaw.json"),
@@ -922,6 +925,7 @@ describe("runMigration", () => {
       overwrite: false,
       migrateSecrets: false,
       source: sourceDir,
+      targetDir,
       log: () => {},
     });
 
