@@ -97,9 +97,9 @@ export async function collectFragments(
       { messages },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: 300,
+        maxTokens: 800,
         temperature: 0.7,
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(15_000),
       },
     );
 
@@ -113,13 +113,20 @@ export async function collectFragments(
       .trim();
 
     if (!text) {
-      log.warn("fragment-collector LLM returned empty response, skipping");
+      log.warn("fragment-collector LLM returned empty response, skipping", {
+        contentBlocks: result.content.length,
+        blockTypes: result.content.map((b) => b.type),
+      });
       return [];
     }
+
+    log.info("fragment-collector LLM raw response", { rawLen: text.length, rawPreview: text.slice(0, 300) });
 
     const fragments = parseFragments(text);
     if (fragments.length > 0) {
       log.info("fragments extracted", { count: fragments.length, kinds: fragments.map(f => f.kind), domains: [...new Set(fragments.flatMap(f => f.domains))] });
+    } else {
+      log.info("fragment-collector parseFragments returned 0", { rawLen: text.length, rawPreview: text.slice(0, 200) });
     }
     return fragments;
    } catch (err) {

@@ -704,7 +704,7 @@ describe("LLM freshness check: knowledge mode", () => {
 });
 
 describe("LLM freshness check: pattern mode", () => {
-  const recentContents = ["behavioral observation A", "behavioral observation B"];
+  const recentContents = ["behavioral observation A", "behavioral observation B", "behavioral observation C"];
 
   function personaWithRecentPatternContents(): PersonaTree {
     const persona = personaWithDomains();

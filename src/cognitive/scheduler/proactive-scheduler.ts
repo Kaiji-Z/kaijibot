@@ -249,12 +249,12 @@ export class ProactiveScheduler {
         }
       }
 
-      if (this.llmDeps && this.botConfig && this.config.llmFreshnessCheck !== false && recentInsightContents.length >= 2) {
+      if (this.llmDeps && this.botConfig && this.config.llmFreshnessCheck !== false && recentInsightContents.length >= 3) {
         const freshness = await checkSemanticNoveltyWithLLM(
           candidate, recentInsightContents, this.botConfig, this.llmDeps,
         );
         if (!freshness.isNovel) {
-          log.info("LLM freshness check: semantically repetitive", { userId, reason: freshness.reason });
+          log.info("LLM freshness check: pattern semantically repetitive", { userId, reason: freshness.reason });
           return null;
         }
       }
@@ -609,9 +609,9 @@ export class ProactiveScheduler {
         type: "exploration" as const,
         targetDomains: [],
         sourceDomains: [],
-        pNeed: 0.55,
+        pNeed: 0.65,
         pAccept: baseline,
-        pAct: 0.55 * baseline,
+        pAct: 0.65 * baseline,
         metadata: { mode: "pattern" },
       }];
     }

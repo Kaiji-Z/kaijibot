@@ -2239,14 +2239,23 @@ export async function runEmbeddedAttempt(
               await store.save("main", userId, feedbackUpdated);
 
               try {
+                log.info(`fragment diag: entering collectFragments block`, {
+                  userId,
+                  userTextLen: userText.length,
+                  assistantTextLen: assistantText.length,
+                  configExists: !!params.config,
+                });
                 const { collectFragments, createDefaultFragmentCollectorDeps } = await import("../../../cognitive/insight/fragment-collector.js");
                 const { FragmentStore } = await import("../../../cognitive/insight/fragment-store.js");
+
+                log.info(`fragment diag: imports resolved`, { userId });
 
                 const fragStore = new FragmentStore(configDir);
                 const fragDeps = createDefaultFragmentCollectorDeps();
                 const newFragments = await collectFragments(
                   userText, assistantText, feedbackUpdated, params.config, fragDeps,
                 );
+                log.info(`fragment diag: collectFragments returned`, { userId, count: newFragments.length });
                 for (const frag of newFragments) {
                   frag.userId = userId;
                   await fragStore.addFragment(userId, frag);
