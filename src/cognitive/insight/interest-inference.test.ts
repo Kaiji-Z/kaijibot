@@ -329,7 +329,7 @@ describe("inferSearchStrategy", () => {
     };
     const prompt = buildInterestInferencePrompt(persona, input, "surprise");
     expect(prompt).toContain("recent developments");
-    expect(prompt).toContain("current year");
+    expect(prompt).toContain(new Date().getFullYear().toString());
   });
 
   it("includes recency instruction in prompt for extend mode", () => {
@@ -343,7 +343,7 @@ describe("inferSearchStrategy", () => {
       recentQueryHistory: [],
     };
     const prompt = buildInterestInferencePrompt(persona, input, "extend");
-    expect(prompt).toContain("current year");
+    expect(prompt).toContain(new Date().getFullYear().toString());
   });
 
   it("returns ok:false on missing required fields in response", async () => {

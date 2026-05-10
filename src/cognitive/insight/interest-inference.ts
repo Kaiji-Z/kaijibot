@@ -180,17 +180,18 @@ export function buildInterestInferencePrompt(
       ? `The pipeline has selected "${input.targetDomains.join('" or "')}" as the focus area. Find a SURPRISINGLY ADJACENT angle — the searchQuery MUST include at least one recognizable keyword from "${input.targetDomains.join('" or "')}" to stay grounded in the user's knowledge. The surprise should come from the ANGLE, not from drifting to an unrelated topic. Something the user would find surprising and valuable, but hasn't explicitly explored.`
       : `Analyze this user's knowledge structure. Identify a LATENT interest — something they would find surprising and valuable, but that they haven't explicitly explored. The latent interest should bridge from what they know to something adjacent but unexpected.`;
 
+  const currentYear = new Date().getFullYear();
   const modeConstraints = isExtend
     ? `- The searchQuery must be 2-6 English keywords targeting practical applications or recent developments in the user's most active domain
 - The estimatedSurprise should be moderate (0.3–0.6) since this is for extending known domains
 - Prefer queries that surface actionable content: tools, case studies, benchmarks, or how-to guides
-- Include the current year in the searchQuery to prioritize recent content`
+- Include the year ${currentYear} in the searchQuery to prioritize recent content`
     : `- The searchQuery must be 2-6 English keywords suitable for a web search API
 - The estimatedSurprise must be between 0.6 and 1.0 (this is for surprise-mode insights only)
 - The searchQuery MUST contain at least one keyword from the target domains to prevent drift
 - Do NOT suggest topics the user is already an expert in
 - Prefer cross-domain bridges that connect two areas the user knows about in an unexpected way
-- Include the current year in the searchQuery to surface cutting-edge developments`;
+- Include the year ${currentYear} in the searchQuery to surface cutting-edge developments`;
 
   return `You are an expert at identifying latent interests and knowledge gaps from a user's knowledge profile.
 
@@ -215,7 +216,7 @@ ${taskInstruction}
 Constraints:
 ${modeConstraints}
 - avoidTopics should contain the user's most-discussed domains to avoid re-treading: ${topDiscussed.join(", ")}
-- Prefer topics with recent developments (2024-2026). The searchQuery should target current trends, new tools, recent research, or emerging techniques — not general knowledge or introductory content.
+- Prefer topics with recent developments (${currentYear - 2}-${currentYear}). The searchQuery should target current trends, new tools, recent research, or emerging techniques — not general knowledge or introductory content.
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 {
