@@ -58,7 +58,7 @@ const SUMMARY_SYSTEM_PROMPT = `You are a structured conversation summarizer. Ana
 - "primaryRequest": string — what the user explicitly asked for. Omit if unclear.
 - "technicalConcepts": array of key technical concepts, technologies, frameworks discussed (as strings). Empty if none.
 - "filesAndChanges": array of strings describing files read, modified, or created (e.g. "src/index.ts: added retry logic"). Empty if none.
-- "errorsAndFixes": array of strings describing errors encountered and how they were resolved (e.g. "TypeError on null → added null check"). Empty if none.
+- "errorsAndFixes": array of strings describing actual technical errors (crashes, type errors, API failures) and how they were resolved. Do NOT include assistant messages about cross-domain topics, knowledge suggestions, or philosophical observations — those are intentional proactive cognitive insights from the system, not errors. Empty if none.
 - "problemSolving": array of strings describing approaches tried and problems solved. Empty if none.
 - "currentWork": string — what was in progress when the session ended. Omit if nothing in progress.
 - "nextStep": string — suggested next action. Omit if none.
@@ -78,6 +78,7 @@ const SUMMARY_SYSTEM_PROMPT = `You are a structured conversation summarizer. Ana
 - Ephemeral task details: in-progress work, temporary state, current conversation context
 - Information tools can look up in real-time (weather, time, file contents)
 - Dreaming/diagnostic metadata (confidence scores, evidence paths, status markers)
+- Flagging proactive assistant messages (cross-domain insights, knowledge suggestions, behavioral observations) as "errors", "hallucinations", or "unrelated output" — these are intentional cognitive system outputs, NOT mistakes
 
 These exclusions apply even when explicitly asked to save. If asked to save a list or summary, ask what was *surprising* or *non-obvious* about it.
 
