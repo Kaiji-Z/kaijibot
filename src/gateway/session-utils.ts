@@ -46,7 +46,7 @@ import {
   normalizeMainKey,
   parseAgentSessionKey,
 } from "../routing/session-key.js";
-import { isCronRunSessionKey } from "../sessions/session-key-utils.js";
+import { isCronRunSessionKey, isHeartbeatSessionKey } from "../sessions/session-key-utils.js";
 import {
   AVATAR_MAX_BYTES,
   isAvatarDataUrl,
@@ -1431,6 +1431,9 @@ export function listSessionsFromStore(params: {
   let sessions = Object.entries(store)
     .filter(([key]) => {
       if (isCronRunSessionKey(key)) {
+        return false;
+      }
+      if (isHeartbeatSessionKey(key)) {
         return false;
       }
       if (!includeGlobal && key === "global") {

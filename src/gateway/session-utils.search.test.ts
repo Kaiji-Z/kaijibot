@@ -140,6 +140,39 @@ describe("listSessionsFromStore search", () => {
     expect(result.sessions.map((session) => session.key)).toEqual(["agent:main:cron:job-1"]);
   });
 
+  test("filters out heartbeat sessions from listing", () => {
+    const now = Date.now();
+    const store: Record<string, SessionEntry> = {
+      "agent:main:feishu:direct:ou_abc123": {
+        sessionId: "sess-normal",
+        updatedAt: now,
+        displayName: "Normal Chat",
+      } as SessionEntry,
+      "agent:main:feishu:direct:ou_abc123:heartbeat": {
+        sessionId: "sess-hb-1",
+        updatedAt: now - 1000,
+      } as SessionEntry,
+      "agent:main:feishu:group:oc_xyz789:sender:ou_abc123:heartbeat": {
+        sessionId: "sess-hb-2",
+        updatedAt: now - 2000,
+      } as SessionEntry,
+    };
+
+    const result = listSessionsFromStore({
+      cfg: baseCfg,
+      storePath: "/tmp/sessions.json",
+      store,
+      opts: {},
+    });
+
+    const keys = result.sessions.map((s) => s.key);
+    expect(keys).toEqual(["agent:main:feishu:direct:ou_abc123"]);
+    expect(keys).not.toContain("agent:main:feishu:direct:ou_abc123:heartbeat");
+    expect(keys).not.toContain(
+      "agent:main:feishu:group:oc_xyz789:sender:ou_abc123:heartbeat",
+    );
+  });
+
   test.each([
     {
       name: "does not guess provider for legacy runtime model without modelProvider",
