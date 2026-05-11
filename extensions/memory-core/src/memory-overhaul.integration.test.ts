@@ -129,14 +129,14 @@ describe("Memory index update", () => {
     }
   });
 
-  it("addRecentSession → read index → verify section exists in MEMORY.md", async () => {
+  it("updateSection → read index → verify topic pointer exists in MEMORY.md", async () => {
     ws = await createTempWorkspace();
     const nodeFs = createNodeFsAdapter();
     const idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
 
     await idx.updateSection({
       subject: "user",
-      title: "User Profile",
+      title: "user-profile",
       topicFile: "memory/topics/user-profile.md",
       summary: "Test user info",
     });
@@ -149,14 +149,17 @@ describe("Memory index update", () => {
 
     const index = await idx.readIndex();
     expect(index.sections).toHaveLength(1);
-    expect(index.sections[0]!.title).toBe("User Profile");
+    expect(index.sections[0]!.title).toBe("user-profile");
     expect(index.sections[0]!.topicFile).toBe("memory/topics/user-profile.md");
-    expect(index.recentSessions).toHaveLength(1);
-    expect(index.recentSessions[0]!.title).toBe("Integration test session");
+    // addRecentSession no longer serialized — in-memory only, lost after writeIndex cycle
+    expect(index.recentSessions).toHaveLength(0);
 
     const raw = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
-    expect(raw).toContain("## User Profile");
-    expect(raw).toContain("2026-04-25 Integration test session");
+    // New format: flat Topic Pointers list, no verbose H2+summary
+    expect(raw).toContain("## Topic Pointers");
+    expect(raw).toContain("- user-profile → memory/topics/user-profile.md");
+    // Recent Sessions no longer serialized
+    expect(raw).not.toContain("## Recent Sessions");
   });
 });
 
@@ -263,25 +266,37 @@ describe("memory_tidy rebalance", () => {
     const nodeFs = createNodeFsAdapter();
     const idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
 
-    for (let i = 0; i < 15; i++) {
+    // Flat format uses ~80 bytes per section, so we need many sections + inline content
+    // to exceed the 8KB budget
+    for (let i = 0; i < 100; i++) {
       await idx.updateSection({
-        subject: "reference",
-        title: `Reference ${i}`,
-        topicFile: `memory/topics/ref-${i}.md`,
-        summary: `Summary for ref ${i}: ${"x".repeat(2000)}`,
+        subject: `topic-${i}`,
+        title: `Topic ${i}`,
+        topicFile: `memory/topics/topic-${i}.md`,
+        summary: "",
       });
     }
 
+    // Add large inline sections to guarantee exceeding budget
+    const index = await idx.readIndex();
+    index.inlineSections = [
+      { section: "👤 User", lines: ["- " + "x".repeat(3000)] },
+      { section: "💬 Key Feedback", lines: ["- " + "y".repeat(3000)] },
+    ];
+    await idx.writeIndex(index);
+
     const beforeSize = (await fs.stat(join(ws, "MEMORY.md"))).size;
-    expect(beforeSize).toBeGreaterThan(25_000);
+    expect(beforeSize).toBeGreaterThan(8192);
 
     const tidyDeps = createTidyDepsFromNodeFs(ws, fs);
-    const result = await runMemoryTidyActions(tidyDeps, { action: "rebalance" });
+    await runMemoryTidyActions(tidyDeps, { action: "rebalance" });
 
-    expect(result.entriesAffected).toBeGreaterThan(0);
+    const afterRaw = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
+    const afterSize = new TextEncoder().encode(afterRaw).length;
+    expect(afterSize).toBeLessThanOrEqual(8192);
 
     const afterIndex = await idx.readIndex();
-    expect(afterIndex.sections.length).toBeLessThan(15);
+    expect(afterIndex.sections.length).toBeLessThanOrEqual(100);
   });
 });
 
@@ -425,12 +440,15 @@ describe("Cross-component flow", () => {
 
     const index = await idx.readIndex();
     expect(index.sections).toHaveLength(3);
-    expect(index.recentSessions).toHaveLength(1);
+    // addRecentSession no longer serialized
+    expect(index.recentSessions).toHaveLength(0);
 
     const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
-    expect(rawMemory).toContain("## User Profile");
-    expect(rawMemory).toContain("## Project Decisions");
-    expect(rawMemory).toContain("## Reference");
+    expect(rawMemory).toContain("## Topic Pointers");
+    expect(rawMemory).toContain("- User Profile → memory/topics/user-profile.md");
+    expect(rawMemory).toContain("- Project Decisions → memory/topics/project-decisions.md");
+    expect(rawMemory).toContain("- Reference → memory/topics/reference.md");
+    expect(rawMemory).not.toContain("## Recent Sessions");
 
     const userProfile = await tm.getTopic("user-profile");
     expect(userProfile!.entries).toHaveLength(2);
@@ -450,5 +468,256 @@ describe("Cross-component flow", () => {
     expect(allTopics).toContain("user-profile.md");
     expect(allTopics).toContain("project-decisions.md");
     expect(allTopics).toContain("reference.md");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Simulated hook flow (session end → MEMORY.md update)
+// ---------------------------------------------------------------------------
+
+describe("Simulated session-memory hook flow", () => {
+  let ws: string;
+  let nodeFs: ReturnType<typeof createNodeFsAdapter>;
+  let tm: TopicManager;
+  let idx: MemoryIndexManager;
+
+  const MEMORY_TYPE_TO_SECTION: Record<string, string> = {
+    user: "👤 User",
+    feedback: "💬 Key Feedback",
+    project: "🎯 Active Focus",
+    reference: "🔗 Reference",
+  };
+
+  async function simulateHookWrite(
+    topicSlug: string,
+    summary: string,
+    memoryType: string | undefined,
+    decisions: string[],
+    dateStr: string,
+  ): Promise<void> {
+    const topicFileName = `${topicSlug}.md`;
+    let topic = await tm.getTopic(topicFileName);
+    if (!topic) {
+      topic = await tm.createTopic(topicSlug, topicFileName);
+    }
+
+    await tm.appendEntry(topicFileName, {
+      title: `${dateStr} session`,
+      date: dateStr,
+      content: summary.slice(0, 4000),
+      importance: decisions.length > 0 ? "high" : "normal",
+      source: "session-memory",
+    });
+
+    await idx.updateSection({
+      subject: topicSlug,
+      title: topicSlug,
+      topicFile: `memory/topics/${topicFileName}`,
+      summary: summary.slice(0, 120),
+    });
+
+    if (memoryType) {
+      const section = MEMORY_TYPE_TO_SECTION[memoryType];
+      if (section) {
+        const index = await idx.readIndex();
+        const inlineSections = index.inlineSections ?? [];
+
+        const inlineLines = [`- ${dateStr}: ${summary.slice(0, 100)}`];
+        for (const d of decisions.slice(0, 3)) {
+          inlineLines.push(`  - Decision: ${d}`);
+        }
+
+        const existingIdx = inlineSections.findIndex((s) => s.section === section);
+        if (existingIdx >= 0) {
+          inlineSections[existingIdx]!.lines = [
+            "",
+            ...inlineLines,
+            ...inlineSections[existingIdx]!.lines,
+          ];
+        } else {
+          inlineSections.push({ section, lines: ["", ...inlineLines] });
+        }
+
+        index.inlineSections = inlineSections;
+        await idx.writeIndex(index);
+      }
+    }
+
+    await idx.rebalanceIndex();
+  }
+
+  afterEach(async () => {
+    if (ws) {
+      await fs.rm(ws, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
+  it("session with memoryType=user → inline section populated + topic pointer + rebalance", async () => {
+    ws = await createTempWorkspace();
+    nodeFs = createNodeFsAdapter();
+    tm = new TopicManager({ workspaceDir: ws, fs: nodeFs });
+    idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
+
+    await simulateHookWrite(
+      "cognitive-system",
+      "Discussed the cognitive insight pipeline architecture and persona system design",
+      "project",
+      ["Use flat Topic Pointers instead of verbose H2+summary", "Remove Recent Sessions from MEMORY.md"],
+      "2026-05-11",
+    );
+
+    const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
+    expect(rawMemory).toContain("# Long-Term Memory");
+    expect(rawMemory).toContain("## 🎯 Active Focus");
+    expect(rawMemory).toContain("2026-05-11: Discussed the cognitive insight pipeline architecture");
+    expect(rawMemory).toContain("Decision: Use flat Topic Pointers");
+    expect(rawMemory).toContain("## Topic Pointers");
+    expect(rawMemory).toContain("- cognitive-system → memory/topics/cognitive-system.md");
+    expect(rawMemory).not.toContain("## Recent Sessions");
+
+    const index = await idx.readIndex();
+    expect(index.sections).toHaveLength(1);
+    expect(index.inlineSections).toBeDefined();
+    expect(index.inlineSections!.length).toBeGreaterThanOrEqual(1);
+    const focusSection = index.inlineSections!.find((s) => s.section === "🎯 Active Focus");
+    expect(focusSection).toBeDefined();
+    expect(focusSection!.lines.some((l) => l.includes("cognitive insight"))).toBe(true);
+
+    const topic = await tm.getTopic("cognitive-system");
+    expect(topic).not.toBeNull();
+    expect(topic!.entries).toHaveLength(1);
+    // importance is not preserved through topic file serialization (parseTopicEntry limitation)
+  });
+
+  it("multiple sessions → inline sections accumulate → rebalance trims to budget", async () => {
+    ws = await createTempWorkspace();
+    nodeFs = createNodeFsAdapter();
+    tm = new TopicManager({ workspaceDir: ws, fs: nodeFs });
+    idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
+
+    for (let i = 0; i < 8; i++) {
+      await simulateHookWrite(
+        `topic-${i}`,
+        `Session ${i}: working on feature ${i} with detailed description that takes up space in memory`,
+        ["user", "feedback", "project", "reference"][i % 4],
+        i % 2 === 0 ? [`Decision ${i}: use approach ${i}`] : [],
+        `2026-05-${String(11 + i).padStart(2, "0")}`,
+      );
+    }
+
+    const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
+    const memSize = new TextEncoder().encode(rawMemory).length;
+
+    expect(memSize).toBeLessThanOrEqual(8192);
+    expect(rawMemory).toContain("## Topic Pointers");
+    expect(rawMemory).not.toContain("## Recent Sessions");
+
+    const topicPointers = rawMemory.match(/^- .+? → .+$/gm);
+    expect(topicPointers).not.toBeNull();
+    expect(topicPointers!.length).toBeGreaterThanOrEqual(1);
+
+    const inlineSections = rawMemory.match(/^## [👤💬🎯🔗]/gm);
+    expect(inlineSections).not.toBeNull();
+    expect(inlineSections!.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("session without memoryType → only topic pointer, no inline section", async () => {
+    ws = await createTempWorkspace();
+    nodeFs = createNodeFsAdapter();
+    tm = new TopicManager({ workspaceDir: ws, fs: nodeFs });
+    idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
+
+    await simulateHookWrite(
+      "casual-chat",
+      "User asked about weather and weekend plans",
+      undefined,
+      [],
+      "2026-05-11",
+    );
+
+    const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
+    expect(rawMemory).toContain("## Topic Pointers");
+    expect(rawMemory).toContain("- casual-chat → memory/topics/casual-chat.md");
+    expect(rawMemory).not.toContain("## 👤 User");
+    expect(rawMemory).not.toContain("## 💬 Key Feedback");
+    expect(rawMemory).not.toContain("## 🎯 Active Focus");
+    expect(rawMemory).not.toContain("## 🔗 Reference");
+
+    const index = await idx.readIndex();
+    expect(index.inlineSections ?? []).toHaveLength(0);
+  });
+
+  it("old format MEMORY.md → read → updateSection → new format output", async () => {
+    ws = await createTempWorkspace();
+    await fs.mkdir(join(ws, "memory", "topics"), { recursive: true });
+
+    const oldFormat = [
+      "# Long-Term Memory",
+      "",
+      "## 👤 User",
+      "- Timezone: UTC+8",
+      "- Language: zh-CN",
+      "",
+      "## User Profile",
+      "→ memory/topics/user-profile.md",
+      "Timezone and preferences",
+      "",
+      "## Recent Sessions",
+      "- 2026-05-10 Discussed architecture → memory/topics/arch.md",
+      "- 2026-05-09 Fixed bug → memory/topics/bugfix.md",
+      "",
+    ].join("\n");
+
+    await fs.writeFile(join(ws, "MEMORY.md"), oldFormat, "utf-8");
+
+    nodeFs = createNodeFsAdapter();
+    tm = new TopicManager({ workspaceDir: ws, fs: nodeFs });
+    idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
+
+    const index = await idx.readIndex();
+    expect(index.inlineSections).toHaveLength(1);
+    expect(index.inlineSections![0]!.section).toBe("👤 User");
+    expect(index.sections).toHaveLength(1);
+    expect(index.sections[0]!.title).toBe("User Profile");
+    expect(index.recentSessions).toHaveLength(2);
+
+    await idx.updateSection({
+      subject: "new-topic",
+      title: "new-topic",
+      topicFile: "memory/topics/new-topic.md",
+      summary: "Added by new hook",
+    });
+    await idx.rebalanceIndex();
+
+    const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
+    expect(rawMemory).toContain("## Topic Pointers");
+    expect(rawMemory).toContain("- new-topic → memory/topics/new-topic.md");
+    expect(rawMemory).toContain("- User Profile → memory/topics/user-profile.md");
+    expect(rawMemory).not.toContain("## Recent Sessions");
+    expect(rawMemory).toContain("## 👤 User");
+  });
+
+  it("feedback type routes to 💬 Key Feedback inline section", async () => {
+    ws = await createTempWorkspace();
+    nodeFs = createNodeFsAdapter();
+    tm = new TopicManager({ workspaceDir: ws, fs: nodeFs });
+    idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
+
+    await simulateHookWrite(
+      "assistant-feedback",
+      "User said responses are too verbose and wants shorter answers",
+      "feedback",
+      ["Reduce response length to 2-3 sentences max"],
+      "2026-05-11",
+    );
+
+    const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
+    expect(rawMemory).toContain("## 💬 Key Feedback");
+    expect(rawMemory).toContain("too verbose");
+    expect(rawMemory).toContain("Decision: Reduce response length");
+
+    const index = await idx.readIndex();
+    const feedbackSection = index.inlineSections!.find((s) => s.section === "💬 Key Feedback");
+    expect(feedbackSection).toBeDefined();
   });
 });

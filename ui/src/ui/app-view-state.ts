@@ -20,6 +20,7 @@ import type {
   ToolsCatalogResult,
 } from "./types.ts";
 import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
+import type { SessionDetailState } from "./views/agents-utils.ts";
 
 export type AppViewState = {
   settings: UiSettings;
@@ -126,6 +127,7 @@ export type AppViewState = {
   sessionsIncludeGlobal: boolean;
   sessionsIncludeUnknown: boolean;
   sessionsHideCron: boolean;
+  sessionDetails: Record<string, SessionDetailState>;
   updateAvailable: import("./types.js").UpdateAvailable | null;
   attentionItems: AttentionItem[];
   streamMode: boolean;

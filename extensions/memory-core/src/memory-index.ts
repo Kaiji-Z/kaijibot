@@ -125,6 +125,10 @@ function isReferencesHeading(line: string): boolean {
   return line.trim() === "## References";
 }
 
+function isTopicPointersHeading(line: string): boolean {
+  return line.trim() === "## Topic Pointers";
+}
+
 function isH2Heading(line: string): boolean {
   return /^## /.test(line.trim());
 }
@@ -152,6 +156,7 @@ export function parseMemoryIndex(content: string): MemoryIndex {
   let inPromoted = false;
   let inRecentSessions = false;
   let inReferences = false;
+  let inTopicPointers = false;
 
   function flushSection(): void {
     if (currentSection) {
@@ -205,6 +210,16 @@ export function parseMemoryIndex(content: string): MemoryIndex {
       flushSection();
       inReferences = true;
       inRecentSessions = false;
+      inTopicPointers = false;
+      continue;
+    }
+
+    // Check for Topic Pointers heading (## Topic Pointers)
+    if (isTopicPointersHeading(trimmed)) {
+      flushSection();
+      inTopicPointers = true;
+      inRecentSessions = false;
+      inReferences = false;
       continue;
     }
 
@@ -251,6 +266,20 @@ export function parseMemoryIndex(content: string): MemoryIndex {
         const basename = path.basename(topicFile, ".md");
         const subject = basename;
         sections.push({ subject, title: basename, topicFile, summary: "" });
+      }
+      continue;
+    }
+
+    // In Topic Pointers section — parse flat arrow lines
+    if (inTopicPointers) {
+      const arrowMatch = trimmed.match(/^- (.+?) → (.+)$/);
+      if (arrowMatch) {
+        sections.push({
+          subject: arrowMatch[1]!.trim(),
+          title: arrowMatch[1]!.trim(),
+          topicFile: arrowMatch[2]!.trim(),
+          summary: "",
+        });
       }
       continue;
     }
@@ -315,16 +344,11 @@ function serializeIndex(index: MemoryIndex): string {
     parts.push("");
   }
 
-  // Topic pointer sections
-  for (const section of index.sections) {
-    parts.push(serializeSection(section));
-    parts.push("");
-  }
-
-  if (index.recentSessions.length > 0) {
-    parts.push(RECENT_SESSIONS_HEADING);
-    for (const session of index.recentSessions) {
-      parts.push(serializeRecentSession(session));
+  // Topic Pointers — flat list
+  if (index.sections.length > 0) {
+    parts.push("## Topic Pointers");
+    for (const section of index.sections) {
+      parts.push(`- ${section.title} → ${section.topicFile}`);
     }
     parts.push("");
   }
@@ -419,7 +443,7 @@ export class MemoryIndexManager {
     const promotedBytes = new TextEncoder().encode(index.promotedContent).length;
 
     const sectionBytes = (section: MemoryIndexSection): number => {
-      return new TextEncoder().encode(serializeSection(section) + "\n\n").length;
+      return new TextEncoder().encode(`- ${section.title} → ${section.topicFile}\n`).length;
     };
 
     const inlineBytes = (inline: InlineContent): number => {

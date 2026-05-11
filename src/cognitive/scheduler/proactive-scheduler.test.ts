@@ -2079,6 +2079,7 @@ describe("processEvent per-user queue", () => {
           return [{
             id: `insight-${Date.now()}`,
             content: "test insight content",
+            rationale: "test",
             relevanceScore: 0.8,
             surpriseScore: 0.6,
             compositeScore: 0.7,
@@ -2126,6 +2127,7 @@ describe("processEvent per-user queue", () => {
           return [{
             id: `insight-${started.length}`,
             content: "test",
+            rationale: "test",
             relevanceScore: 0.8,
             surpriseScore: 0.6,
             compositeScore: 0.7,

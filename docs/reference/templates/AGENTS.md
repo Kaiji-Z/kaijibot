@@ -62,7 +62,7 @@ Each file has a specific responsibility. Respect these boundaries:
 | USER.md | User preferences (timezone, language, style) | User |
 | TOOLS.md | Environment-specific tool notes (cameras, SSH, TTS) | Bot |
 | HEARTBEAT.md | Proactive task checklist (empty = skip heartbeat) | Bot |
-| MEMORY.md | Hybrid memory index (4KB: inline high-freq + topic pointers) | Bot via memory tools |
+| MEMORY.md | Hybrid memory index (8KB: inline high-freq + topic pointers) | Bot via memory tools |
 | memory/YYYY-MM-DD.md | Daily session notes | Bot |
 | memory/topics/*.md | Classified long-term memories by topic | Bot via memory_save |
 | KAIJIBOT-GUIDE.md | Configuration reference | System template |

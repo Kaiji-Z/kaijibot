@@ -43,6 +43,13 @@ const log = createSubsystemLogger("hooks/session-memory");
 
 const MESSAGE_CAP = 500;
 
+const MEMORY_TYPE_TO_SECTION: Record<string, string> = {
+  user: "👤 User",
+  feedback: "💬 Key Feedback",
+  project: "🎯 Active Focus",
+  reference: "🔗 Reference",
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -269,20 +276,43 @@ const saveSessionToMemory: HookHandler = async (event) => {
         await topicManager.appendEntry(topicFileName, topicEntry);
         log.debug("Topic file updated", { topic: topicFileName });
 
-        const indexFs = {
-          readFile: (p: string) => fs.readFile(p, "utf-8"),
-          writeFile: (p: string, data: string) => fs.writeFile(p, data, "utf-8"),
-          mkdir: async (p: string, opts: { recursive: boolean }) => {
-            await fs.mkdir(p, opts);
-          },
-          rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
-        };
-        const indexManager = new MemoryIndexManager({ workspaceDir, fs: indexFs });
-        await indexManager.addRecentSession({
-          date: dateStr,
-          title: summary.summary.slice(0, 80),
-          topicPath: `memory/topics/${topicFileName}`,
+        const indexManager = new MemoryIndexManager({ workspaceDir, fs: nodeFs });
+
+        await indexManager.updateSection({
+          subject: summary.topicSlug,
+          title: summary.topicSlug,
+          topicFile: `memory/topics/${topicFileName}`,
+          summary: summary.summary.slice(0, 120),
         });
+
+        if (summary.memoryType) {
+          const section = MEMORY_TYPE_TO_SECTION[summary.memoryType];
+          if (section) {
+            const index = await indexManager.readIndex();
+            const inlineSections = index.inlineSections ?? [];
+
+            const inlineLines = [`- ${dateStr}: ${summary.summary.slice(0, 100)}`];
+            for (const d of summary.decisions.slice(0, 3)) {
+              inlineLines.push(`  - Decision: ${d}`);
+            }
+
+            const existingIdx = inlineSections.findIndex((s) => s.section === section);
+            if (existingIdx >= 0) {
+              inlineSections[existingIdx]!.lines = [
+                "",
+                ...inlineLines,
+                ...inlineSections[existingIdx]!.lines,
+              ];
+            } else {
+              inlineSections.push({ section, lines: ["", ...inlineLines] });
+            }
+
+            index.inlineSections = inlineSections;
+            await indexManager.writeIndex(index);
+          }
+        }
+
+        await indexManager.rebalanceIndex();
         log.debug("MEMORY.md index updated");
       } catch (topicErr) {
         const msg = topicErr instanceof Error ? topicErr.message : String(topicErr);

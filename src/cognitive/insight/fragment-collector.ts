@@ -120,13 +120,13 @@ export async function collectFragments(
       return [];
     }
 
-    log.info("fragment-collector LLM raw response", { rawLen: text.length, rawPreview: text.slice(0, 300) });
+    log.debug("fragment-collector LLM raw response", { rawLen: text.length });
 
     const fragments = parseFragments(text);
     if (fragments.length > 0) {
-      log.info("fragments extracted", { count: fragments.length, kinds: fragments.map(f => f.kind), domains: [...new Set(fragments.flatMap(f => f.domains))] });
+      log.debug("fragments extracted", { count: fragments.length, kinds: fragments.map(f => f.kind), domains: [...new Set(fragments.flatMap(f => f.domains))] });
     } else {
-      log.info("fragment-collector parseFragments returned 0", { rawLen: text.length, rawPreview: text.slice(0, 200) });
+      log.debug("fragment-collector parseFragments returned 0", { rawLen: text.length });
     }
     return fragments;
    } catch (err) {

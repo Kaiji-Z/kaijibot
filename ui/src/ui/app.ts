@@ -216,6 +216,7 @@ export class KaijiBotApp extends LitElement {
   @state() sessionsIncludeGlobal = true;
   @state() sessionsIncludeUnknown = false;
   @state() sessionsHideCron = true;
+  @state() sessionDetails: Record<string, import("./views/agents-utils.js").SessionDetailState> = {};
   @state() sessionsExpandedCheckpointKey: string | null = null;
   @state() sessionsCheckpointItemsByKey: Record<string, SessionCompactionCheckpoint[]> = {};
   @state() sessionsCheckpointLoadingKey: string | null = null;

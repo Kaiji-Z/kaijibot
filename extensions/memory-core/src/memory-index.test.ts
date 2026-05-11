@@ -126,7 +126,7 @@ describe("parseMemoryIndex", () => {
 describe("MemoryIndexManager", () => {
   describe("readIndex + writeIndex", () => {
     it("round-trips an index", async () => {
-      const { manager, memFs } = createManager();
+      const { manager } = createManager();
       const index: MemoryIndex = {
         sections: [
           {
@@ -146,7 +146,8 @@ describe("MemoryIndexManager", () => {
       expect(read.sections).toHaveLength(1);
       expect(read.sections[0]!.title).toBe("用户画像");
       expect(read.sections[0]!.topicFile).toBe("memory/topics/user-profile.md");
-      expect(read.recentSessions).toHaveLength(1);
+      // Recent Sessions are no longer serialized
+      expect(read.recentSessions).toHaveLength(0);
       expect(read.promotedContent).toContain("Legacy");
     });
 
@@ -190,13 +191,13 @@ describe("MemoryIndexManager", () => {
       const index = await manager.readIndex();
       expect(index.sections).toHaveLength(1);
       expect(index.sections[0]!.title).toBe("New Title");
-      expect(index.sections[0]!.summary).toBe("Updated summary");
+      // Summary is not preserved in flat Topic Pointers format
     });
   });
 
   describe("addRecentSession", () => {
-    it("prepends session to the list", async () => {
-      const { manager } = createManager();
+    it("prepends session to in-memory index (not serialized)", async () => {
+      const { manager, memFs } = createManager();
       await manager.addRecentSession({
         date: "2026-04-23",
         title: "First",
@@ -207,10 +208,12 @@ describe("MemoryIndexManager", () => {
         title: "Second",
         topicPath: "memory/topics/second.md",
       });
+      // Recent Sessions are no longer serialized — readIndex won't find them
       const index = await manager.readIndex();
-      expect(index.recentSessions).toHaveLength(2);
-      expect(index.recentSessions[0]!.title).toBe("Second");
-      expect(index.recentSessions[1]!.title).toBe("First");
+      expect(index.recentSessions).toHaveLength(0);
+      // Verify file does not contain Recent Sessions heading
+      const fileContent = memFs.files.get("/test-workspace/MEMORY.md") ?? "";
+      expect(fileContent).not.toContain("## Recent Sessions");
     });
   });
 

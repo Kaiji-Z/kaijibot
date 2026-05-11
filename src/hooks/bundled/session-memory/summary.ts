@@ -44,6 +44,8 @@ export interface StructuredSummary {
   participants: string[];
   /** Subject-based topic name for routing (kebab-case, e.g. "feishu", "product") */
   topicSlug: string;
+  /** Primary memory classification for inline section routing: "user" (personal info), "feedback" (about assistant), "project" (work/active focus), "reference" (factual knowledge). Omit if none applies. */
+  memoryType?: "user" | "feedback" | "project" | "reference";
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +67,7 @@ const SUMMARY_SYSTEM_PROMPT = `You are a structured conversation summarizer. Ana
 - "topics": array of 1-3 short topic tags (lowercase, hyphenated, e.g. "api-design", "user-preferences"). Empty if none.
 - "participants": array of participant names/roles (e.g. ["user", "assistant"]). At minimum ["user"].
 - "topicSlug": a short 1-3 word slug for the topic file name (lowercase, hyphenated, max 30 chars). This is the primary classification — choose a subject that groups related memories together (e.g. "feishu", "philosophy", "product", "football").
+- "memoryType": the primary memory classification — "user" (personal info/preferences), "feedback" (explicit feedback about the assistant), "project" (current work/active focus), "reference" (factual knowledge to retain). Omit if none applies.
 
 ## What NOT to save in memory
 
@@ -158,6 +161,12 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
           .slice(0, 30)
       : topics[0]?.replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 30) ?? "session";
 
+  const VALID_MEMORY_TYPES: readonly string[] = ["user", "feedback", "project", "reference"];
+  const rawMemoryType = typeof parsed.memoryType === "string" ? parsed.memoryType : "";
+  const memoryType = VALID_MEMORY_TYPES.includes(rawMemoryType)
+    ? (rawMemoryType as "user" | "feedback" | "project" | "reference")
+    : undefined;
+
   return {
     summary,
     primaryRequest,
@@ -172,6 +181,7 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
     topics,
     participants,
     topicSlug: topicSlug || "session",
+    memoryType,
   };
 }
 

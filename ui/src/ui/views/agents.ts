@@ -22,11 +22,13 @@ import { renderAgentTools } from "./agents-panels-tools-skills.ts";
 import {
   buildAgentContext,
   deriveAgentStatusFromSessions,
+  formatFineStatusTag,
   formatRelativeTime,
   formatTokenCount,
   normalizeAgentLabel,
   resolveAgentEmoji,
   resolveModelLabel,
+  type SessionDetailState,
 } from "./agents-utils.ts";
 import { parseAgentSessionKey } from "../session-key.ts";
 
@@ -121,6 +123,7 @@ export type AgentsProps = {
   onCronRunNow: (jobId: string) => void;
   onSetDefault: (agentId: string) => void;
   sessionsResult?: SessionsListResult | null;
+  sessionDetails?: Record<string, SessionDetailState>;
 };
 
 function countDetailMetrics(
@@ -220,7 +223,25 @@ function renderAgentCard(
   const activeAgentId = parseAgentSessionKey(props.runtimeSessionKey)?.agentId;
   const isRunning = agent.id === activeAgentId;
   const sessions = props.sessionsResult?.sessions ?? [];
-  const statusInfo = deriveAgentStatusFromSessions(sessions, agent.id);
+  const statusInfo = deriveAgentStatusFromSessions(
+    sessions,
+    agent.id,
+    props.sessionDetails,
+  );
+
+  const fineStatus = statusInfo.fineStatus;
+  const useFineStatus = statusInfo.status === "running" && fineStatus;
+  const statusTag = useFineStatus
+    ? formatFineStatusTag(fineStatus)
+    : { label: statusInfo.statusLabel, cssClass: `agent-card__status-tag--${statusInfo.status}` };
+
+  const toolBadge = useFineStatus && fineStatus === "tool_call" && statusInfo.toolName
+    ? html`<span class="agent-card__tool-badge">🔧 ${statusInfo.toolName}</span>`
+    : nothing;
+
+  const thinkingPreview = useFineStatus && fineStatus === "thinking" && statusInfo.thinkingPreview
+    ? html`<span class="agent-card__thinking-preview">${statusInfo.thinkingPreview}</span>`
+    : nothing;
 
   return html`
     <button
@@ -237,9 +258,11 @@ function renderAgentCard(
             ${isDefault
               ? html`<span class="agent-card__badge">default</span>`
               : nothing}
-            <span class="agent-card__status-tag agent-card__status-tag--${statusInfo.status}">${statusInfo.statusLabel}</span>
+            <span class="agent-card__status-tag ${statusTag.cssClass}">${statusTag.label}</span>
           </div>
           <div class="agent-card__sub">${modelLabel} · ${ctx.workspace}</div>
+          ${toolBadge}
+          ${thinkingPreview}
         </div>
       </div>
       <div class="agent-card__metrics">

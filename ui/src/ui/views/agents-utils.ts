@@ -4,6 +4,7 @@ import {
   normalizeToolName,
   resolveToolProfilePolicy,
 } from "../../../../src/agents/tool-policy-shared.js";
+import { isToolCallContentType } from "../../../../src/chat/tool-content.js";
 import { parseAgentSessionKey } from "../session-key.ts";
 import { normalizeLowercaseStringOrEmpty, normalizeOptionalString } from "../string-coerce.ts";
 import type {
@@ -708,6 +709,150 @@ export function resolveToolProfile(profile: string) {
   return resolveToolProfilePolicy(profile) ?? undefined;
 }
 
+export type FineAgentStatus = "thinking" | "tool_call" | "streaming" | "idle" | "interrupted";
+
+export const FINE_STATUS_LABELS: Record<FineAgentStatus, string> = {
+  thinking: "思考中",
+  tool_call: "调用工具",
+  streaming: "回复中",
+  idle: "空闲",
+  interrupted: "中断",
+};
+
+export type SessionDetailState = {
+  fineStatus: FineAgentStatus;
+  toolName: string | null;
+  thinkingPreview: string | null;
+  analyzedAt: number;
+};
+
+const MAX_THINKING_PREVIEW_LENGTH = 60;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractStringField(record: Record<string, unknown>, field: string): string | null {
+  const value = record[field];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function truncateWithEllipsis(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return text.slice(0, maxLength) + "…";
+}
+
+export function analyzeMessagesFromHistory(messages: unknown[]): SessionDetailState {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { fineStatus: "idle", toolName: null, thinkingPreview: null, analyzedAt: Date.now() };
+  }
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (!isRecord(msg)) {
+      continue;
+    }
+    if (extractStringField(msg, "role") !== "assistant") {
+      continue;
+    }
+
+    const content = msg.content;
+    if (typeof content === "string") {
+      return {
+        fineStatus: content.length > 0 ? "streaming" : "idle",
+        toolName: null,
+        thinkingPreview: null,
+        analyzedAt: Date.now(),
+      };
+    }
+
+    if (!Array.isArray(content)) {
+      continue;
+    }
+
+    let foundToolCall = false;
+    let toolName: string | null = null;
+    let foundThinking = false;
+    let thinkingPreview: string | null = null;
+    let foundText = false;
+
+    for (const block of content) {
+      if (!isRecord(block)) {
+        continue;
+      }
+
+      const blockType = extractStringField(block, "type") ?? "";
+
+      if (isToolCallContentType(blockType)) {
+        foundToolCall = true;
+        const name = extractStringField(block, "name");
+        if (name) {
+          toolName = name;
+        }
+      }
+
+      if (blockType === "thinking") {
+        foundThinking = true;
+        const thinkingText = extractStringField(block, "thinking");
+        if (thinkingText) {
+          thinkingPreview = truncateWithEllipsis(thinkingText, MAX_THINKING_PREVIEW_LENGTH);
+        }
+      }
+
+      if (blockType === "text") {
+        const textValue = extractStringField(block, "text");
+        if (textValue && textValue.length > 0) {
+          foundText = true;
+        }
+      }
+    }
+
+    // tool_call > thinking > streaming priority
+    if (foundToolCall) {
+      return {
+        fineStatus: "tool_call",
+        toolName,
+        thinkingPreview: null,
+        analyzedAt: Date.now(),
+      };
+    }
+
+    if (foundThinking) {
+      return {
+        fineStatus: "thinking",
+        toolName: null,
+        thinkingPreview,
+        analyzedAt: Date.now(),
+      };
+    }
+
+    if (foundText) {
+      return {
+        fineStatus: "streaming",
+        toolName: null,
+        thinkingPreview: null,
+        analyzedAt: Date.now(),
+      };
+    }
+
+    return { fineStatus: "idle", toolName: null, thinkingPreview: null, analyzedAt: Date.now() };
+  }
+
+  return { fineStatus: "idle", toolName: null, thinkingPreview: null, analyzedAt: Date.now() };
+}
+
+export function formatFineStatusTag(status: FineAgentStatus): {
+  label: string;
+  cssClass: string;
+} {
+  return {
+    label: FINE_STATUS_LABELS[status],
+    cssClass: `agent-card__status-tag--${status === "tool_call" ? "tool-call" : status}`,
+  };
+}
+
 export type AgentStatusInfo = {
   status: "running" | "active" | "idle";
   statusLabel: string;
@@ -716,11 +861,15 @@ export type AgentStatusInfo = {
   lastActiveAt: number | null;
   model: string | null;
   modelProvider: string | null;
+  fineStatus?: FineAgentStatus;
+  toolName?: string | null;
+  thinkingPreview?: string | null;
 };
 
 export function deriveAgentStatusFromSessions(
   sessions: Array<{ key: string; status?: string; updatedAt?: number | null; totalTokens?: number; contextTokens?: number; model?: string; modelProvider?: string }>,
   agentId: string,
+  sessionDetails?: Record<string, SessionDetailState>,
 ): AgentStatusInfo {
   const now = Date.now();
   const agentSessions = sessions.filter((s) => {
@@ -766,6 +915,13 @@ export function deriveAgentStatusFromSessions(
     lastActiveAt: lastActiveAt > 0 ? lastActiveAt : null,
     model: latestSession.model ?? null,
     modelProvider: latestSession.modelProvider ?? null,
+    ...(hasRunning && sessionDetails?.[latestSession.key]
+      ? {
+          fineStatus: sessionDetails[latestSession.key].fineStatus,
+          toolName: sessionDetails[latestSession.key].toolName,
+          thinkingPreview: sessionDetails[latestSession.key].thinkingPreview,
+        }
+      : {}),
   };
 }
 

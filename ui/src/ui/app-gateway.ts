@@ -39,6 +39,7 @@ import type {
   StatusSummary,
   UpdateAvailable,
 } from "./types.ts";
+import type { SessionDetailState } from "./views/agents-utils.ts";
 
 function isGenericBrowserFetchFailure(message: string): boolean {
   return /^(?:typeerror:\s*)?(?:fetch failed|failed to fetch)$/i.test(message.trim());
@@ -75,6 +76,7 @@ type GatewayHost = {
   chatRunId: string | null;
   refreshSessionsAfterChat: Set<string>;
   updateAvailable: UpdateAvailable | null;
+  sessionDetails: Record<string, SessionDetailState>;
 };
 
 type SessionDefaultsSnapshot = {
@@ -336,6 +338,92 @@ function handleChatGatewayEvent(host: GatewayHost, payload: ChatEventPayload | u
   }
 }
 
+function updateSessionDetailFromAgent(
+  host: GatewayHost,
+  payload: AgentEventPayload | undefined,
+): void {
+  if (!payload) {
+    return;
+  }
+  const sessionKey = typeof payload.sessionKey === "string" ? payload.sessionKey : undefined;
+  if (!sessionKey) {
+    return;
+  }
+
+  if (payload.stream === "lifecycle") {
+    const data = payload.data ?? {};
+    const phase = typeof data.phase === "string" ? data.phase : "";
+    if (phase === "start") {
+      host.sessionDetails = {
+        ...host.sessionDetails,
+        [sessionKey]: {
+          fineStatus: "thinking",
+          toolName: null,
+          thinkingPreview: null,
+          analyzedAt: Date.now(),
+        },
+      };
+    }
+    return;
+  }
+
+  if (payload.stream !== "tool") {
+    return;
+  }
+  const data = payload.data ?? {};
+  const phase = typeof data.phase === "string" ? data.phase : "";
+  if (phase !== "start") {
+    return;
+  }
+  const toolName = typeof data.name === "string" ? data.name : null;
+  host.sessionDetails = {
+    ...host.sessionDetails,
+    [sessionKey]: {
+      fineStatus: "tool_call",
+      toolName,
+      thinkingPreview: null,
+      analyzedAt: Date.now(),
+    },
+  };
+}
+
+function updateSessionDetailFromChat(
+  host: GatewayHost,
+  payload: ChatEventPayload | undefined,
+): void {
+  if (!payload || !payload.sessionKey) {
+    return;
+  }
+  const sessionKey = payload.sessionKey;
+  const now = Date.now();
+  const prev = host.sessionDetails[sessionKey];
+
+  if (payload.state === "delta") {
+    host.sessionDetails = {
+      ...host.sessionDetails,
+      [sessionKey]: {
+        fineStatus: "streaming",
+        toolName: null,
+        thinkingPreview: null,
+        analyzedAt: now,
+      },
+    };
+  } else if (payload.state === "final" || payload.state === "aborted" || payload.state === "error") {
+    const next: Record<string, SessionDetailState> = { ...host.sessionDetails };
+    if (prev) {
+      next[sessionKey] = {
+        fineStatus: payload.state === "aborted" ? "interrupted" : "idle",
+        toolName: null,
+        thinkingPreview: null,
+        analyzedAt: now,
+      };
+    } else {
+      delete next[sessionKey];
+    }
+    host.sessionDetails = next;
+  }
+}
+
 function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
   host.eventLogBuffer = [
     { ts: Date.now(), event: evt.event, payload: evt.payload },
@@ -346,6 +434,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     if (host.onboarding) {
       return;
     }
+    updateSessionDetailFromAgent(host, evt.payload as AgentEventPayload | undefined);
     handleAgentEvent(
       host as unknown as Parameters<typeof handleAgentEvent>[0],
       evt.payload as AgentEventPayload | undefined,
@@ -354,6 +443,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
   }
 
   if (evt.event === "chat") {
+    updateSessionDetailFromChat(host, evt.payload as ChatEventPayload | undefined);
     handleChatGatewayEvent(host, evt.payload as ChatEventPayload | undefined);
     return;
   }

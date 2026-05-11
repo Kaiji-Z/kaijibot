@@ -629,6 +629,7 @@ export function renderApp(state: AppViewState) {
                 runtimeSessionMatchesSelectedAgent: toolsPanelUsesActiveSession,
                 modelCatalog: state.chatModelCatalog ?? [],
                 sessionsResult: state.sessionsResult,
+                sessionDetails: state.sessionDetails,
                 onRefresh: async () => {
                   await loadAgents(state);
                   const agentIds = state.agentsList?.agents?.map((entry) => entry.id) ?? [];
