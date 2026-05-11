@@ -10,6 +10,8 @@ Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 30+ LLM 提
 [![Vitest 450+ tests](https://img.shields.io/badge/Vitest-450%2B%20tests-6DA55F.svg)](https://vitest.dev/)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-red.svg)]()
 
+**README** | [English](./README.en.md) | **简体中文**
+
 ## 为什么是 KaijiBot
 
 你用过的 AI 助手都一个模式：你问，它答。你不问，它就安静地待在那里。
@@ -278,10 +280,6 @@ Agent 系统实现完整的推理循环：系统提示组装（上下文文件 +
 - GemiRec: Gemini-Powered Recommendations. (2025). Xiaohongshu's multi-interest vector architecture with codebook quantization.
 - PIE: Personalized Interest Exploration. (2023). *Proceedings of WWW 2023*. Personalized PageRank with bandit exploration.
 - ProfiLLM: Fully Implicit User Profiling from Chatbot Interactions. (2025).
-
-### 工业界参考
-
-画像提取的双阶段设计（事实抽取 + 冲突消解）参考了 [ChatGPT Memory](https://openai.com/index/memory/) 的 mem0 架构。时间衰减的兴趣权重借鉴了 [Spotify](https://research.atspotify.com/) 的 taste profile 机制。领域共现图谱的思路来自 [TikTok/抖音](https://www.tiktok.com/) 的兴趣图和 [小红书](https://www.xiaohongshu.com/) 的多兴趣向量设计。隐式反馈优于显式反馈的判断依据来自 [Instagram](https://about.instagram/) 的 DM 分享质量信号和 [Netflix](https://research.netflix.com/) 的留存优化研究。关系叙事压缩参考了 [Character.AI](https://character.ai/) 的关系摘要机制。
 
 ### 开源依赖
 
