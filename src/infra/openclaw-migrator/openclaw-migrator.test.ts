@@ -320,7 +320,7 @@ describe("migrateWorkspace", () => {
     ).resolves.toBe("# AI Research topic");
   });
 
-  it("merges MEMORY.md keeping newest sections within 4KB budget", async () => {
+  it("merges MEMORY.md without truncation", async () => {
     const sourceDir = await createTempDir();
     const targetDir = await createTempDir();
     const source = makeSource(sourceDir);
@@ -338,37 +338,71 @@ describe("migrateWorkspace", () => {
     ).resolves.toBe("# Src Section\nSrc content");
   });
 
-  it("appends non-overlapping sections to existing MEMORY.md", async () => {
+  it("preserves MEMORY.md content exceeding 4KB without truncation", async () => {
     const sourceDir = await createTempDir();
     const targetDir = await createTempDir();
     const source = makeSource(sourceDir);
 
-    await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
-    await fs.mkdir(path.join(targetDir, "workspace"), { recursive: true });
+    // Build source MEMORY.md well over 4KB
+    const sections: string[] = ["# Memory Index\n"];
+    for (let i = 0; i < 50; i++) {
+      sections.push(`## Section ${i}\n${"x".repeat(200)}\n`);
+    }
+    const largeContent = sections.join("\n");
+    expect(Buffer.byteLength(largeContent, "utf-8")).toBeGreaterThan(4 * 1024);
 
-    await fs.writeFile(
-      path.join(sourceDir, "workspace", "MEMORY.md"),
-      "# Shared Section\nShared content\n\n# New Section\nNew content",
-    );
-    await fs.writeFile(
-      path.join(targetDir, "workspace", "MEMORY.md"),
-      "# Shared Section\nShared content",
-    );
+    await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
+    await fs.writeFile(path.join(sourceDir, "workspace", "MEMORY.md"), largeContent);
     await fs.writeFile(source.configPath, "{}");
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
 
-    const mergeChanges = result.changes.filter(
-      (c) => c.kind === "merge" && c.detail.includes("MEMORY.md"),
-    );
-    expect(mergeChanges).toHaveLength(1);
-
-    const written = await fs.readFile(
+    const output = await fs.readFile(
       path.join(targetDir, "workspace", "MEMORY.md"),
       "utf-8",
     );
-    expect(written).toContain("# Shared Section");
-    expect(written).toContain("# New Section");
+    expect(Buffer.byteLength(output, "utf-8")).toBe(Buffer.byteLength(largeContent, "utf-8"));
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("truncat"),
+    );
+  });
+
+  it("merges large MEMORY.md with existing target preserving all sections", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    // Source > 4KB with sections A, B, C
+    const srcSections: string[] = [];
+    for (const name of ["Section A", "Section B", "Section C"]) {
+      srcSections.push(`## ${name}\n${"y".repeat(1500)}\n`);
+    }
+    const srcContent = srcSections.join("\n");
+    expect(Buffer.byteLength(srcContent, "utf-8")).toBeGreaterThan(4 * 1024);
+
+    // Target with sections D, E
+    const dstContent = "## Section D\nD content\n\n## Section E\nE content";
+
+    await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
+    await fs.mkdir(path.join(targetDir, "workspace"), { recursive: true });
+    await fs.writeFile(path.join(sourceDir, "workspace", "MEMORY.md"), srcContent);
+    await fs.writeFile(path.join(targetDir, "workspace", "MEMORY.md"), dstContent);
+    await fs.writeFile(source.configPath, "{}");
+
+    const result = await migrateWorkspace(source, targetDir, defaultOptions());
+
+    const merged = await fs.readFile(
+      path.join(targetDir, "workspace", "MEMORY.md"),
+      "utf-8",
+    );
+    expect(merged).toContain("Section A");
+    expect(merged).toContain("Section B");
+    expect(merged).toContain("Section C");
+    expect(merged).toContain("Section D");
+    expect(merged).toContain("Section E");
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("truncat"),
+    );
   });
 
   it("skips identical files by SHA-256", async () => {
@@ -717,6 +751,168 @@ describe("migrateSessions", () => {
     await expect(
       fs.readFile(
         path.join(targetDir, "state", "agents", "main", "sessions", "trace.jsonl"),
+        "utf-8",
+      ),
+    ).resolves.toContain("user");
+  });
+
+  it("migrates default agent sessions to agents/main/sessions", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    const sessionData = { "desk": { sessionId: "s1", updatedAt: 100 } };
+    await fs.mkdir(path.join(sourceDir, "state", "sessions"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "state", "sessions", "sessions.json"),
+      JSON.stringify(sessionData),
+    );
+    // No agents.list in config — single default agent
+    await fs.writeFile(source.configPath, "{}");
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const copyChanges = result.changes.filter((c) => c.detail.includes("session store"));
+    expect(copyChanges).toHaveLength(1);
+
+    const written = JSON.parse(
+      await fs.readFile(
+        path.join(targetDir, "state", "agents", "main", "sessions", "sessions.json"),
+        "utf-8",
+      ),
+    ) as Record<string, unknown>;
+    expect(written["desk"]).toBeDefined();
+  });
+
+  it("migrates named agent sessions from state/sessions-{agentId}/", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: { list: [{ id: "researcher" }, { id: "coder" }] },
+      }),
+    );
+
+    const researcherData = { "r1": { sessionId: "rs1", updatedAt: 50 } };
+    await fs.mkdir(path.join(sourceDir, "state", "sessions-researcher"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "state", "sessions-researcher", "sessions.json"),
+      JSON.stringify(researcherData),
+    );
+
+    const coderData = { "c1": { sessionId: "cs1", updatedAt: 80 } };
+    await fs.mkdir(path.join(sourceDir, "state", "sessions-coder"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "state", "sessions-coder", "sessions.json"),
+      JSON.stringify(coderData),
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const storeChanges = result.changes.filter((c) => c.detail.includes("session store"));
+    expect(storeChanges).toHaveLength(2);
+
+    const researcherWritten = JSON.parse(
+      await fs.readFile(
+        path.join(targetDir, "state", "agents", "researcher", "sessions", "sessions.json"),
+        "utf-8",
+      ),
+    ) as Record<string, unknown>;
+    expect(researcherWritten["r1"]).toBeDefined();
+
+    const coderWritten = JSON.parse(
+      await fs.readFile(
+        path.join(targetDir, "state", "agents", "coder", "sessions", "sessions.json"),
+        "utf-8",
+      ),
+    ) as Record<string, unknown>;
+    expect(coderWritten["c1"]).toBeDefined();
+  });
+
+  it("migrates default and named agent sessions separately", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    // Config with a named agent plus a default agent
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: { list: [{ id: "main", default: true }, { id: "researcher" }] },
+      }),
+    );
+
+    // Default sessions in sessions/
+    const defaultData = { "d1": { sessionId: "ds1", updatedAt: 10 } };
+    await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "sessions", "sessions.json"),
+      JSON.stringify(defaultData),
+    );
+
+    // Named agent sessions in state/sessions-researcher/
+    const researcherData = { "r1": { sessionId: "rs1", updatedAt: 20 } };
+    await fs.mkdir(path.join(sourceDir, "state", "sessions-researcher"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "state", "sessions-researcher", "sessions.json"),
+      JSON.stringify(researcherData),
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const storeChanges = result.changes.filter((c) => c.detail.includes("session store"));
+    expect(storeChanges).toHaveLength(2);
+
+    // Default agent goes to agents/main/sessions/
+    const defaultWritten = JSON.parse(
+      await fs.readFile(
+        path.join(targetDir, "state", "agents", "main", "sessions", "sessions.json"),
+        "utf-8",
+      ),
+    ) as Record<string, unknown>;
+    expect(defaultWritten["d1"]).toBeDefined();
+
+    // Named agent goes to agents/researcher/sessions/
+    const researcherWritten = JSON.parse(
+      await fs.readFile(
+        path.join(targetDir, "state", "agents", "researcher", "sessions", "sessions.json"),
+        "utf-8",
+      ),
+    ) as Record<string, unknown>;
+    expect(researcherWritten["r1"]).toBeDefined();
+  });
+
+  it("copies named agent JSONL transcripts", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: { list: [{ id: "coder" }] },
+      }),
+    );
+
+    await fs.mkdir(path.join(sourceDir, "state", "sessions-coder"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "state", "sessions-coder", "trace.jsonl"),
+      '{"role":"user"}\n{"role":"assistant"}\n',
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const transcriptChanges = result.changes.filter((c) =>
+      c.detail.includes("transcript"),
+    );
+    expect(transcriptChanges).toHaveLength(1);
+
+    await expect(
+      fs.readFile(
+        path.join(targetDir, "state", "agents", "coder", "sessions", "trace.jsonl"),
         "utf-8",
       ),
     ).resolves.toContain("user");

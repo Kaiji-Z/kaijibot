@@ -11,8 +11,6 @@ import type { MemoryMergeStrategy } from "./types.js";
 
 const WORKSPACE_BLACKLIST = new Set([".qmd", ".vectors", "memory.db"]);
 
-const MEMORY_BUDGET_BYTES = 4 * 1024;
-
 function fileHash(content: string): string {
   return crypto.createHash("sha256").update(content).digest("hex");
 }
@@ -151,11 +149,6 @@ async function mergeMemoryFile(
     contentToWrite = srcContent;
   }
 
-  if (Buffer.byteLength(contentToWrite, "utf-8") > MEMORY_BUDGET_BYTES) {
-    contentToWrite = truncateToBudget(contentToWrite, MEMORY_BUDGET_BYTES);
-    warnings.push("MEMORY.md exceeded 4KB budget; truncated older entries");
-  }
-
   if (options.dryRun) {
     changes.push({
       kind: "merge",
@@ -244,25 +237,6 @@ function extractSectionsByHeaders(content: string, headers: string[]): string {
   }
 
   return result.join("\n").trim();
-}
-
-function truncateToBudget(content: string, budgetBytes: number): string {
-  const sections = content.split(/\n(?=#{1,6}\s)/);
-  const kept: string[] = [];
-  let totalBytes = 0;
-
-  for (let i = sections.length - 1; i >= 0; i--) {
-    const sectionBytes = Buffer.byteLength(sections[i], "utf-8");
-    if (totalBytes + sectionBytes > budgetBytes) { break; }
-    totalBytes += sectionBytes;
-    kept.unshift(sections[i]);
-  }
-
-  if (kept.length === 0 && sections.length > 0) {
-    kept.push(sections[sections.length - 1]);
-  }
-
-  return kept.join("\n").trim();
 }
 
 export async function migrateWorkspace(

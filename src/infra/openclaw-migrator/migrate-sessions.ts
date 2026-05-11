@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { enumerateSourceAgents } from "./agent-enumeration.js";
 import type { MigrationChange, MigrationOptions, MigrationResult, MigrationSource } from "./types.js";
 
 async function dirExists(p: string): Promise<boolean> {
@@ -66,104 +67,28 @@ export async function migrateSessions(
   const skipped: string[] = [];
   const log = options.log ?? (() => {});
 
-  const sourceSessionDirs = [
-    path.join(source.dir, "state", "sessions"),
-    path.join(source.dir, "sessions"),
-  ];
+  const agents = await enumerateSourceAgents(source);
 
-  let sourceSessionDir: string | null = null;
-  for (const candidate of sourceSessionDirs) {
-    if (await dirExists(candidate)) {
-      sourceSessionDir = candidate;
-      break;
-    }
-  }
+  for (const agent of agents) {
+    const sourceCandidates = agent.isDefault
+      ? [
+          path.join(source.dir, "state", "sessions"),
+          path.join(source.dir, "sessions"),
+        ]
+      : [path.join(source.dir, "state", `sessions-${agent.id}`)];
 
-  const defaultAgentId = "main";
-  const targetSessionDir = path.join(targetDir, "state", "agents", defaultAgentId, "sessions");
-
-  if (sourceSessionDir) {
-    if (!options.dryRun) {
-      await fs.mkdir(targetSessionDir, { recursive: true });
-    }
-
-    for (const storeFile of ["sessions.json", "sessions.json5"]) {
-      const srcStore = path.join(sourceSessionDir, storeFile);
-      if (!(await fileExists(srcStore))) { continue; }
-
-      const dstStore = path.join(targetSessionDir, "sessions.json");
-      const srcRel = path.relative(source.dir, srcStore);
-      const dstRel = path.relative(targetDir, dstStore);
-
-      if (await fileExists(dstStore)) {
-        if (!options.overwrite) {
-          skipped.push(dstRel);
-          log(`Session store already exists, skipping: ${dstRel}`);
-          continue;
-        }
-
-        if (options.dryRun) {
-          changes.push({
-            kind: "merge",
-            source: srcRel,
-            target: dstRel,
-            detail: "Would merge session stores (most recently updated wins)",
-          });
-          continue;
-        }
-
-        const merged = await mergeSessionStores(srcStore, dstStore);
-        if (merged) {
-          await fs.writeFile(dstStore, JSON.stringify(merged, null, 2), "utf-8");
-          changes.push({
-            kind: "merge",
-            source: srcRel,
-            target: dstRel,
-            detail: "Merged session stores (most recently updated wins)",
-          });
-          log(`Merged session store: ${dstRel}`);
-        }
-      } else {
-        if (options.dryRun) {
-          changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Would copy session store" });
-          continue;
-        }
-
-        await fs.mkdir(path.dirname(dstStore), { recursive: true });
-        await fs.copyFile(srcStore, dstStore);
-        changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Copied session store" });
-        log(`Copied session store: ${dstRel}`);
+    let foundSourceDir: string | null = null;
+    for (const candidate of sourceCandidates) {
+      if (await dirExists(candidate)) {
+        foundSourceDir = candidate;
+        break;
       }
     }
 
-    const entries = await fs.readdir(sourceSessionDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isFile()) { continue; }
-      if (!entry.name.endsWith(".jsonl")) { continue; }
+    if (!foundSourceDir) { continue; }
 
-      const src = path.join(sourceSessionDir, entry.name);
-      const dst = path.join(targetSessionDir, entry.name);
-      const srcRel = path.relative(source.dir, src);
-      const dstRel = path.relative(targetDir, dst);
-
-      if (await fileExists(dst)) {
-        skipped.push(dstRel);
-        continue;
-      }
-
-      if (options.dryRun) {
-        changes.push({ kind: "move", source: srcRel, target: dstRel, detail: "Would move transcript" });
-        continue;
-      }
-
-      try {
-        await fs.copyFile(src, dst);
-        changes.push({ kind: "move", source: srcRel, target: dstRel, detail: "Copied transcript" });
-        log(`Copied transcript: ${entry.name}`);
-      } catch (err) {
-        warnings.push(`Failed to copy transcript ${entry.name}: ${String(err)}`);
-      }
-    }
+    const agentTargetDir = path.join(targetDir, "state", "agents", agent.id, "sessions");
+    await migrateAgentSessions(foundSourceDir, agentTargetDir, source, targetDir, options, changes, warnings, skipped);
   }
 
   const srcApprovals = path.join(source.dir, "state", "exec-approvals.json");
@@ -225,6 +150,101 @@ export async function migrateSessions(
   }
 
   return { source, changes, warnings, skipped };
+}
+
+async function migrateAgentSessions(
+  sourceSessionDir: string,
+  targetSessionDir: string,
+  source: MigrationSource,
+  targetDir: string,
+  options: MigrationOptions,
+  changes: MigrationChange[],
+  warnings: string[],
+  skipped: string[],
+): Promise<void> {
+  const log = options.log ?? (() => {});
+
+  if (!options.dryRun) {
+    await fs.mkdir(targetSessionDir, { recursive: true });
+  }
+
+  for (const storeFile of ["sessions.json", "sessions.json5"]) {
+    const srcStore = path.join(sourceSessionDir, storeFile);
+    if (!(await fileExists(srcStore))) { continue; }
+
+    const dstStore = path.join(targetSessionDir, "sessions.json");
+    const srcRel = path.relative(source.dir, srcStore);
+    const dstRel = path.relative(targetDir, dstStore);
+
+    if (await fileExists(dstStore)) {
+      if (!options.overwrite) {
+        skipped.push(dstRel);
+        log(`Session store already exists, skipping: ${dstRel}`);
+        continue;
+      }
+
+      if (options.dryRun) {
+        changes.push({
+          kind: "merge",
+          source: srcRel,
+          target: dstRel,
+          detail: "Would merge session stores (most recently updated wins)",
+        });
+        continue;
+      }
+
+      const merged = await mergeSessionStores(srcStore, dstStore);
+      if (merged) {
+        await fs.writeFile(dstStore, JSON.stringify(merged, null, 2), "utf-8");
+        changes.push({
+          kind: "merge",
+          source: srcRel,
+          target: dstRel,
+          detail: "Merged session stores (most recently updated wins)",
+        });
+        log(`Merged session store: ${dstRel}`);
+      }
+    } else {
+      if (options.dryRun) {
+        changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Would copy session store" });
+        continue;
+      }
+
+      await fs.mkdir(path.dirname(dstStore), { recursive: true });
+      await fs.copyFile(srcStore, dstStore);
+      changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Copied session store" });
+      log(`Copied session store: ${dstRel}`);
+    }
+  }
+
+  const entries = await fs.readdir(sourceSessionDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) { continue; }
+    if (!entry.name.endsWith(".jsonl")) { continue; }
+
+    const src = path.join(sourceSessionDir, entry.name);
+    const dst = path.join(targetSessionDir, entry.name);
+    const srcRel = path.relative(source.dir, src);
+    const dstRel = path.relative(targetDir, dst);
+
+    if (await fileExists(dst)) {
+      skipped.push(dstRel);
+      continue;
+    }
+
+    if (options.dryRun) {
+      changes.push({ kind: "move", source: srcRel, target: dstRel, detail: "Would move transcript" });
+      continue;
+    }
+
+    try {
+      await fs.copyFile(src, dst);
+      changes.push({ kind: "move", source: srcRel, target: dstRel, detail: "Copied transcript" });
+      log(`Copied transcript: ${entry.name}`);
+    } catch (err) {
+      warnings.push(`Failed to copy transcript ${entry.name}: ${String(err)}`);
+    }
+  }
 }
 
 async function mergeSessionStores(
