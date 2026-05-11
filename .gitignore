@@ -47,6 +47,9 @@ USER.md
 # local tooling
 .serena/
 
+# OpenCode internal files
+.sisyphus/
+
 # Agent credentials and memory (NEVER COMMIT)
 /memory/
 .agent/*.json
