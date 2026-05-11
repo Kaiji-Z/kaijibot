@@ -310,87 +310,88 @@ export function createSessionsListTool(opts?: {
       }
 
       // Archival scan: include .reset./.deleted. sessions from filesystem
-      if (includeArchived && storePath) {
-        const trimmedStore = storePath.trim();
-        const isUsable =
-          trimmedStore !== "(multiple)" &&
-          (path.isAbsolute(trimmedStore) || trimmedStore.startsWith("~"));
-        if (isUsable) {
-          const knownSessionIds = new Set<string>(
-            rows
-              .map((r) => r.sessionId)
-              .filter((id): id is string => typeof id === "string" && id.length > 0),
-          );
+      if (includeArchived) {
+        const knownSessionIds = new Set<string>(
+          rows
+            .map((r) => r.sessionId)
+            .filter((id): id is string => typeof id === "string" && id.length > 0),
+        );
 
-          let transcriptsDir: string | undefined;
-          // Determine transcripts directory from storePath
-          if (trimmedStore.endsWith("sessions.json")) {
-            transcriptsDir = path.dirname(path.resolve(trimmedStore));
+        // Resolve transcript directories — one per unique agentId in live sessions
+        const dirs = new Set<string>();
+        if (storePath) {
+          const trimmedStore = storePath.trim();
+          const isUsable =
+            trimmedStore !== "(multiple)" &&
+            (path.isAbsolute(trimmedStore) || trimmedStore.startsWith("~"));
+          if (isUsable && trimmedStore.endsWith("sessions.json")) {
+            dirs.add(path.dirname(path.resolve(trimmedStore)));
           }
-          // Fallback: resolve from first session's agentId
-          if (!transcriptsDir) {
-            const firstKey = sessions.find(
-              (e: Record<string, unknown>) => typeof e.key === "string" && e.key,
-            )?.key as string | undefined;
-            if (firstKey) {
-              try {
-                const agentId = resolveAgentIdFromSessionKey(firstKey);
-                transcriptsDir = resolveSessionTranscriptsDirForAgent(agentId);
-              } catch {
-                transcriptsDir = undefined;
+        }
+        // AgentId fallback: resolve from live session keys (works even with "(multiple)" storePath)
+        for (const e of sessions) {
+          const key = typeof (e as Record<string, unknown>).key === "string"
+            ? (e as Record<string, unknown>).key
+            : undefined;
+          if (!key) continue;
+          try {
+            const agentId = resolveAgentIdFromSessionKey(key as string);
+            dirs.add(resolveSessionTranscriptsDirForAgent(agentId));
+          } catch {
+            // intentionally empty
+          }
+        }
+
+        for (const transcriptsDir of dirs) {
+          try {
+            const files = await fs.readdir(transcriptsDir);
+            for (const file of files) {
+              if (!isUsageCountedSessionTranscriptFileName(file)) {
+                continue;
               }
-            }
-          }
-
-          if (transcriptsDir) {
-            try {
-              const files = await fs.readdir(transcriptsDir);
-              for (const file of files) {
-                if (!isUsageCountedSessionTranscriptFileName(file)) {
-                  continue;
-                }
-                if (!isSessionArchiveArtifactName(file)) {
-                  continue;
-                }
-                const sessionId = parseUsageCountedSessionIdFromFileName(file);
-                if (!sessionId) {
-                  continue;
-                }
-                // Dedup: skip if live session already present
-                if (knownSessionIds.has(sessionId)) {
-                  continue;
-                }
-                // Parse archive timestamp
-                let updatedAt: number | undefined;
-                for (const reason of ["reset", "deleted"] as const) {
-                  const ts = parseSessionArchiveTimestamp(file, reason);
-                  if (ts !== null) {
-                    updatedAt = ts;
-                    break;
-                  }
-                }
-
-                const archivedRow: SessionListRow = {
-                  key: `archived:${sessionId.slice(0, 8)}`,
-                  kind: "other",
-                  channel: "internal",
-                  sessionId,
-                  transcriptPath: path.join(transcriptsDir, file),
-                  updatedAt,
-                  status: "done",
-                };
-                rows.push(archivedRow);
+              if (!isSessionArchiveArtifactName(file)) {
+                continue;
               }
-              // Re-sort by updatedAt descending
-              rows.sort((a, b) => {
-                const ta = typeof a.updatedAt === "number" ? a.updatedAt : 0;
-                const tb = typeof b.updatedAt === "number" ? b.updatedAt : 0;
-                return tb - ta;
-              });
-            } catch {
-              // Directory unreadable or doesn't exist — skip silently
+              const sessionId = parseUsageCountedSessionIdFromFileName(file);
+              if (!sessionId) {
+                continue;
+              }
+              // Dedup: skip if live session already present
+              if (knownSessionIds.has(sessionId)) {
+                continue;
+              }
+              // Parse archive timestamp
+              let updatedAt: number | undefined;
+              for (const reason of ["reset", "deleted"] as const) {
+                const ts = parseSessionArchiveTimestamp(file, reason);
+                if (ts !== null) {
+                  updatedAt = ts;
+                  break;
+                }
+              }
+
+              const archivedRow: SessionListRow = {
+                key: `archived:${sessionId.slice(0, 8)}`,
+                kind: "other",
+                channel: "internal",
+                sessionId,
+                transcriptPath: path.join(transcriptsDir, file),
+                updatedAt,
+                status: "done",
+              };
+              rows.push(archivedRow);
             }
+          } catch {
+            // Directory unreadable or doesn't exist — skip silently
           }
+        }
+        // Re-sort by updatedAt descending
+        if (dirs.size > 0) {
+          rows.sort((a, b) => {
+            const ta = typeof a.updatedAt === "number" ? a.updatedAt : 0;
+            const tb = typeof b.updatedAt === "number" ? b.updatedAt : 0;
+            return tb - ta;
+          });
         }
       }
 

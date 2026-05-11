@@ -32,6 +32,15 @@ vi.mock("./sessions-helpers.js", async (importActual) => {
   };
 });
 
+const pathsMocks = vi.hoisted(() => ({
+  resolveSessionTranscriptsDirForAgent: vi.fn(),
+}));
+
+vi.mock("../../config/sessions/paths.js", () => ({
+  resolveSessionTranscriptsDirForAgent: (agentId: string) =>
+    pathsMocks.resolveSessionTranscriptsDirForAgent(agentId),
+}));
+
 describe("sessions-list-tool", () => {
   let createSessionsListTool: typeof import("./sessions-list-tool.js").createSessionsListTool;
 
@@ -210,9 +219,13 @@ describe("sessions-list-tool", () => {
 
   describe("includeArchived", () => {
     let tmpDir: string;
+    let sessionsDir: string;
 
     beforeEach(async () => {
       tmpDir = await fs.mkdtemp(path.join("/tmp", "sl-test-"));
+      sessionsDir = path.join(tmpDir, "sessions");
+      await fs.mkdir(sessionsDir, { recursive: true });
+      pathsMocks.resolveSessionTranscriptsDirForAgent.mockReturnValue(sessionsDir);
     });
 
     afterAll(async () => {});
