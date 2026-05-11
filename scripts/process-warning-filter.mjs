@@ -1,4 +1,4 @@
-const warningFilterKey = Symbol.for("openclaw.warning-filter");
+const warningFilterKey = Symbol.for("kaijibot.warning-filter");
 
 export function installProcessWarningFilter() {
   if (globalThis[warningFilterKey]?.installed) {
