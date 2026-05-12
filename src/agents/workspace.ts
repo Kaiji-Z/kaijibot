@@ -7,7 +7,9 @@ import { resolveRequiredHomeDir } from "../infra/home-dir.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import { isCronSessionKey, isSubagentSessionKey } from "../routing/session-key.js";
 import { normalizeOptionalLowercaseString, readStringValue } from "../shared/string-coerce.js";
+import { CONFIG_PATH } from "../config/paths.js";
 import { resolveUserPath } from "../utils.js";
+import { loadSoulPresetContent } from "./soul-preset.js";
 import { resolveWorkspaceTemplateDir } from "./workspace-templates.js";
 
 export function resolveDefaultAgentWorkspaceDir(
@@ -554,7 +556,32 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
       result.push({ name: entry.name, path: entry.filePath, missing: true });
     }
   }
+
+  applySoulPresetOverride(result);
+
   return result;
+}
+
+function applySoulPresetOverride(files: WorkspaceBootstrapFile[]): void {
+  const preset = readSoulPresetFromConfig();
+  if (!preset) return;
+
+  const soulEntry = files.find((f) => f.name === DEFAULT_SOUL_FILENAME);
+  if (!soulEntry) return;
+
+  const content = loadSoulPresetContent(preset);
+  soulEntry.content = content;
+  soulEntry.missing = false;
+}
+
+function readSoulPresetFromConfig(): import("../config/types.soul.js").SoulPreset | undefined {
+  try {
+    const raw = syncFs.readFileSync(CONFIG_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    return parsed?.soul?.preset;
+  } catch {
+    return undefined;
+  }
 }
 
 const MINIMAL_BOOTSTRAP_ALLOWLIST = new Set([

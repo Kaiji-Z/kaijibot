@@ -138,6 +138,11 @@ const subCliCommandCatalog = defineCommandDescriptorCatalog([
     hasSubcommands: true,
   },
   {
+    name: "soul",
+    description: "Manage soul presets (MBTI-based personality profiles)",
+    hasSubcommands: true,
+  },
+  {
     name: "update",
     description: "Update KaijiBot and inspect update channel status",
     hasSubcommands: true,

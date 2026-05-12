@@ -43,6 +43,11 @@ export const BUILD_ALL_STEPS = [
     args: ["--import", "tsx", "scripts/copy-export-html-templates.ts"],
   },
   {
+    label: "copy-soul-presets",
+    kind: "node",
+    args: ["--import", "tsx", "scripts/copy-soul-presets.ts"],
+  },
+  {
     label: "write-build-info",
     kind: "node",
     args: ["--import", "tsx", "scripts/write-build-info.ts"],

@@ -14,6 +14,7 @@ export type GatewayReloadPlan = {
   restartHeartbeat: boolean;
   restartHealthMonitor: boolean;
   restartChannels: Set<ChannelKind>;
+  clearBootstrapCache: boolean;
   noopPaths: string[];
 };
 
@@ -29,6 +30,7 @@ type ReloadAction =
   | "restart-cron"
   | "restart-heartbeat"
   | "restart-health-monitor"
+  | "clear-bootstrap-cache"
   | `restart-channel:${ChannelId}`;
 
 const BASE_RELOAD_RULES: ReloadRule[] = [
@@ -79,6 +81,7 @@ const BASE_RELOAD_RULES: ReloadRule[] = [
     actions: ["restart-heartbeat"],
   },
   { prefix: "agent.heartbeat", kind: "hot", actions: ["restart-heartbeat"] },
+  { prefix: "soul", kind: "hot", actions: ["clear-bootstrap-cache"] },
   { prefix: "cron", kind: "hot", actions: ["restart-cron"] },
 ];
 
@@ -184,6 +187,7 @@ export function buildGatewayReloadPlan(changedPaths: string[]): GatewayReloadPla
     restartHeartbeat: false,
     restartHealthMonitor: false,
     restartChannels: new Set(),
+    clearBootstrapCache: false,
     noopPaths: [],
   };
 
@@ -208,6 +212,9 @@ export function buildGatewayReloadPlan(changedPaths: string[]): GatewayReloadPla
         break;
       case "restart-health-monitor":
         plan.restartHealthMonitor = true;
+        break;
+      case "clear-bootstrap-cache":
+        plan.clearBootstrapCache = true;
         break;
       default:
         break;

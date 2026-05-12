@@ -77,6 +77,11 @@ export function createGatewayReloadHandlers(params: {
 
     resetDirectoryCache();
 
+    if (plan.clearBootstrapCache) {
+      const { clearAllBootstrapSnapshots } = await import("../agents/bootstrap-cache.js");
+      clearAllBootstrapSnapshots();
+    }
+
     if (plan.restartCron) {
       state.cronState.cron.stop();
       nextState.cronState = buildGatewayCronService({

@@ -20,6 +20,7 @@ import { createCorrectionReportTool } from "./tools/correction-report-tool.js";
 import { createEvolutionArchiveTool } from "./tools/evolution-archive-tool.js";
 import { createEvolutionPatchTool } from "./tools/evolution-patch-tool.js";
 import { createEvolutionSuggestTool } from "./tools/evolution-suggest-tool.js";
+import { createSwitchSoulTool } from "./tools/soul-preset-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
 import { createGatewayTool } from "./tools/gateway-tool.js";
 import { createImageGenerateTool } from "./tools/image-generate-tool.js";
@@ -311,6 +312,7 @@ export function createKaijiBotTools(
         sessionKey: options?.agentSessionKey,
         deliveryTo: options?.agentTo,
       }),
+      createSwitchSoulTool(),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),
   ];

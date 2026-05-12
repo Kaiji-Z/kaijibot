@@ -17,6 +17,7 @@ import {
 import { HookMappingSchema, HooksGmailSchema, InternalHooksSchema } from "./zod-schema.hooks.js";
 import { PluginInstallRecordShape } from "./zod-schema.installs.js";
 import { CognitiveSchema } from "./zod-schema.cognitive.js";
+import { SOUL_PRESETS } from "./types.soul.js";
 import { ChannelsSchema } from "./zod-schema.providers.js";
 import { sensitive } from "./zod-schema.sensitive.js";
 import {
@@ -896,6 +897,12 @@ export const KaijiBotSchema = z
     memory: MemorySchema,
     mcp: McpConfigSchema,
     cognitive: CognitiveSchema,
+    soul: z
+      .object({
+        preset: z.enum(SOUL_PRESETS).optional(),
+      })
+      .strict()
+      .optional(),
     skills: z
       .object({
         allowBundled: z.array(z.string()).optional(),

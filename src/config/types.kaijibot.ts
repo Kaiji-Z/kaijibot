@@ -28,6 +28,7 @@ import type { NodeHostConfig } from "./types.node-host.js";
 import type { PluginsConfig } from "./types.plugins.js";
 import type { SecretsConfig } from "./types.secrets.js";
 import type { SkillsConfig } from "./types.skills.js";
+import type { SoulConfig } from "./types.soul.js";
 import type { ToolsConfig } from "./types.tools.js";
 
 export type KaijiBotConfig = {
@@ -95,6 +96,7 @@ export type KaijiBotConfig = {
   };
   secrets?: SecretsConfig;
   skills?: SkillsConfig;
+  soul?: SoulConfig;
   plugins?: PluginsConfig;
   models?: ModelsConfig;
   nodeHost?: NodeHostConfig;
