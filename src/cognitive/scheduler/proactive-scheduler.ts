@@ -277,6 +277,14 @@ export class ProactiveScheduler {
         fragmentCount: fragments.length,
         verificationStatus: candidate.verificationStatus,
       });
+
+      if (candidate.verificationStatus === "contradicted") {
+        log.warn("pattern-mode insight contradicted by verification", {
+          userId,
+          content: candidate.content.slice(0, 80),
+        });
+      }
+
       return candidate;
     }
 
@@ -428,6 +436,13 @@ export class ProactiveScheduler {
         verificationStatus: candidate.verificationStatus,
         hasSources: candidate.sources.length > 0,
       });
+
+      if (candidate.verificationStatus === "contradicted") {
+        log.warn("insight candidate contradicted by verification", {
+          userId: persona.identity?.userId,
+          content: candidate.content.slice(0, 80),
+        });
+      }
     } else {
       candidate.verificationStatus = candidate.sources.length > 0 ? "verified" : "unverified";
     }
@@ -483,6 +498,14 @@ export class ProactiveScheduler {
       return undefined;
     }
     log.info("identify selected pool", { userId, poolSize: candidates.length, topType: candidates[0].type, topTargetDomains: candidates[0].targetDomains, topPAct: candidates[0].pAct, recentTypes });
+
+    const ddCount = recentTypes.filter(t => t === "domain_depth").length;
+    if (ddCount >= 4) {
+      log.info("identify: domain_depth dominance detected", {
+        recentTypes,
+        suggestion: "consider relaxing domain cooldown or adding type diversity boost",
+      });
+    }
 
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
@@ -603,6 +626,11 @@ export class ProactiveScheduler {
         const clusters = await this.fragmentStore.findClusters(userId);
         const hasEnoughFragments = clusters.some(c => c.fragmentIds.length >= 2);
         if (!hasEnoughFragments) {
+          log.info("pattern mode: insufficient fragment clusters, falling back to surprise", {
+            userId: persona.identity?.userId,
+            clusterCount: clusters.length,
+            requiredFragments: 2,
+          });
           return [{
             type: "exploration" as const,
             targetDomains: [],

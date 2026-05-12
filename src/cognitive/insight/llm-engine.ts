@@ -1248,6 +1248,9 @@ export function buildInsightPrompt(
       matchedDomains,
       unmatchedSnippets: unmatched,
     });
+    if (matchedDomains.length === 0) {
+      log.warn("web search domain matching: no domains matched, LLM generation will proceed without domain-grounded evidence");
+    }
   }
 
   const sortedDomainEntries = Object.entries(persona.domains)

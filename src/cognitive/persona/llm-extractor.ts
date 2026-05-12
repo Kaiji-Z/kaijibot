@@ -136,7 +136,7 @@ export async function extractFromMessageLLM(
       parsed.domains.length === 0 &&
       parsed.recentFocus.length === 0
     ) {
-      log.warn("persona extraction fell back to rule-based", { reason: "parse-failed" });
+      log.warn("persona extraction fell back to rule-based", { reason: "parse-failed", rawPreview: text.slice(0, 200) });
       return extractFromMessage(userMessage, assistantMessage, existingPersona);
     }
 
