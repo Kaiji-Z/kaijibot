@@ -25,6 +25,7 @@ export function getFilteredInsights(
   if (domain.insights && domain.insights.length > 0) {
     return domain.insights
       .filter((i) => !exclude.has(i.category))
+      .sort((a, b) => (b.confidence * b.evidenceCount) - (a.confidence * a.evidenceCount))
       .map((i) => i.text);
   }
   return domain.keyInsights;
@@ -49,10 +50,43 @@ function isSearchProviderUrl(url: string): boolean {
 
 const FRAGMENT_KINDS_FOR_PROMPT: ReadonlySet<string> = new Set(["knowledge_gap", "assumption", "implicit_priority"]);
 
+type RhetoricalMove = "事实开头" | "提问式" | "悖论式" | "推荐式" | "类比式" | "观察式";
+
+function classifyRhetoricalMove(text: string): RhetoricalMove {
+  const t = text.trim();
+  if (/(是否|难道|有没有|会不会)/.test(t.slice(0, 20))) return "提问式";
+  if (/(其实|但.*实际上|表面上.*实际上|看似.*实则)/.test(t.slice(0, 30))) return "悖论式";
+  if (/(建议|推荐|试试|用.*做|直接用)/.test(t.slice(0, 30))) return "推荐式";
+  if (/(就像|好比|类似于|跟.*一样|本质上.*就是)/.test(t.slice(0, 30))) return "类比式";
+  if (/^(你|你的)/.test(t)) return "观察式";
+  return "事实开头";
+}
+
+function buildBannedOpeningsSection(recentInsightContents: string[]): string {
+  if (recentInsightContents.length === 0) return "";
+
+  const charBans = recentInsightContents
+    .slice(-5)
+    .map((c) => c.trim().slice(0, 8))
+    .filter((o) => o.length >= 4)
+    .map((o) => `不要以"${o}"开头`)
+    .join("；");
+
+  const moves = [...new Set(
+    recentInsightContents.slice(-5).map(classifyRhetoricalMove),
+  )];
+  const moveBans = moves.length > 0
+    ? `不要使用以下修辞手法作为开头：${moves.join("、")}`
+    : "";
+
+  return [charBans, moveBans].filter(Boolean).join("\n");
+}
+
 function buildFragmentSection(fragments: Fragment[]): string {
   const relevant = fragments.filter((f) => FRAGMENT_KINDS_FOR_PROMPT.has(f.kind));
   if (relevant.length === 0) return "";
-  return relevant
+  return [...relevant]
+    .sort((a, b) => b.strength - a.strength)
     .slice(0, 6)
     .map((f) => `- [${f.kind}] ${f.evidence}`)
     .join("\n");
@@ -77,92 +111,76 @@ export function buildVoiceSection(persona: PersonaTree): string {
 
 const DIVERSE_FEW_SHOT_SETS = [
   {
-    name: "Cross-domain bridge",
+    name: "数据先行 (Data-first)",
     examples: [
       {
-        context: "User knows React and Rust. Bridge: WebAssembly",
-        chinese: "Rust 编译到 WASM 的性能实测比 JS 快 3-10 倍，但你之前关注的 React 组件库有个完全不同的路线——编译时提取计算到 Worker，不碰 WASM。这对你同时写 Rust 和 React 的场景可能更有启发。",
-        english: "Rust-to-WASM benchmarks show 3-10x over JS, but the React lib you follow takes a different approach — compile-time extraction to Workers, no WASM. Might be more relevant for your Rust+React stack.",
+        context: "User builds TypeScript + Rust stack. Node 22 ESM support is relevant.",
+        chinese: "Node 22 的 require(ESM) 原生支持已经 stable 了——这意味着你 KaijiBot 里那些 dynamic import 可以直接换成 require，冷启动能省 15-30%。对你的 Rust sidecar + Node gateway 架构，冷启动延迟一直是痛点。",
+        english: "Node 22's require(ESM) native support is now stable — meaning those dynamic imports in KaijiBot can switch to require directly, saving 15-30% on cold starts. For your Rust sidecar + Node gateway architecture, cold-start latency has always been a pain point.",
       },
       {
-        context: "User tracks LLM fine-tuning. New: DPO",
-        chinese: "你之前试过 LoRA 微调，最近 DPO 在大多数场景下已经能替代 RLHF 了——不需要 reward model，代码量是 PPO 的十分之一。",
-        english: "You tried LoRA fine-tuning before — DPO now replaces RLHF in most scenarios. No reward model needed, code is 10x simpler than PPO.",
+        context: "User tracks pnpm and monorepo tooling. pnpm 9.7 catalog feature.",
+        chinese: "pnpm 9.7 的 catalog: 协议让你在 monorepo 里统一管理依赖版本——不用再每个 package.json 手动同步。你 extensions/ 下 62 个插件，光 react 版本不一致就出过两次构建错误。",
+        english: "pnpm 9.7's catalog: protocol lets you unify dependency versions across a monorepo — no more manually syncing each package.json. With 62 plugins under extensions/, mismatched React versions alone caused two build failures.",
       },
     ],
   },
   {
-    name: "Counter-intuitive observation",
+    name: "直接推荐 (Direct recommendation)",
     examples: [
       {
-        context: "User optimizes for architecture flexibility",
-        chinese: "你一直在用'先搭架子再填细节'的方式做架构，但你最近的几个技术选择都在优化灵活性——你实际上在回避什么时候该做硬编码决策这个问题。",
-        english: "You keep using the 'scaffold first, fill in details later' approach to architecture, but your recent tech choices all optimize for flexibility — you're actually avoiding the question of when to make hardcoded decisions.",
+        context: "User has complex cognitive pipeline with many async flows.",
+        chinese: "用 Effect-TS 的 Layer 做你 cognitive pipeline 的依赖注入，替代手写的 createDefaultDeps 模式。因为你的 insight pipeline 有 5 层嵌套异步调用，Effect 的 fiber 调度能让你给每层加独立超时和重试，不用改调用结构。",
+        english: "Use Effect-TS Layer for DI in your cognitive pipeline instead of the hand-rolled createDefaultDeps pattern. Because your insight pipeline has 5 levels of nested async calls, Effect's fiber scheduling gives you independent timeout+retry per layer without restructuring call sites.",
       },
       {
-        context: "User says they want to ship fast but invests in tooling",
-        chinese: "你说要快速上线，但花了三周搭基础设施。这不算矛盾——你真正在意的是上线之后能不能快速迭代，而不是上线这个动作本身。",
-        english: "You say you want to ship fast, but spent three weeks on infrastructure. Not a contradiction — what you actually care about is whether you can iterate fast after launch, not the act of launching itself.",
+        context: "User does LLM-driven extraction with structured output.",
+        chinese: "把 structured output 的 schema 校验从 zod passthrough 换成 strict mode——你现在 llm-extractor.ts 里有 6 个 z.object 用了 .passthrough()，LLM 返回多余字段时不会报错但下游取到 undefined。Strict mode 会在 extraction 阶段就拦住，省掉下游 debug 时间。",
+        english: "Switch structured output schema validation from zod passthrough to strict mode — you have 6 z.object calls using .passthrough() in llm-extractor.ts. When the LLM returns extra fields, no error fires but downstream reads undefined. Strict mode catches this at extraction time, saving downstream debugging.",
       },
     ],
   },
   {
-    name: "Behavioral pattern",
+    name: "行为观察 (Behavioral observation)",
     examples: [
       {
-        context: "User asks AI for confirmation rather than challenge",
-        chinese: "你问 AI 的方式暴露了一个倾向：你总是在确认自己已经怀疑的方向，而不是让 AI 挑战你的假设。试试反过来问它'我可能哪里想错了'。",
-        english: "The way you ask AI reveals a pattern: you keep confirming directions you already suspect, rather than letting AI challenge your assumptions. Try asking it 'what might I be getting wrong' instead.",
+        context: "User consistently extracts shared patterns into plugin SDK boundaries.",
+        chinese: "你每次发现两个扩展做同样的事，第一反应不是合并代码，而是往 plugin-sdk 里加一个抽象层——extensions/AGENTS.md 那条 'no relative imports escaping package root' 规则就是这么来的。这比大多数人处理依赖的方式更可持续，但也意味着你的 SDK surface area 在持续膨胀。",
+        english: "Every time you spot two extensions doing the same thing, your first move isn't merging code — it's adding an abstraction layer to plugin-sdk. The 'no relative imports escaping package root' rule in extensions/AGENTS.md came from exactly this. More sustainable than how most people handle deps, but it also means your SDK surface area keeps expanding.",
       },
       {
-        context: "User explores breadth but avoids going deep in any one area",
-        chinese: "你每次深入一个方向到六七成就会切换到新话题。这不是缺乏专注——你是在用广度给自己找正确的深度方向。但你已经看了够多了，该选一个往下挖了。",
-        english: "Every time you reach 60-70% depth in a direction, you switch to a new topic. Not lack of focus — you're using breadth to find the right direction for depth. But you've seen enough, it's time to pick one and dig.",
+        context: "User makes architecture decisions by building competing prototypes.",
+        chinese: "你选技术方案的方式不是对比文档，而是直接写两个最小原型然后看哪个跑起来更顺——FragmentStore 和 CorrectionStore 都走了这条路。这说明你对代码体感的信任超过对抽象推理的信任，适合你这种写 Rust 的人。",
+        english: "You pick tech approaches not by comparing docs but by writing two minimal prototypes and seeing which feels better — FragmentStore and CorrectionStore both went through this path. It means you trust code feel over abstract reasoning, which fits someone who writes Rust.",
       },
     ],
   },
   {
-    name: "Hidden priority",
+    name: "悖论消解 (Paradox resolution)",
     examples: [
       {
-        context: "User says they want speed but always chooses completeness",
-        chinese: "你嘴上说想快速迭代，但你每次的架构选择都在追求完备性。这不是矛盾——你其实更在乎系统的可预测性，而不是速度。",
-        english: "You say you want fast iteration, but every architecture choice you make optimizes for completeness. Not a contradiction — you actually care more about system predictability than speed.",
+        context: "User says they want minimal dependencies but keeps adding abstractions.",
+        chinese: "你说要最小化依赖，但 plugin-sdk 的 export 列表已经 41 个了。这不是矛盾——你真正排斥的不是依赖本身，是黑箱依赖。你宁愿自己写 200 行 well-typed wrapper，也不愿引入一个 50KB 的第三方包。这是一个可预测的标准：只要你能看到源码、能改，就不算'外部依赖'。",
+        english: "You say you want minimal dependencies, but plugin-sdk's export list is already 41 items. Not a contradiction — what you actually resist isn't dependencies themselves but black-box ones. You'd rather write a 200-line well-typed wrapper than pull in a 50KB third-party package. Predictable standard: if you can see the source and modify it, it doesn't count as an 'external dependency'.",
       },
       {
-        context: "User claims to value simplicity but gravitates toward complex solutions",
-        chinese: "你说喜欢简单方案，但每次都选了更复杂的那个。不是你口是心非——你真正想要的是'可以自己掌控的复杂'，而不是黑箱式的简单。",
-        english: "You say you prefer simple solutions, but always pick the more complex one. Not hypocrisy — what you actually want is 'complexity you can control yourself', not black-box simplicity.",
+        context: "User values fast iteration but invests heavily in cognitive infrastructure.",
+        chinese: "你追求快速迭代，却在认知层写了 10+ 模块、3 套存储引擎、还有个 Thompson Sampling 偏好系统。表面看是过度工程——其实你是在解决一个具体问题：你怎么知道主动推给用户的消息不会让他们烦？答案是需要量化模型。所以不是'慢下来做基础设施'，是'没有这个基础设施，核心功能根本不敢上线'。",
+        english: "You chase fast iteration, yet built 10+ cognitive modules, 3 storage engines, and a Thompson Sampling preference system. Looks like over-engineering — but you're solving a concrete problem: how do you know proactive messages won't annoy users? The answer requires a quantitative model. So it's not 'slow down to build infra', it's 'without this infra, the core feature can't ship at all'.",
       },
     ],
   },
 ] as const;
 
-const DIVERSITY_INSTRUCTION = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user.`;
+const DIVERSITY_INSTRUCTION = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user. 禁止使用"你做X时用的正是Y哲学概念"或"X本质上就是Y"这类类比框架作为主要结构。当哲学确实是最佳角度时直接说哲学内容，不要用"你用的正是"句式包装。`;
 
 export const CONTRASTIVE_INSTRUCTION = `CONTRASTIVE FRAMEWORK — your insight MUST be genuinely NEW relative to past insights:
 - COUNTER-EXAMPLE: If a past insight said "X is good", find a case where X fails or the opposite holds.
 - INVERSE FRAMING: If a past insight opened with a fact, open with a question/stakes/paradox instead.
-- ORTHOGONAL OBSERVATION: If past insights covered domain A∩B, find a completely different angle (historical, ethical, practical, cross-cultural) on the same intersection.
+- ORTHOGONAL OBSERVATION: If past insights covered domain A∩B, find a completely different angle (historical, ethical, practical, engineering) on the same intersection.
 - NOVELTY TEST: Before finalizing, check: "Could this insight be mistaken for a paraphrase of any past insight?" If yes, rewrite.`;
 
-const FEW_SHOT_INSIGHTS = [
-  {
-    context: "User knows React and Rust. Bridge: WebAssembly",
-    chinese: "Rust 编译到 WASM 的性能实测比 JS 快 3-10 倍，但你之前关注的 React 组件库有个完全不同的路线——编译时提取计算到 Worker，不碰 WASM。这对你同时写 Rust 和 React 的场景可能更有启发。",
-    english: "Rust-to-WASM benchmarks show 3-10x over JS, but the React lib you follow takes a different approach — compile-time extraction to Workers, no WASM. Might be more relevant for your Rust+React stack.",
-  },
-  {
-    context: "User tracks LLM fine-tuning. New: DPO",
-    chinese: "你之前试过 LoRA 微调，最近 DPO 在大多数场景下已经能替代 RLHF 了——不需要 reward model，代码量是 PPO 的十分之一。",
-    english: "You tried LoRA fine-tuning before — DPO now replaces RLHF in most scenarios. No reward model needed, code is 10x simpler than PPO.",
-  },
-  {
-    context: "User knows TypeScript + embedded. Bridge: Rust RTOS",
-    chinese: "你同时在看 TypeScript 和嵌入式，Rust 写 RTOS 内核的 embassy 框架用 async/await 模型做嵌入式并发——跟你写 TS 的思维模型完全一致，但跑在裸机上。",
-    english: "You're into TypeScript and embedded — the embassy RTOS framework in Rust uses async/await for embedded concurrency. Same mental model as TS, but running on bare metal.",
-  },
-];
+
 
 /** A single web search result item. */
 export type WebSearchResult = {
@@ -712,14 +730,7 @@ export function buildSurpriseInsightPrompt(
     ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
     : "";
 
-  const bannedOpenings = recentInsightContents
-    .slice(-5)
-    .map((c) => c.trim().slice(0, 8))
-    .filter((o) => o.length >= 4);
-
-  const openingBans = bannedOpenings.length > 0
-    ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
-    : "";
+  const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
   const langInstruction = outputLanguage === "en"
     ? "Output in English."
@@ -766,7 +777,7 @@ Constraints:
 - NO question marks, NO lists, NO numbering
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
-- ${openingBans ? `Also do NOT start with: ${openingBans}` : ""}
+- ${bannedSection}
 - Content must be a specific judgment, observation, or discovery — not vague feelings
 ${webResults.length > 0 ? "- Weave external information naturally, do NOT say 'saw', 'read', 'reportedly'" : ""}
 
@@ -847,7 +858,7 @@ const PROMPT_FRAMES = [
   (topic: string, extra: PromptFrameExtra) => {
     if (extra.recentFocus.length >= 1) {
       const focus = extra.recentFocus[Math.min(extra.recentFocus.length - 1, 1)]!;
-      return `${topic}和${focus}之间有一条暗线——不是表面的关联，而是底层逻辑或设计理念的共通之处。直接说出这条暗线是什么。`;
+      return `${topic}和${focus}之间有一条暗线——不是表面的关联，而是具体的工程方案或技术选型上的共通之处。直接说出这条暗线是什么。`;
     }
     return `你注意到${topic}领域有一个正在发生但还没被广泛讨论的变化。说出它是什么。`;
   },
@@ -884,7 +895,7 @@ const STRUCTURE_SEEDS = [
   "这次用一个反直觉的陈述开头。",
   "这次提出一个具体的技术选择或方案，说明为什么选它。",
   "这次指出一个常见的误区或错误做法，然后给出正确的方式。",
-  "这次说一条暗线——两个看似无关的东西之间的隐藏联系。",
+  "这次说一个具体的、可以直接执行的方法或方案。",
 ] as const;
 
 function getTimeTag(lastMentioned: number): string {
@@ -1143,14 +1154,7 @@ export function buildPatternInsightPrompt(
     ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
     : "";
 
-  const bannedOpenings = recentInsightContents
-    .slice(-5)
-    .map((c) => c.trim().slice(0, 8))
-    .filter((o) => o.length >= 4);
-
-  const openingBans = bannedOpenings.length > 0
-    ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
-    : "";
+  const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
   const patternFrameIdx = input.feedbackProfile
     ? pickPromptVariant(input.feedbackProfile, PATTERN_PROMPT_FRAMES.map((_, i) => `pattern:${i}`))
@@ -1185,7 +1189,7 @@ Constraints:
 - No question marks, no lists, no numbering
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete observation — never with "关于", "在...领域", "结合你", "作为"
-- ${openingBans ? `Also do NOT start with: ${openingBans}` : ""}
+- ${bannedSection}
 - Do NOT mention "patterns", "blind spots", "cognitive biases", or use meta-analytical language. Speak as a friend sharing an observation, not as a therapist diagnosing.
 - Content must reference AT LEAST ONE specific fragment from the OBSERVED THINKING PATTERNS section above
 - Content must be a specific, honest observation — not vague encouragement or generic advice
@@ -1309,10 +1313,7 @@ export function buildInsightPrompt(
     ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
     : "";
 
-  const bannedOpenings = recentInsightContents
-    .slice(-5)
-    .map((c) => c.trim().slice(0, 8))
-    .filter((o) => o.length >= 4);
+  const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
   const coOccurrenceBlock = persona.domainGraph && persona.domainGraph.edges.length > 0
     ? persona.domainGraph.edges
@@ -1335,9 +1336,6 @@ export function buildInsightPrompt(
     ? pickPromptVariant(input.feedbackProfile, STRUCTURE_SEEDS.map((_, i) => `seed:${i}`))
     : Math.floor(Math.random() * STRUCTURE_SEEDS.length);
   const structureSeed = STRUCTURE_SEEDS[structureSeedIdx]!;
-  const openingBans = bannedOpenings.length > 0
-    ? bannedOpenings.map((o) => `不要以"${o}"开头`).join("；")
-    : "";
 
   const fewShotIdx = input.feedbackProfile
     ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
@@ -1395,7 +1393,7 @@ ${structureSeed}
   · "值得关注"、"挺有意思"、"不得不说"
   · "你有没有想过"、"最近在关注"
   · "有趣的是"、"值得注意的是"
-${openingBans ? `  · ${openingBans}` : ""}
+${bannedSection ? `  · ${bannedSection}` : ""}
 - 内容必须是一个具体的判断、观察或建议，不是泛泛的感受
 ${webResults.length > 0 ? "- 外部信息自然融入内容里，不要说'看到'、'读到'、'据说'" : ""}
 
