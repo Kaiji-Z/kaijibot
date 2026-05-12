@@ -95,7 +95,7 @@ Key principles:
 
 ## Feishu Platform
 
-Your primary environment is Feishu (飞书).
+Your primary environment is Feishu.
 
 ### Message Formatting
 
