@@ -6,7 +6,7 @@ import type {
   SchedulerConfig,
   SchedulerEvent,
 } from "./types.js";
-import { getProactiveFrequencyFactor } from "../persona/lifecycle.js";
+import { getProactiveFrequencyFactor, shouldReEngage } from "../persona/lifecycle.js";
 import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
 
 // ── PRISM cost defaults ──────────────────────────────────────────────
@@ -183,6 +183,51 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
 
 // ── p_need computation ───────────────────────────────────────────────
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Multi-signal engagement factor replacing the old domainActivityFactor.
+ *
+ * Three signals:
+ *   recency    (w=0.5): How recently the user was active — peaks at 7-14d drift
+ *   investment (w=0.3): Relationship breadth via totalActiveDays — only grows
+ *   breadth    (w=0.2): How many domains the user has recurring interest in
+ *
+ * Floors at 0.08 — structurally impossible to zero, preventing death spirals.
+ */
+export function computeEngagementFactor(persona: PersonaTree, now: number): number {
+  const { lifecycle, domains } = persona;
+
+  // Signal 1: Recency via silence days
+  // Aligned with computeLifecycleStage transitions (active→dormant at 14d, dormant→lapsed at 45d)
+  const silenceDays = lifecycle.lastActiveAt > 0
+    ? (now - lifecycle.lastActiveAt) / DAY_MS
+    : 999; // never active → treat as cold
+
+  let recencyFactor: number;
+  if (lifecycle.stage === "new")       recencyFactor = 0.3;
+  else if (silenceDays <= 1)           recencyFactor = 0.7;
+  else if (silenceDays <= 3)           recencyFactor = 0.9;
+  else if (silenceDays <= 7)           recencyFactor = 0.95;
+  else if (silenceDays <= 14)          recencyFactor = 1.0;
+  else if (silenceDays <= 45)          recencyFactor = 0.75;
+  else if (silenceDays <= 90)          recencyFactor = 0.5;
+  else if (silenceDays <= 180)         recencyFactor = 0.3;
+  else                                 recencyFactor = 0.15;
+
+  // Signal 2: Relationship investment (totalActiveDays, log scale)
+  // 1d → 0.14, 5d → 0.37, 14d → 0.51, 30d → 0.60, 100d → 0.76
+  const investmentFactor = Math.log2(1 + lifecycle.totalActiveDays) / 7;
+
+  // Signal 3: Domain breadth (cumulative recurrence ≥ 2 — doesn't decay)
+  const broadDomains = Object.values(domains).filter((d) => d.recurrence >= 2).length;
+  const breadthFactor = Math.min(1, broadDomains / 5);
+
+  // Composite with hard floor
+  const raw = recencyFactor * 0.5 + investmentFactor * 0.3 + breadthFactor * 0.2;
+  return Math.max(0.08, raw);
+}
+
 function computePNeed(
   persona: PersonaTree,
   event: SchedulerEvent,
@@ -194,12 +239,17 @@ function computePNeed(
 
   const timeFactor = sigmoid(SIGMOID_K * (elapsedHours - config.minIntervalHours));
   const eventFactor = EVENT_FACTORS[event.type] ?? 0.3;
-  const activeDomainsDepthGte3 = Object.values(persona.domains).filter(
-    (d) => d.depth >= 3,
-  ).length;
-  const domainActivityFactor = Math.min(1, activeDomainsDepthGte3 / 3);
+  const engagementFactor = computeEngagementFactor(persona, now);
 
-  return clamp01(BASE_NEED * timeFactor * eventFactor * domainActivityFactor);
+  // Depth bonus: users with deep domain engagement are better proactive targets
+  // Range: 1.0-1.2 — additive bonus, never zero
+  const deepDomains = Object.values(persona.domains).filter((d) => d.depth >= 3).length;
+  const depthBonus = 1 + 0.2 * Math.min(1, deepDomains / 3);
+
+  // Re-engagement boost: dormant users silent >7d get elevated pNeed
+  const reEngageBoost = shouldReEngage(persona.lifecycle, now) ? 1.3 : 1.0;
+
+  return clamp01(BASE_NEED * timeFactor * eventFactor * engagementFactor * depthBonus * reEngageBoost);
 }
 
 // ── p_accept computation ─────────────────────────────────────────────

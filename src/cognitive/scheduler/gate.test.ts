@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkProactiveGate, computeGradedGate, computeRepetitionDecay } from "./gate.js";
+import { checkProactiveGate, computeGradedGate, computeRepetitionDecay, computeEngagementFactor } from "./gate.js";
 import { createDefaultPersona } from "../persona/store.js";
 import type { SchedulerConfig, GateContext } from "./types.js";
 
@@ -109,14 +109,18 @@ describe("checkProactiveGate", () => {
 // ── PRISM graded gate tests ──────────────────────────────────────────
 
 function makeGateContext(overrides?: Partial<GateContext>): GateContext {
+  const now = Date.now();
   const persona = createDefaultPersona();
   persona.rapport.trustScore = 0.7;
   persona.rapport.totalExchanges = 10;
   persona.feedbackProfile.lastProactiveAt = 0;
+  persona.lifecycle.stage = "active";
+  persona.lifecycle.lastActiveAt = now;
+  persona.lifecycle.totalActiveDays = 15;
   persona.domains = {
-    "AI/ML": { depth: 5, recurrence: 10, lastMentioned: Date.now(),         keyInsights: [], activeQuestions: [], negationSignals: 0 },
-    "Rust": { depth: 4, recurrence: 8, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0 },
-    "Design": { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0 },
+    "AI/ML": { depth: 5, recurrence: 10, lastMentioned: now,         keyInsights: [], activeQuestions: [], negationSignals: 0 },
+    "Rust": { depth: 4, recurrence: 8, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+    "Design": { depth: 3, recurrence: 5, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
   };
   persona.feedbackProfile.topicBandits = {
     "AI/ML": { alpha: 5, beta: 1 },
@@ -125,7 +129,7 @@ function makeGateContext(overrides?: Partial<GateContext>): GateContext {
 
   return {
     persona,
-    event: { type: "persona_change", timestamp: Date.now() },
+    event: { type: "persona_change", timestamp: now },
     recentInsightCount: 3,
     config: baseConfig,
     ...overrides,
@@ -162,6 +166,9 @@ describe("computeGradedGate", () => {
         p.rapport.trustScore = 0.7;
         p.rapport.totalExchanges = 10;
         p.feedbackProfile.lastProactiveAt = now - 1 * 3600_000; // 1 hour ago
+        p.lifecycle.stage = "active";
+        p.lifecycle.lastActiveAt = now;
+        p.lifecycle.totalActiveDays = 10;
         p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 } };
         return p;
       })(),
@@ -174,6 +181,9 @@ describe("computeGradedGate", () => {
         p.rapport.trustScore = 0.7;
         p.rapport.totalExchanges = 10;
         p.feedbackProfile.lastProactiveAt = now - 24 * 3600_000; // 24 hours ago
+        p.lifecycle.stage = "active";
+        p.lifecycle.lastActiveAt = now;
+        p.lifecycle.totalActiveDays = 10;
         p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 } };
         return p;
       })(),
@@ -193,6 +203,9 @@ describe("computeGradedGate", () => {
       p.rapport.trustScore = 0.7;
       p.rapport.totalExchanges = 10;
       p.feedbackProfile.lastProactiveAt = now - 10 * 3600_000;
+      p.lifecycle.stage = "active";
+      p.lifecycle.lastActiveAt = now;
+      p.lifecycle.totalActiveDays = 10;
       p.domains = { "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 } };
       return p;
     };
@@ -251,12 +264,26 @@ describe("computeGradedGate", () => {
   });
 
   it("higher C_FN lowers threshold, making it easier to trigger", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.rapport.trustScore = 0.7;
+    persona.rapport.totalExchanges = 10;
+    persona.feedbackProfile.lastProactiveAt = 0;
+    persona.lifecycle.stage = "active";
+    persona.lifecycle.lastActiveAt = now;
+    persona.lifecycle.totalActiveDays = 15;
+    persona.domains = {
+      "AI/ML": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+    };
+    persona.feedbackProfile.topicBandits = { "AI/ML": { alpha: 5, beta: 1 } };
+
     const ctx = makeGateContext({
+      persona,
       config: { ...baseConfig, costFalseNegative: 10.0, costFalseAlarm: 1.0 },
     });
     const result = computeGradedGate(ctx);
     // threshold = 1/(10+1) ≈ 0.091
-    // With good persona, should trigger easily
+    // With engaged user, should trigger easily
     expect(result.decision).toBe(true);
   });
 
@@ -269,13 +296,13 @@ describe("computeGradedGate", () => {
     expect(result.decision).toBe(false);
   });
 
-  it("default config: C_FN=3.0, C_FA=1.0, threshold=0.25", () => {
+  it("default config triggers for engaged user with persona_change event", () => {
     const ctx = makeGateContext({
       config: { ...baseConfig },
     });
     const result = computeGradedGate(ctx);
-    // Default threshold = 1/(3+1) = 0.25
-    // With trust=0.7, positive bandits, persona_change event → should trigger
+    // Default threshold = C_FA/(C_FN+C_FA) = 1/(5+1) ≈ 0.167
+    // With active user, good domains, persona_change event → should trigger
     expect(result.decision).toBe(true);
   });
 
@@ -416,4 +443,176 @@ describe("computeRepetitionDecay", () => {
     expect(decay).toBeGreaterThan(0);
   });
 
+});
+
+// ── Engagement factor tests ──────────────────────────────────────────
+
+describe("computeEngagementFactor", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  function makePersona(overrides?: {
+    stage?: "new" | "active" | "dormant" | "lapsed";
+    lastActiveAt?: number;
+    totalActiveDays?: number;
+    domains?: Record<string, { depth: number; recurrence: number; lastMentioned: number; keyInsights: string[]; activeQuestions: string[]; negationSignals: number }>;
+  }) {
+    const persona = createDefaultPersona();
+    persona.lifecycle.stage = overrides?.stage ?? "active";
+    persona.lifecycle.lastActiveAt = overrides?.lastActiveAt ?? Date.now();
+    persona.lifecycle.totalActiveDays = overrides?.totalActiveDays ?? 10;
+    persona.rapport.totalExchanges = 20;
+    if (overrides?.domains) persona.domains = overrides.domains;
+    return persona;
+  }
+
+  it("floors at 0.08 — never zero", () => {
+    const persona = makePersona({
+      stage: "active",
+      lastActiveAt: Date.now() - 365 * DAY_MS,
+      totalActiveDays: 0,
+      domains: {},
+    });
+    const factor = computeEngagementFactor(persona, Date.now());
+    expect(factor).toBeGreaterThanOrEqual(0.08);
+  });
+
+  it("new users get reduced recency (0.3)", () => {
+    const persona = makePersona({ stage: "new", totalActiveDays: 0 });
+    const now = Date.now();
+    persona.lifecycle.lastActiveAt = now;
+    const factor = computeEngagementFactor(persona, now);
+    expect(factor).toBeLessThan(0.3);
+  });
+
+  it("peaks at 7-14 day silence window", () => {
+    const now = Date.now();
+    const persona = makePersona({
+      stage: "active",
+      lastActiveAt: now - 10 * DAY_MS,
+      totalActiveDays: 30,
+      domains: {
+        "AI": { depth: 5, recurrence: 10, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "Rust": { depth: 4, recurrence: 8, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "Design": { depth: 3, recurrence: 5, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "Cloud": { depth: 3, recurrence: 4, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "DevOps": { depth: 2, recurrence: 3, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+      },
+    });
+
+    const factorAt10d = computeEngagementFactor(persona, now);
+
+    const persona3d = makePersona({
+      stage: "active",
+      lastActiveAt: now - 3 * DAY_MS,
+      totalActiveDays: 30,
+      domains: persona.domains,
+    });
+    const factorAt3d = computeEngagementFactor(persona3d, now);
+
+    const persona30d = makePersona({
+      stage: "dormant",
+      lastActiveAt: now - 30 * DAY_MS,
+      totalActiveDays: 30,
+      domains: persona.domains,
+    });
+    const factorAt30d = computeEngagementFactor(persona30d, now);
+
+    expect(factorAt10d).toBeGreaterThan(factorAt3d);
+    expect(factorAt10d).toBeGreaterThan(factorAt30d);
+  });
+
+  it("investment only grows, never decays", () => {
+    const now = Date.now();
+    const base = { stage: "active" as const, lastActiveAt: now, domains: {} };
+
+    const lowInvestment = makePersona({ ...base, totalActiveDays: 1 });
+    const highInvestment = makePersona({ ...base, totalActiveDays: 100 });
+
+    const factorLow = computeEngagementFactor(lowInvestment, now);
+    const factorHigh = computeEngagementFactor(highInvestment, now);
+
+    expect(factorHigh).toBeGreaterThan(factorLow);
+  });
+
+  it("more broad domains increases factor", () => {
+    const now = Date.now();
+    const narrow = makePersona({
+      stage: "active",
+      lastActiveAt: now,
+      totalActiveDays: 10,
+      domains: {
+        "AI": { depth: 3, recurrence: 1, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+      },
+    });
+
+    const broad = makePersona({
+      stage: "active",
+      lastActiveAt: now,
+      totalActiveDays: 10,
+      domains: {
+        "AI": { depth: 3, recurrence: 3, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "Rust": { depth: 3, recurrence: 4, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "Design": { depth: 3, recurrence: 5, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "Cloud": { depth: 3, recurrence: 6, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+        "DevOps": { depth: 3, recurrence: 7, lastMentioned: now, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+      },
+    });
+
+    expect(computeEngagementFactor(broad, now)).toBeGreaterThan(computeEngagementFactor(narrow, now));
+  });
+
+  it("no death spiral: cold user with zero domains still gets floor value", () => {
+    const now = Date.now();
+    const persona = makePersona({
+      stage: "lapsed",
+      lastActiveAt: now - 200 * DAY_MS,
+      totalActiveDays: 0,
+      domains: {},
+    });
+    const factor = computeEngagementFactor(persona, now);
+    expect(factor).toBeGreaterThanOrEqual(0.08);
+  });
+
+  it("dormant users get re-engagement boost in pNeed via shouldReEngage", () => {
+    const now = Date.now();
+    const dormantPersona = createDefaultPersona();
+    dormantPersona.rapport.trustScore = 0.7;
+    dormantPersona.rapport.totalExchanges = 20;
+    dormantPersona.feedbackProfile.lastProactiveAt = 0;
+    dormantPersona.lifecycle.stage = "dormant";
+    dormantPersona.lifecycle.lastActiveAt = now - 10 * DAY_MS;
+    dormantPersona.lifecycle.totalActiveDays = 15;
+    dormantPersona.domains = {
+      "AI": { depth: 3, recurrence: 5, lastMentioned: now - 10 * DAY_MS, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+    };
+
+    const activePersona = createDefaultPersona();
+    activePersona.rapport.trustScore = 0.7;
+    activePersona.rapport.totalExchanges = 20;
+    activePersona.feedbackProfile.lastProactiveAt = 0;
+    activePersona.lifecycle.stage = "active";
+    activePersona.lifecycle.lastActiveAt = now - 10 * DAY_MS;
+    activePersona.lifecycle.totalActiveDays = 15;
+    activePersona.domains = {
+      "AI": { depth: 3, recurrence: 5, lastMentioned: now - 10 * DAY_MS, keyInsights: [], activeQuestions: [], negationSignals: 0 },
+    };
+
+    const dormantCtx: GateContext = {
+      persona: dormantPersona,
+      event: { type: "timer", timestamp: now },
+      recentInsightCount: 0,
+      config: baseConfig,
+    };
+    const activeCtx: GateContext = {
+      persona: activePersona,
+      event: { type: "timer", timestamp: now },
+      recentInsightCount: 0,
+      config: baseConfig,
+    };
+
+    const dormantResult = computeGradedGate(dormantCtx);
+    const activeResult = computeGradedGate(activeCtx);
+
+    expect(dormantResult.pNeed).toBeGreaterThan(activeResult.pNeed);
+  });
 });

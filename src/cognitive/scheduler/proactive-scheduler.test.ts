@@ -41,7 +41,7 @@ function personaWithDomains(): PersonaTree {
     "AI/机器学习": { alpha: 5, beta: 1 },
     "Rust": { alpha: 4, beta: 2 },
   };
-  persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() };
+  persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now(), totalActiveDays: 15 };
   return persona;
 }
 
@@ -1239,7 +1239,7 @@ describe("pNeed imbalance fix", () => {
       "AI/机器学习": { alpha: 5, beta: 1 },
       "软件架构": { alpha: 4, beta: 2 },
     };
-    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() };
+    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now(), totalActiveDays: 15 };
     return persona;
   }
 
@@ -1545,7 +1545,7 @@ describe("6-cycle integration test — all fixes together", () => {
       "TypeScript": { alpha: 3, beta: 2 },
       "飞书开发": { alpha: 2, beta: 1 },
     };
-    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() };
+    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now(), totalActiveDays: 20 };
     return persona;
   }
 
