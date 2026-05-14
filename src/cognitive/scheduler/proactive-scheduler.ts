@@ -1,6 +1,7 @@
 import type { PersonaTree } from "../types.js";
 import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
 import { computeGradedGate } from "./gate.js";
+import { processNoResponse, resetNoResponseStreak } from "../feedback/collector.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
@@ -469,8 +470,17 @@ export class ProactiveScheduler {
     userId: string,
     event: SchedulerEvent,
   ): Promise<InsightCandidate | undefined> {
-    const persona = await this.callbacks.loadPersona(userId);
+    let persona = await this.callbacks.loadPersona(userId);
     if (!persona) return undefined;
+
+    // Only reset no-response streak before gate — we always want to clear the
+    // counter when the user has been active since the last proactive.
+    // The increment is deferred to AFTER a successful insight delivery, so
+    // the counter only grows when we actually sent something and got no reply.
+    if (persona.lifecycle.lastActiveAt > 0
+        && persona.lifecycle.lastActiveAt > persona.feedbackProfile.lastProactiveAt) {
+      persona = resetNoResponseStreak(persona);
+    }
 
     const gateContext: GateContext = {
       persona,
@@ -548,6 +558,14 @@ export class ProactiveScheduler {
     });
 
     await this.callbacks.onInsightReady(userId, insight);
+
+    // After delivering a new insight, check whether the user responded to
+    // the *previous* one.  If lastProactive > lastActive at this point the
+    // user never replied to our last proactive, so increment the streak.
+    if (persona.feedbackProfile.lastProactiveAt > 0
+        && persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt) {
+      persona = processNoResponse(persona);
+    }
 
     persona.feedbackProfile.lastProactiveAt = event.timestamp;
     const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);

@@ -113,6 +113,8 @@ export type FeedbackProfile = {
   recentInsightTypes?: string[];
   recentInsightQueryHistory?: string[];
   promptBandits?: Record<string, TopicBandit>;
+  /** Consecutive proactive messages with no user response (for backoff calculation). */
+  consecutiveNoResponses?: number;
 };
 
 // Trust/rapport metrics

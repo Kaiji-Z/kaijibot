@@ -9,7 +9,12 @@ import type { InsightCandidate } from "../insight/types.js";
 
 // ── Persona factory ──────────────────────────────────────────────────
 
-function richPersona(): PersonaTree {
+function richPersona(eventTimestamp?: number): PersonaTree {
+  // When eventTimestamp is given, set lastActiveAt ~2.4h before it so the
+  // Gaussian cadenceFactor peaks at the event time (cadencePeak ≈ 2.4h).
+  const lastActiveAt = eventTimestamp
+    ? eventTimestamp - 2.4 * 3600_000
+    : Date.now();
   const persona = createDefaultPersona();
   persona.rapport.trustScore = 0.85;
   persona.rapport.totalExchanges = 200;
@@ -64,8 +69,8 @@ function richPersona(): PersonaTree {
   };
   persona.lifecycle = {
     stage: "active",
-    lastActiveAt: Date.now(),
-    lastStageTransitionAt: Date.now() - 86400000,
+    lastActiveAt,
+    lastStageTransitionAt: lastActiveAt - 86400000,
     totalActiveDays: 30,
   };
   return persona;
@@ -141,7 +146,8 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
   // ── Test 1 ───────────────────────────────────────────────────────────
 
   it("records attempted domains after identify even when resolve returns nothing", async () => {
-    const persona = richPersona();
+    const eventTimestamp = 10_000;
+    const persona = richPersona(eventTimestamp);
 
     const scheduler = new ProactiveScheduler(pipelineConfig, {
       loadPersona: async () => persona,
@@ -153,13 +159,10 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
 
     const result = await scheduler.processEvent("user1", {
       type: "timer",
-      timestamp: 10_000,
+      timestamp: eventTimestamp,
     });
 
     expect(result).toBeUndefined();
-
-    // processEvent mutates persona in-place (recentInsightDomains) before resolve
-    // even though resolve returns null and savePersona is never called
     expect(persona.feedbackProfile.recentInsightDomains).toBeDefined();
     expect(persona.feedbackProfile.recentInsightDomains!.length).toBeGreaterThan(0);
 
@@ -173,7 +176,8 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
   // ── Test 2 ───────────────────────────────────────────────────────────
 
   it("domain cooldown penalizes attempted-but-undelivered domains on next cycle", async () => {
-    const persona = richPersona();
+    const eventTimestamp = 10_000;
+    const persona = richPersona(eventTimestamp);
 
     // Cycle 1: empty generator → resolve fails, but persona is mutated in-place
     const schedulerC1 = new ProactiveScheduler(pipelineConfig, {
@@ -184,7 +188,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
 
     await schedulerC1.processEvent("user1", {
       type: "timer",
-      timestamp: 10_000,
+      timestamp: eventTimestamp,
     });
 
     // persona was mutated in-place with attempted domains
@@ -273,7 +277,8 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
   // ── Test 4 ───────────────────────────────────────────────────────────
 
   it("diversification across 5 rounds produces varied domains", async () => {
-    const persona = richPersona();
+    const baseTimestamp = 10_000;
+    const persona = richPersona(baseTimestamp);
     let currentPersona: PersonaTree = persona;
     const deliveredDomains: string[][] = [];
 
@@ -295,7 +300,12 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
 
       if (result) {
         deliveredDomains.push(result.targetDomains);
-        if (savedPersona) currentPersona = savedPersona;
+        if (savedPersona) {
+          // Simulate user activity after each delivered insight so the
+          // cadenceFactor stays near-peak for the next cycle.
+          savedPersona.lifecycle.lastActiveAt = 10_000 + cycle * 3_601_000;
+          currentPersona = savedPersona;
+        }
       }
     }
 
@@ -324,8 +334,8 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     // Use timestamp far from lastProactiveAt=0 to ensure high pNeed
     const now = 3600_000 * 10; // 10 hours elapsed
 
-    // High trust persona
-    const highTrustPersona = richPersona();
+    // High trust persona — lastActiveAt set so cadenceFactor peaks at `now`
+    const highTrustPersona = richPersona(now);
     highTrustPersona.rapport.trustScore = 0.9;
     highTrustPersona.rapport.totalExchanges = 200;
     highTrustPersona.feedbackProfile.lastProactiveAt = 0;
@@ -336,7 +346,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     expect(highTrustResult.pAct).toBeGreaterThan(0.15);
 
     // Low trust + insufficient exchanges → hard veto
-    const lowTrustPersona = richPersona();
+    const lowTrustPersona = richPersona(now);
     lowTrustPersona.rapport.trustScore = 0.2;
     lowTrustPersona.rapport.totalExchanges = 3; // < 5 → hard veto
     lowTrustPersona.feedbackProfile.lastProactiveAt = 0;

@@ -209,3 +209,28 @@ export function processInsightDeliverySignal(
     },
   };
 }
+
+export function processNoResponse(persona: PersonaTree): PersonaTree {
+  const prev = persona.feedbackProfile.consecutiveNoResponses ?? 0;
+  const updated = prev + 1;
+  log.info("no-response streak incremented", { prev, updated });
+  return {
+    ...persona,
+    feedbackProfile: {
+      ...persona.feedbackProfile,
+      consecutiveNoResponses: updated,
+    },
+  };
+}
+
+export function resetNoResponseStreak(persona: PersonaTree): PersonaTree {
+  if ((persona.feedbackProfile.consecutiveNoResponses ?? 0) === 0) return persona;
+  log.info("no-response streak reset", { prev: persona.feedbackProfile.consecutiveNoResponses });
+  return {
+    ...persona,
+    feedbackProfile: {
+      ...persona.feedbackProfile,
+      consecutiveNoResponses: 0,
+    },
+  };
+}

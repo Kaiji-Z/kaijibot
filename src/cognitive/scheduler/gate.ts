@@ -13,7 +13,7 @@ import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback
 
 const DEFAULT_C_FN = 5.0;
 const DEFAULT_C_FA = 1.0;
-const BASE_NEED = 0.5;
+const BASE_NEED = 0.6;
 const SIGMOID_K = 0.5;
 
 const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {
@@ -198,15 +198,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function computeEngagementFactor(persona: PersonaTree, now: number): number {
   const { lifecycle, domains } = persona;
 
-  // Signal 1: Recency via silence days
-  // Aligned with computeLifecycleStage transitions (active→dormant at 14d, dormant→lapsed at 45d)
   const silenceDays = lifecycle.lastActiveAt > 0
     ? (now - lifecycle.lastActiveAt) / DAY_MS
-    : 999; // never active → treat as cold
+    : 999;
 
   let recencyFactor: number;
   if (lifecycle.stage === "new")       recencyFactor = 0.3;
-  else if (silenceDays <= 1)           recencyFactor = 0.7;
+  else if (silenceDays <= 1)           recencyFactor = 1.0;
   else if (silenceDays <= 3)           recencyFactor = 0.9;
   else if (silenceDays <= 7)           recencyFactor = 0.95;
   else if (silenceDays <= 14)          recencyFactor = 1.0;
@@ -215,17 +213,60 @@ export function computeEngagementFactor(persona: PersonaTree, now: number): numb
   else if (silenceDays <= 180)         recencyFactor = 0.3;
   else                                 recencyFactor = 0.15;
 
-  // Signal 2: Relationship investment (totalActiveDays, log scale)
-  // 1d → 0.14, 5d → 0.37, 14d → 0.51, 30d → 0.60, 100d → 0.76
   const investmentFactor = Math.log2(1 + lifecycle.totalActiveDays) / 7;
 
-  // Signal 3: Domain breadth (cumulative recurrence ≥ 2 — doesn't decay)
   const broadDomains = Object.values(domains).filter((d) => d.recurrence >= 2).length;
   const breadthFactor = Math.min(1, broadDomains / 5);
 
-  // Composite with hard floor
   const raw = recencyFactor * 0.5 + investmentFactor * 0.3 + breadthFactor * 0.2;
   return Math.max(0.08, raw);
+}
+
+/**
+ * Conversation-adaptive time factor replacing the fixed sigmoid timer.
+ *
+ * Three sub-factors:
+ *   cadenceFactor:   Gaussian peak at optimal cadence — high when user is
+ *                    due for contact, low when too soon or too late
+ *   recoveryFactor:  Exponential recovery after sending — depleted right
+ *                    after delivery, recovers over time
+ *   backoffFactor:   0.7^n decay for consecutive no-responses
+ *
+ * Also includes a long-silence correction: when the user has been silent
+ * for >2× optimalFrequency, the Gaussian would collapse to near-zero.
+ * A logarithmic reEngageSignal floor prevents the system from going silent
+ * on dormant users.
+ */
+export function computeTimeFactor(
+  persona: PersonaTree,
+  config: SchedulerConfig,
+  now: number,
+): number {
+  const optFreq = persona.feedbackProfile.optimalFrequencyHours;
+  const cadencePeak = Math.min(6, Math.max(2, optFreq * 0.6));
+  const sigma = Math.max(1.5, cadencePeak * 0.4);
+
+  const hoursSinceUserActive = persona.lifecycle.lastActiveAt > 0
+    ? Math.max(0, (now - persona.lifecycle.lastActiveAt) / (60 * 60 * 1000))
+    : cadencePeak;
+
+  const gaussianArg = -Math.pow(hoursSinceUserActive - cadencePeak, 2) / (2 * sigma * sigma);
+  let cadenceFactor = Math.exp(gaussianArg);
+
+  if (hoursSinceUserActive > optFreq * 2) {
+    const reEngageSignal = Math.min(0.7, 0.15 * Math.log2(1 + hoursSinceUserActive / (optFreq * 2)));
+    cadenceFactor = Math.max(cadenceFactor, reEngageSignal);
+  }
+
+  const hoursSinceLastProactive = persona.feedbackProfile.lastProactiveAt > 0
+    ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
+    : optFreq * 2;
+  const recoveryFactor = 1 - Math.exp(-hoursSinceLastProactive / optFreq);
+
+  const noResponseCount = persona.feedbackProfile.consecutiveNoResponses ?? 0;
+  const backoffFactor = Math.pow(0.7, noResponseCount);
+
+  return clamp01(cadenceFactor * recoveryFactor * backoffFactor);
 }
 
 function computePNeed(
@@ -234,19 +275,13 @@ function computePNeed(
   config: SchedulerConfig,
   now: number,
 ): number {
-  const timeSinceLastProactive = now - persona.feedbackProfile.lastProactiveAt;
-  const elapsedHours = timeSinceLastProactive / (60 * 60 * 1000);
-
-  const timeFactor = sigmoid(SIGMOID_K * (elapsedHours - config.minIntervalHours));
+  const timeFactor = computeTimeFactor(persona, config, now);
   const eventFactor = EVENT_FACTORS[event.type] ?? 0.3;
   const engagementFactor = computeEngagementFactor(persona, now);
 
-  // Depth bonus: users with deep domain engagement are better proactive targets
-  // Range: 1.0-1.2 — additive bonus, never zero
   const deepDomains = Object.values(persona.domains).filter((d) => d.depth >= 3).length;
   const depthBonus = 1 + 0.2 * Math.min(1, deepDomains / 3);
 
-  // Re-engagement boost: dormant users silent >7d get elevated pNeed
   const reEngageBoost = shouldReEngage(persona.lifecycle, now) ? 1.3 : 1.0;
 
   return clamp01(BASE_NEED * timeFactor * eventFactor * engagementFactor * depthBonus * reEngageBoost);

@@ -80,7 +80,7 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     feedbackProfile: {
       topicBandits: {},
       optimalFrequencyHours: 4,
-      lastProactiveAt: 0,
+      lastProactiveAt: Date.now() - 8 * 3600_000,
       recentInsightIds: [],
       recentInsightContents: [],
     },
@@ -91,7 +91,7 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
       selfDisclosureLevel: 0.4,
     },
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: Date.now(), lastStageTransitionAt: Date.now() - 86400000, totalActiveDays: 10 },
+    lifecycle: { stage: "active", lastActiveAt: Date.now() - 2 * 3600_000, lastStageTransitionAt: Date.now() - 86400000, totalActiveDays: 10 },
     calibrationHistory: [],
     moodHistory: [],
     ...overrides,
@@ -176,11 +176,13 @@ function explorationOpportunity(mode: InsightMode): Opportunity {
 // Realistic timestamp: enough elapsed time for the gate, with last digit controlling mode.
 // 10 hours in ms = 36_000_000; +7 ensures timestamp % 10 < 8 (surprise).
 function surpriseTimestamp(): number {
-  return 36_000_000 + 65;
+  const now = Date.now();
+  return now - (now % 100) + 65;
 }
 
 function extendTimestamp(): number {
-  return 36_000_000 + 95;
+  const now = Date.now();
+  return now - (now % 100) + 95;
 }
 
 // ---------------------------------------------------------------------------

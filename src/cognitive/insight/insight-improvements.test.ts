@@ -63,7 +63,7 @@ function makeTestPersona(): PersonaTree {
     feedbackProfile: {
       topicBandits: {},
       optimalFrequencyHours: 2,
-      lastProactiveAt: 0,
+      lastProactiveAt: now - 8 * 3600_000,
       recentInsightIds: [],
       recentInsightContents: [],
       recentInsightDomains: [],
@@ -79,7 +79,7 @@ function makeTestPersona(): PersonaTree {
     },
     moodHistory: [],
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: now, lastStageTransitionAt: now, totalActiveDays: 30 },
+    lifecycle: { stage: "active", lastActiveAt: now - 2 * 3600_000, lastStageTransitionAt: now, totalActiveDays: 30 },
     calibrationHistory: [],
   };
 }
@@ -564,7 +564,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
     };
 
     const latestPersona = savedPersonas[savedPersonas.length - 1]!;
-    latestPersona.feedbackProfile.lastProactiveAt = 0;
+    latestPersona.feedbackProfile.lastProactiveAt = Date.now() - 8 * 3600_000;
 
     const scheduler3 = new ProactiveScheduler(config, {
       loadPersona: async () => latestPersona,
