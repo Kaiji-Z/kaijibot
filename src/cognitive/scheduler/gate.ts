@@ -254,7 +254,7 @@ export function computeTimeFactor(
   let cadenceFactor = Math.exp(gaussianArg);
 
   if (hoursSinceUserActive > optFreq * 2) {
-    const reEngageSignal = Math.min(0.7, 0.15 * Math.log2(1 + hoursSinceUserActive / (optFreq * 2)));
+    const reEngageSignal = Math.min(0.9, 0.21 * Math.log2(1 + hoursSinceUserActive / (optFreq * 2)));
     cadenceFactor = Math.max(cadenceFactor, reEngageSignal);
   }
 
