@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { processInsightFeedback, processInsightDeliverySignal } from "./collector.js";
+import { processInsightFeedback, processInsightDeliverySignal, processNoResponse } from "./collector.js";
+import type { NoResponseContext } from "./collector.js";
 import type { PersonaTree, InsightRecord } from "../types.js";
 
 function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): PersonaTree {
@@ -309,5 +310,108 @@ describe("processInsightDeliverySignal", () => {
     processInsightDeliverySignal(persona, insight);
 
     expect(persona.feedbackProfile.lastProactiveAt).toBe(100);
+  });
+});
+
+describe("processNoResponse", () => {
+  it("without context only increments consecutiveNoResponses (backward compat)", () => {
+    const persona = makePersona({ consecutiveNoResponses: 2 });
+
+    const result = processNoResponse(persona);
+
+    expect(result.feedbackProfile.consecutiveNoResponses).toBe(3);
+    // bandits untouched
+    expect(result.feedbackProfile.topicBandits).toEqual(persona.feedbackProfile.topicBandits);
+    expect(result.feedbackProfile.modeBandits).toBeUndefined();
+  });
+
+  it("with domains — existing bandits get beta += 0.3", () => {
+    const persona = makePersona();
+    const ctx: NoResponseContext = { previousDomains: ["AI/机器学习"] };
+
+    const result = processNoResponse(persona, ctx);
+
+    const b = result.feedbackProfile.topicBandits["AI/机器学习"]!;
+    expect(b.alpha).toBe(3);
+    expect(b.beta).toBeCloseTo(2.3);
+    expect(b.lastUpdated).toBeGreaterThan(0);
+  });
+
+  it("with domains — unknown domain gets cold-start bandit { alpha: 2, beta: 1.3 }", () => {
+    const persona = makePersona();
+    const ctx: NoResponseContext = { previousDomains: ["量子计算"] };
+
+    const result = processNoResponse(persona, ctx);
+
+    const b = result.feedbackProfile.topicBandits["量子计算"]!;
+    expect(b.alpha).toBe(2);
+    expect(b.beta).toBeCloseTo(1.3);
+    expect(b.lastUpdated).toBeGreaterThan(0);
+  });
+
+  it("with mode — creates modeBandit with beta += 0.2", () => {
+    const persona = makePersona();
+    const ctx: NoResponseContext = { previousDomains: [], previousMode: "knowledge" };
+
+    const result = processNoResponse(persona, ctx);
+
+    const mb = result.feedbackProfile.modeBandits!["knowledge"]!;
+    expect(mb.alpha).toBe(2);
+    expect(mb.beta).toBeCloseTo(1.2);
+    expect(mb.lastUpdated).toBeGreaterThan(0);
+  });
+
+  it("with domains + mode — both updated", () => {
+    const persona = makePersona();
+    const ctx: NoResponseContext = {
+      previousDomains: ["AI/机器学习", "软件架构"],
+      previousMode: "pattern",
+    };
+
+    const result = processNoResponse(persona, ctx);
+
+    // topic bandits
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.beta).toBeCloseTo(2.3);
+    expect(result.feedbackProfile.topicBandits["软件架构"]!.beta).toBeCloseTo(1.3);
+    // mode bandit
+    expect(result.feedbackProfile.modeBandits!["pattern"]!.beta).toBeCloseTo(1.2);
+    // counter incremented
+    expect(result.feedbackProfile.consecutiveNoResponses).toBe(1);
+  });
+
+  it("does not mutate input persona (immutability)", () => {
+    const persona = makePersona();
+    const origBandits = { ...persona.feedbackProfile.topicBandits };
+    const origAIRef = persona.feedbackProfile.topicBandits["AI/机器学习"];
+    const ctx: NoResponseContext = { previousDomains: ["AI/机器学习"], previousMode: "knowledge" };
+
+    processNoResponse(persona, ctx);
+
+    expect(persona.feedbackProfile.topicBandits).toEqual(origBandits);
+    expect(persona.feedbackProfile.topicBandits["AI/机器学习"]).toBe(origAIRef);
+    expect(persona.feedbackProfile.modeBandits).toBeUndefined();
+  });
+
+  it("always increments consecutiveNoResponses regardless of context", () => {
+    const persona = makePersona({ consecutiveNoResponses: 4 });
+
+    const withCtx = processNoResponse(persona, { previousDomains: ["AI/机器学习"], previousMode: "surprise" });
+    expect(withCtx.feedbackProfile.consecutiveNoResponses).toBe(5);
+
+    const withoutCtx = processNoResponse(persona);
+    expect(withoutCtx.feedbackProfile.consecutiveNoResponses).toBe(5);
+  });
+
+  it("empty previousDomains — only mode update if provided", () => {
+    const persona = makePersona();
+    const ctx: NoResponseContext = { previousDomains: [], previousMode: "extend" };
+
+    const result = processNoResponse(persona, ctx);
+
+    // no new topic bandits
+    expect(Object.keys(result.feedbackProfile.topicBandits)).toEqual(["AI/机器学习", "软件架构"]);
+    // mode bandit created
+    expect(result.feedbackProfile.modeBandits!["extend"]!.beta).toBeCloseTo(1.2);
+    expect(result.feedbackProfile.consecutiveNoResponses).toBe(1);
   });
 });

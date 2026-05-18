@@ -2,6 +2,7 @@ import type { PersonaTree } from "../types.js";
 import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
 import { computeGradedGate } from "./gate.js";
 import { processNoResponse, resetNoResponseStreak } from "../feedback/collector.js";
+import type { NoResponseContext } from "../feedback/collector.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import { generateInsightCandidates } from "../insight/engine.js";
 import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
@@ -13,6 +14,7 @@ import { critiqueInsightWithLLM, refineInsightWithLLM, verifyInsightWithLLM, che
 import type { LlmInsightDeps } from "../insight/llm-engine.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
+import { computeContentStrategy } from "./content-strategy.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -564,7 +566,15 @@ export class ProactiveScheduler {
     // user never replied to our last proactive, so increment the streak.
     if (persona.feedbackProfile.lastProactiveAt > 0
         && persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt) {
-      persona = processNoResponse(persona);
+      const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+      const prevInsightDomains = recentDomains.length >= 1 ? recentDomains[recentDomains.length - 1] : [];
+      const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
+      const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
+      const noResponseCtx: NoResponseContext = {
+        previousDomains: prevInsightDomains ?? [],
+        previousMode: prevMode,
+      };
+      persona = processNoResponse(persona, noResponseCtx);
     }
 
     persona.feedbackProfile.lastProactiveAt = event.timestamp;
@@ -578,6 +588,10 @@ export class ProactiveScheduler {
     const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
     const replacedTypes = [...prevTypes.slice(0, -1), selected.type].slice(-5);
     persona.feedbackProfile.recentInsightTypes = replacedTypes;
+    const mode = String(selected.metadata?.mode ?? "knowledge");
+    const prevModes = persona.feedbackProfile.recentInsightModes ?? [];
+    const replacedModes = [...prevModes.slice(0, -1), mode].slice(-5);
+    persona.feedbackProfile.recentInsightModes = replacedModes;
     if (insight.searchQueryUsed) {
       const queries = [...(persona.feedbackProfile.recentInsightQueryHistory ?? []), insight.searchQueryUsed].slice(-10);
       persona.feedbackProfile.recentInsightQueryHistory = queries;
@@ -628,7 +642,42 @@ export class ProactiveScheduler {
     if (userDomainKeys.length === 0) return [];
 
     const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
-    const baseline = computeBaselinePAccept(persona, fatigued.size > 0 ? fatigued : undefined);
+    const strategy = computeContentStrategy(persona);
+    const allExcluded = new Set([...fatigued, ...strategy.excludeDomains]);
+    const baseline = computeBaselinePAccept(persona, allExcluded.size > 0 ? allExcluded : undefined);
+
+    if (strategy.forceMode) {
+      log.info("content strategy override", {
+        userId: persona.identity?.userId,
+        streak: persona.feedbackProfile.consecutiveNoResponses,
+        forceMode: strategy.forceMode,
+        excludedDomains: [...allExcluded],
+        noveltyBoost: strategy.noveltyBoost,
+      });
+      const fatiguedList = [...allExcluded];
+      const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
+      const targetDomain = bestTopic ?? userDomainKeys.find(d => !allExcluded.has(d));
+      if (!targetDomain && strategy.forceMode !== "pattern") {
+        return [{
+          type: "exploration" as const,
+          targetDomains: [],
+          sourceDomains: [],
+          pNeed: strategy.noveltyBoost ? 0.6 : 0.55,
+          pAccept: baseline,
+          pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
+          metadata: { mode: strategy.forceMode },
+        }];
+      }
+      return [{
+        type: "exploration" as const,
+        targetDomains: targetDomain ? [targetDomain] : [],
+        sourceDomains: [],
+        pNeed: strategy.noveltyBoost ? 0.6 : 0.55,
+        pAccept: baseline,
+        pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
+        metadata: { mode: strategy.forceMode },
+      }];
+    }
 
     log.info("exploration mode routed", {
       userId: persona.identity?.userId,
@@ -636,6 +685,8 @@ export class ProactiveScheduler {
       ratio,
       selectedMode: roll < ratio ? "pattern" : roll < ratio + surpriseWeight ? "surprise" : "extend",
       fatiguedDomains: [...fatigued],
+      strategyExcluded: strategy.excludeDomains,
+      streak: persona.feedbackProfile.consecutiveNoResponses,
     });
 
     if (roll < ratio) {
@@ -683,9 +734,10 @@ export class ProactiveScheduler {
       }];
     }
 
-    const fatiguedList = [...fatigued];
+    const fatiguedList = [...allExcluded];
     const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
-    const targetDomain = bestTopic ?? userDomainKeys[Math.floor((event.timestamp / 7) % userDomainKeys.length)];
+    const targetDomain = bestTopic ?? userDomainKeys.find(d => !allExcluded.has(d))
+      ?? userDomainKeys[Math.floor((event.timestamp / 7) % userDomainKeys.length)];
     if (!targetDomain) return [];
     return [{
       type: "exploration" as const,

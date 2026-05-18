@@ -54,6 +54,7 @@ const domainNodeSchema = z.object({
 const topicBanditSchema = z.object({
   alpha: z.number(),
   beta: z.number(),
+  lastUpdated: z.number().optional(),
 });
 
 const feedbackProfileSchema = z.object({
@@ -66,6 +67,10 @@ const feedbackProfileSchema = z.object({
   recentInsightDomains: z.array(z.array(z.string())).optional().default([]),
   recentInsightTypes: z.array(z.string()).optional().default([]),
   recentInsightQueryHistory: z.array(z.string()).optional().default([]),
+  promptBandits: z.record(z.string(), topicBanditSchema).optional(),
+  modeBandits: z.record(z.string(), topicBanditSchema).optional(),
+  consecutiveNoResponses: z.number().optional(),
+  recentInsightModes: z.array(z.string()).optional().default([]),
 });
 
 const rapportMetricsSchema = z.object({

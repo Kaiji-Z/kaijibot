@@ -210,15 +210,65 @@ export function processInsightDeliverySignal(
   };
 }
 
-export function processNoResponse(persona: PersonaTree): PersonaTree {
+export type NoResponseContext = {
+  previousDomains: string[];
+  previousMode?: string;
+};
+
+export function processNoResponse(persona: PersonaTree, context?: NoResponseContext): PersonaTree {
   const prev = persona.feedbackProfile.consecutiveNoResponses ?? 0;
   const updated = prev + 1;
-  log.info("no-response streak incremented", { prev, updated });
+
+  if (!context) {
+    log.info("no-response streak incremented", { prev, updated });
+    return {
+      ...persona,
+      feedbackProfile: {
+        ...persona.feedbackProfile,
+        consecutiveNoResponses: updated,
+      },
+    };
+  }
+
+  const updatedBandits = { ...persona.feedbackProfile.topicBandits };
+  const now = Date.now();
+  const penalizedDomains: string[] = [];
+
+  for (const domain of context.previousDomains) {
+    const bandit = updatedBandits[domain] ?? { alpha: 2, beta: 1 };
+    updatedBandits[domain] = { alpha: bandit.alpha, beta: bandit.beta + 0.3, lastUpdated: now };
+    penalizedDomains.push(domain);
+  }
+
+  let updatedModeBandits = persona.feedbackProfile.modeBandits
+    ? { ...persona.feedbackProfile.modeBandits }
+    : undefined;
+  let penalizedMode: string | undefined;
+
+  if (context.previousMode) {
+    updatedModeBandits = updatedModeBandits ?? {};
+    const modeBandit = updatedModeBandits[context.previousMode] ?? { alpha: 2, beta: 1 };
+    updatedModeBandits[context.previousMode] = {
+      alpha: modeBandit.alpha,
+      beta: modeBandit.beta + 0.2,
+      lastUpdated: now,
+    };
+    penalizedMode = context.previousMode;
+  }
+
+  log.info("no-response bandits updated", {
+    domains: penalizedDomains,
+    mode: penalizedMode,
+    streak: updated,
+  });
+
   return {
     ...persona,
     feedbackProfile: {
       ...persona.feedbackProfile,
       consecutiveNoResponses: updated,
+      topicBandits: updatedBandits,
+      ...(updatedModeBandits !== undefined ? { modeBandits: updatedModeBandits } : {}),
     },
   };
 }

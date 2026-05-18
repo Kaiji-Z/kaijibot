@@ -113,8 +113,12 @@ export type FeedbackProfile = {
   recentInsightTypes?: string[];
   recentInsightQueryHistory?: string[];
   promptBandits?: Record<string, TopicBandit>;
+  /** Thompson Sampling arms for insight modes (knowledge/pattern/surprise/extend). */
+  modeBandits?: Record<string, TopicBandit>;
   /** Consecutive proactive messages with no user response (for backoff calculation). */
   consecutiveNoResponses?: number;
+  /** Last 5 insight modes (knowledge/pattern/surprise/extend) for no-response tracking. */
+  recentInsightModes?: string[];
 };
 
 // Trust/rapport metrics
