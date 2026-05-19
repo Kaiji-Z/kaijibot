@@ -289,10 +289,11 @@ export class ProactiveScheduler {
       });
 
       if (candidate.verificationStatus === "contradicted") {
-        log.warn("pattern-mode insight contradicted by verification", {
+        log.warn("pattern-mode insight contradicted by verification, skipping delivery", {
           userId,
           content: candidate.content.slice(0, 80),
         });
+        return null;
       }
 
       return candidate;
@@ -448,13 +449,24 @@ export class ProactiveScheduler {
       });
 
       if (candidate.verificationStatus === "contradicted") {
-        log.warn("insight candidate contradicted by verification", {
+        log.warn("knowledge-mode insight contradicted by verification, skipping delivery", {
           userId: persona.identity?.userId,
           content: candidate.content.slice(0, 80),
         });
+        return null;
       }
     } else {
       candidate.verificationStatus = candidate.sources.length > 0 ? "verified" : "unverified";
+    }
+
+    // Block knowledge-mode insights with zero sources (no web evidence)
+    if (candidate.sources.length === 0) {
+      log.warn("knowledge-mode insight has zero sources, skipping delivery", {
+        userId: persona.identity?.userId,
+        content: candidate.content.slice(0, 80),
+        mode,
+      });
+      return null;
     }
 
     if (opportunity.type !== "exploration" && candidate.verificationStatus === "unverified") {
@@ -565,6 +577,18 @@ export class ProactiveScheduler {
       mode: selected.metadata?.mode ?? "knowledge",
       opportunityType: selected.type,
     });
+
+    // Final safety net: block 0-source knowledge-mode insights that somehow bypassed resolve()
+    const insightMode = String(selected.metadata?.mode ?? "knowledge");
+    if (insightMode !== "pattern" && insight.sources.length === 0) {
+      log.warn("safety-net: blocking 0-source knowledge insight before delivery", {
+        userId,
+        contentPreview: insight.content.slice(0, 80),
+        mode: insightMode,
+      });
+      await this.callbacks.savePersona(userId, persona);
+      return undefined;
+    }
 
     await this.callbacks.onInsightReady(userId, insight);
 

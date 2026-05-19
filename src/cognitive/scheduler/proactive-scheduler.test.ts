@@ -2155,3 +2155,269 @@ describe("processEvent per-user queue", () => {
     expect(started.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("insight hallucination gates", () => {
+  const gatePersona = personaWithDomains;
+
+  it("pattern-mode contradicted insight returns null from resolve", async () => {
+    const persona = gatePersona();
+    persona.identity = { ...persona.identity, userId: "user1" };
+
+    const fakeInsight: InsightCandidate = {
+      id: "contradicted-pattern",
+      content: "A contradicted behavioral observation",
+      rationale: "test",
+      targetDomains: [],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "partial",
+    };
+
+    const mockComplete = vi.fn().mockResolvedValue({
+      content: [{ type: "text" as const, text: JSON.stringify({ status: "contradicted", confidence: 0.2, notes: "test" }) }],
+    });
+    const mockLlmDeps = {
+      complete: mockComplete,
+      prepareModel: vi.fn().mockResolvedValue({
+        model: { provider: "test" },
+        auth: { apiKey: "test-key" },
+      }),
+    };
+    const mockBotConfig = { cognitive: { persona: {} } } as unknown as import("../../config/types.kaijibot.js").KaijiBotConfig;
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    }, {
+      insightGenerator: async () => [fakeInsight],
+      fragmentStore: {
+        load: async () => [{ id: "f1", kind: "knowledge_gap", content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now() }],
+        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], centroid: "test", avgStrength: 0.5 }],
+        upsert: async () => {},
+        removeStale: async () => {},
+      } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+      llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
+      botConfig: mockBotConfig,
+    });
+
+    const opportunity: Opportunity = {
+      type: "exploration",
+      targetDomains: [],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      metadata: { mode: "pattern" },
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).toBeNull();
+  });
+
+  it("knowledge-mode 0-source insight returns null from resolve", async () => {
+    const persona = gatePersona();
+
+    const fakeInsight: InsightCandidate = {
+      id: "zero-source",
+      content: "An insight with no sources at all",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "verified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      metadata: { mode: "surprise" },
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).toBeNull();
+  });
+
+  it("knowledge-mode contradicted insight returns null from resolve", async () => {
+    const persona = gatePersona();
+
+    const fakeInsight: InsightCandidate = {
+      id: "contradicted-knowledge",
+      content: "A contradicted knowledge insight",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.9,
+      surpriseScore: 0.8,
+      compositeScore: 0.88,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const mockComplete = vi.fn().mockResolvedValue({
+      content: [{ type: "text" as const, text: JSON.stringify({ status: "contradicted", confidence: 0.2, notes: "test" }) }],
+    });
+    const mockLlmDeps = {
+      complete: mockComplete,
+      prepareModel: vi.fn().mockResolvedValue({
+        model: { provider: "test" },
+        auth: { apiKey: "test-key" },
+      }),
+    };
+    const mockBotConfig = { cognitive: { persona: {} } } as unknown as import("../../config/types.kaijibot.js").KaijiBotConfig;
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    }, {
+      insightGenerator: async () => [fakeInsight],
+      llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
+      botConfig: mockBotConfig,
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      metadata: { mode: "surprise" },
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).toBeNull();
+  });
+
+  it("knowledge-mode insight with sources passes through resolve", async () => {
+    const persona = gatePersona();
+
+    const fakeInsight: InsightCandidate = {
+      id: "valid-knowledge",
+      content: "A valid insight with web sources",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      metadata: { mode: "surprise" },
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("valid-knowledge");
+  });
+
+  it("pattern-mode insight with 0 sources passes through resolve", async () => {
+    const persona = gatePersona();
+    persona.identity = { ...persona.identity, userId: "user1" };
+
+    const fakeInsight: InsightCandidate = {
+      id: "valid-pattern",
+      content: "A behavioral pattern observation",
+      rationale: "test",
+      targetDomains: [],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "partial",
+    };
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    }, {
+      insightGenerator: async () => [fakeInsight],
+      fragmentStore: {
+        load: async () => [{ id: "f1", kind: "knowledge_gap", content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now() }],
+        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], centroid: "test", avgStrength: 0.5 }],
+        upsert: async () => {},
+        removeStale: async () => {},
+      } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+    });
+
+    const opportunity: Opportunity = {
+      type: "exploration",
+      targetDomains: [],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      metadata: { mode: "pattern" },
+    };
+
+    const result = await scheduler.resolve(persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("valid-pattern");
+  });
+
+  it("safety net blocks 0-source knowledge insight in processEvent", async () => {
+    const persona = gatePersona();
+    const deliveredCandidates: InsightCandidate[] = [];
+
+    const fakeInsight: InsightCandidate = {
+      id: "leaked-insight",
+      content: "Insight with no sources that somehow reached delivery",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "verified",
+    };
+
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async (_userId, candidate) => {
+        deliveredCandidates.push(candidate);
+      },
+      savePersona: async () => {},
+    }, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    const result = await scheduler.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
+
+    expect(result).toBeUndefined();
+    expect(deliveredCandidates.length).toBe(0);
+  });
+});
