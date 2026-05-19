@@ -1,4 +1,5 @@
 import type { PersonaTree } from "../types.js";
+import type { InsightMode } from "../insight/types.js";
 
 /** Event that triggers the proactive scheduler */
 export type SchedulerEvent = {
@@ -48,6 +49,8 @@ export interface Opportunity {
   pAccept: number;
   pAct: number;
   metadata?: Record<string, unknown>;
+  /** Candidate insight modes for this opportunity (set by search, finalized by resolve). */
+  modeCandidates?: InsightMode[];
 }
 
 /** Scheduler configuration */

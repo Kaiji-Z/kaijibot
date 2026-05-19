@@ -2197,7 +2197,7 @@ export async function runEmbeddedAttempt(
               const { PersonaStore } = await import("../../../cognitive/persona/store.js");
               const { mergeExtraction, prunePersona } = await import("../../../cognitive/persona/curator.js");
               const { resolveConfigDir } = await import("../../../utils.js");
-              const { extractImplicitSignals, processImplicitFeedback } = await import("../../../cognitive/feedback/collector.js");
+              const { extractImplicitSignals, processImplicitFeedback, inferTopicFromContext } = await import("../../../cognitive/feedback/collector.js");
 
               const configDir = resolveConfigDir();
               const store = new PersonaStore(configDir);
@@ -2234,7 +2234,9 @@ export async function runEmbeddedAttempt(
               const merged = mergeExtraction(persona, extraction);
               const pruned = prunePersona(merged);
 
-              const signals = extractImplicitSignals(userText, undefined, undefined);
+              const topic = inferTopicFromContext(pruned, extraction, userText);
+              const previousTopics = pruned.recentFocus;
+              const signals = extractImplicitSignals(userText, undefined, topic, previousTopics);
               const feedbackUpdated = processImplicitFeedback(pruned, signals);
               await store.save("main", userId, feedbackUpdated);
 

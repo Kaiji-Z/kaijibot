@@ -15,6 +15,7 @@ import type { LlmInsightDeps } from "../insight/llm-engine.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
 import { computeContentStrategy } from "./content-strategy.js";
+import { selectMode } from "./mode-selection.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -200,7 +201,13 @@ export class ProactiveScheduler {
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
     const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-    const mode = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
+    // Mode selection: prefer explicit metadata.mode (content strategy override),
+    // otherwise use bandit-weighted selection from modeCandidates
+    let mode: InsightMode | undefined = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
+    if (!mode) {
+      const strategyHint = computeContentStrategy(persona);
+      mode = selectMode(opportunity.modeCandidates, persona.feedbackProfile.modeBandits, strategyHint, Date.now());
+    }
 
     if (mode === "pattern") {
       const userId = persona.identity?.userId;
@@ -633,11 +640,6 @@ export class ProactiveScheduler {
   }
 
   private async scanExploration(persona: PersonaTree, event: SchedulerEvent): Promise<Opportunity[]> {
-    const ratio = this.config.patternModeRatio ?? 0.5;
-    const knowledgeRatio = 1 - ratio;
-    const surpriseWeight = knowledgeRatio * 0.8;
-    const roll = (event.timestamp % 100) / 100;
-
     const userDomainKeys = Object.keys(persona.domains);
     if (userDomainKeys.length === 0) return [];
 
@@ -666,6 +668,7 @@ export class ProactiveScheduler {
           pAccept: baseline,
           pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
           metadata: { mode: strategy.forceMode },
+          modeCandidates: [strategy.forceMode],
         }];
       }
       return [{
@@ -676,77 +679,32 @@ export class ProactiveScheduler {
         pAccept: baseline,
         pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
         metadata: { mode: strategy.forceMode },
+        modeCandidates: [strategy.forceMode],
       }];
     }
 
-    log.info("exploration mode routed", {
+    // No content strategy override — all three modes are candidates
+    // Mode selection deferred to resolve() via banditWeightedSelect
+    const fatiguedList = [...allExcluded];
+    const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
+    const targetDomain = bestTopic ?? userDomainKeys.find(d => !allExcluded.has(d));
+
+    log.info("exploration mode candidates set", {
       userId: persona.identity?.userId,
-      roll: roll.toFixed(3),
-      ratio,
-      selectedMode: roll < ratio ? "pattern" : roll < ratio + surpriseWeight ? "surprise" : "extend",
       fatiguedDomains: [...fatigued],
       strategyExcluded: strategy.excludeDomains,
+      targetDomain,
       streak: persona.feedbackProfile.consecutiveNoResponses,
     });
 
-    if (roll < ratio) {
-      const userId = persona.identity?.userId;
-      if (userId) {
-        const clusters = await this.fragmentStore.findClusters(userId);
-        const hasEnoughFragments = clusters.some(c => c.fragmentIds.length >= 2);
-        if (!hasEnoughFragments) {
-          log.info("pattern mode: insufficient fragment clusters, falling back to surprise", {
-            userId: persona.identity?.userId,
-            clusterCount: clusters.length,
-            requiredFragments: 2,
-          });
-          return [{
-            type: "exploration" as const,
-            targetDomains: [],
-            sourceDomains: [],
-            pNeed: 0.55,
-            pAccept: baseline,
-            pAct: 0.55 * baseline,
-            metadata: { mode: "surprise" },
-          }];
-        }
-      }
-      return [{
-        type: "exploration" as const,
-        targetDomains: [],
-        sourceDomains: [],
-        pNeed: 0.65,
-        pAccept: baseline,
-        pAct: 0.65 * baseline,
-        metadata: { mode: "pattern" },
-      }];
-    }
-
-    if (roll < ratio + surpriseWeight) {
-      return [{
-        type: "exploration" as const,
-        targetDomains: [],
-        sourceDomains: [],
-        pNeed: 0.55,
-        pAccept: baseline,
-        pAct: 0.55 * baseline,
-        metadata: { mode: "surprise" },
-      }];
-    }
-
-    const fatiguedList = [...allExcluded];
-    const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
-    const targetDomain = bestTopic ?? userDomainKeys.find(d => !allExcluded.has(d))
-      ?? userDomainKeys[Math.floor((event.timestamp / 7) % userDomainKeys.length)];
-    if (!targetDomain) return [];
     return [{
       type: "exploration" as const,
-      targetDomains: [targetDomain],
+      targetDomains: targetDomain ? [targetDomain] : [],
       sourceDomains: [],
-      pNeed: 0.5,
+      pNeed: 0.55,
       pAccept: baseline,
-      pAct: 0.5 * baseline,
-      metadata: { mode: "extend" },
+      pAct: 0.55 * baseline,
+      modeCandidates: ["pattern", "surprise", "extend"],
     }];
   }
 
@@ -798,6 +756,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
       pAccept,
       pAct: pNeed * pAccept,
       metadata: { bridge: conn.bridge, distance: conn.distance },
+      modeCandidates: ["surprise", "extend"],
     };
   });
 
@@ -832,6 +791,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
             pAccept,
             pAct: pNeed * pAccept,
             metadata: { bridge: [midHop], distance: 2 },
+            modeCandidates: ["surprise", "extend"],
           };
 
           const existing = twoHopBest.get(target);
@@ -871,6 +831,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
         pAccept,
         pAct: pNeed * pAccept,
         metadata: { intraUserCrossPollination: true, semanticDistance: weakestPair.distance },
+        modeCandidates: ["surprise", "extend"],
       });
     }
   }
@@ -910,6 +871,7 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
         pNeed,
         pAccept,
         pAct: pNeed * pAccept,
+        modeCandidates: ["surprise", "extend"],
       };
     });
 }
@@ -927,6 +889,7 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
       pNeed: 0.7,
       pAccept,
       pAct: 0.7 * pAccept,
+      modeCandidates: ["surprise"],
     }));
   }
 
@@ -942,6 +905,7 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
       pAccept,
       pAct: 0.9 * pAccept,
       metadata: { isNewDomain: true },
+      modeCandidates: ["surprise"],
     };
   });
 }
@@ -962,6 +926,7 @@ function scanInfoScan(persona: PersonaTree, event: SchedulerEvent): Opportunity[
     pAccept,
     pAct: 0.6 * pAccept,
     metadata: { scanDerived: true },
+    modeCandidates: ["surprise", "extend"],
   }));
 }
 

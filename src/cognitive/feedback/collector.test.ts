@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { processInsightFeedback, processInsightDeliverySignal, processNoResponse } from "./collector.js";
+import { processInsightFeedback, processInsightDeliverySignal, processNoResponse, inferTopicFromContext, extractImplicitSignals, processImplicitFeedback } from "./collector.js";
 import type { NoResponseContext } from "./collector.js";
 import type { PersonaTree, InsightRecord } from "../types.js";
 
@@ -413,5 +413,175 @@ describe("processNoResponse", () => {
     // mode bandit created
     expect(result.feedbackProfile.modeBandits!["extend"]!.beta).toBeCloseTo(1.2);
     expect(result.feedbackProfile.consecutiveNoResponses).toBe(1);
+  });
+});
+
+describe("inferTopicFromContext", () => {
+  it("returns first LLM-extracted domain (Level 1)", () => {
+    const persona = makePersona();
+    const extraction = { domains: [{ name: "Rust" }, { name: "WebAssembly" }] };
+
+    const result = inferTopicFromContext(persona, extraction, "some user text");
+
+    expect(result).toBe("Rust");
+  });
+
+  it("returns undefined when extraction has empty domains and no fallbacks", () => {
+    const persona = makePersona();
+    const extraction = { domains: [] };
+
+    const result = inferTopicFromContext(persona, extraction, "random text");
+
+    expect(result).toBeUndefined();
+  });
+
+  it("falls back to persona domain keyword match (Level 2)", () => {
+    const persona = makePersona();
+    persona.domains = { "量子计算": { depth: 2, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0 } };
+    const extraction = { domains: [] as Array<{ name: string }> };
+
+    const result = inferTopicFromContext(persona, extraction, "我在研究量子计算的应用");
+
+    expect(result).toBe("量子计算");
+  });
+
+  it("falls back to persona recentFocus (Level 3)", () => {
+    const persona = makePersona();
+    persona.recentFocus = ["分布式系统"];
+    const extraction = { domains: [] as Array<{ name: string }> };
+
+    const result = inferTopicFromContext(persona, extraction, "some unrelated text");
+
+    expect(result).toBe("分布式系统");
+  });
+
+  it("returns undefined when all levels exhausted", () => {
+    const persona = makePersona();
+    const extraction = { domains: [] as Array<{ name: string }> };
+
+    const result = inferTopicFromContext(persona, extraction, "nothing matchable");
+
+    expect(result).toBeUndefined();
+  });
+});
+
+describe("extractImplicitSignals with previousTopics", () => {
+  it("generates topic_continuation when topic matches recent topic", () => {
+    const signals = extractImplicitSignals("tell me more about that", undefined, "AI/机器学习", ["AI/机器学习", "软件架构"]);
+
+    const continuation = signals.find(s => s.type === "topic_continuation");
+    expect(continuation).toBeDefined();
+    expect(continuation!.topic).toBe("AI/机器学习");
+    expect(continuation!.value).toBe(1);
+  });
+
+  it("generates topic_abandonment when topic differs from recent topics", () => {
+    const signals = extractImplicitSignals("let's switch to something else", undefined, "量子计算", ["AI/机器学习", "软件架构"]);
+
+    const abandonment = signals.find(s => s.type === "topic_abandonment");
+    expect(abandonment).toBeDefined();
+    expect(abandonment!.topic).toBe("软件架构"); // most recent previous topic
+    expect(abandonment!.value).toBe(1);
+  });
+
+  it("does not generate continuation/abandonment without previousTopics", () => {
+    const signals = extractImplicitSignals("hello", undefined, "AI/机器学习");
+
+    const continuation = signals.find(s => s.type === "topic_continuation");
+    const abandonment = signals.find(s => s.type === "topic_abandonment");
+    expect(continuation).toBeUndefined();
+    expect(abandonment).toBeUndefined();
+  });
+
+  it("does not generate continuation/abandonment without topic", () => {
+    const signals = extractImplicitSignals("hello", undefined, undefined, ["AI/机器学习"]);
+
+    const continuation = signals.find(s => s.type === "topic_continuation");
+    const abandonment = signals.find(s => s.type === "topic_abandonment");
+    expect(continuation).toBeUndefined();
+    expect(abandonment).toBeUndefined();
+  });
+
+  it("still generates response_length and question_depth signals", () => {
+    const signals = extractImplicitSignals("为什么这个设计是这样的？", undefined, "AI/机器学习", ["AI/机器学习"]);
+
+    expect(signals.some(s => s.type === "response_length")).toBe(true);
+    expect(signals.some(s => s.type === "question_depth")).toBe(true);
+    expect(signals.some(s => s.type === "topic_continuation")).toBe(true);
+  });
+});
+
+describe("processImplicitFeedback with response_length/question_depth bandit updates", () => {
+  it("reinforces bandit alpha for long responses (>100 chars)", () => {
+    const persona = makePersona();
+    const signals = [
+      { type: "response_length" as const, topic: "AI/机器学习", value: 200, timestamp: Date.now() },
+    ];
+
+    const result = processImplicitFeedback(persona, signals);
+
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.alpha).toBeCloseTo(3.3);
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.beta).toBe(2);
+  });
+
+  it("penalizes bandit beta for very short responses (<20 chars)", () => {
+    const persona = makePersona();
+    const signals = [
+      { type: "response_length" as const, topic: "AI/机器学习", value: 10, timestamp: Date.now() },
+    ];
+
+    const result = processImplicitFeedback(persona, signals);
+
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.alpha).toBe(3);
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.beta).toBeCloseTo(2.2);
+  });
+
+  it("reinforces bandit alpha for deep follow-up questions", () => {
+    const persona = makePersona();
+    const signals = [
+      { type: "question_depth" as const, topic: "AI/机器学习", value: 1, timestamp: Date.now() },
+    ];
+
+    const result = processImplicitFeedback(persona, signals);
+
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.alpha).toBeCloseTo(3.4);
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.beta).toBe(2);
+  });
+
+  it("does not update bandits for medium-length responses (20-100)", () => {
+    const persona = makePersona();
+    const signals = [
+      { type: "response_length" as const, topic: "AI/机器学习", value: 50, timestamp: Date.now() },
+    ];
+
+    const result = processImplicitFeedback(persona, signals);
+
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]).toEqual({ alpha: 3, beta: 2 });
+  });
+
+  it("creates new bandit arm for unknown topic on long response", () => {
+    const persona = makePersona();
+    const signals = [
+      { type: "response_length" as const, topic: "量子计算", value: 200, timestamp: Date.now() },
+    ];
+
+    const result = processImplicitFeedback(persona, signals);
+
+    expect(result.feedbackProfile.topicBandits["量子计算"]).toBeDefined();
+    expect(result.feedbackProfile.topicBandits["量子计算"]!.alpha).toBeCloseTo(2.3);
+    expect(result.feedbackProfile.topicBandits["量子计算"]!.beta).toBe(1);
+  });
+
+  it("combines topic_continuation and response_length reinforcement", () => {
+    const persona = makePersona();
+    const signals = [
+      { type: "topic_continuation" as const, topic: "AI/机器学习", value: 1, timestamp: Date.now() },
+      { type: "response_length" as const, topic: "AI/机器学习", value: 200, timestamp: Date.now() },
+    ];
+
+    const result = processImplicitFeedback(persona, signals);
+
+    // topic_continuation: alpha +0.5, response_length >100: alpha +0.3 = total +0.8
+    expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.alpha).toBeCloseTo(3.8);
   });
 });

@@ -54,6 +54,23 @@ export function processImplicitFeedback(
     }
   }
 
+  for (const signal of signals) {
+    if (signal.topic) {
+      if (signal.type === "response_length" && signal.value > 100) {
+        const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
+        updatedBandits[signal.topic] = { ...bandit, alpha: bandit.alpha + 0.3 };
+      }
+      if (signal.type === "response_length" && signal.value < 20) {
+        const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
+        updatedBandits[signal.topic] = { ...bandit, beta: bandit.beta + 0.2 };
+      }
+      if (signal.type === "question_depth" && signal.value === 1) {
+        const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
+        updatedBandits[signal.topic] = { ...bandit, alpha: bandit.alpha + 0.4 };
+      }
+    }
+  }
+
   const updatedTopics = Object.keys(updatedBandits).filter(t => !(t in persona.feedbackProfile.topicBandits) || persona.feedbackProfile.topicBandits[t]!.alpha !== updatedBandits[t]!.alpha || persona.feedbackProfile.topicBandits[t]!.beta !== updatedBandits[t]!.beta);
   if (updatedTopics.length > 0) {
     log.info("implicit feedback bandits updated", { signalCount: signals.length, updatedTopics, topicProvided: signals[0]?.topic ?? false });
@@ -70,12 +87,40 @@ export function processImplicitFeedback(
 }
 
 /**
+ * Infer the most likely conversation topic from LLM extraction results and user text.
+ * Three-level fallback: extraction domain → user text keyword match → persona recentFocus.
+ */
+export function inferTopicFromContext(
+  persona: PersonaTree,
+  extraction: { domains?: Array<{ name: string }> },
+  userText: string,
+): string | undefined {
+  // Level 1: LLM-extracted domain
+  if (extraction.domains && extraction.domains.length > 0) {
+    return extraction.domains[0]!.name;
+  }
+  // Level 2: keyword match against persona domains
+  const domainKeys = Object.keys(persona.domains);
+  for (const domain of domainKeys) {
+    if (userText.includes(domain)) {
+      return domain;
+    }
+  }
+  // Level 3: persona recentFocus
+  if (persona.recentFocus.length > 0) {
+    return persona.recentFocus[0];
+  }
+  return undefined;
+}
+
+/**
  * Extract implicit feedback signals from a conversation turn.
  */
 export function extractImplicitSignals(
   userMessage: string,
   responseLatencyMs?: number,
   topic?: string,
+  previousTopics?: string[],
 ): ImplicitFeedbackSignal[] {
   const signals: ImplicitFeedbackSignal[] = [];
 
@@ -104,6 +149,28 @@ export function extractImplicitSignals(
       value: 1,
       timestamp: Date.now(),
     });
+  }
+
+  // Topic continuation / abandonment detection
+  if (topic && previousTopics && previousTopics.length > 0) {
+    const recentTopics = previousTopics.slice(-3);
+    const isContinuation = recentTopics.some(t => t.toLowerCase() === topic.toLowerCase());
+    if (isContinuation) {
+      signals.push({
+        type: "topic_continuation",
+        topic,
+        value: 1,
+        timestamp: Date.now(),
+      });
+    } else if (recentTopics.length > 0) {
+      const abandonedTopic = recentTopics[recentTopics.length - 1];
+      signals.push({
+        type: "topic_abandonment",
+        topic: abandonedTopic,
+        value: 1,
+        timestamp: Date.now(),
+      });
+    }
   }
 
   return signals;
