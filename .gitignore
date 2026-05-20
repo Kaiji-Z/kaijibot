@@ -39,8 +39,8 @@ vendor/a2ui/renderers/lit/dist/
 docs/.local/
 docs/internal/
 tmp/
-IDENTITY.md
-USER.md
+/IDENTITY.md
+/USER.md
 .tgz
 .idea
 
