@@ -49,6 +49,10 @@ USER.md
 
 # OpenCode internal files
 .sisyphus/
+.opencode/
+
+# Build temp directories
+kaijibot-path-alias-*/
 
 # Agent credentials and memory (NEVER COMMIT)
 /memory/
