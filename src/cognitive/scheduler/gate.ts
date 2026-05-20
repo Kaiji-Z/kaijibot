@@ -263,8 +263,27 @@ export function computeTimeFactor(
     : optFreq * 2;
   const recoveryFactor = 1 - Math.exp(-hoursSinceLastProactive / optFreq);
 
+  // Hyperbolic backoff: 1/(1+0.3n) with floor, replacing 0.7^n death spiral.
+  // Phone call data (Mollgaard 2016) shows humans use hyperbolic decay, not exponential.
   const noResponseCount = persona.feedbackProfile.consecutiveNoResponses ?? 0;
-  const backoffFactor = Math.pow(0.7, noResponseCount);
+  const IGNORE_PENALTY_RATE = 0.3;
+  const MIN_BACKOFF_FLOOR = 0.12;
+  const MAX_EFFECTIVE_IGNORES = 8;
+  const effectiveIgnores = Math.min(noResponseCount, MAX_EFFECTIVE_IGNORES);
+  const ignoreBackoff = 1 / (1 + IGNORE_PENALTY_RATE * effectiveIgnores);
+
+  // Compensatory signal: grows with silence since last proactive, counteracting
+  // ignore penalty — mirrors human "compensatory investment" after long silence.
+  const silenceHours = persona.feedbackProfile.lastProactiveAt > 0
+    ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
+    : 0;
+  const COMPENSATORY_RATE = 0.08;
+  const COMPENSATORY_FLOOR_HOURS = 48;
+  const compensatorySignal = silenceHours > COMPENSATORY_FLOOR_HOURS
+    ? Math.min(0.25, COMPENSATORY_RATE * Math.log2(1 + (silenceHours - COMPENSATORY_FLOOR_HOURS) / COMPENSATORY_FLOOR_HOURS))
+    : 0;
+
+  const backoffFactor = Math.max(MIN_BACKOFF_FLOOR, ignoreBackoff + compensatorySignal);
 
   return clamp01(cadenceFactor * recoveryFactor * backoffFactor);
 }

@@ -701,7 +701,7 @@ describe("computeTimeFactor", () => {
     expect(factorLong).toBeGreaterThan(factorJust);
   });
 
-  it("backoffFactor decays with consecutive no-responses (0.7^n)", () => {
+  it("backoffFactor decays with consecutive no-responses (hyperbolic, floored)", () => {
     const now = Date.now();
     const base = {
       lastActiveAt: now - 3 * HR,
@@ -716,7 +716,60 @@ describe("computeTimeFactor", () => {
     const factor3 = computeTimeFactor(backlog3, baseConfig, now);
 
     expect(factor0).toBeGreaterThan(factor3);
-    expect(factor3).toBeCloseTo(factor0 * Math.pow(0.7, 3), 4);
+    // Hyperbolic: 1/(1+0.3*3) = 0.526 (vs exponential 0.7^3 = 0.343)
+    const expectedRatio = 1 / (1 + 0.3 * 3);
+    expect(factor3).toBeCloseTo(factor0 * expectedRatio, 2);
+  });
+
+  it("no death spiral: high ignore count still retains floor (>0)", () => {
+    const now = Date.now();
+    const base = {
+      lastActiveAt: now - 3 * HR,
+      lastProactiveAt: now - 6 * HR,
+      optimalFrequencyHours: 4,
+    };
+
+    const factor0 = computeTimeFactor(makeTimePersona({ ...base, consecutiveNoResponses: 0 }), baseConfig, now);
+    const factor5 = computeTimeFactor(makeTimePersona({ ...base, consecutiveNoResponses: 5 }), baseConfig, now);
+    const factor10 = computeTimeFactor(makeTimePersona({ ...base, consecutiveNoResponses: 10 }), baseConfig, now);
+    const factor20 = computeTimeFactor(makeTimePersona({ ...base, consecutiveNoResponses: 20 }), baseConfig, now);
+
+    // Floor at 0.12: even at streak=20, factor should be >= 0.12 * factor0
+    expect(factor20).toBeGreaterThan(0);
+    expect(factor20).toBeGreaterThanOrEqual(factor0 * 0.12);
+
+    // Diminishing penalty: factor10 ≈ factor20 (capped at MAX_EFFECTIVE_IGNORES=8)
+    expect(factor10).toBeCloseTo(factor20, 3);
+
+    // All within reasonable range
+    expect(factor5).toBeGreaterThan(factor10);
+    expect(factor10).toBeGreaterThan(0);
+  });
+
+  it("compensatory signal grows with silence after last proactive", () => {
+    const now = Date.now();
+    const optFreq = 4;
+
+    const base = {
+      lastActiveAt: now - 10 * 24 * HR,
+      optimalFrequencyHours: optFreq,
+      consecutiveNoResponses: 3,
+    };
+
+    const recentProactive = makeTimePersona({
+      ...base,
+      lastProactiveAt: now - 2 * HR,
+    });
+    const longSilence = makeTimePersona({
+      ...base,
+      lastProactiveAt: now - 10 * 24 * HR,
+    });
+
+    const factorRecent = computeTimeFactor(recentProactive, baseConfig, now);
+    const factorLong = computeTimeFactor(longSilence, baseConfig, now);
+
+    // Longer silence since last proactive → compensatory signal grows → higher factor
+    expect(factorLong).toBeGreaterThan(factorRecent);
   });
 
   it("long-silence correction prevents zero for dormant users", () => {
