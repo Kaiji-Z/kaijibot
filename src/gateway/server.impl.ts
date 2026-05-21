@@ -1381,7 +1381,7 @@ export async function startGatewayServer(
                   session,
                   mirror: {
                     sessionKey: target.sessionKey,
-                    agentId: "main",
+                    agentId,
                     text: insightText,
                     idempotencyKey: `cognitive-insight-${Date.now()}`,
                   },

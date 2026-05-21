@@ -101,7 +101,7 @@ function buildEvolutionSignal(params: {
 }): string {
   const durationSec = Math.round(params.durationMs / 1000);
   const lines = [
-    `[Evolution Signal] 刚完成的任务涉及 ${params.toolCalls.length} 次工具调用（${params.uniqueToolCount} 种），持续 ${durationSec} 秒。`,
+    `[Evolution Signal] 刚完成的任务涉及 ${params.toolCalls.length} 次工具调用（${params.uniqueToolCount} 种），持续 ${durationSec} 秒。${params.agentId && params.agentId !== "main" ? ` [agent: ${params.agentId}]` : ""}`,
     "",
     "请根据对话上下文自主判断：这个任务模式是否值得做成可复用技能？",
     "优先检查已有技能是否能覆盖——如果能，用 patch_skill 改进已有技能。",

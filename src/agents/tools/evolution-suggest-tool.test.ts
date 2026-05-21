@@ -338,7 +338,7 @@ describe("createEvolutionSuggestTool", () => {
       });
 
       expect(mockSave).toHaveBeenCalledTimes(1);
-      const savedRecord = mockSave.mock.calls[0][0];
+      const savedRecord = mockSave.mock.calls[0][1];
       expect(savedRecord.savedSkillPath).toBe("/home/test/.kaijibot/skills/agent/path-test/SKILL.md");
       expect(savedRecord.draft.name).toBe("path-test");
     });
