@@ -160,7 +160,7 @@ export function formatControlUiSshHint(params: {
 }
 
 function resolveSshTargetHint(): string {
-  const user = process.env.USER || process.env.LOGNAME || "user";
+  const user = process.env.USER || process.env.USERNAME || process.env.LOGNAME || "user";
   const conn = process.env.SSH_CONNECTION?.trim().split(/\s+/);
   const host = conn?.[2] ?? "<host>";
   return `${user}@${host}`;
@@ -199,6 +199,15 @@ export async function moveToTrash(pathname: string, runtime: RuntimeEnv): Promis
   try {
     await fs.access(pathname);
   } catch {
+    return;
+  }
+  if (process.platform === "win32") {
+    try {
+      await fs.rm(pathname, { recursive: true, force: true });
+      runtime.log(`Deleted: ${shortenHomePath(pathname)}`);
+    } catch {
+      runtime.log(`Failed to delete (manual delete): ${shortenHomePath(pathname)}`);
+    }
     return;
   }
   try {
