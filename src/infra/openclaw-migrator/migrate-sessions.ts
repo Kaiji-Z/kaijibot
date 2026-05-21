@@ -220,7 +220,9 @@ async function migrateAgentSessions(
   const entries = await fs.readdir(sourceSessionDir, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isFile()) { continue; }
-    if (!entry.name.endsWith(".jsonl")) { continue; }
+    // Active (*.jsonl) and archived (*.jsonl.reset.*/.deleted.*/.bak.*) transcripts
+    if (!entry.name.endsWith(".jsonl") && !entry.name.includes(".jsonl.")) { continue; }
+    if (entry.name === "sessions.json" || entry.name === "sessions.json5") { continue; }
 
     const src = path.join(sourceSessionDir, entry.name);
     const dst = path.join(targetSessionDir, entry.name);

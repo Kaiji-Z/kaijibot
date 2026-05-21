@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTrackedTempDirs } from "../../test-utils/tracked-temp-dirs.js";
 import { detectMigrationSource, detectScenario } from "./detect.js";
 import { enumerateSourceAgents, enumerateSourceSkills } from "./agent-enumeration.js";
 import { runFreshMigration, runImportMigration, runMigration } from "./index.js";
-import { migrateConfig } from "./migrate-config.js";
+import { migrateConfig, rewriteConfigPaths } from "./migrate-config.js";
 import { migrateSessions } from "./migrate-sessions.js";
 import { migrateSkills } from "./migrate-skills.js";
 import { migrateWorkspace } from "./migrate-workspace.js";
@@ -1396,5 +1397,461 @@ describe("runImportMigration", () => {
     await expect(
       fs.stat(path.join(targetDir, "skills", "github")),
     ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});
+
+// ─── rewriteConfigPaths ─────────────────────────────────────────────────────
+
+describe("rewriteConfigPaths", () => {
+  it("rewrites ~/.openclaw/ paths to ~/.kaijibot/", () => {
+    const config = {
+      workspacePath: "~/.openclaw/workspace",
+      nested: {
+        dataDir: "~/.openclaw/data/files",
+      },
+    };
+    const result = rewriteConfigPaths(config, "/home/user/.openclaw", "/home/user/.kaijibot");
+    expect(result.workspacePath).toBe("~/.kaijibot/workspace");
+    expect((result.nested as Record<string, unknown>).dataDir).toBe("~/.kaijibot/data/files");
+  });
+
+  it("rewrites ~/.clawdbot/ paths to ~/.kaijibot/", () => {
+    const config = {
+      path: "~/.clawdbot/something",
+    };
+    const result = rewriteConfigPaths(config, "/home/user/.clawdbot", "/home/user/.kaijibot");
+    expect(result.path).toBe("~/.kaijibot/something");
+  });
+
+  it("rewrites ~/.moltbot/ paths to ~/.kaijibot/", () => {
+    const config = {
+      path: "~/.moltbot/something",
+    };
+    const result = rewriteConfigPaths(config, "/home/user/.moltbot", "/home/user/.kaijibot");
+    expect(result.path).toBe("~/.kaijibot/something");
+  });
+
+  it("rewrites absolute paths under sourceDir to targetDir", () => {
+    const config = {
+      workspacePath: "/home/user/.openclaw/workspace-researcher",
+      dataDir: "/home/user/.openclaw/data",
+    };
+    const result = rewriteConfigPaths(config, "/home/user/.openclaw", "/home/user/.kaijibot");
+    expect(result.workspacePath).toBe(path.normalize("/home/user/.kaijibot/workspace-researcher"));
+    expect(result.dataDir).toBe(path.normalize("/home/user/.kaijibot/data"));
+  });
+
+  it("rewrites ~/ style absolute paths under sourceDir", () => {
+    const config = {
+      workspacePath: "~/.openclaw/workspace-researcher",
+    };
+    const result = rewriteConfigPaths(config, path.join(os.homedir(), ".openclaw"), path.join(os.homedir(), ".kaijibot"));
+    expect(result.workspacePath).toBe("~/.kaijibot/workspace-researcher");
+  });
+
+  it("preserves non-matching paths unchanged", () => {
+    const config = {
+      model: "gpt-4",
+      someUrl: "https://example.com/path",
+      unrelatedPath: "/usr/local/bin",
+    };
+    const result = rewriteConfigPaths(config, "/home/user/.openclaw", "/home/user/.kaijibot");
+    expect(result.model).toBe("gpt-4");
+    expect(result.someUrl).toBe("https://example.com/path");
+    expect(result.unrelatedPath).toBe("/usr/local/bin");
+  });
+
+  it("handles arrays with objects requiring path rewriting", () => {
+    const config = {
+      agents: {
+        list: [
+          { id: "researcher", workspace: "~/.openclaw/workspace-researcher" },
+          { id: "coder", workspace: "~/.openclaw/workspace-coder" },
+        ],
+      },
+    };
+    const result = rewriteConfigPaths(config, path.join(os.homedir(), ".openclaw"), path.join(os.homedir(), ".kaijibot"));
+    const list = (result.agents as Record<string, unknown>).list as Array<Record<string, unknown>>;
+    expect(list[0]!.workspace).toBe("~/.kaijibot/workspace-researcher");
+    expect(list[1]!.workspace).toBe("~/.kaijibot/workspace-coder");
+  });
+
+  it("does not mutate the original config", () => {
+    const original = { path: "~/.openclaw/workspace" };
+    const copy = JSON.parse(JSON.stringify(original));
+    rewriteConfigPaths(original, "/home/user/.openclaw", "/home/user/.kaijibot");
+    expect(original).toEqual(copy);
+  });
+});
+
+// ─── migrateConfig: path rewriting integration ───────────────────────────────
+
+describe("migrateConfig path rewriting", () => {
+  it("rewrites ~/.openclaw/ paths in written config", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        workspacePath: "~/.openclaw/workspace",
+        nested: { dataDir: "~/.openclaw/data" },
+        agent: { model: "gpt-4" },
+      }),
+    );
+
+    await migrateConfig(source, targetDir, defaultOptions());
+
+    const written = JSON.parse(
+      await fs.readFile(path.join(targetDir, "kaijibot.json"), "utf-8"),
+    ) as Record<string, unknown>;
+    expect(written.workspacePath).toBe("~/.kaijibot/workspace");
+    expect((written.nested as Record<string, unknown>).dataDir).toBe("~/.kaijibot/data");
+    expect(written.agent).toEqual({ model: "gpt-4" });
+  });
+
+  it("rewrites absolute source paths in written config", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    const absWorkspacePath = path.join(sourceDir, "workspace-researcher");
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher", workspace: absWorkspacePath }],
+        },
+      }),
+    );
+
+    await migrateConfig(source, targetDir, defaultOptions());
+
+    const written = JSON.parse(
+      await fs.readFile(path.join(targetDir, "kaijibot.json"), "utf-8"),
+    ) as Record<string, unknown>;
+    const agents = written.agents as Record<string, unknown>;
+    const list = agents.list as Array<Record<string, unknown>>;
+    expect(list[0]!.workspace).toBe(path.normalize(path.join(targetDir, "workspace-researcher")));
+  });
+});
+
+// ─── migrateConfig: multi-agent binding warnings ─────────────────────────────
+
+describe("migrateConfig multi-agent binding warnings", () => {
+  it("warns when agents.list has >1 agent and no bindings", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [
+            { id: "researcher" },
+            { id: "coder" },
+          ],
+        },
+      }),
+    );
+
+    const result = await migrateConfig(source, targetDir, defaultOptions());
+
+    expect(result.warnings).toContainEqual(
+      expect.stringContaining("Multi-agent config migrated but no bindings found"),
+    );
+    expect(result.warnings).toContainEqual(
+      expect.stringContaining("bindings are configured"),
+    );
+  });
+
+  it("does not warn when only 1 agent", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher" }],
+        },
+      }),
+    );
+
+    const result = await migrateConfig(source, targetDir, defaultOptions());
+
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("Multi-agent"),
+    );
+  });
+
+  it("does not warn when bindings exist", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher" }, { id: "coder" }],
+        },
+        bindings: [
+          {
+            agentId: "researcher",
+            match: { channel: "feishu" },
+          },
+        ],
+      }),
+    );
+
+    const result = await migrateConfig(source, targetDir, defaultOptions());
+
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("Multi-agent"),
+    );
+  });
+
+  it("does not warn when no agents.list", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(source.configPath, JSON.stringify({ agent: { model: "gpt-4" } }));
+
+    const result = await migrateConfig(source, targetDir, defaultOptions());
+
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("Multi-agent"),
+    );
+  });
+});
+
+// ─── migrateConfig: workspace dir validation ──────────────────────────────────
+
+describe("migrateConfig workspace dir validation", () => {
+  it("warns when agent workspace dir does not exist after migration", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher", workspace: "workspace-researcher" }],
+        },
+      }),
+    );
+
+    const result = await migrateConfig(source, targetDir, defaultOptions());
+
+    expect(result.warnings).toContainEqual(
+      expect.stringContaining("Agent 'researcher' workspace directory not found"),
+    );
+  });
+
+  it("does not warn when agent workspace dir exists", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.mkdir(path.join(targetDir, "workspace-researcher"), { recursive: true });
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher", workspace: "workspace-researcher" }],
+        },
+      }),
+    );
+
+    const result = await migrateConfig(source, targetDir, defaultOptions());
+
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("workspace directory not found"),
+    );
+  });
+
+  it("skips validation in dry-run mode", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher", workspace: "workspace-researcher" }],
+        },
+      }),
+    );
+
+    const result = await migrateConfig(source, targetDir, defaultOptions({ dryRun: true }));
+
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("workspace directory not found"),
+    );
+  });
+});
+
+// ─── runFreshMigration: no duplicate workspace results ────────────────────────
+
+describe("runFreshMigration single workspace migration", () => {
+  it("produces exactly one workspace result, not one per agent", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+
+    await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
+    await fs.writeFile(path.join(sourceDir, "workspace", "SOUL.md"), "# Soul");
+    await fs.mkdir(path.join(sourceDir, "workspace-researcher"), { recursive: true });
+    await fs.writeFile(path.join(sourceDir, "workspace-researcher", "SOUL.md"), "# Researcher");
+    await fs.writeFile(
+      path.join(sourceDir, "openclaw.json"),
+      JSON.stringify({
+        agents: {
+          list: [{ id: "researcher" }],
+        },
+      }),
+    );
+
+    const source = makeSource(sourceDir);
+    const report = await runFreshMigration(source, targetDir, defaultOptions());
+
+    // Should have exactly: config, workspace, skills, sessions = 4 results
+    // NOT config + workspace×2 + skills + sessions = 5
+    expect(report.results).toHaveLength(4);
+
+    // Workspace result should cover both default and researcher
+    const workspaceResult = report.results[1];
+    expect(workspaceResult).toBeDefined();
+    const workspaceTargets = workspaceResult!.changes.map((c) => c.target);
+    expect(workspaceTargets.some((t) => t.includes("workspace-researcher"))).toBe(true);
+    expect(workspaceTargets.some((t) => t.includes("workspace") && !t.includes("workspace-researcher"))).toBe(true);
+  });
+});
+
+// ─── migrateSessions: archived session files ─────────────────────────────────
+
+describe("migrateSessions archived transcripts", () => {
+  it("copies .jsonl.reset.* archived transcripts", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "sessions", "sess-main.jsonl.reset.2026-02-16T22-26-33.000Z"),
+      '{"role":"user"}\n{"role":"assistant"}\n',
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const archiveChanges = result.changes.filter((c) =>
+      c.target.includes(".reset."),
+    );
+    expect(archiveChanges).toHaveLength(1);
+
+    await expect(
+      fs.readFile(
+        path.join(
+          targetDir, "state", "agents", "main", "sessions",
+          "sess-main.jsonl.reset.2026-02-16T22-26-33.000Z",
+        ),
+        "utf-8",
+      ),
+    ).resolves.toContain("user");
+  });
+
+  it("copies .jsonl.deleted.* archived transcripts", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "sessions", "sess-old.jsonl.deleted.2026-03-01T10-00-00.000Z"),
+      '{"role":"user","content":"old"}\n',
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const deletedChanges = result.changes.filter((c) =>
+      c.target.includes(".deleted."),
+    );
+    expect(deletedChanges).toHaveLength(1);
+  });
+
+  it("copies both active and archived transcripts together", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "sessions", "sess-active.jsonl"),
+      '{"role":"user","content":"active"}\n',
+    );
+    await fs.writeFile(
+      path.join(sourceDir, "sessions", "sess-active.jsonl.reset.2026-02-16T22-26-33.000Z"),
+      '{"role":"user","content":"archived"}\n',
+    );
+    await fs.writeFile(
+      path.join(sourceDir, "sessions", "sess-active.jsonl.reset.2026-02-17T10-00-00.000Z"),
+      '{"role":"user","content":"archived2"}\n',
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const transcriptChanges = result.changes.filter((c) =>
+      c.detail.includes("transcript"),
+    );
+    expect(transcriptChanges).toHaveLength(3);
+
+    await expect(
+      fs.readFile(
+        path.join(targetDir, "state", "agents", "main", "sessions", "sess-active.jsonl"),
+        "utf-8",
+      ),
+    ).resolves.toContain("active");
+    await expect(
+      fs.readFile(
+        path.join(targetDir, "state", "agents", "main", "sessions", "sess-active.jsonl.reset.2026-02-16T22-26-33.000Z"),
+        "utf-8",
+      ),
+    ).resolves.toContain("archived");
+  });
+
+  it("copies archived transcripts for named agents", async () => {
+    const sourceDir = await createTempDir();
+    const targetDir = await createTempDir();
+    const source = makeSource(sourceDir);
+
+    await fs.writeFile(
+      source.configPath,
+      JSON.stringify({ agents: { list: [{ id: "researcher" }] } }),
+    );
+    await fs.mkdir(path.join(sourceDir, "state", "sessions-researcher"), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, "state", "sessions-researcher", "sess-r1.jsonl.reset.2026-05-11T10-30-00.000Z"),
+      '{"role":"user","content":"research"}\n',
+    );
+
+    const result = await migrateSessions(source, targetDir, defaultOptions());
+
+    const archiveChanges = result.changes.filter((c) =>
+      c.target.includes(".reset.") && c.target.includes("researcher"),
+    );
+    expect(archiveChanges).toHaveLength(1);
+
+    await expect(
+      fs.readFile(
+        path.join(targetDir, "state", "agents", "researcher", "sessions", "sess-r1.jsonl.reset.2026-05-11T10-30-00.000Z"),
+        "utf-8",
+      ),
+    ).resolves.toContain("research");
   });
 });

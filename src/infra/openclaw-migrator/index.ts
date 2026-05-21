@@ -138,13 +138,9 @@ export async function runFreshMigration(
   const configResult = await migrateConfig(source, targetDir, options);
   results.push(configResult);
 
-  log("Migrating agents...");
-  const agents = await enumerateSourceAgents(source);
-  for (const agent of agents) {
-    log(`  Agent: ${agent.id}`);
-    const workspaceResult = await migrateWorkspace(source, targetDir, options, "copy");
-    results.push(workspaceResult);
-  }
+  log("Migrating workspace...");
+  const workspaceResult = await migrateWorkspace(source, targetDir, options, "copy");
+  results.push(workspaceResult);
 
   log("Migrating skills...");
   const skillsResult = await migrateSkills(source, targetDir, options);
