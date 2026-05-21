@@ -230,11 +230,11 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
     });
 
     for (let i = 0; i < 5; i++) {
-      const decision = await engine.evaluate(candidate, "user-no-cooldown");
+      const decision = await engine.evaluate(candidate, "main", "user-no-cooldown");
       expect(decision.shouldSuggest).toBe(true);
       expect(decision.recentSuggestions).toHaveLength(i);
 
-      await store.save({
+      await store.save("main", {
         id: `rec-no-cooldown-${i}`,
         userId: "user-no-cooldown",
         candidate,
@@ -247,7 +247,7 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
   it("provides recentSuggestions with prior records", async () => {
     const engine = new EvolutionEngine(store);
 
-    await store.save({
+    await store.save("main", {
       id: "rec-1",
       userId: "user-ctx",
       candidate: makeCandidate({ domain: "feishu-wiki" }),
@@ -256,7 +256,7 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
       timestamp: Date.now() - 7_200_000,
     });
 
-    await store.save({
+    await store.save("main", {
       id: "rec-2",
       userId: "user-ctx",
       candidate: makeCandidate({ domain: "data-analysis" }),
@@ -272,7 +272,7 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
       durationMs: 400_000,
       domain: "test",
     });
-    const decision = await engine.evaluate(candidate, "user-ctx");
+    const decision = await engine.evaluate(candidate, "main", "user-ctx");
 
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.recentSuggestions).toHaveLength(2);
@@ -285,7 +285,7 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
   it("recentSuggestions reflects userResponse", async () => {
     const engine = new EvolutionEngine(store);
 
-    await store.save({
+    await store.save("main", {
       id: "rec-accepted",
       userId: "user-resp",
       candidate: makeCandidate({ domain: "wiki" }),
@@ -295,7 +295,7 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
       timestamp: Date.now() - 1000,
     });
 
-    await store.save({
+    await store.save("main", {
       id: "rec-rejected",
       userId: "user-resp",
       candidate: makeCandidate({ domain: "data" }),
@@ -311,7 +311,7 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
       reasoningTurns: 12,
       durationMs: 400_000,
     });
-    const decision = await engine.evaluate(candidate, "user-resp");
+    const decision = await engine.evaluate(candidate, "main", "user-resp");
 
     expect(decision.recentSuggestions).toHaveLength(2);
     const accepted = decision.recentSuggestions!.find((r) => r.domain === "wiki");

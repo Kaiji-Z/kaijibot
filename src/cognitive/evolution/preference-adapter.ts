@@ -21,8 +21,8 @@ const PRIOR_BETA = 1;
 export class EvolutionPreferenceAdapter {
   constructor(private readonly configDir: string) {}
 
-  private statePath(userId: string): string {
-    return join(this.configDir, "cognitive", "evolution", "preferences", `${userId}.json`);
+  private statePath(agentId: string, userId: string): string {
+    return join(this.configDir, "cognitive", "evolution", agentId, "preferences", `${userId}.json`);
   }
 
   private sampleBeta(alpha: number, beta: number): number {
@@ -57,8 +57,8 @@ export class EvolutionPreferenceAdapter {
     return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
   }
 
-  async recordResponse(userId: string, domain: string, response: EvolutionUserResponse): Promise<void> {
-    const state = await this.loadState(userId);
+  async recordResponse(agentId: string, userId: string, domain: string, response: EvolutionUserResponse): Promise<void> {
+    const state = await this.loadState(agentId, userId);
     if (!state.bandits[domain]) {
       state.bandits[domain] = { alpha: PRIOR_ALPHA, beta: PRIOR_BETA };
     }
@@ -71,18 +71,18 @@ export class EvolutionPreferenceAdapter {
     if (response === "modified") {
       bandit.alpha += 0.5;
     }
-    await this.saveState(userId, state);
+    await this.saveState(agentId, userId, state);
   }
 
-  async getDomainAcceptanceRate(userId: string, domain: string): Promise<number> {
-    const state = await this.loadState(userId);
+  async getDomainAcceptanceRate(agentId: string, userId: string, domain: string): Promise<number> {
+    const state = await this.loadState(agentId, userId);
     const bandit = state.bandits[domain];
     if (!bandit) return PRIOR_ALPHA / (PRIOR_ALPHA + PRIOR_BETA);
     return this.sampleBeta(bandit.alpha, bandit.beta);
   }
 
-  async getTopDomains(userId: string, limit: number): Promise<Array<{ domain: string; score: number }>> {
-    const state = await this.loadState(userId);
+  async getTopDomains(agentId: string, userId: string, limit: number): Promise<Array<{ domain: string; score: number }>> {
+    const state = await this.loadState(agentId, userId);
     const entries = Object.entries(state.bandits).map(([domain, bandit]) => ({
       domain,
       score: this.sampleBeta(bandit.alpha, bandit.beta),
@@ -91,13 +91,13 @@ export class EvolutionPreferenceAdapter {
     return entries.slice(0, limit);
   }
 
-  async getRawBandit(userId: string, domain: string): Promise<DomainBandit | undefined> {
-    const state = await this.loadState(userId);
+  async getRawBandit(agentId: string, userId: string, domain: string): Promise<DomainBandit | undefined> {
+    const state = await this.loadState(agentId, userId);
     return state.bandits[domain];
   }
 
-  private async loadState(userId: string): Promise<PreferenceState> {
-    const path = this.statePath(userId);
+  private async loadState(agentId: string, userId: string): Promise<PreferenceState> {
+    const path = this.statePath(agentId, userId);
     if (!existsSync(path)) return { userId, bandits: {} };
     try {
       const raw = await readFile(path, "utf-8");
@@ -107,8 +107,8 @@ export class EvolutionPreferenceAdapter {
     }
   }
 
-  private async saveState(userId: string, state: PreferenceState): Promise<void> {
-    const path = this.statePath(userId);
+  private async saveState(agentId: string, userId: string, state: PreferenceState): Promise<void> {
+    const path = this.statePath(agentId, userId);
     const dir = join(path, "..");
     await mkdir(dir, { recursive: true });
     const tmpPath = join(tmpdir(), `kaijibot-pref-${randomUUID()}.json`);

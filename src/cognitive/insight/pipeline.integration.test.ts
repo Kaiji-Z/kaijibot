@@ -216,20 +216,20 @@ describe("insight pipeline integration", () => {
       makeSchedulerConfig(),
       {
         loadPersona: async () => persona,
-        onInsightReady: async (_userId, candidate) => { insights.push(candidate); },
+        onInsightReady: async (_agentId, _userId, candidate) => { insights.push(candidate); },
         savePersona: async () => {},
       },
       { insightGenerator: generator },
     );
 
-    const result = await scheduler.resolve(persona, explorationOpportunity("surprise"));
+    const result = await scheduler.resolve("main", persona, explorationOpportunity("surprise"));
 
     expect(result).not.toBeNull();
     expect(result!.content).toBeTruthy();
     expect(result!.content.length).toBeGreaterThan(10);
     expect(insights).toHaveLength(0);
 
-    await scheduler.callbacks.onInsightReady("user-1", result!);
+    await scheduler.callbacks.onInsightReady("main", "user-1", result!);
     expect(insights).toHaveLength(1);
     expect(insights[0]!.id).toBe(result!.id);
   });
@@ -260,7 +260,7 @@ describe("insight pipeline integration", () => {
       { insightGenerator: generator },
     );
 
-    const result = await scheduler.resolve(persona, explorationOpportunity("extend"));
+    const result = await scheduler.resolve("main", persona, explorationOpportunity("extend"));
 
     expect(result).not.toBeNull();
     expect(result!.content).toBeTruthy();
@@ -306,7 +306,7 @@ describe("insight pipeline integration", () => {
       { insightGenerator: generator },
     );
 
-    const result = await scheduler.resolve(persona, explorationOpportunity("surprise"));
+    const result = await scheduler.resolve("main", persona, explorationOpportunity("surprise"));
 
     expect(result).not.toBeNull();
     expect(result!.content).toBeTruthy();
@@ -354,7 +354,7 @@ describe("insight pipeline integration", () => {
       metadata: { mode: "surprise" as const },
     };
 
-    const candidate = await scheduler.resolve(persona, opportunity);
+    const candidate = await scheduler.resolve("main", persona, opportunity);
 
     expect(candidate).not.toBeNull();
     expect(candidate!.content).toBeTruthy();
@@ -396,7 +396,7 @@ describe("insight pipeline integration", () => {
       { insightGenerator: generator },
     );
 
-    const result = await scheduler.resolve(persona, explorationOpportunity("surprise"));
+    const result = await scheduler.resolve("main", persona, explorationOpportunity("surprise"));
 
     expect(result).not.toBeNull();
     expect(result!.content).toBeTruthy();
@@ -430,7 +430,7 @@ describe("insight pipeline integration", () => {
       makeSchedulerConfig(),
       {
         loadPersona: async () => persona,
-        onInsightReady: async (_userId, candidate) => { delivered.push(candidate); },
+        onInsightReady: async (_agentId, _userId, candidate) => { delivered.push(candidate); },
         savePersona: async () => {},
       },
       { insightGenerator: generator },

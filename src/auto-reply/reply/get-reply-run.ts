@@ -278,13 +278,13 @@ export async function runPreparedReply(
     const userId = sessionCtx.SenderId;
     if (userId) {
       const store = new PersonaStore(resolveConfigDir());
-      cognitivePersona = await store.load("main", userId);
+      cognitivePersona = await store.load(agentId, userId);
     }
     try {
       const { CorrectionStore } = await import("../../cognitive/correction/store.js");
       if (userId) {
         const corrStore = new CorrectionStore(resolveConfigDir());
-        corrections = await corrStore.listActive(userId);
+        corrections = await corrStore.listActive(agentId, userId);
       }
     } catch {
     }

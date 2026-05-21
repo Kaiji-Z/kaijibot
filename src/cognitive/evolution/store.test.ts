@@ -10,6 +10,7 @@ import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 
 let tempDir: string;
 let store: EvolutionStore;
+const AGENT = "main";
 
 function makeRecord(overrides: Partial<EvolutionRecord> = {}): EvolutionRecord {
   return {
@@ -46,9 +47,9 @@ afterEach(() => {
 describe("EvolutionStore", () => {
   it("saves and retrieves a record", async () => {
     const record = makeRecord();
-    await store.save(record);
+    await store.save(AGENT, record);
 
-    const records = await store.list("user-1");
+    const records = await store.list(AGENT, "user-1");
     expect(records).toHaveLength(1);
     expect(records[0].id).toBe(record.id);
     expect(records[0].candidate.taskSummary).toBe("Test task");
@@ -57,14 +58,14 @@ describe("EvolutionStore", () => {
   it("lists only records for specific userId", async () => {
     const r1 = makeRecord({ userId: "user-a", id: "rec-a" });
     const r2 = makeRecord({ userId: "user-b", id: "rec-b" });
-    await store.save(r1);
-    await store.save(r2);
+    await store.save(AGENT, r1);
+    await store.save(AGENT, r2);
 
-    const userARecords = await store.list("user-a");
+    const userARecords = await store.list(AGENT, "user-a");
     expect(userARecords).toHaveLength(1);
     expect(userARecords[0].id).toBe("rec-a");
 
-    const userBRecords = await store.list("user-b");
+    const userBRecords = await store.list(AGENT, "user-b");
     expect(userBRecords).toHaveLength(1);
     expect(userBRecords[0].id).toBe("rec-b");
   });
@@ -72,10 +73,10 @@ describe("EvolutionStore", () => {
   it("getRecentSuggestions filters by time window", async () => {
     const recent = makeRecord({ id: "rec-recent", timestamp: Date.now() - 1000 });
     const old = makeRecord({ id: "rec-old", timestamp: Date.now() - 25 * 3_600_000 });
-    await store.save(recent);
-    await store.save(old);
+    await store.save(AGENT, recent);
+    await store.save(AGENT, old);
 
-    const suggestions = await store.getRecentSuggestions("user-1", 24);
+    const suggestions = await store.getRecentSuggestions(AGENT, "user-1", 24);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0].id).toBe("rec-recent");
   });
@@ -89,46 +90,83 @@ describe("EvolutionStore", () => {
       id: "rec-no",
       decision: { shouldSuggest: false, confidence: 0.3, complexityScore: 0.2, reasoning: "no" },
     });
-    await store.save(suggested);
-    await store.save(notSuggested);
+    await store.save(AGENT, suggested);
+    await store.save(AGENT, notSuggested);
 
-    const suggestions = await store.getRecentSuggestions("user-1", 1);
+    const suggestions = await store.getRecentSuggestions(AGENT, "user-1", 1);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0].id).toBe("rec-yes");
   });
 
   it("loadConfig returns defaults when no config file", async () => {
-    const config = await store.loadConfig();
+    const config = await store.loadConfig(AGENT);
     expect(config).toEqual(DEFAULT_EVOLUTION_CONFIG);
   });
 
   it("saveConfig persists and loadConfig reads back", async () => {
     const custom = { ...DEFAULT_EVOLUTION_CONFIG, minComplexity: 0.9, enabled: false };
-    await store.saveConfig(custom);
+    await store.saveConfig(AGENT, custom);
 
-    const loaded = await store.loadConfig();
+    const loaded = await store.loadConfig(AGENT);
     expect(loaded.minComplexity).toBe(0.9);
     expect(loaded.enabled).toBe(false);
     expect(loaded.errorComplexityThreshold).toBe(DEFAULT_EVOLUTION_CONFIG.errorComplexityThreshold);
   });
 
   it("handles empty/missing user files gracefully", async () => {
-    const records = await store.list("nonexistent-user");
+    const records = await store.list(AGENT, "nonexistent-user");
     expect(records).toEqual([]);
 
-    const suggestions = await store.getRecentSuggestions("nonexistent-user", 24);
+    const suggestions = await store.getRecentSuggestions(AGENT, "nonexistent-user", 24);
     expect(suggestions).toEqual([]);
   });
 
   it("creates directories automatically", async () => {
     const record = makeRecord();
-    await store.save(record);
+    await store.save(AGENT, record);
 
-    const dir = createEvolutionDir(tempDir);
+    const dir = createEvolutionDir(tempDir, AGENT);
     expect(existsSync(dir)).toBe(true);
 
     const raw = await readFile(join(dir, "user-1.json"), "utf-8");
     const parsed = JSON.parse(raw);
     expect(parsed).toHaveLength(1);
+  });
+
+  it("isolates data between different agents", async () => {
+    const record = makeRecord();
+    await store.save("agent-a", record);
+
+    const loaded = await store.list("agent-b", "user-1");
+    expect(loaded).toHaveLength(0);
+
+    const loadedA = await store.list("agent-a", "user-1");
+    expect(loadedA).toHaveLength(1);
+  });
+
+  it("listUserIds returns user IDs for an agent", async () => {
+    await store.save(AGENT, makeRecord({ userId: "user-a" }));
+    await store.save(AGENT, makeRecord({ userId: "user-b" }));
+
+    const userIds = await store.listUserIds(AGENT);
+    expect(userIds).toEqual(["user-a", "user-b"]);
+  });
+
+  it("listUserIds returns empty for unknown agent", async () => {
+    const userIds = await store.listUserIds("nonexistent");
+    expect(userIds).toEqual([]);
+  });
+
+  it("listAgentIds returns all agent IDs", async () => {
+    await store.save("agent-x", makeRecord());
+    await store.save("agent-y", makeRecord());
+
+    const agentIds = await store.listAgentIds();
+    expect(agentIds).toEqual(["agent-x", "agent-y"]);
+  });
+
+  it("listAgentIds returns empty when no data", async () => {
+    const agentIds = await store.listAgentIds();
+    expect(agentIds).toEqual([]);
   });
 });

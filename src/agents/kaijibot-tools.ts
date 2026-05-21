@@ -293,6 +293,7 @@ export function createKaijiBotTools(
       createCognitiveFeedbackTool({
         config: resolvedConfig,
         sessionKey: options?.agentSessionKey,
+        agentId: sessionAgentId,
       }),
       createEvolutionSuggestTool({
         config: resolvedConfig,
@@ -311,6 +312,7 @@ export function createKaijiBotTools(
         config: resolvedConfig,
         sessionKey: options?.agentSessionKey,
         deliveryTo: options?.agentTo,
+        agentId: sessionAgentId,
       }),
       createSwitchSoulTool(),
     ]),

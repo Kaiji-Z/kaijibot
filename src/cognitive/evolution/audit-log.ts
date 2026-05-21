@@ -10,6 +10,7 @@ export type AuditEntry = {
   actor: string;
   target: string;
   outcome: "success" | "failure" | "skipped";
+  agentId?: string;
   metadata?: Record<string, unknown>;
 };
 

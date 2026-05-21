@@ -12,6 +12,7 @@ import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 let tempDir: string;
 let store: EvolutionStore;
 let engine: EvolutionEngine;
+const AGENT = "main";
 
 function makeCandidate(
   overrides: Partial<EvolutionCandidate> = {},
@@ -73,7 +74,7 @@ afterEach(() => {
 
 describe("EvolutionEngine", () => {
   it("returns shouldSuggest:false when complexity is below threshold", async () => {
-    const decision = await engine.evaluate(simpleCandidate, "user-1");
+    const decision = await engine.evaluate(simpleCandidate, AGENT, "user-1");
     expect(decision.shouldSuggest).toBe(false);
     expect(decision.complexityScore).toBeLessThan(DEFAULT_EVOLUTION_CONFIG.minComplexity);
     expect(decision.reasoning).toContain("below threshold");
@@ -81,13 +82,13 @@ describe("EvolutionEngine", () => {
 
   it("returns shouldSuggest:false when disabled in config", async () => {
     const disabledEngine = new EvolutionEngine(store, { enabled: false });
-    const decision = await disabledEngine.evaluate(complexCandidate, "user-1");
+    const decision = await disabledEngine.evaluate(complexCandidate, AGENT, "user-1");
     expect(decision.shouldSuggest).toBe(false);
     expect(decision.reasoning).toContain("disabled");
   });
 
   it("returns shouldSuggest:true for complex tasks", async () => {
-    const decision = await engine.evaluate(complexCandidate, "user-fresh");
+    const decision = await engine.evaluate(complexCandidate, AGENT, "user-fresh");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.confidence).toBeGreaterThan(0);
     expect(decision.complexityScore).toBeGreaterThanOrEqual(
@@ -96,7 +97,7 @@ describe("EvolutionEngine", () => {
   });
 
   it("returns recentSuggestions context even when shouldSuggest is false", async () => {
-    const decision = await engine.evaluate(simpleCandidate, "user-ctx");
+    const decision = await engine.evaluate(simpleCandidate, AGENT, "user-ctx");
     expect(decision.shouldSuggest).toBe(false);
     expect(decision.recentSuggestions).toEqual([]);
   });
@@ -109,9 +110,9 @@ describe("EvolutionEngine", () => {
       draft: { name: "wiki-tool", description: "d", triggerPhrases: ["wiki"], bodyMarkdown: "# W" },
       timestamp: Date.now() - 3_600_000,
     });
-    await store.save(recentRecord);
+    await store.save(AGENT, recentRecord);
 
-    const decision = await engine.evaluate(complexCandidate, "user-recent");
+    const decision = await engine.evaluate(complexCandidate, AGENT, "user-recent");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.recentSuggestions).toHaveLength(1);
     expect(decision.recentSuggestions![0].domain).toBe("feishu-wiki");
@@ -119,7 +120,7 @@ describe("EvolutionEngine", () => {
   });
 
   it("includes correct confidence and reasoning when suggesting", async () => {
-    const decision = await engine.evaluate(complexCandidate, "user-fresh");
+    const decision = await engine.evaluate(complexCandidate, AGENT, "user-fresh");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.confidence).toEqual(decision.complexityScore);
     expect(decision.reasoning).toContain("complex enough");
@@ -135,10 +136,11 @@ describe("EvolutionEngine", () => {
 
   it("recordResponse() updates and persists the record", async () => {
     const record = makeRecord({ userId: "user-1" });
-    await store.save(record);
+    await store.save(AGENT, record);
 
     const updated = await engine.recordResponse(
       record.id,
+      AGENT,
       "user-1",
       "accepted",
       "/skills/test.md",
@@ -148,7 +150,7 @@ describe("EvolutionEngine", () => {
     expect(updated.savedSkillPath).toBe("/skills/test.md");
     expect(updated.id).toBe(record.id);
 
-    const allRecords = await store.list("user-1");
+    const allRecords = await store.list(AGENT, "user-1");
     const saved = allRecords.find(
       (r) => r.id === record.id && r.userResponse === "accepted",
     );
@@ -158,7 +160,7 @@ describe("EvolutionEngine", () => {
 
   it("recordResponse() throws when record not found", async () => {
     await expect(
-      engine.recordResponse("nonexistent", "user-1", "rejected"),
+      engine.recordResponse("nonexistent", AGENT, "user-1", "rejected"),
     ).rejects.toThrow("not found");
   });
 
@@ -168,6 +170,7 @@ describe("EvolutionEngine", () => {
     });
     const decision = await highThresholdEngine.evaluate(
       complexCandidate,
+      AGENT,
       "user-fresh",
     );
     expect(decision.shouldSuggest).toBe(false);
@@ -185,7 +188,7 @@ describe("EvolutionEngine", () => {
         domain: "test",
         errorProfile: { errorCount: 3, failedToolNames: ["tool_a"], hasMutatingErrors: false },
       });
-      const decision = await engine.evaluate(candidate, "user-err-1");
+      const decision = await engine.evaluate(candidate, AGENT, "user-err-1");
       expect(decision.shouldSuggest).toBe(true);
       expect(decision.reasoning).toContain("error threshold");
     });
@@ -200,7 +203,7 @@ describe("EvolutionEngine", () => {
         domain: "test",
         errorProfile: { errorCount: 1, failedToolNames: ["tool_a"], hasMutatingErrors: false },
       });
-      const decision = await engine.evaluate(candidate, "user-retry-err");
+      const decision = await engine.evaluate(candidate, AGENT, "user-retry-err");
       expect(decision.shouldSuggest).toBe(true);
       expect(decision.reasoning).toContain("error threshold");
     });
@@ -214,7 +217,7 @@ describe("EvolutionEngine", () => {
         durationMs: 10_000,
         domain: "test",
       });
-      const decision = await engine.evaluate(candidate, "user-retry-noerr");
+      const decision = await engine.evaluate(candidate, AGENT, "user-retry-noerr");
       expect(decision.complexityScore).toBeLessThan(DEFAULT_EVOLUTION_CONFIG.minComplexity);
     });
 
@@ -227,7 +230,7 @@ describe("EvolutionEngine", () => {
         durationMs: 2_000,
         domain: "test",
       });
-      const decision = await engine.evaluate(candidate, "user-clean-1");
+      const decision = await engine.evaluate(candidate, AGENT, "user-clean-1");
       expect(decision.shouldSuggest).toBe(false);
       expect(decision.complexityScore).toBeLessThan(DEFAULT_EVOLUTION_CONFIG.minComplexity);
     });
@@ -243,7 +246,7 @@ describe("EvolutionEngine", () => {
         errorProfile: { errorCount: 3, failedToolNames: ["tool_a"], hasMutatingErrors: false },
       });
 
-      const decision1 = await engine.evaluate(candidate, "user-err-persist");
+      const decision1 = await engine.evaluate(candidate, AGENT, "user-err-persist");
       expect(decision1.shouldSuggest).toBe(true);
 
       const recentRecord = makeRecord({
@@ -251,9 +254,9 @@ describe("EvolutionEngine", () => {
         decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.5, reasoning: "err" },
         timestamp: Date.now() - 1000,
       });
-      await store.save(recentRecord);
+      await store.save(AGENT, recentRecord);
 
-      const decision2 = await engine.evaluate(candidate, "user-err-persist");
+      const decision2 = await engine.evaluate(candidate, AGENT, "user-err-persist");
       expect(decision2.shouldSuggest).toBe(true);
       expect(decision2.recentSuggestions).toHaveLength(1);
     });

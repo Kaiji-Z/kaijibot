@@ -290,7 +290,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
       const scheduler = new ProactiveScheduler(pipelineConfig, {
         loadPersona: async () => currentPersona,
         onInsightReady: async () => {},
-        savePersona: async (_userId, p) => { savedPersona = p; },
+        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
       }, { insightGenerator: async () => [fakeInsight] });
 
       const result = await scheduler.processEvent("user1", {

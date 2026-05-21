@@ -334,6 +334,9 @@ const saveSessionToMemory: HookHandler = async (event) => {
             );
             const { CorrectionStore } = await import("../../../cognitive/correction/store.js");
             const { resolveConfigDir } = await import("../../../utils.js");
+            const { parseAgentSessionKey } = await import("../../../routing/session-key.js");
+            const parsed = parseAgentSessionKey(event.sessionKey);
+            const agentId = parsed?.agentId ?? "main";
 
             const generateText = await createStandaloneGenerateText(cfg, { maxTokens: 2000 });
             const corrections = await extractCorrectionsFromTranscript(sessionContent, generateText);
@@ -341,7 +344,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
             if (corrections.length > 0) {
               const corrStore = new CorrectionStore(resolveConfigDir());
               for (const corr of corrections) {
-                await corrStore.addOrReinforce(userId, corr);
+                await corrStore.addOrReinforce(agentId, userId, corr);
               }
               log.debug("Correction extraction complete", { count: corrections.length });
             }

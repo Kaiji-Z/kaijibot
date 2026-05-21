@@ -51,8 +51,17 @@ export function createEvolutionSuggestTool(deps: {
         const { EvolutionStore } = await import("../../cognitive/evolution/store.js");
         const { resolveConfigDir } = await import("../../utils.js");
         const { consumeToolErrorProfile } = await import("../tool-error-summary.js");
+        const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
+        const { resolveAgentWorkspaceDir } = await import("../agent-scope.js");
 
-        const store = new EvolutionStore(resolveConfigDir());
+        const configDir = resolveConfigDir();
+        const store = new EvolutionStore(configDir);
+        const agentId = resolveAgentIdFromSessionKey(deps.sessionKey);
+
+        let skillBaseDir = configDir;
+        if (deps.config) {
+          skillBaseDir = resolveAgentWorkspaceDir(deps.config, agentId);
+        }
 
         let engine: InstanceType<typeof import("../../cognitive/evolution/engine.js").EvolutionEngine>;
         try {
@@ -65,7 +74,6 @@ export function createEvolutionSuggestTool(deps: {
             engine = new EvolutionEngine(store);
           }
         } catch {
-          // Falls back to deterministic draft generation.
           engine = new EvolutionEngine(store);
         }
 
@@ -98,7 +106,7 @@ export function createEvolutionSuggestTool(deps: {
         try {
           const { SkillPersistenceWriter: SW } = await import("../../cognitive/evolution/skill-writer.js");
           const { SkillLifecycleManager } = await import("../../cognitive/evolution/skill-lifecycle.js");
-          const writer = new SW(resolveConfigDir());
+          const writer = new SW(skillBaseDir);
           const lifecycle = new SkillLifecycleManager(writer);
 
           const names = await writer.listSkillNames();
@@ -138,7 +146,7 @@ export function createEvolutionSuggestTool(deps: {
             draft,
             timestamp: Date.now(),
           };
-          await store.save(record);
+          await store.save(agentId, record);
 
           return jsonResult({
             status: "duplicate",
@@ -149,7 +157,7 @@ export function createEvolutionSuggestTool(deps: {
         }
 
         const { SkillPersistenceWriter: SW2 } = await import("../../cognitive/evolution/skill-writer.js");
-        const saveWriter = new SW2(resolveConfigDir());
+        const saveWriter = new SW2(skillBaseDir);
         const savedPath = await saveWriter.writeSkill(draft);
 
         const record = {
@@ -160,7 +168,7 @@ export function createEvolutionSuggestTool(deps: {
           savedSkillPath: savedPath,
           timestamp: Date.now(),
         };
-        await store.save(record);
+        await store.save(agentId, record);
 
         return jsonResult({
           status: "saved",

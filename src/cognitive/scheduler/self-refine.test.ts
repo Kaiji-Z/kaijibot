@@ -210,7 +210,7 @@ describe("Self-refine: knowledge mode", () => {
       insightGenerator: async () => [lowQuality],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedCritique).toHaveBeenCalledTimes(1);
@@ -233,7 +233,7 @@ describe("Self-refine: knowledge mode", () => {
       insightGenerator: async () => [highQuality],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedCritique).not.toHaveBeenCalled();
@@ -256,7 +256,7 @@ describe("Self-refine: knowledge mode", () => {
       insightGenerator: async () => [lowQuality],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedRefine).not.toHaveBeenCalled();
@@ -290,7 +290,7 @@ describe("Self-refine: knowledge mode", () => {
       insightGenerator: async () => [lowQuality],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedCritique).toHaveBeenCalledTimes(1);
@@ -331,7 +331,7 @@ describe("Self-refine: knowledge mode", () => {
       insightGenerator: async () => [lowQuality],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedCritique).toHaveBeenCalledTimes(2);
@@ -366,7 +366,7 @@ describe("Self-refine: knowledge mode", () => {
       insightGenerator: async () => [lowQuality],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(result!.id).toBe("test-id");
@@ -390,7 +390,7 @@ describe("LLM-as-Judge verification (knowledge mode)", () => {
       insightGenerator: async () => [candidate],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(result!.verificationStatus).toBe("verified");
@@ -411,7 +411,7 @@ describe("LLM-as-Judge verification (knowledge mode)", () => {
       insightGenerator: async () => [candidate],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).toBeNull();
   });
@@ -431,7 +431,7 @@ describe("LLM-as-Judge verification (knowledge mode)", () => {
       insightGenerator: async () => [candidate],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(result!.verificationStatus).toBe("partial");
@@ -454,7 +454,7 @@ describe("Pattern-mode LLM judge", () => {
       patternVerification: true,
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).not.toBeNull();
     expect(mockedVerify).toHaveBeenCalledTimes(1);
@@ -468,7 +468,7 @@ describe("Pattern-mode LLM judge", () => {
       patternVerification: false,
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).not.toBeNull();
     expect(mockedVerify).not.toHaveBeenCalled();
@@ -489,7 +489,7 @@ describe("Pattern-mode LLM judge", () => {
       insightGenerator: async () => [makeCandidate()],
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).not.toBeNull();
     expect(result!.verificationStatus).toBe("verified");
@@ -518,7 +518,7 @@ describe("Pattern-mode LLM judge", () => {
       fragmentStore: createStubFragmentStore(),
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).not.toBeNull();
     expect(mockedVerify).toHaveBeenCalledTimes(1);
@@ -564,7 +564,7 @@ describe("Constructor: new parameters accepted", () => {
       botConfig: undefined,
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(result!.verificationStatus).toBe("verified");
@@ -583,7 +583,7 @@ describe("No-LLM fallback: backward compatibility", () => {
       botConfig: undefined,
     });
 
-    const result = await scheduler.resolve(persona, explorationOpp);
+    const result = await scheduler.resolve("main", persona, explorationOpp);
 
     expect(result).not.toBeNull();
     expect(result!.verificationStatus).toBe("unverified");
@@ -607,7 +607,7 @@ describe("LLM freshness check: knowledge mode", () => {
       insightGenerator: async () => [makeCandidate({ content: duplicateContent, compositeScore: 0.9 })],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).toBeNull();
     expect(mockedFreshness).not.toHaveBeenCalled();
@@ -621,7 +621,7 @@ describe("LLM freshness check: knowledge mode", () => {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).toBeNull();
     expect(mockedFreshness).toHaveBeenCalledTimes(1);
@@ -636,7 +636,7 @@ describe("LLM freshness check: knowledge mode", () => {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).toHaveBeenCalledTimes(1);
@@ -651,7 +651,7 @@ describe("LLM freshness check: knowledge mode", () => {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).toHaveBeenCalledTimes(1);
@@ -666,7 +666,7 @@ describe("LLM freshness check: knowledge mode", () => {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).not.toHaveBeenCalled();
@@ -681,7 +681,7 @@ describe("LLM freshness check: knowledge mode", () => {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).not.toHaveBeenCalled();
@@ -696,7 +696,7 @@ describe("LLM freshness check: knowledge mode", () => {
       botConfig: undefined,
     });
 
-    const result = await scheduler.resolve(persona, crossDomainOpp);
+    const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).not.toHaveBeenCalled();
@@ -720,7 +720,7 @@ describe("LLM freshness check: pattern mode", () => {
       insightGenerator: async () => [makeCandidate({ content: duplicateContent })],
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).toBeNull();
     expect(mockedFreshness).not.toHaveBeenCalled();
@@ -734,7 +734,7 @@ describe("LLM freshness check: pattern mode", () => {
       insightGenerator: async () => [makeCandidate()],
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).toBeNull();
     expect(mockedFreshness).toHaveBeenCalledTimes(1);
@@ -749,7 +749,7 @@ describe("LLM freshness check: pattern mode", () => {
       insightGenerator: async () => [makeCandidate()],
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).toHaveBeenCalledTimes(1);
@@ -764,7 +764,7 @@ describe("LLM freshness check: pattern mode", () => {
       insightGenerator: async () => [makeCandidate()],
     });
 
-    const result = await scheduler.resolve(persona, patternOpp);
+    const result = await scheduler.resolve("main", persona, patternOpp);
 
     expect(result).not.toBeNull();
     expect(mockedFreshness).not.toHaveBeenCalled();

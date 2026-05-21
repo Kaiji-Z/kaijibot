@@ -55,11 +55,19 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
     }
   }
 
+  let agentId: string | undefined;
+  try {
+    const { parseAgentSessionKey } = await import("../../routing/session-key.js");
+    const parsed = parseAgentSessionKey(params.sessionKey);
+    if (parsed) agentId = parsed.agentId;
+  } catch {}
+
   const signalText = buildEvolutionSignal({
     toolCalls,
     uniqueToolCount: uniqueTools.size,
     durationMs,
     existingSkills,
+    agentId,
   });
 
   try {
@@ -89,6 +97,7 @@ function buildEvolutionSignal(params: {
   uniqueToolCount: number;
   durationMs: number;
   existingSkills?: Array<{ name: string; description: string }>;
+  agentId?: string;
 }): string {
   const durationSec = Math.round(params.durationMs / 1000);
   const lines = [

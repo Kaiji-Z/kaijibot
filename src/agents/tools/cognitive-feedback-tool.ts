@@ -14,6 +14,7 @@ export const CognitiveFeedbackSchema = Type.Object({
 export function createCognitiveFeedbackTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
+  agentId?: string;
 }): AnyAgentTool | null {
   if (deps.config?.cognitive?.enabled === false) return null;
 
@@ -46,7 +47,7 @@ export function createCognitiveFeedbackTool(deps: {
           );
         }
 
-        const persona = await store.load("main", userId);
+        const persona = await store.load(deps.agentId ?? "main", userId);
         if (!persona) {
           return textResult(
             "No user profile found; feedback stored but not applied to profile.",
@@ -68,7 +69,7 @@ export function createCognitiveFeedbackTool(deps: {
         };
 
         const updated = processFeedback(persona, feedback);
-        await store.save("main", userId, updated);
+        await store.save(deps.agentId ?? "main", userId, updated);
 
         return jsonResult({
           status: "recorded",

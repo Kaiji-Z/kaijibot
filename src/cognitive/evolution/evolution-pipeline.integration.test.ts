@@ -39,6 +39,7 @@ let writer: SkillPersistenceWriter;
 let lifecycle: SkillLifecycleManager;
 let prefs: EvolutionPreferenceAdapter;
 let audit: AuditLog;
+const AGENT = "main";
 
 function complexCandidate(overrides: Partial<EvolutionCandidate> = {}): EvolutionCandidate {
   return {
@@ -131,7 +132,7 @@ afterEach(() => {
 describe("Pipeline: happy path (complex task → skill saved)", () => {
   it("evaluates a complex task as suggestible", async () => {
     const candidate = complexCandidate();
-    const decision = await engine.evaluate(candidate, "user-1");
+    const decision = await engine.evaluate(candidate, AGENT, "user-1");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.complexityScore).toBeGreaterThanOrEqual(0.6);
     expect(decision.reasoning).toContain("complex enough");
@@ -159,7 +160,7 @@ describe("Pipeline: happy path (complex task → skill saved)", () => {
     const userId = "user-e2e";
 
     // Step 1: Evaluate
-    const decision = await engine.evaluate(candidate, userId);
+    const decision = await engine.evaluate(candidate, AGENT, userId);
     expect(decision.shouldSuggest).toBe(true);
 
     // Step 2: Check dedup (no existing skills → should create)
@@ -182,15 +183,15 @@ describe("Pipeline: happy path (complex task → skill saved)", () => {
       draft,
       timestamp: Date.now(),
     };
-    await store.save(record);
+    await store.save(AGENT, record);
 
     // Step 6: Simulate user acceptance
-    const updated = await engine.recordResponse(record.id, userId, "accepted", savedPath);
+    const updated = await engine.recordResponse(record.id, AGENT, userId, "accepted", savedPath);
     expect(updated.userResponse).toBe("accepted");
     expect(updated.savedSkillPath).toBe(savedPath);
 
     // Step 7: Verify persistence
-    const records = await store.list(userId);
+    const records = await store.list(AGENT, userId);
     const found = records.find((r) => r.id === record.id);
     expect(found).toBeDefined();
     expect(found!.userResponse).toBe("accepted");
@@ -226,7 +227,7 @@ describe("Pipeline: trial-and-error detection boosts complexity", () => {
 
   it("engine includes trial-error info in reasoning when suggesting", async () => {
     const candidate = trialErrorCandidate();
-    const decision = await engine.evaluate(candidate, "user-trial");
+    const decision = await engine.evaluate(candidate, AGENT, "user-trial");
     if (decision.shouldSuggest) {
       expect(decision.reasoning).toContain("Trial-and-error");
     }
@@ -255,11 +256,11 @@ describe("Pipeline: recent suggestions as context", () => {
   it("provides recentSuggestions even after prior suggestions", async () => {
     const userId = "user-recent-ctx";
 
-    const decision1 = await engine.evaluate(complexCandidate(), userId);
+    const decision1 = await engine.evaluate(complexCandidate(), AGENT, userId);
     expect(decision1.shouldSuggest).toBe(true);
     expect(decision1.recentSuggestions).toEqual([]);
 
-    await store.save({
+    await store.save(AGENT, {
       id: "rec-recent",
       userId,
       candidate: complexCandidate(),
@@ -268,7 +269,7 @@ describe("Pipeline: recent suggestions as context", () => {
       timestamp: Date.now() - 1000,
     });
 
-    const decision2 = await engine.evaluate(complexCandidate(), userId);
+    const decision2 = await engine.evaluate(complexCandidate(), AGENT, userId);
     expect(decision2.shouldSuggest).toBe(true);
     expect(decision2.recentSuggestions).toHaveLength(1);
     expect(decision2.recentSuggestions![0].skillName).toBe("test-skill");
@@ -278,7 +279,7 @@ describe("Pipeline: recent suggestions as context", () => {
     const userId = "user-no-block";
 
     for (let i = 0; i < 5; i++) {
-      await store.save({
+      await store.save(AGENT, {
         id: `rec-many-${i}`,
         userId,
         candidate: complexCandidate(),
@@ -288,7 +289,7 @@ describe("Pipeline: recent suggestions as context", () => {
       });
     }
 
-    const decision = await engine.evaluate(complexCandidate(), userId);
+    const decision = await engine.evaluate(complexCandidate(), AGENT, userId);
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.recentSuggestions).toHaveLength(5);
   });
@@ -567,7 +568,7 @@ describe("Pipeline: skill lifecycle management", () => {
 // ===========================================================================
 describe("Pipeline: preference learning (Thompson Sampling)", () => {
   it("starts with prior for unseen domain", async () => {
-    const rate = await prefs.getDomainAcceptanceRate("user-1", "unknown-domain");
+    const rate = await prefs.getDomainAcceptanceRate(AGENT, "user-1", "unknown-domain");
     // Prior alpha=2, beta=1 → expected ~0.667, but sampled so just check range
     expect(rate).toBeGreaterThan(0);
     expect(rate).toBeLessThanOrEqual(1);
@@ -579,10 +580,10 @@ describe("Pipeline: preference learning (Thompson Sampling)", () => {
 
     // Record several acceptances
     for (let i = 0; i < 5; i++) {
-      await prefs.recordResponse(userId, domain, "accepted");
+      await prefs.recordResponse(AGENT, userId, domain, "accepted");
     }
 
-    const bandit = await prefs.getRawBandit(userId, domain);
+    const bandit = await prefs.getRawBandit(AGENT, userId, domain);
     expect(bandit).toBeDefined();
     expect(bandit!.alpha).toBeGreaterThan(2); // prior + accepts
     expect(bandit!.beta).toBe(1); // prior unchanged
@@ -590,7 +591,7 @@ describe("Pipeline: preference learning (Thompson Sampling)", () => {
     // Sample should tend high
     const samples: number[] = [];
     for (let i = 0; i < 100; i++) {
-      samples.push(await prefs.getDomainAcceptanceRate(userId, domain));
+      samples.push(await prefs.getDomainAcceptanceRate(AGENT, userId, domain));
     }
     const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
     expect(avg).toBeGreaterThan(0.7);
@@ -601,15 +602,15 @@ describe("Pipeline: preference learning (Thompson Sampling)", () => {
     const domain = "weather";
 
     for (let i = 0; i < 5; i++) {
-      await prefs.recordResponse(userId, domain, "rejected");
+      await prefs.recordResponse(AGENT, userId, domain, "rejected");
     }
 
-    const bandit = await prefs.getRawBandit(userId, domain);
+    const bandit = await prefs.getRawBandit(AGENT, userId, domain);
     expect(bandit!.beta).toBeGreaterThan(1);
 
     const samples: number[] = [];
     for (let i = 0; i < 100; i++) {
-      samples.push(await prefs.getDomainAcceptanceRate(userId, domain));
+      samples.push(await prefs.getDomainAcceptanceRate(AGENT, userId, domain));
     }
     const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
     expect(avg).toBeLessThan(0.5);
@@ -619,9 +620,9 @@ describe("Pipeline: preference learning (Thompson Sampling)", () => {
     const userId = "user-mod";
     const domain = "code-review";
 
-    await prefs.recordResponse(userId, domain, "modified");
+    await prefs.recordResponse(AGENT, userId, domain, "modified");
 
-    const bandit = await prefs.getRawBandit(userId, domain);
+    const bandit = await prefs.getRawBandit(AGENT, userId, domain);
     expect(bandit!.alpha).toBe(2.5); // prior(2) + 0.5
   });
 
@@ -631,13 +632,13 @@ describe("Pipeline: preference learning (Thompson Sampling)", () => {
 
     // Boost acceptance rate
     for (let i = 0; i < 10; i++) {
-      await prefs.recordResponse(userId, domain, "accepted");
+      await prefs.recordResponse(AGENT, userId, domain, "accepted");
     }
 
     const engineWithPrefs = new EvolutionEngine(store, undefined, prefs);
     const candidate = complexCandidate({ domain });
 
-    const decision = await engineWithPrefs.evaluate(candidate, userId);
+    const decision = await engineWithPrefs.evaluate(candidate, AGENT, userId);
     expect(decision.shouldSuggest).toBe(true);
     // Confidence should be adjusted by domain acceptance rate
     // With many accepts, confidence should be close to complexityScore
@@ -856,14 +857,14 @@ describe("Pipeline: skill writer edge cases", () => {
 // ===========================================================================
 describe("Pipeline: config persistence", () => {
   it("saves and loads config", async () => {
-    await store.saveConfig({ ...await store.loadConfig(), minComplexity: 0.8 });
+    await store.saveConfig(AGENT, { ...await store.loadConfig(AGENT), minComplexity: 0.8 });
 
-    const loaded = await store.loadConfig();
+    const loaded = await store.loadConfig(AGENT);
     expect(loaded.minComplexity).toBe(0.8);
   });
 
   it("returns defaults when no config file exists", async () => {
-    const config = await store.loadConfig();
+    const config = await store.loadConfig(AGENT);
     expect(config.minComplexity).toBe(0.4);
     expect(config.enabled).toBe(true);
   });
@@ -878,13 +879,13 @@ describe("Pipeline: multi-user isolation", () => {
     const userB = "user-b";
 
     // User A: accept feishu-meeting
-    await prefs.recordResponse(userA, "feishu-meeting", "accepted");
+    await prefs.recordResponse(AGENT, userA, "feishu-meeting", "accepted");
     // User B: reject feishu-meeting multiple times
-    await prefs.recordResponse(userB, "feishu-meeting", "rejected");
-    await prefs.recordResponse(userB, "feishu-meeting", "rejected");
+    await prefs.recordResponse(AGENT, userB, "feishu-meeting", "rejected");
+    await prefs.recordResponse(AGENT, userB, "feishu-meeting", "rejected");
 
-    const banditA = await prefs.getRawBandit(userA, "feishu-meeting");
-    const banditB = await prefs.getRawBandit(userB, "feishu-meeting");
+    const banditA = await prefs.getRawBandit(AGENT, userA, "feishu-meeting");
+    const banditB = await prefs.getRawBandit(AGENT, userB, "feishu-meeting");
 
     expect(banditA!.alpha).toBeGreaterThan(banditA!.beta);
     expect(banditB!.beta).toBeGreaterThan(banditB!.alpha);
@@ -897,10 +898,10 @@ describe("Pipeline: multi-user isolation", () => {
       decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "test" },
       timestamp: Date.now(),
     };
-    await store.save(recordA);
+    await store.save(AGENT, recordA);
 
-    const aRecords = await store.list(userA);
-    const bRecords = await store.list(userB);
+    const aRecords = await store.list(AGENT, userA);
+    const bRecords = await store.list(AGENT, userB);
 
     expect(aRecords.length).toBe(1);
     expect(bRecords.length).toBe(0);
@@ -920,8 +921,8 @@ describe("Pipeline: store reliability", () => {
       timestamp: Date.now(),
     };
 
-    await store.save(record);
-    const loaded = await store.list("user-rt");
+    await store.save(AGENT, record);
+    const loaded = await store.list(AGENT, "user-rt");
 
     expect(loaded.length).toBe(1);
     expect(loaded[0].id).toBe("rec-rt");
@@ -932,7 +933,7 @@ describe("Pipeline: store reliability", () => {
     const userId = "user-recent";
 
     // Old suggestion (25h ago)
-    await store.save({
+    await store.save(AGENT, {
       id: "rec-old",
       userId,
       candidate: simpleCandidate(),
@@ -941,7 +942,7 @@ describe("Pipeline: store reliability", () => {
     });
 
     // Recent suggestion (1h ago)
-    await store.save({
+    await store.save(AGENT, {
       id: "rec-new",
       userId,
       candidate: complexCandidate(),
@@ -950,7 +951,7 @@ describe("Pipeline: store reliability", () => {
     });
 
     // Non-suggestion (should not appear)
-    await store.save({
+    await store.save(AGENT, {
       id: "rec-nosuggest",
       userId,
       candidate: complexCandidate(),
@@ -958,7 +959,7 @@ describe("Pipeline: store reliability", () => {
       timestamp: Date.now() - 1000,
     });
 
-    const recent = await store.getRecentSuggestions(userId, 24);
+    const recent = await store.getRecentSuggestions(AGENT, userId, 24);
     expect(recent.length).toBe(1);
     expect(recent[0].id).toBe("rec-new");
   });
@@ -976,20 +977,20 @@ describe("Pipeline: rejection → preference adaptation", () => {
     const engineWithPrefs = new EvolutionEngine(store, undefined, prefs);
 
     // First: evaluate and suggest
-    const decision1 = await engineWithPrefs.evaluate(complexCandidate({ domain }), userId);
+    const decision1 = await engineWithPrefs.evaluate(complexCandidate({ domain }), AGENT, userId);
     expect(decision1.shouldSuggest).toBe(true);
     const baseConfidence = decision1.confidence;
 
     // User rejects
-    await prefs.recordResponse(userId, domain, "rejected");
+    await prefs.recordResponse(AGENT, userId, domain, "rejected");
 
     // Now acceptance rate should be lower
-    const rate = await prefs.getDomainAcceptanceRate(userId, domain);
+    const rate = await prefs.getDomainAcceptanceRate(AGENT, userId, domain);
     // With 1 rejection: beta goes from 1→2, alpha stays 2
     // Expected value = 2/(2+2) = 0.5, but it's sampled so just check it decreased on average
     const samples: number[] = [];
     for (let i = 0; i < 200; i++) {
-      samples.push(await prefs.getDomainAcceptanceRate(userId, domain));
+      samples.push(await prefs.getDomainAcceptanceRate(AGENT, userId, domain));
     }
     const avgRate = samples.reduce((a, b) => a + b, 0) / samples.length;
     expect(avgRate).toBeLessThan(0.7); // Prior was ~0.667, should be lower now
@@ -1002,7 +1003,7 @@ describe("Pipeline: rejection → preference adaptation", () => {
 describe("Pipeline: disabled engine", () => {
   it("never suggests when disabled", async () => {
     const disabledEngine = new EvolutionEngine(store, { enabled: false });
-    const decision = await disabledEngine.evaluate(complexCandidate(), "user-disabled");
+    const decision = await disabledEngine.evaluate(complexCandidate(), AGENT, "user-disabled");
     expect(decision.shouldSuggest).toBe(false);
     expect(decision.reasoning).toContain("disabled");
   });
@@ -1074,7 +1075,7 @@ describe("Pipeline: error-driven evolution for simple tasks", () => {
       failedToolNames: ["weather_get"],
       hasMutatingErrors: false,
     };
-    const decision = await engine.evaluate(candidate, "user-err-simple");
+    const decision = await engine.evaluate(candidate, AGENT, "user-err-simple");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.reasoning).toContain("error threshold");
   });
@@ -1088,13 +1089,13 @@ describe("Pipeline: error-driven evolution for simple tasks", () => {
       durationMs: 15_000,
       domain: "weather",
     };
-    const decision = await engine.evaluate(candidate, "user-retry-simple");
+    const decision = await engine.evaluate(candidate, AGENT, "user-retry-simple");
     expect(decision.shouldSuggest).toBe(false);
   });
 
   it("simple task without errors does NOT trigger (backward compat)", async () => {
     const candidate = simpleCandidate();
-    const decision = await engine.evaluate(candidate, "user-clean-simple");
+    const decision = await engine.evaluate(candidate, AGENT, "user-clean-simple");
     expect(decision.shouldSuggest).toBe(false);
   });
 });
@@ -1117,7 +1118,7 @@ describe("Pipeline: error priority vs smooth complexity", () => {
         hasMutatingErrors: true,
       },
     };
-    const decision = await engine.evaluate(candidate, "user-err-priority");
+    const decision = await engine.evaluate(candidate, AGENT, "user-err-priority");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.reasoning).toContain("Tool errors detected");
     expect(decision.reasoning).toContain("feishu_doc_create");
@@ -1125,7 +1126,7 @@ describe("Pipeline: error priority vs smooth complexity", () => {
 
   it("smooth complex task still uses minComplexity threshold", async () => {
     const candidate = complexCandidate();
-    const decision = await engine.evaluate(candidate, "user-smooth-complex");
+    const decision = await engine.evaluate(candidate, AGENT, "user-smooth-complex");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.reasoning).not.toContain("error threshold");
     expect(decision.reasoning).toContain("complex enough");
@@ -1147,7 +1148,7 @@ describe("Pipeline: error-driven trigger provides recent context", () => {
       draft: { name: "prev-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
       timestamp: Date.now() - 1000,
     };
-    await store.save(recentRecord);
+    await store.save(AGENT, recentRecord);
 
     const candidate = simpleCandidate();
     candidate.errorProfile = {
@@ -1155,7 +1156,7 @@ describe("Pipeline: error-driven trigger provides recent context", () => {
       failedToolNames: ["weather_get"],
       hasMutatingErrors: false,
     };
-    const decision = await engine.evaluate(candidate, userId);
+    const decision = await engine.evaluate(candidate, AGENT, userId);
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.recentSuggestions).toHaveLength(1);
     expect(decision.recentSuggestions![0].skillName).toBe("prev-skill");
@@ -1169,14 +1170,14 @@ describe("Pipeline: backward compatibility with error fields", () => {
   it("complex candidate without errorProfile still works", async () => {
     const candidate = complexCandidate();
     expect(candidate.errorProfile).toBeUndefined();
-    const decision = await engine.evaluate(candidate, "user-backward");
+    const decision = await engine.evaluate(candidate, AGENT, "user-backward");
     expect(decision.shouldSuggest).toBe(true);
   });
 
   it("complex candidate with empty errorProfile uses minComplexity", async () => {
     const candidate = complexCandidate();
     candidate.errorProfile = { errorCount: 0, failedToolNames: [], hasMutatingErrors: false };
-    const decision = await engine.evaluate(candidate, "user-zero-err");
+    const decision = await engine.evaluate(candidate, AGENT, "user-zero-err");
     expect(decision.shouldSuggest).toBe(true);
   });
 
@@ -1187,7 +1188,7 @@ describe("Pipeline: backward compatibility with error fields", () => {
       failedToolNames: ["feishu_doc_search"],
       hasMutatingErrors: false,
     };
-    const decision = await engine.evaluate(candidate, "user-combined");
+    const decision = await engine.evaluate(candidate, AGENT, "user-combined");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.reasoning).toContain("Trial-and-error");
     expect(decision.reasoning).toContain("Tool errors detected");

@@ -15,6 +15,7 @@ export function createCorrectionReportTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
   deliveryTo?: string;
+  agentId?: string;
 }): AnyAgentTool | null {
   if (deps.config?.cognitive?.enabled === false) {
     return null;
@@ -58,7 +59,7 @@ export function createCorrectionReportTool(deps: {
           lastReinforced: Date.now(),
         };
 
-        const result = await store.addOrReinforce(userId, record);
+        const result = await store.addOrReinforce(deps.agentId ?? "main", userId, record);
 
         if (result === "reinforced") {
           return jsonResult({

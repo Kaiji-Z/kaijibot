@@ -2189,6 +2189,7 @@ export async function runEmbeddedAttempt(
           const turnSnapshot = messagesSnapshot.slice(prePromptMessageCount);
           const senderId = params.senderId;
           const sessionKey = params.sessionKey;
+          const agentId = params.agentId ?? "main";
 
           // Fire-and-forget: cognitive layer must not block the response
           Promise.resolve().then(async () => {
@@ -2227,7 +2228,7 @@ export async function runEmbeddedAttempt(
                 .join(" ")
                 .slice(-2000);
 
-              const persona = await store.loadOrCreate("main", userId);
+              const persona = await store.loadOrCreate(agentId, userId);
               const deps = createDefaultDeps();
               if (!params.config) return;
               const extraction = await extractFromMessageLLM(userText, assistantText, persona, params.config, deps);
@@ -2238,7 +2239,7 @@ export async function runEmbeddedAttempt(
               const previousTopics = pruned.recentFocus;
               const signals = extractImplicitSignals(userText, undefined, topic, previousTopics);
               const feedbackUpdated = processImplicitFeedback(pruned, signals);
-              await store.save("main", userId, feedbackUpdated);
+              await store.save(agentId, userId, feedbackUpdated);
 
               try {
                 log.info(`fragment diag: entering collectFragments block`, {
@@ -2260,7 +2261,7 @@ export async function runEmbeddedAttempt(
                 log.info(`fragment diag: collectFragments returned`, { userId, count: newFragments.length });
                 for (const frag of newFragments) {
                   frag.userId = userId;
-                  await fragStore.addFragment(userId, frag);
+                  await fragStore.addFragment(agentId, userId, frag);
                 }
               } catch (fragErr) {
                 const isFragTimeout = fragErr instanceof DOMException && fragErr.name === "TimeoutError";

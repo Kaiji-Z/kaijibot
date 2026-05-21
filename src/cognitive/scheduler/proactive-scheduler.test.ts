@@ -93,7 +93,7 @@ describe("ProactiveScheduler", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
     expect(result).toBeUndefined();
   });
 
@@ -110,7 +110,7 @@ describe("ProactiveScheduler", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
     expect(result).toBeUndefined();
   });
 
@@ -133,10 +133,10 @@ describe("ProactiveScheduler", () => {
     };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
-      onInsightReady: async (_userId, candidate) => {
+      onInsightReady: async (_agentId, _userId, candidate) => {
         capturedCandidates.push(candidate);
       },
-      savePersona: async (_userId, p) => {
+      savePersona: async (_agentId, _userId, p) => {
         savedPersona = p;
       },
     }, { insightGenerator: async () => [fakeInsight] });
@@ -145,7 +145,7 @@ describe("ProactiveScheduler", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: now,
-    });
+    }, "main");
 
     expect(result).toBeDefined();
     expect(capturedCandidates.length).toBe(1);
@@ -159,7 +159,7 @@ describe("ProactiveScheduler", () => {
       savePersona: async () => {},
     });
 
-    expect(() => scheduler.start(async () => ["user1"], 60000)).not.toThrow();
+    expect(() => scheduler.start(async () => [{ agentId: "main", userId: "user1" }], 60000)).not.toThrow();
     expect(() => scheduler.stop()).not.toThrow();
   });
 
@@ -181,7 +181,7 @@ describe("ProactiveScheduler", () => {
       allProcessed = resolve;
     });
     const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async (userId) => {
+      loadPersona: async (_agentId, userId) => {
         processedUsers.push(userId);
         if (processedUsers.length >= 3) allProcessed!();
         return personaWithDomains();
@@ -191,7 +191,7 @@ describe("ProactiveScheduler", () => {
     });
 
     const userIds = ["user-a", "user-b", "user-c"];
-    scheduler.start(async () => userIds, 10);
+    scheduler.start(async () => userIds.map(userId => ({ agentId: "main", userId })), 10);
 
     await Promise.race([allProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
     scheduler.stop();
@@ -205,7 +205,7 @@ describe("ProactiveScheduler", () => {
       goodProcessed = resolve;
     });
     const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async (userId) => {
+      loadPersona: async (_agentId, userId) => {
         if (userId === "bad-user") throw new Error("load failed");
         processedUsers.push(userId);
         goodProcessed!();
@@ -216,7 +216,7 @@ describe("ProactiveScheduler", () => {
     });
 
     const userIds = ["bad-user", "good-user"];
-    scheduler.start(async () => userIds, 10);
+    scheduler.start(async () => userIds.map(userId => ({ agentId: "main", userId })), 10);
 
     await Promise.race([goodProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
     scheduler.stop();
@@ -226,7 +226,7 @@ describe("ProactiveScheduler", () => {
   it("start handles empty user list gracefully", async () => {
     const processedUsers: string[] = [];
     const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async (userId) => {
+      loadPersona: async (_agentId, userId) => {
         processedUsers.push(userId);
         return personaWithDomains();
       },
@@ -259,7 +259,7 @@ describe("ProactiveScheduler", () => {
     };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
-      onInsightReady: async (_userId, candidate) => {
+      onInsightReady: async (_agentId, _userId, candidate) => {
         capturedCandidates.push(candidate);
       },
       savePersona: async () => {},
@@ -292,7 +292,7 @@ describe("ProactiveScheduler", () => {
     };
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
-      onInsightReady: async (_userId, candidate) => {
+      onInsightReady: async (_agentId, _userId, candidate) => {
         capturedCandidates.push(candidate);
       },
       savePersona: async () => {},
@@ -335,7 +335,7 @@ describe("ProactiveScheduler", () => {
       const result = await scheduler.processEvent("user1", {
         type,
         timestamp: Date.now(),
-      });
+      }, "main");
       results.push(result);
     }
 
@@ -527,7 +527,7 @@ describe("ProactiveScheduler.resolve", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.id).toBe("test-id");
   });
@@ -547,7 +547,7 @@ describe("ProactiveScheduler.resolve", () => {
       pAct: 0.56,
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
   });
 
@@ -579,7 +579,7 @@ describe("ProactiveScheduler.resolve", () => {
       pAct: 0.56,
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
   });
 
@@ -612,7 +612,7 @@ describe("ProactiveScheduler.resolve", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.verificationStatus).toBe("verified");
   });
@@ -633,7 +633,7 @@ describe("ProactiveScheduler pipeline integration", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeUndefined();
   });
@@ -649,7 +649,7 @@ describe("ProactiveScheduler pipeline integration", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeUndefined();
   });
@@ -667,7 +667,7 @@ describe("ProactiveScheduler pipeline integration", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeUndefined();
   });
@@ -878,7 +878,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     // Domain-overlapping candidates are blocked by pre-gen freshness check,
     // but exploration surprise (empty targetDomains) passes through
@@ -914,7 +914,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeDefined();
   });
@@ -949,7 +949,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeDefined();
   });
@@ -977,7 +977,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
       {
         loadPersona: async () => persona,
         onInsightReady: async () => {},
-        savePersona: async (_userId, p) => { savedPersona = p; },
+        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
       },
       { insightGenerator: async () => [fakeInsight] },
     );
@@ -985,7 +985,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
     await scheduler.processEvent("user1", {
       type: "info_scan",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(savedPersona?.feedbackProfile.recentInsightDomains).toBeDefined();
     expect(savedPersona?.feedbackProfile.recentInsightDomains).toContainEqual(["AI/机器学习"]);
@@ -1023,7 +1023,7 @@ describe("ProactiveScheduler — semantic dedup", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     // overlap = 1/max(1,2) = 0.5 → NOT > 0.5 → should pass
     expect(result).toBeDefined();
@@ -1414,10 +1414,10 @@ describe("Push fatigue", () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async () => {},
-      savePersona: async (_userId, p) => { savedPersona = p; },
+      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
     }, { insightGenerator: async () => [fakeInsight] });
 
-    const result = await scheduler.processEvent("user1", { type: "info_scan", timestamp: Date.now() });
+    const result = await scheduler.processEvent("user1", { type: "info_scan", timestamp: Date.now() }, "main");
     if (result) {
       expect(savedPersona).toBeDefined();
       expect(savedPersona!.feedbackProfile.recentInsightDomains).toBeDefined();
@@ -1582,14 +1582,14 @@ describe("6-cycle integration test — all fixes together", () => {
       const scheduler = new ProactiveScheduler(integrationConfig, {
         loadPersona: async () => currentPersona,
         onInsightReady: async () => {},
-        savePersona: async (_userId, p) => { savedPersona = p; },
+        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
       }, { insightGenerator: async () => [fakeInsight] });
 
       const cycleTime = baseTime + cycle * 3_601_000;
       const result = await scheduler.processEvent("user1", {
         type: "timer",
         timestamp: cycleTime,
-      });
+      }, "main");
 
       if (result) {
         deliveredDomains.push(result.targetDomains);
@@ -1640,14 +1640,14 @@ describe("6-cycle integration test — all fixes together", () => {
       const scheduler = new ProactiveScheduler(integrationConfig, {
         loadPersona: async () => currentPersona,
         onInsightReady: async () => {},
-        savePersona: async (_userId, p) => { savedPersona = p; },
+        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
       }, { insightGenerator: async () => [fakeInsight] });
 
       const cycleTime = baseTime + cycle * 3_601_000;
       const result = await scheduler.processEvent("user1", {
         type: "timer",
         timestamp: cycleTime,
-      });
+      }, "main");
 
       if (result) {
         domains.push(result.targetDomains);
@@ -1752,13 +1752,13 @@ describe("processEvent — attemptedDomains persistence on dedup kill", () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async () => {},
-      savePersona: async (_userId, p) => { savedPersona = p; },
+      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
     }, { insightGenerator: async () => [] });
 
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeUndefined();
     expect(savedPersona).toBeDefined();
@@ -1773,13 +1773,13 @@ describe("processEvent — attemptedDomains persistence on dedup kill", () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async () => {},
-      savePersona: async (_userId, p) => { savedPersona = p; },
+      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
     }, { insightGenerator: async () => [] });
 
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeUndefined();
     expect(savedPersona).toBeDefined();
@@ -1875,7 +1875,7 @@ describe("processEvent — pre-gen freshness fallback", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeDefined();
     expect(result!.targetDomains).toContain("Design");
@@ -1915,7 +1915,7 @@ describe("processEvent — pre-gen freshness fallback", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: ts,
-    });
+    }, "main");
 
     // Exploration candidates with empty targetDomains pass freshness checks
     // Mode selection is non-deterministic (bandit-weighted), so result may be null
@@ -1975,7 +1975,7 @@ describe("resolve — quality retry", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.id).toBe("high");
     expect(callCount).toBe(2);
@@ -2002,7 +2002,7 @@ describe("resolve — quality retry", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
     expect(callCount).toBe(3);
   });
@@ -2054,7 +2054,7 @@ describe("resolve — quality retry", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.id).toBe("best");
   });
@@ -2072,7 +2072,7 @@ describe("processEvent per-user queue", () => {
         onInsightReady: async () => {
           executionOrder.push("delivered");
         },
-        savePersona: async (_userId, persona) => {
+        savePersona: async (_agentId, _userId, persona) => {
           personaSnapshot = persona;
         },
       },
@@ -2101,8 +2101,8 @@ describe("processEvent per-user queue", () => {
     const event2: import("./types.js").SchedulerEvent = { type: "persona_change", timestamp: Date.now() };
 
     const [result1, result2] = await Promise.all([
-      scheduler.processEvent("user-a", event1),
-      scheduler.processEvent("user-a", event2),
+      scheduler.processEvent("user-a", event1, "main"),
+      scheduler.processEvent("user-a", event2, "main"),
     ]);
 
     const deliveredCount = executionOrder.filter((e) => e === "delivered").length;
@@ -2117,7 +2117,7 @@ describe("processEvent per-user queue", () => {
     const scheduler = new ProactiveScheduler(
       config,
       {
-        loadPersona: async (userId) => {
+        loadPersona: async (_agentId, userId) => {
           if (userId === "user-a") return personaA;
           if (userId === "user-b") return personaB;
           return undefined;
@@ -2148,8 +2148,8 @@ describe("processEvent per-user queue", () => {
     const event: import("./types.js").SchedulerEvent = { type: "timer", timestamp: Date.now() };
 
     await Promise.all([
-      scheduler.processEvent("user-a", event),
-      scheduler.processEvent("user-b", event),
+      scheduler.processEvent("user-a", event, "main"),
+      scheduler.processEvent("user-b", event, "main"),
     ]);
 
     expect(started.length).toBeGreaterThanOrEqual(2);
@@ -2195,10 +2195,8 @@ describe("insight hallucination gates", () => {
     }, {
       insightGenerator: async () => [fakeInsight],
       fragmentStore: {
-        load: async () => [{ id: "f1", kind: "knowledge_gap", content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now() }],
-        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], centroid: "test", avgStrength: 0.5 }],
-        upsert: async () => {},
-        removeStale: async () => {},
+        load: async () => [{ id: "f1", kind: "knowledge_gap" as const, content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 14*86400000, evidence: "test", domains: ["test"], structuralTag: "test" }],
+        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], domains: ["test"], structuralPattern: "test", averageStrength: 0.5, createdAt: Date.now() }],
       } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
       llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
       botConfig: mockBotConfig,
@@ -2214,7 +2212,7 @@ describe("insight hallucination gates", () => {
       metadata: { mode: "pattern" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
   });
 
@@ -2248,7 +2246,7 @@ describe("insight hallucination gates", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
   });
 
@@ -2300,7 +2298,7 @@ describe("insight hallucination gates", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
   });
 
@@ -2334,7 +2332,7 @@ describe("insight hallucination gates", () => {
       metadata: { mode: "surprise" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.id).toBe("valid-knowledge");
   });
@@ -2363,10 +2361,8 @@ describe("insight hallucination gates", () => {
     }, {
       insightGenerator: async () => [fakeInsight],
       fragmentStore: {
-        load: async () => [{ id: "f1", kind: "knowledge_gap", content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now() }],
-        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], centroid: "test", avgStrength: 0.5 }],
-        upsert: async () => {},
-        removeStale: async () => {},
+        load: async () => [{ id: "f1", kind: "knowledge_gap" as const, content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 14*86400000, evidence: "test", domains: ["test"], structuralTag: "test" }],
+        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], domains: ["test"], structuralPattern: "test", averageStrength: 0.5, createdAt: Date.now() }],
       } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
     });
 
@@ -2380,7 +2376,7 @@ describe("insight hallucination gates", () => {
       metadata: { mode: "pattern" },
     };
 
-    const result = await scheduler.resolve(persona, opportunity);
+    const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).not.toBeNull();
     expect(result!.id).toBe("valid-pattern");
   });
@@ -2404,7 +2400,7 @@ describe("insight hallucination gates", () => {
 
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
-      onInsightReady: async (_userId, candidate) => {
+      onInsightReady: async (_agentId, _userId, candidate) => {
         deliveredCandidates.push(candidate);
       },
       savePersona: async () => {},
@@ -2415,7 +2411,7 @@ describe("insight hallucination gates", () => {
     const result = await scheduler.processEvent("user1", {
       type: "timer",
       timestamp: Date.now(),
-    });
+    }, "main");
 
     expect(result).toBeUndefined();
     expect(deliveredCandidates.length).toBe(0);

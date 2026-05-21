@@ -101,9 +101,9 @@ export class ProactiveScheduler {
   constructor(
     private readonly config: SchedulerConfig,
     readonly callbacks: {
-      loadPersona: (userId: string) => Promise<PersonaTree | undefined>;
-      onInsightReady: (userId: string, candidate: InsightCandidate) => Promise<void>;
-      savePersona: (userId: string, persona: PersonaTree) => Promise<void>;
+      loadPersona: (agentId: string, userId: string) => Promise<PersonaTree | undefined>;
+      onInsightReady: (agentId: string, userId: string, candidate: InsightCandidate) => Promise<void>;
+      savePersona: (agentId: string, userId: string, persona: PersonaTree) => Promise<void>;
     },
     deps?: {
       insightGenerator?: InsightGeneratorFn;
@@ -196,7 +196,7 @@ export class ProactiveScheduler {
     return aboveThreshold.slice(0, 5);
   }
 
-  async resolve(persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
+  async resolve(agentId: string, persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
@@ -214,8 +214,8 @@ export class ProactiveScheduler {
       if (!userId) return null;
 
       const [fragments, clusters] = await Promise.all([
-        this.fragmentStore.load(userId),
-        this.fragmentStore.findClusters(userId),
+        this.fragmentStore.load(agentId, userId),
+        this.fragmentStore.findClusters(agentId, userId),
       ]);
 
       if (clusters.length === 0) {
@@ -304,7 +304,7 @@ export class ProactiveScheduler {
     let knowledgeFragments: import("../insight/fragment-types.js").Fragment[] | undefined;
     if (userId) {
       try {
-        const allFragments = await this.fragmentStore.load(userId);
+        const allFragments = await this.fragmentStore.load(agentId, userId);
         const allowedKinds = new Set(["knowledge_gap", "assumption", "implicit_priority"]);
         knowledgeFragments = allFragments.filter(f => allowedKinds.has(f.kind));
         if (knowledgeFragments.length > 0) {
@@ -483,15 +483,18 @@ export class ProactiveScheduler {
   async processEvent(
     userId: string,
     event: SchedulerEvent,
+    agentId?: string,
   ): Promise<InsightCandidate | undefined> {
-    return this.processEventQueue.enqueue(userId, () => this._processEventInner(userId, event));
+    const effectiveAgentId = agentId ?? "main";
+    return this.processEventQueue.enqueue(userId, () => this._processEventInner(effectiveAgentId, userId, event));
   }
 
   private async _processEventInner(
+    agentId: string,
     userId: string,
     event: SchedulerEvent,
   ): Promise<InsightCandidate | undefined> {
-    let persona = await this.callbacks.loadPersona(userId);
+    let persona = await this.callbacks.loadPersona(agentId, userId);
     if (!persona) return undefined;
 
     // Only reset no-response streak before gate — we always want to clear the
@@ -555,13 +558,13 @@ export class ProactiveScheduler {
       const attemptedTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
       persona.feedbackProfile.recentInsightTypes = attemptedTypes;
 
-      insight = await this.resolve(persona, selected);
+      insight = await this.resolve(agentId, persona, selected);
       if (insight) break;
-      await this.callbacks.savePersona(userId, persona);
+      await this.callbacks.savePersona(agentId, userId, persona);
     }
 
     if (!insight || !selected) {
-      await this.callbacks.savePersona(userId, persona);
+      await this.callbacks.savePersona(agentId, userId, persona);
       return undefined;
     }
 
@@ -586,11 +589,11 @@ export class ProactiveScheduler {
         contentPreview: insight.content.slice(0, 80),
         mode: insightMode,
       });
-      await this.callbacks.savePersona(userId, persona);
+      await this.callbacks.savePersona(agentId, userId, persona);
       return undefined;
     }
 
-    await this.callbacks.onInsightReady(userId, insight);
+    await this.callbacks.onInsightReady(agentId, userId, insight);
 
     // After delivering a new insight, check whether the user responded to
     // the *previous* one.  If lastProactive > lastActive at this point the
@@ -627,12 +630,12 @@ export class ProactiveScheduler {
       const queries = [...(persona.feedbackProfile.recentInsightQueryHistory ?? []), insight.searchQueryUsed].slice(-10);
       persona.feedbackProfile.recentInsightQueryHistory = queries;
     }
-    await this.callbacks.savePersona(userId, persona);
+    await this.callbacks.savePersona(agentId, userId, persona);
 
     return insight;
   }
 
-  start(listUserIds: () => Promise<string[]>, intervalMs?: number): void {
+  start(listUsers: () => Promise<Array<{ agentId: string; userId: string }>>, intervalMs?: number): void {
     const baseInterval =
       intervalMs ?? this.config.minIntervalHours * 60 * 60 * 1000;
 
@@ -643,14 +646,14 @@ export class ProactiveScheduler {
     };
 
     const tick = async (): Promise<void> => {
-      const userIds = await listUserIds();
-      log.info("timer tick", { userCount: userIds.length, baseInterval });
-      for (const userId of userIds) {
+      const users = await listUsers();
+      log.info("timer tick", { userCount: users.length, baseInterval });
+      for (const { agentId, userId } of users) {
         try {
           const result = await this.processEvent(userId, {
             type: "timer",
             timestamp: Date.now(),
-          });
+          }, agentId);
           log.info("processEvent done", { userId, result: result ? "insight generated" : "no insight" });
         } catch (err) {
           log.warn("tick failed", { userId, error: String(err) });

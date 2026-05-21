@@ -1348,13 +1348,13 @@ export async function startGatewayServer(
             llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
           },
           {
-            loadPersona: async (userId) => cognitiveStore.load("main", userId),
-            savePersona: async (userId, persona) => {
-              await cognitiveStore.save("main", userId, persona);
+            loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
+            savePersona: async (agentId, userId, persona) => {
+              await cognitiveStore.save(agentId, userId, persona);
               const domainKeys = Object.keys(persona.domains);
               personaChangeSource.checkPersonaUpdate(domainKeys.length, []);
             },
-            async onInsightReady(userId: string, candidate) {
+            async onInsightReady(agentId: string, userId: string, candidate) {
               try {
                 const { resolveCognitiveDeliveryTarget } = await import("./cognitive-delivery.js");
                 const { deliverOutboundPayloads } = await import("../infra/outbound/deliver.js");
@@ -1407,14 +1407,21 @@ export async function startGatewayServer(
         );
 
         const handleEventForAllUsers = async (event: SchedulerEvent) => {
-          const userIds = (await cognitiveStore.listUserIds("main")).filter(
-            (id) => !id.startsWith("kaijibot-"),
-          );
-          for (const userId of userIds) {
+          const agentIds = await cognitiveStore.listAgentIds();
+          const allEntries: Array<{ agentId: string; userId: string }> = [];
+          for (const agentId of agentIds) {
+            const userIds = (await cognitiveStore.listUserIds(agentId)).filter(
+              (id) => !id.startsWith("kaijibot-"),
+            );
+            for (const userId of userIds) {
+              allEntries.push({ agentId, userId });
+            }
+          }
+          for (const { agentId, userId } of allEntries) {
             try {
-              await proactiveScheduler.processEvent(userId, event);
+              await proactiveScheduler.processEvent(userId, event, agentId);
             } catch (e) {
-              log.warn(`cognitive event failed for ${userId}: ${String(e)}`);
+              log.warn(`cognitive event failed for ${agentId}/${userId}: ${String(e)}`);
             }
           }
         };
@@ -1425,7 +1432,19 @@ export async function startGatewayServer(
           ? Number(process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS)
           : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5) * 3600_000;
         proactiveScheduler.start(
-          async () => (await cognitiveStore.listUserIds("main")).filter((id) => !id.startsWith("kaijibot-")),
+          async () => {
+            const agentIds = await cognitiveStore.listAgentIds();
+            const entries: Array<{ agentId: string; userId: string }> = [];
+            for (const agentId of agentIds) {
+              const userIds = (await cognitiveStore.listUserIds(agentId)).filter(
+                (id) => !id.startsWith("kaijibot-"),
+              );
+              for (const userId of userIds) {
+                entries.push({ agentId, userId });
+              }
+            }
+            return entries;
+          },
           schedulerIntervalMs,
         );
 

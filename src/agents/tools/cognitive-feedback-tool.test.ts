@@ -92,6 +92,7 @@ describe("createCognitiveFeedbackTool", () => {
 
       const tool = createCognitiveFeedbackTool({
         sessionKey: "agent:main:user-abc",
+        agentId: "main",
       })!;
 
       const result = await tool.execute("call-1", {
@@ -113,6 +114,7 @@ describe("createCognitiveFeedbackTool", () => {
 
       const tool = createCognitiveFeedbackTool({
         sessionKey: "agent:main:user-xyz",
+        agentId: "main",
       })!;
 
       const result = await tool.execute("call-2", {
@@ -132,6 +134,7 @@ describe("createCognitiveFeedbackTool", () => {
 
       const tool = createCognitiveFeedbackTool({
         sessionKey: "agent:main:user-none",
+        agentId: "main",
       })!;
 
       const result = await tool.execute("call-3", {
@@ -146,6 +149,7 @@ describe("createCognitiveFeedbackTool", () => {
     it("returns graceful message when sessionKey has no real user (TUI/admin)", async () => {
       const tool = createCognitiveFeedbackTool({
         sessionKey: "agent:main:main",
+        agentId: "main",
       })!;
 
       const result = await tool.execute("call-5", {
@@ -164,6 +168,7 @@ describe("createCognitiveFeedbackTool", () => {
 
       const tool = createCognitiveFeedbackTool({
         sessionKey: "agent:main:user-err",
+        agentId: "main",
       })!;
 
       const result = await tool.execute("call-4", {

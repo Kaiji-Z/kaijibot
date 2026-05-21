@@ -42,15 +42,15 @@ export function createEvolutionPatchTool(deps: {
         const { EvolutionStore } = await import("../../cognitive/evolution/store.js");
         const { SkillPersistenceWriter } = await import("../../cognitive/evolution/skill-writer.js");
         const { resolveConfigDir } = await import("../../utils.js");
+        const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
+        const { resolveAgentWorkspaceDir } = await import("../agent-scope.js");
 
         const configDir = resolveConfigDir();
+        const agentId = resolveAgentIdFromSessionKey(deps.sessionKey);
         const store = new EvolutionStore(configDir);
 
         let skillBaseDir = configDir;
         if (deps.config) {
-          const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
-          const { resolveAgentWorkspaceDir } = await import("../../agents/agent-scope.js");
-          const agentId = resolveAgentIdFromSessionKey(deps.sessionKey);
           skillBaseDir = resolveAgentWorkspaceDir(deps.config, agentId);
         }
         const writer = new SkillPersistenceWriter(skillBaseDir);

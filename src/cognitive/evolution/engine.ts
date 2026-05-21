@@ -27,17 +27,18 @@ export class EvolutionEngine {
     private readonly draftGenerator?: DraftGeneratorFn,
   ) {}
 
-  private async effectiveConfig(): Promise<EvolutionConfig> {
+  private async effectiveConfig(agentId: string): Promise<EvolutionConfig> {
     if (this.config) return { ...DEFAULT_EVOLUTION_CONFIG, ...this.config };
-    const stored = await this.store.loadConfig();
+    const stored = await this.store.loadConfig(agentId);
     return { ...DEFAULT_EVOLUTION_CONFIG, ...stored };
   }
 
   async evaluate(
     candidate: EvolutionCandidate,
+    agentId: string,
     userId: string,
   ): Promise<EvolutionDecision> {
-    const config = await this.effectiveConfig();
+    const config = await this.effectiveConfig(agentId);
 
     if (!config.enabled) {
       return {
@@ -75,7 +76,7 @@ export class EvolutionEngine {
     }
 
     // Fetch recent suggestions as context for the agent (not a gate)
-    const recentRecords = await this.store.getRecentSuggestions(userId, 48);
+    const recentRecords = await this.store.getRecentSuggestions(agentId, userId, 48);
     const recentSuggestions: RecentSuggestionSummary[] = recentRecords.map((r) => ({
       skillName: r.draft?.name,
       domain: r.candidate.domain,
@@ -97,7 +98,7 @@ export class EvolutionEngine {
 
     let confidence = complexity.score;
     if (this.preferenceAdapter) {
-      const domainRate = await this.preferenceAdapter.getDomainAcceptanceRate(userId, candidate.domain);
+      const domainRate = await this.preferenceAdapter.getDomainAcceptanceRate(agentId, userId, candidate.domain);
       confidence = confidence * domainRate;
     }
 
@@ -145,11 +146,12 @@ export class EvolutionEngine {
 
   async recordResponse(
     recordId: string,
+    agentId: string,
     userId: string,
     response: EvolutionUserResponse,
     savedPath?: string,
   ): Promise<EvolutionRecord> {
-    const records = await this.store.list(userId);
+    const records = await this.store.list(agentId, userId);
     const record = records.find((r) => r.id === recordId);
     if (!record) {
       throw new Error(`Record ${recordId} not found for user ${userId}`);
@@ -161,7 +163,7 @@ export class EvolutionEngine {
       savedSkillPath: savedPath,
     };
 
-    await this.store.save(updated);
+    await this.store.save(agentId, updated);
     return updated;
   }
 

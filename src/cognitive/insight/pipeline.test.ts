@@ -57,11 +57,11 @@ describe("createPipelineDeps", () => {
     const deps = createPipelineDeps(tmpDir);
     const fragment = makeFragment({ userId: "user-1" });
 
-    const result = await deps.addFragment("user-1", fragment);
+    const result = await deps.addFragment("main", "user-1", fragment);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(fragment.id);
 
-    const loaded = await deps.loadFragments("user-1");
+    const loaded = await deps.loadFragments("main", "user-1");
     expect(loaded).toHaveLength(1);
     expect(loaded[0].structuralTag).toBe("test-tag");
   });
@@ -71,10 +71,10 @@ describe("createPipelineDeps", () => {
     const deps = createPipelineDeps(tmpDir, store);
 
     const fragment = makeFragment({ userId: "user-ext" });
-    await deps.addFragment("user-ext", fragment);
+    await deps.addFragment("main", "user-ext", fragment);
 
     // Verify through the store directly — same instance used
-    const direct = await store.load("user-ext");
+    const direct = await store.load("main", "user-ext");
     expect(direct).toHaveLength(1);
     expect(direct[0].id).toBe(fragment.id);
   });
@@ -83,14 +83,14 @@ describe("createPipelineDeps", () => {
     const deps = createPipelineDeps(tmpDir);
 
     // No fragments yet → empty array
-    const empty = await deps.loadFragments("user-empty");
+    const empty = await deps.loadFragments("main", "user-empty");
     expect(empty).toEqual([]);
 
     // Add and reload
     const fragment = makeFragment({ userId: "user-empty" });
-    await deps.addFragment("user-empty", fragment);
+    await deps.addFragment("main", "user-empty", fragment);
 
-    const loaded = await deps.loadFragments("user-empty");
+    const loaded = await deps.loadFragments("main", "user-empty");
     expect(loaded).toHaveLength(1);
   });
 
@@ -101,8 +101,8 @@ describe("createPipelineDeps", () => {
     const f1 = makeFragment({ userId, structuralTag: "dup-tag", strength: 0.3 });
     const f2 = makeFragment({ userId, structuralTag: "dup-tag", strength: 0.7 });
 
-    await deps.addFragment(userId, f1);
-    const result = await deps.addFragment(userId, f2);
+    await deps.addFragment("main", userId, f1);
+    const result = await deps.addFragment("main", userId, f2);
 
     // Same structuralTag + domains → dedup, keeps stronger
     expect(result).toHaveLength(1);
@@ -117,10 +117,10 @@ describe("createPipelineDeps", () => {
     const f1 = makeFragment({ userId, domains: ["domain-a", "domain-b"], strength: 0.6 });
     const f2 = makeFragment({ userId, domains: ["domain-a", "domain-c"], strength: 0.7 });
 
-    await deps.addFragment(userId, f1);
-    await deps.addFragment(userId, f2);
+    await deps.addFragment("main", userId, f1);
+    await deps.addFragment("main", userId, f2);
 
-    const clusters: FragmentCluster[] = await deps.findClusters(userId);
+    const clusters: FragmentCluster[] = await deps.findClusters("main", userId);
     expect(clusters.length).toBeGreaterThanOrEqual(1);
 
     const cluster = clusters[0];
@@ -134,9 +134,9 @@ describe("createPipelineDeps", () => {
 
     // Single fragment → no clusters possible
     const f = makeFragment({ userId: "user-sparse", strength: 0.8 });
-    await deps.addFragment("user-sparse", f);
+    await deps.addFragment("main", "user-sparse", f);
 
-    const clusters = await deps.findClusters("user-sparse");
+    const clusters = await deps.findClusters("main", "user-sparse");
     expect(clusters).toEqual([]);
   });
 });

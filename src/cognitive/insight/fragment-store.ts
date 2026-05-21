@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -16,8 +16,12 @@ export class FragmentStore {
   private cache = new Map<string, { fragments: Fragment[]; loadedAt: number }>();
   private static CACHE_TTL_MS = 60_000;
 
-  private filePath(userId: string): string {
-    return join(this.configDir, FRAGMENTS_DIR, `${userId}.json`);
+  private filePath(agentId: string, userId: string): string {
+    return join(this.configDir, FRAGMENTS_DIR, agentId, `${userId}.json`);
+  }
+
+  private cacheKey(agentId: string, userId: string): string {
+    return `${agentId}/${userId}`;
   }
 
   private pruneAndDecay(fragments: Fragment[], userId?: string): Fragment[] {
@@ -33,13 +37,14 @@ export class FragmentStore {
     return result;
   }
 
-  async load(userId: string): Promise<Fragment[]> {
-    const cached = this.cache.get(userId);
+  async load(agentId: string, userId: string): Promise<Fragment[]> {
+    const key = this.cacheKey(agentId, userId);
+    const cached = this.cache.get(key);
     if (cached && Date.now() - cached.loadedAt < FragmentStore.CACHE_TTL_MS) {
       return this.pruneAndDecay(cached.fragments, userId);
     }
 
-    const path = this.filePath(userId);
+    const path = this.filePath(agentId, userId);
     if (!existsSync(path)) return [];
 
     try {
@@ -54,27 +59,27 @@ export class FragmentStore {
         return [];
       }
       const fragments = this.pruneAndDecay((parsed as FragmentStoreFile).fragments, userId);
-      this.cache.set(userId, { fragments: (parsed as FragmentStoreFile).fragments, loadedAt: Date.now() });
+      this.cache.set(key, { fragments: (parsed as FragmentStoreFile).fragments, loadedAt: Date.now() });
       return fragments;
     } catch (err) {
-      log.warn("Failed to load fragments", { userId, error: String(err) });
+      log.warn("Failed to load fragments", { agentId, userId, error: String(err) });
       return [];
     }
   }
 
-  async save(userId: string, fragments: Fragment[]): Promise<void> {
-    const dir = join(this.configDir, FRAGMENTS_DIR);
+  async save(agentId: string, userId: string, fragments: Fragment[]): Promise<void> {
+    const dir = join(this.configDir, FRAGMENTS_DIR, agentId);
     await mkdir(dir, { recursive: true });
-    const targetPath = this.filePath(userId);
+    const targetPath = this.filePath(agentId, userId);
     const tmpPath = join(tmpdir(), `kaijibot-fragments-${randomUUID()}.json`);
     const payload: FragmentStoreFile = { version: 1, fragments };
     await writeFile(tmpPath, JSON.stringify(payload, null, 2), "utf-8");
     await rename(tmpPath, targetPath);
-    this.cache.set(userId, { fragments, loadedAt: Date.now() });
+    this.cache.set(this.cacheKey(agentId, userId), { fragments, loadedAt: Date.now() });
   }
 
-  async addFragment(userId: string, fragment: Fragment): Promise<Fragment[]> {
-    const existing = await this.load(userId);
+  async addFragment(agentId: string, userId: string, fragment: Fragment): Promise<Fragment[]> {
+    const existing = await this.load(agentId, userId);
     const domainKey = (domains: string[]) => [...domains].sort().join(",");
     const dupIdx = existing.findIndex(f =>
       f.structuralTag === fragment.structuralTag && domainKey(f.domains) === domainKey(fragment.domains)
@@ -96,16 +101,16 @@ export class FragmentStore {
       existing.push(fragment);
     }
     if (dupIdx >= 0) {
-      log.info("fragment dedup hit", { userId, structuralTag: fragment.structuralTag, existingStrength: existing[dupIdx].strength.toFixed(3), newStrength: fragment.strength.toFixed(3) });
+      log.info("fragment dedup hit", { agentId, userId, structuralTag: fragment.structuralTag, existingStrength: existing[dupIdx].strength.toFixed(3), newStrength: fragment.strength.toFixed(3) });
     } else {
-      log.info("fragment added", { userId, structuralTag: fragment.structuralTag, strength: fragment.strength.toFixed(3), domains: fragment.domains });
+      log.info("fragment added", { agentId, userId, structuralTag: fragment.structuralTag, strength: fragment.strength.toFixed(3), domains: fragment.domains });
     }
-    await this.save(userId, existing);
+    await this.save(agentId, userId, existing);
     return existing;
   }
 
-  async findClusters(userId: string): Promise<FragmentCluster[]> {
-    const allFragments = await this.load(userId);
+  async findClusters(agentId: string, userId: string): Promise<FragmentCluster[]> {
+    const allFragments = await this.load(agentId, userId);
     if (allFragments.length === 0) return [];
 
     const CLUSTER_MIN_STRENGTH = 0.05;
@@ -196,23 +201,52 @@ export class FragmentStore {
     }
 
     clusters.sort((a, b) => (b.averageStrength * b.fragmentIds.length) - (a.averageStrength * a.fragmentIds.length));
-    log.info("fragment clusters", { userId, clusterCount: clusters.length, sizes: clusters.map(c => c.fragmentIds.length), domains: clusters.map(c => [...c.domains]) });
+    log.info("fragment clusters", { agentId, userId, clusterCount: clusters.length, sizes: clusters.map(c => c.fragmentIds.length), domains: clusters.map(c => [...c.domains]) });
     return clusters;
   }
 
-  async removeFragment(userId: string, fragmentId: string): Promise<void> {
-    const fragments = await this.load(userId);
+  async removeFragment(agentId: string, userId: string, fragmentId: string): Promise<void> {
+    const fragments = await this.load(agentId, userId);
     const filtered = fragments.filter(f => f.id !== fragmentId);
-    await this.save(userId, filtered);
+    await this.save(agentId, userId, filtered);
   }
 
-  async touchFragment(userId: string, fragmentId: string): Promise<void> {
-    const fragments = await this.load(userId);
+  async touchFragment(agentId: string, userId: string, fragmentId: string): Promise<void> {
+    const fragments = await this.load(agentId, userId);
     const target = fragments.find(f => f.id === fragmentId);
     if (target) {
       target.strength = Math.min(1.0, target.strength + 0.1);
       target.initialStrength = Math.min(1.0, (target.initialStrength ?? target.strength) + 0.1);
-      await this.save(userId, fragments);
+      await this.save(agentId, userId, fragments);
+    }
+  }
+
+  async listUserIds(agentId: string): Promise<string[]> {
+    const dir = join(this.configDir, FRAGMENTS_DIR, agentId);
+    try {
+      const entries = await readdir(dir);
+      return entries
+        .filter(name => name.endsWith(".json"))
+        .map(name => name.slice(0, -5))
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+
+  async listAgentIds(): Promise<string[]> {
+    const dir = join(this.configDir, FRAGMENTS_DIR);
+    try {
+      const entries = await readdir(dir);
+      const result: string[] = [];
+      for (const name of entries) {
+        const full = join(dir, name);
+        const s = await stat(full);
+        if (s.isDirectory()) result.push(name);
+      }
+      return result.sort();
+    } catch {
+      return [];
     }
   }
 }

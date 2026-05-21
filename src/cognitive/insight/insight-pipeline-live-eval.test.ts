@@ -290,7 +290,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
   ];
 
   for (const frag of fragments) {
-    await store.addFragment(userId, frag);
+    await store.addFragment("main", userId, frag);
   }
 }
 
@@ -481,7 +481,7 @@ describe
         );
 
         // resolve (real LLM call)
-        const insight = await scheduler.resolve(persona, selected);
+        const insight = await scheduler.resolve("main", persona, selected);
 
         if (insight) {
           persona.feedbackProfile.recentInsightIds = [

@@ -281,7 +281,7 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => persona,
       onInsightReady: async () => {},
-      savePersona: async (_userId, p) => { savedPersona = p; },
+      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
     }, { insightGenerator: async () => [fakeInsight] });
 
     const result = await scheduler.processEvent("user1", {
@@ -333,7 +333,7 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
         return savedPersonas.length > 0 ? savedPersonas[savedPersonas.length - 1]! : persona;
       },
       onInsightReady: async () => {},
-      savePersona: async (_userId, p) => { savedPersonas.push(p); },
+      savePersona: async (_agentId, _userId, p) => { savedPersonas.push(p); },
     }, {
       insightGenerator: async () => {
         // First call returns insight1, second returns insight2
@@ -509,7 +509,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
         return savedPersonas.length > 0 ? savedPersonas[savedPersonas.length - 1]! : persona;
       },
       onInsightReady: async () => {},
-      savePersona: async (_userId, p) => { savedPersonas.push(p); },
+      savePersona: async (_agentId, _userId, p) => { savedPersonas.push(p); },
     }, {
       insightGenerator: async () => [insight1],
     });
