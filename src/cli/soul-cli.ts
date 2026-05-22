@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readConfigFileSnapshot, replaceConfigFile } from "../config/config.js";
@@ -9,9 +9,9 @@ import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// Build copies presets to dist/soul-presets/ (not dist/cli/soul-presets/),
-// so we need to go up one level from __dirname (dist/cli/) to reach dist/soul-presets/.
-const PRESETS_DIR = join(__dirname, "..", "soul-presets");
+const PRESETS_DIR = existsSync(join(__dirname, "soul-presets"))
+  ? join(__dirname, "soul-presets")
+  : join(__dirname, "..", "soul-presets");
 
 const SOUL_PRESET_NAMES: Record<SoulPreset, string> = {
   intj: "建筑师 (Architect)",
