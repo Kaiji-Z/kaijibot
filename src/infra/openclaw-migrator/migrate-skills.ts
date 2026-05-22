@@ -1,9 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { MigrationChange, MigrationOptions, MigrationResult, MigrationSource } from "./types.js";
-
-const BRAND_REFERENCES = /\b(openclaw|OpenClaw|clawdbot|ClawdBot|moltbot|MoltBot)\b/g;
-const MIGRATION_BANNER = "<!-- Migrated from OpenClaw. Review for brand references. -->\n";
+import { BRAND_REFERENCES, MIGRATION_BANNER, rewriteBrandReferences } from "./brand-rewrite.js";
 
 async function dirExists(p: string): Promise<boolean> {
   try {
@@ -94,8 +92,9 @@ export async function migrateSkills(
     const dstSkillFile = path.join(dstSkillPath, "SKILL.md");
     const skillContent = await fs.readFile(dstSkillFile, "utf-8");
     if (BRAND_REFERENCES.test(skillContent)) {
-      await fs.writeFile(dstSkillFile, MIGRATION_BANNER + skillContent, "utf-8");
-      log(`Added migration banner to skill: ${skillName}`);
+      const rewritten = rewriteBrandReferences(skillContent);
+      await fs.writeFile(dstSkillFile, MIGRATION_BANNER + rewritten, "utf-8");
+      log(`Rewrote brand references in skill: ${skillName}`);
     }
 
     changes.push({

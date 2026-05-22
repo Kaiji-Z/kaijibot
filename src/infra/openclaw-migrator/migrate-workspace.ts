@@ -8,6 +8,13 @@ import type {
   MigrationSource,
 } from "./types.js";
 import type { MemoryMergeStrategy } from "./types.js";
+import {
+  extractMarkdownHeaders,
+  extractSectionsByHeaderNames,
+  loadKaijiBotTemplate,
+  rewriteBrandReferences,
+  rewriteWorkspaceFile,
+} from "./brand-rewrite.js";
 
 const WORKSPACE_BLACKLIST = new Set([".qmd", ".vectors", "memory.db"]);
 
@@ -41,6 +48,7 @@ async function copyFileIfDifferent(
   targetDir: string,
   changes: MigrationChange[],
   skipped: string[],
+  warnings: string[],
 ): Promise<void> {
   const log = options.log ?? (() => {});
   const srcRel = path.relative(sourceDir, src);
@@ -57,24 +65,45 @@ async function copyFileIfDifferent(
   }
 
   const srcContent = await fs.readFile(src, "utf-8");
+  const basename = path.basename(src);
+
+  let contentToWrite = srcContent;
+  let wasRewritten = false;
+  if (basename.endsWith(".md")) {
+    const result = await rewriteWorkspaceFile(basename, srcContent, { dryRun: !!options.dryRun });
+    contentToWrite = result.content;
+    wasRewritten = result.wasRewritten;
+    warnings.push(...result.warnings);
+  }
 
   if (dstExists) {
     const dstContent = await fs.readFile(dst, "utf-8");
-    if (fileHash(dstContent) === fileHash(srcContent)) {
+    if (fileHash(dstContent) === fileHash(contentToWrite)) {
       log(`Identical content, skipping: ${dstRel}`);
       return;
     }
   }
 
   if (options.dryRun) {
-    changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Would copy file" });
+    changes.push({
+      kind: wasRewritten ? "rewrite" : "copy",
+      source: srcRel,
+      target: dstRel,
+      detail: wasRewritten ? "Would rewrite file" : "Would copy file",
+    });
     return;
   }
 
   await fs.mkdir(path.dirname(dst), { recursive: true });
-  await fs.copyFile(src, dst);
-  changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Copied file" });
-  log(`Copied: ${srcRel} → ${dstRel}`);
+  if (wasRewritten) {
+    await fs.writeFile(dst, contentToWrite, "utf-8");
+    changes.push({ kind: "rewrite", source: srcRel, target: dstRel, detail: "Rewrote file" });
+    log(`Rewrote: ${srcRel} → ${dstRel}`);
+  } else {
+    await fs.copyFile(src, dst);
+    changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Copied file" });
+    log(`Copied: ${srcRel} → ${dstRel}`);
+  }
 }
 
 async function copyWorkspaceRecursive(
@@ -86,6 +115,7 @@ async function copyWorkspaceRecursive(
   changes: MigrationChange[],
   skipped: string[],
   skipMemoryMd: boolean,
+  warnings: string[],
 ): Promise<void> {
   const entries = await fs.readdir(srcDir, { withFileTypes: true });
 
@@ -97,11 +127,11 @@ async function copyWorkspaceRecursive(
 
     if (entry.isDirectory()) {
       await copyWorkspaceRecursive(
-        src, dst, options, sourceDir, targetDir, changes, skipped, skipMemoryMd,
+        src, dst, options, sourceDir, targetDir, changes, skipped, skipMemoryMd, warnings,
       );
     } else if (entry.isFile()) {
       if (skipMemoryMd && entry.name === "MEMORY.md") { continue; }
-      await copyFileIfDifferent(src, dst, options, sourceDir, targetDir, changes, skipped);
+      await copyFileIfDifferent(src, dst, options, sourceDir, targetDir, changes, skipped, warnings);
     }
   }
 }
@@ -139,7 +169,7 @@ async function mergeMemoryFile(
         return;
       }
 
-      const appendedContent = extractSectionsByHeaders(srcContent, newSections);
+      const appendedContent = extractSectionsByHeaderNames(srcContent, newSections);
       contentToWrite = dstContent + "\n\n" + appendedContent;
     } else {
       const dstContent = await fs.readFile(dstMemoryFile, "utf-8");
@@ -148,6 +178,8 @@ async function mergeMemoryFile(
   } else {
     contentToWrite = srcContent;
   }
+
+  contentToWrite = rewriteBrandReferences(contentToWrite);
 
   if (options.dryRun) {
     changes.push({
@@ -198,6 +230,7 @@ async function migrateWorkspaceDir(
     changes,
     skipped,
     skipMemoryMd,
+    warnings,
   );
 
   if (memoryMergeStrategy === "merge") {
@@ -206,37 +239,29 @@ async function migrateWorkspaceDir(
     );
   }
 
+  if (!options.dryRun) {
+    await seedGuideFile(targetWorkspace, warnings);
+  }
+
   return { changes, warnings, skipped };
 }
 
-function extractMarkdownHeaders(content: string): string[] {
-  const headers: string[] = [];
-  for (const line of content.split("\n")) {
-    const match = line.match(/^(#{1,6})\s+(.+)$/);
-    if (match) {
-      headers.push(match[2].trim());
-    }
-  }
-  return headers;
-}
-
-function extractSectionsByHeaders(content: string, headers: string[]): string {
-  const lines = content.split("\n");
-  const headerSet = new Set(headers);
-  const result: string[] = [];
-  let capturing = false;
-
-  for (const line of lines) {
-    const match = line.match(/^(#{1,6})\s+(.+)$/);
-    if (match) {
-      capturing = headerSet.has(match[2].trim());
-    }
-    if (capturing) {
-      result.push(line);
-    }
+async function seedGuideFile(targetWorkspace: string, warnings: string[]): Promise<void> {
+  const guidePath = path.join(targetWorkspace, "KAIJIBOT-GUIDE.md");
+  const guideExists = await fileExists(guidePath);
+  if (guideExists) {
+    return;
   }
 
-  return result.join("\n").trim();
+  try {
+    const template = await loadKaijiBotTemplate("KAIJIBOT-GUIDE.md");
+    const fd = await fs.open(guidePath, "wx");
+    await fd.writeFile(template, "utf-8");
+    await fd.close();
+  } catch {
+    // Template not found or file already created concurrently — non-critical
+    warnings.push("KAIJIBOT-GUIDE.md template not found, skipping seed.");
+  }
 }
 
 export async function migrateWorkspace(

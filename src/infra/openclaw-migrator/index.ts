@@ -25,6 +25,25 @@ export { migrateConfig } from "./migrate-config.js";
 export { migrateWorkspace } from "./migrate-workspace.js";
 export { migrateSkills } from "./migrate-skills.js";
 export { migrateSessions } from "./migrate-sessions.js";
+export {
+  BRAND_REFERENCES,
+  BRAND_HOME_PREFIXES,
+  MIGRATION_BANNER,
+  rewriteBrandReferences,
+  stripFrontMatter,
+  extractSectionsByHeaders,
+  extractSectionsByHeaderNames,
+  extractMarkdownHeaders,
+  loadKaijiBotTemplate,
+  rewriteStructuralFile,
+  rewriteWorkspaceFile,
+  STRUCTURAL_REWRITE_REGISTRY,
+} from "./brand-rewrite.js";
+export type {
+  RewriteMode,
+  StructuralRewriteRule,
+  RewriteResult,
+} from "./brand-rewrite.js";
 export type {
   MigrationSource,
   MigrationOptions,

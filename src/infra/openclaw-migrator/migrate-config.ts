@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { MigrationChange, MigrationOptions, MigrationResult, MigrationSource } from "./types.js";
+import { BRAND_HOME_PREFIXES } from "./brand-rewrite.js";
 
 const KAIJIBOT_CONFIG_FILENAME = "kaijibot.json";
 
@@ -22,13 +23,6 @@ const KAIJIBOT_CONFIG_DEFAULTS: Record<string, unknown> = {
     },
   },
 };
-
-/** Brand home-dir prefixes that should be rewritten to ~/.kaijibot/ */
-const BRAND_HOME_PREFIXES = [
-  "~/.openclaw/",
-  "~/.clawdbot/",
-  "~/.moltbot/",
-];
 
 function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = { ...target };

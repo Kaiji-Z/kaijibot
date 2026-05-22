@@ -16,7 +16,7 @@ export type MigrationOptions = {
   log?: (msg: string) => void;
 };
 
-export type MigrationChangeKind = "copy" | "move" | "create" | "merge" | "skip";
+export type MigrationChangeKind = "copy" | "move" | "create" | "merge" | "skip" | "rewrite";
 
 export type MigrationChange = {
   kind: MigrationChangeKind;
