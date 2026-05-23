@@ -3,6 +3,7 @@ set -euo pipefail
 
 echo "[deploy] Building..."
 pnpm build
+pnpm ui:build
 
 echo "[deploy] Stopping gateway..."
 pkill -f 'kaijibot-gateway' 2>/dev/null || true
@@ -15,7 +16,7 @@ sleep 0.5
 tmux send-keys -t gw 'pnpm kaijibot gateway --port 18789 --verbose' Enter
 
 echo "[deploy] Waiting for gateway to start..."
-for i in $(seq 1 15); do
+for i in $(seq 1 30); do
   if pgrep -f 'kaijibot-gateway' >/dev/null 2>&1; then
     echo "[deploy] Gateway running (PID $(pgrep -f 'kaijibot-gateway' | head -1))"
     exit 0
