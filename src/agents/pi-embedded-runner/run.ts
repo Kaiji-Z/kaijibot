@@ -407,6 +407,10 @@ export async function runEmbeddedPiAgent(
       });
       let rateLimitProfileRotations = 0;
       let timeoutCompactionAttempts = 0;
+      // Silent-error retry: non-strict-agentic models can end a turn with
+      // stopReason="error" + zero output tokens, producing no user-visible text.
+      const MAX_EMPTY_ERROR_RETRIES = 3;
+      let emptyErrorRetries = 0;
       const overloadFailoverBackoffMs = resolveOverloadFailoverBackoffMs(params.config);
       const overloadProfileRotationLimit = resolveOverloadProfileRotationLimit(params.config);
       const rateLimitProfileRotationLimit = resolveRateLimitProfileRotationLimit(params.config);
@@ -1530,6 +1534,28 @@ export async function runEmbeddedPiAgent(
             log.warn(
               `planning-only turn detected: runId=${params.runId} sessionId=${params.sessionId} ` +
                 `provider=${provider}/${modelId} — retrying once with act-now steer`,
+            );
+            continue;
+          }
+          // Silent-error retry: when the provider returns stopReason="error" with
+          // zero output tokens and empty content, silently resubmit the same prompt
+          // rather than surfacing an incomplete-turn error to the user.
+          if (
+            incompleteTurnText &&
+            !aborted &&
+            !promptError &&
+            !timedOut &&
+            attempt.lastAssistant?.stopReason === "error" &&
+            (lastAssistantUsage?.output ?? 0) === 0 &&
+            (attempt.lastAssistant?.content?.length ?? 0) === 0 &&
+            !attempt.replayMetadata.hadPotentialSideEffects &&
+            emptyErrorRetries < MAX_EMPTY_ERROR_RETRIES
+          ) {
+            emptyErrorRetries += 1;
+            log.warn(
+              `silent-error retry: runId=${params.runId} sessionId=${params.sessionId} ` +
+                `provider=${provider}/${modelId} attempt=${emptyErrorRetries}/${MAX_EMPTY_ERROR_RETRIES} ` +
+                `stopReason=error output=0 content=[]`,
             );
             continue;
           }

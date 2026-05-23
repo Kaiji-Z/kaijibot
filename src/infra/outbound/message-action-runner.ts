@@ -26,6 +26,7 @@ import {
   normalizeOptionalLowercaseString,
   normalizeOptionalString,
 } from "../../shared/string-coerce.js";
+import { stripUnsupportedCitationControlMarkers } from "../../shared/text/citation-control-markers.js";
 import { type GatewayClientMode, type GatewayClientName } from "../../utils/message-channel.js";
 import { formatErrorMessage } from "../errors.js";
 import { throwIfAborted } from "./abort.js";
@@ -472,7 +473,7 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
   mergedMediaUrls.length = 0;
   mergedMediaUrls.push(...normalizedMediaUrls);
 
-  message = parsed.text;
+  message = stripUnsupportedCitationControlMarkers(parsed.text);
   params.message = message;
   if (!params.replyTo && parsed.replyToId) {
     params.replyTo = parsed.replyToId;

@@ -12,6 +12,7 @@ import {
   hasReplyPayloadContent,
   type InteractiveReply,
 } from "../../interactive/payload.js";
+import { stripUnsupportedCitationControlMarkers } from "../../shared/text/citation-control-markers.js";
 
 export type NormalizedOutboundPayload = {
   text: string;
@@ -61,6 +62,10 @@ export function normalizeReplyPayloadsForDelivery(
       continue;
     }
     const parsed = parseReplyDirectives(payload.text ?? "");
+    const strippedText = stripUnsupportedCitationControlMarkers(parsed.text ?? "");
+    const strippedParsed =
+      strippedText === (parsed.text ?? "") ? parsed : parseReplyDirectives(strippedText);
+    const parsedText = strippedParsed.text ?? "";
     const explicitMediaUrls = payload.mediaUrls ?? parsed.mediaUrls;
     const explicitMediaUrl = payload.mediaUrl ?? parsed.mediaUrl;
     const mergedMedia = mergeMediaUrls(
@@ -74,7 +79,7 @@ export function normalizeReplyPayloadsForDelivery(
       text:
         formatBtwTextForExternalDelivery({
           ...payload,
-          text: parsed.text ?? "",
+          text: parsedText,
         }) ?? "",
       mediaUrls: mergedMedia.length ? mergedMedia : undefined,
       mediaUrl: resolvedMediaUrl,
@@ -83,7 +88,7 @@ export function normalizeReplyPayloadsForDelivery(
       replyToCurrent: payload.replyToCurrent || parsed.replyToCurrent,
       audioAsVoice: Boolean(payload.audioAsVoice || parsed.audioAsVoice),
     };
-    if (parsed.isSilent && mergedMedia.length === 0) {
+    if (strippedParsed.isSilent && mergedMedia.length === 0) {
       continue;
     }
     if (!isRenderablePayload(next)) {

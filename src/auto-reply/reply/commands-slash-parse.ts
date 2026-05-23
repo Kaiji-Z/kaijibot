@@ -16,6 +16,13 @@ export function parseSlashCommandActionArgs(raw: string, slash: string): SlashCo
   if (!normalizeLowercaseStringOrEmpty(trimmed).startsWith(slashLower)) {
     return { kind: "no-match" };
   }
+  // Fix #84572: enforce a boundary after the prefix so `/config-check` does
+  // not match the `/config` handler. The character immediately after the
+  // matched prefix must be whitespace, a colon, or end-of-string.
+  const charAfter = trimmed.charAt(slash.length);
+  if (charAfter && !/[\s:]/.test(charAfter)) {
+    return { kind: "no-match" };
+  }
   const rest = trimmed.slice(slash.length).trim();
   if (!rest) {
     return { kind: "empty" };
