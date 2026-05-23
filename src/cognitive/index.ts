@@ -6,7 +6,10 @@ export { buildCognitiveModePrompt } from "./context-writer.js";
 export { PersonaStore, createDefaultPersona } from "./persona/store.js";
 export { mergeExtraction, prunePersona } from "./persona/curator.js";
 export { extractFromMessage } from "./persona/extractor.js";
-export { extractFromMessageLLM, createDefaultDeps as createDefaultExtractorDeps } from "./persona/llm-extractor.js";
+export {
+  extractFromMessageLLM,
+  createDefaultDeps as createDefaultExtractorDeps,
+} from "./persona/llm-extractor.js";
 export type { LlmExtractorDeps, LlmExtractorOptions } from "./persona/llm-extractor.js";
 export { buildPersonaContext } from "./persona/context-builder.js";
 export type { ExtractedAttribute, ExtractionResult } from "./persona/types.js";
@@ -20,24 +23,53 @@ export type {
 export { FeishuActivitySource } from "./persona/feishu-activity-source.js";
 
 // Feedback module
-export { processFeedback, processImplicitFeedback, extractImplicitSignals } from "./feedback/collector.js";
-export { updateBanditFromFeedback, pickBestTopic, adaptFrequency, sampleTopicScores, getTopicSummaries } from "./feedback/preference-learner.js";
-export { updateTrustFromFeedback, updateTrustFromImplicit, calculateTrustScore, getInteractionPhase, getPhaseBehaviorAdvice } from "./feedback/trust-calculator.js";
-export type { FeedbackEvent, ImplicitFeedbackSignal, TopicFeedbackSummary } from "./feedback/types.js";
+export {
+  processFeedback,
+  processImplicitFeedback,
+  extractImplicitSignals,
+} from "./feedback/collector.js";
+export {
+  updateBanditFromFeedback,
+  pickBestTopic,
+  adaptFrequency,
+  sampleTopicScores,
+  getTopicSummaries,
+} from "./feedback/preference-learner.js";
+export {
+  updateTrustFromFeedback,
+  updateTrustFromImplicit,
+  calculateTrustScore,
+  getInteractionPhase,
+  getPhaseBehaviorAdvice,
+} from "./feedback/trust-calculator.js";
+export type {
+  FeedbackEvent,
+  ImplicitFeedbackSignal,
+  TopicFeedbackSummary,
+} from "./feedback/types.js";
 
 // Insight module
 export { InsightStore } from "./insight/store.js";
 export { generateInsightCandidates } from "./insight/engine.js";
 export { generateInsightCandidatesLLM, createDefaultInsightDeps } from "./insight/llm-engine.js";
 export type { LlmInsightDeps, LlmInsightOptions } from "./insight/llm-engine.js";
-export { findCrossDomainConnections, semanticDistance, discoverDomainsFromPersona, extendDomainGraph } from "./insight/cross-domain-mapper.js";
+export {
+  findCrossDomainConnections,
+  semanticDistance,
+  discoverDomainsFromPersona,
+  extendDomainGraph,
+} from "./insight/cross-domain-mapper.js";
 export type { DomainGraph } from "./insight/cross-domain-mapper.js";
 export { scoreSerendipity } from "./insight/serendipity-scorer.js";
 export type { InsightEngineInput, InsightCandidate, VerificationResult } from "./insight/types.js";
 
 // Insight module
 export { FragmentStore } from "./insight/fragment-store.js";
-export { collectFragments, shouldSkipTurn, createDefaultFragmentCollectorDeps } from "./insight/fragment-collector.js";
+export {
+  collectFragments,
+  shouldSkipTurn,
+  createDefaultFragmentCollectorDeps,
+} from "./insight/fragment-collector.js";
 export type { FragmentCollectorDeps } from "./insight/fragment-collector.js";
 export { createPipelineDeps } from "./insight/pipeline.js";
 export type { PipelineDeps } from "./insight/pipeline.js";

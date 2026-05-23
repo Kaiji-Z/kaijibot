@@ -1,9 +1,9 @@
-import type { PersonaTree } from "../types.js";
-import type { InsightEngineInput, InsightCandidate } from "./types.js";
-import { scoreSerendipity } from "./serendipity-scorer.js";
-import { findCrossDomainConnections, semanticDistance } from "./cross-domain-mapper.js";
-import { isDuplicateBySemanticOverlap } from "./content-similarity.js";
 import { randomUUID } from "node:crypto";
+import type { PersonaTree } from "../types.js";
+import { isDuplicateBySemanticOverlap } from "./content-similarity.js";
+import { findCrossDomainConnections, semanticDistance } from "./cross-domain-mapper.js";
+import { scoreSerendipity } from "./serendipity-scorer.js";
+import type { InsightEngineInput, InsightCandidate } from "./types.js";
 
 /**
  * Insight engine — generates personalized insight candidates.
@@ -44,9 +44,7 @@ export function generateInsightCandidates(
   }
 
   // Strategy 4: Exploration — target domains outside user's known graph
-  const unknownTargets = input.targetDomains.filter(
-    (td) => !persona.domains[td],
-  );
+  const unknownTargets = input.targetDomains.filter((td) => !persona.domains[td]);
   if (userDomains.length > 0 && unknownTargets.length > 0) {
     for (const targetDomain of unknownTargets.slice(0, 1)) {
       const candidate = buildExplorationInsight(targetDomain);
@@ -56,9 +54,9 @@ export function generateInsightCandidates(
 
   // Score and rank all candidates
   const scored = candidates.map((c) => {
-    const userConnectingDomains = Object.keys(persona.domains)
-      .filter((d) => semanticDistance(d, c.targetDomains[0] ?? "") < 1)
-      .length;
+    const userConnectingDomains = Object.keys(persona.domains).filter(
+      (d) => semanticDistance(d, c.targetDomains[0] ?? "") < 1,
+    ).length;
 
     const primaryDomain = c.targetDomains[0] ?? "";
     const domainNode = primaryDomain ? persona.domains[primaryDomain] : undefined;
@@ -96,8 +94,7 @@ function buildCrossDomainCandidate(
   const fromDomain = persona.domains[conn.from];
   if (!fromDomain) return undefined;
 
-  const bridgeStr =
-    conn.bridge.length > 0 ? ` (通过 ${conn.bridge.join("、")})` : "";
+  const bridgeStr = conn.bridge.length > 0 ? ` (通过 ${conn.bridge.join("、")})` : "";
   const insights = fromDomain.keyInsights.slice(0, 2).join("；");
 
   return {

@@ -6,14 +6,22 @@ import { jsonResult, textResult } from "./common.js";
 
 export const EvolutionSuggestSchema = Type.Object({
   taskSummary: Type.String({ description: "Short summary of the completed task" }),
-  toolCalls: Type.Array(Type.String(), { description: "Ordered list of tool calls made during the task" }),
+  toolCalls: Type.Array(Type.String(), {
+    description: "Ordered list of tool calls made during the task",
+  }),
   uniqueToolCount: Type.Number({ description: "Number of distinct tools used" }),
   reasoningTurns: Type.Number({ description: "Number of agent reasoning turns" }),
   durationMs: Type.Number({ description: "Wall-clock time in milliseconds" }),
   domain: Type.String({ description: "Cognitive domain (e.g. 'feishu-wiki', 'code-review')" }),
-  transcript: Type.Optional(Type.String({ description: "Optional conversation transcript summary for richer context" })),
-  hasTrialAndError: Type.Optional(Type.Boolean({ description: "Whether trial-and-error patterns were detected" })),
-  userCorrections: Type.Optional(Type.Number({ description: "Number of user corrections during the task" })),
+  transcript: Type.Optional(
+    Type.String({ description: "Optional conversation transcript summary for richer context" }),
+  ),
+  hasTrialAndError: Type.Optional(
+    Type.Boolean({ description: "Whether trial-and-error patterns were detected" }),
+  ),
+  userCorrections: Type.Optional(
+    Type.Number({ description: "Number of user corrections during the task" }),
+  ),
 });
 
 export function createEvolutionSuggestTool(deps: {
@@ -63,13 +71,22 @@ export function createEvolutionSuggestTool(deps: {
           skillBaseDir = resolveAgentWorkspaceDir(deps.config, agentId);
         }
 
-        let engine: InstanceType<typeof import("../../cognitive/evolution/engine.js").EvolutionEngine>;
+        let engine: InstanceType<
+          typeof import("../../cognitive/evolution/engine.js").EvolutionEngine
+        >;
         try {
           if (deps.config) {
-            const { createStandaloneGenerateText } = await import("../../cognitive/evolution/standalone-generate.js");
-            const { generateSkillDraftLLM } = await import("../../cognitive/evolution/llm-draft-generator.js");
-            const generateText = await createStandaloneGenerateText(deps.config, { maxTokens: 4000, timeout: 60_000 });
-            engine = new EvolutionEngine(store, undefined, undefined, (c) => generateSkillDraftLLM(c, { generateText }));
+            const { createStandaloneGenerateText } =
+              await import("../../cognitive/evolution/standalone-generate.js");
+            const { generateSkillDraftLLM } =
+              await import("../../cognitive/evolution/llm-draft-generator.js");
+            const generateText = await createStandaloneGenerateText(deps.config, {
+              maxTokens: 4000,
+              timeout: 60_000,
+            });
+            engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+              generateSkillDraftLLM(c, { generateText }),
+            );
           } else {
             engine = new EvolutionEngine(store);
           }
@@ -82,9 +99,7 @@ export function createEvolutionSuggestTool(deps: {
           return textResult("No user session; skill creation skipped.", { status: "no_session" });
         }
 
-        const errorProfile = deps.sessionKey
-          ? consumeToolErrorProfile(deps.sessionKey)
-          : undefined;
+        const errorProfile = deps.sessionKey ? consumeToolErrorProfile(deps.sessionKey) : undefined;
 
         const candidate = {
           taskSummary: params.taskSummary,
@@ -104,8 +119,10 @@ export function createEvolutionSuggestTool(deps: {
         let existingSkills: Array<{ name: string; description: string }> | undefined;
         let duplicateExisting: string | undefined;
         try {
-          const { SkillPersistenceWriter: SW } = await import("../../cognitive/evolution/skill-writer.js");
-          const { SkillLifecycleManager } = await import("../../cognitive/evolution/skill-lifecycle.js");
+          const { SkillPersistenceWriter: SW } =
+            await import("../../cognitive/evolution/skill-writer.js");
+          const { SkillLifecycleManager } =
+            await import("../../cognitive/evolution/skill-lifecycle.js");
           const writer = new SW(skillBaseDir);
           const lifecycle = new SkillLifecycleManager(writer);
 
@@ -120,8 +137,12 @@ export function createEvolutionSuggestTool(deps: {
           let generateTextForDedup: ((prompt: string) => Promise<string>) | undefined;
           try {
             if (deps.config) {
-              const { createStandaloneGenerateText } = await import("../../cognitive/evolution/standalone-generate.js");
-              generateTextForDedup = await createStandaloneGenerateText(deps.config, { maxTokens: 200, timeout: 30_000 });
+              const { createStandaloneGenerateText } =
+                await import("../../cognitive/evolution/standalone-generate.js");
+              generateTextForDedup = await createStandaloneGenerateText(deps.config, {
+                maxTokens: 200,
+                timeout: 30_000,
+              });
             }
           } catch {}
 
@@ -156,7 +177,8 @@ export function createEvolutionSuggestTool(deps: {
           });
         }
 
-        const { SkillPersistenceWriter: SW2 } = await import("../../cognitive/evolution/skill-writer.js");
+        const { SkillPersistenceWriter: SW2 } =
+          await import("../../cognitive/evolution/skill-writer.js");
         const saveWriter = new SW2(skillBaseDir);
         const savedPath = await saveWriter.writeSkill(draft);
 
@@ -179,13 +201,10 @@ export function createEvolutionSuggestTool(deps: {
           suggestionText: `我自主进化了，创建了一个技能「${draft.name}」—— ${draft.description}。如果不需要，可以说「删除技能 ${draft.name}」来移除。`,
         });
       } catch (err) {
-        return textResult(
-          `Skill creation failed: ${String(err)}`,
-          { status: "error" },
-        );
+        return textResult(`Skill creation failed: ${String(err)}`, { status: "error" });
       }
-     },
-   };
+    },
+  };
 }
 
 function resolveUserId(sessionKey?: string, deliveryTo?: string): string | null {

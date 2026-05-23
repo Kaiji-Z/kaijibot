@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { createDefaultPersona } from "./store.js";
 import { mergeExtraction, prunePersona } from "./curator.js";
+import { createDefaultPersona } from "./store.js";
 import type { ExtractionResult } from "./types.js";
 
 describe("mergeExtraction", () => {
@@ -158,7 +158,7 @@ describe("mergeExtraction — domainBlacklist", () => {
     const now = Date.now();
     const persona = createDefaultPersona();
     persona.domains = {
-      "数据科学": {
+      数据科学: {
         depth: 3,
         recurrence: 5,
         lastMentioned: now,
@@ -172,7 +172,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domainBlacklist).toContain("数据科学");
@@ -183,7 +182,7 @@ describe("mergeExtraction — domainBlacklist", () => {
     const now = Date.now();
     const persona = createDefaultPersona();
     persona.domains = {
-      "数据科学": {
+      数据科学: {
         depth: 3,
         recurrence: 5,
         lastMentioned: now,
@@ -197,7 +196,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domainBlacklist).not.toContain("数据科学");
@@ -209,7 +207,7 @@ describe("mergeExtraction — domainBlacklist", () => {
     const thirtyOneDaysAgo = now - 31 * 24 * 60 * 60 * 1000;
     const persona = createDefaultPersona();
     persona.domains = {
-      "数据科学": {
+      数据科学: {
         depth: 3,
         recurrence: 5,
         lastMentioned: now,
@@ -223,7 +221,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domainBlacklist).not.toContain("数据科学");
@@ -242,7 +239,7 @@ describe("mergeExtraction — domainBlacklist", () => {
         activeQuestions: [],
         negationSignals: 0,
       },
-      "软件架构": {
+      软件架构: {
         depth: 3,
         recurrence: 5,
         lastMentioned: now,
@@ -255,7 +252,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domains["AI/机器学习"]).toBeUndefined();
@@ -273,7 +269,6 @@ describe("mergeExtraction — domainBlacklist", () => {
         { name: "软件架构", depth: 3, insights: [], questions: [] },
       ],
       recentFocus: [],
-
     };
     const result = mergeExtraction(persona, extraction, now);
     expect(result.domains["AI/机器学习"]).toBeUndefined();
@@ -287,7 +282,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: [],
-
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.domainBlacklist).toContain("数据科学");
@@ -299,7 +293,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: ["机器学习", "深度学习", "人工智能"],
-
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.recentFocus).toContain("机器学习");
@@ -314,7 +307,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: ["数据科学"],
-
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.recentFocus).not.toContain("```json");
@@ -332,7 +324,6 @@ describe("mergeExtraction — domainBlacklist", () => {
       attributes: [],
       domains: [],
       recentFocus: ["docker", "if available", "typescript"],
-
     };
     const result = mergeExtraction(persona, extraction);
     expect(result.recentFocus).toContain("kubernetes");

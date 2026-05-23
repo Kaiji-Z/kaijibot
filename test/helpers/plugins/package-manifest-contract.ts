@@ -13,7 +13,8 @@ type PackageManifest = {
       minHostVersion?: string;
     };
   };
-};type PackageManifestContractParams = {
+};
+type PackageManifestContractParams = {
   pluginId: string;
   pluginLocalRuntimeDeps?: string[];
   mirroredRootRuntimeDeps?: string[];

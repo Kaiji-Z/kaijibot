@@ -1,21 +1,51 @@
-import type { EvolutionCandidate, ComplexityResult, ComplexityFactor, TrialErrorResult } from "./types.js";
+import type {
+  EvolutionCandidate,
+  ComplexityResult,
+  ComplexityFactor,
+  TrialErrorResult,
+} from "./types.js";
 
 // --- Trial-and-error detection patterns ---
 
 const CHINESE_CORRECTION_PATTERNS = [
-  /不对/g, /不是这个/g, /换一个/g, /再试试/g, /错了/g, /不好/g,
-  /不行/g, /重新来/g, /重新做/g, /不对吧/g, /不是这样的/g,
-  /不要这个/g, /改一下/g, /换种方式/g, /不是我要的/g, /搞错了/g,
+  /不对/g,
+  /不是这个/g,
+  /换一个/g,
+  /再试试/g,
+  /错了/g,
+  /不好/g,
+  /不行/g,
+  /重新来/g,
+  /重新做/g,
+  /不对吧/g,
+  /不是这样的/g,
+  /不要这个/g,
+  /改一下/g,
+  /换种方式/g,
+  /不是我要的/g,
+  /搞错了/g,
 ];
 
 const ENGLISH_CORRECTION_PATTERNS = [
-  /\bwrong\b/gi, /\bnope\b/gi, /\bnot that\b/gi, /\btry again\b/gi,
-  /\bincorrect\b/gi, /\bredo\b/gi, /\bnot what i wanted\b/gi, /\bthat's wrong\b/gi,
+  /\bwrong\b/gi,
+  /\bnope\b/gi,
+  /\bnot that\b/gi,
+  /\btry again\b/gi,
+  /\bincorrect\b/gi,
+  /\bredo\b/gi,
+  /\bnot what i wanted\b/gi,
+  /\bthat's wrong\b/gi,
 ];
 
 const AGENT_APOLOGY_PATTERNS = [
-  /抱歉/g, /对不起/g, /\bsorry\b/gi, /\bapologize\b/gi,
-  /\blet me try again\b/gi, /我来重新/g, /换个思路/g, /重新来/g,
+  /抱歉/g,
+  /对不起/g,
+  /\bsorry\b/gi,
+  /\bapologize\b/gi,
+  /\blet me try again\b/gi,
+  /我来重新/g,
+  /换个思路/g,
+  /重新来/g,
 ];
 
 const TOOL_CALL_REGEX = /(?:tool[_-]?call|invoke|call)[_:\s]*(\w+)/gi;
@@ -39,9 +69,11 @@ export function detectTrialAndError(candidate: EvolutionCandidate): TrialErrorRe
   for (const pat of CHINESE_CORRECTION_PATTERNS) {
     pat.lastIndex = 0;
     if (pat.test(text)) {
-      const matched = text.match(pat.source.startsWith("\\b")
-        ? new RegExp(pat.source, pat.flags)
-        : new RegExp(pat.source.replace(/\/g$/, ""), pat.flags));
+      const matched = text.match(
+        pat.source.startsWith("\\b")
+          ? new RegExp(pat.source, pat.flags)
+          : new RegExp(pat.source.replace(/\/g$/, ""), pat.flags),
+      );
       signals.push(matched?.[0] ?? pat.source);
       boost += 0.06;
     }
@@ -94,7 +126,7 @@ export function detectTrialAndError(candidate: EvolutionCandidate): TrialErrorRe
   }
 
   // If hasTrialAndError flag is set but no signals from transcript, still detect
-  const detected = signals.length > 0 || (hasTrialAndError === true);
+  const detected = signals.length > 0 || hasTrialAndError === true;
 
   const clampedBoost = Math.min(boost, MAX_BOOST);
 
@@ -157,7 +189,7 @@ export function evaluateComplexity(candidate: EvolutionCandidate): ComplexityRes
       name: "toolErrors",
       raw: ep.errorCount,
       normalized: errorNorm,
-      weight: 0.50,
+      weight: 0.5,
     });
   }
 
@@ -165,23 +197,23 @@ export function evaluateComplexity(candidate: EvolutionCandidate): ComplexityRes
   // are normal multi-step usage (e.g. tavily_search × 4 for different queries)
   const uniqueSet = new Set(candidate.toolCalls);
   const rawRetryCount = candidate.toolCalls.length - uniqueSet.size;
-  const retryCount = (ep && ep.errorCount > 0) ? rawRetryCount : 0;
+  const retryCount = ep && ep.errorCount > 0 ? rawRetryCount : 0;
   if (retryCount > 0) {
     const retryNorm = Math.min(retryCount / 3, 1);
     factors.push({
       name: "toolRetries",
       raw: retryCount,
       normalized: retryNorm,
-      weight: 0.40,
+      weight: 0.4,
     });
   }
 
   let score = baseScore + trialError.boost;
   if (ep && ep.errorCount > 0) {
-    score += Math.min(ep.errorCount / 3, 1) * 0.50;
+    score += Math.min(ep.errorCount / 3, 1) * 0.5;
   }
   if (retryCount > 0) {
-    score += Math.min(retryCount / 3, 1) * 0.40;
+    score += Math.min(retryCount / 3, 1) * 0.4;
   }
   score = Math.min(score, 1);
 

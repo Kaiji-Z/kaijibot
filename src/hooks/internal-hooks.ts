@@ -14,7 +14,13 @@ import { formatErrorMessage } from "../infra/errors.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveGlobalSingleton } from "../shared/global-singleton.js";
 
-export type InternalHookEventType = "command" | "session" | "agent" | "gateway" | "message" | "compaction";
+export type InternalHookEventType =
+  | "command"
+  | "session"
+  | "agent"
+  | "gateway"
+  | "message"
+  | "compaction";
 
 export type AgentBootstrapHookContext = {
   workspaceDir: string;

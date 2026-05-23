@@ -37,13 +37,10 @@ export function banditWeightedSelect(
   const scores = candidates.map((mode) => {
     const baseWeight = BASE_WEIGHTS[mode] ?? 0.3;
     const bandit = modeBandits?.[mode];
-    const banditFactor = bandit
-      ? bandit.alpha / (bandit.alpha + bandit.beta)
-      : 0.5;
+    const banditFactor = bandit ? bandit.alpha / (bandit.alpha + bandit.beta) : 0.5;
     const rawScore = baseWeight * banditFactor;
     // Apply floor: score = floor + (1 - floor) * rawScore
-    const floored =
-      BASE_PROBABILITY_FLOOR + (1 - BASE_PROBABILITY_FLOOR) * rawScore;
+    const floored = BASE_PROBABILITY_FLOOR + (1 - BASE_PROBABILITY_FLOOR) * rawScore;
     return { mode, score: floored };
   });
 
@@ -88,7 +85,6 @@ export function selectMode(
     return strategyHint.forceMode;
   }
 
-  const candidates =
-    modeCandidates ?? (Object.keys(BASE_WEIGHTS) as InsightMode[]);
+  const candidates = modeCandidates ?? (Object.keys(BASE_WEIGHTS) as InsightMode[]);
   return banditWeightedSelect(candidates, modeBandits, seed);
 }

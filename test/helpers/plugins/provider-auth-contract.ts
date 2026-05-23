@@ -134,16 +134,20 @@ function installSharedAuthProfileStoreHooks(state: { authStore: AuthProfileStore
     ensureAuthProfileStoreMock.mockReset();
     ensureAuthProfileStoreMock.mockImplementation(() => state.authStore);
     listProfilesForProviderMock.mockReset();
-    listProfilesForProviderMock.mockImplementation((store: { profiles: Record<string, { provider?: string } | undefined> }, providerId: string) =>
-      Object.entries(store.profiles)
-        .filter(([, credential]) => credential?.provider === providerId)
-        .map(([profileId]) => profileId),
+    listProfilesForProviderMock.mockImplementation(
+      (
+        store: { profiles: Record<string, { provider?: string } | undefined> },
+        providerId: string,
+      ) =>
+        Object.entries(store.profiles)
+          .filter(([, credential]) => credential?.provider === providerId)
+          .map(([profileId]) => profileId),
     );
   });
 
   afterEach(() => {
-     loginOpenAICodexOAuthMock.mockReset();
-     ensureAuthProfileStoreMock.mockReset();
+    loginOpenAICodexOAuthMock.mockReset();
+    ensureAuthProfileStoreMock.mockReset();
     listProfilesForProviderMock.mockReset();
     clearRuntimeAuthProfileStoreSnapshots();
   });

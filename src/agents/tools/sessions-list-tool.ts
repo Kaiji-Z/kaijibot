@@ -3,17 +3,17 @@ import path from "node:path";
 import { Type } from "@sinclair/typebox";
 import { type KaijiBotConfig, loadConfig } from "../../config/config.js";
 import {
+  resolveSessionFilePath,
+  resolveSessionFilePathOptions,
+  resolveStorePath,
+} from "../../config/sessions.js";
+import {
   isSessionArchiveArtifactName,
   isUsageCountedSessionTranscriptFileName,
   parseSessionArchiveTimestamp,
   parseUsageCountedSessionIdFromFileName,
 } from "../../config/sessions/artifacts.js";
 import { resolveSessionTranscriptsDirForAgent } from "../../config/sessions/paths.js";
-import {
-  resolveSessionFilePath,
-  resolveSessionFilePathOptions,
-  resolveStorePath,
-} from "../../config/sessions.js";
 import { callGateway } from "../../gateway/call.js";
 import { resolveAgentIdFromSessionKey } from "../../routing/session-key.js";
 import { normalizeOptionalLowercaseString, readStringValue } from "../../shared/string-coerce.js";
@@ -330,9 +330,10 @@ export function createSessionsListTool(opts?: {
         }
         // AgentId fallback: resolve from live session keys (works even with "(multiple)" storePath)
         for (const e of sessions) {
-          const key = typeof (e as Record<string, unknown>).key === "string"
-            ? (e as Record<string, unknown>).key
-            : undefined;
+          const key =
+            typeof (e as Record<string, unknown>).key === "string"
+              ? (e as Record<string, unknown>).key
+              : undefined;
           if (!key) continue;
           try {
             const agentId = resolveAgentIdFromSessionKey(key as string);

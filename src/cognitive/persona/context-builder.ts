@@ -119,7 +119,9 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   if (persona.identity.communicationStyle) {
     const cs = persona.identity.communicationStyle;
     lines.push("### Communication Style");
-    lines.push(`Formality: ${cs.formality}, Verbosity: ${cs.verbosity}, Technical: ${cs.technicalLevel}, Language: ${cs.preferredLanguage}`);
+    lines.push(
+      `Formality: ${cs.formality}, Verbosity: ${cs.verbosity}, Technical: ${cs.technicalLevel}, Language: ${cs.preferredLanguage}`,
+    );
   }
 
   return lines.join("\n");

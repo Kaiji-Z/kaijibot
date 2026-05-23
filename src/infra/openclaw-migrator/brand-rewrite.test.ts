@@ -62,7 +62,9 @@ describe("rewriteBrandReferences", () => {
   });
 
   it("replaces avatars/openclaw.png", () => {
-    expect(rewriteBrandReferences("img src='avatars/openclaw.png'")).toBe("img src='avatars/kaijibot.png'");
+    expect(rewriteBrandReferences("img src='avatars/openclaw.png'")).toBe(
+      "img src='avatars/kaijibot.png'",
+    );
   });
 
   it("replaces standalone openclaw.png", () => {
@@ -214,7 +216,8 @@ describe("rewriteWorkspaceFile", () => {
   });
 
   it("routes AGENTS.md to structural rewriting", async () => {
-    const src = "# My Workspace\n\n## Session Startup\nOpenClaw rules\n\n## User Section\nCustom stuff for OpenClaw";
+    const src =
+      "# My Workspace\n\n## Session Startup\nOpenClaw rules\n\n## User Section\nCustom stuff for OpenClaw";
     const result = await rewriteWorkspaceFile("AGENTS.md", src, { dryRun: false });
     expect(result.wasRewritten).toBe(true);
     expect(result.content).not.toContain("OpenClaw");
@@ -231,7 +234,9 @@ describe("rewriteStructuralFile full mode", () => {
   });
 
   it("emits warning when user content differs", async () => {
-    const result = await rewriteStructuralFile("TOOLS.md", "user customizations here", { dryRun: false });
+    const result = await rewriteStructuralFile("TOOLS.md", "user customizations here", {
+      dryRun: false,
+    });
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.warnings[0]).toContain("User customizations may have been lost");
   });
@@ -314,11 +319,7 @@ describe("BRAND_REFERENCES regex", () => {
 
 describe("BRAND_HOME_PREFIXES", () => {
   it("contains the three brand prefixes", () => {
-    expect(BRAND_HOME_PREFIXES).toEqual([
-      "~/.openclaw/",
-      "~/.clawdbot/",
-      "~/.moltbot/",
-    ]);
+    expect(BRAND_HOME_PREFIXES).toEqual(["~/.openclaw/", "~/.clawdbot/", "~/.moltbot/"]);
   });
 });
 
@@ -349,10 +350,7 @@ describe("brand rewrite integration with migrateWorkspace", () => {
       migrateSecrets: false,
     });
 
-    const written = await fs.readFile(
-      path.join(targetDir, "workspace", "NOTES.md"),
-      "utf-8",
-    );
+    const written = await fs.readFile(path.join(targetDir, "workspace", "NOTES.md"), "utf-8");
     expect(written).toContain("KaijiBot");
     expect(written).toContain("~/.kaijibot/");
     expect(written).not.toContain("OpenClaw");
@@ -384,10 +382,7 @@ describe("brand rewrite integration with migrateWorkspace", () => {
       migrateSecrets: false,
     });
 
-    const written = await fs.readFile(
-      path.join(targetDir, "workspace", "MEMORY.md"),
-      "utf-8",
-    );
+    const written = await fs.readFile(path.join(targetDir, "workspace", "MEMORY.md"), "utf-8");
     expect(written).toContain("KaijiBot Config");
     expect(written).toContain("~/.kaijibot/");
     expect(written).not.toContain("OpenClaw");

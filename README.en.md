@@ -17,13 +17,13 @@ Every AI assistant you've used follows the same pattern: you ask, it answers. Yo
 
 KaijiBot is different. After a few conversations on Feishu, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
 
-| | Typical Chatbot | KaijiBot |
-|---|---|---|
-| **Interaction** | Reactive — you ask, it answers | Proactive insights + normal Q&A |
-| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences |
-| **Timing Awareness** | Doesn't care what you're doing | Respects active hours, trust level, conversation cadence |
-| **Chinese Support** | English-first, Chinese often breaks | Chinese-native: pattern routing, persona extraction optimized for Chinese |
-| **Integration** | Requires Web/SDK integration | Feishu is the terminal — just send a message |
+|                        | Typical Chatbot                        | KaijiBot                                                                  |
+| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------- |
+| **Interaction**        | Reactive — you ask, it answers         | Proactive insights + normal Q&A                                           |
+| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences                  |
+| **Timing Awareness**   | Doesn't care what you're doing         | Respects active hours, trust level, conversation cadence                  |
+| **Chinese Support**    | English-first, Chinese often breaks    | Chinese-native: pattern routing, persona extraction optimized for Chinese |
+| **Integration**        | Requires Web/SDK integration           | Feishu is the terminal — just send a message                              |
 
 ## ✨ Core Features
 
@@ -82,8 +82,8 @@ Step into a pit once. That's enough.
 
 Not locked into any single provider. Switch between domestic and international at will. `kaijibot onboard` wizard auto-discovers configured API keys.
 
-| China (Recommended) | International | Aggregator / Self-hosted |
-|---|---|---|
+| China (Recommended)                                                                                                             | International                                                                        | Aggregator / Self-hosted                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax · Baidu Qianfan · StepFun · Volcengine · BytePlus · Kimi Coding · Xiaomi · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · SGLang · vLLM · Ollama · LMStudio |
 
 Switch models with a single command:
@@ -233,18 +233,18 @@ Project scale: `src/agents/` (762 files), `src/infra/` (484), `src/gateway/` (35
 
 **62 extensions** covering all capability layers:
 
-| Category | Extensions |
-|---|---|
-| **Messaging** | feishu (Feishu/Lark) |
-| **China LLMs** | Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax · Baidu Qianfan · StepFun · Volcengine · BytePlus · Kimi Coding · Xiaomi · Alibaba |
-| **International LLMs** | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI |
+| Category                   | Extensions                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Messaging**              | feishu (Feishu/Lark)                                                                                                                       |
+| **China LLMs**             | Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax · Baidu Qianfan · StepFun · Volcengine · BytePlus · Kimi Coding · Xiaomi · Alibaba            |
+| **International LLMs**     | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI                                                       |
 | **Aggregators / Gateways** | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · Copilot Proxy · Microsoft · Microsoft Foundry · Anthropic Vertex |
-| **Self-hosted** | Ollama · LMStudio · SGLang · vLLM |
-| **Dev Tools** | OpenCode · OpenCode-Go · Open-Prose · OpenShell · Kilocode · Arcee · Chutes · Venice · Vydra · Runway |
-| **Search / Browser** | Exa · Tavily · Browser (Playwright) |
-| **Memory** | Memory-Core · Memory-LanceDB · Memory-Wiki |
-| **Voice / Media** | Speech-Core · Talk-Voice · Media-Understanding · Image-Generation |
-| **Utilities** | Diffs · LLM-Task · Device-Pair · Webhooks · Shared · GitHub-Copilot |
+| **Self-hosted**            | Ollama · LMStudio · SGLang · vLLM                                                                                                          |
+| **Dev Tools**              | OpenCode · OpenCode-Go · Open-Prose · OpenShell · Kilocode · Arcee · Chutes · Venice · Vydra · Runway                                      |
+| **Search / Browser**       | Exa · Tavily · Browser (Playwright)                                                                                                        |
+| **Memory**                 | Memory-Core · Memory-LanceDB · Memory-Wiki                                                                                                 |
+| **Voice / Media**          | Speech-Core · Talk-Voice · Media-Understanding · Image-Generation                                                                          |
+| **Utilities**              | Diffs · LLM-Task · Device-Pair · Webhooks · Shared · GitHub-Copilot                                                                        |
 
 **21 built-in skills**: github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts.
 
@@ -260,23 +260,23 @@ The cognitive system design draws on the following research:
 
 **Foundational Theory**
 
-- Green, D. M., & Swets, J. A. (1966). *Signal detection theory and psychophysics*. Wiley.
-- Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in view of the evidence of two samples. *Biometrika*, 25(3/4), 285–294.
-- Altman, I., & Taylor, D. A. (1973). *Social penetration: The development of interpersonal relationships*. Holt, Rinehart & Winston.
-- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155–170.
+- Green, D. M., & Swets, J. A. (1966). _Signal detection theory and psychophysics_. Wiley.
+- Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in view of the evidence of two samples. _Biometrika_, 25(3/4), 285–294.
+- Altman, I., & Taylor, D. A. (1973). _Social penetration: The development of interpersonal relationships_. Holt, Rinehart & Winston.
+- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. _Cognitive Science_, 7(2), 155–170.
 
 **Human-Computer Relationships & Recommender Systems**
 
-- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. *ACM Transactions on Computer-Human Interaction*, 12(2), 293–327.
-- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. *Knowledge-Based Systems*, 111, 180–192.
+- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. _ACM Transactions on Computer-Human Interaction_, 12(2), 293–327.
+- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. _Knowledge-Based Systems_, 111, 180–192.
 
 **LLM Persona & Memory**
 
-- DEEPER: Directed Persona Refinement. (2025). *Proceedings of ACL 2025*. 32.2% error reduction via active contradiction resolution in persona maintenance.
-- PERSONAMEM: Persona-Aware Memory in LLMs. (2025). *Proceedings of COLM 2025*. Benchmark showing LLMs achieve ~50% accuracy on evolving profile tasks.
-- DV365: Dynamic User Representations over 365 Days. (2025). *Proceedings of KDD 2025*. Instagram's multi-slicing user embedding architecture.
+- DEEPER: Directed Persona Refinement. (2025). _Proceedings of ACL 2025_. 32.2% error reduction via active contradiction resolution in persona maintenance.
+- PERSONAMEM: Persona-Aware Memory in LLMs. (2025). _Proceedings of COLM 2025_. Benchmark showing LLMs achieve ~50% accuracy on evolving profile tasks.
+- DV365: Dynamic User Representations over 365 Days. (2025). _Proceedings of KDD 2025_. Instagram's multi-slicing user embedding architecture.
 - GemiRec: Gemini-Powered Recommendations. (2025). Xiaohongshu's multi-interest vector architecture with codebook quantization.
-- PIE: Personalized Interest Exploration. (2023). *Proceedings of WWW 2023*. Personalized PageRank with bandit exploration.
+- PIE: Personalized Interest Exploration. (2023). _Proceedings of WWW 2023_. Personalized PageRank with bandit exploration.
 - ProfiLLM: Fully Implicit User Profiling from Chatbot Interactions. (2025).
 
 ### Open Source Dependencies

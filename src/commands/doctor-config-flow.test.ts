@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { withTempHome } from "../../test/helpers/temp-home.js";
@@ -9,7 +9,12 @@ import { loadAndMaybeMigrateDoctorConfig } from "./doctor-config-flow.js";
 import { runDoctorConfigWithInput } from "./doctor-config-flow.test-utils.js";
 
 function sanitizeMatrixPathSegment(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "unknown"
+  );
 }
 
 function resolveMatrixAccountStorageRoot(params: {
@@ -22,9 +27,20 @@ function resolveMatrixAccountStorageRoot(params: {
   const accountKey = sanitizeMatrixPathSegment(params.accountId ?? "default");
   const userKey = sanitizeMatrixPathSegment(params.userId);
   const serverKey = sanitizeMatrixPathSegment(new URL(params.homeserver).host);
-  const tokenHash = crypto.createHash("sha256").update(params.accessToken).digest("hex").slice(0, 16);
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(params.accessToken)
+    .digest("hex")
+    .slice(0, 16);
   return {
-    rootDir: path.join(params.stateDir, "matrix", "accounts", accountKey, `${serverKey}__${userKey}`, tokenHash),
+    rootDir: path.join(
+      params.stateDir,
+      "matrix",
+      "accounts",
+      accountKey,
+      `${serverKey}__${userKey}`,
+      tokenHash,
+    ),
     accountKey,
     tokenHash,
   };

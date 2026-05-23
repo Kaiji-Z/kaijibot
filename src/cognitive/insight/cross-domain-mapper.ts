@@ -11,12 +11,12 @@ export type DomainGraph = Record<string, string[]>;
 /** Known domain adjacency relationships */
 const DEFAULT_DOMAIN_ADJACENCIES: DomainGraph = {
   "AI/机器学习": ["数据科学", "软件架构", "编程语言", "云/基础设施", "网络安全"],
-  "软件架构": ["编程语言", "云/基础设施", "网络安全", "AI/机器学习"],
-  "产品思维": ["创业/商业", "数据科学", "AI/机器学习"],
+  软件架构: ["编程语言", "云/基础设施", "网络安全", "AI/机器学习"],
+  产品思维: ["创业/商业", "数据科学", "AI/机器学习"],
   "创业/商业": ["产品思维", "数据科学"],
-  "数据科学": ["AI/机器学习", "产品思维", "云/基础设施"],
-  "网络安全": ["云/基础设施", "软件架构"],
-  "编程语言": ["软件架构", "AI/机器学习"],
+  数据科学: ["AI/机器学习", "产品思维", "云/基础设施"],
+  网络安全: ["云/基础设施", "软件架构"],
+  编程语言: ["软件架构", "AI/机器学习"],
   "云/基础设施": ["软件架构", "网络安全", "数据科学"],
 };
 
@@ -97,14 +97,11 @@ export function observeCoOccurrence(
           lastObserved: timestamp,
           observations: existing.observations + 1,
         };
-        newEdges = newEdges.map((e) =>
-          edgeKey(e.source, e.target) === key ? updated : e,
-        );
+        newEdges = newEdges.map((e) => (edgeKey(e.source, e.target) === key ? updated : e));
         edgeIndex.set(key, updated);
       } else {
-        const [src, tgt] = domains[i] < domains[j]
-          ? [domains[i], domains[j]]
-          : [domains[j], domains[i]];
+        const [src, tgt] =
+          domains[i] < domains[j] ? [domains[i], domains[j]] : [domains[j], domains[i]];
         const created: DomainGraphEdge = {
           source: src,
           target: tgt,
@@ -147,11 +144,7 @@ export function decayEdges(
   };
 }
 
-export function getEdgeWeight(
-  graph: LearnedDomainGraph,
-  source: string,
-  target: string,
-): number {
+export function getEdgeWeight(graph: LearnedDomainGraph, source: string, target: string): number {
   const key = edgeKey(source, target);
   for (const edge of graph.edges) {
     if (edgeKey(edge.source, edge.target) === key) {
@@ -182,9 +175,7 @@ export function findCrossDomainConnections(
   extendedGraph?: DomainGraph,
   domainGraph?: LearnedDomainGraph,
 ): Array<{ from: string; to: string; bridge: string[]; distance: number }> {
-  const learnedGraph = domainGraph
-    ? buildAdjacencyFromLearned(domainGraph)
-    : {};
+  const learnedGraph = domainGraph ? buildAdjacencyFromLearned(domainGraph) : {};
   const defaultGraph = resolveGraph(extendedGraph);
   const graph: DomainGraph = {};
   for (const [node, neighbors] of Object.entries(defaultGraph)) {
@@ -257,7 +248,10 @@ export function semanticDistance(
 }
 
 export function discoverDomainsFromPersona(
-  persona: { domains: Record<string, unknown>; identity: { expertDomains?: string[]; interestDomains?: string[]; curiosityDomains?: string[] } },
+  persona: {
+    domains: Record<string, unknown>;
+    identity: { expertDomains?: string[]; interestDomains?: string[]; curiosityDomains?: string[] };
+  },
   existingGraph?: DomainGraph,
 ): string[] {
   const graph = existingGraph ?? DEFAULT_DOMAIN_ADJACENCIES;

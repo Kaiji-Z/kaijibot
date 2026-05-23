@@ -123,44 +123,26 @@ describe("buildSurpriseInsightPrompt contrastive framework", () => {
 
 describe("buildPatternInsightPrompt contrastive framework", () => {
   it("includes CONTRASTIVE FRAMEWORK when recentInsightContents is non-empty", () => {
-    const { prompt } = buildPatternInsightPrompt(
-      makePersona(),
-      makeInput(),
-      ["some past insight"],
-    );
+    const { prompt } = buildPatternInsightPrompt(makePersona(), makeInput(), ["some past insight"]);
     expect(prompt).toContain("CONTRASTIVE FRAMEWORK");
     expect(prompt).toContain("COUNTER-EXAMPLE");
   });
 
   it("does NOT include CONTRASTIVE FRAMEWORK when recentInsightContents is empty", () => {
-    const { prompt } = buildPatternInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-    );
+    const { prompt } = buildPatternInsightPrompt(makePersona(), makeInput(), []);
     expect(prompt).not.toContain("CONTRASTIVE FRAMEWORK");
   });
 });
 
 describe("buildInsightPrompt contrastive framework", () => {
   it("includes CONTRASTIVE FRAMEWORK when recentInsightContents is non-empty", () => {
-    const { prompt } = buildInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      ["some past insight"],
-    );
+    const { prompt } = buildInsightPrompt(makePersona(), makeInput(), [], ["some past insight"]);
     expect(prompt).toContain("CONTRASTIVE FRAMEWORK");
     expect(prompt).toContain("COUNTER-EXAMPLE");
   });
 
   it("does NOT include CONTRASTIVE FRAMEWORK when recentInsightContents is empty", () => {
-    const { prompt } = buildInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      [],
-    );
+    const { prompt } = buildInsightPrompt(makePersona(), makeInput(), [], []);
     expect(prompt).not.toContain("CONTRASTIVE FRAMEWORK");
   });
 });
@@ -168,15 +150,11 @@ describe("buildInsightPrompt contrastive framework", () => {
 describe("expanded past insight context (5 × 120 chars)", () => {
   it("includes all 5 past insights with up to 120 chars truncation in buildInsightPrompt", () => {
     const longInsights = fiveInsights.map(
-      (base, i) => `${base}，这是一条超过80字符的扩展洞察内容，用于测试新的截断限制是否生效 part${i + 1}`,
+      (base, i) =>
+        `${base}，这是一条超过80字符的扩展洞察内容，用于测试新的截断限制是否生效 part${i + 1}`,
     );
 
-    const { prompt } = buildInsightPrompt(
-      makePersona(),
-      makeInput(),
-      [],
-      longInsights,
-    );
+    const { prompt } = buildInsightPrompt(makePersona(), makeInput(), [], longInsights);
 
     for (let i = 1; i <= 5; i++) {
       expect(prompt).toContain(`${i}.`);
@@ -200,11 +178,7 @@ describe("expanded past insight context (5 × 120 chars)", () => {
   });
 
   it("includes all 5 past insights in buildPatternInsightPrompt", () => {
-    const { prompt } = buildPatternInsightPrompt(
-      makePersona(),
-      makeInput(),
-      fiveInsights,
-    );
+    const { prompt } = buildPatternInsightPrompt(makePersona(), makeInput(), fiveInsights);
 
     for (let i = 1; i <= 5; i++) {
       expect(prompt).toContain(`${i}.`);

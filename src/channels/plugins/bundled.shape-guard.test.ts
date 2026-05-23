@@ -46,10 +46,7 @@ describe("bundled channel entry shape guards", () => {
     expect(feishuRoot, "feishu extension directory must exist").toBeTruthy();
 
     const manifestPath = path.join(feishuRoot!, "manifest.ts");
-    expect(
-      fs.existsSync(manifestPath),
-      "feishu manifest.ts must exist",
-    ).toBe(true);
+    expect(fs.existsSync(manifestPath), "feishu manifest.ts must exist").toBe(true);
   });
 
   it("treats missing bundled discovery results as empty", async () => {
@@ -83,9 +80,7 @@ describe("bundled channel entry shape guards", () => {
         }) =>
           actual
             .listBundledChannelPluginMetadata(params)
-            .filter(
-              (metadata) => metadata.manifest.id === "feishu",
-            ),
+            .filter((metadata) => metadata.manifest.id === "feishu"),
       };
     });
 

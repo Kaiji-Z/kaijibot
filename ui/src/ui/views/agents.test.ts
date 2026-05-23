@@ -136,12 +136,7 @@ describe("renderAgents", () => {
 
   it("shows default badge on the default agent card", async () => {
     const container = document.createElement("div");
-    render(
-      renderAgents(
-        createProps({ selectedAgentId: "alpha" }),
-      ),
-      container,
-    );
+    render(renderAgents(createProps({ selectedAgentId: "alpha" })), container);
     await Promise.resolve();
 
     const badge = container.querySelector(".agent-card__badge");

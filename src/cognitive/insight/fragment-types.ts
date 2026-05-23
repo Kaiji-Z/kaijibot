@@ -46,7 +46,7 @@ export type QualityAssessment = {
 };
 
 export const QUALITY_PILLAR_WEIGHTS = {
-  llmNoveltyActionable: 0.60,
+  llmNoveltyActionable: 0.6,
   emotionalReadiness: 0.15,
   nonObviousness: 0.25,
 } as const;
@@ -65,7 +65,10 @@ export const FRAGMENT_HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ─── Helper Functions ───
 
-export function computeQualityVerdict(composite: number, llmVerdict?: "yes" | "no"): "deliver" | "park" | "discard" {
+export function computeQualityVerdict(
+  composite: number,
+  llmVerdict?: "yes" | "no",
+): "deliver" | "park" | "discard" {
   if (llmVerdict === "no") return "discard";
   if (composite >= 0.65) return "deliver";
   if (composite >= 0.45) return "park";
@@ -87,7 +90,8 @@ export function isFragmentExpired(fragment: Fragment, now?: number): boolean {
 }
 
 export function createDefaultFragment(
-  overrides: Partial<Fragment> & Pick<Fragment, "userId" | "kind" | "evidence" | "domains" | "structuralTag">,
+  overrides: Partial<Fragment> &
+    Pick<Fragment, "userId" | "kind" | "evidence" | "domains" | "structuralTag">,
 ): Fragment {
   const createdAt = Date.now();
   const result: Fragment = {

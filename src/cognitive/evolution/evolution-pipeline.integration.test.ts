@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, existsSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 /**
  * Integration test — self-evolution engine end-to-end pipeline.
  *
@@ -7,19 +10,15 @@
  * All I/O goes to a temp directory; no real LLM or Feishu API calls.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, existsSync, readdirSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-import { EvolutionEngine } from "./engine.js";
-import { EvolutionStore } from "./store.js";
-import { SkillPersistenceWriter } from "./skill-writer.js";
-import { SkillLifecycleManager } from "./skill-lifecycle.js";
-import { EvolutionPreferenceAdapter } from "./preference-adapter.js";
 import { AuditLog } from "./audit-log.js";
 import { evaluateComplexity, detectTrialAndError } from "./complexity-evaluator.js";
-import { generateSkillDraft } from "./skill-draft-generator.js";
+import { EvolutionEngine } from "./engine.js";
 import { generateSkillDraftLLM, buildPrompt, validateAndRepair } from "./llm-draft-generator.js";
+import { EvolutionPreferenceAdapter } from "./preference-adapter.js";
+import { generateSkillDraft } from "./skill-draft-generator.js";
+import { SkillLifecycleManager } from "./skill-lifecycle.js";
+import { SkillPersistenceWriter } from "./skill-writer.js";
+import { EvolutionStore } from "./store.js";
 import type {
   EvolutionCandidate,
   EvolutionRecord,
@@ -373,7 +372,11 @@ describe("Pipeline: skill patching", () => {
     });
 
     const result = await engine.patchSkill(
-      { name: "test-missing", instructions: "fix", replacements: [{ oldText: "DOES_NOT_EXIST", newText: "x" }] },
+      {
+        name: "test-missing",
+        instructions: "fix",
+        replacements: [{ oldText: "DOES_NOT_EXIST", newText: "x" }],
+      },
       { writer },
     );
 
@@ -425,7 +428,9 @@ describe("Pipeline: skill patching", () => {
       bodyMarkdown: "Body",
     });
 
-    const failingLlm = async () => { throw new Error("API timeout"); };
+    const failingLlm = async () => {
+      throw new Error("API timeout");
+    };
 
     const result = await engine.patchSkill(
       { name: "test-llm-fail", instructions: "Update" },
@@ -502,10 +507,7 @@ describe("Pipeline: skill lifecycle management", () => {
     const raw = await writer.readRawSkill(draft.name);
     expect(raw).not.toBeNull();
     const staleTimestamp = Date.now() - 31 * 86400000;
-    const patched = raw!.replace(
-      /lastUsedAt:\s*\d+/,
-      `lastUsedAt: ${staleTimestamp}`,
-    );
+    const patched = raw!.replace(/lastUsedAt:\s*\d+/, `lastUsedAt: ${staleTimestamp}`);
     await writer.updateSkill(draft.name, patched);
 
     const meta = await writer.readSkillMeta(draft.name);
@@ -531,7 +533,9 @@ describe("Pipeline: skill lifecycle management", () => {
     // Force stale-skill to be old and unused
     const raw = await writer.readRawSkill("stale-skill");
     const staleTs = Date.now() - 31 * 86400000;
-    const patched = raw!.replace(/lastUsedAt:\s*\d+/, `lastUsedAt: ${staleTs}`).replace(/usageCount:\s*\d+/, "usageCount: 0");
+    const patched = raw!
+      .replace(/lastUsedAt:\s*\d+/, `lastUsedAt: ${staleTs}`)
+      .replace(/usageCount:\s*\d+/, "usageCount: 0");
     await writer.updateSkill("stale-skill", patched);
 
     const removed = await lifecycle.removeStale(30);
@@ -748,7 +752,8 @@ describe("Pipeline: LLM draft generation", () => {
 
   it("falls back when Triggers section is missing", async () => {
     const candidate = complexCandidate();
-    const noTriggers = "---\nname: no-triggers\ndescription: \"No triggers\"\n---\n\n## Workflow\n\n1. Step one.";
+    const noTriggers =
+      '---\nname: no-triggers\ndescription: "No triggers"\n---\n\n## Workflow\n\n1. Step one.';
 
     const draft = validateAndRepair(noTriggers, candidate);
     // Falls back to rule-based because no trigger phrases extracted
@@ -771,7 +776,9 @@ describe("Pipeline: LLM draft generation", () => {
     const candidate = complexCandidate();
 
     const draft = await generateSkillDraftLLM(candidate, {
-      generateText: async () => { throw new Error("LLM unavailable"); },
+      generateText: async () => {
+        throw new Error("LLM unavailable");
+      },
     });
 
     // Should still produce a draft via fallback
@@ -785,35 +792,51 @@ describe("Pipeline: LLM draft generation", () => {
 // ===========================================================================
 describe("Pipeline: skill writer edge cases", () => {
   it("rejects path traversal in skill name", async () => {
-    await expect(writer.writeSkill({
-      name: "../etc/passwd",
-      description: "Evil",
-      triggerPhrases: [],
-      bodyMarkdown: "Bad",
-    })).rejects.toThrow("Invalid skill name");
+    await expect(
+      writer.writeSkill({
+        name: "../etc/passwd",
+        description: "Evil",
+        triggerPhrases: [],
+        bodyMarkdown: "Bad",
+      }),
+    ).rejects.toThrow("Invalid skill name");
   });
 
   it("rejects absolute path in skill name", async () => {
-    await expect(writer.writeSkill({
-      name: "/tmp/evil",
-      description: "Evil",
-      triggerPhrases: [],
-      bodyMarkdown: "Bad",
-    })).rejects.toThrow("Invalid skill name");
+    await expect(
+      writer.writeSkill({
+        name: "/tmp/evil",
+        description: "Evil",
+        triggerPhrases: [],
+        bodyMarkdown: "Bad",
+      }),
+    ).rejects.toThrow("Invalid skill name");
   });
 
   it("rejects backslash in skill name", async () => {
-    await expect(writer.writeSkill({
-      name: "evil\\skill",
-      description: "Evil",
-      triggerPhrases: [],
-      bodyMarkdown: "Bad",
-    })).rejects.toThrow("Invalid skill name");
+    await expect(
+      writer.writeSkill({
+        name: "evil\\skill",
+        description: "Evil",
+        triggerPhrases: [],
+        bodyMarkdown: "Bad",
+      }),
+    ).rejects.toThrow("Invalid skill name");
   });
 
   it("listSkillNames returns only valid skill directories", async () => {
-    await writer.writeSkill({ name: "skill-a", description: "A", triggerPhrases: [], bodyMarkdown: "A" });
-    await writer.writeSkill({ name: "skill-b", description: "B", triggerPhrases: [], bodyMarkdown: "B" });
+    await writer.writeSkill({
+      name: "skill-a",
+      description: "A",
+      triggerPhrases: [],
+      bodyMarkdown: "A",
+    });
+    await writer.writeSkill({
+      name: "skill-b",
+      description: "B",
+      triggerPhrases: [],
+      bodyMarkdown: "B",
+    });
 
     const names = await writer.listSkillNames();
     expect(names.sort()).toEqual(["skill-a", "skill-b"]);
@@ -830,7 +853,12 @@ describe("Pipeline: skill writer edge cases", () => {
   });
 
   it("removeSkill deletes the skill directory", async () => {
-    await writer.writeSkill({ name: "to-remove", description: "X", triggerPhrases: [], bodyMarkdown: "X" });
+    await writer.writeSkill({
+      name: "to-remove",
+      description: "X",
+      triggerPhrases: [],
+      bodyMarkdown: "X",
+    });
     expect(await writer.skillExists("to-remove")).toBe(true);
 
     await writer.removeSkill("to-remove");
@@ -838,7 +866,12 @@ describe("Pipeline: skill writer edge cases", () => {
   });
 
   it("updateSkill overwrites content atomically", async () => {
-    await writer.writeSkill({ name: "update-test", description: "Original", triggerPhrases: [], bodyMarkdown: "Original" });
+    await writer.writeSkill({
+      name: "update-test",
+      description: "Original",
+      triggerPhrases: [],
+      bodyMarkdown: "Original",
+    });
 
     const newPath = await writer.updateSkill("update-test", "Updated content");
     expect(existsSync(newPath)).toBe(true);
@@ -857,7 +890,7 @@ describe("Pipeline: skill writer edge cases", () => {
 // ===========================================================================
 describe("Pipeline: config persistence", () => {
   it("saves and loads config", async () => {
-    await store.saveConfig(AGENT, { ...await store.loadConfig(AGENT), minComplexity: 0.8 });
+    await store.saveConfig(AGENT, { ...(await store.loadConfig(AGENT)), minComplexity: 0.8 });
 
     const loaded = await store.loadConfig(AGENT);
     expect(loaded.minComplexity).toBe(0.8);
@@ -917,7 +950,12 @@ describe("Pipeline: store reliability", () => {
       id: "rec-rt",
       userId: "user-rt",
       candidate: complexCandidate(),
-      decision: { shouldSuggest: true, confidence: 0.9, complexityScore: 0.8, reasoning: "round-trip" },
+      decision: {
+        shouldSuggest: true,
+        confidence: 0.9,
+        complexityScore: 0.8,
+        reasoning: "round-trip",
+      },
       timestamp: Date.now(),
     };
 

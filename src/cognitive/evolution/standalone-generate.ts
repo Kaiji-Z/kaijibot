@@ -1,8 +1,8 @@
 import { completeSimple, type Api, type Model, type TextContent } from "@mariozechner/pi-ai";
-import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
-import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
+import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 
 export type StandaloneGenerateTextFn = (prompt: string) => Promise<string>;
 
@@ -30,14 +30,18 @@ export async function createStandaloneGenerateText(
   return async (prompt: string): Promise<string> => {
     const result = await completeSimple(
       model,
-        { messages: [{ role: "user" as const, content: prompt, timestamp: Date.now() }] },
+      { messages: [{ role: "user" as const, content: prompt, timestamp: Date.now() }] },
       {
         apiKey: auth.apiKey,
         maxTokens,
         signal: AbortSignal.timeout(timeout),
       },
     );
-    return result.content.filter(isTextBlock).map((b) => b.text).join("").trim();
+    return result.content
+      .filter(isTextBlock)
+      .map((b) => b.text)
+      .join("")
+      .trim();
   };
 }
 
@@ -65,14 +69,18 @@ export function createStandaloneGenerateTextWithDeps(
     return async (prompt: string): Promise<string> => {
       const result = await deps.complete(
         model,
-      { messages: [{ role: "user" as const, content: prompt, timestamp: Date.now() }] },
+        { messages: [{ role: "user" as const, content: prompt, timestamp: Date.now() }] },
         {
           apiKey: auth.apiKey,
           maxTokens,
           signal: AbortSignal.timeout(timeout),
         },
       );
-      return result.content.filter(isTextBlock).map((b) => b.text).join("").trim();
+      return result.content
+        .filter(isTextBlock)
+        .map((b) => b.text)
+        .join("")
+        .trim();
     };
   };
 }

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { FragmentStore } from "./fragment-store.js";
 import type { Fragment } from "./fragment-types.js";
 import { FRAGMENT_TTL_MS } from "./fragment-types.js";
@@ -134,10 +134,18 @@ describe("FragmentStore", () => {
 
   describe("dedup", () => {
     it("deduplicates by structuralTag — keeps higher strength", async () => {
-      const existing = makeFragment({ structuralTag: "same-tag", strength: 0.3, evidence: "short" });
+      const existing = makeFragment({
+        structuralTag: "same-tag",
+        strength: 0.3,
+        evidence: "short",
+      });
       await store.addFragment("main", "test-user", existing);
 
-      const incoming = makeFragment({ structuralTag: "same-tag", strength: 0.7, evidence: "longer evidence here" });
+      const incoming = makeFragment({
+        structuralTag: "same-tag",
+        strength: 0.7,
+        evidence: "longer evidence here",
+      });
       const result = await store.addFragment("main", "test-user", incoming);
 
       expect(result).toHaveLength(1);
@@ -161,9 +169,24 @@ describe("FragmentStore", () => {
     function makeClusterableFragments(): Fragment[] {
       const sharedDomain = "typescript";
       return [
-        makeFragment({ id: "f1", domains: [sharedDomain, "react"], strength: 0.6, kind: "assumption" }),
-        makeFragment({ id: "f2", domains: [sharedDomain, "nodejs"], strength: 0.7, kind: "knowledge_gap" }),
-        makeFragment({ id: "f3", domains: [sharedDomain, "testing"], strength: 0.5, kind: "methodological_habit" }),
+        makeFragment({
+          id: "f1",
+          domains: [sharedDomain, "react"],
+          strength: 0.6,
+          kind: "assumption",
+        }),
+        makeFragment({
+          id: "f2",
+          domains: [sharedDomain, "nodejs"],
+          strength: 0.7,
+          kind: "knowledge_gap",
+        }),
+        makeFragment({
+          id: "f3",
+          domains: [sharedDomain, "testing"],
+          strength: 0.5,
+          kind: "methodological_habit",
+        }),
       ];
     }
 
@@ -188,9 +211,7 @@ describe("FragmentStore", () => {
     });
 
     it("pre-filter rejects cluster with <2 fragments", async () => {
-      const fragments = [
-        makeFragment({ domains: ["a", "b"], strength: 0.8 }),
-      ];
+      const fragments = [makeFragment({ domains: ["a", "b"], strength: 0.8 })];
       await store.save("main", "test-user", fragments);
       const clusters = await store.findClusters("main", "test-user");
       expect(clusters).toHaveLength(0);
@@ -244,21 +265,45 @@ describe("FragmentStore", () => {
 
   describe("domain-aware dedup", () => {
     it("addFragment does not dedupe fragments with same tag but different domains", async () => {
-      await store.addFragment("main", "test-user", makeFragment({ structuralTag: "tag-a", domains: ["A"] }));
-      const result = await store.addFragment("main", "test-user", makeFragment({ structuralTag: "tag-a", domains: ["B"] }));
+      await store.addFragment(
+        "main",
+        "test-user",
+        makeFragment({ structuralTag: "tag-a", domains: ["A"] }),
+      );
+      const result = await store.addFragment(
+        "main",
+        "test-user",
+        makeFragment({ structuralTag: "tag-a", domains: ["B"] }),
+      );
       expect(result).toHaveLength(2);
     });
 
     it("addFragment dedupes fragments with same tag AND same domains", async () => {
-      await store.addFragment("main", "test-user", makeFragment({ structuralTag: "tag-a", domains: ["A", "B"], strength: 0.7 }));
-      const result = await store.addFragment("main", "test-user", makeFragment({ structuralTag: "tag-a", domains: ["B", "A"], strength: 0.3 }));
+      await store.addFragment(
+        "main",
+        "test-user",
+        makeFragment({ structuralTag: "tag-a", domains: ["A", "B"], strength: 0.7 }),
+      );
+      const result = await store.addFragment(
+        "main",
+        "test-user",
+        makeFragment({ structuralTag: "tag-a", domains: ["B", "A"], strength: 0.3 }),
+      );
       expect(result).toHaveLength(1);
       expect(result[0].strength).toBeCloseTo(0.7, 1);
     });
 
     it("addFragment dedupes by keeping stronger fragment", async () => {
-      await store.addFragment("main", "test-user", makeFragment({ structuralTag: "tag-x", domains: ["X"], strength: 0.3 }));
-      const result = await store.addFragment("main", "test-user", makeFragment({ structuralTag: "tag-x", domains: ["X"], strength: 0.7 }));
+      await store.addFragment(
+        "main",
+        "test-user",
+        makeFragment({ structuralTag: "tag-x", domains: ["X"], strength: 0.3 }),
+      );
+      const result = await store.addFragment(
+        "main",
+        "test-user",
+        makeFragment({ structuralTag: "tag-x", domains: ["X"], strength: 0.7 }),
+      );
       expect(result).toHaveLength(1);
       expect(result[0].strength).toBeCloseTo(0.7, 1);
     });
@@ -325,7 +370,7 @@ describe("FragmentStore", () => {
     it("file is valid JSON after save", async () => {
       const fragment = makeFragment();
       await store.save("main", "test-user", [fragment]);
-        const raw = readFileSync(join(tempDir, "cognitive/fragments/main/test-user.json"), "utf-8");
+      const raw = readFileSync(join(tempDir, "cognitive/fragments/main/test-user.json"), "utf-8");
       const parsed = JSON.parse(raw);
       expect(parsed.version).toBe(1);
       expect(parsed.fragments).toHaveLength(1);
@@ -437,7 +482,7 @@ describe("FragmentStore", () => {
         const loaded = await store.load("main", "test-user");
         await store.save("main", "test-user", loaded);
 
-      const raw = readFileSync(join(tempDir, "cognitive/fragments/main/test-user.json"), "utf-8");
+        const raw = readFileSync(join(tempDir, "cognitive/fragments/main/test-user.json"), "utf-8");
         const parsed = JSON.parse(raw);
         expect(parsed.fragments[0].initialStrength).toBe(0.8);
       } finally {

@@ -493,9 +493,8 @@ export async function getReplyFromConfig(
     if (resetTriggered || !isNewSession || !previousSessionEntry) {
       return;
     }
-    const { createInternalHookEvent, triggerInternalHook } = await import(
-      "../../hooks/internal-hooks.js"
-    );
+    const { createInternalHookEvent, triggerInternalHook } =
+      await import("../../hooks/internal-hooks.js");
     const hookEvent = createInternalHookEvent("command", "reset", sessionKey, {
       sessionEntry,
       previousSessionEntry,

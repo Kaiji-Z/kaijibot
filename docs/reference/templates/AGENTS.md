@@ -54,19 +54,19 @@ Memory tool guidance (search, get, save, tidy), classification rules, topic file
 
 Each file has a specific responsibility. Respect these boundaries:
 
-| File | Purpose | Managed by |
-|------|---------|-----------|
-| AGENTS.md | Behavioral rules and workspace guide (this file) | Bot + user |
-| SOUL.md | Personality, values, communication style | Bot evolves it |
-| IDENTITY.md | Name, greeting, self-introduction | User during onboarding |
-| USER.md | User preferences (timezone, language, style) | User |
-| TOOLS.md | Environment-specific tool notes (cameras, SSH, TTS) | Bot |
-| HEARTBEAT.md | Proactive task checklist (empty = skip heartbeat) | Bot |
-| MEMORY.md | Hybrid memory index (8KB: inline high-freq + topic pointers) | Bot via memory tools |
-| memory/YYYY-MM-DD.md | Daily session notes | Bot |
-| memory/topics/*.md | Classified long-term memories by topic | Bot via memory_save |
-| KAIJIBOT-GUIDE.md | Configuration reference | System template |
-| BOOTSTRAP.md | First-run ritual (delete after completion) | System |
+| File                 | Purpose                                                      | Managed by             |
+| -------------------- | ------------------------------------------------------------ | ---------------------- |
+| AGENTS.md            | Behavioral rules and workspace guide (this file)             | Bot + user             |
+| SOUL.md              | Personality, values, communication style                     | Bot evolves it         |
+| IDENTITY.md          | Name, greeting, self-introduction                            | User during onboarding |
+| USER.md              | User preferences (timezone, language, style)                 | User                   |
+| TOOLS.md             | Environment-specific tool notes (cameras, SSH, TTS)          | Bot                    |
+| HEARTBEAT.md         | Proactive task checklist (empty = skip heartbeat)            | Bot                    |
+| MEMORY.md            | Hybrid memory index (8KB: inline high-freq + topic pointers) | Bot via memory tools   |
+| memory/YYYY-MM-DD.md | Daily session notes                                          | Bot                    |
+| memory/topics/\*.md  | Classified long-term memories by topic                       | Bot via memory_save    |
+| KAIJIBOT-GUIDE.md    | Configuration reference                                      | System template        |
+| BOOTSTRAP.md         | First-run ritual (delete after completion)                   | System                 |
 
 ## Red Lines
 

@@ -1,7 +1,11 @@
 // Evolution module — Self-Evolution Engine
 export { evaluateComplexity } from "./complexity-evaluator.js";
 export { generateSkillDraft, toKebabCase, sanitizeSkillName } from "./skill-draft-generator.js";
-export { generateSkillDraftLLM, buildPrompt as buildDraftPrompt, validateAndRepair as validateDraftRepair } from "./llm-draft-generator.js";
+export {
+  generateSkillDraftLLM,
+  buildPrompt as buildDraftPrompt,
+  validateAndRepair as validateDraftRepair,
+} from "./llm-draft-generator.js";
 export type { LlmDraftDeps } from "./llm-draft-generator.js";
 export { EvolutionPreferenceAdapter } from "./preference-adapter.js";
 export { EvolutionStore, createEvolutionDir } from "./store.js";
@@ -12,9 +16,7 @@ export { SkillLifecycleManager } from "./skill-lifecycle.js";
 export { AuditLog } from "./audit-log.js";
 export { ClawHubPublisher } from "./clawhub-publisher.js";
 export { ClawHubCatalog } from "./clawhub-catalog.js";
-export {
-  DEFAULT_EVOLUTION_CONFIG,
-} from "./types.js";
+export { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 export type {
   EvolutionCandidate,
   SkillDraft,

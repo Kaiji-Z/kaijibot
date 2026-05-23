@@ -4877,7 +4877,9 @@ details[open] > .ov-expandable-toggle::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .cron-fab:hover {

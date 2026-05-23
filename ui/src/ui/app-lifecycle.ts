@@ -1,8 +1,5 @@
 import { connectGateway } from "./app-gateway.ts";
-import {
-  startNodesPolling,
-  stopNodesPolling,
-} from "./app-polling.ts";
+import { startNodesPolling, stopNodesPolling } from "./app-polling.ts";
 import { observeTopbar, scheduleChatScroll } from "./app-scroll.ts";
 import {
   applySettingsFromUrl,

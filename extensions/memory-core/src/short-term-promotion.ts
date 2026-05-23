@@ -288,9 +288,7 @@ function isContaminatedDreamingSnippet(raw: string): boolean {
 
   const hasNarrativeLead = hasDreamingNarrativeLead(snippet);
   const hasConfidence = /\bconfidence:\s*\d/i.test(snippet);
-  const hasEvidence = /\bevidence:\s*memory\/\.dreams\/session-corpus\//i.test(
-    snippet,
-  );
+  const hasEvidence = /\bevidence:\s*memory\/\.dreams\/session-corpus\//i.test(snippet);
   const hasStatus = /\bstatus:\s*staged\b/i.test(snippet);
   const hasRecalls = /\brecalls:\s*\d+\b/i.test(snippet);
   if (hasNarrativeLead && hasConfidence && hasEvidence && hasStatus && hasRecalls) {
@@ -1593,8 +1591,8 @@ export async function applyShortTermPromotions(
       threshold: 0.85,
     });
     const keptIds = new Set(deduped.map((d) => d.id));
-    const dedupedSelected = selected.filter(
-      (_c, i) => keptIds.has(`${selected[i]!.path}:${selected[i]!.startLine}:${i}`),
+    const dedupedSelected = selected.filter((_c, i) =>
+      keptIds.has(`${selected[i]!.path}:${selected[i]!.startLine}:${i}`),
     );
 
     const rehydratedSelected: PromotionCandidate[] = [];

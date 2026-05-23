@@ -2,7 +2,11 @@ import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { buildInterestInferencePrompt, inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
+import {
+  buildInterestInferencePrompt,
+  inferSearchStrategy,
+  type InterestInferenceDeps,
+} from "./interest-inference.js";
 import type { InsightEngineInput, SearchStrategy } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -95,7 +99,13 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     domainGraph: {
       nodes: ["typescript", "rust", "wasm"],
       edges: [
-        { source: "typescript", target: "rust", weight: 0.8, lastObserved: Date.now(), observations: 7 },
+        {
+          source: "typescript",
+          target: "rust",
+          weight: 0.8,
+          lastObserved: Date.now(),
+          observations: 7,
+        },
         { source: "rust", target: "wasm", weight: 0.6, lastObserved: Date.now(), observations: 3 },
       ],
       totalObservations: 10,
@@ -283,12 +293,7 @@ describe("inferSearchStrategy", () => {
       prepareModel: async () => ({ error: "no model available" }),
     };
 
-    const result = await inferSearchStrategy(
-      makePersona(),
-      makeInput(),
-      makeConfig(),
-      deps,
-    );
+    const result = await inferSearchStrategy(makePersona(), makeInput(), makeConfig(), deps);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -304,12 +309,7 @@ describe("inferSearchStrategy", () => {
       prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
     };
 
-    const result = await inferSearchStrategy(
-      makePersona(),
-      makeInput(),
-      makeConfig(),
-      deps,
-    );
+    const result = await inferSearchStrategy(makePersona(), makeInput(), makeConfig(), deps);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

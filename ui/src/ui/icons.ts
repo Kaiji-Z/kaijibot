@@ -373,7 +373,17 @@ export const icons = {
         </linearGradient>
       </defs>
       <rect width="120" height="120" rx="24" fill="#020617" />
-      <text x="60" y="82" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="72" fill="url(#k-g)">K</text>
+      <text
+        x="60"
+        y="82"
+        text-anchor="middle"
+        font-family="Inter,system-ui,sans-serif"
+        font-weight="700"
+        font-size="72"
+        fill="url(#k-g)"
+      >
+        K
+      </text>
     </svg>
   `,
   refresh: html`

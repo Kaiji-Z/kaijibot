@@ -43,9 +43,8 @@ export function createSwitchSoulTool(): AnyAgentTool {
       const preset = params.preset.toLowerCase().trim();
 
       try {
-        const { readConfigFileSnapshot, replaceConfigFile } = await import(
-          "../../config/config.js"
-        );
+        const { readConfigFileSnapshot, replaceConfigFile } =
+          await import("../../config/config.js");
         const { clearAllBootstrapSnapshots } = await import("../bootstrap-cache.js");
 
         if (preset === "default" || preset === "none" || preset === "reset") {
@@ -63,10 +62,9 @@ export function createSwitchSoulTool(): AnyAgentTool {
 
         if (!SOUL_PRESET_NAMES[preset]) {
           const validKeys = Object.keys(SOUL_PRESET_NAMES).join(", ");
-          return textResult(
-            `Unknown soul preset: "${preset}". Valid presets: ${validKeys}`,
-            { status: "invalid" },
-          );
+          return textResult(`Unknown soul preset: "${preset}". Valid presets: ${validKeys}`, {
+            status: "invalid",
+          });
         }
 
         const snapshot = await readConfigFileSnapshot();

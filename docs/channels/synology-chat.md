@@ -8,7 +8,6 @@ title: "Synology Chat"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Synology Chat
 
 Status: bundled plugin direct-message channel using Synology Chat webhooks.

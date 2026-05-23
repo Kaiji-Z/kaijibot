@@ -26,18 +26,38 @@ export const FeishuDriveSchema = Type.Union([
       description: "Array of file tokens",
     }),
     file_type: Type.Optional(
-      Type.Union([Type.Literal("doc"), Type.Literal("docx"), Type.Literal("sheet"), Type.Literal("bitable"), Type.Literal("file"), Type.Literal("slides")], {
-        description: "Document type for all tokens. Defaults to doc.",
-      }),
+      Type.Union(
+        [
+          Type.Literal("doc"),
+          Type.Literal("docx"),
+          Type.Literal("sheet"),
+          Type.Literal("bitable"),
+          Type.Literal("file"),
+          Type.Literal("slides"),
+        ],
+        {
+          description: "Document type for all tokens. Defaults to doc.",
+        },
+      ),
     ),
   }),
   Type.Object({
     action: Type.Literal("view_records"),
     file_token: Type.String({ description: "Document token" }),
     file_type: Type.Optional(
-      Type.Union([Type.Literal("doc"), Type.Literal("docx"), Type.Literal("sheet"), Type.Literal("bitable"), Type.Literal("file"), Type.Literal("slides")], {
-        description: "Document type. Defaults to doc.",
-      }),
+      Type.Union(
+        [
+          Type.Literal("doc"),
+          Type.Literal("docx"),
+          Type.Literal("sheet"),
+          Type.Literal("bitable"),
+          Type.Literal("file"),
+          Type.Literal("slides"),
+        ],
+        {
+          description: "Document type. Defaults to doc.",
+        },
+      ),
     ),
     page_size: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "Page size" })),
     page_token: Type.Optional(Type.String({ description: "Page token for pagination" })),

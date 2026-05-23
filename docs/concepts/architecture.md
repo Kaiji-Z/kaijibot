@@ -7,7 +7,6 @@ title: "Gateway Architecture"
 
 > 💡 **KaijiBot 说明：** 此页面描述 Gateway 通用架构。KaijiBot 仅支持飞书频道，认知管道是 KaijiBot 独有的新增模块。
 
-
 # Gateway architecture
 
 ## Overview

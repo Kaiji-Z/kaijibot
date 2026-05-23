@@ -7,7 +7,11 @@ import {
   runFreshMigration,
   runImportMigration,
 } from "../infra/openclaw-migrator/index.js";
-import type { DataType, MigrationReport, MigrationScenario } from "../infra/openclaw-migrator/types.js";
+import type {
+  DataType,
+  MigrationReport,
+  MigrationScenario,
+} from "../infra/openclaw-migrator/types.js";
 import type { OutputRuntimeEnv } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
 
@@ -54,9 +58,7 @@ export async function migrateCommand(
   const targetDir = path.resolve(os.homedir(), ".kaijibot");
 
   const scenario: MigrationScenario =
-    opts.scenario === "auto" || !opts.scenario
-      ? detectScenario(targetDir)
-      : opts.scenario;
+    opts.scenario === "auto" || !opts.scenario ? detectScenario(targetDir) : opts.scenario;
 
   if (!opts.json) {
     runtime.log(`Scenario: ${theme.accent(scenario)}`);
@@ -166,8 +168,12 @@ export async function migrateCommand(
   runtime.log("");
   runtime.log(theme.heading("Post-migration steps:"));
   runtime.log(`  1. Run ${theme.accent("kaijibot doctor")} to verify your installation.`);
-  runtime.log(`  2. Run ${theme.accent("kaijibot memory index --force")} to rebuild search indexes.`);
-  runtime.log(`  3. In conversation, ask KaijiBot to ${theme.accent("organize memory")} to restructure imported memory.`);
+  runtime.log(
+    `  2. Run ${theme.accent("kaijibot memory index --force")} to rebuild search indexes.`,
+  );
+  runtime.log(
+    `  3. In conversation, ask KaijiBot to ${theme.accent("organize memory")} to restructure imported memory.`,
+  );
 }
 
 function printPreview(runtime: OutputRuntimeEnv, report: MigrationReport): void {
@@ -177,15 +183,15 @@ function printPreview(runtime: OutputRuntimeEnv, report: MigrationReport): void 
   }
 
   for (const result of report.results) {
-    if (result.changes.length === 0 && result.skipped.length === 0) { continue; }
+    if (result.changes.length === 0 && result.skipped.length === 0) {
+      continue;
+    }
 
     runtime.log(`  ${theme.heading(result.changes.length > 0 ? "Changes" : "No changes")}:`);
 
     for (const change of result.changes) {
       const kindLabel = formatKind(change.kind);
-      runtime.log(
-        `    ${kindLabel} ${change.source} → ${change.target}`,
-      );
+      runtime.log(`    ${kindLabel} ${change.source} → ${change.target}`);
       runtime.log(`      ${theme.muted(change.detail)}`);
     }
 

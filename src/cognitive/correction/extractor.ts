@@ -83,9 +83,7 @@ export async function extractCorrectionsFromTranscript(
   transcript: string,
   generateText: (prompt: string) => Promise<string>,
 ): Promise<CorrectionRecord[]> {
-  const cappedTranscript = transcript.length > 16_000
-    ? transcript.slice(0, 16_000)
-    : transcript;
+  const cappedTranscript = transcript.length > 16_000 ? transcript.slice(0, 16_000) : transcript;
 
   const prompt = buildExtractionPrompt(cappedTranscript);
 
@@ -131,7 +129,9 @@ function buildExtractionPrompt(transcript: string): string {
 ${transcript}`;
 }
 
-function parseExtractionResponse(raw: string): Array<{ domain?: string; trigger?: string; mistake: string; correction: string }> {
+function parseExtractionResponse(
+  raw: string,
+): Array<{ domain?: string; trigger?: string; mistake: string; correction: string }> {
   let jsonStr = raw.trim();
 
   const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
@@ -165,8 +165,12 @@ function parseExtractionResponse(raw: string): Array<{ domain?: string; trigger?
         return false;
       }
       const obj = item as Record<string, unknown>;
-      return typeof obj.mistake === "string" && typeof obj.correction === "string"
-        && (obj.mistake as string).length > 0 && (obj.correction as string).length > 0;
+      return (
+        typeof obj.mistake === "string" &&
+        typeof obj.correction === "string" &&
+        (obj.mistake as string).length > 0 &&
+        (obj.correction as string).length > 0
+      );
     },
   );
 }

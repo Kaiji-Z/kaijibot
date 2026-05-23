@@ -70,9 +70,8 @@ export function updateTrustFromImplicit(
   }
 
   const newTotalExchanges = rapport.totalExchanges + signals.length;
-  const newAvgResponseLength = newTotalExchanges > 0
-    ? totalResponseLength / newTotalExchanges
-    : rapport.avgResponseLength;
+  const newAvgResponseLength =
+    newTotalExchanges > 0 ? totalResponseLength / newTotalExchanges : rapport.avgResponseLength;
 
   return {
     ...rapport,
@@ -94,7 +93,8 @@ export function calculateTrustScore(rapport: RapportMetrics): number {
   const existingTrust = rapport.trustScore;
 
   // Weighted blend: existing trust gets highest weight (stickiness)
-  const composite = existingTrust * 0.5 + exchangeScore * 0.2 + lengthScore * 0.15 + disclosureScore * 0.15;
+  const composite =
+    existingTrust * 0.5 + exchangeScore * 0.2 + lengthScore * 0.15 + disclosureScore * 0.15;
   return clampTrust(composite);
 }
 
@@ -102,7 +102,9 @@ export function calculateTrustScore(rapport: RapportMetrics): number {
  * Determine the interaction phase based on trust score.
  * Maps to SARA framework strategies.
  */
-export function getInteractionPhase(trustScore: number): "orientation" | "exploration" | "rapport" | "partnership" {
+export function getInteractionPhase(
+  trustScore: number,
+): "orientation" | "exploration" | "rapport" | "partnership" {
   if (trustScore < 0.3) return "orientation";
   if (trustScore < 0.5) return "exploration";
   if (trustScore < 0.7) return "rapport";
@@ -127,10 +129,14 @@ export function getPhaseBehaviorAdvice(phase: ReturnType<typeof getInteractionPh
 
 function feedbackScoreDelta(type: FeedbackEvent["type"]): number {
   switch (type) {
-    case "positive": return 0.05;
-    case "engaged": return 0.08;
-    case "negative": return -0.08;
-    case "neutral": return 0;
+    case "positive":
+      return 0.05;
+    case "engaged":
+      return 0.08;
+    case "negative":
+      return -0.08;
+    case "neutral":
+      return 0;
   }
 }
 

@@ -4,16 +4,17 @@
 
 ## 前置要求
 
-| 依赖 | 说明 |
-|------|------|
-| Docker | 20.10+，[安装指南](https://docs.docker.com/engine/install/) |
-| Docker Compose | V2 插件（推荐）或独立版 |
-| Z.AI API Key | [https://open.bigmodel.cn/](https://open.bigmodel.cn/) 注册获取 |
-| 飞书机器人 | [https://open.feishu.cn/](https://open.feishu.cn/) 创建企业自建应用 |
+| 依赖           | 说明                                                                |
+| -------------- | ------------------------------------------------------------------- |
+| Docker         | 20.10+，[安装指南](https://docs.docker.com/engine/install/)         |
+| Docker Compose | V2 插件（推荐）或独立版                                             |
+| Z.AI API Key   | [https://open.bigmodel.cn/](https://open.bigmodel.cn/) 注册获取     |
+| 飞书机器人     | [https://open.feishu.cn/](https://open.feishu.cn/) 创建企业自建应用 |
 
 ### 快速安装 Docker
 
 Ubuntu/Debian:
+
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
@@ -21,6 +22,7 @@ sudo usermod -aG docker $USER
 ```
 
 macOS:
+
 ```bash
 brew install --cask docker
 ```
@@ -83,27 +85,27 @@ docker compose logs --tail 100
 
 ### 必需
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `ZAI_API_KEY` | 智谱 GLM API Key | 无（必须设置） |
-| `KAIJIBOT_GATEWAY_TOKEN` | 网关认证令牌 | 自动生成 |
+| 变量                     | 说明             | 默认值         |
+| ------------------------ | ---------------- | -------------- |
+| `ZAI_API_KEY`            | 智谱 GLM API Key | 无（必须设置） |
+| `KAIJIBOT_GATEWAY_TOKEN` | 网关认证令牌     | 自动生成       |
 
 ### 可选
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `EXA_API_KEY` | Exa 语义搜索（增强洞察实时性） | 无 |
-| `TAVILY_API_KEY` | Tavily 搜索（增强洞察实时性） | 无 |
-| `KAIJIBOT_GATEWAY_PORT` | 网关端口 | `18789` |
-| `KAIJIBOT_BRIDGE_PORT` | 桥接端口 | `18790` |
-| `KAIJIBOT_TZ` | 时区 | `Asia/Shanghai` |
+| 变量                    | 说明                           | 默认值          |
+| ----------------------- | ------------------------------ | --------------- |
+| `EXA_API_KEY`           | Exa 语义搜索（增强洞察实时性） | 无              |
+| `TAVILY_API_KEY`        | Tavily 搜索（增强洞察实时性）  | 无              |
+| `KAIJIBOT_GATEWAY_PORT` | 网关端口                       | `18789`         |
+| `KAIJIBOT_BRIDGE_PORT`  | 桥接端口                       | `18790`         |
+| `KAIJIBOT_TZ`           | 时区                           | `Asia/Shanghai` |
 
 ### 数据卷
 
-| 宿主路径 | 容器路径 | 说明 |
-|----------|----------|------|
-| `~/.kaijibot/` | `/home/node/.kaijibot` | 配置、凭证、认知画像 |
-| `~/.kaijibot/workspace/` | `/home/node/.kaijibot/workspace` | 工作空间 |
+| 宿主路径                 | 容器路径                         | 说明                 |
+| ------------------------ | -------------------------------- | -------------------- |
+| `~/.kaijibot/`           | `/home/node/.kaijibot`           | 配置、凭证、认知画像 |
+| `~/.kaijibot/workspace/` | `/home/node/.kaijibot/workspace` | 工作空间             |
 
 ## 故障排查
 
@@ -120,6 +122,7 @@ cat .env | grep -v "^#" | grep -v "^$"
 ### ZAI_API_KEY 未设置
 
 编辑 `.env` 文件，设置有效的 API Key：
+
 ```bash
 ZAI_API_KEY=你的实际Key
 ```
@@ -127,6 +130,7 @@ ZAI_API_KEY=你的实际Key
 ### 端口被占用
 
 在 `.env` 中修改端口：
+
 ```bash
 KAIJIBOT_GATEWAY_PORT=28789
 KAIJIBOT_BRIDGE_PORT=28790
@@ -152,6 +156,7 @@ sudo usermod -aG docker $USER
 ### 重新构建
 
 当更新代码后需要重新构建镜像：
+
 ```bash
 bash scripts/docker/setup.sh --build-only
 docker compose up -d

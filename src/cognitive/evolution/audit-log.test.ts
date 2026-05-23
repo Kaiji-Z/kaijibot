@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { AuditLog } from "./audit-log.js";
 
 let tempDir: string;
@@ -26,9 +26,7 @@ describe("AuditLog", () => {
       outcome: "success",
     });
 
-    expect(result.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    expect(result.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(result.timestamp).toBeGreaterThanOrEqual(before);
     expect(result.timestamp).toBeLessThanOrEqual(Date.now());
     expect(result.operation).toBe("skill.create");
@@ -58,9 +56,19 @@ describe("AuditLog", () => {
   });
 
   it("query by time range (since) filters correctly", async () => {
-    const entry1 = await log.append({ operation: "a", actor: "a", target: "t1", outcome: "success" });
+    const entry1 = await log.append({
+      operation: "a",
+      actor: "a",
+      target: "t1",
+      outcome: "success",
+    });
     await new Promise((r) => setTimeout(r, 10));
-    const entry2 = await log.append({ operation: "b", actor: "a", target: "t2", outcome: "success" });
+    const entry2 = await log.append({
+      operation: "b",
+      actor: "a",
+      target: "t2",
+      outcome: "success",
+    });
 
     const results = await log.query({ since: entry2.timestamp });
     expect(results).toHaveLength(1);

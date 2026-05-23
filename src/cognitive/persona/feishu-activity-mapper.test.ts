@@ -264,7 +264,9 @@ describe("mapFeishuActivity", () => {
       },
     });
     const result = mapFeishuActivity(data);
-    const attr = result.attributes.find((a) => a.field === "identity.coreTraits.taskCompletionRate");
+    const attr = result.attributes.find(
+      (a) => a.field === "identity.coreTraits.taskCompletionRate",
+    );
     expect(attr).toBeDefined();
     expect(attr?.value).toBe("high");
     expect(attr?.source).toBe("observed");
@@ -283,7 +285,9 @@ describe("mapFeishuActivity", () => {
       },
     });
     const result = mapFeishuActivity(data);
-    const attr = result.attributes.find((a) => a.field === "identity.coreTraits.taskCompletionRate");
+    const attr = result.attributes.find(
+      (a) => a.field === "identity.coreTraits.taskCompletionRate",
+    );
     expect(attr).toBeUndefined();
   });
 

@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { EvolutionStore } from "./store.js";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { EvolutionEngine } from "./engine.js";
-import { SkillPersistenceWriter } from "./skill-writer.js";
 import { SkillLifecycleManager } from "./skill-lifecycle.js";
+import { SkillPersistenceWriter } from "./skill-writer.js";
+import { EvolutionStore } from "./store.js";
 import type { EvolutionCandidate, EvolutionRecord } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 
@@ -14,9 +14,7 @@ let store: EvolutionStore;
 let engine: EvolutionEngine;
 const AGENT = "main";
 
-function makeCandidate(
-  overrides: Partial<EvolutionCandidate> = {},
-): EvolutionCandidate {
+function makeCandidate(overrides: Partial<EvolutionCandidate> = {}): EvolutionCandidate {
   return {
     taskSummary: "test task",
     toolCalls: [],
@@ -91,9 +89,7 @@ describe("EvolutionEngine", () => {
     const decision = await engine.evaluate(complexCandidate, AGENT, "user-fresh");
     expect(decision.shouldSuggest).toBe(true);
     expect(decision.confidence).toBeGreaterThan(0);
-    expect(decision.complexityScore).toBeGreaterThanOrEqual(
-      DEFAULT_EVOLUTION_CONFIG.minComplexity,
-    );
+    expect(decision.complexityScore).toBeGreaterThanOrEqual(DEFAULT_EVOLUTION_CONFIG.minComplexity);
   });
 
   it("returns recentSuggestions context even when shouldSuggest is false", async () => {
@@ -151,28 +147,22 @@ describe("EvolutionEngine", () => {
     expect(updated.id).toBe(record.id);
 
     const allRecords = await store.list(AGENT, "user-1");
-    const saved = allRecords.find(
-      (r) => r.id === record.id && r.userResponse === "accepted",
-    );
+    const saved = allRecords.find((r) => r.id === record.id && r.userResponse === "accepted");
     expect(saved).toBeDefined();
     expect(saved!.userResponse).toBe("accepted");
   });
 
   it("recordResponse() throws when record not found", async () => {
-    await expect(
-      engine.recordResponse("nonexistent", AGENT, "user-1", "rejected"),
-    ).rejects.toThrow("not found");
+    await expect(engine.recordResponse("nonexistent", AGENT, "user-1", "rejected")).rejects.toThrow(
+      "not found",
+    );
   });
 
   it("uses constructor config over store config", async () => {
     const highThresholdEngine = new EvolutionEngine(store, {
       minComplexity: 0.99,
     });
-    const decision = await highThresholdEngine.evaluate(
-      complexCandidate,
-      AGENT,
-      "user-fresh",
-    );
+    const decision = await highThresholdEngine.evaluate(complexCandidate, AGENT, "user-fresh");
     expect(decision.shouldSuggest).toBe(false);
     expect(decision.reasoning).toContain("below threshold");
   });
@@ -335,9 +325,11 @@ describe("EvolutionEngine", () => {
         durationMs: 300_000,
       });
 
-      const mockGenerateText = vi.fn().mockResolvedValue(
-        JSON.stringify({ duplicate: true, skillName: "feishu-wiki-archive", confidence: 0.9 }),
-      );
+      const mockGenerateText = vi
+        .fn()
+        .mockResolvedValue(
+          JSON.stringify({ duplicate: true, skillName: "feishu-wiki-archive", confidence: 0.9 }),
+        );
 
       const result = await engine.checkBeforeGenerate(
         candidate,
@@ -413,7 +405,8 @@ describe("EvolutionEngine.patchSkill", () => {
       bodyMarkdown: "## Old Body",
     });
 
-    const updatedMarkdown = "---\nname: existing-skill\ndescription: \"New desc\"\nmetadata:\n  kaijibot:\n    generated: true\n    version: 1\n---\n\n## New Body\n\nUpdated content.";
+    const updatedMarkdown =
+      '---\nname: existing-skill\ndescription: "New desc"\nmetadata:\n  kaijibot:\n    generated: true\n    version: 1\n---\n\n## New Body\n\nUpdated content.';
 
     const mockGenerateText = async (_prompt: string) => updatedMarkdown;
 
@@ -443,7 +436,7 @@ describe("EvolutionEngine.patchSkill", () => {
       { name: "path-test", instructions: "no-op" },
       {
         generateText: async () =>
-          "---\nname: path-test\ndescription: \"Test\"\nmetadata:\n  kaijibot:\n    generated: true\n    version: 1\n---\n\nBody",
+          '---\nname: path-test\ndescription: "Test"\nmetadata:\n  kaijibot:\n    generated: true\n    version: 1\n---\n\nBody',
         writer: skillWriter,
       },
     );

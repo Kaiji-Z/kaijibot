@@ -22,7 +22,8 @@ function createMemoryFs(): { files: Map<string, string>; fs: FsAdapter } {
     fs: {
       readFile: async (p: string) => {
         const content = files.get(p);
-        if (content === undefined) throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
+        if (content === undefined)
+          throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
         return content;
       },
       writeFile: async (p: string, data: string) => {
@@ -43,12 +44,14 @@ function createMemoryFs(): { files: Map<string, string>; fs: FsAdapter } {
       },
       stat: async (p: string) => {
         const content = files.get(p);
-        if (content === undefined) throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
+        if (content === undefined)
+          throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
         return { mtimeMs: Date.now(), size: content.length };
       },
       rename: async (oldPath: string, newPath: string) => {
         const content = files.get(oldPath);
-        if (content === undefined) throw Object.assign(new Error(`ENOENT: ${oldPath}`), { code: "ENOENT" });
+        if (content === undefined)
+          throw Object.assign(new Error(`ENOENT: ${oldPath}`), { code: "ENOENT" });
         files.delete(oldPath);
         files.set(newPath, content);
       },
@@ -75,15 +78,19 @@ describe("parseLegacyMemoryFiles", () => {
   });
 
   it("parses entries from daily memory files", async () => {
-    writeFile(memFs, "memory/2026-04-16.md", [
-      "# Session: 2026-04-16",
-      "This was a discussion about AI architecture patterns.",
-      "We discussed microservices vs monolith tradeoffs.",
-      "",
-      "## Light Sleep",
-      "User prefers early morning work sessions and avoids late-night coding.",
-      "This preference was confirmed during the standup.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-16.md",
+      [
+        "# Session: 2026-04-16",
+        "This was a discussion about AI architecture patterns.",
+        "We discussed microservices vs monolith tradeoffs.",
+        "",
+        "## Light Sleep",
+        "User prefers early morning work sessions and avoids late-night coding.",
+        "This preference was confirmed during the standup.",
+      ].join("\n"),
+    );
 
     const entries = await parseLegacyMemoryFiles(MEMORY_DIR, memFs.fs);
 
@@ -96,13 +103,17 @@ describe("parseLegacyMemoryFiles", () => {
   });
 
   it("skips dreaming metadata entries", async () => {
-    writeFile(memFs, "memory/2026-04-17.md", [
-      "# Session: 2026-04-17",
-      "Regular session with useful info about the deployment pipeline.",
-      "",
-      "## Dreaming Output",
-      "kaijibot:dreaming: confidence: 0.85 evidence: recall-store",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-17.md",
+      [
+        "# Session: 2026-04-17",
+        "Regular session with useful info about the deployment pipeline.",
+        "",
+        "## Dreaming Output",
+        "kaijibot:dreaming: confidence: 0.85 evidence: recall-store",
+      ].join("\n"),
+    );
 
     const entries = await parseLegacyMemoryFiles(MEMORY_DIR, memFs.fs);
 
@@ -112,10 +123,11 @@ describe("parseLegacyMemoryFiles", () => {
   });
 
   it("skips session metadata headers", async () => {
-    writeFile(memFs, "memory/2026-04-18.md", [
-      "- **Session**: 2026-04-18 10:00",
-      "- **Duration**: 45 minutes",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-18.md",
+      ["- **Session**: 2026-04-18 10:00", "- **Duration**: 45 minutes"].join("\n"),
+    );
 
     const entries = await parseLegacyMemoryFiles(MEMORY_DIR, memFs.fs);
 
@@ -123,13 +135,17 @@ describe("parseLegacyMemoryFiles", () => {
   });
 
   it("skips entries shorter than 20 chars", async () => {
-    writeFile(memFs, "memory/2026-04-19.md", [
-      "# Short",
-      "Too short",
-      "",
-      "# Valid Entry",
-      "This entry has enough content to be included in the results.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-19.md",
+      [
+        "# Short",
+        "Too short",
+        "",
+        "# Valid Entry",
+        "This entry has enough content to be included in the results.",
+      ].join("\n"),
+    );
 
     const entries = await parseLegacyMemoryFiles(MEMORY_DIR, memFs.fs);
 
@@ -138,11 +154,15 @@ describe("parseLegacyMemoryFiles", () => {
   });
 
   it("skips topic index format headings", async () => {
-    writeFile(memFs, "memory/2026-04-20.md", [
-      "## [user] User Profile",
-      "→ memory/topics/user-profile.md",
-      "Already migrated content here with sufficient length.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-20.md",
+      [
+        "## [user] User Profile",
+        "→ memory/topics/user-profile.md",
+        "Already migrated content here with sufficient length.",
+      ].join("\n"),
+    );
 
     const entries = await parseLegacyMemoryFiles(MEMORY_DIR, memFs.fs);
 
@@ -150,10 +170,14 @@ describe("parseLegacyMemoryFiles", () => {
   });
 
   it("matches daily files with suffixes", async () => {
-    writeFile(memFs, "memory/2026-04-16-session2.md", [
-      "# Follow-up Discussion",
-      "Additional notes about the database migration strategy and timing.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-16-session2.md",
+      [
+        "# Follow-up Discussion",
+        "Additional notes about the database migration strategy and timing.",
+      ].join("\n"),
+    );
 
     const entries = await parseLegacyMemoryFiles(MEMORY_DIR, memFs.fs);
 
@@ -443,12 +467,7 @@ describe("archiveProcessedFiles", () => {
     memFs.files.set(path.join(MEMORY_DIR, "2026-04-16.md"), "content");
     memFs.files.set(path.join(MEMORY_DIR, "2026-04-17.md"), "content");
 
-    await archiveProcessedFiles(
-      ["2026-04-16.md"],
-      MEMORY_DIR,
-      WORKSPACE,
-      memFs.fs,
-    );
+    await archiveProcessedFiles(["2026-04-16.md"], MEMORY_DIR, WORKSPACE, memFs.fs);
 
     expect(memFs.files.has(path.join(MEMORY_DIR, "2026-04-16.md"))).toBe(false);
     expect(memFs.files.has(path.join(MEMORY_DIR, "2026-04-17.md"))).toBe(true);
@@ -472,10 +491,14 @@ describe("runMemoryMigrate", () => {
   });
 
   it("dry-run does not write or move files", async () => {
-    writeFile(memFs, "memory/2026-04-16.md", [
-      "# Test Session",
-      "A session about learning TypeScript generics and their practical applications.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-16.md",
+      [
+        "# Test Session",
+        "A session about learning TypeScript generics and their practical applications.",
+      ].join("\n"),
+    );
 
     const result = await runMemoryMigrate({
       workspaceDir: WORKSPACE,
@@ -494,10 +517,14 @@ describe("runMemoryMigrate", () => {
   });
 
   it("full run routes and archives", async () => {
-    writeFile(memFs, "memory/2026-04-16.md", [
-      "# Architecture Discussion",
-      "Decided to use event-driven architecture for the new notification system.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-16.md",
+      [
+        "# Architecture Discussion",
+        "Decided to use event-driven architecture for the new notification system.",
+      ].join("\n"),
+    );
 
     const result = await runMemoryMigrate({
       workspaceDir: WORKSPACE,
@@ -515,10 +542,11 @@ describe("runMemoryMigrate", () => {
   });
 
   it("skips archive when archive option is false", async () => {
-    writeFile(memFs, "memory/2026-04-16.md", [
-      "# Some Notes",
-      "Notes about the deployment pipeline and monitoring setup.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-16.md",
+      ["# Some Notes", "Notes about the deployment pipeline and monitoring setup."].join("\n"),
+    );
 
     const result = await runMemoryMigrate({
       workspaceDir: WORKSPACE,
@@ -546,10 +574,13 @@ describe("runMemoryMigrate", () => {
 
   it("uses custom sourceDir", async () => {
     const customDir = "/custom-memory";
-    memFs.files.set(path.join(customDir, "2026-04-16.md"), [
-      "# Custom Location",
-      "Entry in a custom source directory for testing override behavior.",
-    ].join("\n"));
+    memFs.files.set(
+      path.join(customDir, "2026-04-16.md"),
+      [
+        "# Custom Location",
+        "Entry in a custom source directory for testing override behavior.",
+      ].join("\n"),
+    );
 
     const result = await runMemoryMigrate({
       workspaceDir: WORKSPACE,
@@ -562,10 +593,13 @@ describe("runMemoryMigrate", () => {
   });
 
   it("uses custom classifyFn", async () => {
-    writeFile(memFs, "memory/2026-04-16.md", [
-      "# User Feedback",
-      "User said the search results are very relevant and accurate.",
-    ].join("\n"));
+    writeFile(
+      memFs,
+      "memory/2026-04-16.md",
+      ["# User Feedback", "User said the search results are very relevant and accurate."].join(
+        "\n",
+      ),
+    );
 
     const mockClassify = async (entries: unknown[]) =>
       entries.map((e: unknown) => {

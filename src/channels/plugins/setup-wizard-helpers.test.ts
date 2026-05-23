@@ -13,8 +13,15 @@ import {
 
 // Inline test values replacing deleted matrix.js/telegram.js facade imports
 const matrixSingleAccountKeysToMove = ["homeserver", "userId", "accessToken", "deviceId"] as const;
-const matrixNamedAccountPromotionKeys = ["homeserver", "userId", "accessToken", "deviceId"] as const;
-function resolveMatrixSingleAccountPromotionTarget(params: { channel: Record<string, unknown> }): string | undefined {
+const matrixNamedAccountPromotionKeys = [
+  "homeserver",
+  "userId",
+  "accessToken",
+  "deviceId",
+] as const;
+function resolveMatrixSingleAccountPromotionTarget(params: {
+  channel: Record<string, unknown>;
+}): string | undefined {
   return typeof params.channel.userId === "string" ? params.channel.userId : undefined;
 }
 const telegramSingleAccountKeysToMove = ["botToken", "tokenFile"] as const;

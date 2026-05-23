@@ -1,13 +1,13 @@
 import type * as Lark from "@larksuiteoapi/node-sdk";
 import type { KaijiBotPluginApi } from "../runtime-api.js";
 import { listEnabledFeishuAccounts } from "./accounts.js";
-import { FeishuVcSchema, type FeishuVcParams } from "./vc-schema.js";
 import { createFeishuToolClient, resolveAnyEnabledFeishuToolsConfig } from "./tool-account.js";
 import {
   jsonToolResult,
   toolExecutionErrorResult,
   unknownToolActionResult,
 } from "./tool-result.js";
+import { FeishuVcSchema, type FeishuVcParams } from "./vc-schema.js";
 
 // ============ Internal client types ============
 

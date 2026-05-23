@@ -1,7 +1,7 @@
-import type { Command } from "commander";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Command } from "commander";
 import { readConfigFileSnapshot, replaceConfigFile } from "../config/config.js";
 import { SOUL_PRESETS, type SoulPreset } from "../config/types.soul.js";
 import { danger } from "../globals.js";
@@ -54,11 +54,15 @@ async function runSoulList(): Promise<void> {
     const isCurrent = key === currentPreset;
     const prefix = isCurrent ? theme.accent("→") : " ";
     const suffix = isCurrent ? ` ${theme.muted("(current)")}` : "";
-    defaultRuntime.log(`  ${prefix} ${theme.heading(key.toUpperCase().padEnd(4))}  ${name}${suffix}`);
+    defaultRuntime.log(
+      `  ${prefix} ${theme.heading(key.toUpperCase().padEnd(4))}  ${name}${suffix}`,
+    );
   }
   defaultRuntime.log("");
   defaultRuntime.log(`Use ${theme.command("kaijibot soul set <type>")} to select a soul preset.`);
-  defaultRuntime.log(`Use ${theme.command("kaijibot soul unset")} to revert to the default SOUL.md.`);
+  defaultRuntime.log(
+    `Use ${theme.command("kaijibot soul unset")} to revert to the default SOUL.md.`,
+  );
 }
 
 async function runSoulGet(): Promise<void> {
@@ -71,7 +75,9 @@ async function runSoulGet(): Promise<void> {
   }
 
   const name = SOUL_PRESET_NAMES[currentPreset];
-  defaultRuntime.log(`Current soul preset: ${theme.heading(currentPreset.toUpperCase())} — ${theme.success(name)}`);
+  defaultRuntime.log(
+    `Current soul preset: ${theme.heading(currentPreset.toUpperCase())} — ${theme.success(name)}`,
+  );
   defaultRuntime.log("");
   defaultRuntime.log("--- Preview ---");
   defaultRuntime.log(loadPresetContent(currentPreset));
@@ -94,7 +100,9 @@ async function runSoulSet(presetInput: string): Promise<void> {
   await replaceConfigFile({ nextConfig: sourceConfig });
 
   const name = SOUL_PRESET_NAMES[preset];
-  defaultRuntime.log(`Soul preset set to ${theme.heading(preset.toUpperCase())} — ${theme.success(name)}`);
+  defaultRuntime.log(
+    `Soul preset set to ${theme.heading(preset.toUpperCase())} — ${theme.success(name)}`,
+  );
   defaultRuntime.log("");
   defaultRuntime.log("Change takes effect on the next message (hot-reload).");
 }

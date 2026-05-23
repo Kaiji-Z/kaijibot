@@ -30,7 +30,8 @@ export function isDuplicateByContent(
   return false;
 }
 
-const CHINESE_STOP_CHARS = "的了是在和与但也都就把被让对给从到为以其之所等着过得地会有能可以要将于中上下里外时后前间个这那什么怎么哪几多少";
+const CHINESE_STOP_CHARS =
+  "的了是在和与但也都就把被让对给从到为以其之所等着过得地会有能可以要将于中上下里外时后前间个这那什么怎么哪几多少";
 
 export function extractChinesePhrases(text: string): string[] {
   let spaced = text;
@@ -39,8 +40,8 @@ export function extractChinesePhrases(text: string): string[] {
   }
   return spaced
     .split(/[\s,，。.？?！!；;：:、""''「」【】（）()\[\]{}<>《》\/\\—–\-]+/)
-    .map(s => s.trim())
-    .filter(s => s.length >= 2 && s.length <= 20);
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 2 && s.length <= 20);
 }
 
 export function computeContentWordOverlap(a: string, b: string): number {
@@ -48,9 +49,9 @@ export function computeContentWordOverlap(a: string, b: string): number {
   const phrasesB = extractChinesePhrases(b);
   if (phrasesA.length === 0 || phrasesB.length === 0) return 0;
 
-  const cjkFilter = (s: string) => [...s].filter(ch => ch.charCodeAt(0) > 0x2e7f);
-  const charsA = new Set(cjkFilter(phrasesA.join("")).map(c => c.toLowerCase()));
-  const charsB = new Set(cjkFilter(phrasesB.join("")).map(c => c.toLowerCase()));
+  const cjkFilter = (s: string) => [...s].filter((ch) => ch.charCodeAt(0) > 0x2e7f);
+  const charsA = new Set(cjkFilter(phrasesA.join("")).map((c) => c.toLowerCase()));
+  const charsB = new Set(cjkFilter(phrasesB.join("")).map((c) => c.toLowerCase()));
 
   if (charsA.size === 0 || charsB.size === 0) return 0;
 

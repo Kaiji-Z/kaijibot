@@ -46,15 +46,15 @@
 
 ### 1.2 各子系统详情
 
-| # | 子系统 | 存储 | 核心机制 | 关键文件 |
-|---|--------|------|----------|----------|
-| 1 | **语义记忆** | SQLite + sqlite-vec + FTS5 | 混合检索（0.7向量+0.3文本）→ 时间衰减 → MMR去重 | `memory-core/src/memory/hybrid.ts`, `mmr.ts`, `temporal-decay.ts` |
-| 2 | **短期晋升** | JSON (.dreams/short-term-recall.json) | 6因子加权评分 → cron晋升到MEMORY.md | `memory-core/src/short-term-promotion.ts` |
-| 3 | **知识库** | Markdown文件（Obsidian兼容） | 声明+证据+置信度+新鲜度多信号排序 | `memory-wiki/src/query.ts`, `vault.ts` |
-| 4 | **认知人格** | JSON (persona/{userId}.json) | LLM提取+规则兜底 → 置信度合并 → 修剪 | `cognitive/persona/store.ts`, `llm-extractor.ts`, `curator.ts` |
-| 5 | **洞察存储** | JSON (insights/{userId}/{id}.json) | LLM生成+模板兜底 → 意外性评分 → 验证管道 | `cognitive/insight/llm-engine.ts`, `serendipity-scorer.ts` |
-| 6 | **会话历史** | NDJSON (sessions/) | LLM驱动压缩 + 磁盘预算 + 历史轮次限制 | `agents/compaction.ts`, `config/sessions/` |
-| 7 | **记忆冲刷** | memory/*.md | 上下文窗口压力 → LLM Agent写入 → 压缩释放 | `auto-reply/reply/memory-flush.ts` |
+| #   | 子系统       | 存储                                  | 核心机制                                        | 关键文件                                                          |
+| --- | ------------ | ------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
+| 1   | **语义记忆** | SQLite + sqlite-vec + FTS5            | 混合检索（0.7向量+0.3文本）→ 时间衰减 → MMR去重 | `memory-core/src/memory/hybrid.ts`, `mmr.ts`, `temporal-decay.ts` |
+| 2   | **短期晋升** | JSON (.dreams/short-term-recall.json) | 6因子加权评分 → cron晋升到MEMORY.md             | `memory-core/src/short-term-promotion.ts`                         |
+| 3   | **知识库**   | Markdown文件（Obsidian兼容）          | 声明+证据+置信度+新鲜度多信号排序               | `memory-wiki/src/query.ts`, `vault.ts`                            |
+| 4   | **认知人格** | JSON (persona/{userId}.json)          | LLM提取+规则兜底 → 置信度合并 → 修剪            | `cognitive/persona/store.ts`, `llm-extractor.ts`, `curator.ts`    |
+| 5   | **洞察存储** | JSON (insights/{userId}/{id}.json)    | LLM生成+模板兜底 → 意外性评分 → 验证管道        | `cognitive/insight/llm-engine.ts`, `serendipity-scorer.ts`        |
+| 6   | **会话历史** | NDJSON (sessions/)                    | LLM驱动压缩 + 磁盘预算 + 历史轮次限制           | `agents/compaction.ts`, `config/sessions/`                        |
+| 7   | **记忆冲刷** | memory/\*.md                          | 上下文窗口压力 → LLM Agent写入 → 压缩释放       | `auto-reply/reply/memory-flush.ts`                                |
 
 ### 1.3 四条核心数据流
 
@@ -121,15 +121,15 @@ Agent回复完成
 
 ### 2.1 KaijiBot 的优势（达到或超越前沿的部分）
 
-| 优势 | KaijiBot 实现 | 学术对应 | 优势说明 |
-|------|---------------|----------|----------|
-| **6因子短期记忆晋升** | `short-term-promotion.ts` 6组件加权（频率0.24+相关性0.30+多样性0.15+新近度0.15+巩固0.10+概念0.06）+ 做梦阶段信号 | AgeMem/MemPO 单一二值阈值 | 学术论文用单一阈值做记忆晋升，KaijiBot的6因子+阶段信号boost更精细 |
-| **混合检索+MMR+时间衰减** | `hybrid.ts` 0.7/0.3向量/文本 → `temporal-decay.ts` 指数衰减 → `mmr.ts` 多样性重排 | MemPO 的学习式压缩 | 检索层面已经很强，MemPO的优势在压缩而非检索 |
-| **Thompson Sampling赌博机** | `preference-learner.ts` Marsaglia-Tsang Gamma采样，完整Beta分布 | PPP框架的多目标RL | 对于这个规模，TS比梯度RL更稳健、更简单 |
-| **SARA信任4阶段** | `trust-calculator.ts` 导向→探索→默契→伙伴，50%粘性 | PRISM 的二元说/不说 | 比PRISM更成熟，有具体行为策略而非简单阈值 |
-| **信任自适应意外性** | `serendipity-scorer.ts` 低信任偏相关性，高信任偏惊喜 | PRISM 的 p_accept 近似 | 更优雅的安全机制 |
-| **双提取路径** | LLM提取（5s超时）+ 规则兜底（<50ms） | 学术系统假设完美LLM | 生产级可靠性 |
-| **预压缩记忆冲刷** | `memory-flush.ts` 上下文窗口压力释放 | 学术论文忽略 | 实际系统必需的工程机制 |
+| 优势                        | KaijiBot 实现                                                                                                    | 学术对应                  | 优势说明                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------- |
+| **6因子短期记忆晋升**       | `short-term-promotion.ts` 6组件加权（频率0.24+相关性0.30+多样性0.15+新近度0.15+巩固0.10+概念0.06）+ 做梦阶段信号 | AgeMem/MemPO 单一二值阈值 | 学术论文用单一阈值做记忆晋升，KaijiBot的6因子+阶段信号boost更精细 |
+| **混合检索+MMR+时间衰减**   | `hybrid.ts` 0.7/0.3向量/文本 → `temporal-decay.ts` 指数衰减 → `mmr.ts` 多样性重排                                | MemPO 的学习式压缩        | 检索层面已经很强，MemPO的优势在压缩而非检索                       |
+| **Thompson Sampling赌博机** | `preference-learner.ts` Marsaglia-Tsang Gamma采样，完整Beta分布                                                  | PPP框架的多目标RL         | 对于这个规模，TS比梯度RL更稳健、更简单                            |
+| **SARA信任4阶段**           | `trust-calculator.ts` 导向→探索→默契→伙伴，50%粘性                                                               | PRISM 的二元说/不说       | 比PRISM更成熟，有具体行为策略而非简单阈值                         |
+| **信任自适应意外性**        | `serendipity-scorer.ts` 低信任偏相关性，高信任偏惊喜                                                             | PRISM 的 p_accept 近似    | 更优雅的安全机制                                                  |
+| **双提取路径**              | LLM提取（5s超时）+ 规则兜底（<50ms）                                                                             | 学术系统假设完美LLM       | 生产级可靠性                                                      |
+| **预压缩记忆冲刷**          | `memory-flush.ts` 上下文窗口压力释放                                                                             | 学术论文忽略              | 实际系统必需的工程机制                                            |
 
 ### 2.2 关键差距（学术前沿有但KaijiBot缺失的）
 
@@ -204,6 +204,7 @@ Agent回复完成
 两个事件源已实现并有测试覆盖，只需在 gateway 初始化时接入。
 
 **改动范围**：
+
 - `src/gateway/server.impl.ts:1261-1310` — 初始化时注册 PersonaChangeSource 和 InfoScanSource
 - `src/cognitive/scheduler/proactive-scheduler.ts` — processEvent 中添加事件类型分支
 
@@ -214,6 +215,7 @@ Agent回复完成
 重构 `checkProactiveGate` 返回 `p_act` 评分（0-1）而非 `allowed: boolean`。
 
 **改动范围**：
+
 - `src/cognitive/scheduler/gate.ts` — 返回 `{ p_need, p_accept, p_act, decision }` 替代 `{ allowed }`
 - `p_need` = f(距上次, 领域活跃度)
 - `p_accept` = f(信任分, 话题赌博机, 近期反馈)
@@ -224,6 +226,7 @@ Agent回复完成
 #### Q3：洞察交付闭环反馈
 
 **改动范围**：
+
 - `src/cognitive/insight/store.ts` — 记录交付时间和用户响应
 - `src/cognitive/feedback/collector.ts` — 将洞察反馈接回 Thompson Sampling 赌博机
 
@@ -232,6 +235,7 @@ Agent回复完成
 #### Q4：Persona 加载时 schema 校验
 
 **改动范围**：
+
 - `src/cognitive/persona/store.ts` — load 时用 zod 校验
 
 **预期收益**：防止损坏状态级联
@@ -241,6 +245,7 @@ Agent回复完成
 #### M1：长期记忆合并（MemPO 启发）— 解决无限增长问题
 
 新增 `memory-consolidation` 做梦阶段：
+
 1. 读取 MEMORY.md 条目
 2. 用向量相似度识别重复/重叠声明
 3. LLM 调用合并（复用 llm-extractor 模式）
@@ -253,6 +258,7 @@ Agent回复完成
 #### M2：动态领域图学习
 
 替换静态 `DEFAULT_DOMAIN_ADJACENCIES`：
+
 1. 从静态图种子启动
 2. 两人格域在同一对话中出现时增强边权重
 3. 未使用边衰减
@@ -272,6 +278,7 @@ Agent回复完成
 #### M4：搜索/识别/解决分离管道（PROBE 启发）
 
 将 `processEvent` 拆分为三阶段：
+
 - `search()`: 扫描机会（领域活跃度、信息扫描结果）
 - `identify()`: 按 `p_need × p_accept` 排序机会
 - `resolve()`: 为最佳机会生成洞察内容
@@ -283,6 +290,7 @@ Agent回复完成
 #### L1：多目标 RL 主动决策（PPP 启发）
 
 替换线性频率适应为 RL 策略：
+
 - **状态**: (信任, 时段, 距上次天数, 话题赌博机分数, 近期反馈)
 - **动作**: (不推, 推话题X, 发送摘要)
 - **奖励**: 用户参与度（已有隐式信号）
@@ -295,12 +303,14 @@ Agent回复完成
 给 Agent 显式记忆工具：`memory_store`, `memory_retrieve`, `memory_update`, `memory_discard`, `memory_summarize`
 
 让 Agent 在对话中自主决定何时使用记忆工具：
+
 - 用渐进RL训练：先监督学习（从当前提取），再RL微调
 - 记忆管理从系统驱动变为 Agent 驱动
 
 #### L3：多轮主动规划（ProAct 启发）
 
 跟踪主动"活动"——多步参与策略：
+
 - 示例："第1天: 提及X存在 → 第3天: 分享X的具体洞察 → 第7天: 问用户对X的看法"
 - 用MCTS规划，用户反馈作为终端奖励
 - **论文级贡献**
@@ -350,18 +360,18 @@ Light/REM 做梦阶段区分（`recordDreamingPhaseSignals`）使用独立的衰
 
 ### 优先级排序
 
-| 优先级 | 改动 | 预期收益 | 工作量 |
-|--------|------|----------|--------|
-| 🔴 最高 | Q2: PRISM风格分级门 | 从刚性cron到上下文响应 | 4h |
-| 🔴 最高 | Q1: 接线已有事件源 | 多触发机制 | 2h |
-| 🟠 高 | M3: 网页搜索验证 | 最高信任影响 | 2天 |
-| 🟠 高 | Q3: 洞察反馈闭环 | 区分时机vs内容 | 4h |
-| 🟡 中 | M1: 记忆合并 | 阻止无限增长 | 2天 |
-| 🟡 中 | M2: 动态领域图 | 个性化跨域洞察 | 1天 |
-| 🟡 中 | M4: PROBE分离管道 | 独立改进各阶段 | 1天 |
-| 🟢 低 | L1: 多目标RL | 研究级提升 | 3+天 |
-| 🟢 低 | L2: 记忆工具调用 | Agent驱动记忆 | 3+天 |
-| 🟢 低 | L3: 多轮主动规划 | 论文级贡献 | 3+天 |
+| 优先级  | 改动                | 预期收益               | 工作量 |
+| ------- | ------------------- | ---------------------- | ------ |
+| 🔴 最高 | Q2: PRISM风格分级门 | 从刚性cron到上下文响应 | 4h     |
+| 🔴 最高 | Q1: 接线已有事件源  | 多触发机制             | 2h     |
+| 🟠 高   | M3: 网页搜索验证    | 最高信任影响           | 2天    |
+| 🟠 高   | Q3: 洞察反馈闭环    | 区分时机vs内容         | 4h     |
+| 🟡 中   | M1: 记忆合并        | 阻止无限增长           | 2天    |
+| 🟡 中   | M2: 动态领域图      | 个性化跨域洞察         | 1天    |
+| 🟡 中   | M4: PROBE分离管道   | 独立改进各阶段         | 1天    |
+| 🟢 低   | L1: 多目标RL        | 研究级提升             | 3+天   |
+| 🟢 低   | L2: 记忆工具调用    | Agent驱动记忆          | 3+天   |
+| 🟢 低   | L3: 多轮主动规划    | 论文级贡献             | 3+天   |
 
 ### 推荐的第一步
 

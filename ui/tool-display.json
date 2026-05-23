@@ -28,46 +28,32 @@
     "bash": {
       "emoji": "🛠️",
       "title": "Bash",
-      "detailKeys": [
-        "command"
-      ]
+      "detailKeys": ["command"]
     },
     "process": {
       "emoji": "🧰",
       "title": "Process",
-      "detailKeys": [
-        "sessionId"
-      ]
+      "detailKeys": ["sessionId"]
     },
     "read": {
       "emoji": "📖",
       "title": "Read",
-      "detailKeys": [
-        "path"
-      ]
+      "detailKeys": ["path"]
     },
     "write": {
       "emoji": "✍️",
       "title": "Write",
-      "detailKeys": [
-        "path"
-      ]
+      "detailKeys": ["path"]
     },
     "edit": {
       "emoji": "📝",
       "title": "Edit",
-      "detailKeys": [
-        "path"
-      ]
+      "detailKeys": ["path"]
     },
     "attach": {
       "emoji": "📎",
       "title": "Attach",
-      "detailKeys": [
-        "path",
-        "url",
-        "fileName"
-      ]
+      "detailKeys": ["path", "url", "fileName"]
     },
     "browser": {
       "emoji": "🌐",
@@ -87,78 +73,43 @@
         },
         "open": {
           "label": "open",
-          "detailKeys": [
-            "targetUrl"
-          ]
+          "detailKeys": ["targetUrl"]
         },
         "focus": {
           "label": "focus",
-          "detailKeys": [
-            "targetId"
-          ]
+          "detailKeys": ["targetId"]
         },
         "close": {
           "label": "close",
-          "detailKeys": [
-            "targetId"
-          ]
+          "detailKeys": ["targetId"]
         },
         "snapshot": {
           "label": "snapshot",
-          "detailKeys": [
-            "targetUrl",
-            "targetId",
-            "ref",
-            "element",
-            "format"
-          ]
+          "detailKeys": ["targetUrl", "targetId", "ref", "element", "format"]
         },
         "screenshot": {
           "label": "screenshot",
-          "detailKeys": [
-            "targetUrl",
-            "targetId",
-            "ref",
-            "element"
-          ]
+          "detailKeys": ["targetUrl", "targetId", "ref", "element"]
         },
         "navigate": {
           "label": "navigate",
-          "detailKeys": [
-            "targetUrl",
-            "targetId"
-          ]
+          "detailKeys": ["targetUrl", "targetId"]
         },
         "console": {
           "label": "console",
-          "detailKeys": [
-            "level",
-            "targetId"
-          ]
+          "detailKeys": ["level", "targetId"]
         },
         "pdf": {
           "label": "pdf",
-          "detailKeys": [
-            "targetId"
-          ]
+          "detailKeys": ["targetId"]
         },
         "upload": {
           "label": "upload",
-          "detailKeys": [
-            "paths",
-            "ref",
-            "inputRef",
-            "element",
-            "targetId"
-          ]
+          "detailKeys": ["paths", "ref", "inputRef", "element", "targetId"]
         },
         "dialog": {
           "label": "dialog",
-          "detailKeys": [
-            "accept",
-            "promptText",
-            "targetId"
-          ]
+          "detailKeys": ["accept", "promptText", "targetId"]
         },
         "act": {
           "label": "act",
@@ -178,57 +129,31 @@
       "actions": {
         "present": {
           "label": "present",
-          "detailKeys": [
-            "target",
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["target", "node", "nodeId"]
         },
         "hide": {
           "label": "hide",
-          "detailKeys": [
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["node", "nodeId"]
         },
         "navigate": {
           "label": "navigate",
-          "detailKeys": [
-            "url",
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["url", "node", "nodeId"]
         },
         "eval": {
           "label": "eval",
-          "detailKeys": [
-            "javaScript",
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["javaScript", "node", "nodeId"]
         },
         "snapshot": {
           "label": "snapshot",
-          "detailKeys": [
-            "format",
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["format", "node", "nodeId"]
         },
         "a2ui_push": {
           "label": "A2UI push",
-          "detailKeys": [
-            "jsonlPath",
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["jsonlPath", "node", "nodeId"]
         },
         "a2ui_reset": {
           "label": "A2UI reset",
-          "detailKeys": [
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["node", "nodeId"]
         }
       }
     },
@@ -241,71 +166,38 @@
         },
         "describe": {
           "label": "describe",
-          "detailKeys": [
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["node", "nodeId"]
         },
         "pending": {
           "label": "pending"
         },
         "approve": {
           "label": "approve",
-          "detailKeys": [
-            "requestId"
-          ]
+          "detailKeys": ["requestId"]
         },
         "reject": {
           "label": "reject",
-          "detailKeys": [
-            "requestId"
-          ]
+          "detailKeys": ["requestId"]
         },
         "notify": {
           "label": "notify",
-          "detailKeys": [
-            "node",
-            "nodeId",
-            "title",
-            "body"
-          ]
+          "detailKeys": ["node", "nodeId", "title", "body"]
         },
         "camera_snap": {
           "label": "camera snap",
-          "detailKeys": [
-            "node",
-            "nodeId",
-            "facing",
-            "deviceId"
-          ]
+          "detailKeys": ["node", "nodeId", "facing", "deviceId"]
         },
         "camera_list": {
           "label": "camera list",
-          "detailKeys": [
-            "node",
-            "nodeId"
-          ]
+          "detailKeys": ["node", "nodeId"]
         },
         "camera_clip": {
           "label": "camera clip",
-          "detailKeys": [
-            "node",
-            "nodeId",
-            "facing",
-            "duration",
-            "durationMs"
-          ]
+          "detailKeys": ["node", "nodeId", "facing", "duration", "durationMs"]
         },
         "screen_record": {
           "label": "screen record",
-          "detailKeys": [
-            "node",
-            "nodeId",
-            "duration",
-            "durationMs",
-            "fps",
-            "screenIndex"
-          ]
+          "detailKeys": ["node", "nodeId", "duration", "durationMs", "fps", "screenIndex"]
         }
       }
     },
@@ -321,53 +213,34 @@
         },
         "add": {
           "label": "add",
-          "detailKeys": [
-            "job.name",
-            "job.id",
-            "job.schedule",
-            "job.cron"
-          ]
+          "detailKeys": ["job.name", "job.id", "job.schedule", "job.cron"]
         },
         "update": {
           "label": "update",
-          "detailKeys": [
-            "id"
-          ]
+          "detailKeys": ["id"]
         },
         "remove": {
           "label": "remove",
-          "detailKeys": [
-            "id"
-          ]
+          "detailKeys": ["id"]
         },
         "run": {
           "label": "run",
-          "detailKeys": [
-            "id"
-          ]
+          "detailKeys": ["id"]
         },
         "runs": {
           "label": "runs",
-          "detailKeys": [
-            "id"
-          ]
+          "detailKeys": ["id"]
         },
         "wake": {
           "label": "wake",
-          "detailKeys": [
-            "text",
-            "mode"
-          ]
+          "detailKeys": ["text", "mode"]
         }
       }
     },
     "update_plan": {
       "emoji": "🗺️",
       "title": "Update Plan",
-      "detailKeys": [
-        "explanation",
-        "plan.0.step"
-      ]
+      "detailKeys": ["explanation", "plan.0.step"]
     },
     "gateway": {
       "emoji": "🔌",
@@ -375,10 +248,7 @@
       "actions": {
         "restart": {
           "label": "restart",
-          "detailKeys": [
-            "reason",
-            "delayMs"
-          ]
+          "detailKeys": ["reason", "delayMs"]
         }
       }
     },
@@ -400,211 +270,126 @@
       "actions": {
         "react": {
           "label": "react",
-          "detailKeys": [
-            "channelId",
-            "messageId",
-            "emoji"
-          ]
+          "detailKeys": ["channelId", "messageId", "emoji"]
         },
         "reactions": {
           "label": "reactions",
-          "detailKeys": [
-            "channelId",
-            "messageId"
-          ]
+          "detailKeys": ["channelId", "messageId"]
         },
         "sticker": {
           "label": "sticker",
-          "detailKeys": [
-            "to",
-            "stickerIds"
-          ]
+          "detailKeys": ["to", "stickerIds"]
         },
         "poll": {
           "label": "poll",
-          "detailKeys": [
-            "question",
-            "to"
-          ]
+          "detailKeys": ["question", "to"]
         },
         "permissions": {
           "label": "permissions",
-          "detailKeys": [
-            "channelId"
-          ]
+          "detailKeys": ["channelId"]
         },
         "readMessages": {
           "label": "read messages",
-          "detailKeys": [
-            "channelId",
-            "limit"
-          ]
+          "detailKeys": ["channelId", "limit"]
         },
         "sendMessage": {
           "label": "send",
-          "detailKeys": [
-            "to",
-            "content"
-          ]
+          "detailKeys": ["to", "content"]
         },
         "editMessage": {
           "label": "edit",
-          "detailKeys": [
-            "channelId",
-            "messageId"
-          ]
+          "detailKeys": ["channelId", "messageId"]
         },
         "deleteMessage": {
           "label": "delete",
-          "detailKeys": [
-            "channelId",
-            "messageId"
-          ]
+          "detailKeys": ["channelId", "messageId"]
         },
         "threadCreate": {
           "label": "thread create",
-          "detailKeys": [
-            "channelId",
-            "name"
-          ]
+          "detailKeys": ["channelId", "name"]
         },
         "threadList": {
           "label": "thread list",
-          "detailKeys": [
-            "guildId",
-            "channelId"
-          ]
+          "detailKeys": ["guildId", "channelId"]
         },
         "threadReply": {
           "label": "thread reply",
-          "detailKeys": [
-            "channelId",
-            "content"
-          ]
+          "detailKeys": ["channelId", "content"]
         },
         "pinMessage": {
           "label": "pin",
-          "detailKeys": [
-            "channelId",
-            "messageId"
-          ]
+          "detailKeys": ["channelId", "messageId"]
         },
         "unpinMessage": {
           "label": "unpin",
-          "detailKeys": [
-            "channelId",
-            "messageId"
-          ]
+          "detailKeys": ["channelId", "messageId"]
         },
         "listPins": {
           "label": "list pins",
-          "detailKeys": [
-            "channelId"
-          ]
+          "detailKeys": ["channelId"]
         },
         "searchMessages": {
           "label": "search",
-          "detailKeys": [
-            "guildId",
-            "content"
-          ]
+          "detailKeys": ["guildId", "content"]
         },
         "memberInfo": {
           "label": "member",
-          "detailKeys": [
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["guildId", "userId"]
         },
         "roleInfo": {
           "label": "roles",
-          "detailKeys": [
-            "guildId"
-          ]
+          "detailKeys": ["guildId"]
         },
         "emojiList": {
           "label": "emoji list",
-          "detailKeys": [
-            "guildId"
-          ]
+          "detailKeys": ["guildId"]
         },
         "roleAdd": {
           "label": "role add",
-          "detailKeys": [
-            "guildId",
-            "userId",
-            "roleId"
-          ]
+          "detailKeys": ["guildId", "userId", "roleId"]
         },
         "roleRemove": {
           "label": "role remove",
-          "detailKeys": [
-            "guildId",
-            "userId",
-            "roleId"
-          ]
+          "detailKeys": ["guildId", "userId", "roleId"]
         },
         "channelInfo": {
           "label": "channel",
-          "detailKeys": [
-            "channelId"
-          ]
+          "detailKeys": ["channelId"]
         },
         "channelList": {
           "label": "channels",
-          "detailKeys": [
-            "guildId"
-          ]
+          "detailKeys": ["guildId"]
         },
         "voiceStatus": {
           "label": "voice",
-          "detailKeys": [
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["guildId", "userId"]
         },
         "eventList": {
           "label": "events",
-          "detailKeys": [
-            "guildId"
-          ]
+          "detailKeys": ["guildId"]
         },
         "eventCreate": {
           "label": "event create",
-          "detailKeys": [
-            "guildId",
-            "name"
-          ]
+          "detailKeys": ["guildId", "name"]
         },
         "timeout": {
           "label": "timeout",
-          "detailKeys": [
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["guildId", "userId"]
         },
         "kick": {
           "label": "kick",
-          "detailKeys": [
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["guildId", "userId"]
         },
         "ban": {
           "label": "ban",
-          "detailKeys": [
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["guildId", "userId"]
         }
       }
     },
     "exec": {
       "emoji": "🛠️",
       "title": "Exec",
-      "detailKeys": [
-        "command"
-      ]
+      "detailKeys": ["command"]
     },
     "tool_call": {
       "emoji": "🧰",
@@ -619,39 +404,22 @@
     "session_status": {
       "emoji": "📊",
       "title": "Session Status",
-      "detailKeys": [
-        "sessionKey",
-        "model"
-      ]
+      "detailKeys": ["sessionKey", "model"]
     },
     "sessions_list": {
       "emoji": "🗂️",
       "title": "Sessions",
-      "detailKeys": [
-        "kinds",
-        "limit",
-        "activeMinutes",
-        "messageLimit"
-      ]
+      "detailKeys": ["kinds", "limit", "activeMinutes", "messageLimit"]
     },
     "sessions_send": {
       "emoji": "📨",
       "title": "Session Send",
-      "detailKeys": [
-        "label",
-        "sessionKey",
-        "agentId",
-        "timeoutSeconds"
-      ]
+      "detailKeys": ["label", "sessionKey", "agentId", "timeoutSeconds"]
     },
     "sessions_history": {
       "emoji": "🧾",
       "title": "Session History",
-      "detailKeys": [
-        "sessionKey",
-        "limit",
-        "includeTools"
-      ]
+      "detailKeys": ["sessionKey", "limit", "includeTools"]
     },
     "sessions_spawn": {
       "emoji": "🧑‍🔧",
@@ -672,21 +440,15 @@
       "actions": {
         "list": {
           "label": "list",
-          "detailKeys": [
-            "recentMinutes"
-          ]
+          "detailKeys": ["recentMinutes"]
         },
         "kill": {
           "label": "kill",
-          "detailKeys": [
-            "target"
-          ]
+          "detailKeys": ["target"]
         },
         "steer": {
           "label": "steer",
-          "detailKeys": [
-            "target"
-          ]
+          "detailKeys": ["target"]
         }
       }
     },
@@ -698,42 +460,27 @@
     "memory_search": {
       "emoji": "🧠",
       "title": "Memory Search",
-      "detailKeys": [
-        "query"
-      ]
+      "detailKeys": ["query"]
     },
     "memory_get": {
       "emoji": "📓",
       "title": "Memory Get",
-      "detailKeys": [
-        "path",
-        "from",
-        "lines"
-      ]
+      "detailKeys": ["path", "from", "lines"]
     },
     "web_search": {
       "emoji": "🔎",
       "title": "Web Search",
-      "detailKeys": [
-        "query",
-        "count"
-      ]
+      "detailKeys": ["query", "count"]
     },
     "web_fetch": {
       "emoji": "📄",
       "title": "Web Fetch",
-      "detailKeys": [
-        "url",
-        "extractMode",
-        "maxChars"
-      ]
+      "detailKeys": ["url", "extractMode", "maxChars"]
     },
     "code_execution": {
       "emoji": "🧮",
       "title": "Code Execution",
-      "detailKeys": [
-        "task"
-      ]
+      "detailKeys": ["task"]
     },
     "message": {
       "emoji": "✉️",
@@ -741,252 +488,127 @@
       "actions": {
         "send": {
           "label": "send",
-          "detailKeys": [
-            "provider",
-            "to",
-            "media",
-            "replyTo",
-            "threadId"
-          ]
+          "detailKeys": ["provider", "to", "media", "replyTo", "threadId"]
         },
         "poll": {
           "label": "poll",
-          "detailKeys": [
-            "provider",
-            "to",
-            "pollQuestion"
-          ]
+          "detailKeys": ["provider", "to", "pollQuestion"]
         },
         "react": {
           "label": "react",
-          "detailKeys": [
-            "provider",
-            "to",
-            "messageId",
-            "emoji",
-            "remove"
-          ]
+          "detailKeys": ["provider", "to", "messageId", "emoji", "remove"]
         },
         "reactions": {
           "label": "reactions",
-          "detailKeys": [
-            "provider",
-            "to",
-            "messageId",
-            "limit"
-          ]
+          "detailKeys": ["provider", "to", "messageId", "limit"]
         },
         "read": {
           "label": "read",
-          "detailKeys": [
-            "provider",
-            "to",
-            "limit"
-          ]
+          "detailKeys": ["provider", "to", "limit"]
         },
         "edit": {
           "label": "edit",
-          "detailKeys": [
-            "provider",
-            "to",
-            "messageId"
-          ]
+          "detailKeys": ["provider", "to", "messageId"]
         },
         "delete": {
           "label": "delete",
-          "detailKeys": [
-            "provider",
-            "to",
-            "messageId"
-          ]
+          "detailKeys": ["provider", "to", "messageId"]
         },
         "pin": {
           "label": "pin",
-          "detailKeys": [
-            "provider",
-            "to",
-            "messageId"
-          ]
+          "detailKeys": ["provider", "to", "messageId"]
         },
         "unpin": {
           "label": "unpin",
-          "detailKeys": [
-            "provider",
-            "to",
-            "messageId"
-          ]
+          "detailKeys": ["provider", "to", "messageId"]
         },
         "list-pins": {
           "label": "list pins",
-          "detailKeys": [
-            "provider",
-            "to"
-          ]
+          "detailKeys": ["provider", "to"]
         },
         "permissions": {
           "label": "permissions",
-          "detailKeys": [
-            "provider",
-            "channelId",
-            "to"
-          ]
+          "detailKeys": ["provider", "channelId", "to"]
         },
         "thread-create": {
           "label": "thread create",
-          "detailKeys": [
-            "provider",
-            "channelId",
-            "threadName"
-          ]
+          "detailKeys": ["provider", "channelId", "threadName"]
         },
         "thread-list": {
           "label": "thread list",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "channelId"
-          ]
+          "detailKeys": ["provider", "guildId", "channelId"]
         },
         "thread-reply": {
           "label": "thread reply",
-          "detailKeys": [
-            "provider",
-            "channelId",
-            "messageId"
-          ]
+          "detailKeys": ["provider", "channelId", "messageId"]
         },
         "search": {
           "label": "search",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "query"
-          ]
+          "detailKeys": ["provider", "guildId", "query"]
         },
         "sticker": {
           "label": "sticker",
-          "detailKeys": [
-            "provider",
-            "to",
-            "stickerId"
-          ]
+          "detailKeys": ["provider", "to", "stickerId"]
         },
         "member-info": {
           "label": "member",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId"]
         },
         "role-info": {
           "label": "roles",
-          "detailKeys": [
-            "provider",
-            "guildId"
-          ]
+          "detailKeys": ["provider", "guildId"]
         },
         "emoji-list": {
           "label": "emoji list",
-          "detailKeys": [
-            "provider",
-            "guildId"
-          ]
+          "detailKeys": ["provider", "guildId"]
         },
         "emoji-upload": {
           "label": "emoji upload",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "emojiName"
-          ]
+          "detailKeys": ["provider", "guildId", "emojiName"]
         },
         "sticker-upload": {
           "label": "sticker upload",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "stickerName"
-          ]
+          "detailKeys": ["provider", "guildId", "stickerName"]
         },
         "role-add": {
           "label": "role add",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId",
-            "roleId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId", "roleId"]
         },
         "role-remove": {
           "label": "role remove",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId",
-            "roleId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId", "roleId"]
         },
         "channel-info": {
           "label": "channel",
-          "detailKeys": [
-            "provider",
-            "channelId"
-          ]
+          "detailKeys": ["provider", "channelId"]
         },
         "channel-list": {
           "label": "channels",
-          "detailKeys": [
-            "provider",
-            "guildId"
-          ]
+          "detailKeys": ["provider", "guildId"]
         },
         "voice-status": {
           "label": "voice",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId"]
         },
         "event-list": {
           "label": "events",
-          "detailKeys": [
-            "provider",
-            "guildId"
-          ]
+          "detailKeys": ["provider", "guildId"]
         },
         "event-create": {
           "label": "event create",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "eventName"
-          ]
+          "detailKeys": ["provider", "guildId", "eventName"]
         },
         "timeout": {
           "label": "timeout",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId"]
         },
         "kick": {
           "label": "kick",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId"]
         },
         "ban": {
           "label": "ban",
-          "detailKeys": [
-            "provider",
-            "guildId",
-            "userId"
-          ]
+          "detailKeys": ["provider", "guildId", "userId"]
         }
       }
     },
@@ -998,14 +620,7 @@
     "image": {
       "emoji": "🖼️",
       "title": "Image",
-      "detailKeys": [
-        "path",
-        "paths",
-        "url",
-        "urls",
-        "prompt",
-        "model"
-      ]
+      "detailKeys": ["path", "paths", "url", "urls", "prompt", "model"]
     },
     "image_generate": {
       "emoji": "🎨",
@@ -1013,20 +628,11 @@
       "actions": {
         "generate": {
           "label": "generate",
-          "detailKeys": [
-            "prompt",
-            "model",
-            "count",
-            "resolution",
-            "aspectRatio"
-          ]
+          "detailKeys": ["prompt", "model", "count", "resolution", "aspectRatio"]
         },
         "list": {
           "label": "list",
-          "detailKeys": [
-            "provider",
-            "model"
-          ]
+          "detailKeys": ["provider", "model"]
         }
       }
     },
@@ -1036,20 +642,11 @@
       "actions": {
         "generate": {
           "label": "generate",
-          "detailKeys": [
-            "prompt",
-            "model",
-            "durationSeconds",
-            "format",
-            "instrumental"
-          ]
+          "detailKeys": ["prompt", "model", "durationSeconds", "format", "instrumental"]
         },
         "list": {
           "label": "list",
-          "detailKeys": [
-            "provider",
-            "model"
-          ]
+          "detailKeys": ["provider", "model"]
         }
       }
     },
@@ -1071,40 +668,24 @@
         },
         "list": {
           "label": "list",
-          "detailKeys": [
-            "provider",
-            "model"
-          ]
+          "detailKeys": ["provider", "model"]
         }
       }
     },
     "pdf": {
       "emoji": "📑",
       "title": "PDF",
-      "detailKeys": [
-        "path",
-        "paths",
-        "url",
-        "urls",
-        "prompt",
-        "pageRange",
-        "model"
-      ]
+      "detailKeys": ["path", "paths", "url", "urls", "prompt", "pageRange", "model"]
     },
     "sessions_yield": {
       "emoji": "⏸️",
       "title": "Yield",
-      "detailKeys": [
-        "message"
-      ]
+      "detailKeys": ["message"]
     },
     "tts": {
       "emoji": "🔊",
       "title": "TTS",
-      "detailKeys": [
-        "text",
-        "channel"
-      ]
+      "detailKeys": ["text", "channel"]
     }
   }
 }

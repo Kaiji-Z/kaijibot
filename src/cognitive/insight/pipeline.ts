@@ -1,10 +1,10 @@
-import type { Fragment, FragmentCluster } from "./fragment-types.js";
-import { FragmentStore } from "./fragment-store.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   createDefaultFragmentCollectorDeps,
   type FragmentCollectorDeps,
 } from "./fragment-collector.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { FragmentStore } from "./fragment-store.js";
+import type { Fragment, FragmentCluster } from "./fragment-types.js";
 
 const log = createSubsystemLogger("cognitive/pipeline");
 

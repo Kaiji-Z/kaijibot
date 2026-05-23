@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { join } from "node:path";
-import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
+import { describe, it, expect, beforeEach } from "vitest";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
-import { type TopicEntry, parseTopicFile, serializeTopicFile } from "./topic-types.js";
 import {
   runMemoryTidyActions,
   isTidyEnabled,
   type MemoryTidyDeps,
   type TidyResult,
 } from "./tools.memory-tidy.js";
+import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
+import { type TopicEntry, parseTopicFile, serializeTopicFile } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // In-memory FS
@@ -70,10 +70,7 @@ function makeTopic(
 ): string {
   const today = new Date().toISOString().slice(0, 10);
   const entryMarkdown = entries
-    .map(
-      (e) =>
-        `## ${e.title} (${e.date})\n\n${e.content}`,
-    )
+    .map((e) => `## ${e.title} (${e.date})\n\n${e.content}`)
     .join("\n\n");
   return `---\nsubject: ${subject}\ncreated: ${today}\nupdated: ${today}\nentries: ${entries.length}\n---\n\n${entryMarkdown}\n`;
 }
@@ -110,9 +107,21 @@ describe("memory_tidy", () => {
       const { tidyDeps, memFs } = createTidyDeps();
 
       const content = makeTopic("dedup-test", "user", [
-        { title: "Likes Python", date: "2025-01-01", content: "User prefers Python programming language for data analysis" },
-        { title: "Likes Python v2", date: "2025-01-02", content: "User prefers Python programming language for data analysis tasks" },
-        { title: "Likes Rust", date: "2025-01-03", content: "User also enjoys Rust for systems programming" },
+        {
+          title: "Likes Python",
+          date: "2025-01-01",
+          content: "User prefers Python programming language for data analysis",
+        },
+        {
+          title: "Likes Python v2",
+          date: "2025-01-02",
+          content: "User prefers Python programming language for data analysis tasks",
+        },
+        {
+          title: "Likes Rust",
+          date: "2025-01-03",
+          content: "User also enjoys Rust for systems programming",
+        },
       ]);
       memFs.files.set(join(TOPICS_DIR, "dedup-test.md"), content);
 
@@ -128,9 +137,21 @@ describe("memory_tidy", () => {
       const { tidyDeps, memFs } = createTidyDeps();
 
       const content = makeTopic("unique", "reference", [
-        { title: "Database choice", date: "2025-01-01", content: "Decided on PostgreSQL for the main database" },
-        { title: "Auth strategy", date: "2025-01-02", content: "Using JWT tokens with refresh rotation" },
-        { title: "CI pipeline", date: "2025-01-03", content: "GitHub Actions with matrix testing across Node 20, 22" },
+        {
+          title: "Database choice",
+          date: "2025-01-01",
+          content: "Decided on PostgreSQL for the main database",
+        },
+        {
+          title: "Auth strategy",
+          date: "2025-01-02",
+          content: "Using JWT tokens with refresh rotation",
+        },
+        {
+          title: "CI pipeline",
+          date: "2025-01-03",
+          content: "GitHub Actions with matrix testing across Node 20, 22",
+        },
       ]);
       memFs.files.set(join(TOPICS_DIR, "unique.md"), content);
 
@@ -229,16 +250,11 @@ describe("memory_tidy", () => {
     it("moves topic file older than 90 days to archive", async () => {
       const { tidyDeps, memFs } = createTidyDeps();
 
-      const oldDate = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10);
+      const oldDate = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const oldContent = `---\nsubject: reference\ncreated: ${oldDate}\nupdated: ${oldDate}\nentries: 1\n---\n\n## Old Entry (${oldDate})\n\nStale content\n`;
       memFs.files.set(join(TOPICS_DIR, "stale.md"), oldContent);
 
-      writeMemoryMd(
-        memFs,
-        "# Long-Term Memory Index\n\n## Stale\n→ memory/topics/stale.md\n\n",
-      );
+      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Stale\n→ memory/topics/stale.md\n\n");
 
       const result = await runMemoryTidyActions(tidyDeps, { action: "archive" });
 

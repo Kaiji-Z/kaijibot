@@ -23,7 +23,9 @@ vi.mock("../../cognitive/evolution/store.js", () => ({
   },
 }));
 
-const mockWriteSkill = vi.fn().mockResolvedValue("/home/test/.kaijibot/skills/agent/test-skill/SKILL.md");
+const mockWriteSkill = vi
+  .fn()
+  .mockResolvedValue("/home/test/.kaijibot/skills/agent/test-skill/SKILL.md");
 const mockListSkillNames = vi.fn().mockResolvedValue([]);
 const mockReadSkillMeta = vi.fn().mockResolvedValue(null);
 
@@ -107,7 +109,8 @@ describe("createEvolutionSuggestTool", () => {
         name: "feishu-wiki-archive",
         description: "Archive wiki pages",
         triggerPhrases: ["归档", "archive"],
-        bodyMarkdown: "## When to use\n\nUse when archiving wiki.\n\n## Workflow\n\n1. Scan\n2. Move",
+        bodyMarkdown:
+          "## When to use\n\nUse when archiving wiki.\n\n## Workflow\n\n1. Scan\n2. Move",
       });
 
       const tool = createEvolutionSuggestTool({
@@ -206,7 +209,9 @@ describe("createEvolutionSuggestTool", () => {
 
       expect(mockGenerate).toHaveBeenCalledTimes(1);
       const candidate = mockGenerate.mock.calls[0][0] as { transcript?: string };
-      expect(candidate.transcript).toBe("User asked about feishu wiki archiving, bot listed pages and moved them.");
+      expect(candidate.transcript).toBe(
+        "User asked about feishu wiki archiving, bot listed pages and moved them.",
+      );
     });
 
     it("passes hasTrialAndError to generate via candidate", async () => {
@@ -254,7 +259,12 @@ describe("createEvolutionSuggestTool", () => {
       })!;
 
       await tool.execute("call-9", {
-        taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
+        taskSummary: "test",
+        toolCalls: ["a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 100,
+        domain: "t",
       });
 
       expect(mockGenerate).toHaveBeenCalledTimes(1);
@@ -266,7 +276,12 @@ describe("createEvolutionSuggestTool", () => {
       })!;
 
       const result = await tool.execute("call-10", {
-        taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
+        taskSummary: "test",
+        toolCalls: ["a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 100,
+        domain: "t",
       });
 
       const text = (result.content as Array<{ text: string }>)[0].text;
@@ -280,7 +295,12 @@ describe("createEvolutionSuggestTool", () => {
       })!;
 
       await tool.execute("call-11", {
-        taskSummary: "test", toolCalls: ["a"], uniqueToolCount: 1, reasoningTurns: 1, durationMs: 100, domain: "t",
+        taskSummary: "test",
+        toolCalls: ["a"],
+        uniqueToolCount: 1,
+        reasoningTurns: 1,
+        durationMs: 100,
+        domain: "t",
       });
 
       expect(mockGenerate).toHaveBeenCalledTimes(1);
@@ -293,7 +313,10 @@ describe("createEvolutionSuggestTool", () => {
         triggerPhrases: ["t"],
         bodyMarkdown: "#",
       });
-      mockCheckBeforeGenerate.mockResolvedValueOnce({ shouldCreate: false, existingSkill: "existing-one" });
+      mockCheckBeforeGenerate.mockResolvedValueOnce({
+        shouldCreate: false,
+        existingSkill: "existing-one",
+      });
 
       const tool = createEvolutionSuggestTool({
         sessionKey: "agent:main:user-dedup",
@@ -339,7 +362,9 @@ describe("createEvolutionSuggestTool", () => {
 
       expect(mockSave).toHaveBeenCalledTimes(1);
       const savedRecord = mockSave.mock.calls[0][1];
-      expect(savedRecord.savedSkillPath).toBe("/home/test/.kaijibot/skills/agent/path-test/SKILL.md");
+      expect(savedRecord.savedSkillPath).toBe(
+        "/home/test/.kaijibot/skills/agent/path-test/SKILL.md",
+      );
       expect(savedRecord.draft.name).toBe("path-test");
     });
   });

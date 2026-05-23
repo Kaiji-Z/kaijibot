@@ -20,28 +20,13 @@ const CODE_LINE_PATTERNS = [
 const GIT_PATTERNS = ["commit", "branch", "merge", "PR #", "hash", "blame"];
 
 /** Substring patterns for derivable / obvious statements. */
-const DERIVABLE_PATTERNS = [
-  "the file exists",
-  "the function is",
-  "you can see",
-  "as shown in",
-];
+const DERIVABLE_PATTERNS = ["the file exists", "the function is", "you can see", "as shown in"];
 
 /** Substring patterns for ephemeral task state. */
-const EPHEMERAL_PATTERNS = [
-  "currently running",
-  "in progress",
-  "todo:",
-  "FIXME",
-];
+const EPHEMERAL_PATTERNS = ["currently running", "in progress", "todo:", "FIXME"];
 
 /** Substring patterns for dreaming / diagnostic metadata. */
-const DREAMING_PATTERNS = [
-  "confidence:",
-  "evidence:",
-  "status: staged",
-  "recalls:",
-];
+const DREAMING_PATTERNS = ["confidence:", "evidence:", "status: staged", "recalls:"];
 
 /** File path / extension patterns (substring match). */
 const FILE_PATH_PATTERNS = ["/src/", "./", "../", ".ts", ".js", ".py", ".json"];

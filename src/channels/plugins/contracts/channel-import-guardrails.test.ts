@@ -21,9 +21,7 @@ const bundledPluginRoots = new Map(
 const BUNDLED_EXTENSION_IDS = [...bundledPluginRoots.keys()].toSorted(
   (left, right) => right.length - left.length,
 );
-const GUARDED_CHANNEL_EXTENSIONS = new Set([
-  "feishu",
-]);
+const GUARDED_CHANNEL_EXTENSIONS = new Set(["feishu"]);
 const ALLOWED_CORE_CHANNEL_SDK_SUBPATHS: Set<string> = new Set([]);
 
 function bundledPluginFile(pluginId: string, relativePath: string): string {
@@ -39,14 +37,11 @@ type GuardedSource = {
   forbiddenPatterns: RegExp[];
 };
 
-const SAME_CHANNEL_SDK_GUARDS: GuardedSource[] = [
-];
+const SAME_CHANNEL_SDK_GUARDS: GuardedSource[] = [];
 
-const SETUP_BARREL_GUARDS: GuardedSource[] = [
-];
+const SETUP_BARREL_GUARDS: GuardedSource[] = [];
 
-const CHANNEL_CONFIG_SCHEMA_GUARDS: GuardedSource[] = [
-];
+const CHANNEL_CONFIG_SCHEMA_GUARDS: GuardedSource[] = [];
 
 const LOCAL_EXTENSION_API_BARREL_GUARDS = [
   "device-pair",
@@ -58,8 +53,7 @@ const LOCAL_EXTENSION_API_BARREL_GUARDS = [
   "zai",
 ] as const;
 
-const LOCAL_EXTENSION_API_BARREL_EXCEPTIONS = [
-] as const;
+const LOCAL_EXTENSION_API_BARREL_EXCEPTIONS = [] as const;
 
 const sourceTextCache = new Map<string, string>();
 type SourceAnalysis = {

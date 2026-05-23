@@ -1,12 +1,12 @@
 import { completeSimple, type Api, type Model, type TextContent } from "@mariozechner/pi-ai";
-import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
-import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
-import { extractFromMessage } from "./extractor.js";
-import type { PersonaTree, InsightCategory } from "../types.js";
-import type { ExtractionResult } from "./types.js";
+import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import type { PersonaTree, InsightCategory } from "../types.js";
+import { extractFromMessage } from "./extractor.js";
+import type { ExtractionResult } from "./types.js";
 const log = createSubsystemLogger("cognitive/persona-extractor");
 
 const VALID_INSIGHT_CATEGORIES: ReadonlySet<string> = new Set<InsightCategory>([
@@ -54,11 +54,19 @@ export function createDefaultDeps(): LlmExtractorDeps {
       if (modelRef) {
         const split = splitModelRef(modelRef);
         if (split) {
-          return prepareSimpleCompletionModel({ cfg, provider: split.provider, modelId: split.modelId });
+          return prepareSimpleCompletionModel({
+            cfg,
+            provider: split.provider,
+            modelId: split.modelId,
+          });
         }
       }
       const resolved = resolveDefaultModelForAgent({ cfg });
-      return prepareSimpleCompletionModel({ cfg, provider: resolved.provider, modelId: resolved.model });
+      return prepareSimpleCompletionModel({
+        cfg,
+        provider: resolved.provider,
+        modelId: resolved.model,
+      });
     },
   };
 }
@@ -83,8 +91,7 @@ export async function extractFromMessageLLM(
   const prompt = buildExtractionPrompt(userMessage, assistantMessage, existingPersona);
 
   try {
-    const modelRef =
-      options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+    const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
     const prepared = await deps.prepareModel(config, modelRef);
 
     if ("error" in prepared) {
@@ -93,19 +100,14 @@ export async function extractFromMessageLLM(
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      options?.timeout ?? DEFAULT_TIMEOUT_MS,
-    );
+    const timeout = setTimeout(() => controller.abort(), options?.timeout ?? DEFAULT_TIMEOUT_MS);
 
     let result: Awaited<ReturnType<typeof completeSimple>>;
     try {
       result = await deps.complete(
         prepared.model,
         {
-          messages: [
-            { role: "user", content: prompt, timestamp: Date.now() },
-          ],
+          messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
         },
         {
           apiKey: prepared.auth.apiKey,
@@ -136,11 +138,19 @@ export async function extractFromMessageLLM(
       parsed.domains.length === 0 &&
       parsed.recentFocus.length === 0
     ) {
-      log.warn("persona extraction fell back to rule-based", { reason: "parse-failed", rawPreview: text.slice(0, 200) });
+      log.warn("persona extraction fell back to rule-based", {
+        reason: "parse-failed",
+        rawPreview: text.slice(0, 200),
+      });
       return extractFromMessage(userMessage, assistantMessage, existingPersona);
     }
 
-    log.info("persona extraction completed", { method: "llm", domainsFound: parsed.domains.length, attributesFound: Object.keys(parsed.attributes).length, hasFocus: parsed.recentFocus.length > 0 });
+    log.info("persona extraction completed", {
+      method: "llm",
+      domainsFound: parsed.domains.length,
+      attributesFound: Object.keys(parsed.attributes).length,
+      hasFocus: parsed.recentFocus.length > 0,
+    });
     return parsed;
   } catch {
     log.warn("persona extraction fell back to rule-based", { reason: "timeout" });
@@ -242,7 +252,10 @@ function parseLLMExtraction(text: string): ExtractionResult {
             insights: Array.isArray(d.insights) ? d.insights.map(String) : [],
             typedInsights: Array.isArray(d.typedInsights)
               ? d.typedInsights
-                  .filter((ti: Record<string, unknown>) => typeof ti.text === "string" && ti.text.length > 0)
+                  .filter(
+                    (ti: Record<string, unknown>) =>
+                      typeof ti.text === "string" && ti.text.length > 0,
+                  )
                   .map((ti: Record<string, unknown>) => ({
                     text: String(ti.text),
                     category: validInsightCategory(ti.category),
@@ -372,9 +385,7 @@ function clampDepth(n: number): number {
   return Math.max(1, Math.min(5, n));
 }
 
-function validSource(
-  value: unknown,
-): "explicit" | "inferred" | "observed" {
+function validSource(value: unknown): "explicit" | "inferred" | "observed" {
   const s = String(value);
   if (s === "explicit" || s === "inferred" || s === "observed") return s;
   return "inferred";

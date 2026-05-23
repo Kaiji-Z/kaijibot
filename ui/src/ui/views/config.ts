@@ -3,14 +3,9 @@ import { t } from "../../i18n/index.ts";
 import type { ThemeTransitionContext } from "../theme-transition.ts";
 import type { ThemeMode, ThemeName } from "../theme.ts";
 import type { ConfigUiHints } from "../types.ts";
-import {
-  humanize,
-  pathKey,
-  schemaType,
-  type JsonSchema,
-} from "./config-form.shared.ts";
-import { analyzeConfigSchema, renderConfigForm, SECTION_META } from "./config-form.ts";
 import { renderNode } from "./config-form.node.ts";
+import { humanize, pathKey, schemaType, type JsonSchema } from "./config-form.shared.ts";
+import { analyzeConfigSchema, renderConfigForm, SECTION_META } from "./config-form.ts";
 import { QUICK_SETTINGS } from "./config-quick-fields.ts";
 
 export type ConfigProps = {
@@ -117,7 +112,6 @@ const ACCORDION_GROUPS: AccordionGroup[] = [
 
 const GROUPED_KEYS = new Set(ACCORDION_GROUPS.flatMap((g) => g.sections));
 
-
 function scopeSchemaSections(
   schema: JsonSchema | null,
   params: { include?: ReadonlySet<string> | null; exclude?: ReadonlySet<string> | null },
@@ -219,11 +213,7 @@ function computeDiff(
   return changes;
 }
 
-
-function getSchemaNodeAtPath(
-  schema: JsonSchema,
-  path: readonly string[],
-): JsonSchema | null {
+function getSchemaNodeAtPath(schema: JsonSchema, path: readonly string[]): JsonSchema | null {
   let node: JsonSchema = schema;
   for (const segment of path) {
     if (!node.properties || !(segment in node.properties)) {
@@ -234,10 +224,7 @@ function getSchemaNodeAtPath(
   return node;
 }
 
-function getValueAtPath(
-  root: Record<string, unknown>,
-  path: readonly string[],
-): unknown {
+function getValueAtPath(root: Record<string, unknown>, path: readonly string[]): unknown {
   let current: unknown = root;
   for (const segment of path) {
     if (current === null || current === undefined || typeof current !== "object") {
@@ -297,9 +284,7 @@ function renderQuickSettings(props: ConfigProps) {
   return html`
     <div class="config-quick-settings">
       <div class="config-quick-settings__title">${t("config.quickSettings")}</div>
-      <div class="config-quick-settings__grid">
-        ${items}
-      </div>
+      <div class="config-quick-settings__grid">${items}</div>
     </div>
   `;
 }
@@ -326,7 +311,9 @@ function renderConnectionSection(props: ConfigProps) {
           ${props.assistantName
             ? html`
                 <div class="settings-info-row">
-                  <span class="settings-info-row__label">${t("settings.connection.assistant")}</span>
+                  <span class="settings-info-row__label"
+                    >${t("settings.connection.assistant")}</span
+                  >
                   <span class="settings-info-row__value">${props.assistantName}</span>
                 </div>
               `
@@ -336,7 +323,6 @@ function renderConnectionSection(props: ConfigProps) {
     </div>
   `;
 }
-
 
 interface ConfigEphemeralState {
   rawRevealed: boolean;
@@ -376,7 +362,6 @@ function toggleSensitivePathReveal(path: Array<string | number>) {
 export function resetConfigViewStateForTests() {
   Object.assign(cvs, createConfigEphemeralState());
 }
-
 
 function renderGroupIcon(groupId: string): TemplateResult {
   switch (groupId) {
@@ -434,7 +419,6 @@ function renderGroupIcon(groupId: string): TemplateResult {
   }
 }
 
-
 export function renderConfig(props: ConfigProps) {
   const validity = props.valid == null ? "unknown" : props.valid ? "valid" : "invalid";
   const includeVirtualSections = props.includeVirtualSections ?? true;
@@ -456,7 +440,8 @@ export function renderConfig(props: ConfigProps) {
 
   const canSaveForm = Boolean(props.formValue) && !props.loading && Boolean(analysis.schema);
   const canSave = props.connected && !props.saving && hasChanges && canSaveForm;
-  const canApply = props.connected && !props.applying && !props.updating && hasChanges && canSaveForm;
+  const canApply =
+    props.connected && !props.applying && !props.updating && hasChanges && canSaveForm;
   const canUpdate = props.connected && !props.applying && !props.updating;
 
   const visibleGroups: Array<{
@@ -466,9 +451,7 @@ export function renderConfig(props: ConfigProps) {
   }> = [];
 
   for (const group of ACCORDION_GROUPS) {
-    const matching = group.sections.filter(
-      (key) => key in schemaProps,
-    );
+    const matching = group.sections.filter((key) => key in schemaProps);
     if (matching.length > 0) {
       visibleGroups.push({
         id: group.id,
@@ -481,10 +464,7 @@ export function renderConfig(props: ConfigProps) {
     }
   }
 
-
-  const extraKeys = Object.keys(schemaProps).filter(
-    (k) => !GROUPED_KEYS.has(k),
-  );
+  const extraKeys = Object.keys(schemaProps).filter((k) => !GROUPED_KEYS.has(k));
   if (extraKeys.length > 0) {
     visibleGroups.push({
       id: "other",
@@ -505,7 +485,8 @@ export function renderConfig(props: ConfigProps) {
             ${hasChanges
               ? html`
                   <span class="config-changes-badge"
-                    >${diff.length} ${t("settings.unsavedChange")}${diff.length !== 1 ? "s" : ""}</span
+                    >${diff.length}
+                    ${t("settings.unsavedChange")}${diff.length !== 1 ? "s" : ""}</span
                   >
                 `
               : html`<span class="config-status muted">${t("settings.noChanges")}</span>`}
@@ -547,9 +528,7 @@ export function renderConfig(props: ConfigProps) {
                   <line x1="12" y1="9" x2="12" y2="13"></line>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
-                <span class="config-validity-warning__text"
-                  >${t("settings.invalidConfig")}</span
-                >
+                <span class="config-validity-warning__text">${t("settings.invalidConfig")}</span>
                 <button
                   class="btn btn--sm"
                   @click=${() => {
@@ -566,9 +545,7 @@ export function renderConfig(props: ConfigProps) {
         <!-- Appearance section (always shown at top) -->
         ${includeVirtualSections ? renderConnectionSection(props) : nothing}
 
-        <div class="config-scroll-area">
-          ${renderQuickSettings(props)}
-        </div>
+        <div class="config-scroll-area">${renderQuickSettings(props)}</div>
 
         ${props.issues.length > 0
           ? html`<div class="callout danger" style="margin-top: 12px;">

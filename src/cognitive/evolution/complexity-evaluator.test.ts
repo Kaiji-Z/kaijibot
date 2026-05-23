@@ -134,7 +134,8 @@ describe("evaluateComplexity", () => {
         uniqueToolCount: 50,
         reasoningTurns: 200,
         durationMs: 3_600_000,
-        transcript: "不对 换一个 错了 不好 不行 wrong try again sorry 抱歉 tool_call:search tool_call:search tool_call:search",
+        transcript:
+          "不对 换一个 错了 不好 不行 wrong try again sorry 抱歉 tool_call:search tool_call:search tool_call:search",
         userCorrections: 10,
       }),
     );
@@ -152,9 +153,7 @@ describe("detectTrialAndError", () => {
   });
 
   it("detects Chinese corrections", () => {
-    const result = detectTrialAndError(
-      makeCandidate({ transcript: "用户说：不对，换一个方案" }),
-    );
+    const result = detectTrialAndError(makeCandidate({ transcript: "用户说：不对，换一个方案" }));
     expect(result.detected).toBe(true);
     expect(result.signals.length).toBeGreaterThanOrEqual(2);
     expect(result.boost).toBeGreaterThan(0);
@@ -180,7 +179,8 @@ describe("detectTrialAndError", () => {
   it("caps boost at 0.25", () => {
     const result = detectTrialAndError(
       makeCandidate({
-        transcript: "不对 不是这个 换一个 再试试 错了 不好 不行 重新来 重新做 不对吧 wrong try again incorrect sorry 抱歉 对不起 tool_call:web_search tool_call:web_search tool_call:web_search",
+        transcript:
+          "不对 不是这个 换一个 再试试 错了 不好 不行 重新来 重新做 不对吧 wrong try again incorrect sorry 抱歉 对不起 tool_call:web_search tool_call:web_search tool_call:web_search",
         userCorrections: 10,
       }),
     );
@@ -188,9 +188,7 @@ describe("detectTrialAndError", () => {
   });
 
   it("returns correct signal strings", () => {
-    const result = detectTrialAndError(
-      makeCandidate({ transcript: "用户说不对" }),
-    );
+    const result = detectTrialAndError(makeCandidate({ transcript: "用户说不对" }));
     expect(result.detected).toBe(true);
     for (const signal of result.signals) {
       expect(typeof signal).toBe("string");
@@ -199,16 +197,12 @@ describe("detectTrialAndError", () => {
   });
 
   it("detects via hasTrialAndError flag even without transcript", () => {
-    const result = detectTrialAndError(
-      makeCandidate({ hasTrialAndError: true }),
-    );
+    const result = detectTrialAndError(makeCandidate({ hasTrialAndError: true }));
     expect(result.detected).toBe(true);
   });
 
   it("adds boost from explicit userCorrections", () => {
-    const result = detectTrialAndError(
-      makeCandidate({ userCorrections: 3 }),
-    );
+    const result = detectTrialAndError(makeCandidate({ userCorrections: 3 }));
     expect(result.detected).toBe(true);
     expect(result.userCorrections).toBe(3);
     expect(result.boost).toBeCloseTo(0.15);
@@ -278,7 +272,7 @@ describe("evaluateComplexity with error profile", () => {
     const errorFactor = result.factors.find((f) => f.name === "toolErrors");
     expect(errorFactor).toBeDefined();
     expect(errorFactor!.raw).toBe(2);
-    expect(errorFactor!.weight).toBe(0.50);
+    expect(errorFactor!.weight).toBe(0.5);
   });
 
   it("boosts score with errors compared to same candidate without", () => {
@@ -328,7 +322,7 @@ describe("evaluateComplexity with error profile", () => {
     const retryFactor = result.factors.find((f) => f.name === "toolRetries");
     expect(retryFactor).toBeDefined();
     expect(retryFactor!.raw).toBe(3);
-    expect(retryFactor!.weight).toBe(0.40);
+    expect(retryFactor!.weight).toBe(0.4);
   });
 
   it("error + retry combined boost dominates over base factors", () => {

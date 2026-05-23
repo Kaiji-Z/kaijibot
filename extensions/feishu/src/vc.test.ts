@@ -319,9 +319,7 @@ describe("registerFeishuVcTools", () => {
     const tool = toolFactory?.({ agentAccountId: undefined });
 
     const result = await tool.execute("call-6", { action: "invalid" });
-    expect(result.details).toEqual(
-      expect.objectContaining({ error: "Unknown action: invalid" }),
-    );
+    expect(result.details).toEqual(expect.objectContaining({ error: "Unknown action: invalid" }));
   });
 
   it("surfaces API errors via toolExecutionErrorResult", async () => {

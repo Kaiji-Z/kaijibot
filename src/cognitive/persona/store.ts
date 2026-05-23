@@ -1,19 +1,15 @@
-import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
-import { mkdir, readFile, readdir, rename, stat, writeFile, unlink } from "node:fs/promises";
-import { join } from "node:path";
-import { existsSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, rename, stat, writeFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
 import { safeParsePersona } from "./persona-schema.js";
 
 const COGNITIVE_DIR = "cognitive";
 const PERSONA_DIR = "persona";
 
-const MIGRATION_SKIP_USER_IDS = new Set([
-  "main",
-  "kaijibot-tui",
-  "slug-generator",
-]);
+const MIGRATION_SKIP_USER_IDS = new Set(["main", "kaijibot-tui", "slug-generator"]);
 
 function inferPhase(domain: DomainNode): { phase: InterestPhase; phaseEnteredAt: number } {
   const now = Date.now();
@@ -111,7 +107,9 @@ export class PersonaStore {
     }
 
     if (migrated.length > 0) {
-      console.info(`[PersonaStore] Migrated ${migrated.length} persona(s) to main/ subdirectory: ${migrated.join(", ")}`);
+      console.info(
+        `[PersonaStore] Migrated ${migrated.length} persona(s) to main/ subdirectory: ${migrated.join(", ")}`,
+      );
     }
 
     return { migrated, skipped };

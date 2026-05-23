@@ -1,9 +1,6 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import {
-  generateSummary as piGenerateSummary,
-} from "@mariozechner/pi-coding-agent";
-import { estimateMessageTokens as estimateTokens } from "./token-estimation.js";
+import { generateSummary as piGenerateSummary } from "@mariozechner/pi-coding-agent";
 import type { AgentCompactionIdentifierPolicy } from "../config/types.agent-defaults.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { retryAsync } from "../infra/retry.js";
@@ -12,6 +9,7 @@ import { createSubsystemLogger } from "../logging/subsystem.js";
 import { DEFAULT_CONTEXT_TOKENS } from "./defaults.js";
 import { isTimeoutError } from "./failover-error.js";
 import { repairToolUseResultPairing, stripToolResultDetails } from "./session-transcript-repair.js";
+import { estimateMessageTokens as estimateTokens } from "./token-estimation.js";
 import { extractToolCallsFromAssistant, extractToolResultId } from "./tool-call-id.js";
 
 const log = createSubsystemLogger("compaction");

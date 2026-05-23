@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  generateSkillDraft,
-  sanitizeSkillName,
-  toKebabCase,
-} from "./skill-draft-generator.js";
+import { generateSkillDraft, sanitizeSkillName, toKebabCase } from "./skill-draft-generator.js";
 import type { EvolutionCandidate } from "./types.js";
 
 function makeCandidate(overrides: Partial<EvolutionCandidate> = {}): EvolutionCandidate {

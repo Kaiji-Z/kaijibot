@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
-import { SkillPersistenceWriter } from "./skill-writer.js";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { SkillLifecycleManager } from "./skill-lifecycle.js";
+import { SkillPersistenceWriter } from "./skill-writer.js";
 import type { SkillDraft } from "./types.js";
 
 let tempDir: string;
@@ -152,19 +152,14 @@ describe("SkillLifecycleManager", () => {
 
   describe("removeStale()", () => {
     it("archives old unused agent skills and returns count", async () => {
-      await writer.writeSkill(
-        makeDraft({ name: "old-unused-skill", description: "Old skill" }),
-      );
+      await writer.writeSkill(makeDraft({ name: "old-unused-skill", description: "Old skill" }));
       await writer.writeSkill(
         makeDraft({ name: "recent-unused-skill", description: "Recent skill" }),
       );
 
       const skillsDir = join(tempDir, "skills", "agent", "old-unused-skill", "SKILL.md");
       let content = await readFile(skillsDir, "utf-8");
-      content = content.replace(
-        /^lastUsedAt:\s*\d+/m,
-        `lastUsedAt: ${Date.now() - 60 * 86400000}`,
-      );
+      content = content.replace(/^lastUsedAt:\s*\d+/m, `lastUsedAt: ${Date.now() - 60 * 86400000}`);
       await writeFile(skillsDir, content, "utf-8");
 
       const archived = await lifecycle.removeStale(30);
@@ -176,9 +171,7 @@ describe("SkillLifecycleManager", () => {
     });
 
     it("keeps recently-used skills", async () => {
-      await writer.writeSkill(
-        makeDraft({ name: "used-skill", description: "Used skill" }),
-      );
+      await writer.writeSkill(makeDraft({ name: "used-skill", description: "Used skill" }));
       await writer.touchSkill("used-skill");
 
       const archived = await lifecycle.removeStale(30);
@@ -188,16 +181,11 @@ describe("SkillLifecycleManager", () => {
 
     it("does not archive non-agent skills", async () => {
       const userWriter = new SkillPersistenceWriter(tempDir, { agentSkills: false });
-      await userWriter.writeSkill(
-        makeDraft({ name: "user-skill", description: "User skill" }),
-      );
+      await userWriter.writeSkill(makeDraft({ name: "user-skill", description: "User skill" }));
 
       const skillPath = join(tempDir, "skills", "user-skill", "SKILL.md");
       let content = await readFile(skillPath, "utf-8");
-      content = content.replace(
-        /^lastUsedAt:\s*\d+/m,
-        `lastUsedAt: ${Date.now() - 60 * 86400000}`,
-      );
+      content = content.replace(/^lastUsedAt:\s*\d+/m, `lastUsedAt: ${Date.now() - 60 * 86400000}`);
       await writeFile(skillPath, content, "utf-8");
 
       const archived = await lifecycle.removeStale(30);
@@ -215,10 +203,7 @@ describe("SkillLifecycleManager", () => {
         }),
       );
 
-      const similar = await lifecycle.findSimilar(
-        "exact-match",
-        "Identical description text here",
-      );
+      const similar = await lifecycle.findSimilar("exact-match", "Identical description text here");
       expect(similar).toContain("exact-match");
     });
 
@@ -241,9 +226,11 @@ describe("SkillLifecycleManager", () => {
         makeDraft({ name: "feishu-wiki-archive", description: "归档飞书知识库文档" }),
       );
 
-      const generateText = vi.fn().mockResolvedValue(
-        JSON.stringify({ duplicate: true, skillName: "feishu-wiki-archive", confidence: 0.9 }),
-      );
+      const generateText = vi
+        .fn()
+        .mockResolvedValue(
+          JSON.stringify({ duplicate: true, skillName: "feishu-wiki-archive", confidence: 0.9 }),
+        );
 
       const result = await lifecycle.checkSemanticDuplicate(
         "归档会议纪要到知识库",
@@ -259,9 +246,9 @@ describe("SkillLifecycleManager", () => {
     });
 
     it("returns no-duplicate when LLM says no", async () => {
-      const generateText = vi.fn().mockResolvedValue(
-        JSON.stringify({ duplicate: false, confidence: 0.8 }),
-      );
+      const generateText = vi
+        .fn()
+        .mockResolvedValue(JSON.stringify({ duplicate: false, confidence: 0.8 }));
 
       const result = await lifecycle.checkSemanticDuplicate(
         "查询天气",
@@ -305,12 +292,9 @@ describe("SkillLifecycleManager", () => {
     });
 
     it("returns no duplicate when no existing skills", async () => {
-      const result = await lifecycle.checkSemanticDuplicate(
-        "some task",
-        "some description",
-        [],
-        { generateText: vi.fn() },
-      );
+      const result = await lifecycle.checkSemanticDuplicate("some task", "some description", [], {
+        generateText: vi.fn(),
+      });
 
       expect(result.duplicate).toBe(false);
     });

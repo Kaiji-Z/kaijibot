@@ -35,10 +35,7 @@ import {
 } from "../config/sessions/main-session.js";
 import { resolveStorePath } from "../config/sessions/paths.js";
 import { loadSessionStore } from "../config/sessions/store-load.js";
-import {
-  saveSessionStore,
-  updateSessionStore,
-} from "../config/sessions/store.js";
+import { saveSessionStore, updateSessionStore } from "../config/sessions/store.js";
 import type { AgentDefaultsConfig } from "../config/types.agent-defaults.js";
 import type { KaijiBotConfig } from "../config/types.kaijibot.js";
 import { resolveCronSession } from "../cron/isolated-agent/session.js";
@@ -667,7 +664,12 @@ After completing all due tasks, reply HEARTBEAT_OK.`;
       return { prompt, hasExecCompletion: false, hasCronEvents: false, hasEvolutionSignal: false };
     }
     // No tasks due - skip this heartbeat to avoid wasteful API calls
-    return { prompt: null, hasExecCompletion: false, hasCronEvents: false, hasEvolutionSignal: false };
+    return {
+      prompt: null,
+      hasExecCompletion: false,
+      hasCronEvents: false,
+      hasEvolutionSignal: false,
+    };
   }
 
   // Fallback to original behavior
@@ -760,8 +762,7 @@ export async function runHeartbeatOnce(opts: {
   // Evolution always runs in user's base session regardless.
   const isolatedExplicit = heartbeat?.isolatedSession;
   const useIsolatedSession =
-    (isolatedExplicit === true ||
-      (isolatedExplicit == null && !preflight.isWakeReason)) &&
+    (isolatedExplicit === true || (isolatedExplicit == null && !preflight.isWakeReason)) &&
     opts.reason !== "cognitive-evolution";
   const delivery = resolveHeartbeatDeliveryTarget({
     cfg,
@@ -804,15 +805,16 @@ export async function runHeartbeatOnce(opts: {
     delivery.channel !== "none" && delivery.to && visibility.showAlerts,
   );
   const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
-  const { prompt, hasExecCompletion, hasCronEvents, hasEvolutionSignal } = resolveHeartbeatRunPrompt({
-    cfg,
-    heartbeat,
-    preflight,
-    canRelayToUser,
-    workspaceDir,
-    startedAt,
-    heartbeatFileContent: preflight.heartbeatFileContent,
-  });
+  const { prompt, hasExecCompletion, hasCronEvents, hasEvolutionSignal } =
+    resolveHeartbeatRunPrompt({
+      cfg,
+      heartbeat,
+      preflight,
+      canRelayToUser,
+      workspaceDir,
+      startedAt,
+      heartbeatFileContent: preflight.heartbeatFileContent,
+    });
 
   // If no tasks are due, skip heartbeat entirely
   if (prompt === null) {
@@ -924,7 +926,13 @@ export async function runHeartbeatOnce(opts: {
     OriginatingTo: !suppressOriginatingContext ? delivery.to : undefined,
     AccountId: delivery.accountId,
     MessageThreadId: delivery.threadId,
-    Provider: hasEvolutionSignal ? "evolution-event" : hasExecCompletion ? "exec-event" : hasCronEvents ? "cron-event" : "heartbeat",
+    Provider: hasEvolutionSignal
+      ? "evolution-event"
+      : hasExecCompletion
+        ? "exec-event"
+        : hasCronEvents
+          ? "cron-event"
+          : "heartbeat",
     SessionKey: runSessionKey,
     ForceSenderIsOwnerFalse: hasExecCompletion || hasUntrustedPendingEvents || hasEvolutionSignal,
   };
@@ -1042,10 +1050,7 @@ export async function runHeartbeatOnce(opts: {
       normalized.shouldSkip = false;
     }
     const shouldSkipMain =
-      normalized.shouldSkip &&
-      !normalized.hasMedia &&
-      !hasExecCompletion &&
-      !hasEvolutionSignal;
+      normalized.shouldSkip && !normalized.hasMedia && !hasExecCompletion && !hasEvolutionSignal;
     if (shouldSkipMain && reasoningPayloads.length === 0) {
       await restoreHeartbeatUpdatedAt({
         storePath,

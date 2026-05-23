@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFile, readdir } from "node:fs/promises";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { SkillPersistenceWriter } from "./skill-writer.js";
 import type { SkillDraft } from "./types.js";
 
@@ -181,7 +181,11 @@ describe("SkillPersistenceWriter", () => {
     const skillsDir = join(tempDir, "skills", "agent");
     mkdirSync(join(skillsDir, "_archive"), { recursive: true });
     mkdirSync(join(skillsDir, "_archive", "archived-skill"), { recursive: true });
-    writeFileSync(join(skillsDir, "_archive", "archived-skill", "SKILL.md"), "---\nname: archived\n---\n", "utf-8");
+    writeFileSync(
+      join(skillsDir, "_archive", "archived-skill", "SKILL.md"),
+      "---\nname: archived\n---\n",
+      "utf-8",
+    );
 
     const names = await writer.listSkillNames();
     expect(names).toEqual(["active-skill"]);
@@ -213,7 +217,9 @@ describe("SkillPersistenceWriter", () => {
     const archivePath = await writer.archiveSkill("to-archive");
     expect(archivePath).toBe(join(tempDir, "skills", "agent", "_archive", "to-archive"));
     expect(await writer.skillExists("to-archive")).toBe(false);
-    expect(existsSync(join(tempDir, "skills", "agent", "_archive", "to-archive", "SKILL.md"))).toBe(true);
+    expect(existsSync(join(tempDir, "skills", "agent", "_archive", "to-archive", "SKILL.md"))).toBe(
+      true,
+    );
   });
 
   it("archiveSkill() rejects path traversal", async () => {

@@ -144,9 +144,7 @@ export function estimateMessageTokens(message: AgentMessage): number {
           } else if (b.type === "toolCall") {
             const name = typeof b.name === "string" ? b.name : "";
             const args =
-              typeof b.arguments === "string"
-                ? b.arguments
-                : JSON.stringify(b.arguments ?? "");
+              typeof b.arguments === "string" ? b.arguments : JSON.stringify(b.arguments ?? "");
             total += estimateTextTokens(name + args);
           }
         }

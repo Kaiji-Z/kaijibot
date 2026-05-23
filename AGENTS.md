@@ -144,6 +144,7 @@ Agent turn completes (≥3 tool calls)
 **No code-level gating**: No complexity score threshold, no cooldown, no daily cap, no rate limit. The only code-level filter is ≥3 tool calls (noise reduction, not quality judgment). The Agent receives `recentSuggestions` (last 48h records with domain, skillName, hoursAgo, userResponse) as context and makes its own decision about frequency and worthiness.
 
 **Hard-trigger detection** (`src/cognitive/evolution/hard-trigger.ts`):
+
 - Called from `src/agents/pi-embedded-runner/run.ts` after tool execution
 - Skips non-user/non-manual triggers
 - Requires ≥3 tool calls (noise filter only)
@@ -152,10 +153,12 @@ Agent turn completes (≥3 tool calls)
 - Does NOT call `EvolutionEngine.evaluate()` — no code-level complexity gating
 
 **Agent tools**:
+
 - `evaluate_skill_evolution` — always generates a skill draft when called; returns suggestionText + bodyMarkdown + recentSuggestions + complexityScore (as reference info, not a gate)
 - `patch_skill` — text replace or LLM-guided patch on existing skills (NOTE: not yet registered in `kaijibot-tools.ts`)
 
 **Skill lifecycle**:
+
 - Before creation: `engine.checkBeforeGenerate()` → `lifecycle.checkDuplicate()` → suggest updating if similar exists
 - After creation: frontmatter tracks `createdAt`/`lastUsedAt`/`usageCount`
 - `touchSkill()` per use → `removeStale(30)` cleans skills unused 30+ days with 0 usage
@@ -183,6 +186,7 @@ Path A: Agent self-report          Path B: Post-session extraction
 ```
 
 **CorrectionStore** (`src/cognitive/correction/store.ts`):
+
 - `addOrReinforce(userId, record)` — Jaccard dedup: same domain + mistake similarity > 0.6 → increment `reinforcedCount`
 - `findSimilar(userId, domain, text)` — token-level Jaccard similarity
 - `listActive(userId)` — returns records within TTL, sorted by `reinforcedCount` desc
@@ -192,21 +196,25 @@ Path A: Agent self-report          Path B: Post-session extraction
 **Agent tool**: `record_correction` — called when agent recognizes it made a mistake; returns `saved` or `reinforced` status
 
 **Post-session extraction** (`src/cognitive/correction/extractor.ts`):
+
 - `hasCorrectionSignals(transcript)` — regex pre-screen with ~60 Chinese/English/apology patterns covering direct correction (`搞错`/`wrong`), action-oriented (`改成`/`重做`), questioning tone (`怎么回事`/`为什么不`), problem identification (`有问题`/`出问题了`), and agent apology (`抱歉`/`sorry`); skips LLM call if no signals
 - `extractCorrectionsFromTranscript(transcript, generateText)` — LLM extracts structured corrections; capped at 16K chars; uses `createStandaloneGenerateText` for single-turn LLM call
 
 **System prompt injection** (`src/cognitive/correction/injector.ts`):
+
 - `formatCorrectionsPrompt(corrections)` — sorts by `reinforcedCount` desc → `lastReinforced` desc; truncates to `MAX_INJECTED_CORRECTIONS` (15); formats as markdown section
 
 ### Key Integration Points
 
 Insight delivery:
+
 - `src/gateway/server.impl.ts` (cognitive section) — bootstraps ProactiveScheduler with shared FragmentStore, wires event sources and delivery
 - `src/gateway/cognitive-delivery.ts` — resolves userId to session key for delivery routing
 - `src/infra/heartbeat-reason.ts` — classifies `"cognitive-insight"` as `"wake"` kind to bypass HEARTBEAT.md gate
 - `src/infra/heartbeat-runner.ts` — `hasCognitiveEvents` check for `shouldInspectPendingEvents`
 
 Evolution (signal-driven via system events):
+
 - `src/cognitive/evolution/hard-trigger.ts` — post-turn hook: detects ≥3 tool calls (noise filter), enqueues [Evolution Signal] with error context
 - `src/agents/tools/evolution-suggest-tool.ts` — `evaluate_skill_evolution` agent tool (used when agent decides to act on signal)
 - `src/agents/tools/evolution-patch-tool.ts` — `patch_skill` agent tool
@@ -215,10 +223,12 @@ Evolution (signal-driven via system events):
 - `src/infra/heartbeat-reason.ts` — classifies `"cognitive-evolution"` as `"wake"` kind to bypass HEARTBEAT.md gate
 
 Shared:
+
 - `src/agents/tools/cognitive-feedback-tool.ts` — agent tool for collecting explicit feedback
 - `src/agents/system-prompt.ts` — injects cognitive mode prompt into agent system prompt
 
 Correction (system prompt injection):
+
 - `src/cognitive/correction/store.ts` — CorrectionStore: per-user persistence with Jaccard dedup
 - `src/cognitive/correction/injector.ts` — formatCorrectionsPrompt: sorts + truncates + formats for system prompt
 - `src/cognitive/correction/extractor.ts` — hasCorrectionSignals (regex pre-screen) + extractCorrectionsFromTranscript (LLM)
@@ -331,6 +341,7 @@ git merge upstream/main
 ```
 
 Or use the Gitee mirror (squash history, no individual commits):
+
 ```bash
 git remote add openclaw https://gitee.com/kaiji1126/openclaw
 git fetch openclaw

@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { MigrationChange, MigrationOptions, MigrationResult, MigrationSource } from "./types.js";
 import { BRAND_REFERENCES, MIGRATION_BANNER, rewriteBrandReferences } from "./brand-rewrite.js";
+import type {
+  MigrationChange,
+  MigrationOptions,
+  MigrationResult,
+  MigrationSource,
+} from "./types.js";
 
 async function dirExists(p: string): Promise<boolean> {
   try {

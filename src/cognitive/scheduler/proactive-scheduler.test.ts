@@ -1,11 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
-import { ProactiveScheduler, filterBlacklistedOpportunities, isTopicStale } from "./proactive-scheduler.js";
-import { createDefaultPersona } from "../persona/store.js";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
 import { buildSearchQuery } from "../insight/llm-engine.js";
-import type { SchedulerConfig, Opportunity } from "./types.js";
-import type { PersonaTree } from "../types.js";
 import type { InsightCandidate } from "../insight/types.js";
+import { createDefaultPersona } from "../persona/store.js";
+import type { PersonaTree } from "../types.js";
+import {
+  ProactiveScheduler,
+  filterBlacklistedOpportunities,
+  isTopicStale,
+} from "./proactive-scheduler.js";
+import type { SchedulerConfig, Opportunity } from "./types.js";
 
 function personaWithDomains(): PersonaTree {
   const now = Date.now();
@@ -21,7 +25,7 @@ function personaWithDomains(): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "Rust": {
+    Rust: {
       depth: 4,
       recurrence: 8,
       lastMentioned: now,
@@ -29,7 +33,7 @@ function personaWithDomains(): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "Design": {
+    Design: {
       depth: 3,
       recurrence: 5,
       lastMentioned: now,
@@ -40,11 +44,16 @@ function personaWithDomains(): PersonaTree {
   };
   persona.feedbackProfile.topicBandits = {
     "AI/机器学习": { alpha: 5, beta: 1 },
-    "Rust": { alpha: 4, beta: 2 },
+    Rust: { alpha: 4, beta: 2 },
   };
   persona.feedbackProfile.lastProactiveAt = now - 8 * 3600_000;
   persona.feedbackProfile.optimalFrequencyHours = 4;
-  persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: now - 2 * 3600_000, totalActiveDays: 15 };
+  persona.lifecycle = {
+    ...persona.lifecycle,
+    stage: "active",
+    lastActiveAt: now - 2 * 3600_000,
+    totalActiveDays: 15,
+  };
   return persona;
 }
 
@@ -90,10 +99,14 @@ describe("ProactiveScheduler", () => {
       savePersona: async () => {},
     });
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
     expect(result).toBeUndefined();
   });
 
@@ -107,10 +120,14 @@ describe("ProactiveScheduler", () => {
       savePersona: async () => {},
     });
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
     expect(result).toBeUndefined();
   });
 
@@ -131,21 +148,29 @@ describe("ProactiveScheduler", () => {
       sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async (_agentId, _userId, candidate) => {
-        capturedCandidates.push(candidate);
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          capturedCandidates.push(candidate);
+        },
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
       },
-      savePersona: async (_agentId, _userId, p) => {
-        savedPersona = p;
-      },
-    }, { insightGenerator: async () => [fakeInsight] });
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
     const now = Date.now();
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: now,
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: now,
+      },
+      "main",
+    );
 
     expect(result).toBeDefined();
     expect(capturedCandidates.length).toBe(1);
@@ -159,7 +184,9 @@ describe("ProactiveScheduler", () => {
       savePersona: async () => {},
     });
 
-    expect(() => scheduler.start(async () => [{ agentId: "main", userId: "user1" }], 60000)).not.toThrow();
+    expect(() =>
+      scheduler.start(async () => [{ agentId: "main", userId: "user1" }], 60000),
+    ).not.toThrow();
     expect(() => scheduler.stop()).not.toThrow();
   });
 
@@ -191,7 +218,7 @@ describe("ProactiveScheduler", () => {
     });
 
     const userIds = ["user-a", "user-b", "user-c"];
-    scheduler.start(async () => userIds.map(userId => ({ agentId: "main", userId })), 10);
+    scheduler.start(async () => userIds.map((userId) => ({ agentId: "main", userId })), 10);
 
     await Promise.race([allProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
     scheduler.stop();
@@ -216,7 +243,7 @@ describe("ProactiveScheduler", () => {
     });
 
     const userIds = ["bad-user", "good-user"];
-    scheduler.start(async () => userIds.map(userId => ({ agentId: "main", userId })), 10);
+    scheduler.start(async () => userIds.map((userId) => ({ agentId: "main", userId })), 10);
 
     await Promise.race([goodProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
     scheduler.stop();
@@ -257,13 +284,17 @@ describe("ProactiveScheduler", () => {
       sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async (_agentId, _userId, candidate) => {
-        capturedCandidates.push(candidate);
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          capturedCandidates.push(candidate);
+        },
+        savePersona: async () => {},
       },
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [fakeInsight] });
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
     const result = await scheduler.processEvent("user1", {
       type: "persona_change",
@@ -290,13 +321,17 @@ describe("ProactiveScheduler", () => {
       sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async (_agentId, _userId, candidate) => {
-        capturedCandidates.push(candidate);
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          capturedCandidates.push(candidate);
+        },
+        savePersona: async () => {},
       },
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [fakeInsight] });
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
     const result = await scheduler.processEvent("user1", {
       type: "info_scan",
@@ -310,7 +345,11 @@ describe("ProactiveScheduler", () => {
 
   it("handles all event types without timer interval dependency", async () => {
     const persona = personaWithDomains();
-    const eventTypes: Array<"timer" | "persona_change" | "info_scan"> = ["timer", "persona_change", "info_scan"];
+    const eventTypes: Array<"timer" | "persona_change" | "info_scan"> = [
+      "timer",
+      "persona_change",
+      "info_scan",
+    ];
     const results: Array<InsightCandidate | undefined> = [];
 
     const fakeInsight: InsightCandidate = {
@@ -325,17 +364,25 @@ describe("ProactiveScheduler", () => {
       sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => JSON.parse(JSON.stringify(persona)) as PersonaTree,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [fakeInsight] });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => JSON.parse(JSON.stringify(persona)) as PersonaTree,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
     for (const type of eventTypes) {
-      const result = await scheduler.processEvent("user1", {
-        type,
-        timestamp: Date.now(),
-      }, "main");
+      const result = await scheduler.processEvent(
+        "user1",
+        {
+          type,
+          timestamp: Date.now(),
+        },
+        "main",
+      );
       results.push(result);
     }
 
@@ -392,9 +439,7 @@ describe("ProactiveScheduler.search", () => {
       expect(opp.pAccept).toBeGreaterThan(0);
       expect(opp.pAct).toBeGreaterThan(0);
     }
-    const hasNewDomainOpportunity = opportunities.some(
-      (o) => o.metadata?.isNewDomain === true,
-    );
+    const hasNewDomainOpportunity = opportunities.some((o) => o.metadata?.isNewDomain === true);
     expect(hasNewDomainOpportunity).toBe(true);
   });
 
@@ -458,9 +503,30 @@ describe("ProactiveScheduler.identify", () => {
   it("ranks by pAct and returns ranked pool", async () => {
     const scheduler = makeScheduler(config);
     const opportunities: Opportunity[] = [
-      { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
-      { type: "domain_depth", targetDomains: ["A"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "exploration", targetDomains: ["C"], sourceDomains: [], pNeed: 0.7, pAccept: 0.8, pAct: 0.56 },
+      {
+        type: "cross_domain",
+        targetDomains: ["A"],
+        sourceDomains: ["B"],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
+      {
+        type: "domain_depth",
+        targetDomains: ["A"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "exploration",
+        targetDomains: ["C"],
+        sourceDomains: [],
+        pNeed: 0.7,
+        pAccept: 0.8,
+        pAct: 0.56,
+      },
     ];
 
     const selected = scheduler.identify(opportunities);
@@ -472,8 +538,22 @@ describe("ProactiveScheduler.identify", () => {
   it("returns empty array when all pAct below threshold", async () => {
     const scheduler = makeScheduler(highThresholdConfig);
     const opportunities: Opportunity[] = [
-      { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.1, pAccept: 0.1, pAct: 0.01 },
-      { type: "domain_depth", targetDomains: ["C"], sourceDomains: [], pNeed: 0.2, pAccept: 0.2, pAct: 0.04 },
+      {
+        type: "cross_domain",
+        targetDomains: ["A"],
+        sourceDomains: ["B"],
+        pNeed: 0.1,
+        pAccept: 0.1,
+        pAct: 0.01,
+      },
+      {
+        type: "domain_depth",
+        targetDomains: ["C"],
+        sourceDomains: [],
+        pNeed: 0.2,
+        pAccept: 0.2,
+        pAct: 0.04,
+      },
     ];
 
     const selected = scheduler.identify(opportunities);
@@ -488,7 +568,14 @@ describe("ProactiveScheduler.identify", () => {
   it("returns single-element array when one opportunity above threshold", async () => {
     const scheduler = makeScheduler(config);
     const opportunities: Opportunity[] = [
-      { type: "cross_domain", targetDomains: ["A"], sourceDomains: ["B"], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
+      {
+        type: "cross_domain",
+        targetDomains: ["A"],
+        sourceDomains: ["B"],
+        pNeed: 0.8,
+        pAccept: 0.8,
+        pAct: 0.64,
+      },
     ];
 
     const selected = scheduler.identify(opportunities);
@@ -630,10 +717,14 @@ describe("ProactiveScheduler pipeline integration", () => {
       savePersona: async () => {},
     });
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeUndefined();
   });
@@ -646,28 +737,40 @@ describe("ProactiveScheduler pipeline integration", () => {
       savePersona: async () => {},
     });
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeUndefined();
   });
 
   it("pipeline degrades gracefully: resolve returns null", async () => {
     const persona = personaWithDomains();
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [],
-    });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [],
+      },
+    );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeUndefined();
   });
@@ -722,7 +825,10 @@ describe("scanExploration (modeCandidates)", () => {
     const scheduler = makeScheduler(config, persona);
 
     const eventTypes: Array<"timer" | "persona_change" | "info_scan" | "external"> = [
-      "timer", "persona_change", "info_scan", "external",
+      "timer",
+      "persona_change",
+      "info_scan",
+      "external",
     ];
 
     for (const type of eventTypes) {
@@ -812,7 +918,9 @@ describe("filterBlacklistedOpportunities", () => {
 
   it("returns empty when all opportunities are blacklisted", async () => {
     const result = filterBlacklistedOpportunities(baseOpportunities, [
-      "AI/机器学习", "Rust", "Design",
+      "AI/机器学习",
+      "Rust",
+      "Design",
     ]);
     expect(result).toHaveLength(0);
   });
@@ -875,10 +983,14 @@ describe("ProactiveScheduler — semantic dedup", () => {
       { insightGenerator: async () => [fakeInsight] },
     );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     // Domain-overlapping candidates are blocked by pre-gen freshness check,
     // but exploration surprise (empty targetDomains) passes through
@@ -911,17 +1023,20 @@ describe("ProactiveScheduler — semantic dedup", () => {
       { insightGenerator: async () => [fakeInsight] },
     );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeDefined();
   });
 
   it("allows insight when recentInsightDomains is empty", async () => {
     const persona = personaWithDomains();
-
 
     const fakeInsight: InsightCandidate = {
       id: "first-insight",
@@ -946,10 +1061,14 @@ describe("ProactiveScheduler — semantic dedup", () => {
       { insightGenerator: async () => [fakeInsight] },
     );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeDefined();
   });
@@ -977,15 +1096,21 @@ describe("ProactiveScheduler — semantic dedup", () => {
       {
         loadPersona: async () => persona,
         onInsightReady: async () => {},
-        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
       },
       { insightGenerator: async () => [fakeInsight] },
     );
 
-    await scheduler.processEvent("user1", {
-      type: "info_scan",
-      timestamp: Date.now(),
-    }, "main");
+    await scheduler.processEvent(
+      "user1",
+      {
+        type: "info_scan",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(savedPersona?.feedbackProfile.recentInsightDomains).toBeDefined();
     expect(savedPersona?.feedbackProfile.recentInsightDomains).toContainEqual(["AI/机器学习"]);
@@ -995,7 +1120,6 @@ describe("ProactiveScheduler — semantic dedup", () => {
   it("does not dedup when overlap is exactly 50% (boundary)", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习", "Rust"]];
-
 
     const fakeInsight: InsightCandidate = {
       id: "boundary-test",
@@ -1020,10 +1144,14 @@ describe("ProactiveScheduler — semantic dedup", () => {
       { insightGenerator: async () => [fakeInsight] },
     );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     // overlap = 1/max(1,2) = 0.5 → NOT > 0.5 → should pass
     expect(result).toBeDefined();
@@ -1041,11 +1169,29 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
   it("penalizes opportunities with overlapping recent domains", async () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
-    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"]];
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+    ];
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: ["Rust"], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Design"],
+        sourceDomains: ["Rust"],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1056,11 +1202,31 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
   it("selects non-overlapping opportunity when dominant one is penalized", async () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
-    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"]];
+    persona.feedbackProfile.recentInsightDomains = [
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+    ];
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.7, pAccept: 0.7, pAct: 0.49 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.7,
+        pAccept: 0.7,
+        pAct: 0.49,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1072,14 +1238,20 @@ describe("ProactiveScheduler.identify — repetition penalty", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
     ];
 
     const selected = scheduler.identify(opportunities);
     expect(selected.length).toBeGreaterThanOrEqual(1);
     expect(selected[0].pAct).toBe(0.81);
   });
-
 });
 
 describe("ProactiveScheduler.identify — starvation bonus", () => {
@@ -1094,13 +1266,30 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"],
-      ["AI/机器学习"], ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
     ];
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1113,13 +1302,23 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["Rust"], ["AI/机器学习"],
-      ["Rust"], ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["AI/机器学习"],
     ];
 
     const basePAct = 0.3;
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.6, pAccept: 0.5, pAct: basePAct },
+      {
+        type: "domain_depth",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.6,
+        pAccept: 0.5,
+        pAct: basePAct,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1132,13 +1331,18 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
   it("no boost when all target domains appear in recent history", async () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
-    persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["Rust"], ["AI/机器学习"],
-    ];
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["Rust"], ["AI/机器学习"]];
 
     const basePAct = 0.5;
     const opportunities: Opportunity[] = [
-      { type: "cross_domain", targetDomains: ["AI/机器学习", "Rust"], sourceDomains: [], pNeed: 0.7, pAccept: 0.7, pAct: basePAct },
+      {
+        type: "cross_domain",
+        targetDomains: ["AI/机器学习", "Rust"],
+        sourceDomains: [],
+        pNeed: 0.7,
+        pAccept: 0.7,
+        pAct: basePAct,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1149,13 +1353,18 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
   it("skips opportunities with empty targetDomains", async () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
-    persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["Rust"],
-    ];
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"], ["Rust"]];
 
     const basePAct = 0.3;
     const opportunities: Opportunity[] = [
-      { type: "exploration", targetDomains: [], sourceDomains: [], pNeed: 0.5, pAccept: 0.6, pAct: basePAct },
+      {
+        type: "exploration",
+        targetDomains: [],
+        sourceDomains: [],
+        pNeed: 0.5,
+        pAccept: 0.6,
+        pAct: basePAct,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1168,7 +1377,14 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
 
     const basePAct = 0.3;
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.6, pAccept: 0.5, pAct: basePAct },
+      {
+        type: "domain_depth",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.6,
+        pAccept: 0.5,
+        pAct: basePAct,
+      },
     ];
 
     const selected = scheduler.identify(opportunities);
@@ -1180,15 +1396,28 @@ describe("ProactiveScheduler.identify — starvation bonus", () => {
     const scheduler = makeScheduler(lowThresholdConfig);
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["Rust"], ["Design"], ["AI/机器学习"],
-      ["Rust"], ["Design"], ["AI/机器学习"], ["Rust"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["Design"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["Design"],
+      ["AI/机器学习"],
+      ["Rust"],
       ["Z-域"],
     ];
 
     // High base to survive domain-overlap penalty (0.5^1 multiplier from the one Z-域 entry)
     const basePAct = 0.9;
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["Z-域"], sourceDomains: [], pNeed: 0.95, pAccept: 0.95, pAct: basePAct },
+      {
+        type: "domain_depth",
+        targetDomains: ["Z-域"],
+        sourceDomains: [],
+        pNeed: 0.95,
+        pAccept: 0.95,
+        pAct: basePAct,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1214,7 +1443,7 @@ describe("pNeed imbalance fix", () => {
         activeQuestions: [],
         negationSignals: 0,
       },
-      "软件架构": {
+      软件架构: {
         depth: 5,
         recurrence: 8,
         lastMentioned: Date.now(),
@@ -1225,11 +1454,16 @@ describe("pNeed imbalance fix", () => {
     };
     persona.feedbackProfile.topicBandits = {
       "AI/机器学习": { alpha: 5, beta: 1 },
-      "软件架构": { alpha: 4, beta: 2 },
+      软件架构: { alpha: 4, beta: 2 },
     };
     persona.feedbackProfile.lastProactiveAt = Date.now() - 10 * 3600_000;
     persona.feedbackProfile.optimalFrequencyHours = 4;
-    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() - 3 * 3600_000, totalActiveDays: 15 };
+    persona.lifecycle = {
+      ...persona.lifecycle,
+      stage: "active",
+      lastActiveAt: Date.now() - 3 * 3600_000,
+      totalActiveDays: 15,
+    };
     return persona;
   }
 
@@ -1240,7 +1474,7 @@ describe("pNeed imbalance fix", () => {
     costFalseAlarm: 1,
   };
 
-    it("scanDomainDepth never exceeds 0.4 pNeed", async () => {
+  it("scanDomainDepth never exceeds 0.4 pNeed", async () => {
     const persona = deepDomainPersona();
     const scheduler = makeScheduler(config, persona);
 
@@ -1307,7 +1541,14 @@ describe("pNeed imbalance fix", () => {
 
     const originalPAct = 0.8;
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["A"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: originalPAct },
+      {
+        type: "domain_depth",
+        targetDomains: ["A"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: originalPAct,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1325,8 +1566,12 @@ describe("Domain rotation", () => {
     const opps1 = await scheduler.search(persona, { type: "timer", timestamp: 100 });
     const opps2 = await scheduler.search(persona, { type: "timer", timestamp: 999999 });
 
-    const cross1 = opps1.filter(o => o.type === "cross_domain").map(o => o.targetDomains.join(","));
-    const cross2 = opps2.filter(o => o.type === "cross_domain").map(o => o.targetDomains.join(","));
+    const cross1 = opps1
+      .filter((o) => o.type === "cross_domain")
+      .map((o) => o.targetDomains.join(","));
+    const cross2 = opps2
+      .filter((o) => o.type === "cross_domain")
+      .map((o) => o.targetDomains.join(","));
 
     // At least one should differ in ordering (probabilistic but seeded shuffle makes it deterministic)
     expect(cross1.length).toBeGreaterThan(0);
@@ -1339,11 +1584,11 @@ describe("Domain rotation", () => {
     const scheduler = makeScheduler(config, persona);
 
     const opportunities = await scheduler.search(persona, { type: "timer", timestamp: Date.now() });
-    const depthOpps = opportunities.filter(o => o.type === "domain_depth");
+    const depthOpps = opportunities.filter((o) => o.type === "domain_depth");
 
     if (depthOpps.length > 0 && depthOpps.length < Object.keys(persona.domains).length) {
-      const allAvoidRecent = depthOpps.every(o =>
-        !o.targetDomains.includes("AI/机器学习") && !o.targetDomains.includes("Rust"),
+      const allAvoidRecent = depthOpps.every(
+        (o) => !o.targetDomains.includes("AI/机器学习") && !o.targetDomains.includes("Rust"),
       );
       expect(allAvoidRecent).toBe(true);
     }
@@ -1356,8 +1601,8 @@ describe("Domain rotation", () => {
     const opps1 = await scheduler.search(persona, { type: "info_scan", timestamp: 0 });
     const opps2 = await scheduler.search(persona, { type: "info_scan", timestamp: 1 });
 
-    const scan1 = opps1.filter(o => o.type === "info_scan_hit").map(o => o.targetDomains[0]);
-    const scan2 = opps2.filter(o => o.type === "info_scan_hit").map(o => o.targetDomains[0]);
+    const scan1 = opps1.filter((o) => o.type === "info_scan_hit").map((o) => o.targetDomains[0]);
+    const scan2 = opps2.filter((o) => o.type === "info_scan_hit").map((o) => o.targetDomains[0]);
 
     expect(scan1).toBeDefined();
     expect(scan2).toBeDefined();
@@ -1380,8 +1625,22 @@ describe("Domain rotation", () => {
 
     const originalPAct = 0.9;
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: originalPAct },
-      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: originalPAct,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1411,13 +1670,23 @@ describe("Push fatigue", () => {
       verificationStatus: "unverified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-    }, { insightGenerator: async () => [fakeInsight] });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
-    const result = await scheduler.processEvent("user1", { type: "info_scan", timestamp: Date.now() }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "info_scan", timestamp: Date.now() },
+      "main",
+    );
     if (result) {
       expect(savedPersona).toBeDefined();
       expect(savedPersona!.feedbackProfile.recentInsightDomains).toBeDefined();
@@ -1435,13 +1704,30 @@ describe("Push fatigue", () => {
     const persona = personaWithDomains();
     // AI/机器学习 appears in all recent domains → fatigued
     persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"],
-      ["AI/机器学习"], ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
+      ["AI/机器学习"],
     ];
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1459,13 +1745,30 @@ describe("Push fatigue", () => {
     const scheduler = makeScheduler(veryLowThreshold);
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["Rust", "Design"],
-      ["AI/机器学习"], ["Rust"], ["Design"],
+      ["AI/机器学习"],
+      ["Rust", "Design"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["Design"],
     ];
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Design"], sourceDomains: [], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Design"],
+        sourceDomains: [],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1482,7 +1785,9 @@ describe("Push fatigue", () => {
 
     // timestamp=8 → extend mode (8%10)/10 = 0.8 ≥ 0.8
     const opportunities = await scheduler.search(persona, { type: "timer", timestamp: 8 });
-    const exploration = opportunities.find(o => o.type === "exploration" && o.metadata?.mode === "extend");
+    const exploration = opportunities.find(
+      (o) => o.type === "exploration" && o.metadata?.mode === "extend",
+    );
 
     if (exploration) {
       expect(exploration.targetDomains.length).toBeGreaterThan(0);
@@ -1501,41 +1806,61 @@ describe("6-cycle integration test — all fixes together", () => {
     persona.rapport.totalExchanges = 30;
     persona.domains = {
       "AI/机器学习": {
-        depth: 6, recurrence: 12, lastMentioned: Date.now(),
-        keyInsights: ["Transformer架构", "注意力机制"], activeQuestions: [],
+        depth: 6,
+        recurrence: 12,
+        lastMentioned: Date.now(),
+        keyInsights: ["Transformer架构", "注意力机制"],
+        activeQuestions: [],
         negationSignals: 0,
       },
-      "软件架构": {
-        depth: 5, recurrence: 8, lastMentioned: Date.now() - 1000,
-        keyInsights: ["微服务", "事件驱动"], activeQuestions: [],
+      软件架构: {
+        depth: 5,
+        recurrence: 8,
+        lastMentioned: Date.now() - 1000,
+        keyInsights: ["微服务", "事件驱动"],
+        activeQuestions: [],
         negationSignals: 0,
       },
-      "Rust": {
-        depth: 4, recurrence: 6, lastMentioned: Date.now() - 2000,
-        keyInsights: ["所有权模型", "零成本抽象"], activeQuestions: [],
+      Rust: {
+        depth: 4,
+        recurrence: 6,
+        lastMentioned: Date.now() - 2000,
+        keyInsights: ["所有权模型", "零成本抽象"],
+        activeQuestions: [],
         negationSignals: 0,
       },
-      "TypeScript": {
-        depth: 5, recurrence: 10, lastMentioned: Date.now() - 500,
-        keyInsights: ["类型体操", "装饰器模式"], activeQuestions: [],
+      TypeScript: {
+        depth: 5,
+        recurrence: 10,
+        lastMentioned: Date.now() - 500,
+        keyInsights: ["类型体操", "装饰器模式"],
+        activeQuestions: [],
         negationSignals: 0,
       },
-      "飞书开发": {
-        depth: 3, recurrence: 4, lastMentioned: Date.now() - 3000,
-        keyInsights: ["Skill开发", "消息卡片"], activeQuestions: [],
+      飞书开发: {
+        depth: 3,
+        recurrence: 4,
+        lastMentioned: Date.now() - 3000,
+        keyInsights: ["Skill开发", "消息卡片"],
+        activeQuestions: [],
         negationSignals: 0,
       },
     };
     persona.feedbackProfile.topicBandits = {
       "AI/机器学习": { alpha: 5, beta: 1 },
-      "软件架构": { alpha: 4, beta: 2 },
-      "Rust": { alpha: 3, beta: 1 },
-      "TypeScript": { alpha: 3, beta: 2 },
-      "飞书开发": { alpha: 2, beta: 1 },
+      软件架构: { alpha: 4, beta: 2 },
+      Rust: { alpha: 3, beta: 1 },
+      TypeScript: { alpha: 3, beta: 2 },
+      飞书开发: { alpha: 2, beta: 1 },
     };
     persona.feedbackProfile.lastProactiveAt = Date.now() - 8 * 3600_000;
     persona.feedbackProfile.optimalFrequencyHours = 2;
-    persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() - 2 * 3600_000, totalActiveDays: 20 };
+    persona.lifecycle = {
+      ...persona.lifecycle,
+      stage: "active",
+      lastActiveAt: Date.now() - 2 * 3600_000,
+      totalActiveDays: 20,
+    };
     return persona;
   }
 
@@ -1579,17 +1904,27 @@ describe("6-cycle integration test — all fixes together", () => {
         verificationStatus: "unverified",
       };
 
-      const scheduler = new ProactiveScheduler(integrationConfig, {
-        loadPersona: async () => currentPersona,
-        onInsightReady: async () => {},
-        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-      }, { insightGenerator: async () => [fakeInsight] });
+      const scheduler = new ProactiveScheduler(
+        integrationConfig,
+        {
+          loadPersona: async () => currentPersona,
+          onInsightReady: async () => {},
+          savePersona: async (_agentId, _userId, p) => {
+            savedPersona = p;
+          },
+        },
+        { insightGenerator: async () => [fakeInsight] },
+      );
 
       const cycleTime = baseTime + cycle * 3_601_000;
-      const result = await scheduler.processEvent("user1", {
-        type: "timer",
-        timestamp: cycleTime,
-      }, "main");
+      const result = await scheduler.processEvent(
+        "user1",
+        {
+          type: "timer",
+          timestamp: cycleTime,
+        },
+        "main",
+      );
 
       if (result) {
         deliveredDomains.push(result.targetDomains);
@@ -1637,17 +1972,27 @@ describe("6-cycle integration test — all fixes together", () => {
         verificationStatus: "unverified",
       };
 
-      const scheduler = new ProactiveScheduler(integrationConfig, {
-        loadPersona: async () => currentPersona,
-        onInsightReady: async () => {},
-        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-      }, { insightGenerator: async () => [fakeInsight] });
+      const scheduler = new ProactiveScheduler(
+        integrationConfig,
+        {
+          loadPersona: async () => currentPersona,
+          onInsightReady: async () => {},
+          savePersona: async (_agentId, _userId, p) => {
+            savedPersona = p;
+          },
+        },
+        { insightGenerator: async () => [fakeInsight] },
+      );
 
       const cycleTime = baseTime + cycle * 3_601_000;
-      const result = await scheduler.processEvent("user1", {
-        type: "timer",
-        timestamp: cycleTime,
-      }, "main");
+      const result = await scheduler.processEvent(
+        "user1",
+        {
+          type: "timer",
+          timestamp: cycleTime,
+        },
+        "main",
+      );
 
       if (result) {
         domains.push(result.targetDomains);
@@ -1684,11 +2029,7 @@ describe("6-cycle integration test — all fixes together", () => {
   });
 
   it("fatigue prevents domain from dominating 3+ consecutive cycles", async () => {
-    const recentDomains: string[][] = [
-      ["AI/机器学习"],
-      ["AI/机器学习"],
-      ["AI/机器学习"],
-    ];
+    const recentDomains: string[][] = [["AI/机器学习"], ["AI/机器学习"], ["AI/机器学习"]];
 
     // 3 appearances → fatigued
     const counts = new Map<string, number>();
@@ -1710,8 +2051,22 @@ describe("6-cycle integration test — all fixes together", () => {
     persona.feedbackProfile.recentInsightDomains = recentDomains;
 
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["AI/机器学习"], sourceDomains: [], pNeed: 0.9, pAccept: 0.9, pAct: 0.81 },
-      { type: "cross_domain", targetDomains: ["Rust"], sourceDomains: [], pNeed: 0.5, pAccept: 0.5, pAct: 0.25 },
+      {
+        type: "domain_depth",
+        targetDomains: ["AI/机器学习"],
+        sourceDomains: [],
+        pNeed: 0.9,
+        pAccept: 0.9,
+        pAct: 0.81,
+      },
+      {
+        type: "cross_domain",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        pNeed: 0.5,
+        pAccept: 0.5,
+        pAct: 0.25,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
@@ -1749,16 +2104,26 @@ describe("processEvent — attemptedDomains persistence on dedup kill", () => {
     const persona = personaWithDomains();
     let savedPersona: PersonaTree | undefined;
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-    }, { insightGenerator: async () => [] });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeUndefined();
     expect(savedPersona).toBeDefined();
@@ -1770,16 +2135,26 @@ describe("processEvent — attemptedDomains persistence on dedup kill", () => {
 
     let savedPersona: PersonaTree | undefined;
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-    }, { insightGenerator: async () => [] });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeUndefined();
     expect(savedPersona).toBeDefined();
@@ -1846,7 +2221,6 @@ describe("processEvent — pre-gen freshness fallback", () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
 
-
     const fakeInsight: InsightCandidate = {
       id: "fresh-insight",
       content: "Design领域的全新洞察",
@@ -1861,21 +2235,29 @@ describe("processEvent — pre-gen freshness fallback", () => {
     };
 
     let generateCallCount = 0;
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => {
-        generateCallCount++;
-        return [fakeInsight];
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
       },
-    });
+      {
+        insightGenerator: async () => {
+          generateCallCount++;
+          return [fakeInsight];
+        },
+      },
+    );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeDefined();
     expect(result!.targetDomains).toContain("Design");
@@ -1885,8 +2267,12 @@ describe("processEvent — pre-gen freshness fallback", () => {
   it("skips stale candidates and falls through to exploration", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [
-      ["AI/机器学习"], ["Rust"], ["Design"],
-      ["AI/机器学习"], ["Rust"], ["Design"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["Design"],
+      ["AI/机器学习"],
+      ["Rust"],
+      ["Design"],
     ];
 
     const fakeInsight: InsightCandidate = {
@@ -1902,20 +2288,28 @@ describe("processEvent — pre-gen freshness fallback", () => {
       verificationStatus: "unverified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [fakeInsight],
-    });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [fakeInsight],
+      },
+    );
 
     const baseTime = Date.now();
     const ts = baseTime - (baseTime % 100) + 65;
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: ts,
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: ts,
+      },
+      "main",
+    );
 
     // Exploration candidates with empty targetDomains pass freshness checks
     // Mode selection is non-deterministic (bandit-weighted), so result may be null
@@ -2081,24 +2475,29 @@ describe("processEvent per-user queue", () => {
           executionOrder.push("generate-start");
           await new Promise((r) => setTimeout(r, 50));
           executionOrder.push("generate-end");
-          return [{
-            id: `insight-${Date.now()}`,
-            content: "test insight content",
-            rationale: "test",
-            relevanceScore: 0.8,
-            surpriseScore: 0.6,
-            compositeScore: 0.7,
-            sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
-            verificationStatus: "unverified",
-            targetDomains: ["AI/机器学习"],
-            sourceDomains: ["Rust"],
-          }];
+          return [
+            {
+              id: `insight-${Date.now()}`,
+              content: "test insight content",
+              rationale: "test",
+              relevanceScore: 0.8,
+              surpriseScore: 0.6,
+              compositeScore: 0.7,
+              sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+              verificationStatus: "unverified",
+              targetDomains: ["AI/机器学习"],
+              sourceDomains: ["Rust"],
+            },
+          ];
         },
       },
     );
 
     const event1: import("./types.js").SchedulerEvent = { type: "timer", timestamp: Date.now() };
-    const event2: import("./types.js").SchedulerEvent = { type: "persona_change", timestamp: Date.now() };
+    const event2: import("./types.js").SchedulerEvent = {
+      type: "persona_change",
+      timestamp: Date.now(),
+    };
 
     const [result1, result2] = await Promise.all([
       scheduler.processEvent("user-a", event1, "main"),
@@ -2129,18 +2528,20 @@ describe("processEvent per-user queue", () => {
         insightGenerator: async (persona) => {
           started.push("gen");
           await new Promise((r) => setTimeout(r, 30));
-          return [{
-            id: `insight-${started.length}`,
-            content: "test",
-            rationale: "test",
-            relevanceScore: 0.8,
-            surpriseScore: 0.6,
-            compositeScore: 0.7,
-            sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
-            verificationStatus: "unverified",
-            targetDomains: Object.keys(persona.domains).slice(0, 1),
-            sourceDomains: [],
-          }];
+          return [
+            {
+              id: `insight-${started.length}`,
+              content: "test",
+              rationale: "test",
+              relevanceScore: 0.8,
+              surpriseScore: 0.6,
+              compositeScore: 0.7,
+              sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+              verificationStatus: "unverified",
+              targetDomains: Object.keys(persona.domains).slice(0, 1),
+              sourceDomains: [],
+            },
+          ];
         },
       },
     );
@@ -2177,7 +2578,12 @@ describe("insight hallucination gates", () => {
     };
 
     const mockComplete = vi.fn().mockResolvedValue({
-      content: [{ type: "text" as const, text: JSON.stringify({ status: "contradicted", confidence: 0.2, notes: "test" }) }],
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({ status: "contradicted", confidence: 0.2, notes: "test" }),
+        },
+      ],
     });
     const mockLlmDeps = {
       complete: mockComplete,
@@ -2186,21 +2592,50 @@ describe("insight hallucination gates", () => {
         auth: { apiKey: "test-key" },
       }),
     };
-    const mockBotConfig = { cognitive: { persona: {} } } as unknown as import("../../config/types.kaijibot.js").KaijiBotConfig;
+    const mockBotConfig = {
+      cognitive: { persona: {} },
+    } as unknown as import("../../config/types.kaijibot.js").KaijiBotConfig;
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [fakeInsight],
-      fragmentStore: {
-        load: async () => [{ id: "f1", kind: "knowledge_gap" as const, content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 14*86400000, evidence: "test", domains: ["test"], structuralTag: "test" }],
-        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], domains: ["test"], structuralPattern: "test", averageStrength: 0.5, createdAt: Date.now() }],
-      } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
-      llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
-      botConfig: mockBotConfig,
-    });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [fakeInsight],
+        fragmentStore: {
+          load: async () => [
+            {
+              id: "f1",
+              kind: "knowledge_gap" as const,
+              content: "test",
+              strength: 0.5,
+              userId: "user1",
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              expiresAt: Date.now() + 14 * 86400000,
+              evidence: "test",
+              domains: ["test"],
+              structuralTag: "test",
+            },
+          ],
+          findClusters: async () => [
+            {
+              id: "c1",
+              fragmentIds: ["f1"],
+              domains: ["test"],
+              structuralPattern: "test",
+              averageStrength: 0.5,
+              createdAt: Date.now(),
+            },
+          ],
+        } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+        llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
+        botConfig: mockBotConfig,
+      },
+    );
 
     const opportunity: Opportunity = {
       type: "exploration",
@@ -2267,7 +2702,12 @@ describe("insight hallucination gates", () => {
     };
 
     const mockComplete = vi.fn().mockResolvedValue({
-      content: [{ type: "text" as const, text: JSON.stringify({ status: "contradicted", confidence: 0.2, notes: "test" }) }],
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({ status: "contradicted", confidence: 0.2, notes: "test" }),
+        },
+      ],
     });
     const mockLlmDeps = {
       complete: mockComplete,
@@ -2276,17 +2716,23 @@ describe("insight hallucination gates", () => {
         auth: { apiKey: "test-key" },
       }),
     };
-    const mockBotConfig = { cognitive: { persona: {} } } as unknown as import("../../config/types.kaijibot.js").KaijiBotConfig;
+    const mockBotConfig = {
+      cognitive: { persona: {} },
+    } as unknown as import("../../config/types.kaijibot.js").KaijiBotConfig;
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [fakeInsight],
-      llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
-      botConfig: mockBotConfig,
-    });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [fakeInsight],
+        llmDeps: mockLlmDeps as unknown as import("../insight/llm-engine.js").LlmInsightDeps,
+        botConfig: mockBotConfig,
+      },
+    );
 
     const opportunity: Opportunity = {
       type: "cross_domain",
@@ -2354,17 +2800,44 @@ describe("insight hallucination gates", () => {
       verificationStatus: "partial",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [fakeInsight],
-      fragmentStore: {
-        load: async () => [{ id: "f1", kind: "knowledge_gap" as const, content: "test", strength: 0.5, userId: "user1", createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 14*86400000, evidence: "test", domains: ["test"], structuralTag: "test" }],
-        findClusters: async () => [{ id: "c1", fragmentIds: ["f1"], domains: ["test"], structuralPattern: "test", averageStrength: 0.5, createdAt: Date.now() }],
-      } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
-    });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [fakeInsight],
+        fragmentStore: {
+          load: async () => [
+            {
+              id: "f1",
+              kind: "knowledge_gap" as const,
+              content: "test",
+              strength: 0.5,
+              userId: "user1",
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              expiresAt: Date.now() + 14 * 86400000,
+              evidence: "test",
+              domains: ["test"],
+              structuralTag: "test",
+            },
+          ],
+          findClusters: async () => [
+            {
+              id: "c1",
+              fragmentIds: ["f1"],
+              domains: ["test"],
+              structuralPattern: "test",
+              averageStrength: 0.5,
+              createdAt: Date.now(),
+            },
+          ],
+        } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+      },
+    );
 
     const opportunity: Opportunity = {
       type: "exploration",
@@ -2398,20 +2871,28 @@ describe("insight hallucination gates", () => {
       verificationStatus: "verified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async (_agentId, _userId, candidate) => {
-        deliveredCandidates.push(candidate);
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          deliveredCandidates.push(candidate);
+        },
+        savePersona: async () => {},
       },
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [fakeInsight],
-    });
+      {
+        insightGenerator: async () => [fakeInsight],
+      },
+    );
 
-    const result = await scheduler.processEvent("user1", {
-      type: "timer",
-      timestamp: Date.now(),
-    }, "main");
+    const result = await scheduler.processEvent(
+      "user1",
+      {
+        type: "timer",
+        timestamp: Date.now(),
+      },
+      "main",
+    );
 
     expect(result).toBeUndefined();
     expect(deliveredCandidates.length).toBe(0);

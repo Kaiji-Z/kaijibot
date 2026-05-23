@@ -101,9 +101,9 @@ See [Docker](/install/docker) for configuration details.
 <Accordion title="Advanced: environment variables">
   If you run KaijiBot as a service account or want custom paths:
 
-  - `KAIJIBOT_HOME` -- home directory for internal path resolution
-  - `KAIJIBOT_STATE_DIR` -- override the state directory
-  - `KAIJIBOT_CONFIG_PATH` -- override the config file path
+- `KAIJIBOT_HOME` -- home directory for internal path resolution
+- `KAIJIBOT_STATE_DIR` -- override the state directory
+- `KAIJIBOT_CONFIG_PATH` -- override the config file path
 
-  Full reference: [Environment variables](/help/environment).
+Full reference: [Environment variables](/help/environment).
 </Accordion>

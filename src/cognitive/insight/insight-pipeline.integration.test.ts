@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 /**
  * Integration test — cognitive insight engine end-to-end pipeline.
  *
@@ -10,13 +13,7 @@
  * All I/O goes to a temp directory; no real API calls.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-import { generateInsightCandidates, isCandidateBlacklisted } from "./engine.js";
-import { InsightStore } from "./store.js";
-import { scoreSerendipity } from "./serendipity-scorer.js";
+import type { PersonaTree, DomainNode, InsightRecord, LearnedDomainGraph } from "../types.js";
 import {
   findCrossDomainConnections,
   semanticDistance,
@@ -27,6 +24,7 @@ import {
   discoverDomainsFromPersona,
   extendDomainGraph,
 } from "./cross-domain-mapper.js";
+import { generateInsightCandidates, isCandidateBlacklisted } from "./engine.js";
 import {
   buildInsightPrompt,
   buildSearchQuery,
@@ -35,12 +33,8 @@ import {
   GENERIC_INSIGHT_PATTERNS,
   type WebSearchResult,
 } from "./llm-engine.js";
-import type {
-  PersonaTree,
-  DomainNode,
-  InsightRecord,
-  LearnedDomainGraph,
-} from "../types.js";
+import { scoreSerendipity } from "./serendipity-scorer.js";
+import { InsightStore } from "./store.js";
 import type { InsightEngineInput, InsightCandidate } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -101,7 +95,7 @@ function richPersona(): PersonaTree {
       activeQuestions: ["如何优化推理延迟？"],
       negationSignals: 0,
     },
-    "软件架构": {
+    软件架构: {
       depth: 4,
       recurrence: 8,
       lastMentioned: Date.now() - 86400000,
@@ -408,11 +402,7 @@ describe("Pipeline: domain graph evolution", () => {
       graph = observeCoOccurrence(graph, ["AI/机器学习", "量子计算"], Date.now());
     }
 
-    const connections = findCrossDomainConnections(
-      ["AI/机器学习"],
-      undefined,
-      graph,
-    );
+    const connections = findCrossDomainConnections(["AI/机器学习"], undefined, graph);
 
     expect(connections.length).toBeGreaterThan(0);
   });
@@ -433,7 +423,7 @@ describe("Pipeline: domain graph evolution", () => {
 
   it("discoverDomainsFromPersona finds unknown domains", () => {
     const persona = {
-      domains: { "量子计算": {} as DomainNode, "烹饪美食": {} as DomainNode },
+      domains: { 量子计算: {} as DomainNode, 烹饪美食: {} as DomainNode },
       identity: {
         expertDomains: ["古生物学"],
         interestDomains: [],
@@ -474,7 +464,11 @@ describe("Pipeline: LLM prompt construction", () => {
     const persona = richPersona();
     const input = baseInput();
     const webResults: WebSearchResult[] = [
-      { title: "Transformer优化技术", url: "https://example.com", snippet: "AI/机器学习领域的注意力机制突破" },
+      {
+        title: "Transformer优化技术",
+        url: "https://example.com",
+        snippet: "AI/机器学习领域的注意力机制突破",
+      },
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults);
@@ -539,27 +533,33 @@ describe("Pipeline: search query building", () => {
   });
 
   it("builds query from recentFocus", () => {
-    const query = buildSearchQuery(baseInput({
-      recentFocus: ["AI模型部署到边缘设备"],
-    }));
+    const query = buildSearchQuery(
+      baseInput({
+        recentFocus: ["AI模型部署到边缘设备"],
+      }),
+    );
 
     expect(query.length).toBeGreaterThan(0);
     expect(query.length).toBeLessThanOrEqual(120);
   });
 
   it("uses recentFocus for search query", () => {
-    const query = buildSearchQuery(baseInput({
-      recentFocus: ["RAG系统设计"],
-    }));
+    const query = buildSearchQuery(
+      baseInput({
+        recentFocus: ["RAG系统设计"],
+      }),
+    );
 
     expect(query).toBeTruthy();
   });
 
   it("falls back to target domain when no focus", () => {
-    const query = buildSearchQuery(baseInput({
-      recentFocus: [],
-      targetDomains: ["AI/机器学习"],
-    }));
+    const query = buildSearchQuery(
+      baseInput({
+        recentFocus: [],
+        targetDomains: ["AI/机器学习"],
+      }),
+    );
 
     expect(query).toContain("AI");
     expect(query).toContain("机器学习");
@@ -583,7 +583,11 @@ describe("Pipeline: search query building", () => {
 // ===========================================================================
 describe("Pipeline: content quality (anti-generic filter)", () => {
   it("accepts substantive content", () => {
-    expect(isSubstantiveContent("Transformer的注意力机制在长序列建模上有瓶颈，Flash Attention通过分块计算解决了显存问题")).toBe(true);
+    expect(
+      isSubstantiveContent(
+        "Transformer的注意力机制在长序列建模上有瓶颈，Flash Attention通过分块计算解决了显存问题",
+      ),
+    ).toBe(true);
   });
 
   it("rejects very short content", () => {
@@ -604,7 +608,9 @@ describe("Pipeline: content quality (anti-generic filter)", () => {
     ];
 
     for (const tc of testCases) {
-      expect(tc.pattern.test(tc.text), `Pattern ${tc.pattern} should match "${tc.text}"`).toBe(true);
+      expect(tc.pattern.test(tc.text), `Pattern ${tc.pattern} should match "${tc.text}"`).toBe(
+        true,
+      );
     }
   });
 });
@@ -711,10 +717,13 @@ describe("Pipeline: store listRecent ordering and limit", () => {
 
   it("respects limit parameter", async () => {
     for (let i = 0; i < 5; i++) {
-      await store.save("user-1", makeInsightRecord({
-        id: `ins-${i}`,
-        generatedAt: Date.now() - i * 1000,
-      }));
+      await store.save(
+        "user-1",
+        makeInsightRecord({
+          id: `ins-${i}`,
+          generatedAt: Date.now() - i * 1000,
+        }),
+      );
     }
 
     const limited = await store.listRecent("user-1", 2);
@@ -754,7 +763,7 @@ describe("Pipeline: empty persona produces no candidates", () => {
   it("returns empty for single domain with no adjacent connections", () => {
     const persona = createDefaultPersona();
     persona.domains = {
-      "孤立领域": {
+      孤立领域: {
         depth: 3,
         recurrence: 5,
         lastMentioned: Date.now(),
@@ -783,10 +792,14 @@ describe("Pipeline: trust score influence on scoring", () => {
     const persona = richPersona();
 
     persona.rapport.trustScore = 0.1;
-    const lowTrustCandidates = generateInsightCandidates(persona, baseInput(), { maxCandidates: 5 });
+    const lowTrustCandidates = generateInsightCandidates(persona, baseInput(), {
+      maxCandidates: 5,
+    });
 
     persona.rapport.trustScore = 0.9;
-    const highTrustCandidates = generateInsightCandidates(persona, baseInput(), { maxCandidates: 5 });
+    const highTrustCandidates = generateInsightCandidates(persona, baseInput(), {
+      maxCandidates: 5,
+    });
 
     // With higher trust, the engine is more willing to suggest surprising connections
     // The actual score values depend on serendipity scoring
@@ -873,11 +886,7 @@ describe("Pipeline: graph evolution → connections pipeline", () => {
     }
 
     // Now find connections using the learned graph
-    const connections = findCrossDomainConnections(
-      ["AI/机器学习"],
-      undefined,
-      graph,
-    );
+    const connections = findCrossDomainConnections(["AI/机器学习"], undefined, graph);
 
     const blockchainConn = connections.find((c) => c.to === "区块链");
     expect(blockchainConn).toBeDefined();

@@ -4,8 +4,8 @@
  * Deep Sleep or can be invoked manually via the `memory_tidy` agent tool.
  */
 
-import { Type } from "@sinclair/typebox";
 import path from "node:path";
+import { Type } from "@sinclair/typebox";
 import {
   jsonResult,
   readStringParam,
@@ -14,10 +14,10 @@ import {
   type AnyAgentTool,
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
-import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { MemoryIndexManager } from "./memory-index.js";
-import { type TopicEntry } from "./topic-types.js";
+import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { TopicManager, createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
+import { type TopicEntry } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -31,12 +31,8 @@ export const MemoryTidySchema = Type.Object({
     Type.Literal("archive"),
     Type.Literal("full"),
   ]),
-  target: Type.Optional(
-    Type.String({ description: "Specific topic file to tidy (without .md)" }),
-  ),
-  dryRun: Type.Optional(
-    Type.Boolean({ description: "Preview changes without writing" }),
-  ),
+  target: Type.Optional(Type.String({ description: "Specific topic file to tidy (without .md)" })),
+  dryRun: Type.Optional(Type.Boolean({ description: "Preview changes without writing" })),
 });
 
 // ---------------------------------------------------------------------------
@@ -82,9 +78,13 @@ function computeJaccard(a: string, b: string): number {
 }
 
 function isTidyEnabled(pluginConfig: Record<string, unknown> | undefined): boolean {
-  if (!pluginConfig || typeof pluginConfig !== "object") {return true;}
+  if (!pluginConfig || typeof pluginConfig !== "object") {
+    return true;
+  }
   const tidy = pluginConfig["tidy"];
-  if (!tidy || typeof tidy !== "object") {return true;}
+  if (!tidy || typeof tidy !== "object") {
+    return true;
+  }
   return (tidy as Record<string, unknown>)["autoAfterDreaming"] !== false;
 }
 
@@ -109,7 +109,9 @@ async function actionDedup(
   for (const fileName of topicFileNames) {
     const name = fileName.replace(/\.md$/, "");
     const topic = await deps.topicManager.getTopic(name);
-    if (!topic || topic.entries.length < 2) {continue;}
+    if (!topic || topic.entries.length < 2) {
+      continue;
+    }
 
     const { entries } = topic;
 
@@ -150,7 +152,9 @@ async function actionDedup(
 
     // Process merge groups — one group per file per call to avoid index shifting
     for (const indices of groupMap.values()) {
-      if (indices.length <= 1) {continue;}
+      if (indices.length <= 1) {
+        continue;
+      }
 
       // Sort by date descending (newest first = keeper)
       const sorted = [...indices].toSorted((a, b) =>
@@ -167,9 +171,7 @@ async function actionDedup(
       entriesAffected += absorbedIndices.length;
 
       const absorbedTitles = absorbedIndices.map((i) => entries[i]!.title);
-      changes.push(
-        `${name}: merged "${absorbedTitles.join('", "')}" into "${keptEntry.title}"`,
-      );
+      changes.push(`${name}: merged "${absorbedTitles.join('", "')}" into "${keptEntry.title}"`);
 
       if (!dryRun) {
         await deps.topicManager.mergeEntries(name, sorted, mergedContent);
@@ -200,10 +202,7 @@ function buildDedupMergedContent(
 // Action: merge (combine similar topic files)
 // ---------------------------------------------------------------------------
 
-async function actionMerge(
-  deps: MemoryTidyDeps,
-  dryRun: boolean,
-): Promise<TidyResult> {
+async function actionMerge(deps: MemoryTidyDeps, dryRun: boolean): Promise<TidyResult> {
   const changes: string[] = [];
   let filesAffected = 0;
   let entriesAffected = 0;
@@ -217,8 +216,12 @@ async function actionMerge(
       const nameB = topicFileNames[j]!.replace(/\.md$/, "");
       const topicA = await deps.topicManager.getTopic(nameA);
       const topicB = await deps.topicManager.getTopic(nameB);
-      if (!topicA || !topicB) {continue;}
-      if (topicA.entries.length === 0 || topicB.entries.length === 0) {continue;}
+      if (!topicA || !topicB) {
+        continue;
+      }
+      if (topicA.entries.length === 0 || topicB.entries.length === 0) {
+        continue;
+      }
 
       const contentA = topicA.entries.map((e) => e.content).join(" ");
       const contentB = topicB.entries.map((e) => e.content).join(" ");
@@ -237,7 +240,9 @@ async function actionMerge(
     const fromName = from.replace(/\.md$/, "");
     const intoName = into.replace(/\.md$/, "");
     const fromTopic = await deps.topicManager.getTopic(fromName);
-    if (!fromTopic) {continue;}
+    if (!fromTopic) {
+      continue;
+    }
 
     filesAffected += 2;
     entriesAffected += fromTopic.entries.length;
@@ -252,9 +257,7 @@ async function actionMerge(
       // Remove archived topic from MEMORY.md index
       const index = await deps.indexManager.readIndex();
       const before = index.sections.length;
-      index.sections = index.sections.filter(
-        (s) => s.topicFile !== `memory/topics/${from}`,
-      );
+      index.sections = index.sections.filter((s) => s.topicFile !== `memory/topics/${from}`);
       if (index.sections.length < before) {
         await deps.indexManager.writeIndex(index);
       }
@@ -268,10 +271,7 @@ async function actionMerge(
 // Action: rebalance
 // ---------------------------------------------------------------------------
 
-async function actionRebalance(
-  deps: MemoryTidyDeps,
-  dryRun: boolean,
-): Promise<TidyResult> {
+async function actionRebalance(deps: MemoryTidyDeps, dryRun: boolean): Promise<TidyResult> {
   const changes: string[] = [];
   let filesAffected = 0;
   let entriesAffected = 0;
@@ -330,10 +330,7 @@ async function actionRebalance(
 // Action: archive (move old topics to archive/)
 // ---------------------------------------------------------------------------
 
-async function actionArchive(
-  deps: MemoryTidyDeps,
-  dryRun: boolean,
-): Promise<TidyResult> {
+async function actionArchive(deps: MemoryTidyDeps, dryRun: boolean): Promise<TidyResult> {
   const changes: string[] = [];
   let filesAffected = 0;
   let entriesAffected = 0;
@@ -347,10 +344,14 @@ async function actionArchive(
   for (const fileName of topicFileNames) {
     const name = fileName.replace(/\.md$/, "");
     const topic = await deps.topicManager.getTopic(name);
-    if (!topic) {continue;}
+    if (!topic) {
+      continue;
+    }
 
     const lastUpdated = topic.frontmatter.updated;
-    if (lastUpdated >= thresholdDate) {continue;}
+    if (lastUpdated >= thresholdDate) {
+      continue;
+    }
 
     filesAffected++;
     entriesAffected += topic.entries.length;
@@ -369,9 +370,7 @@ async function actionArchive(
       // Remove from MEMORY.md index
       const index = await deps.indexManager.readIndex();
       const before = index.sections.length;
-      index.sections = index.sections.filter(
-        (s) => s.topicFile !== `memory/topics/${fileName}`,
-      );
+      index.sections = index.sections.filter((s) => s.topicFile !== `memory/topics/${fileName}`);
       if (index.sections.length < before) {
         await deps.indexManager.writeIndex(index);
       }
@@ -438,7 +437,10 @@ export async function runMemoryTidyActions(
 
 export function createTidyDepsFromNodeFs(
   workspaceDir: string,
-  nodeFs: Pick<typeof import("node:fs/promises"), "readFile" | "writeFile" | "mkdir" | "readdir" | "stat" | "rename">,
+  nodeFs: Pick<
+    typeof import("node:fs/promises"),
+    "readFile" | "writeFile" | "mkdir" | "readdir" | "stat" | "rename"
+  >,
 ): MemoryTidyDeps {
   const fsAdapter: TopicManagerDeps["fs"] = {
     readFile: (p) => nodeFs.readFile(p, "utf-8"),
@@ -472,13 +474,17 @@ export function createMemoryTidyTool(options: {
   agentSessionKey?: string;
 }): AnyAgentTool | null {
   const cfg = options.config;
-  if (!cfg) {return null;}
+  if (!cfg) {
+    return null;
+  }
 
   const agentId = resolveSessionAgentId({
     sessionKey: options.agentSessionKey,
     config: cfg,
   });
-  if (!agentId || !resolveMemorySearchConfig(cfg, agentId)) {return null;}
+  if (!agentId || !resolveMemorySearchConfig(cfg, agentId)) {
+    return null;
+  }
 
   return {
     label: "Memory Tidy",

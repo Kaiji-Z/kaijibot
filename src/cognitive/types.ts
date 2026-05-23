@@ -32,12 +32,7 @@ export type TypedInsight = {
 };
 
 /** Lifecycle phase of a user's interest in a domain. */
-export type InterestPhase =
-  | "emergent"
-  | "stable"
-  | "declining"
-  | "dormant"
-  | "revived";
+export type InterestPhase = "emergent" | "stable" | "declining" | "dormant" | "revived";
 
 // Result from mode classification
 export type ModeClassification = {
@@ -87,7 +82,13 @@ export type TopicBandit = {
   lastUpdated?: number;
 };
 
-export type SentimentLabel = "positive" | "negative" | "neutral" | "frustrated" | "excited" | "confused";
+export type SentimentLabel =
+  | "positive"
+  | "negative"
+  | "neutral"
+  | "frustrated"
+  | "excited"
+  | "confused";
 
 export type SentimentResult = {
   label: SentimentLabel;

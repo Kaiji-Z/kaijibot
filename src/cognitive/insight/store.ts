@@ -1,7 +1,7 @@
-import type { InsightRecord } from "../types.js";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { existsSync } from "node:fs";
+import type { InsightRecord } from "../types.js";
 
 export class InsightStore {
   constructor(private readonly configDir: string) {}

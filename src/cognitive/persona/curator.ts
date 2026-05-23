@@ -1,9 +1,21 @@
-import type { PersonaTree, ConfidenceValue, DomainNode, RapportMetrics, TypedInsight, InsightCategory, InterestPhase } from "../types.js";
-import type { ExtractionResult, ExtractedAttribute, ExtractedInsight } from "./types.js";
-import { observeCoOccurrence, seedDomainGraph, decayEdges } from "../insight/cross-domain-mapper.js";
-import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
-import { detectContradictions } from "./contradiction-resolver.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import {
+  observeCoOccurrence,
+  seedDomainGraph,
+  decayEdges,
+} from "../insight/cross-domain-mapper.js";
+import type {
+  PersonaTree,
+  ConfidenceValue,
+  DomainNode,
+  RapportMetrics,
+  TypedInsight,
+  InsightCategory,
+  InterestPhase,
+} from "../types.js";
+import { detectContradictions } from "./contradiction-resolver.js";
+import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
+import type { ExtractionResult, ExtractedAttribute, ExtractedInsight } from "./types.js";
 const log = createSubsystemLogger("cognitive/persona-curator");
 
 const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -136,7 +148,9 @@ export function mergeExtraction(
 ): PersonaTree {
   const now = nowMs ?? Date.now();
 
-  const coreTraitAttrs = extraction.attributes.filter(a => a.field.startsWith("identity.coreTraits."));
+  const coreTraitAttrs = extraction.attributes.filter((a) =>
+    a.field.startsWith("identity.coreTraits."),
+  );
   const { records: contradictions, resolvedTraits } = detectContradictions(
     persona.identity.coreTraits,
     coreTraitAttrs,
@@ -177,7 +191,9 @@ export function mergeExtraction(
   for (const [name, node] of Object.entries(newDomains)) {
     if (!extractionDomainNames.has(name)) {
       const ageMs = now - node.lastMentioned;
-      const decayFactor = Math.exp((-Math.LN2 * ageMs) / (DOMAIN_DEPTH_HALF_LIFE_MS / decayMultiplier));
+      const decayFactor = Math.exp(
+        (-Math.LN2 * ageMs) / (DOMAIN_DEPTH_HALF_LIFE_MS / decayMultiplier),
+      );
       const decayedDepth = node.depth * decayFactor;
       if (decayedDepth < 0.5) {
         delete newDomains[name];
@@ -203,19 +219,23 @@ export function mergeExtraction(
       continue;
     }
 
-    const incomingTyped = (domain.typedInsights ?? []).map(ei => toTypedInsight(ei, now));
+    const incomingTyped = (domain.typedInsights ?? []).map((ei) => toTypedInsight(ei, now));
     const backwardCompatTexts = incomingTyped
-      .filter(ti => !BACKWARD_COMPAT_EXCLUDE_CATEGORIES.has(ti.category))
-      .map(ti => ti.text)
+      .filter((ti) => !BACKWARD_COMPAT_EXCLUDE_CATEGORIES.has(ti.category))
+      .map((ti) => ti.text)
       .filter(isPlausibleKeyInsight);
 
     if (existing) {
-      const mergedInsights = incomingTyped.length > 0
-        ? mergeTypedInsights(existing.insights ?? [], incomingTyped)
-        : existing.insights;
+      const mergedInsights =
+        incomingTyped.length > 0
+          ? mergeTypedInsights(existing.insights ?? [], incomingTyped)
+          : existing.insights;
 
       const prevPhase = existing.phase;
-      const newPhase = computeInterestPhase({ ...existing, recurrence: existing.recurrence + 1, lastMentioned: now }, now);
+      const newPhase = computeInterestPhase(
+        { ...existing, recurrence: existing.recurrence + 1, lastMentioned: now },
+        now,
+      );
       const phaseChanged = prevPhase !== newPhase;
       if (phaseChanged) {
         log.info("domain phase transition", { domain: domain.name, from: prevPhase, to: newPhase });
@@ -226,9 +246,17 @@ export function mergeExtraction(
         depth: Math.max(existing.depth, domain.depth),
         recurrence: existing.recurrence + 1,
         lastMentioned: now,
-        keyInsights: [...new Set([...existing.keyInsights, ...domain.insights.filter(isPlausibleKeyInsight), ...backwardCompatTexts])].slice(-20),
+        keyInsights: [
+          ...new Set([
+            ...existing.keyInsights,
+            ...domain.insights.filter(isPlausibleKeyInsight),
+            ...backwardCompatTexts,
+          ]),
+        ].slice(-20),
         insights: mergedInsights,
-        activeQuestions: [...new Set([...existing.activeQuestions, ...domain.questions])].slice(-10),
+        activeQuestions: [...new Set([...existing.activeQuestions, ...domain.questions])].slice(
+          -10,
+        ),
         negationSignals: existing.negationSignals ?? 0,
         phase: newPhase,
         phaseEnteredAt: phaseChanged ? now : existing.phaseEnteredAt,
@@ -245,7 +273,11 @@ export function mergeExtraction(
       };
       freshNode.phase = computeInterestPhase(freshNode, now);
       freshNode.phaseEnteredAt = now;
-      log.info("new domain discovered", { domain: domain.name, depth: freshNode.depth.toFixed(1), insights: freshNode.insights?.length ?? 0 });
+      log.info("new domain discovered", {
+        domain: domain.name,
+        depth: freshNode.depth.toFixed(1),
+        insights: freshNode.insights?.length ?? 0,
+      });
       newDomains[domain.name] = freshNode;
     }
   }
@@ -262,7 +294,7 @@ export function mergeExtraction(
     if (
       node.negationSignals >= AUTO_BLACKLIST_NEGATION_THRESHOLD &&
       node.lastNegatedAt !== undefined &&
-      (now - node.lastNegatedAt) <= AUTO_BLACKLIST_WINDOW_MS
+      now - node.lastNegatedAt <= AUTO_BLACKLIST_WINDOW_MS
     ) {
       newBlacklist.push(name);
     }
@@ -272,47 +304,201 @@ export function mergeExtraction(
     delete newDomains[blacklisted];
   }
 
-  const hasCJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test.bind(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u);
+  const hasCJK =
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test.bind(
+      /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u,
+    );
   const TECH_DOMAIN_TERMS: ReadonlySet<string> = new Set([
-    "kubernetes", "docker", "typescript", "python", "javascript", "rust",
-    "react", "vue", "angular", "node", "deno", "bun", "go", "java",
-    "k8s", "api", "rest", "graphql", "sql", "redis", "mongodb",
-    "git", "github", "linux", "aws", "gcp", "azure", "devops",
+    "kubernetes",
+    "docker",
+    "typescript",
+    "python",
+    "javascript",
+    "rust",
+    "react",
+    "vue",
+    "angular",
+    "node",
+    "deno",
+    "bun",
+    "go",
+    "java",
+    "k8s",
+    "api",
+    "rest",
+    "graphql",
+    "sql",
+    "redis",
+    "mongodb",
+    "git",
+    "github",
+    "linux",
+    "aws",
+    "gcp",
+    "azure",
+    "devops",
   ]);
   const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
-    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-    "do", "does", "did", "will", "would", "can", "could", "should", "may",
-    "might", "shall", "to", "of", "in", "for", "on", "with", "at", "by",
-    "from", "as", "into", "about", "this", "that", "these", "those", "it",
-    "its", "or", "and", "but", "not", "no", "so", "than", "too", "very",
-    "if", "then", "else", "when", "where", "which", "who", "whom", "how",
-    "what", "why", "all", "each", "every", "both", "few", "more", "most",
-    "other", "some", "such", "only", "own", "same", "also", "just", "one",
-    "two", "here", "there", "now", "up", "out", "off", "over", "under",
-    "i", "me", "my", "we", "us", "our", "you", "your", "he", "him", "his",
-    "she", "her", "they", "them", "their", "has", "have", "had", "get",
-    "got", "make", "made", "go", "went", "come", "came", "take", "took",
-    "give", "gave", "see", "saw", "know", "knew", "think", "thought",
-    "say", "said", "tell", "told", "find", "found", "use", "used",
-    "mannerisms", "provided", "available", "following", "however",
+    "a",
+    "an",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "can",
+    "could",
+    "should",
+    "may",
+    "might",
+    "shall",
+    "to",
+    "of",
+    "in",
+    "for",
+    "on",
+    "with",
+    "at",
+    "by",
+    "from",
+    "as",
+    "into",
+    "about",
+    "this",
+    "that",
+    "these",
+    "those",
+    "it",
+    "its",
+    "or",
+    "and",
+    "but",
+    "not",
+    "no",
+    "so",
+    "than",
+    "too",
+    "very",
+    "if",
+    "then",
+    "else",
+    "when",
+    "where",
+    "which",
+    "who",
+    "whom",
+    "how",
+    "what",
+    "why",
+    "all",
+    "each",
+    "every",
+    "both",
+    "few",
+    "more",
+    "most",
+    "other",
+    "some",
+    "such",
+    "only",
+    "own",
+    "same",
+    "also",
+    "just",
+    "one",
+    "two",
+    "here",
+    "there",
+    "now",
+    "up",
+    "out",
+    "off",
+    "over",
+    "under",
+    "i",
+    "me",
+    "my",
+    "we",
+    "us",
+    "our",
+    "you",
+    "your",
+    "he",
+    "him",
+    "his",
+    "she",
+    "her",
+    "they",
+    "them",
+    "their",
+    "has",
+    "have",
+    "had",
+    "get",
+    "got",
+    "make",
+    "made",
+    "go",
+    "went",
+    "come",
+    "came",
+    "take",
+    "took",
+    "give",
+    "gave",
+    "see",
+    "saw",
+    "know",
+    "knew",
+    "think",
+    "thought",
+    "say",
+    "said",
+    "tell",
+    "told",
+    "find",
+    "found",
+    "use",
+    "used",
+    "mannerisms",
+    "provided",
+    "available",
+    "following",
+    "however",
   ]);
   const isPlausibleEnglishTopic = (s: string): boolean => {
-    const lower = s.toLowerCase().replace(/[^a-z0-9\s.-]/g, "").trim();
+    const lower = s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s.-]/g, "")
+      .trim();
     if (TECH_DOMAIN_TERMS.has(lower)) return true;
-    const words = lower.split(/\s+/).filter(w => w.length > 0);
+    const words = lower.split(/\s+/).filter((w) => w.length > 0);
     if (words.length === 0) return false;
     if (words.length === 1 && !TECH_DOMAIN_TERMS.has(words[0]!)) return false;
-    const contentWords = words.filter(w => !ENGLISH_STOPWORDS.has(w));
+    const contentWords = words.filter((w) => !ENGLISH_STOPWORDS.has(w));
     return contentWords.length >= 2;
   };
   const isValidFocus = (s: string) => {
-    if (s.length < 2 || s.length > 30 || /^```/.test(s) || /^[^\p{L}\p{N}]+$/u.test(s)) return false;
+    if (s.length < 2 || s.length > 30 || /^```/.test(s) || /^[^\p{L}\p{N}]+$/u.test(s))
+      return false;
     if (!hasCJK(s) && !isPlausibleEnglishTopic(s)) return false;
     return true;
   };
   const isValidQuestion = (s: string) =>
-    s.length >= 4 && s.length <= 100 && !s.includes("\\n") && !/[#*_~`>|]{3,}/.test(s)
-    && !/^ou_[a-f0-9]{20,}/.test(s) && !/[\"\\]]$/.test(s.trim());
+    s.length >= 4 &&
+    s.length <= 100 &&
+    !s.includes("\\n") &&
+    !/[#*_~`>|]{3,}/.test(s) &&
+    !/^ou_[a-f0-9]{20,}/.test(s) &&
+    !/[\"\\]]$/.test(s.trim());
 
   const newRecentFocus = [...new Set([...extraction.recentFocus, ...persona.recentFocus])]
     .filter(isValidFocus)
@@ -326,18 +512,28 @@ export function mergeExtraction(
 
   const mentionedDomains = extraction.domains.map((d) => d.name);
   const baseGraph = persona.domainGraph ?? seedDomainGraph();
-  const coOccurrenceGraph = mentionedDomains.length >= 2
-    ? observeCoOccurrence(baseGraph, mentionedDomains, now)
-    : baseGraph;
+  const coOccurrenceGraph =
+    mentionedDomains.length >= 2
+      ? observeCoOccurrence(baseGraph, mentionedDomains, now)
+      : baseGraph;
   const updatedGraph = decayEdges(coOccurrenceGraph, now, EDGE_DECAY_HALF_LIFE_MS);
 
   const newMoodHistory = [...(persona.moodHistory ?? [])];
   if (extraction.sentiment) {
     const prev = newMoodHistory.slice(-2);
-    const prevPositive = prev.some(s => s.sentiment.label === "excited" || s.sentiment.label === "positive");
-    const currNegative = extraction.sentiment.label === "frustrated" || extraction.sentiment.label === "negative";
-    const currPositive = extraction.sentiment.label === "excited" || extraction.sentiment.label === "positive";
-    const trend = prevPositive && currNegative ? "declining" : !prevPositive && currPositive ? "improving" : "stable";
+    const prevPositive = prev.some(
+      (s) => s.sentiment.label === "excited" || s.sentiment.label === "positive",
+    );
+    const currNegative =
+      extraction.sentiment.label === "frustrated" || extraction.sentiment.label === "negative";
+    const currPositive =
+      extraction.sentiment.label === "excited" || extraction.sentiment.label === "positive";
+    const trend =
+      prevPositive && currNegative
+        ? "declining"
+        : !prevPositive && currPositive
+          ? "improving"
+          : "stable";
     newMoodHistory.push({ sentiment: extraction.sentiment, timestamp: now, trend });
   }
 
@@ -366,18 +562,24 @@ export function mergeExtraction(
     else if (node.depth >= 1) curiosityDomains.push(name);
   }
 
-  const displayName = newCoreTraits["称呼"]?.confidence >= 0.5
-    ? String(newCoreTraits["称呼"].value)
-    : persona.identity.displayName;
-  log.info("displayName synced", { displayName, source: newCoreTraits["称呼"]?.confidence >= 0.5 ? "coreTraits" : "existing" });
+  const displayName =
+    newCoreTraits["称呼"]?.confidence >= 0.5
+      ? String(newCoreTraits["称呼"].value)
+      : persona.identity.displayName;
+  log.info("displayName synced", {
+    displayName,
+    source: newCoreTraits["称呼"]?.confidence >= 0.5 ? "coreTraits" : "existing",
+  });
 
   const newIdentity = {
     ...persona.identity,
     coreTraits: newCoreTraits,
     displayName,
     expertDomains: expertDomains.length > 0 ? expertDomains : persona.identity.expertDomains,
-    interestDomains: interestDomains.length > 0 ? interestDomains : persona.identity.interestDomains,
-    curiosityDomains: curiosityDomains.length > 0 ? curiosityDomains : persona.identity.curiosityDomains,
+    interestDomains:
+      interestDomains.length > 0 ? interestDomains : persona.identity.interestDomains,
+    curiosityDomains:
+      curiosityDomains.length > 0 ? curiosityDomains : persona.identity.curiosityDomains,
   };
 
   return {
@@ -445,17 +647,19 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
     if ((domain.negationSignals ?? 0) >= 3 && domain.depth < 2) continue;
     const cleanedInsights = domain.keyInsights.filter((s) => {
       if (s.length < 4 || s.length > 200) return false;
-      for (const pat of INSIGHT_ECHO_PATTERNS) { if (pat.test(s)) return false; }
+      for (const pat of INSIGHT_ECHO_PATTERNS) {
+        if (pat.test(s)) return false;
+      }
       return true;
     });
     const decayedTypedInsights = (domain.insights ?? [])
-      .map(ti => {
+      .map((ti) => {
         const ageMs = now - ti.lastReinforced;
         const halfLifeMs = ti.halfLifeDays * 24 * 60 * 60 * 1000;
         const decayFactor = Math.exp((-Math.LN2 * ageMs) / halfLifeMs);
         return { ...ti, confidence: ti.confidence * decayFactor };
       })
-      .filter(ti => ti.confidence >= 0.1);
+      .filter((ti) => ti.confidence >= 0.1);
     const updatedDomain: DomainNode = { ...domain, keyInsights: cleanedInsights };
     if (domain.insights !== undefined || decayedTypedInsights.length > 0) {
       updatedDomain.insights = decayedTypedInsights.length > 0 ? decayedTypedInsights : undefined;

@@ -112,6 +112,7 @@ The Gateway is the single source of truth for sessions, routing, and channel con
     kaijibot config set channels.feishu.appId "your-app-id"
     kaijibot config set channels.feishu.appSecret "your-app-secret"
     ```
+
   </Step>
   <Step title="Start and chat">
     ```bash

@@ -1,6 +1,6 @@
 import type { PersonaTree } from "../types.js";
-import type { ExtractionResult } from "./types.js";
 import { detectSentiment } from "./sentiment-detector.js";
+import type { ExtractionResult } from "./types.js";
 
 /**
  * Negation patterns that indicate the user is expressing disinterest.
@@ -193,9 +193,7 @@ function isNoisePhrase(s: string): boolean {
  * Simple key phrase extraction — split on common delimiters and filter.
  */
 function extractKeyPhrases(text: string): string[] {
-  const cleaned = text
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]+`/g, "");
+  const cleaned = text.replace(/```[\s\S]*?```/g, "").replace(/`[^`]+`/g, "");
   const phrases = cleaned
     .split(/[，。！？,.!?\n\r;；:：\s—–\-_=+|/\\{}[\]()]+/)
     .map((s) => s.trim())

@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MemoryCitationsMode } from "../config/types.memory.js";
 import type { KaijiBotConfig } from "../config/types.kaijibot.js";
+import type { MemoryCitationsMode } from "../config/types.memory.js";
 import { clearMemoryPluginState, registerMemoryPromptSection } from "../plugins/memory-state.js";
 // ---------------------------------------------------------------------------
 // We dynamically import the registry so we can get a fresh module per test

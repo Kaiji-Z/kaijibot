@@ -58,8 +58,7 @@ export function parsePromotedEntries(lines: string[]): PromotedEntry[] {
         rawLine: line,
         marker: markerMatch[0],
         content:
-          contentMatch?.[1]
-          ?? contentLine.replace(/^-\s*/, "").replace(/\s*\[score=.*\]/, ""),
+          contentMatch?.[1] ?? contentLine.replace(/^-\s*/, "").replace(/\s*\[score=.*\]/, ""),
         lineIndex: i,
       });
     }
@@ -125,7 +124,11 @@ export async function runPruningPhase(params: {
   workspaceDir: string;
   pluginConfig?: Record<string, unknown>;
   cfg?: KaijiBotConfig;
-  logger: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+  logger: {
+    info: (msg: string) => void;
+    warn: (msg: string) => void;
+    error: (msg: string) => void;
+  };
   nowMs?: number;
   storage: { mode: "inline" | "separate" | "both"; separateReports: boolean };
   timezone?: string;
@@ -191,6 +194,8 @@ export async function runPruningPhase(params: {
     storage: params.storage,
   });
 
-  params.logger.info(`memory-core: pruning removed ${removed.length} entries, kept ${kept.length}.`);
+  params.logger.info(
+    `memory-core: pruning removed ${removed.length} entries, kept ${kept.length}.`,
+  );
   return { pruned: removed.length, kept: kept.length };
 }

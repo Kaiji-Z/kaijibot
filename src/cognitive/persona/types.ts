@@ -1,4 +1,8 @@
-import type { InsightCategory as InsightCategoryBase, SentimentResult as SentimentResultBase, CommunicationStyle as CommunicationStyleBase } from "../types.js";
+import type {
+  InsightCategory as InsightCategoryBase,
+  SentimentResult as SentimentResultBase,
+  CommunicationStyle as CommunicationStyleBase,
+} from "../types.js";
 
 export type {
   PersonaTree,

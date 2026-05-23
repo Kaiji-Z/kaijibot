@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { generateInsightCandidates, isCandidateBlacklisted } from "./engine.js";
 import { createDefaultPersona } from "../persona/store.js";
 import type { PersonaTree } from "../types.js";
+import { generateInsightCandidates, isCandidateBlacklisted } from "./engine.js";
 import type { InsightEngineInput, InsightCandidate } from "./types.js";
 
 function personaWithDomains(): PersonaTree {
@@ -17,7 +17,7 @@ function personaWithDomains(): PersonaTree {
       activeQuestions: ["如何优化推理速度？"],
       negationSignals: 0,
     },
-    "软件架构": {
+    软件架构: {
       depth: 3,
       recurrence: 5,
       lastMentioned: Date.now(),
@@ -83,9 +83,7 @@ describe("generateInsightCandidates", () => {
       maxCandidates: 5,
     });
     for (let i = 1; i < candidates.length; i++) {
-      expect(candidates[i].compositeScore).toBeLessThanOrEqual(
-        candidates[i - 1].compositeScore,
-      );
+      expect(candidates[i].compositeScore).toBeLessThanOrEqual(candidates[i - 1].compositeScore);
     }
   });
 
@@ -104,15 +102,31 @@ describe("generateInsightCandidates", () => {
     // Add default adjacency targets as user domains so only CustomDomain remains as a cross-domain target
     for (const defaultTarget of ["数据科学", "编程语言", "云/基础设施", "网络安全"]) {
       persona.domains[defaultTarget] = {
-        depth: 1, recurrence: 1, lastMentioned: Date.now(),
-        keyInsights: [], activeQuestions: [], negationSignals: 0,
+        depth: 1,
+        recurrence: 1,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
       };
     }
     persona.domainGraph = {
       nodes: ["AI/机器学习", "软件架构", "CustomDomain"],
       edges: [
-        { source: "AI/机器学习", target: "CustomDomain", weight: 0.8, lastObserved: Date.now(), observations: 5 },
-        { source: "软件架构", target: "CustomDomain", weight: 0.8, lastObserved: Date.now(), observations: 5 },
+        {
+          source: "AI/机器学习",
+          target: "CustomDomain",
+          weight: 0.8,
+          lastObserved: Date.now(),
+          observations: 5,
+        },
+        {
+          source: "软件架构",
+          target: "CustomDomain",
+          weight: 0.8,
+          lastObserved: Date.now(),
+          observations: 5,
+        },
       ],
       totalObservations: 10,
     };
@@ -136,22 +150,31 @@ describe("generateInsightCandidates", () => {
 
   it("candidates similar to recentInsightContents get lower serendipity scores", () => {
     const persona = personaWithDomains();
-    const similarContent = "你在AI/机器学习领域的洞见（Transformer架构；注意力机制）与软件架构有深层联系";
+    const similarContent =
+      "你在AI/机器学习领域的洞见（Transformer架构；注意力机制）与软件架构有深层联系";
     const inputWithHistory: InsightEngineInput = {
       ...baseInput(),
       recentInsightContents: [similarContent],
     };
     const inputWithoutHistory = baseInput();
 
-    const candidatesWithHistory = generateInsightCandidates(persona, inputWithHistory, { maxCandidates: 10 });
-    const candidatesWithoutHistory = generateInsightCandidates(persona, inputWithoutHistory, { maxCandidates: 10 });
+    const candidatesWithHistory = generateInsightCandidates(persona, inputWithHistory, {
+      maxCandidates: 10,
+    });
+    const candidatesWithoutHistory = generateInsightCandidates(persona, inputWithoutHistory, {
+      maxCandidates: 10,
+    });
 
-    const withHistAvg = candidatesWithHistory.length > 0
-      ? candidatesWithHistory.reduce((s, c) => s + c.compositeScore, 0) / candidatesWithHistory.length
-      : 0;
-    const withoutHistAvg = candidatesWithoutHistory.length > 0
-      ? candidatesWithoutHistory.reduce((s, c) => s + c.compositeScore, 0) / candidatesWithoutHistory.length
-      : 0;
+    const withHistAvg =
+      candidatesWithHistory.length > 0
+        ? candidatesWithHistory.reduce((s, c) => s + c.compositeScore, 0) /
+          candidatesWithHistory.length
+        : 0;
+    const withoutHistAvg =
+      candidatesWithoutHistory.length > 0
+        ? candidatesWithoutHistory.reduce((s, c) => s + c.compositeScore, 0) /
+          candidatesWithoutHistory.length
+        : 0;
 
     expect(withHistAvg).toBeLessThanOrEqual(withoutHistAvg);
   });

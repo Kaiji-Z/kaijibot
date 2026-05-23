@@ -1,9 +1,9 @@
-import type { EvolutionUserResponse } from "./types.js";
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { EvolutionUserResponse } from "./types.js";
 
 type DomainBandit = {
   alpha: number;
@@ -57,7 +57,12 @@ export class EvolutionPreferenceAdapter {
     return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
   }
 
-  async recordResponse(agentId: string, userId: string, domain: string, response: EvolutionUserResponse): Promise<void> {
+  async recordResponse(
+    agentId: string,
+    userId: string,
+    domain: string,
+    response: EvolutionUserResponse,
+  ): Promise<void> {
     const state = await this.loadState(agentId, userId);
     if (!state.bandits[domain]) {
       state.bandits[domain] = { alpha: PRIOR_ALPHA, beta: PRIOR_BETA };
@@ -81,7 +86,11 @@ export class EvolutionPreferenceAdapter {
     return this.sampleBeta(bandit.alpha, bandit.beta);
   }
 
-  async getTopDomains(agentId: string, userId: string, limit: number): Promise<Array<{ domain: string; score: number }>> {
+  async getTopDomains(
+    agentId: string,
+    userId: string,
+    limit: number,
+  ): Promise<Array<{ domain: string; score: number }>> {
     const state = await this.loadState(agentId, userId);
     const entries = Object.entries(state.bandits).map(([domain, bandit]) => ({
       domain,
@@ -91,7 +100,11 @@ export class EvolutionPreferenceAdapter {
     return entries.slice(0, limit);
   }
 
-  async getRawBandit(agentId: string, userId: string, domain: string): Promise<DomainBandit | undefined> {
+  async getRawBandit(
+    agentId: string,
+    userId: string,
+    domain: string,
+  ): Promise<DomainBandit | undefined> {
     const state = await this.loadState(agentId, userId);
     return state.bandits[domain];
   }

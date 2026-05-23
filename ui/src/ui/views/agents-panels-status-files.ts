@@ -221,7 +221,9 @@ export function renderAgentChannels(params: {
                         ${summary.configured === 0
                           ? html`
                               <div>
-                                <span style="color: var(--muted); font-size: 12px">Configure a channel to get started</span>
+                                <span style="color: var(--muted); font-size: 12px"
+                                  >Configure a channel to get started</span
+                                >
                               </div>
                             `
                           : nothing}

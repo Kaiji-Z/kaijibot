@@ -84,7 +84,8 @@ describe("parseTopicFile", () => {
   });
 
   it("handles file with no entries", () => {
-    const md = "---\nsubject: reference\ncreated: 2026-04-24\nupdated: 2026-04-24\nentries: 0\n---\n";
+    const md =
+      "---\nsubject: reference\ncreated: 2026-04-24\nupdated: 2026-04-24\nentries: 0\n---\n";
     const topic = parseTopicFile(md);
     expect(topic.frontmatter.subject).toBe("reference");
     expect(topic.entries).toHaveLength(0);

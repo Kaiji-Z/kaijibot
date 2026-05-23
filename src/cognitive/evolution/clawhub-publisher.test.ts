@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { ClawHubPublisher } from "./clawhub-publisher.js";
 import type { SkillDraft } from "./types.js";
 
@@ -20,7 +20,9 @@ function makeDraft(overrides: Partial<SkillDraft> = {}): SkillDraft {
 
 const originalFetch = globalThis.fetch;
 
-function mockFetch(responses: Record<string, { ok: boolean; status: number; json?: unknown; text?: string }>) {
+function mockFetch(
+  responses: Record<string, { ok: boolean; status: number; json?: unknown; text?: string }>,
+) {
   globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const urlStr = typeof url === "string" ? url : url.toString();
     const key = Object.keys(responses).find((k) => urlStr.includes(k));
@@ -91,19 +93,21 @@ describe("ClawHubPublisher", () => {
       content: "# Test Skill\n\nBody content.",
       authorId: "user-42",
     });
-    expect((bodies[0].headers as Record<string, string>)["Authorization"]).toBe("Bearer my-secret-token");
+    expect((bodies[0].headers as Record<string, string>)["Authorization"]).toBe(
+      "Bearer my-secret-token",
+    );
   });
 
   it("publishSkill throws on path traversal name", async () => {
-    await expect(publisher.publishSkill(makeDraft({ name: "../etc/passwd" }), "user-1")).rejects.toThrow(
-      "Invalid skill name",
-    );
+    await expect(
+      publisher.publishSkill(makeDraft({ name: "../etc/passwd" }), "user-1"),
+    ).rejects.toThrow("Invalid skill name");
   });
 
   it("publishSkill throws on absolute path name", async () => {
-    await expect(publisher.publishSkill(makeDraft({ name: "/tmp/evil" }), "user-1")).rejects.toThrow(
-      "Invalid skill name",
-    );
+    await expect(
+      publisher.publishSkill(makeDraft({ name: "/tmp/evil" }), "user-1"),
+    ).rejects.toThrow("Invalid skill name");
   });
 
   it("publishSkill throws on backslash name", async () => {

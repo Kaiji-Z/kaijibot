@@ -15,9 +15,7 @@ const SOURCE_CANDIDATES: readonly SourceCandidate[] = [
   { dirname: ".moltbot", configFilename: "moltbot.json", brand: "moltbot" },
 ];
 
-export function detectMigrationSource(
-  homedir: () => string = os.homedir,
-): MigrationSource | null {
+export function detectMigrationSource(homedir: () => string = os.homedir): MigrationSource | null {
   const home = homedir();
 
   for (const candidate of SOURCE_CANDIDATES) {
@@ -44,7 +42,9 @@ export function detectMigrationSource(
 export function detectScenario(targetDir: string): MigrationScenario {
   const configPath = path.join(targetDir, "kaijibot.json");
   try {
-    if (fs.existsSync(configPath)) { return "import"; }
+    if (fs.existsSync(configPath)) {
+      return "import";
+    }
   } catch {
     // FS error means we can't confirm config exists — assume fresh.
   }
@@ -68,7 +68,9 @@ export function listSourceAgents(source: MigrationSource): AgentInfo[] {
   if (agentList && Array.isArray(agentList)) {
     for (const entry of agentList) {
       const id = typeof entry.id === "string" ? entry.id : "";
-      if (!id) { continue; }
+      if (!id) {
+        continue;
+      }
 
       const isDefault = Boolean(entry.default);
       const workspaceOverride = typeof entry.workspace === "string" ? entry.workspace : undefined;

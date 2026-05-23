@@ -1,6 +1,6 @@
 import type { FeedbackProfile } from "../types.js";
-import type { Fragment, FragmentCluster } from "./fragment-types.js";
 import type { InsightRecord } from "../types.js";
+import type { Fragment, FragmentCluster } from "./fragment-types.js";
 
 export type PromptBuildResult = {
   prompt: string;
@@ -28,9 +28,7 @@ export type SearchStrategy = {
   estimatedSurprise: number;
 };
 
-export type InferenceResult =
-  | { ok: true; strategy: SearchStrategy }
-  | { ok: false; error: string };
+export type InferenceResult = { ok: true; strategy: SearchStrategy } | { ok: false; error: string };
 
 /** Input to the insight engine */
 export type InsightEngineInput = {

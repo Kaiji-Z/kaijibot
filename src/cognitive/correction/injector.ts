@@ -16,11 +16,7 @@ export function formatCorrectionsPrompt(corrections: CorrectionRecord[]): string
     })
     .slice(0, MAX_INJECTED_CORRECTIONS);
 
-  const lines = [
-    "## Known Corrections",
-    "以下是你过去犯过的错误和正确的做法，请避免重复：",
-    "",
-  ];
+  const lines = ["## Known Corrections", "以下是你过去犯过的错误和正确的做法，请避免重复：", ""];
 
   for (let i = 0; i < sorted.length; i++) {
     const c = sorted[i]!;

@@ -15,12 +15,12 @@ The cognitive layer is a self-contained module at `src/cognitive/` that transfor
 
 The cognitive layer has five subsystems, each answering a core question:
 
-| Module | Question | Location |
-|---|---|---|
-| **Persona** | Who is this user? | `src/cognitive/persona/` |
-| **Insight** | What should I tell them? | `src/cognitive/insight/` |
-| **Scheduler** | When should I reach out? | `src/cognitive/scheduler/` |
-| **Feedback** | How did they react? | `src/cognitive/feedback/` |
+| Module          | Question                        | Location                       |
+| --------------- | ------------------------------- | ------------------------------ |
+| **Persona**     | Who is this user?               | `src/cognitive/persona/`       |
+| **Insight**     | What should I tell them?        | `src/cognitive/insight/`       |
+| **Scheduler**   | When should I reach out?        | `src/cognitive/scheduler/`     |
+| **Feedback**    | How did they react?             | `src/cognitive/feedback/`      |
 | **Mode Router** | What mode is this conversation? | `src/cognitive/mode-router.ts` |
 
 ## Persona — "Who is this user?"
@@ -76,6 +76,7 @@ The production insight generator (`llm-engine.ts`):
 ### Cross-domain mapper
 
 Discovers connections between domains via:
+
 - Hardcoded domain adjacency graph (8 known domain connections)
 - Learned co-occurrence graph: tracks which domains appear together, weighted edges with 14-day exponential decay
 - BFS-1 from user's domains to adjacent unexplored domains
@@ -106,11 +107,11 @@ Before each proactive attempt, the gate (`gate.ts`) computes:
 
 ### Event sources
 
-| Source | Trigger | Default interval |
-|---|---|---|
-| **TimerSource** | Periodic timer | 4h (with random jitter 50%~150%) |
-| **PersonaChangeSource** | Domain count changes ≥2 | On persona update |
-| **InfoScanSource** | Periodic information scan | 6h |
+| Source                  | Trigger                   | Default interval                 |
+| ----------------------- | ------------------------- | -------------------------------- |
+| **TimerSource**         | Periodic timer            | 4h (with random jitter 50%~150%) |
+| **PersonaChangeSource** | Domain count changes ≥2   | On persona update                |
+| **InfoScanSource**      | Periodic information scan | 6h                               |
 
 ### Dedup
 
@@ -126,12 +127,12 @@ Frequency adapts: positive → -0.5h (more frequent), negative → +2h (less fre
 
 ### Trust evolution (SARA framework)
 
-| Phase | Trust range | Behavior |
-|---|---|---|
-| **Orientation** | < 0.3 | Demonstrate capability, no proactive suggestions |
-| **Exploration** | 0.3–0.5 | Share observations, 1 curiosity question per 3 turns |
-| **Rapport** | 0.5–0.7 | Connect patterns, brief insights, 2:1 statement-to-question |
-| **Partnership** | ≥ 0.7 | Full thinking partner, challenge assumptions |
+| Phase           | Trust range | Behavior                                                    |
+| --------------- | ----------- | ----------------------------------------------------------- |
+| **Orientation** | < 0.3       | Demonstrate capability, no proactive suggestions            |
+| **Exploration** | 0.3–0.5     | Share observations, 1 curiosity question per 3 turns        |
+| **Rapport**     | 0.5–0.7     | Connect patterns, brief insights, 2:1 statement-to-question |
+| **Partnership** | ≥ 0.7       | Full thinking partner, challenge assumptions                |
 
 Trust deltas: positive +0.05, engaged +0.08, negative -0.08, neutral 0. Implicit: long response +0.02, quick reply +0.01, topic continuation +0.03, topic abandonment -0.02.
 
@@ -143,12 +144,12 @@ Linear regression slope corrects pAccept overconfidence/underconfidence. Needs 1
 
 Every user message is classified into one of four modes:
 
-| Mode | Triggers | Agent behavior |
-|---|---|---|
-| **task** | Imperative verbs + explicit objects | Execute directly, minimal commentary |
-| **insight** | Exploratory questions ("你觉得...", "怎么看待") | Deep analysis, multiple perspectives |
-| **hybrid** | Mixed signals or uncertain | Balance execution and analysis |
-| **proactive** | System-initiated (heartbeat/cognitive) | Insight delivery tone |
+| Mode          | Triggers                                        | Agent behavior                       |
+| ------------- | ----------------------------------------------- | ------------------------------------ |
+| **task**      | Imperative verbs + explicit objects             | Execute directly, minimal commentary |
+| **insight**   | Exploratory questions ("你觉得...", "怎么看待") | Deep analysis, multiple perspectives |
+| **hybrid**    | Mixed signals or uncertain                      | Balance execution and analysis       |
+| **proactive** | System-initiated (heartbeat/cognitive)          | Insight delivery tone                |
 
 Classification is priority-ordered with Chinese + English pattern matching.
 
@@ -174,7 +175,7 @@ Event source fires (timer / persona_change / info_scan)
     enabled: true,
     proactive: {
       enabled: true,
-      minIntervalHours: 4,       // minimum gap between proactive messages
+      minIntervalHours: 4, // minimum gap between proactive messages
       activeHours: {
         start: "09:00",
         end: "22:00",
@@ -187,11 +188,11 @@ Event source fires (timer / persona_change / info_scan)
 
 ## Data locations
 
-| Data | Path |
-|---|---|
-| Persona | `~/.kaijibot/cognitive/persona/{agentId}/{userId}.json` |
-| Insights | `~/.kaijibot/cognitive/insights/{userId}/` |
-| Gateway logs | `/tmp/kaijibot/kaijibot-YYYY-MM-DD.log` |
+| Data         | Path                                                    |
+| ------------ | ------------------------------------------------------- |
+| Persona      | `~/.kaijibot/cognitive/persona/{agentId}/{userId}.json` |
+| Insights     | `~/.kaijibot/cognitive/insights/{userId}/`              |
+| Gateway logs | `/tmp/kaijibot/kaijibot-YYYY-MM-DD.log`                 |
 
 ## Related
 

@@ -15,11 +15,11 @@ installer script -- clone the repository and build with pnpm.
 
 ## Prerequisites
 
-| Requirement | Minimum | Recommended |
-|---|---|---|
-| Node.js | 22 LTS (`22.14+`) | 24 |
-| pnpm | 9+ | latest |
-| Git | 2.x | latest |
+| Requirement | Minimum           | Recommended |
+| ----------- | ----------------- | ----------- |
+| Node.js     | 22 LTS (`22.14+`) | 24          |
+| pnpm        | 9+                | latest      |
+| Git         | 2.x               | latest      |
 
 <Note>
 KaijiBot targets Chinese users and uses the Gitee mirror as the default
@@ -105,10 +105,10 @@ docker compose up -d
 
 ### Default ports
 
-| Port | Purpose |
-|---|---|
+| Port  | Purpose                    |
+| ----- | -------------------------- |
 | 18789 | Gateway (HTTP + WebSocket) |
-| 18790 | Bridge |
+| 18790 | Bridge                     |
 
 ### Configuration via environment
 
@@ -130,15 +130,15 @@ container.
 
 Same source-build steps as above. Useful commands for contributors:
 
-| Command | Purpose |
-|---|---|
-| `pnpm build` | Compile TypeScript |
-| `pnpm tsgo` | Type check only |
-| `pnpm check` | Lint + typecheck + boundary checks |
-| `pnpm test` | Run tests (Vitest) |
-| `pnpm test <path>` | Scoped test run |
-| `pnpm format:fix` | Auto-format (oxfmt) |
-| `pnpm kaijibot ...` | Run CLI in dev |
+| Command             | Purpose                            |
+| ------------------- | ---------------------------------- |
+| `pnpm build`        | Compile TypeScript                 |
+| `pnpm tsgo`         | Type check only                    |
+| `pnpm check`        | Lint + typecheck + boundary checks |
+| `pnpm test`         | Run tests (Vitest)                 |
+| `pnpm test <path>`  | Scoped test run                    |
+| `pnpm format:fix`   | Auto-format (oxfmt)                |
+| `pnpm kaijibot ...` | Run CLI in dev                     |
 
 Pre-commit hooks: `prek install`. Skip with `FAST_COMMIT=1`.
 
@@ -171,6 +171,7 @@ conflicts should be rare.
     ```
 
     Use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to manage Node versions.
+
   </Accordion>
 
   <Accordion title="pnpm not found">
@@ -181,6 +182,7 @@ conflicts should be rare.
     # or
     corepack enable && corepack prepare pnpm@latest --activate
     ```
+
   </Accordion>
 
   <Accordion title="Build fails with TypeScript errors">
@@ -196,6 +198,7 @@ conflicts should be rare.
     rm -rf node_modules
     pnpm install
     ```
+
   </Accordion>
 
   <Accordion title="Feishu bot not responding">
@@ -212,5 +215,6 @@ conflicts should be rare.
     ```
 
     Common cause: missing `ZAI_API_KEY` or Feishu credentials.
+
   </Accordion>
 </AccordionGroup>

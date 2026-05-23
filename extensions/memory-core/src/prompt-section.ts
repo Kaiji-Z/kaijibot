@@ -59,9 +59,7 @@ export const buildPromptSection: MemoryPromptSectionBuilder = ({
   }
 
   if (hasMemoryTidy) {
-    lines.push(
-      "Use memory_tidy to clean up duplicate or stale entries in topic files.",
-    );
+    lines.push("Use memory_tidy to clean up duplicate or stale entries in topic files.");
     lines.push("");
   }
 

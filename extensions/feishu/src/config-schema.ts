@@ -219,7 +219,10 @@ export const FeishuConfigSchema = z
     webhookPath: z.string().optional().default("/feishu/events"),
     ...FeishuSharedConfigShape,
     dmPolicy: DmPolicySchema.optional().default("open"),
-    allowFrom: z.array(z.union([z.string(), z.number()])).optional().default(["*"]),
+    allowFrom: z
+      .array(z.union([z.string(), z.number()]))
+      .optional()
+      .default(["*"]),
     reactionNotifications: ReactionNotificationModeSchema.optional().default("own"),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
     requireMention: z.boolean().optional(),

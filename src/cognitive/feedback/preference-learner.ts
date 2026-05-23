@@ -30,7 +30,7 @@ export function decayBandit(
   if (bandit.lastUpdated === undefined) return bandit;
   const age = nowMs - bandit.lastUpdated;
   if (age <= 0) return bandit;
-  const factor = Math.exp(-Math.LN2 * age / halfLifeMs);
+  const factor = Math.exp((-Math.LN2 * age) / halfLifeMs);
   const decayedAlpha = OPTIMISTIC_ALPHA + (bandit.alpha - OPTIMISTIC_ALPHA) * factor;
   const decayedBeta = OPTIMISTIC_BETA + (bandit.beta - OPTIMISTIC_BETA) * factor;
   return {
@@ -40,10 +40,7 @@ export function decayBandit(
   };
 }
 
-export function decayAllBandits(
-  profile: FeedbackProfile,
-  nowMs: number,
-): FeedbackProfile {
+export function decayAllBandits(profile: FeedbackProfile, nowMs: number): FeedbackProfile {
   const newBandits: Record<string, TopicBandit> = {};
   for (const [topic, bandit] of Object.entries(profile.topicBandits)) {
     newBandits[topic] = decayBandit(bandit, nowMs);
@@ -60,7 +57,10 @@ export function updateBanditFromFeedback(
   feedback: FeedbackEvent,
 ): FeedbackProfile {
   const topic = feedback.topic ?? "general";
-  const rawBandit: TopicBandit = profile.topicBandits[topic] ?? { alpha: OPTIMISTIC_ALPHA, beta: OPTIMISTIC_BETA };
+  const rawBandit: TopicBandit = profile.topicBandits[topic] ?? {
+    alpha: OPTIMISTIC_ALPHA,
+    beta: OPTIMISTIC_BETA,
+  };
 
   // Apply decay before update so stale bandits regress toward priors
   const bandit = decayBandit(rawBandit, feedback.timestamp);
@@ -159,15 +159,13 @@ export function getTopicSummaries(profile: FeedbackProfile): TopicFeedbackSummar
  * Update the optimal frequency based on feedback patterns.
  * If user responds positively, increase frequency. If negatively, decrease.
  */
-export function adaptFrequency(
-  currentHours: number,
-  feedback: FeedbackEvent,
-): number {
-  const delta = feedback.type === "positive" || feedback.type === "engaged"
-    ? -0.5  // more frequent (reduce hours)
-    : feedback.type === "negative"
-      ? 2.0  // less frequent (increase hours)
-      : 0;   // no change
+export function adaptFrequency(currentHours: number, feedback: FeedbackEvent): number {
+  const delta =
+    feedback.type === "positive" || feedback.type === "engaged"
+      ? -0.5 // more frequent (reduce hours)
+      : feedback.type === "negative"
+        ? 2.0 // less frequent (increase hours)
+        : 0; // no change
 
   // Clamp between 1 and 48 hours
   return Math.max(1, Math.min(48, currentHours + delta));
@@ -216,7 +214,10 @@ export function updatePromptBandit(
   timestamp: number,
 ): Record<string, TopicBandit> {
   const existing = profile.promptBandits ?? {};
-  const rawBandit: TopicBandit = existing[armKey] ?? { alpha: OPTIMISTIC_ALPHA, beta: OPTIMISTIC_BETA };
+  const rawBandit: TopicBandit = existing[armKey] ?? {
+    alpha: OPTIMISTIC_ALPHA,
+    beta: OPTIMISTIC_BETA,
+  };
 
   let newAlpha = rawBandit.alpha;
   let newBeta = rawBandit.beta;

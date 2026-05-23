@@ -2,6 +2,8 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, afterEach, describe, expect, it } from "vitest";
+import { resetMemoryToolMockState, setMemoryWorkspaceDir } from "./memory-tool-manager-mock.js";
+import { incrementGroundedCount } from "./short-term-promotion.js";
 import {
   type LlmDecideFn,
   computeMaxSimilarity,
@@ -9,12 +11,7 @@ import {
   deriveEntryTitle,
   resolveSelfEditDecision,
 } from "./tools.memory-save.js";
-import {
-  resetMemoryToolMockState,
-  setMemoryWorkspaceDir,
-} from "./memory-tool-manager-mock.js";
 import { type TopicEntry } from "./topic-types.js";
-import { incrementGroundedCount } from "./short-term-promotion.js";
 
 // ---------------------------------------------------------------------------
 // Temp directory for integration tests
@@ -82,10 +79,7 @@ describe("computeMaxSimilarity", () => {
         content: "Database migration completed to PostgreSQL 16",
       },
     ];
-    const result = computeMaxSimilarity(
-      "User likes hiking on weekends",
-      entries,
-    );
+    const result = computeMaxSimilarity("User likes hiking on weekends", entries);
     expect(result.maxSim).toBeLessThan(0.3);
   });
 
@@ -107,10 +101,7 @@ describe("computeMaxSimilarity", () => {
         content: "Meeting notes from standup",
       },
     ];
-    const result = computeMaxSimilarity(
-      "User prefers dark mode for coding at night",
-      entries,
-    );
+    const result = computeMaxSimilarity("User prefers dark mode for coding at night", entries);
     expect(result.maxSimIdx).toBe(1);
     expect(result.maxSim).toBeGreaterThanOrEqual(0.7);
   });
@@ -286,14 +277,16 @@ describe("memory_save tool", () => {
     });
 
     // First save
-    const existingContent = "User prefers dark mode in their editor and uses VSCode for development";
+    const existingContent =
+      "User prefers dark mode in their editor and uses VSCode for development";
     await tool!.execute("tc-7a", {
       content: existingContent,
       topic: "user-profile",
     });
 
     // Second save — near-duplicate
-    const newContent = "User prefers dark mode in their editor and uses VSCode for development daily";
+    const newContent =
+      "User prefers dark mode in their editor and uses VSCode for development daily";
     const raw = await tool!.execute("tc-7b", {
       content: newContent,
       topic: "user-profile",
@@ -613,30 +606,34 @@ describe("memory_save groundedCount integration", () => {
     const nowIso = new Date().toISOString();
     await writeFile(
       path.join(storeDir, "short-term-recall.json"),
-      JSON.stringify({
-        version: 1,
-        updatedAt: nowIso,
-        entries: {
-          "key-1": {
-            key: "key-1",
-            path: "memory/topics/user-profile.md",
-            startLine: 1,
-            endLine: 10,
-            source: "memory",
-            snippet: "test",
-            recallCount: 1,
-            dailyCount: 0,
-            groundedCount: 0,
-            totalScore: 0.5,
-            maxScore: 0.5,
-            firstRecalledAt: nowIso,
-            lastRecalledAt: nowIso,
-            queryHashes: [],
-            recallDays: [],
-            conceptTags: [],
+      JSON.stringify(
+        {
+          version: 1,
+          updatedAt: nowIso,
+          entries: {
+            "key-1": {
+              key: "key-1",
+              path: "memory/topics/user-profile.md",
+              startLine: 1,
+              endLine: 10,
+              source: "memory",
+              snippet: "test",
+              recallCount: 1,
+              dailyCount: 0,
+              groundedCount: 0,
+              totalScore: 0.5,
+              maxScore: 0.5,
+              firstRecalledAt: nowIso,
+              lastRecalledAt: nowIso,
+              queryHashes: [],
+              recallDays: [],
+              conceptTags: [],
+            },
           },
         },
-      }, null, 2) + "\n",
+        null,
+        2,
+      ) + "\n",
       "utf-8",
     );
 
@@ -664,30 +661,34 @@ describe("memory_save groundedCount integration", () => {
     const nowIso = new Date().toISOString();
     await writeFile(
       path.join(storeDir, "short-term-recall.json"),
-      JSON.stringify({
-        version: 1,
-        updatedAt: nowIso,
-        entries: {
-          "key-1": {
-            key: "key-1",
-            path: "memory/topics/feedback.md",
-            startLine: 1,
-            endLine: 10,
-            source: "memory",
-            snippet: "test",
-            recallCount: 1,
-            dailyCount: 0,
-            groundedCount: 0,
-            totalScore: 0.5,
-            maxScore: 0.5,
-            firstRecalledAt: nowIso,
-            lastRecalledAt: nowIso,
-            queryHashes: [],
-            recallDays: [],
-            conceptTags: [],
+      JSON.stringify(
+        {
+          version: 1,
+          updatedAt: nowIso,
+          entries: {
+            "key-1": {
+              key: "key-1",
+              path: "memory/topics/feedback.md",
+              startLine: 1,
+              endLine: 10,
+              source: "memory",
+              snippet: "test",
+              recallCount: 1,
+              dailyCount: 0,
+              groundedCount: 0,
+              totalScore: 0.5,
+              maxScore: 0.5,
+              firstRecalledAt: nowIso,
+              lastRecalledAt: nowIso,
+              queryHashes: [],
+              recallDays: [],
+              conceptTags: [],
+            },
           },
         },
-      }, null, 2) + "\n",
+        null,
+        2,
+      ) + "\n",
       "utf-8",
     );
 
@@ -714,30 +715,35 @@ describe("memory_save groundedCount integration", () => {
     await mkdir(storeDir, { recursive: true });
     const nowIso = new Date().toISOString();
     const storePath = path.join(storeDir, "short-term-recall.json");
-    const storeContent = JSON.stringify({
-      version: 1,
-      updatedAt: nowIso,
-      entries: {
-        "key-1": {
-          key: "key-1",
-          path: "memory/topics/reference.md",
-          startLine: 1,
-          endLine: 10,
-          source: "memory",
-          snippet: "test",
-          recallCount: 1,
-          dailyCount: 0,
-          groundedCount: 0,
-          totalScore: 0.5,
-          maxScore: 0.5,
-          firstRecalledAt: nowIso,
-          lastRecalledAt: nowIso,
-          queryHashes: [],
-          recallDays: [],
-          conceptTags: [],
+    const storeContent =
+      JSON.stringify(
+        {
+          version: 1,
+          updatedAt: nowIso,
+          entries: {
+            "key-1": {
+              key: "key-1",
+              path: "memory/topics/reference.md",
+              startLine: 1,
+              endLine: 10,
+              source: "memory",
+              snippet: "test",
+              recallCount: 1,
+              dailyCount: 0,
+              groundedCount: 0,
+              totalScore: 0.5,
+              maxScore: 0.5,
+              firstRecalledAt: nowIso,
+              lastRecalledAt: nowIso,
+              queryHashes: [],
+              recallDays: [],
+              conceptTags: [],
+            },
+          },
         },
-      },
-    }, null, 2) + "\n";
+        null,
+        2,
+      ) + "\n";
     await writeFile(storePath, storeContent, "utf-8");
 
     const tool = createMemorySaveTool({

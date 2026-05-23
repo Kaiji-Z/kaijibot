@@ -1,20 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { ProactiveScheduler } from "./proactive-scheduler.js";
-import { createDefaultPersona } from "../persona/store.js";
-import { computeGradedGate, computeRepetitionDecay } from "./gate.js";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
-import type { SchedulerConfig, Opportunity, GateContext } from "./types.js";
-import type { PersonaTree } from "../types.js";
 import type { InsightCandidate } from "../insight/types.js";
+import { createDefaultPersona } from "../persona/store.js";
+import type { PersonaTree } from "../types.js";
+import { computeGradedGate, computeRepetitionDecay } from "./gate.js";
+import { ProactiveScheduler } from "./proactive-scheduler.js";
+import type { SchedulerConfig, Opportunity, GateContext } from "./types.js";
 
 // ── Persona factory ──────────────────────────────────────────────────
 
 function richPersona(eventTimestamp?: number): PersonaTree {
   // When eventTimestamp is given, set lastActiveAt ~2.4h before it so the
   // Gaussian cadenceFactor peaks at the event time (cadencePeak ≈ 2.4h).
-  const lastActiveAt = eventTimestamp
-    ? eventTimestamp - 2.4 * 3600_000
-    : Date.now();
+  const lastActiveAt = eventTimestamp ? eventTimestamp - 2.4 * 3600_000 : Date.now();
   const persona = createDefaultPersona();
   persona.rapport.trustScore = 0.85;
   persona.rapport.totalExchanges = 200;
@@ -27,7 +25,7 @@ function richPersona(eventTimestamp?: number): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "软件架构": {
+    软件架构: {
       depth: 4,
       recurrence: 8,
       lastMentioned: Date.now(),
@@ -35,7 +33,7 @@ function richPersona(eventTimestamp?: number): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "Rust": {
+    Rust: {
       depth: 4,
       recurrence: 6,
       lastMentioned: Date.now(),
@@ -43,7 +41,7 @@ function richPersona(eventTimestamp?: number): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "TypeScript": {
+    TypeScript: {
       depth: 3,
       recurrence: 5,
       lastMentioned: Date.now(),
@@ -51,7 +49,7 @@ function richPersona(eventTimestamp?: number): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "网络安全": {
+    网络安全: {
       depth: 3,
       recurrence: 4,
       lastMentioned: Date.now(),
@@ -62,10 +60,10 @@ function richPersona(eventTimestamp?: number): PersonaTree {
   };
   persona.feedbackProfile.topicBandits = {
     "AI/机器学习": { alpha: 5, beta: 1 },
-    "软件架构": { alpha: 4, beta: 2 },
-    "Rust": { alpha: 3, beta: 1 },
-    "TypeScript": { alpha: 3, beta: 2 },
-    "网络安全": { alpha: 2, beta: 1 },
+    软件架构: { alpha: 4, beta: 2 },
+    Rust: { alpha: 3, beta: 1 },
+    TypeScript: { alpha: 3, beta: 2 },
+    网络安全: { alpha: 2, beta: 1 },
   };
   persona.lifecycle = {
     stage: "active",
@@ -100,18 +98,9 @@ const INSIGHT_CONTENTS = [
   "注意力权重的稀疏化计算显著降低了推理阶段的显存占用",
 ];
 
-const DOMAIN_KEYS = [
-  "AI/机器学习",
-  "软件架构",
-  "Rust",
-  "TypeScript",
-  "网络安全",
-] as const;
+const DOMAIN_KEYS = ["AI/机器学习", "软件架构", "Rust", "TypeScript", "网络安全"] as const;
 
-function makeFakeInsight(
-  cycle: number,
-  domainIndex: number,
-): InsightCandidate {
+function makeFakeInsight(cycle: number, domainIndex: number): InsightCandidate {
   const targetDomain = DOMAIN_KEYS[domainIndex % DOMAIN_KEYS.length]!;
   return {
     id: `insight-pipeline-${cycle}`,
@@ -149,13 +138,17 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     const eventTimestamp = 10_000;
     const persona = richPersona(eventTimestamp);
 
-    const scheduler = new ProactiveScheduler(pipelineConfig, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [],
-    });
+    const scheduler = new ProactiveScheduler(
+      pipelineConfig,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [],
+      },
+    );
 
     const result = await scheduler.processEvent("user1", {
       type: "timer",
@@ -180,11 +173,15 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     const persona = richPersona(eventTimestamp);
 
     // Cycle 1: empty generator → resolve fails, but persona is mutated in-place
-    const schedulerC1 = new ProactiveScheduler(pipelineConfig, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [] });
+    const schedulerC1 = new ProactiveScheduler(
+      pipelineConfig,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [] },
+    );
 
     await schedulerC1.processEvent("user1", {
       type: "timer",
@@ -200,11 +197,15 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     // Clear type history to isolate domain cooldown testing
     persona.feedbackProfile.recentInsightTypes = [];
 
-    const schedulerC2 = new ProactiveScheduler(pipelineConfig, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [] });
+    const schedulerC2 = new ProactiveScheduler(
+      pipelineConfig,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [] },
+    );
 
     const opportunities: Opportunity[] = [
       {
@@ -287,11 +288,17 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
       // Use cycle % 5 for domain index → different domain each cycle
       const fakeInsight = makeFakeInsight(cycle, cycle % 5);
 
-      const scheduler = new ProactiveScheduler(pipelineConfig, {
-        loadPersona: async () => currentPersona,
-        onInsightReady: async () => {},
-        savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-      }, { insightGenerator: async () => [fakeInsight] });
+      const scheduler = new ProactiveScheduler(
+        pipelineConfig,
+        {
+          loadPersona: async () => currentPersona,
+          onInsightReady: async () => {},
+          savePersona: async (_agentId, _userId, p) => {
+            savedPersona = p;
+          },
+        },
+        { insightGenerator: async () => [fakeInsight] },
+      );
 
       const result = await scheduler.processEvent("user1", {
         type: "timer",

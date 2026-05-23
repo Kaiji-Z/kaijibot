@@ -114,7 +114,9 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
   if (!summary) return null;
 
   const primaryRequest =
-    typeof parsed.primaryRequest === "string" && parsed.primaryRequest.trim() ? parsed.primaryRequest : undefined;
+    typeof parsed.primaryRequest === "string" && parsed.primaryRequest.trim()
+      ? parsed.primaryRequest
+      : undefined;
 
   const technicalConcepts = Array.isArray(parsed.technicalConcepts)
     ? parsed.technicalConcepts.filter((c): c is string => typeof c === "string")
@@ -133,7 +135,9 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
     : undefined;
 
   const currentWork =
-    typeof parsed.currentWork === "string" && parsed.currentWork.trim() ? parsed.currentWork : undefined;
+    typeof parsed.currentWork === "string" && parsed.currentWork.trim()
+      ? parsed.currentWork
+      : undefined;
 
   const nextStep =
     typeof parsed.nextStep === "string" && parsed.nextStep.trim() ? parsed.nextStep : undefined;
@@ -161,7 +165,10 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
           .replace(/-+/g, "-")
           .replace(/^-|-$/g, "")
           .slice(0, 30)
-      : topics[0]?.replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 30) ?? "session";
+      : (topics[0]
+          ?.replace(/[^a-z0-9-]/g, "-")
+          .replace(/-+/g, "-")
+          .slice(0, 30) ?? "session");
 
   const VALID_MEMORY_TYPES: readonly string[] = ["user", "feedback", "project", "reference"];
   const rawMemoryType = typeof parsed.memoryType === "string" ? parsed.memoryType : "";

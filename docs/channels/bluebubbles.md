@@ -9,7 +9,6 @@ title: "BlueBubbles"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # BlueBubbles (macOS REST)
 
 Status: bundled plugin that talks to the BlueBubbles macOS server over HTTP. **Recommended for iMessage integration** due to its richer API and easier setup compared to the legacy imsg channel.

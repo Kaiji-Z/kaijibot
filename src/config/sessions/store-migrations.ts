@@ -6,7 +6,10 @@ const FEISHU_OPEN_ID_PREFIX = "ou_";
 function extractFeishuOpenId(lastTo: string | undefined): string | undefined {
   if (!lastTo) return undefined;
   const stripped = lastTo.replace(/^user:/, "");
-  if (stripped.startsWith(FEISHU_OPEN_ID_PREFIX) && stripped.length > FEISHU_OPEN_ID_PREFIX.length) {
+  if (
+    stripped.startsWith(FEISHU_OPEN_ID_PREFIX) &&
+    stripped.length > FEISHU_OPEN_ID_PREFIX.length
+  ) {
     return stripped;
   }
   return undefined;
@@ -47,9 +50,7 @@ export function applySessionStoreMigrations(store: Record<string, SessionEntry>)
       legacyEntry.deliveryContext?.channel === "feishu" ||
       legacyEntry.channel === "feishu";
     if (isFeishu) {
-      const openId = extractFeishuOpenId(
-        legacyEntry.deliveryContext?.to ?? legacyEntry.lastTo,
-      );
+      const openId = extractFeishuOpenId(legacyEntry.deliveryContext?.to ?? legacyEntry.lastTo);
       if (openId) {
         const newKey = `agent:main:feishu:direct:${openId}`;
         if (!store[newKey]) {

@@ -1,10 +1,10 @@
+import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { EvolutionRecord, EvolutionConfig } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { existsSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
 
 const COGNITIVE_DIR = "cognitive";
 const EVOLUTION_DIR = "evolution";
@@ -49,12 +49,14 @@ export class EvolutionStore {
     return this.loadRecords(agentId, userId);
   }
 
-  async getRecentSuggestions(agentId: string, userId: string, hours: number): Promise<EvolutionRecord[]> {
+  async getRecentSuggestions(
+    agentId: string,
+    userId: string,
+    hours: number,
+  ): Promise<EvolutionRecord[]> {
     const records = await this.loadRecords(agentId, userId);
     const cutoff = Date.now() - hours * 3_600_000;
-    return records.filter(
-      (r) => r.timestamp > cutoff && r.decision?.shouldSuggest === true,
-    );
+    return records.filter((r) => r.timestamp > cutoff && r.decision?.shouldSuggest === true);
   }
 
   async loadConfig(agentId: string): Promise<EvolutionConfig> {
@@ -92,8 +94,8 @@ export class EvolutionStore {
     try {
       const entries = await readdir(dir);
       return entries
-        .filter(name => name.endsWith(".json") && name !== CONFIG_FILE)
-        .map(name => name.slice(0, -5))
+        .filter((name) => name.endsWith(".json") && name !== CONFIG_FILE)
+        .map((name) => name.slice(0, -5))
         .sort();
     } catch {
       return [];

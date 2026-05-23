@@ -136,9 +136,7 @@ describe("MemoryIndexManager", () => {
             summary: "Test summary",
           },
         ],
-        recentSessions: [
-          { date: "2026-04-24", title: "Session", topicPath: "memory/topics/s.md" },
-        ],
+        recentSessions: [{ date: "2026-04-24", title: "Session", topicPath: "memory/topics/s.md" }],
         promotedContent: "## Promoted From Short-Term Memory\n\n- Legacy\n",
       };
       await manager.writeIndex(index);
@@ -288,7 +286,8 @@ describe("MemoryIndexManager", () => {
       expect(result).toContain("# Long-Term Memory");
       expect(result).toContain("## Promoted From Short-Term Memory (legacy)");
       expect(result).toContain("User prefers dark mode");
-      expect(result).toContain("Project uses PostgreSQL");    });
+      expect(result).toContain("Project uses PostgreSQL");
+    });
 
     it("does not modify new-format content", async () => {
       const result = await new MemoryIndexManager({

@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { SkillPersistenceWriter } from "./skill-writer.js";
 import type { SkillDraft } from "./types.js";
 
@@ -76,9 +76,7 @@ describe("trackSkillUsage", () => {
 
     await expect(
       trackSkillUsage({
-        toolMetas: [
-          { toolName: "read", meta: `/path/skills/agent/nonexistent-skill/SKILL.md` },
-        ],
+        toolMetas: [{ toolName: "read", meta: `/path/skills/agent/nonexistent-skill/SKILL.md` }],
         configDir: tempDir,
       }),
     ).resolves.toBeUndefined();

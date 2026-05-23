@@ -81,7 +81,8 @@ export function createMcpConfigTool(): AnyAgentTool {
         if (!isRecord(parsed)) {
           return jsonResult({
             ok: false,
-            error: "server must be a JSON object, e.g. {\"command\":\"npx\",\"args\":[\"-y\",\"@context7/mcp\"]}",
+            error:
+              'server must be a JSON object, e.g. {"command":"npx","args":["-y","@context7/mcp"]}',
           });
         }
         const result = await setConfiguredMcpServer({ name, server: parsed });

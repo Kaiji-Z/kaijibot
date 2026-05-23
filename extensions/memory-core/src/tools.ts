@@ -340,7 +340,7 @@ export function createMemorySearchTool(options: {
             citations: citationsMode,
             mode: searchMode,
             debug: searchDebug,
-            ...(computeSearchFreshnessWarnings(results)),
+            ...computeSearchFreshnessWarnings(results),
           });
         } catch (err) {
           const message = formatErrorMessage(err);

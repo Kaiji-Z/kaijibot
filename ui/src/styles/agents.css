@@ -3,7 +3,8 @@
    =========================================== */
 
 @keyframes pulse-green {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
   }
   50% {
@@ -12,7 +13,9 @@
 }
 
 @keyframes typing-bounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     opacity: 0.25;
   }
   40% {
@@ -32,8 +35,12 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes rise {
@@ -1028,7 +1035,9 @@
   display: flex;
   flex-direction: column;
   max-height: 85vh;
-  transition: max-width 0.3s var(--ease-out), max-height 0.3s var(--ease-out);
+  transition:
+    max-width 0.3s var(--ease-out),
+    max-height 0.3s var(--ease-out);
 }
 
 .md-preview-dialog__panel.fullscreen {

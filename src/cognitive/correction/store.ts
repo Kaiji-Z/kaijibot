@@ -1,8 +1,8 @@
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   CORRECTION_STORE_VERSION,
@@ -76,7 +76,11 @@ export class CorrectionStore {
     }
   }
 
-  private async writeRecords(agentId: string, userId: string, records: CorrectionRecord[]): Promise<void> {
+  private async writeRecords(
+    agentId: string,
+    userId: string,
+    records: CorrectionRecord[],
+  ): Promise<void> {
     const dir = this.correctionDir(agentId);
     await mkdir(dir, { recursive: true });
     const data: CorrectionStoreData = {
@@ -102,7 +106,12 @@ export class CorrectionStore {
     target.reinforcedCount++;
     target.lastReinforced = Date.now();
     await this.writeRecords(agentId, userId, records);
-    log.info("correction reinforced", { id, reinforcedCount: target.reinforcedCount, agentId, userId });
+    log.info("correction reinforced", {
+      id,
+      reinforcedCount: target.reinforcedCount,
+      agentId,
+      userId,
+    });
   }
 
   async findSimilar(
@@ -168,8 +177,8 @@ export class CorrectionStore {
     try {
       const entries = await readdir(dir);
       return entries
-        .filter(name => name.endsWith(".json"))
-        .map(name => name.slice(0, -5))
+        .filter((name) => name.endsWith(".json"))
+        .map((name) => name.slice(0, -5))
         .sort();
     } catch {
       return [];

@@ -133,16 +133,21 @@ function makeDeps(
   };
 }
 
-const SUBSTANTIVE_USER_TEXT = "我一直在想，为什么 Rust 的所有权模型和 TypeScript 的类型系统在内存安全方面有完全不同的设计哲学？是因为它们解决的问题本质不同吗？";
-const ASSISTANT_TEXT = "Rust 的所有权模型解决的是运行时内存安全问题，而 TypeScript 的类型系统解决的是编译时类型安全问题。它们确实在不同层面工作。";
+const SUBSTANTIVE_USER_TEXT =
+  "我一直在想，为什么 Rust 的所有权模型和 TypeScript 的类型系统在内存安全方面有完全不同的设计哲学？是因为它们解决的问题本质不同吗？";
+const ASSISTANT_TEXT =
+  "Rust 的所有权模型解决的是运行时内存安全问题，而 TypeScript 的类型系统解决的是编译时类型安全问题。它们确实在不同层面工作。";
 
 // ─── Success path ───
 
 describe("collectFragments — success path", () => {
   it("returns 1-2 fragments from valid LLM response", async () => {
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(),
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result.length).toBeLessThanOrEqual(2);
@@ -151,8 +156,11 @@ describe("collectFragments — success path", () => {
   it("fills id, createdAt, expiresAt for each fragment", async () => {
     const before = Date.now();
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(),
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(),
     );
     const after = Date.now();
     expect(result.length).toBeGreaterThan(0);
@@ -167,15 +175,20 @@ describe("collectFragments — success path", () => {
 
   it("truncates evidence to 200 chars", async () => {
     const longEvidence = "A".repeat(300);
-    const response = JSON.stringify([{
-      kind: "assumption",
-      evidence: longEvidence,
-      structuralTag: "test",
-      strength: 0.5,
-    }]);
+    const response = JSON.stringify([
+      {
+        kind: "assumption",
+        evidence: longEvidence,
+        structuralTag: "test",
+        strength: 0.5,
+      },
+    ]);
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(undefined, response),
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(undefined, response),
     );
     expect(result.length).toBe(1);
     expect(result[0]!.evidence.length).toBe(200);
@@ -187,8 +200,11 @@ describe("collectFragments — success path", () => {
       { kind: "knowledge_gap", evidence: "gap evidence", structuralTag: "gap", strength: -0.3 },
     ]);
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(undefined, response),
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(undefined, response),
     );
     expect(result.length).toBe(2);
     expect(result[0]!.strength).toBe(1);
@@ -201,26 +217,50 @@ describe("collectFragments — success path", () => {
 describe("collectFragments — trivial turn filtering", () => {
   it("returns empty for empty user text", async () => {
     const result = await collectFragments(
-      "", ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(),
+      "",
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(),
     );
     expect(result).toEqual([]);
   });
 
   it("returns empty for short user text (<20 chars)", async () => {
     const result = await collectFragments(
-      "这是很短的消息", ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(),
+      "这是很短的消息",
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(),
     );
     expect(result).toEqual([]);
   });
 
   it("returns empty for Chinese acknowledgment patterns", async () => {
-    const acks = ["好的", "嗯", "收到", "了解", "谢谢", "感谢", "明白", "知道", "可以", "行", "对", "是", "不错", "没问题"];
+    const acks = [
+      "好的",
+      "嗯",
+      "收到",
+      "了解",
+      "谢谢",
+      "感谢",
+      "明白",
+      "知道",
+      "可以",
+      "行",
+      "对",
+      "是",
+      "不错",
+      "没问题",
+    ];
     for (const ack of acks) {
       const result = await collectFragments(
-        ack, ASSISTANT_TEXT,
-        makePersona(), makeConfig(), makeDeps(),
+        ack,
+        ASSISTANT_TEXT,
+        makePersona(),
+        makeConfig(),
+        makeDeps(),
       );
       expect(result).toEqual([]);
     }
@@ -228,8 +268,11 @@ describe("collectFragments — trivial turn filtering", () => {
 
   it("returns empty for pure punctuation/emoji", async () => {
     const result = await collectFragments(
-      "！？。，…", ASSISTANT_TEXT,
-      makePersona(), makeConfig(), makeDeps(),
+      "！？。，…",
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      makeDeps(),
     );
     expect(result).toEqual([]);
   });
@@ -237,8 +280,11 @@ describe("collectFragments — trivial turn filtering", () => {
   it("processes substantive user text normally", async () => {
     const deps = makeDeps();
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result.length).toBeGreaterThan(0);
     expect(deps.complete).toHaveBeenCalledOnce();
@@ -250,12 +296,17 @@ describe("collectFragments — trivial turn filtering", () => {
 describe("collectFragments — LLM failure modes", () => {
   it("returns empty on LLM throw (general Error)", async () => {
     const deps: FragmentCollectorDeps = {
-      complete: vi.fn(async () => { throw new Error("LLM unavailable"); }),
+      complete: vi.fn(async () => {
+        throw new Error("LLM unavailable");
+      }),
       prepareModel: vi.fn(async () => ({ model: TEST_MODEL, auth: TEST_AUTH })),
     };
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result).toEqual([]);
   });
@@ -266,8 +317,11 @@ describe("collectFragments — LLM failure modes", () => {
       prepareModel: vi.fn(async () => ({ error: "No API key configured" })),
     };
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result).toEqual([]);
     expect(deps.complete).not.toHaveBeenCalled();
@@ -276,8 +330,11 @@ describe("collectFragments — LLM failure modes", () => {
   it("returns empty on empty LLM response", async () => {
     const deps = makeDeps(undefined, "");
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result).toEqual([]);
   });
@@ -285,8 +342,11 @@ describe("collectFragments — LLM failure modes", () => {
   it("returns empty on malformed JSON", async () => {
     const deps = makeDeps(undefined, "this is not json at all");
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result).toEqual([]);
   });
@@ -294,21 +354,26 @@ describe("collectFragments — LLM failure modes", () => {
   it("returns empty on JSON without array", async () => {
     const deps = makeDeps(undefined, JSON.stringify({ kind: "assumption" }));
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result).toEqual([]);
   });
 
   it("returns empty on items missing required fields", async () => {
-    const deps = makeDeps(undefined, JSON.stringify([
-      { kind: "assumption" },
-      { evidence: "missing kind" },
-      {},
-    ]));
+    const deps = makeDeps(
+      undefined,
+      JSON.stringify([{ kind: "assumption" }, { evidence: "missing kind" }, {}]),
+    );
     const result = await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(result).toEqual([]);
   });
@@ -346,11 +411,13 @@ describe("parseFragments", () => {
   });
 
   it("defaults strength to 0.5 when missing", () => {
-    const input = JSON.stringify([{
-      kind: "assumption",
-      evidence: "test evidence",
-      structuralTag: "tag",
-    }]);
+    const input = JSON.stringify([
+      {
+        kind: "assumption",
+        evidence: "test evidence",
+        structuralTag: "tag",
+      },
+    ]);
     const result = parseFragments(input);
     expect(result).toHaveLength(1);
     expect(result[0]!.strength).toBe(0.5);
@@ -379,7 +446,11 @@ describe("buildFragmentPrompt", () => {
   });
 
   it("includes user and assistant text in prompt", () => {
-    const prompt = buildFragmentPrompt("my user text here", "my assistant reply here", makePersona());
+    const prompt = buildFragmentPrompt(
+      "my user text here",
+      "my assistant reply here",
+      makePersona(),
+    );
     expect(prompt).toContain("my user text here");
     expect(prompt).toContain("my assistant reply here");
   });
@@ -390,8 +461,11 @@ describe("buildFragmentPrompt", () => {
       if (messages.length > 0) capturedPrompt = messages[0]!.content;
     });
     await collectFragments(
-      SUBSTANTIVE_USER_TEXT, ASSISTANT_TEXT,
-      makePersona(), makeConfig(), deps,
+      SUBSTANTIVE_USER_TEXT,
+      ASSISTANT_TEXT,
+      makePersona(),
+      makeConfig(),
+      deps,
     );
     expect(capturedPrompt).toContain("typescript");
     expect(capturedPrompt).toContain(SUBSTANTIVE_USER_TEXT.slice(0, 30));

@@ -14,7 +14,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Tests that need session ingestion stub KAIJIBOT_STATE_DIR and require the real impl,
 // so the mock delegates to the original when that env var is set.
 vi.mock("kaijibot/plugin-sdk/memory-core-host-engine-qmd", async (importOriginal) => {
-  const original = await importOriginal<typeof import("kaijibot/plugin-sdk/memory-core-host-engine-qmd")>();
+  const original =
+    await importOriginal<typeof import("kaijibot/plugin-sdk/memory-core-host-engine-qmd")>();
   return {
     ...original,
     listSessionFilesForAgent: vi.fn(async (agentId: string) => {

@@ -5,25 +5,25 @@
  *     pnpm test src/cognitive/insight/insight-pipeline-live-eval.test.ts
  */
 
-import { describe, it, expect } from "vitest";
-import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
+import { describe, it, expect } from "vitest";
+import type { KaijiBotConfig } from "../../config/config.js";
+import { resolveConfigDir } from "../../utils.js";
 import { ProactiveScheduler, type InsightGeneratorFn } from "../scheduler/proactive-scheduler.js";
+import type { SchedulerConfig, SchedulerEvent } from "../scheduler/types.js";
+import type { PersonaTree } from "../types.js";
+import { FragmentStore } from "./fragment-store.js";
+import type { Fragment } from "./fragment-types.js";
 import {
   generateInsightCandidatesLLM,
   GENERIC_INSIGHT_PATTERNS,
   type LlmInsightDeps,
   type WebSearchResult,
 } from "./llm-engine.js";
-import { FragmentStore } from "./fragment-store.js";
-import type { Fragment } from "./fragment-types.js";
-import type { PersonaTree } from "../types.js";
 import type { InsightCandidate } from "./types.js";
-import type { SchedulerConfig, SchedulerEvent } from "../scheduler/types.js";
-import type { KaijiBotConfig } from "../../config/config.js";
-import { resolveConfigDir } from "../../utils.js";
 
 // ─── Constants ───
 
@@ -197,8 +197,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 3_600_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "assumption",
-      evidence:
-        "假设所有问题都可以通过添加更多抽象层来解决，但实际系统复杂度存在非线性拐点",
+      evidence: "假设所有问题都可以通过添加更多抽象层来解决，但实际系统复杂度存在非线性拐点",
       domains: ["AI/认知架构", "软件架构"],
       structuralTag: "layering-bias",
       strength: 0.7,
@@ -209,8 +208,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 2_700_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "methodological_habit",
-      evidence:
-        "习惯用 prompt engineering 替代真正的系统设计思考，导致架构决策被推迟到 prompt 层",
+      evidence: "习惯用 prompt engineering 替代真正的系统设计思考，导致架构决策被推迟到 prompt 层",
       domains: ["AI/认知架构", "产品思维"],
       structuralTag: "prompt-as-architecture",
       strength: 0.65,
@@ -221,8 +219,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 2_400_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "unresolved_tension",
-      evidence:
-        "对系统可靠性的追求与快速迭代的渴望之间存在矛盾——验证 pipeline 越复杂，迭代越慢",
+      evidence: "对系统可靠性的追求与快速迭代的渴望之间存在矛盾——验证 pipeline 越复杂，迭代越慢",
       domains: ["软件架构", "AI/机器学习"],
       structuralTag: "reliability-vs-velocity",
       strength: 0.75,
@@ -233,8 +230,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 1_800_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "implicit_priority",
-      evidence:
-        "隐含地优先选择自建方案而非使用现有工具，即使现有工具更成熟",
+      evidence: "隐含地优先选择自建方案而非使用现有工具，即使现有工具更成熟",
       domains: ["软件架构", "云/基础设施"],
       structuralTag: "build-vs-buy-bias",
       strength: 0.6,
@@ -245,8 +241,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 1_200_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "assumption",
-      evidence:
-        "假设主动推送越频繁用户越满意，但实际存在信息疲劳的阈值效应",
+      evidence: "假设主动推送越频繁用户越满意，但实际存在信息疲劳的阈值效应",
       domains: ["AI产品/主动型Agent设计", "心理学/亲密关系"],
       structuralTag: "frequency-satisfaction-linear",
       strength: 0.7,
@@ -257,8 +252,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 900_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "knowledge_gap",
-      evidence:
-        "对 Rust 所有权模型在嵌入式系统中的应用场景了解有限，但频繁表达兴趣",
+      evidence: "对 Rust 所有权模型在嵌入式系统中的应用场景了解有限，但频繁表达兴趣",
       domains: ["编程语言", "AI/机器学习"],
       structuralTag: "rust-embedded-gap",
       strength: 0.55,
@@ -269,8 +263,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 600_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "implicit_priority",
-      evidence:
-        "在讨论 AI 伦理时倾向关注技术实现可行性而非哲学基础，可能忽略了规范性维度",
+      evidence: "在讨论 AI 伦理时倾向关注技术实现可行性而非哲学基础，可能忽略了规范性维度",
       domains: ["哲学/伦理学", "AI/认知架构"],
       structuralTag: "tech-over-ethics-priority",
       strength: 0.65,
@@ -281,8 +274,7 @@ async function seedFragments(userId: string, store: FragmentStore): Promise<void
       createdAt: now - 300_000,
       expiresAt: now + 13 * 24 * 3_600_000,
       kind: "methodological_habit",
-      evidence:
-        "习惯从架构层面思考问题，但很少从用户心智模型出发反向验证设计假设",
+      evidence: "习惯从架构层面思考问题，但很少从用户心智模型出发反向验证设计假设",
       domains: ["产品思维", "创业/商业"],
       structuralTag: "architecture-first-blindspot",
       strength: 0.7,
@@ -358,14 +350,14 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
   // 3. Domain diversity
   const allDomains = resolved.flatMap((r) => r.insight?.targetDomains ?? []);
   const uniqueDomains = new Set(allDomains);
-  console.log(
-    `  域分布: ${uniqueDomains.size} unique domains: ${[...uniqueDomains].join(", ")}`,
-  );
+  console.log(`  域分布: ${uniqueDomains.size} unique domains: ${[...uniqueDomains].join(", ")}`);
 
   // 4. Source diversity
   const patternCount = resolved.filter((r) => r.insight?.source === "v2").length;
   const knowledgeCount = resolved.filter((r) => r.insight?.source !== "v2").length;
-  console.log(`  Knowledge 洞察: ${knowledgeCount}/${resolved.length}, Pattern 洞察: ${patternCount}/${resolved.length}`);
+  console.log(
+    `  Knowledge 洞察: ${knowledgeCount}/${resolved.length}, Pattern 洞察: ${patternCount}/${resolved.length}`,
+  );
 
   // 5. Content quality — banned pattern check
   const allKeyInsights = Object.values(persona.domains).flatMap((d) => d.keyInsights);
@@ -373,7 +365,8 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
     if (!r.insight) return 0;
     return GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(r.insight!.content)).length;
   });
-  const cleanRate = bannedHits.length > 0 ? bannedHits.filter((h) => h === 0).length / bannedHits.length : 1;
+  const cleanRate =
+    bannedHits.length > 0 ? bannedHits.filter((h) => h === 0).length / bannedHits.length : 1;
   const keyInsightRate =
     resolved.length > 0
       ? resolved.filter(
@@ -395,9 +388,7 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
     if (!r.insight) return false;
     return r.insight.targetDomains.some((d) => !userDomainSet.has(d));
   });
-  console.log(
-    `  非用户域洞察 (2-hop): ${nonUserDomainInsights.length}/${resolved.length}`,
-  );
+  console.log(`  非用户域洞察 (2-hop): ${nonUserDomainInsights.length}/${resolved.length}`);
 
   console.log(`  ═════════════════════════════════\n`);
 
@@ -412,139 +403,146 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe
-  .skipIf(!isLive || !ZAI_API_KEY)
-  ("live pipeline evaluation — unified pipeline, real persona + real LLM + web search", () => {
-    it(`runs ${ROUNDS} rounds of search→identify→resolve and evaluates`, async () => {
-      const persona = loadRealPersona();
-      const domainCount = Object.keys(persona.domains).length;
-      const trust = persona.rapport.trustScore;
-      console.log(`\n  Persona: ${domainCount} domains, trust=${trust.toFixed(2)}`);
-      console.log(`  Domains: ${Object.keys(persona.domains).join(", ")}`);
+describe.skipIf(!isLive || !ZAI_API_KEY)(
+  "live pipeline evaluation — unified pipeline, real persona + real LLM + web search",
+  () => {
+    it(
+      `runs ${ROUNDS} rounds of search→identify→resolve and evaluates`,
+      async () => {
+        const persona = loadRealPersona();
+        const domainCount = Object.keys(persona.domains).length;
+        const trust = persona.rapport.trustScore;
+        console.log(`\n  Persona: ${domainCount} domains, trust=${trust.toFixed(2)}`);
+        console.log(`  Domains: ${Object.keys(persona.domains).join(", ")}`);
 
-      // 2. Seed fragments for pattern mode
-      const userId = persona.identity?.userId ?? "test-user";
-      const configDir = resolveConfigDir();
-      const fragmentStore = new FragmentStore(configDir);
-      await seedFragments(userId, fragmentStore);
-      console.log(`  Seeded fragments for userId=${userId}`);
+        // 2. Seed fragments for pattern mode
+        const userId = persona.identity?.userId ?? "test-user";
+        const configDir = resolveConfigDir();
+        const fragmentStore = new FragmentStore(configDir);
+        await seedFragments(userId, fragmentStore);
+        console.log(`  Seeded fragments for userId=${userId}`);
 
-      // 3. Build unified pipeline
-      const llmDeps = makeRealLlmDeps();
-      const config = makeMinimalConfig();
+        // 3. Build unified pipeline
+        const llmDeps = makeRealLlmDeps();
+        const config = makeMinimalConfig();
 
-      const unifiedGenerator: InsightGeneratorFn = (p, input, options) => {
-        return generateInsightCandidatesLLM(p, input, config, llmDeps, {
-          maxCandidates: options?.maxCandidates,
-          timeout: 30_000,
-        });
-      };
-
-      // 4. Create scheduler with fragment store for pattern mode
-      const scheduler = new ProactiveScheduler(
-        makeSchedulerConfig(),
-        {
-          loadPersona: async () => persona,
-          onInsightReady: async () => {},
-          savePersona: async () => {},
-        },
-        { insightGenerator: unifiedGenerator, fragmentStore },
-      );
-
-      // 5. Run 5 rounds
-      const results: RoundResult[] = [];
-
-      for (let round = 0; round < ROUNDS; round++) {
-        const event: SchedulerEvent = {
-          type: "timer",
-          timestamp: Date.now() + round * 3_600_000, // 1 hour apart for seeded shuffle variety
+        const unifiedGenerator: InsightGeneratorFn = (p, input, options) => {
+          return generateInsightCandidatesLLM(p, input, config, llmDeps, {
+            maxCandidates: options?.maxCandidates,
+            timeout: 30_000,
+          });
         };
 
-        // search → identify (bypass gate)
-        const opportunities = await scheduler.search(persona, event);
-        const selectedPool = scheduler.identify(opportunities, persona);
+        // 4. Create scheduler with fragment store for pattern mode
+        const scheduler = new ProactiveScheduler(
+          makeSchedulerConfig(),
+          {
+            loadPersona: async () => persona,
+            onInsightReady: async () => {},
+            savePersona: async () => {},
+          },
+          { insightGenerator: unifiedGenerator, fragmentStore },
+        );
 
-        if (selectedPool.length === 0) {
-          console.log(`  [Round ${round + 1}] identify returned empty (${opportunities.length} opportunities)`);
+        // 5. Run 5 rounds
+        const results: RoundResult[] = [];
+
+        for (let round = 0; round < ROUNDS; round++) {
+          const event: SchedulerEvent = {
+            type: "timer",
+            timestamp: Date.now() + round * 3_600_000, // 1 hour apart for seeded shuffle variety
+          };
+
+          // search → identify (bypass gate)
+          const opportunities = await scheduler.search(persona, event);
+          const selectedPool = scheduler.identify(opportunities, persona);
+
+          if (selectedPool.length === 0) {
+            console.log(
+              `  [Round ${round + 1}] identify returned empty (${opportunities.length} opportunities)`,
+            );
+            results.push({
+              round: round + 1,
+              opportunityTypes: opportunities.map((o) => o.type),
+              selected: null,
+              insight: null,
+            });
+            continue;
+          }
+
+          const selected = selectedPool[0]!;
+          console.log(
+            `  [Round ${round + 1}] identify → ${selected.type} | domains: ${selected.targetDomains.join(",")} | pAct: ${selected.pAct.toFixed(3)}`,
+          );
+
+          // resolve (real LLM call)
+          const insight = await scheduler.resolve("main", persona, selected);
+
+          if (insight) {
+            persona.feedbackProfile.recentInsightIds = [
+              ...(persona.feedbackProfile.recentInsightIds ?? []),
+              insight.id,
+            ].slice(-20);
+            persona.feedbackProfile.recentInsightContents = [
+              ...(persona.feedbackProfile.recentInsightContents ?? []),
+              insight.content,
+            ].slice(-5);
+            persona.feedbackProfile.recentInsightDomains = [
+              ...(persona.feedbackProfile.recentInsightDomains ?? []),
+              insight.targetDomains,
+            ].slice(-5);
+            persona.feedbackProfile.recentInsightTypes = [
+              ...(persona.feedbackProfile.recentInsightTypes ?? []),
+              selected.type,
+            ].slice(-5);
+            if (insight.searchQueryUsed) {
+              persona.feedbackProfile.recentInsightQueryHistory = [
+                ...(persona.feedbackProfile.recentInsightQueryHistory ?? []),
+                insight.searchQueryUsed,
+              ].slice(-10);
+            }
+
+            console.log(
+              `    洞察 (${insight.source ?? "v1"}): ${insight.content.slice(0, 120)}...`,
+            );
+            console.log(`    Web sources: ${insight.sources.length}`);
+          } else {
+            // Track failed attempt so identify() cooldown can diversify next round
+            persona.feedbackProfile.recentInsightDomains = [
+              ...(persona.feedbackProfile.recentInsightDomains ?? []),
+              selected.targetDomains,
+            ].slice(-5);
+            persona.feedbackProfile.recentInsightTypes = [
+              ...(persona.feedbackProfile.recentInsightTypes ?? []),
+              selected.type,
+            ].slice(-5);
+            console.log(`    resolve 返回 null`);
+          }
+
           results.push({
             round: round + 1,
             opportunityTypes: opportunities.map((o) => o.type),
-            selected: null,
-            insight: null,
+            selected: {
+              type: selected.type,
+              targetDomains: selected.targetDomains,
+              pAct: selected.pAct,
+            },
+            insight: insight
+              ? {
+                  id: insight.id,
+                  content: insight.content,
+                  source: insight.source ?? "v1",
+                  targetDomains: insight.targetDomains,
+                  hasWebSources: insight.sources.length > 0,
+                }
+              : null,
           });
-          continue;
         }
 
-        const selected = selectedPool[0]!;
-        console.log(
-          `  [Round ${round + 1}] identify → ${selected.type} | domains: ${selected.targetDomains.join(",")} | pAct: ${selected.pAct.toFixed(3)}`,
-        );
-
-        // resolve (real LLM call)
-        const insight = await scheduler.resolve("main", persona, selected);
-
-        if (insight) {
-          persona.feedbackProfile.recentInsightIds = [
-            ...(persona.feedbackProfile.recentInsightIds ?? []),
-            insight.id,
-          ].slice(-20);
-          persona.feedbackProfile.recentInsightContents = [
-            ...(persona.feedbackProfile.recentInsightContents ?? []),
-            insight.content,
-          ].slice(-5);
-          persona.feedbackProfile.recentInsightDomains = [
-            ...(persona.feedbackProfile.recentInsightDomains ?? []),
-            insight.targetDomains,
-          ].slice(-5);
-          persona.feedbackProfile.recentInsightTypes = [
-            ...(persona.feedbackProfile.recentInsightTypes ?? []),
-            selected.type,
-          ].slice(-5);
-          if (insight.searchQueryUsed) {
-            persona.feedbackProfile.recentInsightQueryHistory = [
-              ...(persona.feedbackProfile.recentInsightQueryHistory ?? []),
-              insight.searchQueryUsed,
-            ].slice(-10);
-          }
-
-          console.log(
-            `    洞察 (${insight.source ?? "v1"}): ${insight.content.slice(0, 120)}...`,
-          );
-          console.log(`    Web sources: ${insight.sources.length}`);
-        } else {
-          // Track failed attempt so identify() cooldown can diversify next round
-          persona.feedbackProfile.recentInsightDomains = [
-            ...(persona.feedbackProfile.recentInsightDomains ?? []),
-            selected.targetDomains,
-          ].slice(-5);
-          persona.feedbackProfile.recentInsightTypes = [
-            ...(persona.feedbackProfile.recentInsightTypes ?? []),
-            selected.type,
-          ].slice(-5);
-          console.log(`    resolve 返回 null`);
-        }
-
-        results.push({
-          round: round + 1,
-          opportunityTypes: opportunities.map((o) => o.type),
-          selected: {
-            type: selected.type,
-            targetDomains: selected.targetDomains,
-            pAct: selected.pAct,
-          },
-          insight: insight
-            ? {
-                id: insight.id,
-                content: insight.content,
-                source: insight.source ?? "v1",
-                targetDomains: insight.targetDomains,
-                hasWebSources: insight.sources.length > 0,
-              }
-            : null,
-        });
-      }
-
-      // 6. Evaluate and report
-      evaluateResults(results, persona);
-    }, 20 * 60 * 1000);
-  });
+        // 6. Evaluate and report
+        evaluateResults(results, persona);
+      },
+      20 * 60 * 1000,
+    );
+  },
+);

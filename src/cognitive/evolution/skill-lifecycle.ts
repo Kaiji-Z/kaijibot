@@ -1,12 +1,10 @@
-import type { SkillMeta, DedupCheckResult } from "./types.js";
 import type { SkillPersistenceWriter } from "./skill-writer.js";
+import type { SkillMeta, DedupCheckResult } from "./types.js";
 
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array<number>(n + 1).fill(0),
-  );
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array<number>(n + 1).fill(0));
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
   for (let i = 1; i <= m; i++) {
@@ -61,8 +59,7 @@ export class SkillLifecycleManager {
 
     for (const existing of allMeta) {
       const maxLen = Math.max(name.length, existing.name.length);
-      const nameSim =
-        maxLen === 0 ? 1 : 1 - levenshtein(name, existing.name) / maxLen;
+      const nameSim = maxLen === 0 ? 1 : 1 - levenshtein(name, existing.name) / maxLen;
       const descSim = jaccard(description, existing.description);
       const combined = 0.4 * nameSim + 0.6 * descSim;
       if (combined > 0.5) {
@@ -73,20 +70,14 @@ export class SkillLifecycleManager {
     return results;
   }
 
-  async checkDuplicate(
-    name: string,
-    description: string,
-  ): Promise<DedupCheckResult> {
+  async checkDuplicate(name: string, description: string): Promise<DedupCheckResult> {
     const similar = await this.findSimilar(name, description);
     if (similar.length > 0) {
       const allMeta = await this.listSkills();
       const match = allMeta.find((m) => m.name === similar[0]);
       const maxLen = Math.max(name.length, similar[0].length);
-      const nameSim =
-        maxLen === 0 ? 1 : 1 - levenshtein(name, similar[0]) / maxLen;
-      const descSim = match
-        ? jaccard(description, match.description)
-        : 0;
+      const nameSim = maxLen === 0 ? 1 : 1 - levenshtein(name, similar[0]) / maxLen;
+      const descSim = match ? jaccard(description, match.description) : 0;
       const similarity = 0.4 * nameSim + 0.6 * descSim;
       return {
         duplicate: true,
@@ -132,10 +123,17 @@ Consider two skills duplicates if they solve the same class of problems, even if
 
     try {
       const response = await deps.generateText(prompt);
-      const cleaned = response.trim().replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+      const cleaned = response
+        .trim()
+        .replace(/^```(?:json)?\s*\n?/, "")
+        .replace(/\n?```\s*$/, "");
       const parsed = JSON.parse(cleaned);
 
-      if (parsed.duplicate === true && typeof parsed.skillName === "string" && (parsed.confidence ?? 0) > 0.7) {
+      if (
+        parsed.duplicate === true &&
+        typeof parsed.skillName === "string" &&
+        (parsed.confidence ?? 0) > 0.7
+      ) {
         // Verify the skillName actually exists in the list
         const match = existingSkills.find((s) => s.name === parsed.skillName);
         if (match) {

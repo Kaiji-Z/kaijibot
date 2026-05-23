@@ -24,29 +24,26 @@
  *     - Skill lifecycle: write → touchSkill → verify usage tracking
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EvolutionCandidate, SkillDraft } from "./types.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetHeartbeatWakeStateForTests } from "../../infra/heartbeat-wake.js";
+import { peekSystemEventEntries, resetSystemEventsForTest } from "../../infra/system-events.js";
 import { EvolutionEngine } from "./engine.js";
-import { EvolutionStore } from "./store.js";
 import { evaluateHardTrigger } from "./hard-trigger.js";
 import { generateSkillDraftLLM } from "./llm-draft-generator.js";
-import { SkillPersistenceWriter } from "./skill-writer.js";
 import { SkillLifecycleManager } from "./skill-lifecycle.js";
-import {
-  peekSystemEventEntries,
-  resetSystemEventsForTest,
-} from "../../infra/system-events.js";
-import { resetHeartbeatWakeStateForTests } from "../../infra/heartbeat-wake.js";
+import { SkillPersistenceWriter } from "./skill-writer.js";
+import { EvolutionStore } from "./store.js";
+import type { EvolutionCandidate, SkillDraft } from "./types.js";
 
 const { mockRequestHeartbeatNow } = vi.hoisted(() => ({
   mockRequestHeartbeatNow: vi.fn(),
 }));
 
 vi.mock("../../infra/heartbeat-wake.js", async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>;
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     requestHeartbeatNow: mockRequestHeartbeatNow,
@@ -115,9 +112,15 @@ describe("Phase 1: hard-trigger signal generation via evaluateHardTrigger", () =
   it("enqueues concise signal for 3+ user-triggered tool calls", async () => {
     await evaluateHardTrigger({
       toolMetas: [
-        { toolName: "web_search" }, { toolName: "read_file" }, { toolName: "web_search" },
-        { toolName: "write_file" }, { toolName: "read_file" }, { toolName: "web_search" },
-        { toolName: "write_file" }, { toolName: "read_file" }, { toolName: "web_search" },
+        { toolName: "web_search" },
+        { toolName: "read_file" },
+        { toolName: "web_search" },
+        { toolName: "write_file" },
+        { toolName: "read_file" },
+        { toolName: "web_search" },
+        { toolName: "write_file" },
+        { toolName: "read_file" },
+        { toolName: "web_search" },
         { toolName: "write_file" },
       ],
       sessionKey: testSessionKey,
@@ -252,7 +255,12 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
       userId: "user-ctx",
       candidate: makeCandidate({ domain: "feishu-wiki" }),
       decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "ok" },
-      draft: { name: "wiki-skill", description: "d", triggerPhrases: ["wiki"], bodyMarkdown: "# W" },
+      draft: {
+        name: "wiki-skill",
+        description: "d",
+        triggerPhrases: ["wiki"],
+        bodyMarkdown: "# W",
+      },
       timestamp: Date.now() - 7_200_000,
     });
 
@@ -261,7 +269,12 @@ describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
       userId: "user-ctx",
       candidate: makeCandidate({ domain: "data-analysis" }),
       decision: { shouldSuggest: true, confidence: 0.7, complexityScore: 0.6, reasoning: "ok" },
-      draft: { name: "data-skill", description: "d", triggerPhrases: ["data"], bodyMarkdown: "# D" },
+      draft: {
+        name: "data-skill",
+        description: "d",
+        triggerPhrases: ["data"],
+        bodyMarkdown: "# D",
+      },
       timestamp: Date.now() - 1_800_000,
     });
 
@@ -394,9 +407,7 @@ describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
     const dedupResult = await lifecycle.checkDuplicate(candidate2.domain, draft1.description);
     if (!dedupResult.duplicate) {
       const draft2 = await engine.generate(candidate2);
-      const dedupResult2 = await engine.checkBeforeGenerate(
-        candidate2, lifecycle, existingSkills,
-      );
+      const dedupResult2 = await engine.checkBeforeGenerate(candidate2, lifecycle, existingSkills);
       console.log(`\n  ═══ Dedup Check ═══`);
       console.log(`  Skill 1: ${draft1.name}`);
       console.log(`  Skill 2: ${draft2.name}`);
@@ -415,14 +426,16 @@ describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
     const writer = new SkillPersistenceWriter(tempDir);
     const engine = new EvolutionEngine(store);
 
-    const draft = await engine.generate(makeCandidate({
-      taskSummary: "生成周报并发送到飞书群",
-      toolCalls: ["feishu_doc_create", "feishu_im_send", "web_search"],
-      uniqueToolCount: 3,
-      reasoningTurns: 6,
-      durationMs: 80_000,
-      domain: "reporting",
-    }));
+    const draft = await engine.generate(
+      makeCandidate({
+        taskSummary: "生成周报并发送到飞书群",
+        toolCalls: ["feishu_doc_create", "feishu_im_send", "web_search"],
+        uniqueToolCount: 3,
+        reasoningTurns: 6,
+        durationMs: 80_000,
+        domain: "reporting",
+      }),
+    );
 
     const savedPath = await writer.writeSkill(draft);
     const content = readFileSync(savedPath, "utf-8");
@@ -443,14 +456,16 @@ describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
     const writer = new SkillPersistenceWriter(tempDir);
     const engine = new EvolutionEngine(store);
 
-    const draft = await engine.generate(makeCandidate({
-      taskSummary: "搜索 GitHub Trending 并生成报告",
-      toolCalls: ["web_search", "web_search", "write_file"],
-      uniqueToolCount: 2,
-      reasoningTurns: 4,
-      durationMs: 60_000,
-      domain: "github",
-    }));
+    const draft = await engine.generate(
+      makeCandidate({
+        taskSummary: "搜索 GitHub Trending 并生成报告",
+        toolCalls: ["web_search", "web_search", "write_file"],
+        uniqueToolCount: 2,
+        reasoningTurns: 4,
+        durationMs: 60_000,
+        domain: "github",
+      }),
+    );
 
     await writer.writeSkill(draft);
 
@@ -469,14 +484,16 @@ describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
     const writer = new SkillPersistenceWriter(tempDir);
     const engine = new EvolutionEngine(store);
 
-    const draft = await engine.generate(makeCandidate({
-      taskSummary: "临时调试任务",
-      toolCalls: ["exec", "exec", "exec"],
-      uniqueToolCount: 1,
-      reasoningTurns: 3,
-      durationMs: 10_000,
-      domain: "debug",
-    }));
+    const draft = await engine.generate(
+      makeCandidate({
+        taskSummary: "临时调试任务",
+        toolCalls: ["exec", "exec", "exec"],
+        uniqueToolCount: 1,
+        reasoningTurns: 3,
+        durationMs: 10_000,
+        domain: "debug",
+      }),
+    );
 
     const savedPath = await writer.writeSkill(draft);
     expect(await writer.skillExists(draft.name)).toBe(true);
@@ -513,7 +530,7 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   }));
 
   vi.mock("../../utils.js", async (importOriginal) => {
-    const actual = await importOriginal() as Record<string, unknown>;
+    const actual = (await importOriginal()) as Record<string, unknown>;
     return {
       ...actual,
       resolveConfigDir: mockResolveConfigDir,
@@ -521,7 +538,7 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   });
 
   vi.mock("../../agents/tool-error-summary.js", async (importOriginal) => {
-    const actual = await importOriginal() as Record<string, unknown>;
+    const actual = (await importOriginal()) as Record<string, unknown>;
     return {
       ...actual,
       consumeToolErrorProfile: mockConsumeToolErrorProfile,
@@ -542,14 +559,16 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   function extractToolResult(result: unknown): { status: string; [key: string]: unknown } {
     if (typeof result === "string") return { status: result };
     const r = result as { content?: Array<{ type: string; text: string }>; details?: unknown };
-    if (r.details && typeof r.details === "object") return r.details as { status: string; [key: string]: unknown };
+    if (r.details && typeof r.details === "object")
+      return r.details as { status: string; [key: string]: unknown };
     const text = r.content?.[0]?.text;
     if (text) return JSON.parse(text);
     throw new Error(`unexpected tool result: ${JSON.stringify(result)}`);
   }
 
   it("tool generates skill, saves to disk, returns status=saved", async () => {
-    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const { createEvolutionSuggestTool } =
+      await import("../../agents/tools/evolution-suggest-tool.js");
     const tool = createEvolutionSuggestTool({
       sessionKey: "agent:main:ou_tool_test_user",
     });
@@ -557,7 +576,12 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
     expect(tool).not.toBeNull();
     const result = await tool!.execute("tc-1", {
       taskSummary: "整理飞书知识库文档并按类别归档",
-      toolCalls: ["feishu_wiki_spaces", "feishu_doc_fetch", "feishu_wiki_create", "feishu_doc_write"],
+      toolCalls: [
+        "feishu_wiki_spaces",
+        "feishu_doc_fetch",
+        "feishu_wiki_create",
+        "feishu_doc_write",
+      ],
       uniqueToolCount: 4,
       reasoningTurns: 6,
       durationMs: 90_000,
@@ -586,7 +610,8 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   });
 
   it("tool detects duplicate on second call with same domain", async () => {
-    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const { createEvolutionSuggestTool } =
+      await import("../../agents/tools/evolution-suggest-tool.js");
 
     const tool = createEvolutionSuggestTool({
       sessionKey: "agent:main:ou_tool_dedup_user",
@@ -620,7 +645,8 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   });
 
   it("tool returns no_session when sessionKey has no userId", async () => {
-    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const { createEvolutionSuggestTool } =
+      await import("../../agents/tools/evolution-suggest-tool.js");
     const tool = createEvolutionSuggestTool({
       sessionKey: "agent:main:main",
     });
@@ -639,7 +665,8 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   });
 
   it("tool with no config falls back to deterministic draft", async () => {
-    const { createEvolutionSuggestTool } = await import("../../agents/tools/evolution-suggest-tool.js");
+    const { createEvolutionSuggestTool } =
+      await import("../../agents/tools/evolution-suggest-tool.js");
     const tool = createEvolutionSuggestTool({
       sessionKey: "agent:main:ou_tool_fallback_user",
     });
@@ -674,8 +701,12 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
     const candidate = makeCandidate({
       taskSummary: "归档产品评审会议纪要到飞书知识库并创建跟踪任务",
       toolCalls: [
-        "feishu_vc_search", "feishu_vc_notes", "feishu_doc_fetch",
-        "feishu_wiki_spaces", "feishu_wiki_create", "feishu_doc_write",
+        "feishu_vc_search",
+        "feishu_vc_notes",
+        "feishu_doc_fetch",
+        "feishu_wiki_spaces",
+        "feishu_wiki_create",
+        "feishu_doc_write",
         "feishu_task_create",
       ],
       uniqueToolCount: 6,
@@ -722,10 +753,17 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
     const candidate1 = makeCandidate({
       taskSummary: "批量导出飞书多维表格数据到Excel",
       toolCalls: [
-        "feishu_base_list", "feishu_base_records", "xlsx_create",
-        "xlsx_write", "xlsx_formula", "feishu_base_fields",
-        "xlsx_write", "feishu_base_records", "xlsx_formula",
-        "feishu_base_fields", "xlsx_write",
+        "feishu_base_list",
+        "feishu_base_records",
+        "xlsx_create",
+        "xlsx_write",
+        "xlsx_formula",
+        "feishu_base_fields",
+        "xlsx_write",
+        "feishu_base_records",
+        "xlsx_formula",
+        "feishu_base_fields",
+        "xlsx_write",
       ],
       uniqueToolCount: 5,
       reasoningTurns: 9,
@@ -743,8 +781,14 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
     const candidate2 = makeCandidate({
       taskSummary: "搜索竞品分析报告并整理到知识库",
       toolCalls: [
-        "web_search", "web_search", "feishu_wiki_create", "feishu_doc_write",
-        "web_search", "read_file", "feishu_doc_write", "feishu_wiki_create",
+        "web_search",
+        "web_search",
+        "feishu_wiki_create",
+        "feishu_doc_write",
+        "web_search",
+        "read_file",
+        "feishu_doc_write",
+        "feishu_wiki_create",
         "web_search",
       ],
       uniqueToolCount: 4,
@@ -754,14 +798,14 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
     });
 
     const draft2 = await engine.generate(candidate2);
-    const dedupResult = await engine.checkBeforeGenerate(
-      candidate2, lifecycle, existingSkills,
-    );
+    const dedupResult = await engine.checkBeforeGenerate(candidate2, lifecycle, existingSkills);
 
     console.log(`\n  ═══ Round 2 ═══`);
     console.log(`  Skill 1: ${draft1.name}`);
     console.log(`  Skill 2: ${draft2.name}`);
-    console.log(`  Dedup: shouldCreate=${dedupResult.shouldCreate}, existing=${dedupResult.existingSkill ?? "none"}`);
+    console.log(
+      `  Dedup: shouldCreate=${dedupResult.shouldCreate}, existing=${dedupResult.existingSkill ?? "none"}`,
+    );
     console.log(`  ═════════════════\n`);
 
     expect(draft2.name).toBeTruthy();
@@ -776,7 +820,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
     const writer = new SkillPersistenceWriter(tempDir);
     const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
       generateSkillDraftLLM(c, {
-        generateText: async () => { throw new Error("simulated API failure"); },
+        generateText: async () => {
+          throw new Error("simulated API failure");
+        },
       }),
     );
 

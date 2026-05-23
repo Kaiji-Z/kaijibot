@@ -7,7 +7,6 @@ title: "Telegram"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Telegram (Bot API)
 
 Status: production-ready for bot DMs + groups via grammY. Long polling is the default mode; webhook mode is optional.

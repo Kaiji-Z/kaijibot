@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  type FileReader,
-  type VerifiableResult,
-  verifySearchResults,
-} from "./recall-verify.js";
+import { type FileReader, type VerifiableResult, verifySearchResults } from "./recall-verify.js";
 
 function createMockReader(files: Map<string, string>): FileReader {
   return {
@@ -123,7 +119,9 @@ describe("verifySearchResults", () => {
     ].join("\n");
     const files = new Map([["notes.md", changed]]);
     const reader = createMockReader(files);
-    const results = [makeResult({ startLine: 3, endLine: 5, snippet: "hello world\nline three\nline four" })];
+    const results = [
+      makeResult({ startLine: 3, endLine: 5, snippet: "hello world\nline three\nline four" }),
+    ];
 
     const verified = await verifySearchResults(results, reader, { enabled: true });
 
@@ -214,20 +212,16 @@ describe("verifySearchResults", () => {
   });
 
   it("normalizes whitespace so differences do not cause false negatives", async () => {
-    const spaced = [
-      "line 0",
-      "line 1",
-      "hello   world",
-      "line   three",
-      "line four",
-    ].join("\n");
+    const spaced = ["line 0", "line 1", "hello   world", "line   three", "line four"].join("\n");
     const files = new Map([["notes.md", spaced]]);
     const reader = createMockReader(files);
-    const results = [makeResult({
-      startLine: 3,
-      endLine: 5,
-      snippet: "hello world\nline three\nline four",
-    })];
+    const results = [
+      makeResult({
+        startLine: 3,
+        endLine: 5,
+        snippet: "hello world\nline three\nline four",
+      }),
+    ];
 
     const verified = await verifySearchResults(results, reader, { enabled: true });
 
@@ -246,6 +240,9 @@ describe("verifySearchResults", () => {
 
     expect(verified[0].verified).toBe(true);
     expect((verified[0] as unknown as VerifiableResult & { source: string }).source).toBe("vector");
-    expect((verified[0] as unknown as VerifiableResult & { tags: string[] }).tags).toEqual(["ai", "ml"]);
+    expect((verified[0] as unknown as VerifiableResult & { tags: string[] }).tags).toEqual([
+      "ai",
+      "ml",
+    ]);
   });
 });

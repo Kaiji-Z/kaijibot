@@ -1,5 +1,4 @@
 import { complete, type Api, type Model } from "@mariozechner/pi-ai";
-
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
@@ -20,10 +19,7 @@ export type InterestInferenceDeps = {
   prepareModel: (
     cfg: KaijiBotConfig,
     modelRef?: string,
-  ) => Promise<
-    | { model: Model<Api>; auth: ResolvedProviderAuth }
-    | { error: string }
-  >;
+  ) => Promise<{ model: Model<Api>; auth: ResolvedProviderAuth } | { error: string }>;
 };
 
 // ---------------------------------------------------------------------------
@@ -32,9 +28,9 @@ export type InterestInferenceDeps = {
 
 function resolveInferenceModel(config: KaijiBotConfig): string {
   return (
-    config.cognitive?.insight?.inferenceModel
-    ?? config.cognitive?.persona?.extractionModel
-    ?? "zai/glm-5-turbo"
+    config.cognitive?.insight?.inferenceModel ??
+    config.cognitive?.persona?.extractionModel ??
+    "zai/glm-5-turbo"
   );
 }
 
@@ -56,11 +52,11 @@ function parseSearchStrategyResponse(raw: string): InferenceResult {
   }
 
   if (
-    typeof parsed.inferredInterest !== "string"
-    || typeof parsed.searchQuery !== "string"
-    || typeof parsed.bridgeReasoning !== "string"
-    || !Array.isArray(parsed.avoidTopics)
-    || typeof parsed.estimatedSurprise !== "number"
+    typeof parsed.inferredInterest !== "string" ||
+    typeof parsed.searchQuery !== "string" ||
+    typeof parsed.bridgeReasoning !== "string" ||
+    !Array.isArray(parsed.avoidTopics) ||
+    typeof parsed.estimatedSurprise !== "number"
   ) {
     return { ok: false, error: "Missing required fields in inference response" };
   }
@@ -93,18 +89,18 @@ export function buildInterestInferencePrompt(
   fragments?: Fragment[],
 ): string {
   // Section 1: Known knowledge
-  const domainEntries = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.depth - a.depth);
+  const domainEntries = Object.entries(persona.domains).sort(([, a], [, b]) => b.depth - a.depth);
 
-  const knownKnowledge = domainEntries.length > 0
-    ? domainEntries
-        .slice(0, 20)
-        .map(([name, d]) => {
-          const insights = getFilteredInsights(d).slice(0, 3).join("; ");
-          return `- ${name} (depth: ${d.depth})${insights ? ` — ${insights}` : ""}`;
-        })
-        .join("\n")
-    : "(no domains established yet)";
+  const knownKnowledge =
+    domainEntries.length > 0
+      ? domainEntries
+          .slice(0, 20)
+          .map(([name, d]) => {
+            const insights = getFilteredInsights(d).slice(0, 3).join("; ");
+            return `- ${name} (depth: ${d.depth})${insights ? ` — ${insights}` : ""}`;
+          })
+          .join("\n")
+      : "(no domains established yet)";
 
   // Section 2: Explicit interests
   const expertDomains = persona.identity.expertDomains ?? [];
@@ -115,14 +111,15 @@ export function buildInterestInferencePrompt(
     ...interestDomains.map((d) => `[interest] ${d}`),
     ...curiosityDomains.map((d) => `[curiosity] ${d}`),
   ];
-  const explicitBlock = explicitInterests.length > 0
-    ? explicitInterests.join("\n")
-    : "(not yet established)";
+  const explicitBlock =
+    explicitInterests.length > 0 ? explicitInterests.join("\n") : "(not yet established)";
 
   // Section 3: Knowledge gaps — curiosity domains without depth
   const curiositySet = new Set(curiosityDomains);
   const knownDomainSet = new Set(Object.keys(persona.domains));
-  const gaps = [...curiositySet].filter((d) => !knownDomainSet.has(d) || (persona.domains[d]?.depth ?? 0) < 2);
+  const gaps = [...curiositySet].filter(
+    (d) => !knownDomainSet.has(d) || (persona.domains[d]?.depth ?? 0) < 2,
+  );
 
   const fragmentGaps = (fragments ?? [])
     .filter((f) => f.kind === "knowledge_gap")
@@ -136,28 +133,32 @@ export function buildInterestInferencePrompt(
 
   const allGaps = [
     ...gaps,
-    ...fragmentGaps.filter((g) => !gaps.some((existing) => existing.toLowerCase() === g.toLowerCase())),
-    ...activeQuestions.filter((q) => !gaps.some((e) => e.toLowerCase() === q.toLowerCase())
-      && !fragmentGaps.some((f) => f.toLowerCase() === q.toLowerCase())),
+    ...fragmentGaps.filter(
+      (g) => !gaps.some((existing) => existing.toLowerCase() === g.toLowerCase()),
+    ),
+    ...activeQuestions.filter(
+      (q) =>
+        !gaps.some((e) => e.toLowerCase() === q.toLowerCase()) &&
+        !fragmentGaps.some((f) => f.toLowerCase() === q.toLowerCase()),
+    ),
   ];
-  const gapsBlock = allGaps.length > 0
-    ? allGaps.map((d) => `- ${d}`).join("\n")
-    : "(no clear gaps identified)";
+  const gapsBlock =
+    allGaps.length > 0 ? allGaps.map((d) => `- ${d}`).join("\n") : "(no clear gaps identified)";
 
   // Section 4: Domain connections
   const edges = persona.domainGraph?.edges ?? [];
-  const topEdges = [...edges]
-    .sort((a, b) => b.observations - a.observations)
-    .slice(0, 5);
-  const connectionsBlock = topEdges.length > 0
-    ? topEdges.map((e) => `- ${e.source} ↔ ${e.target} (${e.observations} co-occurrences)`).join("\n")
-    : "(no domain connections yet)";
+  const topEdges = [...edges].sort((a, b) => b.observations - a.observations).slice(0, 5);
+  const connectionsBlock =
+    topEdges.length > 0
+      ? topEdges
+          .map((e) => `- ${e.source} ↔ ${e.target} (${e.observations} co-occurrences)`)
+          .join("\n")
+      : "(no domain connections yet)";
 
   // Section 5: Recent focus
   const recentFocus = persona.recentFocus.slice(0, 5);
-  const recentFocusBlock = recentFocus.length > 0
-    ? recentFocus.map((f) => `- ${f}`).join("\n")
-    : "(none)";
+  const recentFocusBlock =
+    recentFocus.length > 0 ? recentFocus.map((f) => `- ${f}`).join("\n") : "(none)";
 
   // Top discussed domains for avoidTopics
   const topDiscussed = domainEntries
@@ -265,10 +266,7 @@ export async function inferSearchStrategy(
     );
 
     const text = result.content
-      .filter(
-        (block): block is { type: "text"; text: string } =>
-          block.type === "text",
-      )
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
       .map((block) => block.text)
       .join("")
       .trim();
@@ -286,7 +284,10 @@ export async function inferSearchStrategy(
         estimatedSurprise: parsed.strategy.estimatedSurprise,
       });
     } else {
-      log.warn("failed to parse inference response", { error: parsed.error, raw: text.slice(0, 200) });
+      log.warn("failed to parse inference response", {
+        error: parsed.error,
+        raw: text.slice(0, 200),
+      });
     }
     return parsed;
   } catch (err) {

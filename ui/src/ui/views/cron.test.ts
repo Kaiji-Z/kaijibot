@@ -136,7 +136,9 @@ describe("cron view", () => {
       container,
     );
 
-    const toggle = container.querySelector(".toggle-switch input[type='checkbox']") as HTMLInputElement;
+    const toggle = container.querySelector(
+      ".toggle-switch input[type='checkbox']",
+    ) as HTMLInputElement;
     toggle.checked = false;
     toggle.dispatchEvent(new Event("change"));
     expect(onToggle).toHaveBeenCalled();
@@ -294,7 +296,9 @@ describe("cron view", () => {
     );
 
     expect(container.querySelector(".cron-error")).not.toBeNull();
-    const submitBtn = container.querySelector(".cron-form-actions .btn.primary") as HTMLButtonElement;
+    const submitBtn = container.querySelector(
+      ".cron-form-actions .btn.primary",
+    ) as HTMLButtonElement;
     expect(submitBtn.disabled).toBe(true);
   });
 

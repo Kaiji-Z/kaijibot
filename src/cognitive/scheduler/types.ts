@@ -1,5 +1,5 @@
-import type { PersonaTree } from "../types.js";
 import type { InsightMode } from "../insight/types.js";
+import type { PersonaTree } from "../types.js";
 
 /** Event that triggers the proactive scheduler */
 export type SchedulerEvent = {

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatSummaryAsMarkdown,
-  type StructuredSummary,
-} from "./summary.js";
+import { formatSummaryAsMarkdown, type StructuredSummary } from "./summary.js";
 
 function makeSummary(overrides: Partial<StructuredSummary> = {}): StructuredSummary {
   return {

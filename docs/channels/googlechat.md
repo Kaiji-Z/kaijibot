@@ -7,7 +7,6 @@ title: "Google Chat"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Google Chat (Chat API)
 
 Status: ready for DMs + spaces via Google Chat API webhooks (HTTP only).
@@ -31,7 +30,7 @@ Status: ready for DMs + spaces via Google Chat API webhooks (HTTP only).
 5. Create a Google Chat app in the [Google Cloud Console Chat Configuration](https://console.cloud.google.com/apis/api/chat.googleapis.com/hangouts-chat):
    - Fill in the **Application info**:
      - **App name**: (e.g. `KaijiBot`)
-      - **Avatar URL**: (e.g. `https://example.com/logo.png`)
+     - **Avatar URL**: (e.g. `https://example.com/logo.png`)
      - **Description**: (e.g. `Personal AI Assistant`)
    - Enable **Interactive features**.
    - Under **Functionality**, check **Join spaces and group conversations**.

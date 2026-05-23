@@ -57,11 +57,8 @@ import {
   runMemorySyncWithReadonlyRecovery,
   type MemoryReadonlyRecoveryState,
 } from "./manager-sync-control.js";
+import { type RecallVerifyConfig, verifySearchResults } from "./recall-verify.js";
 import { applyTemporalDecayToHybridResults } from "./temporal-decay.js";
-import {
-  type RecallVerifyConfig,
-  verifySearchResults,
-} from "./recall-verify.js";
 const SNIPPET_MAX_CHARS = 700;
 
 type QuerySettingsWithVerify = ResolvedMemorySearchConfig["query"] & {
@@ -412,7 +409,9 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
       : [];
 
     if (!hybrid.enabled || !this.fts.enabled || !this.fts.available) {
-      const vecResults = vectorResults.filter((entry) => entry.score >= minScore).slice(0, maxResults);
+      const vecResults = vectorResults
+        .filter((entry) => entry.score >= minScore)
+        .slice(0, maxResults);
       return await this.applyVerification(vecResults);
     }
 
@@ -464,24 +463,26 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
     return results.filter((entry) => entry.score >= relaxedMinScore).slice(0, maxResults);
   }
 
-  private async applyVerification(
-    results: MemorySearchResult[],
-  ): Promise<MemorySearchResult[]> {
+  private async applyVerification(results: MemorySearchResult[]): Promise<MemorySearchResult[]> {
     const querySettings = this.settings.query as QuerySettingsWithVerify;
     const verifyConfig = querySettings.verify;
     if (!verifyConfig?.enabled) {
       return results;
     }
-    const verified = await verifySearchResults(results, {
-      readFile: async (relPath: string) => {
-        try {
-          const fullPath = path.join(this.workspaceDir, relPath);
-          return await fs.readFile(fullPath, "utf-8");
-        } catch {
-          return null;
-        }
+    const verified = await verifySearchResults(
+      results,
+      {
+        readFile: async (relPath: string) => {
+          try {
+            const fullPath = path.join(this.workspaceDir, relPath);
+            return await fs.readFile(fullPath, "utf-8");
+          } catch {
+            return null;
+          }
+        },
       },
-    }, verifyConfig);
+      verifyConfig,
+    );
     return verified
       .filter((r) => r.verified)
       .map((r) => ({

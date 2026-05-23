@@ -7,15 +7,14 @@ export type VerifiableResult = {
   [key: string]: unknown;
 };
 
-export type VerifiedResult<T extends VerifiableResult = VerifiableResult> =
-  T & {
-    /** Whether the snippet was verified to still exist at the claimed location */
-    verified: boolean;
-    /** If found at a different location, the corrected start line */
-    actualStartLine?: number;
-    /** If found at a different location, the corrected end line */
-    actualEndLine?: number;
-  };
+export type VerifiedResult<T extends VerifiableResult = VerifiableResult> = T & {
+  /** Whether the snippet was verified to still exist at the claimed location */
+  verified: boolean;
+  /** If found at a different location, the corrected start line */
+  actualStartLine?: number;
+  /** If found at a different location, the corrected end line */
+  actualEndLine?: number;
+};
 
 export type RecallVerifyConfig = {
   /** Enable/disable post-search verification. Default: false */
@@ -78,10 +77,7 @@ export async function verifySearchResults<T extends VerifiableResult>(
     const snippetNorm = normalizeForComparison(result.snippet);
     const rangeHeight = result.endLine - result.startLine + 1;
 
-    const claimedSlice = lines.slice(
-      result.startLine - 1,
-      result.endLine,
-    );
+    const claimedSlice = lines.slice(result.startLine - 1, result.endLine);
     const claimedNorm = normalizeForComparison(claimedSlice.join("\n"));
 
     if (claimedNorm.includes(snippetNorm)) {
@@ -90,10 +86,7 @@ export async function verifySearchResults<T extends VerifiableResult>(
     }
 
     const searchStart = Math.max(1, result.startLine - resolved.fuzzyWindow);
-    const searchEnd = Math.min(
-      lines.length,
-      result.endLine + resolved.fuzzyWindow,
-    );
+    const searchEnd = Math.min(lines.length, result.endLine + resolved.fuzzyWindow);
 
     let found = false;
     for (let pos = searchStart; pos + rangeHeight - 1 <= searchEnd; pos++) {

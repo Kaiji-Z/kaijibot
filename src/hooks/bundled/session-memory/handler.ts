@@ -25,11 +25,12 @@ import { isHeartbeatSessionKey } from "../../../sessions/session-key-utils.js";
 import { resolveHookConfig } from "../../config.js";
 import type { HookHandler } from "../../hooks.js";
 import {
-  findPreviousSessionFile,
-  getRecentSessionContentWithResetFallback,
-} from "./transcript.js";
-import { generateStructuredSummary, formatSummaryAsMarkdown, type SessionPointer } from "./summary.js";
+  generateStructuredSummary,
+  formatSummaryAsMarkdown,
+  type SessionPointer,
+} from "./summary.js";
 import type { StructuredSummary } from "./summary.js";
+import { findPreviousSessionFile, getRecentSessionContentWithResetFallback } from "./transcript.js";
 // Inline type — memory-core types are loaded dynamically to respect the extension boundary.
 interface TopicEntry {
   title: string;
@@ -248,9 +249,8 @@ const saveSessionToMemory: HookHandler = async (event) => {
     // --- Route to topic files ---
     if (summary.topicSlug && cfg) {
       try {
-        const { createTopicManager, MemoryIndexManager } = await import(
-          "../../../../extensions/memory-core/index.js"
-        );
+        const { createTopicManager, MemoryIndexManager } =
+          await import("../../../../extensions/memory-core/index.js");
         const nodeFs = createNodeFsAdapter();
 
         const topicManager = createTopicManager({ workspaceDir, fs: nodeFs });
@@ -262,9 +262,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
           topic = await topicManager.createTopic(summary.topicSlug, topicFileName);
         }
 
-        const entryContent = sessionContent
-          ? sessionContent.slice(0, 4000)
-          : summary.summary;
+        const entryContent = sessionContent ? sessionContent.slice(0, 4000) : summary.summary;
 
         const topicEntry: TopicEntry = {
           title: `${dateStr} session`,
@@ -323,15 +321,13 @@ const saveSessionToMemory: HookHandler = async (event) => {
     // --- Post-session correction extraction ---
     if (sessionContent && cfg && allowLlm) {
       try {
-        const { hasCorrectionSignals, extractCorrectionsFromTranscript } = await import(
-          "../../../cognitive/correction/extractor.js"
-        );
+        const { hasCorrectionSignals, extractCorrectionsFromTranscript } =
+          await import("../../../cognitive/correction/extractor.js");
         if (hasCorrectionSignals(sessionContent)) {
           const userId = extractUserIdFromSessionKey(event.sessionKey);
           if (userId) {
-            const { createStandaloneGenerateText } = await import(
-              "../../../cognitive/evolution/standalone-generate.js"
-            );
+            const { createStandaloneGenerateText } =
+              await import("../../../cognitive/evolution/standalone-generate.js");
             const { CorrectionStore } = await import("../../../cognitive/correction/store.js");
             const { resolveConfigDir } = await import("../../../utils.js");
             const { parseAgentSessionKey } = await import("../../../routing/session-key.js");
@@ -339,7 +335,10 @@ const saveSessionToMemory: HookHandler = async (event) => {
             const agentId = parsed?.agentId ?? "main";
 
             const generateText = await createStandaloneGenerateText(cfg, { maxTokens: 2000 });
-            const corrections = await extractCorrectionsFromTranscript(sessionContent, generateText);
+            const corrections = await extractCorrectionsFromTranscript(
+              sessionContent,
+              generateText,
+            );
 
             if (corrections.length > 0) {
               const corrStore = new CorrectionStore(resolveConfigDir());

@@ -178,9 +178,7 @@ export type SkillPatch = {
   replacements?: Array<{ oldText: string; newText: string }>;
 };
 
-export type SkillPatchResult =
-  | { ok: true; updatedPath: string }
-  | { ok: false; error: string };
+export type SkillPatchResult = { ok: true; updatedPath: string } | { ok: false; error: string };
 
 export type SkillMeta = {
   name: string;

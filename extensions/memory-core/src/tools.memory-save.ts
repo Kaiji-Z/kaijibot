@@ -7,24 +7,20 @@
  * Importance boost is stubbed for Wave 2A.
  */
 
-import { Type } from "@sinclair/typebox";
 import fs from "node:fs/promises";
+import { Type } from "@sinclair/typebox";
 import {
   jsonResult,
   readStringParam,
   type AnyAgentTool,
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
-
-import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
+import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { incrementGroundedCount } from "./short-term-promotion.js";
-import { type MemoryType, type TopicEntry } from "./topic-types.js";
+import { getMemoryManagerContextWithPurpose, resolveMemoryToolContext } from "./tools.shared.js";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
-import {
-  getMemoryManagerContextWithPurpose,
-  resolveMemoryToolContext,
-} from "./tools.shared.js";
+import { type MemoryType, type TopicEntry } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -39,15 +35,22 @@ export const MemorySaveSchema = Type.Object({
       "Subject-based topic name (kebab-case, e.g. 'feishu', 'philosophy'). Determines the topic file.",
   }),
   importance: Type.Optional(
-    Type.Union(
-      [Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")],
-      { description: "Importance level. High importance fast-tracks dreaming promotion." },
-    ),
+    Type.Union([Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")], {
+      description: "Importance level. High importance fast-tracks dreaming promotion.",
+    }),
   ),
   type: Type.Optional(
     Type.Union(
-      [Type.Literal("user"), Type.Literal("feedback"), Type.Literal("project"), Type.Literal("reference")],
-      { description: "Memory classification type: user (personal info), feedback (about assistant), project (work-related), reference (factual knowledge)." },
+      [
+        Type.Literal("user"),
+        Type.Literal("feedback"),
+        Type.Literal("project"),
+        Type.Literal("reference"),
+      ],
+      {
+        description:
+          "Memory classification type: user (personal info), feedback (about assistant), project (work-related), reference (factual knowledge).",
+      },
     ),
   ),
 });
@@ -63,10 +66,7 @@ export type SelfEditDecision = "append_new" | "replace_existing" | "merge";
  * Extensions cannot import `runEmbeddedPiAgent` from core, so this must be
  * wired externally. When not provided, conflicts default to `append_new`.
  */
-export type LlmDecideFn = (
-  existing: string,
-  newContent: string,
-) => Promise<SelfEditDecision>;
+export type LlmDecideFn = (existing: string, newContent: string) => Promise<SelfEditDecision>;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,8 +85,7 @@ function createNodeFsAdapter(): TopicManagerDeps["fs"] & MemoryIndexDeps["fs"] {
     writeFile: (p: string, data: string) => fs.writeFile(p, data, "utf-8"),
     mkdir: (p: string, opts: { recursive: boolean }) => fs.mkdir(p, opts).then(() => {}),
     readdir: (p: string) => fs.readdir(p),
-    stat: (p: string) =>
-      fs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
+    stat: (p: string) => fs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
     rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
   };
 }
@@ -139,10 +138,7 @@ export async function resolveSelfEditDecision(
     return await Promise.race([
       llmDecide(existingContent, newContent),
       new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("LLM decide timeout")),
-          LLM_DECIDE_TIMEOUT_MS,
-        ),
+        setTimeout(() => reject(new Error("LLM decide timeout")), LLM_DECIDE_TIMEOUT_MS),
       ),
     ]);
   } catch {
@@ -241,11 +237,7 @@ export function createMemorySaveTool(options: {
 
       if (maxSim >= SIMILARITY_THRESHOLD && maxSimIdx >= 0) {
         const existingContent = topic.entries[maxSimIdx].content;
-        const decision = await resolveSelfEditDecision(
-          options.llmDecide,
-          existingContent,
-          content,
-        );
+        const decision = await resolveSelfEditDecision(options.llmDecide, existingContent, content);
 
         switch (decision) {
           case "replace_existing":
@@ -266,9 +258,7 @@ export function createMemorySaveTool(options: {
         await topicManager.appendEntry(topicFile, newEntry);
       }
 
-      const topicTitle = topicFile
-        .replace(/\.md$/i, "")
-        .replace(/-/g, " ");
+      const topicTitle = topicFile.replace(/\.md$/i, "").replace(/-/g, " ");
       const summaryText = content.slice(0, 100).replace(/\n/g, " ").trim();
 
       await indexManager.updateSection({
@@ -291,7 +281,7 @@ export function createMemorySaveTool(options: {
           try {
             const index = await indexManager.readIndex();
             const inlineSections = index.inlineSections ?? [];
-            const existingSection = inlineSections.find(s => s.section === heading);
+            const existingSection = inlineSections.find((s) => s.section === heading);
             if (existingSection) {
               existingSection.lines.push(`- ${content.slice(0, 120).replace(/\n/g, " ").trim()}`);
             } else {

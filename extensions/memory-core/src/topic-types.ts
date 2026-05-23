@@ -85,9 +85,9 @@ export function parseTopicEntry(entryMarkdown: string): TopicEntry {
     l.trim().match(/^- \*\*Type\*\*: (user|feedback|project|reference)$/),
   );
   if (typeLineIdx >= 0) {
-    const typeMatch = contentLines[typeLineIdx]!
-      .trim()
-      .match(/^- \*\*Type\*\*: (user|feedback|project|reference)$/);
+    const typeMatch = contentLines[typeLineIdx]!.trim().match(
+      /^- \*\*Type\*\*: (user|feedback|project|reference)$/,
+    );
     if (typeMatch) {
       type = typeMatch[1] as MemoryType;
       contentLines.splice(typeLineIdx, 1);

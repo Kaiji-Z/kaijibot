@@ -7,6 +7,7 @@ vi.mock("kaijibot/plugin-sdk/memory-host-events", () => ({
   appendMemoryHostEvent: vi.fn(async () => {}),
 }));
 
+import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 import {
   applyShortTermPromotions,
   auditShortTermPromotionArtifacts,
@@ -22,7 +23,6 @@ import {
   resolveShortTermRecallStorePath,
   __testing,
 } from "./short-term-promotion.js";
-import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 
 describe("short-term promotion", () => {
   let fixtureRoot = "";
@@ -1639,7 +1639,8 @@ describe("short-term promotion", () => {
     });
 
     it("treats transcript-style dreaming prompt echoes as contaminated", () => {
-      const snippet = "[main/dreaming-narrative-light.jsonl#L1] User: Write a dream diary entry from these memory fragments:";
+      const snippet =
+        "[main/dreaming-narrative-light.jsonl#L1] User: Write a dream diary entry from these memory fragments:";
       expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
     });
 
@@ -1677,7 +1678,9 @@ describe("short-term promotion", () => {
     });
 
     it("allows feedback content", () => {
-      expect(isContaminatedDreamingSnippet("Feedback: always check docs before answering")).toBe(false);
+      expect(isContaminatedDreamingSnippet("Feedback: always check docs before answering")).toBe(
+        false,
+      );
     });
   });
 });
@@ -1699,7 +1702,11 @@ describe("promotion semantic dedup", () => {
     const items: DedupableItem[] = [
       { id: "a", score: 0.9, content: "User prefers dark mode for all IDE configurations" },
       { id: "b", score: 0.85, content: "Project uses TypeScript strict mode with no implicit any" },
-      { id: "c", score: 0.8, content: "Team follows trunk-based development with short-lived branches" },
+      {
+        id: "c",
+        score: 0.8,
+        content: "Team follows trunk-based development with short-lived branches",
+      },
     ];
     const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
     expect(result).toHaveLength(3);
@@ -1708,11 +1715,27 @@ describe("promotion semantic dedup", () => {
 
   it("handles mixed groups: some dedup, some unique", () => {
     const items: DedupableItem[] = [
-      { id: "a", score: 0.9, content: "User prefers dark mode for all IDE configurations and editor settings" },
-      { id: "b", score: 0.8, content: "User prefers dark mode for all IDE configurations and editor settings" },
+      {
+        id: "a",
+        score: 0.9,
+        content: "User prefers dark mode for all IDE configurations and editor settings",
+      },
+      {
+        id: "b",
+        score: 0.8,
+        content: "User prefers dark mode for all IDE configurations and editor settings",
+      },
       { id: "c", score: 0.85, content: "Project uses TypeScript strict mode with no implicit any" },
-      { id: "d", score: 0.7, content: "Team follows trunk-based development with short-lived feature branches" },
-      { id: "e", score: 0.75, content: "Team follows trunk-based development with short-lived feature branches" },
+      {
+        id: "d",
+        score: 0.7,
+        content: "Team follows trunk-based development with short-lived feature branches",
+      },
+      {
+        id: "e",
+        score: 0.75,
+        content: "Team follows trunk-based development with short-lived feature branches",
+      },
     ];
     const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
     expect(result).toHaveLength(3);
@@ -1732,8 +1755,16 @@ describe("promotion semantic dedup", () => {
 
   it("works with promotion-candidate-like IDs", () => {
     const items: DedupableItem[] = [
-      { id: "memory/2026-04-03.md:1:0", score: 0.95, content: "Always use the Happy Together calendar for flights and hotel reservations" },
-      { id: "memory/2026-04-04.md:3:1", score: 0.88, content: "Always use the Happy Together calendar for flights and hotel reservations" },
+      {
+        id: "memory/2026-04-03.md:1:0",
+        score: 0.95,
+        content: "Always use the Happy Together calendar for flights and hotel reservations",
+      },
+      {
+        id: "memory/2026-04-04.md:3:1",
+        score: 0.88,
+        content: "Always use the Happy Together calendar for flights and hotel reservations",
+      },
     ];
     const result = deduplicateBySimilarity(items, { enabled: true, threshold: 0.85 });
     expect(result).toHaveLength(1);

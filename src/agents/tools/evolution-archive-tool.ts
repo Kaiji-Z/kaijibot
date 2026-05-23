@@ -7,7 +7,9 @@ export const EvolutionArchiveSchema = Type.Object({
   action: Type.Union([Type.Literal("list"), Type.Literal("recover")], {
     description: "'list' to show archived skills, 'recover' to restore one",
   }),
-  name: Type.Optional(Type.String({ description: "Skill name to recover (required for 'recover' action)" })),
+  name: Type.Optional(
+    Type.String({ description: "Skill name to recover (required for 'recover' action)" }),
+  ),
 });
 
 export function createEvolutionArchiveTool(deps: {
@@ -28,7 +30,8 @@ export function createEvolutionArchiveTool(deps: {
       const params = rawParams as { action: "list" | "recover" | "remove"; name?: string };
 
       try {
-        const { SkillPersistenceWriter } = await import("../../cognitive/evolution/skill-writer.js");
+        const { SkillPersistenceWriter } =
+          await import("../../cognitive/evolution/skill-writer.js");
         const { resolveConfigDir } = await import("../../utils.js");
 
         let skillBaseDir = resolveConfigDir();
@@ -69,10 +72,7 @@ export function createEvolutionArchiveTool(deps: {
 
         return textResult("Unknown action.", { status: "error" });
       } catch (err) {
-        return textResult(
-          `Archive operation failed: ${String(err)}`,
-          { status: "error" },
-        );
+        return textResult(`Archive operation failed: ${String(err)}`, { status: "error" });
       }
     },
   };

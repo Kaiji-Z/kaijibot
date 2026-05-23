@@ -2,8 +2,13 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { MigrationChange, MigrationOptions, MigrationResult, MigrationSource } from "./types.js";
 import { BRAND_HOME_PREFIXES } from "./brand-rewrite.js";
+import type {
+  MigrationChange,
+  MigrationOptions,
+  MigrationResult,
+  MigrationSource,
+} from "./types.js";
 
 const KAIJIBOT_CONFIG_FILENAME = "kaijibot.json";
 
@@ -24,7 +29,10 @@ const KAIJIBOT_CONFIG_DEFAULTS: Record<string, unknown> = {
   },
 };
 
-function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = { ...target };
   for (const [key, value] of Object.entries(source)) {
     if (key in result) {
@@ -129,18 +137,21 @@ function rewriteStringValue(
 }
 
 /** Check for multi-agent configs without bindings and emit a warning. */
-function checkMultiAgentBindings(
-  config: Record<string, unknown>,
-  warnings: string[],
-): void {
+function checkMultiAgentBindings(config: Record<string, unknown>, warnings: string[]): void {
   const agents = config.agents as Record<string, unknown> | undefined;
-  if (!agents) { return; }
+  if (!agents) {
+    return;
+  }
 
   const agentList = agents.list as Array<Record<string, unknown>> | undefined;
-  if (!agentList || !Array.isArray(agentList) || agentList.length <= 1) { return; }
+  if (!agentList || !Array.isArray(agentList) || agentList.length <= 1) {
+    return;
+  }
 
   const bindings = config.bindings as unknown[];
-  if (bindings && Array.isArray(bindings) && bindings.length > 0) { return; }
+  if (bindings && Array.isArray(bindings) && bindings.length > 0) {
+    return;
+  }
 
   warnings.push(
     "Multi-agent config migrated but no bindings found. " +
@@ -156,18 +167,23 @@ async function validateAgentWorkspaceDirs(
   warnings: string[],
 ): Promise<void> {
   const agents = config.agents as Record<string, unknown> | undefined;
-  if (!agents) { return; }
+  if (!agents) {
+    return;
+  }
 
   const agentList = agents.list as Array<Record<string, unknown>> | undefined;
-  if (!agentList || !Array.isArray(agentList)) { return; }
+  if (!agentList || !Array.isArray(agentList)) {
+    return;
+  }
 
   for (const agent of agentList) {
     const agentId = typeof agent.id === "string" ? agent.id : "";
-    if (!agentId) { continue; }
+    if (!agentId) {
+      continue;
+    }
 
-    const workspaceRel = typeof agent.workspace === "string"
-      ? agent.workspace
-      : `workspace-${agentId}`;
+    const workspaceRel =
+      typeof agent.workspace === "string" ? agent.workspace : `workspace-${agentId}`;
     const workspaceAbs = path.resolve(targetDir, workspaceRel);
 
     try {
@@ -228,9 +244,7 @@ export async function migrateConfig(
         skipped.push(targetConfigPath);
         return { source, changes, warnings, skipped };
       }
-      warnings.push(
-        `Target config already exists: ${targetConfigPath}. Use --overwrite to merge.`,
-      );
+      warnings.push(`Target config already exists: ${targetConfigPath}. Use --overwrite to merge.`);
       skipped.push(targetConfigPath);
       return { source, changes, warnings, skipped };
     }
@@ -243,7 +257,8 @@ export async function migrateConfig(
         kind: "merge",
         source: path.relative(source.dir, source.configPath),
         target: path.relative(targetDir, targetConfigPath),
-        detail: "Would merge source config with existing KaijiBot config (existing takes precedence)",
+        detail:
+          "Would merge source config with existing KaijiBot config (existing takes precedence)",
       });
     } else {
       await fs.writeFile(targetConfigPath, JSON.stringify(mergedWithExisting, null, 2), "utf-8");

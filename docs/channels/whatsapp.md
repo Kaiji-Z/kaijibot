@@ -7,7 +7,6 @@ title: "WhatsApp"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # WhatsApp (Web channel)
 
 Status: production-ready via WhatsApp Web (Baileys). Gateway owns linked session(s).

@@ -80,7 +80,7 @@ export function describeBundledMetadataOnlyChannelCatalogContract(params: {
       const entry = listChannelPluginCatalogEntries({
         env: {
           ...process.env,
-            KAIJIBOT_BUNDLED_PLUGINS_DIR: path.join(packageRoot, "dist", "extensions"),
+          KAIJIBOT_BUNDLED_PLUGINS_DIR: path.join(packageRoot, "dist", "extensions"),
         },
       }).find((item) => item.id === params.meta.id);
 
@@ -201,7 +201,7 @@ export function describeOfficialFallbackChannelCatalogContract(params: {
         officialCatalogPaths: [officialCatalogPath],
         env: {
           ...process.env,
-            KAIJIBOT_BUNDLED_PLUGINS_DIR: path.join(dir, "dist", "extensions"),
+          KAIJIBOT_BUNDLED_PLUGINS_DIR: path.join(dir, "dist", "extensions"),
         },
       }).find((item) => item.id === params.channelId);
 

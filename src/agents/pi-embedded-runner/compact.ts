@@ -7,7 +7,6 @@ import {
   DefaultResourceLoader,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
-import { estimateMessageTokens as estimateTokens } from "../token-estimation.js";
 import type { ReasoningLevel, ThinkLevel } from "../../auto-reply/thinking.js";
 import { resolveChannelCapabilities } from "../../config/channel-capabilities.js";
 import type { KaijiBotConfig } from "../../config/config.js";
@@ -95,6 +94,7 @@ import {
   type SkillSnapshot,
 } from "../skills.js";
 import { resolveSystemPromptOverride } from "../system-prompt-override.js";
+import { estimateMessageTokens as estimateTokens } from "../token-estimation.js";
 import { resolveTranscriptPolicy } from "../transcript-policy.js";
 import { classifyCompactionReason, resolveCompactionFailureReason } from "./compact-reasons.js";
 import {

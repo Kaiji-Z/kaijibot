@@ -441,9 +441,5 @@ export function syncUrlWithSessionKey(host: SettingsHost, sessionKey: string, re
 export async function loadCron(host: SettingsHost) {
   const app = host as unknown as KaijiBotApp;
   const activeCronJobId = app.cronRunsScope === "job" ? app.cronRunsJobId : null;
-  await Promise.all([
-    loadCronStatus(app),
-    loadCronJobs(app),
-    loadCronRuns(app, activeCronJobId),
-  ]);
+  await Promise.all([loadCronStatus(app), loadCronJobs(app), loadCronRuns(app, activeCronJobId)]);
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { FeedbackProfile, TopicBandit } from "../types.js";
 import {
   updateBanditFromFeedback,
   pickBestTopic,
@@ -10,7 +11,6 @@ import {
   pickPromptVariant,
   updatePromptBandit,
 } from "./preference-learner.js";
-import type { FeedbackProfile, TopicBandit } from "../types.js";
 import type { FeedbackEvent } from "./types.js";
 
 function makeProfile(bandits?: Record<string, TopicBandit>): FeedbackProfile {
@@ -26,21 +26,39 @@ function makeProfile(bandits?: Record<string, TopicBandit>): FeedbackProfile {
 describe("updateBanditFromFeedback", () => {
   it("adds positive feedback to alpha", () => {
     const profile = makeProfile();
-    const feedback: FeedbackEvent = { targetId: "1", type: "positive", mechanism: "emoji", timestamp: Date.now(), topic: "AI" };
+    const feedback: FeedbackEvent = {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: Date.now(),
+      topic: "AI",
+    };
     const result = updateBanditFromFeedback(profile, feedback);
     expect(result.topicBandits["AI"]!.alpha).toBe(3); // 2 (prior) + 1
   });
 
   it("adds negative feedback to beta", () => {
     const profile = makeProfile();
-    const feedback: FeedbackEvent = { targetId: "1", type: "negative", mechanism: "button", timestamp: Date.now(), topic: "sports" };
+    const feedback: FeedbackEvent = {
+      targetId: "1",
+      type: "negative",
+      mechanism: "button",
+      timestamp: Date.now(),
+      topic: "sports",
+    };
     const result = updateBanditFromFeedback(profile, feedback);
     expect(result.topicBandits["sports"]!.beta).toBe(2); // 1 (prior) + 1
   });
 
   it("does not mutate the original profile", () => {
     const profile = makeProfile({ AI: { alpha: 2, beta: 1 } });
-    const feedback: FeedbackEvent = { targetId: "1", type: "positive", mechanism: "emoji", timestamp: Date.now(), topic: "AI" };
+    const feedback: FeedbackEvent = {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: Date.now(),
+      topic: "AI",
+    };
     updateBanditFromFeedback(profile, feedback);
     expect(profile.topicBandits["AI"]!.alpha).toBe(2);
   });
@@ -48,7 +66,13 @@ describe("updateBanditFromFeedback", () => {
   it("sets lastUpdated on the bandit after update", () => {
     const ts = 1700000000000;
     const profile = makeProfile();
-    const feedback: FeedbackEvent = { targetId: "1", type: "positive", mechanism: "emoji", timestamp: ts, topic: "AI" };
+    const feedback: FeedbackEvent = {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: ts,
+      topic: "AI",
+    };
     const result = updateBanditFromFeedback(profile, feedback);
     expect(result.topicBandits["AI"]!.lastUpdated).toBe(ts);
   });
@@ -57,7 +81,13 @@ describe("updateBanditFromFeedback", () => {
     const oldTs = 1700000000000;
     const newTs = oldTs + DECAY_HALF_LIFE_MS; // exactly one half-life later
     const profile = makeProfile({ AI: { alpha: 12, beta: 1, lastUpdated: oldTs } });
-    const feedback: FeedbackEvent = { targetId: "1", type: "positive", mechanism: "emoji", timestamp: newTs, topic: "AI" };
+    const feedback: FeedbackEvent = {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: newTs,
+      topic: "AI",
+    };
     const result = updateBanditFromFeedback(profile, feedback);
 
     // alpha should decay 50% toward prior(2): 2 + (12-2)*0.5 = 7, then +1 = 8
@@ -68,7 +98,13 @@ describe("updateBanditFromFeedback", () => {
   it("does not decay when lastUpdated is missing (legacy)", () => {
     const ts = 1700000000000;
     const profile = makeProfile({ AI: { alpha: 12, beta: 1 } });
-    const feedback: FeedbackEvent = { targetId: "1", type: "positive", mechanism: "emoji", timestamp: ts, topic: "AI" };
+    const feedback: FeedbackEvent = {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: ts,
+      topic: "AI",
+    };
     const result = updateBanditFromFeedback(profile, feedback);
     // No decay: 12 + 1 = 13
     expect(result.topicBandits["AI"]!.alpha).toBe(13);
@@ -202,22 +238,42 @@ describe("pickBestTopic", () => {
 
 describe("adaptFrequency", () => {
   it("increases frequency on positive feedback", () => {
-    const result = adaptFrequency(4, { targetId: "1", type: "positive", mechanism: "emoji", timestamp: Date.now() });
+    const result = adaptFrequency(4, {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: Date.now(),
+    });
     expect(result).toBe(3.5);
   });
 
   it("decreases frequency on negative feedback", () => {
-    const result = adaptFrequency(4, { targetId: "1", type: "negative", mechanism: "button", timestamp: Date.now() });
+    const result = adaptFrequency(4, {
+      targetId: "1",
+      type: "negative",
+      mechanism: "button",
+      timestamp: Date.now(),
+    });
     expect(result).toBe(6);
   });
 
   it("clamps to minimum of 1 hour", () => {
-    const result = adaptFrequency(1, { targetId: "1", type: "positive", mechanism: "emoji", timestamp: Date.now() });
+    const result = adaptFrequency(1, {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: Date.now(),
+    });
     expect(result).toBe(1);
   });
 
   it("clamps to maximum of 48 hours", () => {
-    const result = adaptFrequency(47, { targetId: "1", type: "negative", mechanism: "button", timestamp: Date.now() });
+    const result = adaptFrequency(47, {
+      targetId: "1",
+      type: "negative",
+      mechanism: "button",
+      timestamp: Date.now(),
+    });
     expect(result).toBe(48);
   });
 });

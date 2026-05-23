@@ -77,10 +77,7 @@ export function createCorrectionReportTool(deps: {
           message: "已记录纠错，下次对话会自动提醒避免此错误。",
         });
       } catch (err) {
-        return textResult(
-          `Correction recording failed: ${String(err)}`,
-          { status: "error" },
-        );
+        return textResult(`Correction recording failed: ${String(err)}`, { status: "error" });
       }
     },
   };

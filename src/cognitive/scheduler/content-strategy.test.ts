@@ -1,10 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { computeContentStrategy } from "./content-strategy.js";
 import type { PersonaTree } from "../types.js";
+import { computeContentStrategy } from "./content-strategy.js";
 
-function makePersona(
-  overrides: Partial<PersonaTree["feedbackProfile"]> = {},
-): PersonaTree {
+function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): PersonaTree {
   return {
     identity: {
       coreTraits: {},
@@ -52,7 +50,10 @@ describe("computeContentStrategy", () => {
   it("streak 1 excludes last insight domains", () => {
     const persona = makePersona({
       consecutiveNoResponses: 1,
-      recentInsightDomains: [["ai", "ml"], ["rust", "systems"]],
+      recentInsightDomains: [
+        ["ai", "ml"],
+        ["rust", "systems"],
+      ],
     });
     const hint = computeContentStrategy(persona);
     expect(hint.excludeDomains).toEqual(["rust", "systems"]);
@@ -166,7 +167,10 @@ describe("computeContentStrategy", () => {
   it("deduplicates overlapping domains across insights", () => {
     const persona = makePersona({
       consecutiveNoResponses: 2,
-      recentInsightDomains: [["ai", "ml"], ["ai", "rust"]],
+      recentInsightDomains: [
+        ["ai", "ml"],
+        ["ai", "rust"],
+      ],
       recentInsightModes: ["surprise"],
     });
     const hint = computeContentStrategy(persona);

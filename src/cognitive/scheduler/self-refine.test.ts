@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ProactiveScheduler } from "./proactive-scheduler.js";
-import { createDefaultPersona } from "../persona/store.js";
-import type { SchedulerConfig, Opportunity } from "./types.js";
-import type { PersonaTree } from "../types.js";
-import type { InsightCandidate } from "../insight/types.js";
-import type { LlmInsightDeps } from "../insight/llm-engine.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
-import type { LlmCritiqueResult } from "../insight/types.js";
 import type { Fragment, FragmentCluster } from "../insight/fragment-types.js";
+import type { LlmInsightDeps } from "../insight/llm-engine.js";
+import type { InsightCandidate } from "../insight/types.js";
+import type { LlmCritiqueResult } from "../insight/types.js";
+import { createDefaultPersona } from "../persona/store.js";
+import type { PersonaTree } from "../types.js";
+import { ProactiveScheduler } from "./proactive-scheduler.js";
+import type { SchedulerConfig, Opportunity } from "./types.js";
 
 vi.mock("../insight/llm-engine.js", () => ({
   critiqueInsightWithLLM: vi.fn(),
@@ -17,7 +17,12 @@ vi.mock("../insight/llm-engine.js", () => ({
   buildSearchQuery: vi.fn(() => "test query"),
 }));
 
-import { critiqueInsightWithLLM, refineInsightWithLLM, verifyInsightWithLLM, checkSemanticNoveltyWithLLM } from "../insight/llm-engine.js";
+import {
+  critiqueInsightWithLLM,
+  refineInsightWithLLM,
+  verifyInsightWithLLM,
+  checkSemanticNoveltyWithLLM,
+} from "../insight/llm-engine.js";
 
 const mockedCritique = vi.mocked(critiqueInsightWithLLM);
 const mockedRefine = vi.mocked(refineInsightWithLLM);
@@ -51,7 +56,7 @@ function personaWithDomains(): PersonaTree {
   persona.rapport.trustScore = 0.7;
   persona.rapport.totalExchanges = 10;
   persona.domains = {
-    "AI": {
+    AI: {
       depth: 5,
       recurrence: 10,
       lastMentioned: Date.now(),
@@ -59,7 +64,7 @@ function personaWithDomains(): PersonaTree {
       activeQuestions: [],
       negationSignals: 0,
     },
-    "Rust": {
+    Rust: {
       depth: 4,
       recurrence: 8,
       lastMentioned: Date.now(),
@@ -69,8 +74,8 @@ function personaWithDomains(): PersonaTree {
     },
   };
   persona.feedbackProfile.topicBandits = {
-    "AI": { alpha: 5, beta: 1 },
-    "Rust": { alpha: 4, beta: 2 },
+    AI: { alpha: 5, beta: 1 },
+    Rust: { alpha: 4, beta: 2 },
   };
   persona.lifecycle = { ...persona.lifecycle, stage: "active", lastActiveAt: Date.now() };
   return persona;
@@ -314,12 +319,8 @@ describe("Self-refine: knowledge mode", () => {
     const refined1 = makeCandidate({ compositeScore: 0.4, id: "refined-1" });
     const refined2 = makeCandidate({ compositeScore: 0.5, id: "refined-2" });
 
-    mockedCritique
-      .mockResolvedValueOnce(critique)
-      .mockResolvedValueOnce(critique);
-    mockedRefine
-      .mockResolvedValueOnce(refined1)
-      .mockResolvedValueOnce(refined2);
+    mockedCritique.mockResolvedValueOnce(critique).mockResolvedValueOnce(critique);
+    mockedRefine.mockResolvedValueOnce(refined1).mockResolvedValueOnce(refined2);
     mockedVerify.mockResolvedValueOnce({
       status: "verified",
       sources: [],
@@ -507,16 +508,20 @@ describe("Pattern-mode LLM judge", () => {
     });
 
     const config: SchedulerConfig = { minIntervalHours: 4, minTrustScore: 0.3 };
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [makeCandidate()],
-      llmDeps: fakeLlmDeps,
-      botConfig: fakeBotConfig,
-      fragmentStore: createStubFragmentStore(),
-    });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [makeCandidate()],
+        llmDeps: fakeLlmDeps,
+        botConfig: fakeBotConfig,
+        fragmentStore: createStubFragmentStore(),
+      },
+    );
 
     const result = await scheduler.resolve("main", persona, patternOpp);
 
@@ -532,11 +537,15 @@ describe("Constructor: new parameters accepted", () => {
       botConfig: fakeBotConfig,
     };
 
-    const scheduler = new ProactiveScheduler(baseConfig, {
-      loadPersona: async () => undefined,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, deps);
+    const scheduler = new ProactiveScheduler(
+      baseConfig,
+      {
+        loadPersona: async () => undefined,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      deps,
+    );
 
     expect(scheduler).toBeDefined();
   });
@@ -604,7 +613,9 @@ describe("LLM freshness check: knowledge mode", () => {
     const duplicateContent = "previous insight about AI";
 
     const scheduler = makeScheduler(baseConfig, persona, {
-      insightGenerator: async () => [makeCandidate({ content: duplicateContent, compositeScore: 0.9 })],
+      insightGenerator: async () => [
+        makeCandidate({ content: duplicateContent, compositeScore: 0.9 }),
+      ],
     });
 
     const result = await scheduler.resolve("main", persona, crossDomainOpp);
@@ -630,7 +641,12 @@ describe("LLM freshness check: knowledge mode", () => {
   it("trigram passes → LLM freshness novel → returns candidate", async () => {
     const persona = personaWithRecentContents();
     mockedFreshness.mockResolvedValueOnce({ isNovel: true, reason: "distinct content" });
-    mockedVerify.mockResolvedValueOnce({ status: "verified", sources: [], confidence: 0.8, notes: "ok" });
+    mockedVerify.mockResolvedValueOnce({
+      status: "verified",
+      sources: [],
+      confidence: 0.8,
+      notes: "ok",
+    });
 
     const scheduler = makeScheduler(baseConfig, persona, {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
@@ -644,8 +660,16 @@ describe("LLM freshness check: knowledge mode", () => {
 
   it("trigram passes → LLM freshness throws → conservative pass (returns candidate)", async () => {
     const persona = personaWithRecentContents();
-    mockedFreshness.mockResolvedValueOnce({ isNovel: true, reason: "LLM freshness check unavailable" });
-    mockedVerify.mockResolvedValueOnce({ status: "verified", sources: [], confidence: 0.8, notes: "ok" });
+    mockedFreshness.mockResolvedValueOnce({
+      isNovel: true,
+      reason: "LLM freshness check unavailable",
+    });
+    mockedVerify.mockResolvedValueOnce({
+      status: "verified",
+      sources: [],
+      confidence: 0.8,
+      notes: "ok",
+    });
 
     const scheduler = makeScheduler(baseConfig, persona, {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
@@ -660,7 +684,12 @@ describe("LLM freshness check: knowledge mode", () => {
   it("llmFreshnessCheck: false → skip LLM freshness entirely", async () => {
     const persona = personaWithRecentContents();
     const config: SchedulerConfig = { ...baseConfig, llmFreshnessCheck: false };
-    mockedVerify.mockResolvedValueOnce({ status: "verified", sources: [], confidence: 0.8, notes: "ok" });
+    mockedVerify.mockResolvedValueOnce({
+      status: "verified",
+      sources: [],
+      confidence: 0.8,
+      notes: "ok",
+    });
 
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
@@ -675,7 +704,12 @@ describe("LLM freshness check: knowledge mode", () => {
   it("fewer than 2 recent insights → skip LLM freshness call", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightContents = ["only one"];
-    mockedVerify.mockResolvedValueOnce({ status: "verified", sources: [], confidence: 0.8, notes: "ok" });
+    mockedVerify.mockResolvedValueOnce({
+      status: "verified",
+      sources: [],
+      confidence: 0.8,
+      notes: "ok",
+    });
 
     const scheduler = makeScheduler(baseConfig, persona, {
       insightGenerator: async () => [makeCandidate({ compositeScore: 0.9 })],
@@ -704,7 +738,11 @@ describe("LLM freshness check: knowledge mode", () => {
 });
 
 describe("LLM freshness check: pattern mode", () => {
-  const recentContents = ["behavioral observation A", "behavioral observation B", "behavioral observation C"];
+  const recentContents = [
+    "behavioral observation A",
+    "behavioral observation B",
+    "behavioral observation C",
+  ];
 
   function personaWithRecentPatternContents(): PersonaTree {
     const persona = personaWithDomains();
@@ -743,7 +781,12 @@ describe("LLM freshness check: pattern mode", () => {
   it("trigram passes → LLM freshness novel → returns candidate", async () => {
     const persona = personaWithRecentPatternContents();
     mockedFreshness.mockResolvedValueOnce({ isNovel: true, reason: "new pattern" });
-    mockedVerify.mockResolvedValueOnce({ status: "partial", sources: [], confidence: 0.5, notes: "ok" });
+    mockedVerify.mockResolvedValueOnce({
+      status: "partial",
+      sources: [],
+      confidence: 0.5,
+      notes: "ok",
+    });
 
     const scheduler = makeScheduler(baseConfig, persona, {
       insightGenerator: async () => [makeCandidate()],
@@ -758,7 +801,12 @@ describe("LLM freshness check: pattern mode", () => {
   it("llmFreshnessCheck: false → skip freshness in pattern mode", async () => {
     const persona = personaWithRecentPatternContents();
     const config: SchedulerConfig = { ...baseConfig, llmFreshnessCheck: false };
-    mockedVerify.mockResolvedValueOnce({ status: "partial", sources: [], confidence: 0.5, notes: "ok" });
+    mockedVerify.mockResolvedValueOnce({
+      status: "partial",
+      sources: [],
+      confidence: 0.5,
+      notes: "ok",
+    });
 
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => [makeCandidate()],

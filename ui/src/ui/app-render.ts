@@ -22,6 +22,7 @@ import {
   refreshVisibleToolsEffectiveForCurrentSession,
   saveAgentsConfig,
 } from "./controllers/agents.ts";
+import { loadChatHistory } from "./controllers/chat.ts";
 import {
   applyConfig,
   ensureAgentConfigEntry,
@@ -33,7 +34,6 @@ import {
   updateConfigFormValue,
   removeConfigFormValue,
 } from "./controllers/config.ts";
-import { loadChatHistory } from "./controllers/chat.ts";
 import {
   loadCronRuns,
   loadMoreCronJobs,
@@ -522,7 +522,9 @@ export function renderApp(state: AppViewState) {
                 onEdit: (job) => startCronEdit(state, job),
                 onClone: (job) => startCronClone(state, job),
                 onCancelEdit: () => cancelCronEdit(state),
-                onSetFormOpenForNew: (open: boolean) => { state.cronFormOpenForNew = open; },
+                onSetFormOpenForNew: (open: boolean) => {
+                  state.cronFormOpenForNew = open;
+                },
                 onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
                 onRun: (job, mode) => runCronJob(state, job, mode ?? "force"),
                 onRemove: (job) => removeCronJob(state, job),

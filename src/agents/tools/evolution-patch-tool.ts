@@ -40,7 +40,8 @@ export function createEvolutionPatchTool(deps: {
       try {
         const { EvolutionEngine } = await import("../../cognitive/evolution/engine.js");
         const { EvolutionStore } = await import("../../cognitive/evolution/store.js");
-        const { SkillPersistenceWriter } = await import("../../cognitive/evolution/skill-writer.js");
+        const { SkillPersistenceWriter } =
+          await import("../../cognitive/evolution/skill-writer.js");
         const { resolveConfigDir } = await import("../../utils.js");
         const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
         const { resolveAgentWorkspaceDir } = await import("../agent-scope.js");
@@ -58,8 +59,12 @@ export function createEvolutionPatchTool(deps: {
         let generateText: ((prompt: string) => Promise<string>) | undefined;
         try {
           if (deps.config) {
-            const { createStandaloneGenerateText } = await import("../../cognitive/evolution/standalone-generate.js");
-            generateText = await createStandaloneGenerateText(deps.config, { maxTokens: 4000, timeout: 60_000 });
+            const { createStandaloneGenerateText } =
+              await import("../../cognitive/evolution/standalone-generate.js");
+            generateText = await createStandaloneGenerateText(deps.config, {
+              maxTokens: 4000,
+              timeout: 60_000,
+            });
           }
         } catch {
           // Falls back to direct text replacement without LLM.
@@ -86,10 +91,7 @@ export function createEvolutionPatchTool(deps: {
           updatedPath: result.updatedPath,
         });
       } catch (err) {
-        return textResult(
-          `Skill patch failed: ${String(err)}`,
-          { status: "error" },
-        );
+        return textResult(`Skill patch failed: ${String(err)}`, { status: "error" });
       }
     },
   };

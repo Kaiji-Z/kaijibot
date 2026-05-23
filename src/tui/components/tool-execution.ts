@@ -16,7 +16,6 @@ type ToolResult = {
   details?: Record<string, unknown>;
 };
 
-
 function formatArgs(toolName: string, args: unknown): string {
   const display = resolveToolDisplay({ name: toolName, args });
   const detail = formatToolDetail(display);

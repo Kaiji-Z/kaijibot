@@ -764,9 +764,10 @@ function renderGroupedMessage(
     .filter(Boolean)
     .join(" ");
 
-  const messageTimestamp = typeof m.timestamp === "number" && m.timestamp
-    ? new Date(m.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-    : null;
+  const messageTimestamp =
+    typeof m.timestamp === "number" && m.timestamp
+      ? new Date(m.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : null;
 
   if (!markdown && hasToolCards && isToolResult) {
     return renderCollapsedToolCards(toolCards, onOpenSidebar);

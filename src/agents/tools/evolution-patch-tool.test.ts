@@ -112,9 +112,7 @@ describe("createEvolutionPatchTool", () => {
       const result = await tool.execute("call-3", {
         name: "rp-skill",
         instructions: "Fix the description",
-        replacements: [
-          { oldText: "old description", newText: "new description" },
-        ],
+        replacements: [{ oldText: "old description", newText: "new description" }],
       });
 
       const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);

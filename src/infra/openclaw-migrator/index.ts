@@ -1,11 +1,15 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { enumerateSourceAgents, enumerateSourceSkills, computeWorkspaceStats } from "./agent-enumeration.js";
+import {
+  enumerateSourceAgents,
+  enumerateSourceSkills,
+  computeWorkspaceStats,
+} from "./agent-enumeration.js";
 import { detectMigrationSource, detectScenario } from "./detect.js";
 import { migrateConfig } from "./migrate-config.js";
-import { migrateSkills } from "./migrate-skills.js";
 import { migrateSessions } from "./migrate-sessions.js";
+import { migrateSkills } from "./migrate-skills.js";
 import { migrateWorkspace } from "./migrate-workspace.js";
 import type {
   AgentInfo,
@@ -20,7 +24,11 @@ import type {
 } from "./types.js";
 
 export { detectMigrationSource, detectScenario, listSourceAgents } from "./detect.js";
-export { enumerateSourceAgents, enumerateSourceSkills, computeWorkspaceStats } from "./agent-enumeration.js";
+export {
+  enumerateSourceAgents,
+  enumerateSourceSkills,
+  computeWorkspaceStats,
+} from "./agent-enumeration.js";
 export { migrateConfig } from "./migrate-config.js";
 export { migrateWorkspace } from "./migrate-workspace.js";
 export { migrateSkills } from "./migrate-skills.js";
@@ -39,11 +47,7 @@ export {
   rewriteWorkspaceFile,
   STRUCTURAL_REWRITE_REGISTRY,
 } from "./brand-rewrite.js";
-export type {
-  RewriteMode,
-  StructuralRewriteRule,
-  RewriteResult,
-} from "./brand-rewrite.js";
+export type { RewriteMode, StructuralRewriteRule, RewriteResult } from "./brand-rewrite.js";
 export type {
   MigrationSource,
   MigrationOptions,
@@ -130,9 +134,15 @@ async function resolveSourceAndTarget(
 
 function inferBrandFromDir(dir: string): MigrationSource["brand"] {
   const basename = path.basename(dir);
-  if (basename === ".openclaw") { return "openclaw"; }
-  if (basename === ".clawdbot") { return "clawdbot"; }
-  if (basename === ".moltbot") { return "moltbot"; }
+  if (basename === ".openclaw") {
+    return "openclaw";
+  }
+  if (basename === ".clawdbot") {
+    return "clawdbot";
+  }
+  if (basename === ".moltbot") {
+    return "moltbot";
+  }
   return "openclaw";
 }
 
@@ -147,7 +157,10 @@ export async function runFreshMigration(
 
   if (!options.dryRun) {
     await fs.mkdir(targetDir, { recursive: true });
-    const backupMarker = path.join(targetDir, `.migration-backup-${timestamp.replace(/[:.]/g, "-")}`);
+    const backupMarker = path.join(
+      targetDir,
+      `.migration-backup-${timestamp.replace(/[:.]/g, "-")}`,
+    );
     const metadata = { timestamp, source: source.dir, brand: source.brand };
     await fs.writeFile(backupMarker, JSON.stringify(metadata, null, 2), "utf-8");
     log(`Created migration marker: ${backupMarker}`);
@@ -210,7 +223,8 @@ export async function runImportMigration(
       }
       log(`  Agent: ${agent.id} — [${sel.dataTypes.join(", ")}]`);
 
-      const needsWorkspace = sel.dataTypes.includes("workspace") || sel.dataTypes.includes("memory");
+      const needsWorkspace =
+        sel.dataTypes.includes("workspace") || sel.dataTypes.includes("memory");
       if (needsWorkspace) {
         const workspaceResult = await migrateWorkspace(source, targetDir, options, "merge");
         results.push(workspaceResult);
@@ -265,9 +279,7 @@ export async function runImportMigration(
   return report;
 }
 
-export async function buildInteractiveSelection(
-  source: MigrationSource,
-): Promise<{
+export async function buildInteractiveSelection(source: MigrationSource): Promise<{
   agents: Array<AgentInfo & { stats: WorkspaceStats }>;
   skills: string[];
   hasSecrets: boolean;
@@ -305,7 +317,10 @@ export async function runMigration(options: MigrationOptions): Promise<Migration
 
   if (!options.dryRun) {
     await fs.mkdir(targetDir, { recursive: true });
-    const backupMarker = path.join(targetDir, `.migration-backup-${timestamp.replace(/[:.]/g, "-")}`);
+    const backupMarker = path.join(
+      targetDir,
+      `.migration-backup-${timestamp.replace(/[:.]/g, "-")}`,
+    );
     const metadata = { timestamp, source: source.dir, brand: source.brand };
     await fs.writeFile(backupMarker, JSON.stringify(metadata, null, 2), "utf-8");
     log(`Created migration marker: ${backupMarker}`);
@@ -341,8 +356,6 @@ export async function runMigration(options: MigrationOptions): Promise<Migration
   return report;
 }
 
-export async function previewMigration(
-  options: MigrationOptions,
-): Promise<MigrationReport> {
+export async function previewMigration(options: MigrationOptions): Promise<MigrationReport> {
   return runMigration({ ...options, dryRun: true });
 }

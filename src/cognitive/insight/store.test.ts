@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { InsightStore } from "./store.js";
+import { join } from "node:path";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { InsightRecord } from "../types.js";
+import { InsightStore } from "./store.js";
 
 function makeInsight(overrides: Partial<InsightRecord> = {}): InsightRecord {
   return {
@@ -68,9 +68,7 @@ describe("InsightStore", () => {
   });
 
   it("updateFeedback is no-op for non-existent insight", async () => {
-    await expect(
-      store.updateFeedback("user-1", "ghost", "positive"),
-    ).resolves.toBeUndefined();
+    await expect(store.updateFeedback("user-1", "ghost", "positive")).resolves.toBeUndefined();
   });
 
   it("listRecent returns sorted by generatedAt desc, respects limit", async () => {

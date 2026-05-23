@@ -5,10 +5,10 @@ import {
   ensureContextEnginesInitialized,
   resolveContextEngine,
 } from "../../context-engine/index.js";
+import { triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { emitAgentPlanEvent } from "../../infra/agent-events.js";
 import { sleepWithAbort } from "../../infra/backoff.js";
 import { formatErrorMessage } from "../../infra/errors.js";
-import { triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
 import { enqueueCommandInLane } from "../../process/command-queue.js";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
@@ -1580,15 +1580,16 @@ export async function runEmbeddedPiAgent(
               Promise.resolve().then(async () => {
                 try {
                   const { resolveConfigDir } = await import("../../utils.js");
-                  const { evaluateHardTrigger } = await import("../../cognitive/evolution/hard-trigger.js");
+                  const { evaluateHardTrigger } =
+                    await import("../../cognitive/evolution/hard-trigger.js");
                   await evaluateHardTrigger({
                     toolMetas: attempt.toolMetas,
                     sessionKey: params.sessionKey!,
                     trigger: params.trigger,
                     senderId: params.senderId,
                     started,
-                  configDir: resolveConfigDir(),
-                });
+                    configDir: resolveConfigDir(),
+                  });
                 } catch (err) {
                   log.debug(`evolution hard trigger skipped: ${String(err)}`);
                 }
@@ -1597,7 +1598,8 @@ export async function runEmbeddedPiAgent(
             Promise.resolve().then(async () => {
               try {
                 const { resolveConfigDir } = await import("../../utils.js");
-                const { trackSkillUsage } = await import("../../cognitive/evolution/skill-usage-tracker.js");
+                const { trackSkillUsage } =
+                  await import("../../cognitive/evolution/skill-usage-tracker.js");
                 await trackSkillUsage({
                   toolMetas: attempt.toolMetas,
                   configDir: resolveConfigDir(),

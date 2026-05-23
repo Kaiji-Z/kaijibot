@@ -94,30 +94,32 @@ const calibrationRecordSchema = z.object({
   timestamp: z.number(),
 });
 
-const personaTreeSchema = z.object({
-  identity: z.object({
-    displayName: z.string().optional(),
-    coreTraits: z.record(z.string(), confidenceValueSchema),
-    communicationStyle: communicationStyleSchema.optional(),
-    primaryLanguage: z.string().optional(),
-    expertDomains: z.array(z.string()),
-    interestDomains: z.array(z.string()),
-    curiosityDomains: z.array(z.string()),
-  }),
-  domains: z.record(z.string(), domainNodeSchema),
-  recentFocus: z.array(z.string()),
-  feedbackProfile: feedbackProfileSchema,
-  rapport: rapportMetricsSchema,
-  domainBlacklist: z.array(z.string()).optional().default([]),
-  lifecycle: userLifecycleSchema.optional().default({
-    stage: "new",
-    lastActiveAt: 0,
-    lastStageTransitionAt: 0,
-    totalActiveDays: 0,
-  }),
-  moodHistory: z.array(z.any()).optional().default([]),
-  calibrationHistory: z.array(calibrationRecordSchema).optional().default([]),
-}).strip();
+const personaTreeSchema = z
+  .object({
+    identity: z.object({
+      displayName: z.string().optional(),
+      coreTraits: z.record(z.string(), confidenceValueSchema),
+      communicationStyle: communicationStyleSchema.optional(),
+      primaryLanguage: z.string().optional(),
+      expertDomains: z.array(z.string()),
+      interestDomains: z.array(z.string()),
+      curiosityDomains: z.array(z.string()),
+    }),
+    domains: z.record(z.string(), domainNodeSchema),
+    recentFocus: z.array(z.string()),
+    feedbackProfile: feedbackProfileSchema,
+    rapport: rapportMetricsSchema,
+    domainBlacklist: z.array(z.string()).optional().default([]),
+    lifecycle: userLifecycleSchema.optional().default({
+      stage: "new",
+      lastActiveAt: 0,
+      lastStageTransitionAt: 0,
+      totalActiveDays: 0,
+    }),
+    moodHistory: z.array(z.any()).optional().default([]),
+    calibrationHistory: z.array(calibrationRecordSchema).optional().default([]),
+  })
+  .strip();
 
 export function safeParsePersona(json: unknown): PersonaTree | null {
   const result = personaTreeSchema.safeParse(json);

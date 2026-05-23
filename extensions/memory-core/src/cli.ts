@@ -219,5 +219,4 @@ export function registerMemoryCli(program: Command) {
     .action(async (opts: MemoryRemBackfillOptions) => {
       await runMemoryRemBackfill(opts);
     });
-
 }

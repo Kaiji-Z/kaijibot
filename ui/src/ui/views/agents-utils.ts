@@ -867,7 +867,15 @@ export type AgentStatusInfo = {
 };
 
 export function deriveAgentStatusFromSessions(
-  sessions: Array<{ key: string; status?: string; updatedAt?: number | null; totalTokens?: number; contextTokens?: number; model?: string; modelProvider?: string }>,
+  sessions: Array<{
+    key: string;
+    status?: string;
+    updatedAt?: number | null;
+    totalTokens?: number;
+    contextTokens?: number;
+    model?: string;
+    modelProvider?: string;
+  }>,
   agentId: string,
   sessionDetails?: Record<string, SessionDetailState>,
 ): AgentStatusInfo {
@@ -876,11 +884,21 @@ export function deriveAgentStatusFromSessions(
     try {
       const parsed = parseAgentSessionKey(s.key);
       return parsed?.agentId === agentId;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   });
 
   if (agentSessions.length === 0) {
-    return { status: "idle", statusLabel: "空闲", usedTokens: 0, contextTokens: 0, lastActiveAt: null, model: null, modelProvider: null };
+    return {
+      status: "idle",
+      statusLabel: "空闲",
+      usedTokens: 0,
+      contextTokens: 0,
+      lastActiveAt: null,
+      model: null,
+      modelProvider: null,
+    };
   }
 
   const lastActiveAt = Math.max(...agentSessions.map((s) => s.updatedAt ?? 0));
@@ -904,8 +922,9 @@ export function deriveAgentStatusFromSessions(
 
   // Prefer running session, fall back to most recently updated.
   const latestSession = hasRunning
-    ? agentSessions.find((s) => s.status === "running") ?? agentSessions.reduce((a, b) => (b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a)
-    : agentSessions.reduce((a, b) => (b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a);
+    ? (agentSessions.find((s) => s.status === "running") ??
+      agentSessions.reduce((a, b) => ((b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a)))
+    : agentSessions.reduce((a, b) => ((b.updatedAt ?? 0) > (a.updatedAt ?? 0) ? b : a));
 
   return {
     status,

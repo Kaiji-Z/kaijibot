@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { enumerateSourceAgents } from "./agent-enumeration.js";
-import type { MigrationChange, MigrationOptions, MigrationResult, MigrationSource } from "./types.js";
+import type {
+  MigrationChange,
+  MigrationOptions,
+  MigrationResult,
+  MigrationSource,
+} from "./types.js";
 
 async function dirExists(p: string): Promise<boolean> {
   try {
@@ -71,10 +76,7 @@ export async function migrateSessions(
 
   for (const agent of agents) {
     const sourceCandidates = agent.isDefault
-      ? [
-          path.join(source.dir, "state", "sessions"),
-          path.join(source.dir, "sessions"),
-        ]
+      ? [path.join(source.dir, "state", "sessions"), path.join(source.dir, "sessions")]
       : [path.join(source.dir, "state", `sessions-${agent.id}`)];
 
     let foundSourceDir: string | null = null;
@@ -85,16 +87,36 @@ export async function migrateSessions(
       }
     }
 
-    if (!foundSourceDir) { continue; }
+    if (!foundSourceDir) {
+      continue;
+    }
 
     const agentTargetDir = path.join(targetDir, "state", "agents", agent.id, "sessions");
-    await migrateAgentSessions(foundSourceDir, agentTargetDir, source, targetDir, options, changes, warnings, skipped);
+    await migrateAgentSessions(
+      foundSourceDir,
+      agentTargetDir,
+      source,
+      targetDir,
+      options,
+      changes,
+      warnings,
+      skipped,
+    );
   }
 
   const srcApprovals = path.join(source.dir, "state", "exec-approvals.json");
   if (await fileExists(srcApprovals)) {
     const dstApprovals = path.join(targetDir, "state", "exec-approvals.json");
-    await copyFile(srcApprovals, dstApprovals, options, source.dir, targetDir, changes, skipped, warnings);
+    await copyFile(
+      srcApprovals,
+      dstApprovals,
+      options,
+      source.dir,
+      targetDir,
+      changes,
+      skipped,
+      warnings,
+    );
   }
 
   const srcHooksDir = path.join(source.dir, "hooks");
@@ -102,7 +124,9 @@ export async function migrateSessions(
     const dstHooksDir = path.join(targetDir, "hooks");
     const hookEntries = await fs.readdir(srcHooksDir, { withFileTypes: true });
     for (const entry of hookEntries) {
-      if (!entry.isFile()) { continue; }
+      if (!entry.isFile()) {
+        continue;
+      }
       const src = path.join(srcHooksDir, entry.name);
       const dst = path.join(dstHooksDir, entry.name);
       await copyFile(src, dst, options, source.dir, targetDir, changes, skipped, warnings);
@@ -112,8 +136,19 @@ export async function migrateSessions(
   const srcCronFile = path.join(source.dir, "cron", "jobs.json");
   if (await fileExists(srcCronFile)) {
     const dstCronFile = path.join(targetDir, "cron", "jobs.json");
-    await copyFile(srcCronFile, dstCronFile, options, source.dir, targetDir, changes, skipped, warnings);
-    warnings.push("Cron jobs migrated; KaijiBot uses ProactiveScheduler instead of cron. Review jobs.json for compatibility.");
+    await copyFile(
+      srcCronFile,
+      dstCronFile,
+      options,
+      source.dir,
+      targetDir,
+      changes,
+      skipped,
+      warnings,
+    );
+    warnings.push(
+      "Cron jobs migrated; KaijiBot uses ProactiveScheduler instead of cron. Review jobs.json for compatibility.",
+    );
   }
 
   if (options.migrateSecrets) {
@@ -122,18 +157,31 @@ export async function migrateSessions(
       const dstCredentialsDir = path.join(targetDir, "credentials");
       const credEntries = await fs.readdir(srcCredentialsDir, { withFileTypes: true });
       for (const entry of credEntries) {
-        if (!entry.isFile()) { continue; }
+        if (!entry.isFile()) {
+          continue;
+        }
         const src = path.join(srcCredentialsDir, entry.name);
         const dst = path.join(dstCredentialsDir, entry.name);
         await copyFile(src, dst, options, source.dir, targetDir, changes, skipped, warnings);
       }
-      warnings.push("Credentials were migrated. Verify permissions and rotate any compromised keys.");
+      warnings.push(
+        "Credentials were migrated. Verify permissions and rotate any compromised keys.",
+      );
     }
 
     const srcEnvFile = path.join(source.dir, ".env");
     if (await fileExists(srcEnvFile)) {
       const dstEnvFile = path.join(targetDir, ".env");
-      await copyFile(srcEnvFile, dstEnvFile, options, source.dir, targetDir, changes, skipped, warnings);
+      await copyFile(
+        srcEnvFile,
+        dstEnvFile,
+        options,
+        source.dir,
+        targetDir,
+        changes,
+        skipped,
+        warnings,
+      );
       warnings.push("Environment file (.env) was migrated. Review for stale or leaked secrets.");
     }
   } else {
@@ -170,7 +218,9 @@ async function migrateAgentSessions(
 
   for (const storeFile of ["sessions.json", "sessions.json5"]) {
     const srcStore = path.join(sourceSessionDir, storeFile);
-    if (!(await fileExists(srcStore))) { continue; }
+    if (!(await fileExists(srcStore))) {
+      continue;
+    }
 
     const dstStore = path.join(targetSessionDir, "sessions.json");
     const srcRel = path.relative(source.dir, srcStore);
@@ -206,23 +256,39 @@ async function migrateAgentSessions(
       }
     } else {
       if (options.dryRun) {
-        changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Would copy session store" });
+        changes.push({
+          kind: "copy",
+          source: srcRel,
+          target: dstRel,
+          detail: "Would copy session store",
+        });
         continue;
       }
 
       await fs.mkdir(path.dirname(dstStore), { recursive: true });
       await fs.copyFile(srcStore, dstStore);
-      changes.push({ kind: "copy", source: srcRel, target: dstRel, detail: "Copied session store" });
+      changes.push({
+        kind: "copy",
+        source: srcRel,
+        target: dstRel,
+        detail: "Copied session store",
+      });
       log(`Copied session store: ${dstRel}`);
     }
   }
 
   const entries = await fs.readdir(sourceSessionDir, { withFileTypes: true });
   for (const entry of entries) {
-    if (!entry.isFile()) { continue; }
+    if (!entry.isFile()) {
+      continue;
+    }
     // Active (*.jsonl) and archived (*.jsonl.reset.*/.deleted.*/.bak.*) transcripts
-    if (!entry.name.endsWith(".jsonl") && !entry.name.includes(".jsonl.")) { continue; }
-    if (entry.name === "sessions.json" || entry.name === "sessions.json5") { continue; }
+    if (!entry.name.endsWith(".jsonl") && !entry.name.includes(".jsonl.")) {
+      continue;
+    }
+    if (entry.name === "sessions.json" || entry.name === "sessions.json5") {
+      continue;
+    }
 
     const src = path.join(sourceSessionDir, entry.name);
     const dst = path.join(targetSessionDir, entry.name);
@@ -235,7 +301,12 @@ async function migrateAgentSessions(
     }
 
     if (options.dryRun) {
-      changes.push({ kind: "move", source: srcRel, target: dstRel, detail: "Would move transcript" });
+      changes.push({
+        kind: "move",
+        source: srcRel,
+        target: dstRel,
+        detail: "Would move transcript",
+      });
       continue;
     }
 

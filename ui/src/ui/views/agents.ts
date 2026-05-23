@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 import { t } from "../../i18n/index.ts";
+import { parseAgentSessionKey } from "../session-key.ts";
 import type {
   AgentIdentityResult,
   AgentsFilesListResult,
@@ -14,10 +15,7 @@ import type {
   ToolsEffectiveResult,
 } from "../types.ts";
 import { renderAgentOverview } from "./agents-panels-overview.ts";
-import {
-  renderAgentFiles,
-  renderAgentCron,
-} from "./agents-panels-status-files.ts";
+import { renderAgentFiles, renderAgentCron } from "./agents-panels-status-files.ts";
 import { renderAgentTools } from "./agents-panels-tools-skills.ts";
 import {
   buildAgentContext,
@@ -30,7 +28,6 @@ import {
   resolveModelLabel,
   type SessionDetailState,
 } from "./agents-utils.ts";
-import { parseAgentSessionKey } from "../session-key.ts";
 
 export type AgentsPanel = "overview" | "files" | "tools" | "cron";
 
@@ -141,10 +138,11 @@ function countDetailMetrics(
     props.agentSkills.agentId === agentId
       ? (props.agentSkills.report?.skills?.length ?? null)
       : null;
-  const toolsCount = props.toolsEffective.result?.groups?.reduce(
-    (sum, group) => sum + (group.tools?.length ?? 0),
-    0,
-  ) ?? null;
+  const toolsCount =
+    props.toolsEffective.result?.groups?.reduce(
+      (sum, group) => sum + (group.tools?.length ?? 0),
+      0,
+    ) ?? null;
   const cronCount = props.cron.jobs.filter((j) => j.agentId === agentId).length || null;
   const channelsCount = props.channels.snapshot
     ? Object.keys(props.channels.snapshot.channelAccounts ?? {}).length
@@ -167,14 +165,15 @@ export function renderAgents(props: AgentsProps) {
           ? html`
               <div class="agent-card agent-card--empty">
                 <div class="agent-card__body">
-                  <div class="agent-card__name">${props.loading ? t("common.loading") : "No agents"}</div>
+                  <div class="agent-card__name">
+                    ${props.loading ? t("common.loading") : "No agents"}
+                  </div>
                   <div class="agent-card__sub">Configure agents to get started.</div>
                 </div>
               </div>
             `
-          : agents.map(
-              (agent) =>
-                renderAgentCard(agent, agent.id === selectedId, agent.id === defaultId, props),
+          : agents.map((agent) =>
+              renderAgentCard(agent, agent.id === selectedId, agent.id === defaultId, props),
             )}
       </section>
 
@@ -182,16 +181,22 @@ export function renderAgents(props: AgentsProps) {
         ${props.error
           ? html`<div class="callout danger" style="margin-top: 8px;">${props.error}</div>`
           : nothing}
-
         ${selectedAgent
-          ? html`
-              ${renderAgentDetailContent(props, selectedAgent, defaultId)}
-            `
+          ? html` ${renderAgentDetailContent(props, selectedAgent, defaultId)} `
           : html`
-              <div class="agent-card agent-card--empty" style="margin: auto; padding: 48px 24px; border: none;">
+              <div
+                class="agent-card agent-card--empty"
+                style="margin: auto; padding: 48px 24px; border: none;"
+              >
                 <div class="agent-card__body" style="align-items: center; text-align: center;">
-                  <div class="agent-card__name" style="justify-content: center; font-size: 16px;">${agents.length === 0 ? "No Agents Deployed" : "Select an Agent"}</div>
-                  <div class="agent-card__sub" style="text-align: center; margin-top: 4px;">${agents.length === 0 ? "Deploy an agent to begin monitoring." : "Choose an agent from the sidebar to inspect."}</div>
+                  <div class="agent-card__name" style="justify-content: center; font-size: 16px;">
+                    ${agents.length === 0 ? "No Agents Deployed" : "Select an Agent"}
+                  </div>
+                  <div class="agent-card__sub" style="text-align: center; margin-top: 4px;">
+                    ${agents.length === 0
+                      ? "Deploy an agent to begin monitoring."
+                      : "Choose an agent from the sidebar to inspect."}
+                  </div>
                 </div>
               </div>
             `}
@@ -207,10 +212,7 @@ function renderAgentCard(
   props: AgentsProps,
 ) {
   const label = normalizeAgentLabel(agent);
-  const emoji = resolveAgentEmoji(
-    agent,
-    props.agentIdentityById[agent.id] ?? null,
-  );
+  const emoji = resolveAgentEmoji(agent, props.agentIdentityById[agent.id] ?? null);
   const modelLabel = resolveModelLabel(agent.model);
   const ctx = buildAgentContext(
     agent,
@@ -223,11 +225,7 @@ function renderAgentCard(
   const activeAgentId = parseAgentSessionKey(props.runtimeSessionKey)?.agentId;
   const isRunning = agent.id === activeAgentId;
   const sessions = props.sessionsResult?.sessions ?? [];
-  const statusInfo = deriveAgentStatusFromSessions(
-    sessions,
-    agent.id,
-    props.sessionDetails,
-  );
+  const statusInfo = deriveAgentStatusFromSessions(sessions, agent.id, props.sessionDetails);
 
   const fineStatus = statusInfo.fineStatus;
   const useFineStatus = statusInfo.status === "running" && fineStatus;
@@ -235,13 +233,15 @@ function renderAgentCard(
     ? formatFineStatusTag(fineStatus)
     : { label: statusInfo.statusLabel, cssClass: `agent-card__status-tag--${statusInfo.status}` };
 
-  const toolBadge = useFineStatus && fineStatus === "tool_call" && statusInfo.toolName
-    ? html`<span class="agent-card__tool-badge">🔧 ${statusInfo.toolName}</span>`
-    : nothing;
+  const toolBadge =
+    useFineStatus && fineStatus === "tool_call" && statusInfo.toolName
+      ? html`<span class="agent-card__tool-badge">🔧 ${statusInfo.toolName}</span>`
+      : nothing;
 
-  const thinkingPreview = useFineStatus && fineStatus === "thinking" && statusInfo.thinkingPreview
-    ? html`<span class="agent-card__thinking-preview">${statusInfo.thinkingPreview}</span>`
-    : nothing;
+  const thinkingPreview =
+    useFineStatus && fineStatus === "thinking" && statusInfo.thinkingPreview
+      ? html`<span class="agent-card__thinking-preview">${statusInfo.thinkingPreview}</span>`
+      : nothing;
 
   return html`
     <button
@@ -250,19 +250,17 @@ function renderAgentCard(
       @click=${() => props.onSelectAgent(agent.id)}
     >
       <div class="agent-card__header">
-        <span class="agent-card__indicator ${isRunning ? "agent-card__indicator--active" : ""}"></span>
+        <span
+          class="agent-card__indicator ${isRunning ? "agent-card__indicator--active" : ""}"
+        ></span>
         <span class="agent-card__avatar">${emoji || label.charAt(0).toUpperCase()}</span>
         <div class="agent-card__body">
           <div class="agent-card__name">
-            ${label}
-            ${isDefault
-              ? html`<span class="agent-card__badge">default</span>`
-              : nothing}
+            ${label} ${isDefault ? html`<span class="agent-card__badge">default</span>` : nothing}
             <span class="agent-card__status-tag ${statusTag.cssClass}">${statusTag.label}</span>
           </div>
           <div class="agent-card__sub">${modelLabel} · ${ctx.workspace}</div>
-          ${toolBadge}
-          ${thinkingPreview}
+          ${toolBadge} ${thinkingPreview}
         </div>
       </div>
       <div class="agent-card__metrics">
@@ -272,13 +270,24 @@ function renderAgentCard(
       </div>
       <div class="agent-card__stats-row">
         ${statusInfo.contextTokens > 0
-          ? html`<span class="agent-card__stat">${formatTokenCount(statusInfo.usedTokens)}/${formatTokenCount(statusInfo.contextTokens)} (${Math.round((statusInfo.usedTokens / statusInfo.contextTokens) * 100)}%)</span>`
+          ? html`<span class="agent-card__stat"
+              >${formatTokenCount(statusInfo.usedTokens)}/${formatTokenCount(
+                statusInfo.contextTokens,
+              )}
+              (${Math.round((statusInfo.usedTokens / statusInfo.contextTokens) * 100)}%)</span
+            >`
           : nothing}
         <span class="agent-card__stat">${formatRelativeTime(statusInfo.lastActiveAt)}</span>
       </div>
       ${statusInfo.contextTokens > 0
         ? html`<div class="agent-card__token-bar">
-            <div class="agent-card__token-bar-fill" style="width: ${Math.min(100, (statusInfo.usedTokens / statusInfo.contextTokens) * 100)}%"></div>
+            <div
+              class="agent-card__token-bar-fill"
+              style="width: ${Math.min(
+                100,
+                (statusInfo.usedTokens / statusInfo.contextTokens) * 100,
+              )}%"
+            ></div>
           </div>`
         : nothing}
     </button>
@@ -326,10 +335,8 @@ function renderAgentDetailContent(
     </div>
 
     <div class="agent-detail-stats">
-      ${metricChip("Files", metrics.filesCount)}
-      ${metricChip("Skills", metrics.skillsCount)}
-      ${metricChip("Tools", metrics.toolsCount)}
-      ${metricChip("Cron", metrics.cronCount)}
+      ${metricChip("Files", metrics.filesCount)} ${metricChip("Skills", metrics.skillsCount)}
+      ${metricChip("Tools", metrics.toolsCount)} ${metricChip("Cron", metrics.cronCount)}
       ${metricChip("Channels", metrics.channelsCount)}
     </div>
 
@@ -390,7 +397,6 @@ function renderAgentDetailContent(
             </div>
           </div>`
         : nothing}
-
       ${props.activePanel === "files"
         ? html`<div class="agent-detail-section">
             <div class="agent-detail-section__content">
@@ -412,7 +418,6 @@ function renderAgentDetailContent(
             </div>
           </div>`
         : nothing}
-
       ${props.activePanel === "tools"
         ? html`<div class="agent-detail-section">
             <div class="agent-detail-section__content">
@@ -438,7 +443,6 @@ function renderAgentDetailContent(
             </div>
           </div>`
         : nothing}
-
       ${props.activePanel === "cron"
         ? html`<div class="agent-detail-section">
             <div class="agent-detail-section__content">

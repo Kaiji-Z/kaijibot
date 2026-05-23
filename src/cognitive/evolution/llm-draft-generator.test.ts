@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { generateSkillDraftLLM, buildPrompt, validateAndRepair, extractTaggedBlocks } from "./llm-draft-generator.js";
+import {
+  generateSkillDraftLLM,
+  buildPrompt,
+  validateAndRepair,
+  extractTaggedBlocks,
+} from "./llm-draft-generator.js";
 import type { LlmDraftDeps } from "./llm-draft-generator.js";
-import type { EvolutionCandidate } from "./types.js";
 import { generateSkillDraft } from "./skill-draft-generator.js";
+import type { EvolutionCandidate } from "./types.js";
 
 function makeCandidate(overrides: Partial<EvolutionCandidate> = {}): EvolutionCandidate {
   return {
@@ -59,7 +64,9 @@ describe("buildPrompt", () => {
   });
 
   it("includes transcript when available", () => {
-    const candidate = makeCandidate({ transcript: "User asked to archive pages. Bot listed nodes and moved them." });
+    const candidate = makeCandidate({
+      transcript: "User asked to archive pages. Bot listed nodes and moved them.",
+    });
     const prompt = buildPrompt(candidate);
     expect(prompt).toContain("User asked to archive pages");
     expect(prompt).toContain("### Transcript");
@@ -85,7 +92,12 @@ describe("validateAndRepair", () => {
     expect(result.name).toBe("feishu-wiki-archive");
     expect(result.description).toContain("Archive inactive");
     expect(result.description).toContain("clean up wiki");
-    expect(result.triggerPhrases).toEqual(["归档知识库", "archive wiki", "清理旧文档", "move stale docs"]);
+    expect(result.triggerPhrases).toEqual([
+      "归档知识库",
+      "archive wiki",
+      "清理旧文档",
+      "move stale docs",
+    ]);
     expect(result.bodyMarkdown).toContain("## When to use");
     expect(result.bodyMarkdown).toContain("## Workflow");
   });
@@ -114,20 +126,21 @@ describe("validateAndRepair", () => {
 
   it("falls back on empty body after frontmatter", () => {
     const candidate = makeCandidate();
-    const emptyBody = "---\nname: test\n\ndescription: \"A test\"\n---\n";
+    const emptyBody = '---\nname: test\n\ndescription: "A test"\n---\n';
     const result = validateAndRepair(emptyBody, candidate);
     expect(result).toEqual(generateSkillDraft(candidate));
   });
 
   it("falls back on no trigger phrases in body", () => {
     const candidate = makeCandidate();
-    const noTriggers = "---\nname: test\ndescription: \"A test\"\n---\n## Workflow\n1. Do it";
+    const noTriggers = '---\nname: test\ndescription: "A test"\n---\n## Workflow\n1. Do it';
     const result = validateAndRepair(noTriggers, candidate);
     expect(result).toEqual(generateSkillDraft(candidate));
   });
 
   it("sanitizes name with special characters from frontmatter", () => {
-    const skillMd = "---\nname: My Cool Skill!!!\ndescription: \"Does things\"\n---\n## Triggers\n- do stuff\n\n## Workflow\n1. Step one";
+    const skillMd =
+      '---\nname: My Cool Skill!!!\ndescription: "Does things"\n---\n## Triggers\n- do stuff\n\n## Workflow\n1. Step one';
     const result = validateAndRepair(skillMd, makeCandidate());
     expect(result.name).toBe("my-cool-skill");
     expect(result.triggerPhrases).toEqual(["do stuff"]);
@@ -155,7 +168,8 @@ description: "Multi section skill"
   });
 
   it("handles description without quotes in frontmatter", () => {
-    const skillMd = "---\nname: test-skill\ndescription: A simple skill without quotes\n---\n## Triggers\n- test trigger\n\n## Workflow\n1. Step";
+    const skillMd =
+      "---\nname: test-skill\ndescription: A simple skill without quotes\n---\n## Triggers\n- test trigger\n\n## Workflow\n1. Step";
     const result = validateAndRepair(skillMd, makeCandidate());
     expect(result.description).toBe("A simple skill without quotes");
     expect(result.name).toBe("test-skill");
@@ -175,7 +189,9 @@ describe("generateSkillDraftLLM", () => {
   it("falls back to rule-based when LLM throws error", async () => {
     const candidate = makeCandidate();
     const failingDeps: LlmDraftDeps = {
-      generateText: async () => { throw new Error("LLM unavailable"); },
+      generateText: async () => {
+        throw new Error("LLM unavailable");
+      },
     };
     const draft = await generateSkillDraftLLM(candidate, failingDeps);
     expect(draft).toEqual(generateSkillDraft(candidate));
@@ -183,7 +199,10 @@ describe("generateSkillDraftLLM", () => {
 
   it("falls back to rule-based on unparseable LLM response", async () => {
     const candidate = makeCandidate();
-    const draft = await generateSkillDraftLLM(candidate, mockDeps("not valid skill content at all {{{"));
+    const draft = await generateSkillDraftLLM(
+      candidate,
+      mockDeps("not valid skill content at all {{{"),
+    );
     expect(draft).toEqual(generateSkillDraft(candidate));
   });
 
@@ -205,7 +224,8 @@ describe("generateSkillDraftLLM", () => {
 
 describe("extractTaggedBlocks", () => {
   it("extracts python:scripts/main.py blocks into scripts map", () => {
-    const body = "## Workflow\n\nSome text\n\n```python:scripts/main.py\nprint('hello')\n```\n\nMore text";
+    const body =
+      "## Workflow\n\nSome text\n\n```python:scripts/main.py\nprint('hello')\n```\n\nMore text";
     const result = extractTaggedBlocks(body);
     expect(result.scripts).toEqual({ "main.py": "print('hello')" });
     expect(result.references).toBeUndefined();
@@ -230,14 +250,14 @@ describe("extractTaggedBlocks", () => {
       "",
       "```markdown:references/api.md\n# API\n```",
       "",
-      "```json:assets/data.json\n{\"key\": 1}\n```",
+      '```json:assets/data.json\n{"key": 1}\n```',
       "",
       "End text",
     ].join("\n");
     const result = extractTaggedBlocks(body);
     expect(result.scripts).toEqual({ "main.py": "print('run')" });
     expect(result.references).toEqual({ "api.md": "# API" });
-    expect(result.assets).toEqual({ "data.json": "{\"key\": 1}" });
+    expect(result.assets).toEqual({ "data.json": '{"key": 1}' });
     expect(result.body).not.toContain("```python:scripts");
     expect(result.body).toContain("End text");
   });

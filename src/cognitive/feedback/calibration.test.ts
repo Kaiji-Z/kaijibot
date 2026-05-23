@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
+import type { CalibrationRecord } from "../types.js";
 import {
   recordCalibration,
   computeCalibrationSlope,
   applyCalibrationCorrection,
   getCalibrationStats,
 } from "./calibration.js";
-import type { CalibrationRecord } from "../types.js";
 
 function makeRecords(
   count: number,
@@ -21,9 +21,7 @@ function makeRecords(
 function makeMixedRecords(
   entries: Array<{ predicted: number; outcome: CalibrationRecord["actualOutcome"] }>,
 ): CalibrationRecord[] {
-  return entries.map((e, i) =>
-    recordCalibration(`insight-${i}`, e.predicted, e.outcome, 1000 + i),
-  );
+  return entries.map((e, i) => recordCalibration(`insight-${i}`, e.predicted, e.outcome, 1000 + i));
 }
 
 describe("recordCalibration", () => {

@@ -1,9 +1,9 @@
-import { classifyMode, buildModePromptSection } from "./mode-router.js";
-import type { CognitiveMode, ModeClassification, PersonaTree } from "./types.js";
-import { buildPersonaContext } from "./persona/context-builder.js";
-import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
-import type { CorrectionRecord } from "./correction/types.js";
 import { formatCorrectionsPrompt } from "./correction/injector.js";
+import type { CorrectionRecord } from "./correction/types.js";
+import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
+import { classifyMode, buildModePromptSection } from "./mode-router.js";
+import { buildPersonaContext } from "./persona/context-builder.js";
+import type { CognitiveMode, ModeClassification, PersonaTree } from "./types.js";
 
 export function buildCognitiveModePrompt(params: {
   message: string;
@@ -15,7 +15,16 @@ export function buildCognitiveModePrompt(params: {
   persona?: PersonaTree;
   corrections?: CorrectionRecord[];
 }): { prompt: string; classification: ModeClassification } {
-  const { message, isHeartbeat, isCron, recentModes, cognitiveEnabled, evolutionEnabled, persona, corrections } = params;
+  const {
+    message,
+    isHeartbeat,
+    isCron,
+    recentModes,
+    cognitiveEnabled,
+    evolutionEnabled,
+    persona,
+    corrections,
+  } = params;
 
   const classification = classifyMode(message, {
     isHeartbeat,
@@ -33,7 +42,9 @@ export function buildCognitiveModePrompt(params: {
 
   if (persona) {
     const personaCtx = buildPersonaContext(persona);
-    if (personaCtx) { parts.push(personaCtx); }
+    if (personaCtx) {
+      parts.push(personaCtx);
+    }
 
     const phase = getInteractionPhase(persona.rapport.trustScore);
     const advice = getPhaseBehaviorAdvice(phase);
@@ -43,15 +54,17 @@ export function buildCognitiveModePrompt(params: {
   }
 
   if (evolutionEnabled !== false) {
-    parts.push([
-      "## Skill Evolution",
-      "当看到 [Evolution Signal] 系统事件时，根据对话上下文自主判断这个任务模式是否值得做成可复用技能。",
-      "优先检查已有技能是否可以覆盖——如果可以，用 patch_skill 改进已有技能。",
-      "如果确实值得做成新技能，调用 evaluate_skill_evolution 工具，它会自动生成并保存技能。保存后告诉用户你自主进化了什么。",
-      "如果觉得不值得，直接告诉用户原因。",
-      "无论哪种结果，都必须告知用户，绝不能静默处理。",
-      "如果用户对已保存的技能不满意，可以说「删除技能 xxx」来移除。",
-    ].join("\n"));
+    parts.push(
+      [
+        "## Skill Evolution",
+        "当看到 [Evolution Signal] 系统事件时，根据对话上下文自主判断这个任务模式是否值得做成可复用技能。",
+        "优先检查已有技能是否可以覆盖——如果可以，用 patch_skill 改进已有技能。",
+        "如果确实值得做成新技能，调用 evaluate_skill_evolution 工具，它会自动生成并保存技能。保存后告诉用户你自主进化了什么。",
+        "如果觉得不值得，直接告诉用户原因。",
+        "无论哪种结果，都必须告知用户，绝不能静默处理。",
+        "如果用户对已保存的技能不满意，可以说「删除技能 xxx」来移除。",
+      ].join("\n"),
+    );
   }
 
   if (corrections && corrections.length > 0) {

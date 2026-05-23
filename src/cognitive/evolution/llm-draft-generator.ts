@@ -1,6 +1,6 @@
-import type { EvolutionCandidate, SkillDraft } from "./types.js";
-import { generateSkillDraft, sanitizeSkillName } from "./skill-draft-generator.js";
 import { SKILL_CREATOR_SPEC } from "./skill-creator-spec.js";
+import { generateSkillDraft, sanitizeSkillName } from "./skill-draft-generator.js";
+import type { EvolutionCandidate, SkillDraft } from "./types.js";
 
 export type LlmDraftDeps = {
   generateText: (prompt: string) => Promise<string>;
@@ -33,11 +33,7 @@ function buildPrompt(candidate: EvolutionCandidate): string {
   ];
 
   if (candidate.transcript) {
-    sections.push(
-      "",
-      "### Transcript",
-      candidate.transcript,
-    );
+    sections.push("", "### Transcript", candidate.transcript);
   }
 
   sections.push(
@@ -111,7 +107,15 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
 
   const { body: cleanBody, scripts, references, assets } = extractTaggedBlocks(bodyNoTriggers);
 
-  return { name, description, triggerPhrases, bodyMarkdown: cleanBody, scripts, references, assets };
+  return {
+    name,
+    description,
+    triggerPhrases,
+    bodyMarkdown: cleanBody,
+    scripts,
+    references,
+    assets,
+  };
 }
 
 function extractAndStripTriggers(body: string): { phrases: string[]; stripped: string } {

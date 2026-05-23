@@ -18,7 +18,12 @@ export type FeedbackEvent = {
 
 /** Implicit feedback signal derived from user behavior */
 export type ImplicitFeedbackSignal = {
-  type: "response_length" | "response_latency" | "topic_continuation" | "topic_abandonment" | "question_depth";
+  type:
+    | "response_length"
+    | "response_latency"
+    | "topic_continuation"
+    | "topic_abandonment"
+    | "question_depth";
   topic?: string;
   value: number;
   timestamp: number;

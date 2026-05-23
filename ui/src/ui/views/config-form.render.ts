@@ -303,13 +303,22 @@ const SECTION_META_RAW: Record<string, { label: string; description: string }> =
   ui: { label: "settings.sections.ui", description: "settings.sections.uiDesc" },
   models: { label: "settings.sections.models", description: "settings.sections.modelsDesc" },
   bindings: { label: "settings.sections.bindings", description: "settings.sections.bindingsDesc" },
-  broadcast: { label: "settings.sections.broadcast", description: "settings.sections.broadcastDesc" },
+  broadcast: {
+    label: "settings.sections.broadcast",
+    description: "settings.sections.broadcastDesc",
+  },
   audio: { label: "settings.sections.audio", description: "settings.sections.audioDesc" },
   session: { label: "settings.sections.session", description: "settings.sections.sessionDesc" },
   cron: { label: "settings.sections.cron", description: "settings.sections.cronDesc" },
   web: { label: "settings.sections.web", description: "settings.sections.webDesc" },
-  discovery: { label: "settings.sections.discovery", description: "settings.sections.discoveryDesc" },
-  canvasHost: { label: "settings.sections.canvasHost", description: "settings.sections.canvasHostDesc" },
+  discovery: {
+    label: "settings.sections.discovery",
+    description: "settings.sections.discoveryDesc",
+  },
+  canvasHost: {
+    label: "settings.sections.canvasHost",
+    description: "settings.sections.canvasHostDesc",
+  },
   talk: { label: "settings.sections.talk", description: "settings.sections.talkDesc" },
   plugins: { label: "settings.sections.plugins", description: "settings.sections.pluginsDesc" },
   diagnostics: {
@@ -456,7 +465,9 @@ export function renderConfigForm(props: ConfigFormProps) {
       <div class="config-empty">
         <div class="config-empty__icon">${icons.search}</div>
         <div class="config-empty__text">
-          ${searchQuery ? t("settings.noMatchingSettings", { query: searchQuery }) : t("settings.noSettingsInSection")}
+          ${searchQuery
+            ? t("settings.noMatchingSettings", { query: searchQuery })
+            : t("settings.noSettingsInSection")}
         </div>
       </div>
     `;

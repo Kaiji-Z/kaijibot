@@ -18,13 +18,13 @@ Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 30+ LLM 提
 
 KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动**给你发消息。不是广告，不是提醒喝水，而是你真正可能感兴趣的东西。
 
-| | 普通聊天机器人 | KaijiBot |
-|---|---|---|
-| **交互方式** | 你问它才答 | 主动推送洞察 + 正常对话 |
-| **用户理解** | 无状态，每次从零开始 | 持续学习你的兴趣、领域、偏好 |
-| **时机感知** | 不管你在干嘛 | 尊重活跃时段、信任阶段、对话频率 |
+|              | 普通聊天机器人       | KaijiBot                                       |
+| ------------ | -------------------- | ---------------------------------------------- |
+| **交互方式** | 你问它才答           | 主动推送洞察 + 正常对话                        |
+| **用户理解** | 无状态，每次从零开始 | 持续学习你的兴趣、领域、偏好                   |
+| **时机感知** | 不管你在干嘛         | 尊重活跃时段、信任阶段、对话频率               |
 | **中文支持** | 英文优先，中文常掉队 | 中文原生优化，模式路由、画像提取均针对中文设计 |
-| **渠道集成** | 需要 Web/SDK 接入 | 飞书即终端，发消息就能用 |
+| **渠道集成** | 需要 Web/SDK 接入    | 飞书即终端，发消息就能用                       |
 
 ## ✨ 核心特性
 
@@ -83,8 +83,8 @@ KaijiBot 不会这样。它有一套纠错记忆系统，保证同样的错误�
 
 不绑死任何一家。国内国际随意切换，`kaijibot onboard` 向导自动发现已配置的 API Key。
 
-| 国内（推荐） | 国际主流 | 聚合 / 自部署 |
-|---|---|---|
+| 国内（推荐）                                                                                                               | 国际主流                                                                             | 聚合 / 自部署                                                                                               |
+| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · SGLang · vLLM · Ollama · LMStudio |
 
 切换模型只需一行：
@@ -235,18 +235,18 @@ Agent 系统实现完整的推理循环：系统提示组装（上下文文件 +
 
 **62 个扩展**覆盖全部能力层：
 
-| 类别 | 扩展 |
-|---|---|
-| **消息渠道** | feishu（飞书） |
-| **国内 LLM** | 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba |
-| **国际 LLM** | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI |
-| **聚合 / 网关** | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · Copilot Proxy · Microsoft · Microsoft Foundry · Anthropic Vertex |
-| **自部署** | Ollama · LMStudio · SGLang · vLLM |
-| **开发工具** | OpenCode · OpenCode-Go · Open-Prose · OpenShell · Kilocode · Arcee · Chutes · Venice · Vydra · Runway |
-| **搜索 / 浏览器** | Exa · Tavily · Browser（Playwright） |
-| **记忆** | Memory-Core · Memory-LanceDB · Memory-Wiki |
-| **语音 / 媒体** | Speech-Core · Talk-Voice · Media-Understanding · Image-Generation |
-| **工具类** | Diffs · LLM-Task · Device-Pair · Webhooks · Shared · GitHub-Copilot |
+| 类别              | 扩展                                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **消息渠道**      | feishu（飞书）                                                                                                                             |
+| **国内 LLM**      | 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba                 |
+| **国际 LLM**      | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI                                                       |
+| **聚合 / 网关**   | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · Copilot Proxy · Microsoft · Microsoft Foundry · Anthropic Vertex |
+| **自部署**        | Ollama · LMStudio · SGLang · vLLM                                                                                                          |
+| **开发工具**      | OpenCode · OpenCode-Go · Open-Prose · OpenShell · Kilocode · Arcee · Chutes · Venice · Vydra · Runway                                      |
+| **搜索 / 浏览器** | Exa · Tavily · Browser（Playwright）                                                                                                       |
+| **记忆**          | Memory-Core · Memory-LanceDB · Memory-Wiki                                                                                                 |
+| **语音 / 媒体**   | Speech-Core · Talk-Voice · Media-Understanding · Image-Generation                                                                          |
+| **工具类**        | Diffs · LLM-Task · Device-Pair · Webhooks · Shared · GitHub-Copilot                                                                        |
 
 **21 个内置技能**：github、gh-issues、weather、summarize、coding-agent、mcporter、skill-creator、session-logs、healthcheck、notion、obsidian、canvas、nano-pdf、taskflow、taskflow-inbox-triage、clawhub、video-frames、gifgrep、node-connect、blogwatcher、sherpa-onnx-tts。
 
@@ -262,23 +262,23 @@ Agent 系统实现完整的推理循环：系统提示组装（上下文文件 +
 
 **基础理论**
 
-- Green, D. M., & Swets, J. A. (1966). *Signal detection theory and psychophysics*. Wiley.
-- Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in view of the evidence of two samples. *Biometrika*, 25(3/4), 285–294.
-- Altman, I., & Taylor, D. A. (1973). *Social penetration: The development of interpersonal relationships*. Holt, Rinehart & Winston.
-- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155–170.
+- Green, D. M., & Swets, J. A. (1966). _Signal detection theory and psychophysics_. Wiley.
+- Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in view of the evidence of two samples. _Biometrika_, 25(3/4), 285–294.
+- Altman, I., & Taylor, D. A. (1973). _Social penetration: The development of interpersonal relationships_. Holt, Rinehart & Winston.
+- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. _Cognitive Science_, 7(2), 155–170.
 
 **人机关系与推荐系统**
 
-- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. *ACM Transactions on Computer-Human Interaction*, 12(2), 293–327.
-- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. *Knowledge-Based Systems*, 111, 180–192.
+- Bickmore, T. W., & Picard, R. W. (2005). Establishing and maintaining long-term human-computer relationships. _ACM Transactions on Computer-Human Interaction_, 12(2), 293–327.
+- Kotkov, D., Wang, S., & Veijalainen, J. (2016). A survey of serendipity in recommender systems. _Knowledge-Based Systems_, 111, 180–192.
 
 **LLM 画像与记忆**
 
-- DEEPER: Directed Persona Refinement. (2025). *Proceedings of ACL 2025*. 32.2% error reduction via active contradiction resolution in persona maintenance.
-- PERSONAMEM: Persona-Aware Memory in LLMs. (2025). *Proceedings of COLM 2025*. Benchmark showing LLMs achieve ~50% accuracy on evolving profile tasks.
-- DV365: Dynamic User Representations over 365 Days. (2025). *Proceedings of KDD 2025*. Instagram's multi-slicing user embedding architecture.
+- DEEPER: Directed Persona Refinement. (2025). _Proceedings of ACL 2025_. 32.2% error reduction via active contradiction resolution in persona maintenance.
+- PERSONAMEM: Persona-Aware Memory in LLMs. (2025). _Proceedings of COLM 2025_. Benchmark showing LLMs achieve ~50% accuracy on evolving profile tasks.
+- DV365: Dynamic User Representations over 365 Days. (2025). _Proceedings of KDD 2025_. Instagram's multi-slicing user embedding architecture.
 - GemiRec: Gemini-Powered Recommendations. (2025). Xiaohongshu's multi-interest vector architecture with codebook quantization.
-- PIE: Personalized Interest Exploration. (2023). *Proceedings of WWW 2023*. Personalized PageRank with bandit exploration.
+- PIE: Personalized Interest Exploration. (2023). _Proceedings of WWW 2023_. Personalized PageRank with bandit exploration.
 - ProfiLLM: Fully Implicit User Profiling from Chatbot Interactions. (2025).
 
 ### 开源依赖

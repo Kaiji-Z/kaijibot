@@ -15,7 +15,7 @@ describe("computeQualityVerdict", () => {
   });
 
   it("returns 'deliver' above 0.65", () => {
-    expect(computeQualityVerdict(0.90)).toBe("deliver");
+    expect(computeQualityVerdict(0.9)).toBe("deliver");
   });
 
   it("returns 'park' at exactly 0.45", () => {

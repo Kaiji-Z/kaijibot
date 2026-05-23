@@ -1,8 +1,8 @@
-import type { SkillDraft, SkillMeta } from "./types.js";
-import { mkdir, rm, writeFile, readFile, rename, access, readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { mkdir, rm, writeFile, readFile, rename, access, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { SkillDraft, SkillMeta } from "./types.js";
 
 const SKILLS_DIR = "skills";
 const AGENT_SKILLS_DIR = "skills/agent";
@@ -229,7 +229,9 @@ export class SkillPersistenceWriter {
     // Body = everything after frontmatter with ## Triggers section removed
     let bodyMarkdown = bodyAndTriggers;
     if (triggersMatch?.index !== undefined) {
-      bodyMarkdown = bodyAndTriggers.slice(0, triggersMatch.index) + bodyAndTriggers.slice(triggersMatch.index + triggersMatch[0].length);
+      bodyMarkdown =
+        bodyAndTriggers.slice(0, triggersMatch.index) +
+        bodyAndTriggers.slice(triggersMatch.index + triggersMatch[0].length);
       bodyMarkdown = bodyMarkdown.trim();
     }
 
@@ -287,8 +289,7 @@ export class SkillPersistenceWriter {
       try {
         await access(skillPath);
         names.push(entry);
-      } catch {
-      }
+      } catch {}
     }
     return names;
   }

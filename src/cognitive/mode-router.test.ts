@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CognitiveMode, ModeClassification } from "./types.js";
 import { classifyMode, buildModePromptSection } from "./mode-router.js";
+import type { CognitiveMode, ModeClassification } from "./types.js";
 
 describe("classifyMode", () => {
   describe("proactive mode", () => {

@@ -43,13 +43,24 @@ const EVOLUTION_TOOL = {
       type: "object",
       properties: {
         taskSummary: { type: "string", description: "Short summary of the completed task" },
-        toolCalls: { type: "array", items: { type: "string" }, description: "Ordered list of tool calls" },
+        toolCalls: {
+          type: "array",
+          items: { type: "string" },
+          description: "Ordered list of tool calls",
+        },
         uniqueToolCount: { type: "number", description: "Number of distinct tools used" },
         reasoningTurns: { type: "number", description: "Number of agent reasoning turns" },
         durationMs: { type: "number", description: "Wall-clock time in milliseconds" },
         domain: { type: "string", description: "Cognitive domain" },
       },
-      required: ["taskSummary", "toolCalls", "uniqueToolCount", "reasoningTurns", "durationMs", "domain"],
+      required: [
+        "taskSummary",
+        "toolCalls",
+        "uniqueToolCount",
+        "reasoningTurns",
+        "durationMs",
+        "domain",
+      ],
     },
   },
 };
@@ -70,15 +81,14 @@ const TOOL_RESULT = JSON.stringify({
   complexityScore: 0.72,
   skillName: "meeting-archive",
   description: "归档产品评审会议纪要到飞书知识库并创建跟踪任务",
-  triggerPhrases: [
-    "帮我归档会议纪要",
-    "整理上次评审记录到知识库",
-    "Archive meeting notes to wiki",
-  ],
+  triggerPhrases: ["帮我归档会议纪要", "整理上次评审记录到知识库", "Archive meeting notes to wiki"],
   recentSuggestions: [],
 });
 
-async function callLLMMessages(messages: ChatMessage[], tools?: unknown[]): Promise<{
+async function callLLMMessages(
+  messages: ChatMessage[],
+  tools?: unknown[],
+): Promise<{
   content: string | null;
   tool_calls?: ToolCall[];
 }> {
@@ -116,14 +126,18 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("evolution heartbeat live: dedicated pr
 
     console.log(`\n  ═══ Turn 1: Tool Call ═══`);
     console.log(`  content: ${response.content ?? "(null)"}`);
-    console.log(`  tool_calls: ${response.tool_calls ? response.tool_calls.map((tc) => tc.function.name).join(", ") : "(none)"}`);
+    console.log(
+      `  tool_calls: ${response.tool_calls ? response.tool_calls.map((tc) => tc.function.name).join(", ") : "(none)"}`,
+    );
 
     expect(response.tool_calls).toBeDefined();
     expect(response.tool_calls!.length).toBeGreaterThanOrEqual(1);
     expect(response.tool_calls![0]!.function.name).toBe("evaluate_skill_evolution");
 
     const toolArgs = JSON.parse(response.tool_calls![0]!.function.arguments);
-    console.log(`  tool args: domain=${toolArgs.domain}, uniqueToolCount=${toolArgs.uniqueToolCount}`);
+    console.log(
+      `  tool args: domain=${toolArgs.domain}, uniqueToolCount=${toolArgs.uniqueToolCount}`,
+    );
     expect(toolArgs.taskSummary).toBeTruthy();
     expect(toolArgs.toolCalls).toBeInstanceOf(Array);
   }, 60_000);
@@ -146,7 +160,12 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("evolution heartbeat live: dedicated pr
               name: "evaluate_skill_evolution",
               arguments: JSON.stringify({
                 taskSummary: "归档产品评审会议纪要到飞书知识库并创建跟踪任务",
-                toolCalls: ["feishu_vc_search", "feishu_vc_notes", "feishu_wiki_create", "feishu_task_create"],
+                toolCalls: [
+                  "feishu_vc_search",
+                  "feishu_vc_notes",
+                  "feishu_wiki_create",
+                  "feishu_task_create",
+                ],
                 uniqueToolCount: 4,
                 reasoningTurns: 6,
                 durationMs: 120_000,
@@ -186,7 +205,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("evolution heartbeat live: dedicated pr
 
     console.log(`\n  ═══ Baseline: Old Prompt ═══`);
     console.log(`  content: ${response.content ?? "(null)"}`);
-    console.log(`  tool_calls: ${response.tool_calls ? response.tool_calls.map((tc) => tc.function.name).join(", ") : "(none)"}`);
+    console.log(
+      `  tool_calls: ${response.tool_calls ? response.tool_calls.map((tc) => tc.function.name).join(", ") : "(none)"}`,
+    );
 
     const isHeartbeatOk =
       response.content?.trim() === "HEARTBEAT_OK" ||

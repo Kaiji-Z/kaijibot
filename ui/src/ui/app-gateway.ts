@@ -408,7 +408,11 @@ function updateSessionDetailFromChat(
         analyzedAt: now,
       },
     };
-  } else if (payload.state === "final" || payload.state === "aborted" || payload.state === "error") {
+  } else if (
+    payload.state === "final" ||
+    payload.state === "aborted" ||
+    payload.state === "error"
+  ) {
     const next: Record<string, SessionDetailState> = { ...host.sessionDetails };
     if (prev) {
       next[sessionKey] = {

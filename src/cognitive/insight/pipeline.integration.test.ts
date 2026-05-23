@@ -1,11 +1,15 @@
 import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
-import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
 import { ProactiveScheduler, type InsightGeneratorFn } from "../scheduler/proactive-scheduler.js";
-import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
 import type { Opportunity, SchedulerConfig, SchedulerEvent } from "../scheduler/types.js";
+import type { PersonaTree } from "../types.js";
+import {
+  generateInsightCandidatesLLM,
+  type LlmInsightDeps,
+  type WebSearchResult,
+} from "./llm-engine.js";
+import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Test infrastructure (local copies, no imports from other test files)
@@ -91,7 +95,12 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
       selfDisclosureLevel: 0.4,
     },
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: Date.now() - 2 * 3600_000, lastStageTransitionAt: Date.now() - 86400000, totalActiveDays: 10 },
+    lifecycle: {
+      stage: "active",
+      lastActiveAt: Date.now() - 2 * 3600_000,
+      lastStageTransitionAt: Date.now() - 86400000,
+      totalActiveDays: 10,
+    },
     calibrationHistory: [],
     moodHistory: [],
     ...overrides,
@@ -148,7 +157,8 @@ function validInferenceJSON(): string {
   return JSON.stringify({
     inferredInterest: "WebAssembly memory safety patterns",
     searchQuery: "wasm memory safety rust typescript",
-    bridgeReasoning: "User knows Rust ownership and TypeScript types — WASM sits at their intersection",
+    bridgeReasoning:
+      "User knows Rust ownership and TypeScript types — WASM sits at their intersection",
     avoidTopics: ["typescript", "rust"],
     estimatedSurprise: 0.8,
   });
@@ -156,8 +166,16 @@ function validInferenceJSON(): string {
 
 function makeWebSearchResults(query: string): WebSearchResult[] {
   return [
-    { title: `${query} — latest research`, url: "https://example.com/research", snippet: `New findings about ${query} show promising results` },
-    { title: `${query} best practices`, url: "https://example.com/guide", snippet: "Practical guide to implementation" },
+    {
+      title: `${query} — latest research`,
+      url: "https://example.com/research",
+      snippet: `New findings about ${query} show promising results`,
+    },
+    {
+      title: `${query} best practices`,
+      url: "https://example.com/guide",
+      snippet: "Practical guide to implementation",
+    },
   ];
 }
 
@@ -206,9 +224,7 @@ describe("insight pipeline integration", () => {
     const generator: InsightGeneratorFn = (p, input, options) => {
       return generateInsightCandidatesLLM(p, input, config, mockDeps, {
         maxCandidates: options?.maxCandidates,
-      }).then((candidates) =>
-        candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })),
-      );
+      }).then((candidates) => candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })));
     };
 
     const insights: InsightCandidate[] = [];
@@ -216,7 +232,9 @@ describe("insight pipeline integration", () => {
       makeSchedulerConfig(),
       {
         loadPersona: async () => persona,
-        onInsightReady: async (_agentId, _userId, candidate) => { insights.push(candidate); },
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          insights.push(candidate);
+        },
         savePersona: async () => {},
       },
       { insightGenerator: generator },
@@ -291,9 +309,7 @@ describe("insight pipeline integration", () => {
     const generator: InsightGeneratorFn = (p, input, options) => {
       return generateInsightCandidatesLLM(p, input, config, mockDeps, {
         maxCandidates: options?.maxCandidates,
-      }).then((candidates) =>
-        candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })),
-      );
+      }).then((candidates) => candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })));
     };
 
     const scheduler = new ProactiveScheduler(
@@ -320,18 +336,20 @@ describe("insight pipeline integration", () => {
 
     const generator: InsightGeneratorFn = async (_persona, input, _options) => {
       receivedMode = input.mode;
-      return [{
-        id: "test-insight-id",
-        content: "Test insight content about domains.",
-        rationale: "Test rationale",
-        targetDomains: ["typescript"],
-        sourceDomains: [],
-        relevanceScore: 0.8,
-        surpriseScore: 0.6,
-        compositeScore: 0.7,
-        sources: [{ url: "https://test.com", title: "Test", credibility: 0.8 }],
-        verificationStatus: "verified",
-      }];
+      return [
+        {
+          id: "test-insight-id",
+          content: "Test insight content about domains.",
+          rationale: "Test rationale",
+          targetDomains: ["typescript"],
+          sourceDomains: [],
+          relevanceScore: 0.8,
+          surpriseScore: 0.6,
+          compositeScore: 0.7,
+          sources: [{ url: "https://test.com", title: "Test", credibility: 0.8 }],
+          verificationStatus: "verified",
+        },
+      ];
     };
 
     const scheduler = new ProactiveScheduler(
@@ -420,9 +438,7 @@ describe("insight pipeline integration", () => {
     const generator: InsightGeneratorFn = (p, input, options) => {
       return generateInsightCandidatesLLM(p, input, config, mockDeps, {
         maxCandidates: options?.maxCandidates,
-      }).then((candidates) =>
-        candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })),
-      );
+      }).then((candidates) => candidates.map((c) => ({ ...c, sources: [...TEST_SOURCES] })));
     };
 
     const delivered: InsightCandidate[] = [];
@@ -430,7 +446,9 @@ describe("insight pipeline integration", () => {
       makeSchedulerConfig(),
       {
         loadPersona: async () => persona,
-        onInsightReady: async (_agentId, _userId, candidate) => { delivered.push(candidate); },
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          delivered.push(candidate);
+        },
         savePersona: async () => {},
       },
       { insightGenerator: generator },
@@ -447,14 +465,11 @@ describe("insight pipeline integration", () => {
 
   it("search produces exploration opportunity with correct mode based on timestamp", async () => {
     const persona = makePersona();
-    const scheduler = new ProactiveScheduler(
-      makeSchedulerConfig(),
-      {
-        loadPersona: async () => persona,
-        onInsightReady: async () => {},
-        savePersona: async () => {},
-      },
-    );
+    const scheduler = new ProactiveScheduler(makeSchedulerConfig(), {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    });
 
     const surpriseEvent: SchedulerEvent = { type: "timer", timestamp: surpriseTimestamp() };
     const surpriseOpps = await scheduler.search(persona, surpriseEvent);

@@ -7,7 +7,6 @@ title: "Discord"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Discord (Bot API)
 
 Status: ready for DMs and guild channels via the official Discord gateway.

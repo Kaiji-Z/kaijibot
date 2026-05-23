@@ -1,12 +1,12 @@
-import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import { randomUUID } from "node:crypto";
+import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
 import type { Fragment, FragmentKind } from "./fragment-types.js";
 import { FRAGMENT_TTL_MS } from "./fragment-types.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/fragment-collector");
 
@@ -26,10 +26,7 @@ export type FragmentCollectorDeps = {
   prepareModel: (
     cfg: KaijiBotConfig,
     modelRef?: string,
-  ) => Promise<
-    | { model: Model<Api>; auth: ResolvedProviderAuth }
-    | { error: string }
-  >;
+  ) => Promise<{ model: Model<Api>; auth: ResolvedProviderAuth } | { error: string }>;
 };
 
 export function createDefaultFragmentCollectorDeps(): FragmentCollectorDeps {
@@ -50,7 +47,12 @@ export function createDefaultFragmentCollectorDeps(): FragmentCollectorDeps {
 export function shouldSkipTurn(userText: string): boolean {
   const trimmed = userText.trim();
   if (trimmed.length < 20) return true;
-  if (/^(好的|嗯|哦|收到|了解|谢谢|感谢|明白|知道|可以|行|对|是|不错|没问题)[！!。.？?]*$/.test(trimmed)) return true;
+  if (
+    /^(好的|嗯|哦|收到|了解|谢谢|感谢|明白|知道|可以|行|对|是|不错|没问题)[！!。.？?]*$/.test(
+      trimmed,
+    )
+  )
+    return true;
   if (/^[\p{P}\p{S}\s]+$/u.test(trimmed)) return true;
   return false;
 }
@@ -104,10 +106,7 @@ export async function collectFragments(
     );
 
     const text = result.content
-      .filter(
-        (block): block is { type: "text"; text: string } =>
-          block.type === "text",
-      )
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
       .map((block) => block.text)
       .join("")
       .trim();
@@ -124,12 +123,16 @@ export async function collectFragments(
 
     const fragments = parseFragments(text);
     if (fragments.length > 0) {
-      log.debug("fragments extracted", { count: fragments.length, kinds: fragments.map(f => f.kind), domains: [...new Set(fragments.flatMap(f => f.domains))] });
+      log.debug("fragments extracted", {
+        count: fragments.length,
+        kinds: fragments.map((f) => f.kind),
+        domains: [...new Set(fragments.flatMap((f) => f.domains))],
+      });
     } else {
       log.debug("fragment-collector parseFragments returned 0", { rawLen: text.length });
     }
     return fragments;
-   } catch (err) {
+  } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
     log.warn(`fragment-collector ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping`);
     return [];
@@ -148,7 +151,8 @@ export function buildFragmentPrompt(
     .slice(0, 20)
     .map(([name]) => name);
   const truncatedUser = userText.length > 500 ? userText.slice(0, 500) + "…" : userText;
-  const truncatedAssistant = assistantText.length > 500 ? assistantText.slice(0, 500) + "…" : assistantText;
+  const truncatedAssistant =
+    assistantText.length > 500 ? assistantText.slice(0, 500) + "…" : assistantText;
   const domainContext = domainNames.length > 0 ? domainNames.join(", ") : "(not yet established)";
 
   return `Analyze this conversation turn and detect STRUCTURAL thinking patterns — not topics, but how the user thinks.
@@ -219,9 +223,7 @@ export function parseFragments(text: string): Fragment[] {
     const now = Date.now();
 
     return parsed
-      .filter((item): item is Record<string, unknown> =>
-        typeof item === "object" && item !== null,
-      )
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
       .filter((item) => {
         const kind = item.kind;
         return typeof kind === "string" && VALID_FRAGMENT_KINDS.has(kind);
@@ -229,14 +231,17 @@ export function parseFragments(text: string): Fragment[] {
       .filter((item) => {
         const evidence = item.evidence;
         const structuralTag = item.structuralTag;
-        return typeof evidence === "string" && evidence.length > 0
-          && typeof structuralTag === "string" && structuralTag.length > 0;
+        return (
+          typeof evidence === "string" &&
+          evidence.length > 0 &&
+          typeof structuralTag === "string" &&
+          structuralTag.length > 0
+        );
       })
       .slice(0, 2)
       .map((item) => {
-        const strength = typeof item.strength === "number"
-          ? Math.max(0, Math.min(1, item.strength))
-          : 0.5;
+        const strength =
+          typeof item.strength === "number" ? Math.max(0, Math.min(1, item.strength)) : 0.5;
 
         const domains = Array.isArray(item.domains)
           ? item.domains.filter((d: unknown) => typeof d === "string").map(String)

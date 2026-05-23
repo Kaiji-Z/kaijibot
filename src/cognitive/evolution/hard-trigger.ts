@@ -12,7 +12,12 @@ export type HardTriggerParams = {
 };
 
 export async function evaluateHardTrigger(params: HardTriggerParams): Promise<void> {
-  log.debug("evaluating", { trigger: params.trigger, toolMetas: params.toolMetas.length, sessionKey: params.sessionKey, senderId: params.senderId });
+  log.debug("evaluating", {
+    trigger: params.trigger,
+    toolMetas: params.toolMetas.length,
+    sessionKey: params.sessionKey,
+    senderId: params.senderId,
+  });
 
   if (params.trigger !== "user" && params.trigger !== "manual" && params.trigger !== undefined) {
     log.debug("skipped: trigger mismatch", { trigger: params.trigger });
@@ -21,7 +26,10 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 
   const userId = resolveUserIdFromSession(params.sessionKey, params.senderId);
   if (!userId) {
-    log.debug("skipped: no userId resolved", { sessionKey: params.sessionKey, senderId: params.senderId });
+    log.debug("skipped: no userId resolved", {
+      sessionKey: params.sessionKey,
+      senderId: params.senderId,
+    });
     return;
   }
 
@@ -33,7 +41,11 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
     return;
   }
 
-  log.debug("proceeding", { userId, toolCalls: toolCalls.length, uniqueTools: new Set(toolCalls).size });
+  log.debug("proceeding", {
+    userId,
+    toolCalls: toolCalls.length,
+    uniqueTools: new Set(toolCalls).size,
+  });
 
   const uniqueTools = new Set(toolCalls);
   const durationMs = Date.now() - params.started;
@@ -79,7 +91,10 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
       reason: "cognitive-evolution",
       sessionKey: params.sessionKey,
     });
-    log.debug("evolution signal enqueued", { sessionKey: params.sessionKey, signalLength: signalText.length });
+    log.debug("evolution signal enqueued", {
+      sessionKey: params.sessionKey,
+      signalLength: signalText.length,
+    });
   } catch (err) {
     log.debug("failed to enqueue evolution signal", { error: String(err) });
   }

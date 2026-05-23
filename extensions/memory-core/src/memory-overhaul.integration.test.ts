@@ -1,12 +1,21 @@
-import { describe, it, expect, afterEach, afterAll } from "vitest";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
-import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, expect, afterEach, afterAll } from "vitest";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
-import { type TopicEntry, parseTopicFile, serializeTopicFile, createEmptyTopicFile } from "./topic-types.js";
-import { runMemoryTidyActions, createTidyDepsFromNodeFs, type MemoryTidyDeps } from "./tools.memory-tidy.js";
+import {
+  runMemoryTidyActions,
+  createTidyDepsFromNodeFs,
+  type MemoryTidyDeps,
+} from "./tools.memory-tidy.js";
+import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
+import {
+  type TopicEntry,
+  parseTopicFile,
+  serializeTopicFile,
+  createEmptyTopicFile,
+} from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // Temp workspace helpers
@@ -181,7 +190,8 @@ describe("Memory index migration", () => {
     const nodeFs = createNodeFsAdapter();
     const idx = new MemoryIndexManager({ workspaceDir: ws, fs: nodeFs });
 
-    const legacyContent = "- User prefers dark mode\n- Project uses PostgreSQL\n- Timezone: UTC+8\n";
+    const legacyContent =
+      "- User prefers dark mode\n- Project uses PostgreSQL\n- Timezone: UTC+8\n";
 
     const migrated = await idx.migrateLegacy(legacyContent);
     await fs.writeFile(join(ws, "MEMORY.md"), migrated, "utf-8");
@@ -317,16 +327,16 @@ describe("memory_tidy archive", () => {
     ws = await createTempWorkspace();
     const tidyDeps = createTidyDepsFromNodeFs(ws, fs);
 
-    const oldDate = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    const oldDate = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     const topic = createEmptyTopicFile("reference", "old-stuff");
     topic.frontmatter.created = oldDate;
     topic.frontmatter.updated = oldDate;
-    topic.entries.push(
-      { title: "Old entry", date: oldDate, content: "Stale content that should be archived" },
-    );
+    topic.entries.push({
+      title: "Old entry",
+      date: oldDate,
+      content: "Stale content that should be archived",
+    });
     topic.frontmatter.entries = 1;
 
     await fs.mkdir(join(ws, "memory", "topics"), { recursive: true });
@@ -349,14 +359,24 @@ describe("memory_tidy archive", () => {
     expect(result.filesAffected).toBe(1);
     expect(result.changes[0]).toContain("archived");
 
-    const srcExists = await fs.access(join(ws, "memory", "topics", "old-stuff.md")).then(() => true, () => false);
+    const srcExists = await fs.access(join(ws, "memory", "topics", "old-stuff.md")).then(
+      () => true,
+      () => false,
+    );
     expect(srcExists).toBe(false);
 
-    const archiveExists = await fs.access(join(ws, "memory", "topics", "archive", "old-stuff.md")).then(() => true, () => false);
+    const archiveExists = await fs
+      .access(join(ws, "memory", "topics", "archive", "old-stuff.md"))
+      .then(
+        () => true,
+        () => false,
+      );
     expect(archiveExists).toBe(true);
 
     const indexAfter = await idx.readIndex();
-    const hasSection = indexAfter.sections.some((s) => s.topicFile === "memory/topics/old-stuff.md");
+    const hasSection = indexAfter.sections.some(
+      (s) => s.topicFile === "memory/topics/old-stuff.md",
+    );
     expect(hasSection).toBe(false);
   });
 });
@@ -562,14 +582,19 @@ describe("Simulated session-memory hook flow", () => {
       "cognitive-system",
       "Discussed the cognitive insight pipeline architecture and persona system design",
       "project",
-      ["Use flat Topic Pointers instead of verbose H2+summary", "Remove Recent Sessions from MEMORY.md"],
+      [
+        "Use flat Topic Pointers instead of verbose H2+summary",
+        "Remove Recent Sessions from MEMORY.md",
+      ],
       "2026-05-11",
     );
 
     const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
     expect(rawMemory).toContain("# Long-Term Memory");
     expect(rawMemory).toContain("## 🎯 Active Focus");
-    expect(rawMemory).toContain("2026-05-11: Discussed the cognitive insight pipeline architecture");
+    expect(rawMemory).toContain(
+      "2026-05-11: Discussed the cognitive insight pipeline architecture",
+    );
     expect(rawMemory).toContain("Decision: Use flat Topic Pointers");
     expect(rawMemory).toContain("## Topic Pointers");
     expect(rawMemory).toContain("- cognitive-system → memory/topics/cognitive-system.md");

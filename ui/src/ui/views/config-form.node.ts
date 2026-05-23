@@ -645,7 +645,9 @@ export function renderNode(params: {
   return html`
     <div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">${t("settings.unsupportedType", { type: type ?? "unknown" })}</div>
+      <div class="cfg-field__error">
+        ${t("settings.unsupportedType", { type: type ?? "unknown" })}
+      </div>
     </div>
   `;
 }
@@ -688,7 +690,9 @@ function renderTextInput(params: {
         : t("settings.structuredSecretRefFile")
       : REDACTED_PLACEHOLDER
     : (hint?.placeholder ??
-      (schema.default !== undefined ? `${t("settings.default")}: ${formatUnknownText(schema.default)}` : ""));
+      (schema.default !== undefined
+        ? `${t("settings.default")}: ${formatUnknownText(schema.default)}`
+        : ""));
   const displayValue = effectiveRedacted
     ? ""
     : isStructuredValue
@@ -1106,7 +1110,9 @@ function renderArray(params: {
           ${showLabel ? html`<span class="cfg-array__label">${label}</span>` : nothing}
           ${renderTags(tags)}
         </div>
-        <span class="cfg-array__count">${arr.length} ${t("settings.item")}${arr.length !== 1 ? "s" : ""}</span>
+        <span class="cfg-array__count"
+          >${arr.length} ${t("settings.item")}${arr.length !== 1 ? "s" : ""}</span
+        >
         <button
           type="button"
           class="cfg-array__add"

@@ -1,14 +1,14 @@
 import { applyMMRToHybridResults, type MMRConfig, DEFAULT_MMR_CONFIG } from "./mmr.js";
 import {
-  applyTemporalDecayToHybridResults,
-  type TemporalDecayConfig,
-  DEFAULT_TEMPORAL_DECAY_CONFIG,
-} from "./temporal-decay.js";
-import {
   deduplicateBySimilarity,
   DEFAULT_SEMANTIC_DEDUP_CONFIG,
   type SemanticDedupConfig,
 } from "./semantic-dedup.js";
+import {
+  applyTemporalDecayToHybridResults,
+  type TemporalDecayConfig,
+  DEFAULT_TEMPORAL_DECAY_CONFIG,
+} from "./temporal-decay.js";
 
 export type HybridSource = string;
 

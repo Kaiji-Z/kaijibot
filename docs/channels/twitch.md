@@ -7,7 +7,6 @@ title: "Twitch"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Twitch
 
 Twitch chat support via IRC connection. KaijiBot connects as a Twitch user (bot account) to receive and send messages in channels.

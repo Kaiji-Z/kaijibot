@@ -1,22 +1,36 @@
-import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
-import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
-import type { Fragment } from "./fragment-types.js";
-import type { InsightCandidate, InsightEngineInput, InsightMode, LlmCritiqueResult, PromptBuildResult, VerificationResult } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
-import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
-import { isDuplicateByContent, isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
 import { pickPromptVariant } from "../feedback/preference-learner.js";
+import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
+import {
+  isDuplicateByContent,
+  isDuplicateBySemanticOverlap,
+  extractContentThemes,
+} from "./content-similarity.js";
+import type { Fragment } from "./fragment-types.js";
+import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
+import type {
+  InsightCandidate,
+  InsightEngineInput,
+  InsightMode,
+  LlmCritiqueResult,
+  PromptBuildResult,
+  VerificationResult,
+} from "./types.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
-const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set(["tool_config", "contextual_fact"]);
+const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set([
+  "tool_config",
+  "contextual_fact",
+]);
 
 export function getFilteredInsights(
   domain: DomainNode,
@@ -25,7 +39,7 @@ export function getFilteredInsights(
   if (domain.insights && domain.insights.length > 0) {
     return domain.insights
       .filter((i) => !exclude.has(i.category))
-      .sort((a, b) => (b.confidence * b.evidenceCount) - (a.confidence * a.evidenceCount))
+      .sort((a, b) => b.confidence * b.evidenceCount - a.confidence * a.evidenceCount)
       .map((i) => i.text);
   }
   return domain.keyInsights;
@@ -42,13 +56,20 @@ const SEARCH_PROVIDER_DOMAINS = new Set([
 function isSearchProviderUrl(url: string): boolean {
   try {
     const host = new URL(url).hostname;
-    return SEARCH_PROVIDER_DOMAINS.has(host) || [...SEARCH_PROVIDER_DOMAINS].some((d) => host.endsWith(`.${d}`) || host === d);
+    return (
+      SEARCH_PROVIDER_DOMAINS.has(host) ||
+      [...SEARCH_PROVIDER_DOMAINS].some((d) => host.endsWith(`.${d}`) || host === d)
+    );
   } catch {
     return false;
   }
 }
 
-const FRAGMENT_KINDS_FOR_PROMPT: ReadonlySet<string> = new Set(["knowledge_gap", "assumption", "implicit_priority"]);
+const FRAGMENT_KINDS_FOR_PROMPT: ReadonlySet<string> = new Set([
+  "knowledge_gap",
+  "assumption",
+  "implicit_priority",
+]);
 
 type RhetoricalMove = "事实开头" | "提问式" | "悖论式" | "推荐式" | "类比式" | "观察式";
 
@@ -72,12 +93,8 @@ function buildBannedOpeningsSection(recentInsightContents: string[]): string {
     .map((o) => `不要以"${o}"开头`)
     .join("；");
 
-  const moves = [...new Set(
-    recentInsightContents.slice(-5).map(classifyRhetoricalMove),
-  )];
-  const moveBans = moves.length > 0
-    ? `不要使用以下修辞手法作为开头：${moves.join("、")}`
-    : "";
+  const moves = [...new Set(recentInsightContents.slice(-5).map(classifyRhetoricalMove))];
+  const moveBans = moves.length > 0 ? `不要使用以下修辞手法作为开头：${moves.join("、")}` : "";
 
   return [charBans, moveBans].filter(Boolean).join("\n");
 }
@@ -96,15 +113,24 @@ export function buildVoiceSection(persona: PersonaTree): string {
   const style = persona.identity?.communicationStyle;
   const name = persona.identity?.displayName ?? "the user";
   const parts: string[] = [];
-  parts.push(`You're writing to ${name}, a person you know well. This is a proactive message — like suddenly remembering something fascinating to tell a friend.`);
+  parts.push(
+    `You're writing to ${name}, a person you know well. This is a proactive message — like suddenly remembering something fascinating to tell a friend.`,
+  );
   if (style) {
-    if (style.formality === "casual") parts.push("Tone: casual, like chatting with a close friend. Use 你 not 您.");
-    else if (style.formality === "formal") parts.push("Tone: professional but warm. You can use 您 but keep it conversational.");
-    else parts.push("Tone: natural and conversational. Match whatever feels right for the content.");
-    if (style.technicalLevel === "expert") parts.push("Assume deep technical literacy. Use technical terms freely without explanation.");
-    else if (style.technicalLevel === "beginner") parts.push("Explain technical concepts briefly when they appear. Avoid jargon.");
-    if (style.verbosity === "concise") parts.push("Be brief: 1-2 sentences maximum. Every word earns its place.");
-    else if (style.verbosity === "detailed") parts.push("You can use 2-3 sentences. Give enough context to be self-contained.");
+    if (style.formality === "casual")
+      parts.push("Tone: casual, like chatting with a close friend. Use 你 not 您.");
+    else if (style.formality === "formal")
+      parts.push("Tone: professional but warm. You can use 您 but keep it conversational.");
+    else
+      parts.push("Tone: natural and conversational. Match whatever feels right for the content.");
+    if (style.technicalLevel === "expert")
+      parts.push("Assume deep technical literacy. Use technical terms freely without explanation.");
+    else if (style.technicalLevel === "beginner")
+      parts.push("Explain technical concepts briefly when they appear. Avoid jargon.");
+    if (style.verbosity === "concise")
+      parts.push("Be brief: 1-2 sentences maximum. Every word earns its place.");
+    else if (style.verbosity === "detailed")
+      parts.push("You can use 2-3 sentences. Give enough context to be self-contained.");
   }
   return parts.join("\n");
 }
@@ -115,13 +141,17 @@ const DIVERSE_FEW_SHOT_SETS = [
     examples: [
       {
         context: "User builds TypeScript + Rust stack. Node 22 ESM support is relevant.",
-        chinese: "Node 22 的 require(ESM) 原生支持已经 stable 了——这意味着你 KaijiBot 里那些 dynamic import 可以直接换成 require，冷启动能省 15-30%。对你的 Rust sidecar + Node gateway 架构，冷启动延迟一直是痛点。",
-        english: "Node 22's require(ESM) native support is now stable — meaning those dynamic imports in KaijiBot can switch to require directly, saving 15-30% on cold starts. For your Rust sidecar + Node gateway architecture, cold-start latency has always been a pain point.",
+        chinese:
+          "Node 22 的 require(ESM) 原生支持已经 stable 了——这意味着你 KaijiBot 里那些 dynamic import 可以直接换成 require，冷启动能省 15-30%。对你的 Rust sidecar + Node gateway 架构，冷启动延迟一直是痛点。",
+        english:
+          "Node 22's require(ESM) native support is now stable — meaning those dynamic imports in KaijiBot can switch to require directly, saving 15-30% on cold starts. For your Rust sidecar + Node gateway architecture, cold-start latency has always been a pain point.",
       },
       {
         context: "User tracks pnpm and monorepo tooling. pnpm 9.7 catalog feature.",
-        chinese: "pnpm 9.7 的 catalog: 协议让你在 monorepo 里统一管理依赖版本——不用再每个 package.json 手动同步。你 extensions/ 下 62 个插件，光 react 版本不一致就出过两次构建错误。",
-        english: "pnpm 9.7's catalog: protocol lets you unify dependency versions across a monorepo — no more manually syncing each package.json. With 62 plugins under extensions/, mismatched React versions alone caused two build failures.",
+        chinese:
+          "pnpm 9.7 的 catalog: 协议让你在 monorepo 里统一管理依赖版本——不用再每个 package.json 手动同步。你 extensions/ 下 62 个插件，光 react 版本不一致就出过两次构建错误。",
+        english:
+          "pnpm 9.7's catalog: protocol lets you unify dependency versions across a monorepo — no more manually syncing each package.json. With 62 plugins under extensions/, mismatched React versions alone caused two build failures.",
       },
     ],
   },
@@ -130,13 +160,17 @@ const DIVERSE_FEW_SHOT_SETS = [
     examples: [
       {
         context: "User has complex cognitive pipeline with many async flows.",
-        chinese: "用 Effect-TS 的 Layer 做你 cognitive pipeline 的依赖注入，替代手写的 createDefaultDeps 模式。因为你的 insight pipeline 有 5 层嵌套异步调用，Effect 的 fiber 调度能让你给每层加独立超时和重试，不用改调用结构。",
-        english: "Use Effect-TS Layer for DI in your cognitive pipeline instead of the hand-rolled createDefaultDeps pattern. Because your insight pipeline has 5 levels of nested async calls, Effect's fiber scheduling gives you independent timeout+retry per layer without restructuring call sites.",
+        chinese:
+          "用 Effect-TS 的 Layer 做你 cognitive pipeline 的依赖注入，替代手写的 createDefaultDeps 模式。因为你的 insight pipeline 有 5 层嵌套异步调用，Effect 的 fiber 调度能让你给每层加独立超时和重试，不用改调用结构。",
+        english:
+          "Use Effect-TS Layer for DI in your cognitive pipeline instead of the hand-rolled createDefaultDeps pattern. Because your insight pipeline has 5 levels of nested async calls, Effect's fiber scheduling gives you independent timeout+retry per layer without restructuring call sites.",
       },
       {
         context: "User does LLM-driven extraction with structured output.",
-        chinese: "把 structured output 的 schema 校验从 zod passthrough 换成 strict mode——你现在 llm-extractor.ts 里有 6 个 z.object 用了 .passthrough()，LLM 返回多余字段时不会报错但下游取到 undefined。Strict mode 会在 extraction 阶段就拦住，省掉下游 debug 时间。",
-        english: "Switch structured output schema validation from zod passthrough to strict mode — you have 6 z.object calls using .passthrough() in llm-extractor.ts. When the LLM returns extra fields, no error fires but downstream reads undefined. Strict mode catches this at extraction time, saving downstream debugging.",
+        chinese:
+          "把 structured output 的 schema 校验从 zod passthrough 换成 strict mode——你现在 llm-extractor.ts 里有 6 个 z.object 用了 .passthrough()，LLM 返回多余字段时不会报错但下游取到 undefined。Strict mode 会在 extraction 阶段就拦住，省掉下游 debug 时间。",
+        english:
+          "Switch structured output schema validation from zod passthrough to strict mode — you have 6 z.object calls using .passthrough() in llm-extractor.ts. When the LLM returns extra fields, no error fires but downstream reads undefined. Strict mode catches this at extraction time, saving downstream debugging.",
       },
     ],
   },
@@ -145,13 +179,17 @@ const DIVERSE_FEW_SHOT_SETS = [
     examples: [
       {
         context: "User consistently extracts shared patterns into plugin SDK boundaries.",
-        chinese: "你每次发现两个扩展做同样的事，第一反应不是合并代码，而是往 plugin-sdk 里加一个抽象层——extensions/AGENTS.md 那条 'no relative imports escaping package root' 规则就是这么来的。这比大多数人处理依赖的方式更可持续，但也意味着你的 SDK surface area 在持续膨胀。",
-        english: "Every time you spot two extensions doing the same thing, your first move isn't merging code — it's adding an abstraction layer to plugin-sdk. The 'no relative imports escaping package root' rule in extensions/AGENTS.md came from exactly this. More sustainable than how most people handle deps, but it also means your SDK surface area keeps expanding.",
+        chinese:
+          "你每次发现两个扩展做同样的事，第一反应不是合并代码，而是往 plugin-sdk 里加一个抽象层——extensions/AGENTS.md 那条 'no relative imports escaping package root' 规则就是这么来的。这比大多数人处理依赖的方式更可持续，但也意味着你的 SDK surface area 在持续膨胀。",
+        english:
+          "Every time you spot two extensions doing the same thing, your first move isn't merging code — it's adding an abstraction layer to plugin-sdk. The 'no relative imports escaping package root' rule in extensions/AGENTS.md came from exactly this. More sustainable than how most people handle deps, but it also means your SDK surface area keeps expanding.",
       },
       {
         context: "User makes architecture decisions by building competing prototypes.",
-        chinese: "你选技术方案的方式不是对比文档，而是直接写两个最小原型然后看哪个跑起来更顺——FragmentStore 和 CorrectionStore 都走了这条路。这说明你对代码体感的信任超过对抽象推理的信任，适合你这种写 Rust 的人。",
-        english: "You pick tech approaches not by comparing docs but by writing two minimal prototypes and seeing which feels better — FragmentStore and CorrectionStore both went through this path. It means you trust code feel over abstract reasoning, which fits someone who writes Rust.",
+        chinese:
+          "你选技术方案的方式不是对比文档，而是直接写两个最小原型然后看哪个跑起来更顺——FragmentStore 和 CorrectionStore 都走了这条路。这说明你对代码体感的信任超过对抽象推理的信任，适合你这种写 Rust 的人。",
+        english:
+          "You pick tech approaches not by comparing docs but by writing two minimal prototypes and seeing which feels better — FragmentStore and CorrectionStore both went through this path. It means you trust code feel over abstract reasoning, which fits someone who writes Rust.",
       },
     ],
   },
@@ -160,13 +198,17 @@ const DIVERSE_FEW_SHOT_SETS = [
     examples: [
       {
         context: "User says they want minimal dependencies but keeps adding abstractions.",
-        chinese: "你说要最小化依赖，但 plugin-sdk 的 export 列表已经 41 个了。这不是矛盾——你真正排斥的不是依赖本身，是黑箱依赖。你宁愿自己写 200 行 well-typed wrapper，也不愿引入一个 50KB 的第三方包。这是一个可预测的标准：只要你能看到源码、能改，就不算'外部依赖'。",
-        english: "You say you want minimal dependencies, but plugin-sdk's export list is already 41 items. Not a contradiction — what you actually resist isn't dependencies themselves but black-box ones. You'd rather write a 200-line well-typed wrapper than pull in a 50KB third-party package. Predictable standard: if you can see the source and modify it, it doesn't count as an 'external dependency'.",
+        chinese:
+          "你说要最小化依赖，但 plugin-sdk 的 export 列表已经 41 个了。这不是矛盾——你真正排斥的不是依赖本身，是黑箱依赖。你宁愿自己写 200 行 well-typed wrapper，也不愿引入一个 50KB 的第三方包。这是一个可预测的标准：只要你能看到源码、能改，就不算'外部依赖'。",
+        english:
+          "You say you want minimal dependencies, but plugin-sdk's export list is already 41 items. Not a contradiction — what you actually resist isn't dependencies themselves but black-box ones. You'd rather write a 200-line well-typed wrapper than pull in a 50KB third-party package. Predictable standard: if you can see the source and modify it, it doesn't count as an 'external dependency'.",
       },
       {
         context: "User values fast iteration but invests heavily in cognitive infrastructure.",
-        chinese: "你追求快速迭代，却在认知层写了 10+ 模块、3 套存储引擎、还有个 Thompson Sampling 偏好系统。表面看是过度工程——其实你是在解决一个具体问题：你怎么知道主动推给用户的消息不会让他们烦？答案是需要量化模型。所以不是'慢下来做基础设施'，是'没有这个基础设施，核心功能根本不敢上线'。",
-        english: "You chase fast iteration, yet built 10+ cognitive modules, 3 storage engines, and a Thompson Sampling preference system. Looks like over-engineering — but you're solving a concrete problem: how do you know proactive messages won't annoy users? The answer requires a quantitative model. So it's not 'slow down to build infra', it's 'without this infra, the core feature can't ship at all'.",
+        chinese:
+          "你追求快速迭代，却在认知层写了 10+ 模块、3 套存储引擎、还有个 Thompson Sampling 偏好系统。表面看是过度工程——其实你是在解决一个具体问题：你怎么知道主动推给用户的消息不会让他们烦？答案是需要量化模型。所以不是'慢下来做基础设施'，是'没有这个基础设施，核心功能根本不敢上线'。",
+        english:
+          "You chase fast iteration, yet built 10+ cognitive modules, 3 storage engines, and a Thompson Sampling preference system. Looks like over-engineering — but you're solving a concrete problem: how do you know proactive messages won't annoy users? The answer requires a quantitative model. So it's not 'slow down to build infra', it's 'without this infra, the core feature can't ship at all'.",
       },
     ],
   },
@@ -179,8 +221,6 @@ export const CONTRASTIVE_INSTRUCTION = `CONTRASTIVE FRAMEWORK — your insight M
 - INVERSE FRAMING: If a past insight opened with a fact, open with a question/stakes/paradox instead.
 - ORTHOGONAL OBSERVATION: If past insights covered domain A∩B, find a completely different angle (historical, ethical, practical, engineering) on the same intersection.
 - NOVELTY TEST: Before finalizing, check: "Could this insight be mistaken for a paraphrase of any past insight?" If yes, rewrite.`;
-
-
 
 /** A single web search result item. */
 export type WebSearchResult = {
@@ -198,10 +238,7 @@ export type LlmInsightDeps = {
   prepareModel: (
     cfg: KaijiBotConfig,
     modelRef?: string,
-  ) => Promise<
-    | { model: Model<Api>; auth: ResolvedProviderAuth }
-    | { error: string }
-  >;
+  ) => Promise<{ model: Model<Api>; auth: ResolvedProviderAuth } | { error: string }>;
   webSearch?: (query: string) => Promise<WebSearchResult[]>;
   inferenceDeps?: InterestInferenceDeps;
 };
@@ -233,13 +270,16 @@ export function createDefaultInsightDeps(): LlmInsightDeps {
       const modelId = modelParts.join("/") || "glm-5-turbo";
       return prepareSimpleCompletionModel({ cfg, provider, modelId });
     },
-    inferenceDeps: { complete, prepareModel: async (cfg, modelRef) => {
-      const extractionModel = cfg.cognitive?.persona?.extractionModel;
-      const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5-turbo";
-      const [provider, ...modelParts] = modelRefToUse.split("/");
-      const modelId = modelParts.join("/") || "glm-5-turbo";
-      return prepareSimpleCompletionModel({ cfg, provider, modelId });
-    } },
+    inferenceDeps: {
+      complete,
+      prepareModel: async (cfg, modelRef) => {
+        const extractionModel = cfg.cognitive?.persona?.extractionModel;
+        const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5-turbo";
+        const [provider, ...modelParts] = modelRefToUse.split("/");
+        const modelId = modelParts.join("/") || "glm-5-turbo";
+        return prepareSimpleCompletionModel({ cfg, provider, modelId });
+      },
+    },
   };
 }
 
@@ -264,10 +304,13 @@ export async function generateInsightCandidatesLLM(
   const mode = input.mode ?? "extend";
 
   if (mode === "pattern") {
-    const { prompt, variant } = buildPatternInsightPrompt(persona, input, input.recentInsightContents);
+    const { prompt, variant } = buildPatternInsightPrompt(
+      persona,
+      input,
+      input.recentInsightContents,
+    );
     try {
-      const modelRef =
-        options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+      const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
       const prepared = await deps.prepareModel(config, modelRef);
 
       if ("error" in prepared) {
@@ -292,10 +335,7 @@ export async function generateInsightCandidatesLLM(
       );
 
       const text = result.content
-        .filter(
-          (block): block is { type: "text"; text: string } =>
-            block.type === "text",
-        )
+        .filter((block): block is { type: "text"; text: string } => block.type === "text")
         .map((block) => block.text)
         .join("")
         .trim();
@@ -307,15 +347,24 @@ export async function generateInsightCandidatesLLM(
 
       const candidates = parseLLMInsights(text, maxCandidates);
       if (candidates.length === 0) {
-        log.warn("LLM response could not be parsed as insights (pattern mode)", { raw: text.slice(0, 300) });
+        log.warn("LLM response could not be parsed as insights (pattern mode)", {
+          raw: text.slice(0, 300),
+        });
         return [];
       }
       log.info(`Pattern-mode LLM generated ${candidates.length} insight candidate(s)`);
 
       const recentContents = input.recentInsightContents;
-      const filtered = recentContents.length > 0
-        ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.85, contentWordThreshold: 0.5 }))
-        : candidates;
+      const filtered =
+        recentContents.length > 0
+          ? candidates.filter(
+              (c) =>
+                !isDuplicateBySemanticOverlap(c.content, recentContents, {
+                  trigramThreshold: 0.85,
+                  contentWordThreshold: 0.5,
+                }),
+            )
+          : candidates;
 
       if (filtered.length < candidates.length) {
         log.info("pattern-mode trigram dedup filtered candidates", {
@@ -324,12 +373,12 @@ export async function generateInsightCandidatesLLM(
         });
       }
 
-      return filtered.map(c => {
+      return filtered.map((c) => {
         const inputDomains = input.targetDomains;
         const llmDomains = c.targetDomains;
-        const hasOverlap = llmDomains.length > 0 && llmDomains.some(d =>
-          inputDomains.some(id => id.toLowerCase() === d.toLowerCase()),
-        );
+        const hasOverlap =
+          llmDomains.length > 0 &&
+          llmDomains.some((d) => inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()));
         if (!hasOverlap && inputDomains.length > 0) {
           log.info("force-aligned pattern-mode LLM output domains to input targetDomains", {
             llmDomains,
@@ -342,7 +391,9 @@ export async function generateInsightCandidatesLLM(
       });
     } catch (err) {
       const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
-      log.warn(`Pattern-mode LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
+      log.warn(
+        `Pattern-mode LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`,
+      );
       return [];
     }
   }
@@ -360,9 +411,15 @@ export async function generateInsightCandidatesLLM(
         try {
           const raw = await cachedWebSearch(deps.webSearch, searchStrategy.searchQuery);
           webResults = raw.filter((r) => !isSearchProviderUrl(r.url));
-          log.info("surprise-mode web search completed", { query: searchStrategy.searchQuery, resultCount: webResults.length });
+          log.info("surprise-mode web search completed", {
+            query: searchStrategy.searchQuery,
+            resultCount: webResults.length,
+          });
         } catch (err) {
-          log.warn("surprise-mode web search failed", { query: searchStrategy.searchQuery, error: String(err) });
+          log.warn("surprise-mode web search failed", {
+            query: searchStrategy.searchQuery,
+            error: String(err),
+          });
         }
       }
     } else {
@@ -375,13 +432,21 @@ export async function generateInsightCandidatesLLM(
       // Try LLM-based query generation for extend mode when inferenceDeps available
       if (deps.inferenceDeps) {
         try {
-          const inferenceResult = await inferSearchStrategy(persona, input, config, deps.inferenceDeps, "extend");
+          const inferenceResult = await inferSearchStrategy(
+            persona,
+            input,
+            config,
+            deps.inferenceDeps,
+            "extend",
+          );
           if (inferenceResult.ok && inferenceResult.strategy.searchQuery) {
             query = inferenceResult.strategy.searchQuery;
             log.info("extend-mode LLM query generated", { query });
           }
         } catch (err) {
-          log.warn("extend-mode inference failed, falling back to rule-based query", { error: String(err) });
+          log.warn("extend-mode inference failed, falling back to rule-based query", {
+            error: String(err),
+          });
         }
       }
       // Fallback to rule-based query
@@ -395,7 +460,10 @@ export async function generateInsightCandidatesLLM(
           webResults = raw.filter((r) => !isSearchProviderUrl(r.url));
           log.info("web search completed", { query, resultCount: webResults.length });
         } catch (err) {
-          log.warn("web search failed, proceeding without web results", { query, error: String(err) });
+          log.warn("web search failed, proceeding without web results", {
+            query,
+            error: String(err),
+          });
           webResults = [];
         }
       } else {
@@ -411,23 +479,45 @@ export async function generateInsightCandidatesLLM(
   let webSnippetByDomain: Map<string, string[]> | undefined;
   if (webResults.length > 0) {
     try {
-      webSnippetByDomain = await matchWebResultsToDomainsLLM(webResults, persona, config, deps, input.targetDomains);
+      webSnippetByDomain = await matchWebResultsToDomainsLLM(
+        webResults,
+        persona,
+        config,
+        deps,
+        input.targetDomains,
+      );
       log.info("LLM domain matching completed", {
         matchedDomains: [...webSnippetByDomain.keys()],
         totalResults: webResults.length,
       });
     } catch (err) {
-      log.warn("LLM domain matching error, will use keyword fallback in prompt builder", { error: String(err) });
+      log.warn("LLM domain matching error, will use keyword fallback in prompt builder", {
+        error: String(err),
+      });
     }
   }
 
-  const { prompt, variant } = mode === "surprise" && searchStrategy
-    ? buildSurpriseInsightPrompt(persona, input, webResults, input.recentInsightContents, searchStrategy, outputLanguage, webSnippetByDomain)
-    : buildInsightPrompt(persona, input, webResults, input.recentInsightContents, webSnippetByDomain);
+  const { prompt, variant } =
+    mode === "surprise" && searchStrategy
+      ? buildSurpriseInsightPrompt(
+          persona,
+          input,
+          webResults,
+          input.recentInsightContents,
+          searchStrategy,
+          outputLanguage,
+          webSnippetByDomain,
+        )
+      : buildInsightPrompt(
+          persona,
+          input,
+          webResults,
+          input.recentInsightContents,
+          webSnippetByDomain,
+        );
 
   try {
-    const modelRef =
-      options?.modelRef ?? config.cognitive?.persona?.extractionModel;
+    const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
     const prepared = await deps.prepareModel(config, modelRef);
 
     if ("error" in prepared) {
@@ -452,10 +542,7 @@ export async function generateInsightCandidatesLLM(
     );
 
     const text = result.content
-      .filter(
-        (block): block is { type: "text"; text: string } =>
-          block.type === "text",
-      )
+      .filter((block): block is { type: "text"; text: string } => block.type === "text")
       .map((block) => block.text)
       .join("")
       .trim();
@@ -474,9 +561,16 @@ export async function generateInsightCandidatesLLM(
 
     // Trigram dedup: filter candidates too similar to recently delivered insights
     const recentContents = input.recentInsightContents;
-    const filtered = recentContents.length > 0
-      ? candidates.filter(c => !isDuplicateBySemanticOverlap(c.content, recentContents, { trigramThreshold: 0.85, contentWordThreshold: 0.5 }))
-      : candidates;
+    const filtered =
+      recentContents.length > 0
+        ? candidates.filter(
+            (c) =>
+              !isDuplicateBySemanticOverlap(c.content, recentContents, {
+                trigramThreshold: 0.85,
+                contentWordThreshold: 0.5,
+              }),
+          )
+        : candidates;
 
     if (filtered.length < candidates.length) {
       log.info("trigram dedup filtered candidates", {
@@ -491,9 +585,9 @@ export async function generateInsightCandidatesLLM(
       // with the input domains to prevent domain-overlap dedup from killing the insight.
       const inputDomains = input.targetDomains;
       const llmDomains = c.targetDomains;
-      const hasOverlap = llmDomains.length > 0 && llmDomains.some(d =>
-        inputDomains.some(id => id.toLowerCase() === d.toLowerCase()),
-      );
+      const hasOverlap =
+        llmDomains.length > 0 &&
+        llmDomains.some((d) => inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()));
       if (!hasOverlap && inputDomains.length > 0) {
         log.info("force-aligned LLM output domains to input targetDomains", {
           llmDomains,
@@ -508,7 +602,9 @@ export async function generateInsightCandidatesLLM(
     });
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
-    log.warn(`LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`);
+    log.warn(
+      `LLM insight generation ${isTimeout ? "timed out" : "failed"}: ${String(err)}, skipping insight`,
+    );
     return [];
   }
 }
@@ -522,12 +618,15 @@ async function generateExtendMode(
   maxCandidates: number,
 ): Promise<InsightCandidate[]> {
   const extendInput: InsightEngineInput = { ...input, mode: "extend" };
-  return generateInsightCandidatesLLM(persona, extendInput, config, deps, { ...options, maxCandidates });
+  return generateInsightCandidatesLLM(persona, extendInput, config, deps, {
+    ...options,
+    maxCandidates,
+  });
 }
 
 function detectOutputLanguage(persona: PersonaTree): string {
-  const lang = persona.identity?.primaryLanguage
-    ?? persona.identity?.communicationStyle?.preferredLanguage;
+  const lang =
+    persona.identity?.primaryLanguage ?? persona.identity?.communicationStyle?.preferredLanguage;
   if (lang === "en") return "en";
   if (lang === "mixed") return "zh";
   return "zh";
@@ -554,17 +653,15 @@ export function extractKeyTerms(text: string): string[] {
 
   if (!cleaned) return [];
 
-  const segments = cleaned
-    .split(/[，,？?；;、—–]+|(?:的?时候|之前|之后|还是)/)
-    .flatMap((s) => {
-      const trimmed = s.trim();
-      if (!trimmed) return [];
-      if (trimmed.length <= 30 && trimmed.length >= 2) return [trimmed];
-      if (trimmed.length > 30) {
-        return trimmed.split(/\s+/).filter((w) => w.length >= 2 && w.length <= 30);
-      }
-      return [];
-    });
+  const segments = cleaned.split(/[，,？?；;、—–]+|(?:的?时候|之前|之后|还是)/).flatMap((s) => {
+    const trimmed = s.trim();
+    if (!trimmed) return [];
+    if (trimmed.length <= 30 && trimmed.length >= 2) return [trimmed];
+    if (trimmed.length > 30) {
+      return trimmed.split(/\s+/).filter((w) => w.length >= 2 && w.length <= 30);
+    }
+    return [];
+  });
 
   return segments;
 }
@@ -597,7 +694,7 @@ function cachedWebSearch(
       if (firstKey !== undefined) searchCache.delete(firstKey);
     }
   }
-  return webSearch(query).then(results => {
+  return webSearch(query).then((results) => {
     searchCache.set(query, { results, fetchedAt: now });
     return results;
   });
@@ -623,8 +720,9 @@ export function buildSearchQuery(input: InsightEngineInput): string {
   }
 
   for (const domain of input.targetDomains) {
-    const terms = domain.split(/[\/\+\-\s]+/).filter(p => p.length > 0);
-    const domainMatchesHistory = terms.length > 0 && terms.every(t => historyTerms.has(t.toLowerCase()));
+    const terms = domain.split(/[\/\+\-\s]+/).filter((p) => p.length > 0);
+    const domainMatchesHistory =
+      terms.length > 0 && terms.every((t) => historyTerms.has(t.toLowerCase()));
     if (domainMatchesHistory && input.targetDomains.length > 1) continue;
 
     for (const term of terms) {
@@ -653,17 +751,13 @@ export function buildSearchQuery(input: InsightEngineInput): string {
 
   if (parts.length === 0) return "";
 
-  const suffixIndex = parts.length <= 2
-    ? (history.length % SUFFIXES.length)
-    : -1;
+  const suffixIndex = parts.length <= 2 ? history.length % SUFFIXES.length : -1;
   const suffix = suffixIndex >= 0 ? SUFFIXES[suffixIndex]! : "";
 
   const currentYear = new Date().getFullYear().toString();
   const baseQuery = parts.join(" ") + suffix;
   // Only append year if not already present in the query
-  const queryWithYear = baseQuery.includes(currentYear)
-    ? baseQuery
-    : `${baseQuery} ${currentYear}`;
+  const queryWithYear = baseQuery.includes(currentYear) ? baseQuery : `${baseQuery} ${currentYear}`;
   return queryWithYear.slice(0, 120);
 }
 
@@ -691,25 +785,32 @@ export function buildSurpriseInsightPrompt(
   outputLanguage: string = "zh",
   webSnippetByDomain?: Map<string, string[]>,
 ): PromptBuildResult {
-  const resolvedWebSnippetByDomain = webSnippetByDomain ?? (() => {
-    const keywordMap = buildDomainKeywordMap(persona.domains);
-    return matchWebResultsToDomains(webResults, keywordMap);
-  })();
+  const resolvedWebSnippetByDomain =
+    webSnippetByDomain ??
+    (() => {
+      const keywordMap = buildDomainKeywordMap(persona.domains);
+      return matchWebResultsToDomains(webResults, keywordMap);
+    })();
 
-  const sortedDomainEntries = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+  const sortedDomainEntries = Object.entries(persona.domains).sort(
+    ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
+  );
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) =>
+      getFilteredInsights(d)
+        .slice(0, 2)
+        .map((ki) => `${name}: ${ki}`),
+    )
     .slice(0, 6);
-  const anchorBlock = anchorFacts.length > 0
-    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "  (not yet established)";
+  const anchorBlock =
+    anchorFacts.length > 0
+      ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+      : "  (not yet established)";
 
   const externalFacts = buildExternalFactsEntries(resolvedWebSnippetByDomain);
-  const externalFactsBlock = externalFacts.length > 0
-    ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "";
+  const externalFactsBlock =
+    externalFacts.length > 0 ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n") : "";
 
   const userName = persona.identity?.displayName || "";
   const identityBlock = persona.identity
@@ -726,23 +827,30 @@ export function buildSurpriseInsightPrompt(
         .join("\n")
     : "";
 
-  const pastInsightBlock = recentInsightContents.length > 0
-    ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
-    : "";
+  const pastInsightBlock =
+    recentInsightContents.length > 0
+      ? recentInsightContents
+          .slice(-5)
+          .map((c, i) => `${i + 1}. ${truncate(c, 120)}`)
+          .join("\n")
+      : "";
 
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
-  const langInstruction = outputLanguage === "en"
-    ? "Output in English."
-    : "用中文输出。";
+  const langInstruction = outputLanguage === "en" ? "Output in English." : "用中文输出。";
 
   const fewShotIdx = input.feedbackProfile
-    ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
+    ? pickPromptVariant(
+        input.feedbackProfile,
+        DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`),
+      )
     : Math.floor(Math.random() * DIVERSE_FEW_SHOT_SETS.length);
-  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
-    .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
+  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!.examples.map(
+    (e) => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`,
+  ).join("\n\n");
 
-  return { prompt: `${buildVoiceSection(persona)}
+  return {
+    prompt: `${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
@@ -766,7 +874,14 @@ ${anchorBlock}
 
 ${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
-${(input.recentInsightDomains?.length ?? 0) > 0 ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these):\n${input.recentInsightDomains!.slice(-5).map((domains, i) => `${i + 1}. ${domains.join(" + ")}`).join("\n")}` : ""}
+${
+  (input.recentInsightDomains?.length ?? 0) > 0
+    ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these):\n${input
+        .recentInsightDomains!.slice(-5)
+        .map((domains, i) => `${i + 1}. ${domains.join(" + ")}`)
+        .join("\n")}`
+    : ""
+}
 
 TASK:
 Share a specific, surprising insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory. The insight should feel like a genuine discovery, not a recommendation or tutorial.
@@ -797,7 +912,9 @@ IMPORTANT: In the "content" field, escape any inner quotes as \\" or use Chinese
     "relevanceScore": 0.8,
     "surpriseScore": 0.7
   }
-]`, variant: { fewShotSet: fewShotIdx, frameIndex: 0 } };
+]`,
+    variant: { fewShotSet: fewShotIdx, frameIndex: 0 },
+  };
 }
 
 /** Extended context for prompt frame generation. */
@@ -881,10 +998,16 @@ function pickPromptFrame(
 ): { text: string; frameIndex: number } {
   const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
   const frameIdx = feedbackProfile
-    ? pickPromptVariant(feedbackProfile, PROMPT_FRAMES.map((_, i) => `frame:${i}`))
+    ? pickPromptVariant(
+        feedbackProfile,
+        PROMPT_FRAMES.map((_, i) => `frame:${i}`),
+      )
     : Math.floor(Math.random() * PROMPT_FRAMES.length);
   const frame = PROMPT_FRAMES[frameIdx]!;
-  return { text: frame(topic, { domains: domainNames, keyInsights, recentFocus, userName }), frameIndex: frameIdx };
+  return {
+    text: frame(topic, { domains: domainNames, keyInsights, recentFocus, userName }),
+    frameIndex: frameIdx,
+  };
 }
 
 const STRUCTURE_SEEDS = [
@@ -964,7 +1087,7 @@ function matchWebResultsToDomains(
         if (kw.length >= 4) {
           const kwBigrams = extractBigrams(kw);
           const textBigrams = extractBigrams(titleLower + " " + snippetLower);
-          const overlap = [...kwBigrams].filter(b => textBigrams.has(b)).length;
+          const overlap = [...kwBigrams].filter((b) => textBigrams.has(b)).length;
           const similarity = overlap / Math.max(kwBigrams.size, 1);
           return similarity > 0.7;
         }
@@ -1022,9 +1145,7 @@ export async function matchWebResultsToDomainsLLM(
     })
     .join("\n");
 
-  const resultLines = webResults
-    .map((r, i) => `${i + 1}. [${r.title}] ${r.snippet}`)
-    .join("\n");
+  const resultLines = webResults.map((r, i) => `${i + 1}. [${r.title}] ${r.snippet}`).join("\n");
 
   const prompt = `Classify each web search result into the most relevant user domain(s).
 
@@ -1090,7 +1211,9 @@ If a result doesn't match any domain, skip it. Respond with ONLY the JSON object
 
     return domainMap;
   } catch (err) {
-    log.warn("LLM domain matching failed, falling back to keyword matching", { error: String(err) });
+    log.warn("LLM domain matching failed, falling back to keyword matching", {
+      error: String(err),
+    });
     const keywordMap = buildDomainKeywordMap(persona.domains);
     for (const td of extraTargetDomains) {
       if (!keywordMap.has(td)) {
@@ -1124,45 +1247,69 @@ export function buildPatternInsightPrompt(
   recentInsightContents: string[],
 ): PromptBuildResult {
   const fewShotIdx = input.feedbackProfile
-    ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
+    ? pickPromptVariant(
+        input.feedbackProfile,
+        DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`),
+      )
     : Math.floor(Math.random() * DIVERSE_FEW_SHOT_SETS.length);
-  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
-    .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`)
-    .join("\n\n");
+  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!.examples.map(
+    (e) => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`,
+  ).join("\n\n");
 
   const fragments = input.fragments ?? [];
-  const sortedFragments = [...fragments]
-    .sort((a, b) => b.strength - a.strength)
-    .slice(0, 8);
-  const fragmentBlock = sortedFragments.length > 0
-    ? sortedFragments
-      .map(f => `[${f.kind}] ${f.structuralTag}: "${truncate(f.evidence, 120)}" (strength: ${f.strength.toFixed(2)}, domains: ${f.domains.join(", ")})`)
-      .join("\n")
-    : "(no fragments collected yet)";
+  const sortedFragments = [...fragments].sort((a, b) => b.strength - a.strength).slice(0, 8);
+  const fragmentBlock =
+    sortedFragments.length > 0
+      ? sortedFragments
+          .map(
+            (f) =>
+              `[${f.kind}] ${f.structuralTag}: "${truncate(f.evidence, 120)}" (strength: ${f.strength.toFixed(2)}, domains: ${f.domains.join(", ")})`,
+          )
+          .join("\n")
+      : "(no fragments collected yet)";
 
-  const sortedDomainEntries = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+  const sortedDomainEntries = Object.entries(persona.domains).sort(
+    ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
+  );
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) =>
+      getFilteredInsights(d)
+        .slice(0, 2)
+        .map((ki) => `${name}: ${ki}`),
+    )
     .slice(0, 6);
-  const anchorBlock = anchorFacts.length > 0
-    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "  (not yet established)";
+  const anchorBlock =
+    anchorFacts.length > 0
+      ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+      : "  (not yet established)";
 
-  const pastInsightBlock = recentInsightContents.length > 0
-    ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
-    : "";
+  const pastInsightBlock =
+    recentInsightContents.length > 0
+      ? recentInsightContents
+          .slice(-5)
+          .map((c, i) => `${i + 1}. ${truncate(c, 120)}`)
+          .join("\n")
+      : "";
 
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
   const patternFrameIdx = input.feedbackProfile
-    ? pickPromptVariant(input.feedbackProfile, PATTERN_PROMPT_FRAMES.map((_, i) => `pattern:${i}`))
+    ? pickPromptVariant(
+        input.feedbackProfile,
+        PATTERN_PROMPT_FRAMES.map((_, i) => `pattern:${i}`),
+      )
     : Math.floor(Math.random() * PATTERN_PROMPT_FRAMES.length);
   const frame = PATTERN_PROMPT_FRAMES[patternFrameIdx]!;
-  const taskInstruction = frame(input.targetDomains.join(", "), { domains: input.targetDomains, keyInsights: anchorFacts, recentFocus: input.recentFocus, userName: persona.identity?.displayName ?? "" });
+  const taskInstruction = frame(input.targetDomains.join(", "), {
+    domains: input.targetDomains,
+    keyInsights: anchorFacts,
+    recentFocus: input.recentFocus,
+    userName: persona.identity?.displayName ?? "",
+  });
 
-  return { prompt: `${buildVoiceSection(persona)}
+  return {
+    prompt: `${buildVoiceSection(persona)}
 
 EXAMPLES of ideal behavioral observations (match this quality, specificity, and depth):
 ${fewShotBlock}
@@ -1207,7 +1354,9 @@ Respond with ONLY a JSON array (no markdown, no code fences):
   }
 ]
 
-Keep insights concise (1-3 sentences). Quality over quantity.`, variant: { fewShotSet: fewShotIdx, frameIndex: 0, patternFrame: patternFrameIdx } };
+Keep insights concise (1-3 sentences). Quality over quantity.`,
+    variant: { fewShotSet: fewShotIdx, frameIndex: 0, patternFrame: patternFrameIdx },
+  };
 }
 
 export function buildInsightPrompt(
@@ -1240,7 +1389,7 @@ export function buildInsightPrompt(
     const matchedUrls = new Set<string>();
     for (const result of webResults) {
       for (const snippets of resolvedWebSnippetByDomain.values()) {
-        if (snippets.some(s => s === result.snippet)) {
+        if (snippets.some((s) => s === result.snippet)) {
           matchedUrls.add(result.url);
           break;
         }
@@ -1253,12 +1402,15 @@ export function buildInsightPrompt(
       unmatchedSnippets: unmatched,
     });
     if (matchedDomains.length === 0) {
-      log.warn("web search domain matching: no domains matched, LLM generation will proceed without domain-grounded evidence");
+      log.warn(
+        "web search domain matching: no domains matched, LLM generation will proceed without domain-grounded evidence",
+      );
     }
   }
 
-  const sortedDomainEntries = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+  const sortedDomainEntries = Object.entries(persona.domains).sort(
+    ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
+  );
 
   const userDomains = sortedDomainEntries
     .slice(0, 8)
@@ -1274,16 +1426,20 @@ export function buildInsightPrompt(
     .join("\n");
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) =>
+      getFilteredInsights(d)
+        .slice(0, 2)
+        .map((ki) => `${name}: ${ki}`),
+    )
     .slice(0, 6);
-  const anchorBlock = anchorFacts.length > 0
-    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "  (not yet established)";
+  const anchorBlock =
+    anchorFacts.length > 0
+      ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+      : "  (not yet established)";
 
   const externalFacts = buildExternalFactsEntries(resolvedWebSnippetByDomain);
-  const externalFactsBlock = externalFacts.length > 0
-    ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "";
+  const externalFactsBlock =
+    externalFacts.length > 0 ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n") : "";
 
   const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
   const recentInsightIds = input.recentInsightIds.slice(0, 5).join(", ");
@@ -1309,44 +1465,62 @@ export function buildInsightPrompt(
         .join("\n")
     : "";
 
-  const pastInsightBlock = recentInsightContents.length > 0
-    ? recentInsightContents.slice(-5).map((c, i) => `${i + 1}. ${truncate(c, 120)}`).join("\n")
-    : "";
+  const pastInsightBlock =
+    recentInsightContents.length > 0
+      ? recentInsightContents
+          .slice(-5)
+          .map((c, i) => `${i + 1}. ${truncate(c, 120)}`)
+          .join("\n")
+      : "";
 
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
-  const coOccurrenceBlock = persona.domainGraph && persona.domainGraph.edges.length > 0
-    ? persona.domainGraph.edges
-        .filter(e => e.observations >= 3)
-        .sort((a, b) => b.observations - a.observations)
-        .slice(0, 5)
-        .map(e => `${e.source} ↔ ${e.target} (${e.observations}次共现)`)
-        .join("\n")
-    : "";
+  const coOccurrenceBlock =
+    persona.domainGraph && persona.domainGraph.edges.length > 0
+      ? persona.domainGraph.edges
+          .filter((e) => e.observations >= 3)
+          .sort((a, b) => b.observations - a.observations)
+          .slice(0, 5)
+          .map((e) => `${e.source} ↔ ${e.target} (${e.observations}次共现)`)
+          .join("\n")
+      : "";
 
   const domainNames = sortedDomainEntries.map(([name]) => name);
-  const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) => getFilteredInsights(d).slice(0, 2));
+  const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) =>
+    getFilteredInsights(d).slice(0, 2),
+  );
   const { text: promptFrame, frameIndex } = pickPromptFrame(
-    input.targetDomains, domainNames,
-    flatKeyInsights, persona.recentFocus, userName,
+    input.targetDomains,
+    domainNames,
+    flatKeyInsights,
+    persona.recentFocus,
+    userName,
     input.feedbackProfile,
   );
 
   const structureSeedIdx = input.feedbackProfile
-    ? pickPromptVariant(input.feedbackProfile, STRUCTURE_SEEDS.map((_, i) => `seed:${i}`))
+    ? pickPromptVariant(
+        input.feedbackProfile,
+        STRUCTURE_SEEDS.map((_, i) => `seed:${i}`),
+      )
     : Math.floor(Math.random() * STRUCTURE_SEEDS.length);
   const structureSeed = STRUCTURE_SEEDS[structureSeedIdx]!;
 
   const fewShotIdx = input.feedbackProfile
-    ? pickPromptVariant(input.feedbackProfile, DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`))
+    ? pickPromptVariant(
+        input.feedbackProfile,
+        DIVERSE_FEW_SHOT_SETS.map((_, i) => `fewShot:${i}`),
+      )
     : Math.floor(Math.random() * DIVERSE_FEW_SHOT_SETS.length);
-  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!
-    .examples.map(e => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`).join("\n\n");
+  const fewShotBlock = DIVERSE_FEW_SHOT_SETS[fewShotIdx]!.examples.map(
+    (e) => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`,
+  ).join("\n\n");
 
   const fragments = input.fragments ?? [];
   const fragmentSection = buildFragmentSection(fragments);
 
-  return { prompt: `${buildVoiceSection(persona)}
+  return {
+    prompt: `${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
@@ -1373,7 +1547,14 @@ ${fragmentSection ? `\nUSER CONVERSATION FRAGMENTS (what the user has been discu
   Delivered insight IDs: ${recentInsightIds || "None"}
 ${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
-${(input.recentInsightDomains?.length ?? 0) > 0 ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these domain angles):\n${input.recentInsightDomains!.slice(-5).map((domains, i) => `${i + 1}. ${domains.join(" + ")}`).join("\n")}` : ""}
+${
+  (input.recentInsightDomains?.length ?? 0) > 0
+    ? `\nRECENTLY COVERED DOMAIN COMBINATIONS (insight MUST explore NEW territory, NOT repeat these domain angles):\n${input
+        .recentInsightDomains!.slice(-5)
+        .map((domains, i) => `${i + 1}. ${domains.join(" + ")}`)
+        .join("\n")}`
+    : ""
+}
 
   TARGET DOMAINS (insight MUST be about these domains):
 ${input.targetDomains.join(", ")}
@@ -1416,13 +1597,12 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 ]
 CRITICAL: targetDomains MUST include at least one of: ${input.targetDomains.join(", ")}. Do NOT substitute other domains.
 
-Keep insights concise (1-3 sentences). Quality over quantity.`, variant: { fewShotSet: fewShotIdx, frameIndex, structureSeed: structureSeedIdx } };
+Keep insights concise (1-3 sentences). Quality over quantity.`,
+    variant: { fewShotSet: fewShotIdx, frameIndex, structureSeed: structureSeedIdx },
+  };
 }
 
-function parseLLMInsights(
-  text: string,
-  maxCandidates: number,
-): InsightCandidate[] {
+function parseLLMInsights(text: string, maxCandidates: number): InsightCandidate[] {
   try {
     const cleaned = text
       .replace(/^```(?:json)?\s*/m, "")
@@ -1431,7 +1611,9 @@ function parseLLMInsights(
 
     let jsonStr = extractJsonArray(cleaned);
     if (!jsonStr) {
-      log.warn("parseLLMInsights: no JSON array found in LLM response", { raw: cleaned.slice(0, 200) });
+      log.warn("parseLLMInsights: no JSON array found in LLM response", {
+        raw: cleaned.slice(0, 200),
+      });
       return [];
     }
 
@@ -1448,7 +1630,10 @@ function parseLLMInsights(
         try {
           parsed = JSON.parse(aggressivelyRepaired);
         } catch (repairErr) {
-          log.warn("parseLLMInsights: JSON repair failed", { error: String(repairErr), raw: jsonStr.slice(0, 200) });
+          log.warn("parseLLMInsights: JSON repair failed", {
+            error: String(repairErr),
+            raw: jsonStr.slice(0, 200),
+          });
           return [];
         }
       }
@@ -1461,15 +1646,14 @@ function parseLLMInsights(
         id: randomUUID(),
         content: String(item.content ?? ""),
         rationale: String(item.rationale ?? ""),
-        targetDomains: Array.isArray(item.targetDomains)
-          ? item.targetDomains.map(String)
-          : [],
-        sourceDomains: Array.isArray(item.sourceDomains)
-          ? item.sourceDomains.map(String)
-          : [],
+        targetDomains: Array.isArray(item.targetDomains) ? item.targetDomains.map(String) : [],
+        sourceDomains: Array.isArray(item.sourceDomains) ? item.sourceDomains.map(String) : [],
         relevanceScore: clamp01(Number(item.relevanceScore ?? 0.5)),
         surpriseScore: clamp01(Number(item.surpriseScore ?? 0.5)),
-        compositeScore: (clamp01(Number(item.relevanceScore ?? 0.5)) + clamp01(Number(item.surpriseScore ?? 0.5))) / 2,
+        compositeScore:
+          (clamp01(Number(item.relevanceScore ?? 0.5)) +
+            clamp01(Number(item.surpriseScore ?? 0.5))) /
+          2,
         sources: [],
         verificationStatus: "unverified" as const,
         source: "v1" as const,
@@ -1499,9 +1683,21 @@ function repairJsonArray(raw: string): string {
     let normalized = "";
     for (let i = 0; i < s.length; i++) {
       const ch = s[i]!;
-      if (esc) { normalized += ch; esc = false; continue; }
-      if (ch === "\\") { normalized += ch; esc = true; continue; }
-      if (ch === '"') { inStr = !inStr; normalized += ch; continue; }
+      if (esc) {
+        normalized += ch;
+        esc = false;
+        continue;
+      }
+      if (ch === "\\") {
+        normalized += ch;
+        esc = true;
+        continue;
+      }
+      if (ch === '"') {
+        inStr = !inStr;
+        normalized += ch;
+        continue;
+      }
       if (inStr && (ch === "\u201c" || ch === "\u201d")) {
         normalized += '"';
         continue;
@@ -1517,17 +1713,32 @@ function repairJsonArray(raw: string): string {
   let inString = false;
   let escape = false;
   for (const ch of s) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
     if (inString) continue;
     if (ch === "[") openBrackets++;
     else if (ch === "]") openBrackets--;
     else if (ch === "{") openBraces++;
     else if (ch === "}") openBraces--;
   }
-  while (openBraces > 0) { s += "}"; openBraces--; }
-  while (openBrackets > 0) { s += "]"; openBrackets--; }
+  while (openBraces > 0) {
+    s += "}";
+    openBraces--;
+  }
+  while (openBrackets > 0) {
+    s += "]";
+    openBrackets--;
+  }
   return s;
 }
 
@@ -1648,9 +1859,7 @@ function clamp01(value: number): number {
 
 const PERSONA_WORKSPACE_FILES = ["SOUL.md", "IDENTITY.md", "USER.md"] as const;
 
-export async function loadWorkspacePersonaContext(
-  workspaceDir?: string,
-): Promise<string> {
+export async function loadWorkspacePersonaContext(workspaceDir?: string): Promise<string> {
   const dir = workspaceDir ?? path.join(os.homedir(), ".kaijibot", "workspace");
   const parts: string[] = [];
   for (const filename of PERSONA_WORKSPACE_FILES) {
@@ -1660,25 +1869,27 @@ export async function loadWorkspacePersonaContext(
       if (trimmed) {
         parts.push(`## ${filename}\n${trimmed}`);
       }
-    } catch {
-    }
+    } catch {}
   }
   return parts.join("\n\n");
 }
 
-export function buildCritiquePrompt(
-  candidate: InsightCandidate,
-  persona: PersonaTree,
-): string {
-  const sortedDomainEntries = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+export function buildCritiquePrompt(candidate: InsightCandidate, persona: PersonaTree): string {
+  const sortedDomainEntries = Object.entries(persona.domains).sort(
+    ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
+  );
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) =>
+      getFilteredInsights(d)
+        .slice(0, 2)
+        .map((ki) => `${name}: ${ki}`),
+    )
     .slice(0, 6);
-  const anchorBlock = anchorFacts.length > 0
-    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "(not yet established)";
+  const anchorBlock =
+    anchorFacts.length > 0
+      ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+      : "(not yet established)";
 
   const userName = persona.identity?.displayName ?? "the user";
 
@@ -1728,9 +1939,7 @@ export function buildRefinePrompt(
   critique: LlmCritiqueResult,
   persona: PersonaTree,
 ): string {
-  const suggestions = critique.improvementSuggestions
-    .map((s, i) => `${i + 1}. ${s}`)
-    .join("\n");
+  const suggestions = critique.improvementSuggestions.map((s, i) => `${i + 1}. ${s}`).join("\n");
 
   return `${buildVoiceSection(persona)}
 
@@ -1813,7 +2022,16 @@ export async function critiqueInsightWithLLM(
 
     const parsed: Record<string, unknown> = JSON.parse(text.slice(objStart, objEnd + 1));
 
-    const requiredFields = ["specificity", "personaRelevance", "actionability", "surprise", "voiceMatch", "overallScore", "critique", "improvementSuggestions"];
+    const requiredFields = [
+      "specificity",
+      "personaRelevance",
+      "actionability",
+      "surprise",
+      "voiceMatch",
+      "overallScore",
+      "critique",
+      "improvementSuggestions",
+    ];
     for (const field of requiredFields) {
       if (!(field in parsed)) return null;
     }
@@ -1892,23 +2110,29 @@ export async function refineInsightWithLLM(
   }
 }
 
-export function buildVerificationPrompt(
-  candidate: InsightCandidate,
-  persona: PersonaTree,
-): string {
-  const sortedDomainEntries = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned);
+export function buildVerificationPrompt(candidate: InsightCandidate, persona: PersonaTree): string {
+  const sortedDomainEntries = Object.entries(persona.domains).sort(
+    ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
+  );
 
   const anchorFacts = sortedDomainEntries
-    .flatMap(([name, d]) => getFilteredInsights(d).slice(0, 2).map((ki) => `${name}: ${ki}`))
+    .flatMap(([name, d]) =>
+      getFilteredInsights(d)
+        .slice(0, 2)
+        .map((ki) => `${name}: ${ki}`),
+    )
     .slice(0, 6);
-  const anchorBlock = anchorFacts.length > 0
-    ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-    : "(not yet established)";
+  const anchorBlock =
+    anchorFacts.length > 0
+      ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
+      : "(not yet established)";
 
-  const sourceBlock = candidate.sources.length > 0
-    ? candidate.sources.map((s, i) => `${i + 1}. [${s.title}](${s.url}) (credibility: ${s.credibility})`).join("\n")
-    : "(no sources)";
+  const sourceBlock =
+    candidate.sources.length > 0
+      ? candidate.sources
+          .map((s, i) => `${i + 1}. [${s.title}](${s.url}) (credibility: ${s.credibility})`)
+          .join("\n")
+      : "(no sources)";
 
   const userName = persona.identity?.displayName ?? "the user";
 
@@ -2036,7 +2260,10 @@ function buildFreshnessPrompt(
   const shown = recentInsightContents.slice(0, 5);
 
   const pastBlock = shown
-    .map((text, i) => `${i + 1}. ${text.length > MAX_PER_INSIGHT ? text.slice(0, MAX_PER_INSIGHT) : text}`)
+    .map(
+      (text, i) =>
+        `${i + 1}. ${text.length > MAX_PER_INSIGHT ? text.slice(0, MAX_PER_INSIGHT) : text}`,
+    )
     .join("\n");
 
   return `SYSTEM: You are a semantic novelty evaluator. Your job is to determine if a new insight says something genuinely new compared to past insights.

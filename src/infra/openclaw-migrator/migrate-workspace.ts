@@ -1,13 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type {
-  MigrationChange,
-  MigrationOptions,
-  MigrationResult,
-  MigrationSource,
-} from "./types.js";
-import type { MemoryMergeStrategy } from "./types.js";
 import {
   extractMarkdownHeaders,
   extractSectionsByHeaderNames,
@@ -15,6 +8,13 @@ import {
   rewriteBrandReferences,
   rewriteWorkspaceFile,
 } from "./brand-rewrite.js";
+import type {
+  MigrationChange,
+  MigrationOptions,
+  MigrationResult,
+  MigrationSource,
+} from "./types.js";
+import type { MemoryMergeStrategy } from "./types.js";
 
 const WORKSPACE_BLACKLIST = new Set([".qmd", ".vectors", "memory.db"]);
 
@@ -55,7 +55,9 @@ async function copyFileIfDifferent(
   const dstRel = path.relative(targetDir, dst);
 
   const srcExists = await fileExists(src);
-  if (!srcExists) { return; }
+  if (!srcExists) {
+    return;
+  }
 
   const dstExists = await fileExists(dst);
 
@@ -120,18 +122,39 @@ async function copyWorkspaceRecursive(
   const entries = await fs.readdir(srcDir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (WORKSPACE_BLACKLIST.has(entry.name)) { continue; }
+    if (WORKSPACE_BLACKLIST.has(entry.name)) {
+      continue;
+    }
 
     const src = path.join(srcDir, entry.name);
     const dst = path.join(dstDir, entry.name);
 
     if (entry.isDirectory()) {
       await copyWorkspaceRecursive(
-        src, dst, options, sourceDir, targetDir, changes, skipped, skipMemoryMd, warnings,
+        src,
+        dst,
+        options,
+        sourceDir,
+        targetDir,
+        changes,
+        skipped,
+        skipMemoryMd,
+        warnings,
       );
     } else if (entry.isFile()) {
-      if (skipMemoryMd && entry.name === "MEMORY.md") { continue; }
-      await copyFileIfDifferent(src, dst, options, sourceDir, targetDir, changes, skipped, warnings);
+      if (skipMemoryMd && entry.name === "MEMORY.md") {
+        continue;
+      }
+      await copyFileIfDifferent(
+        src,
+        dst,
+        options,
+        sourceDir,
+        targetDir,
+        changes,
+        skipped,
+        warnings,
+      );
     }
   }
 }
@@ -149,7 +172,9 @@ async function mergeMemoryFile(
   const dstMemoryFile = path.join(targetWorkspace, "MEMORY.md");
   const srcMemoryExists = await fileExists(srcMemoryFile);
 
-  if (!srcMemoryExists) { return; }
+  if (!srcMemoryExists) {
+    return;
+  }
 
   const srcContent = await fs.readFile(srcMemoryFile, "utf-8");
   const srcRel = path.relative(source.dir, srcMemoryFile);
@@ -235,7 +260,13 @@ async function migrateWorkspaceDir(
 
   if (memoryMergeStrategy === "merge") {
     await mergeMemoryFile(
-      sourceWorkspace, targetWorkspace, source, options, changes, warnings, skipped,
+      sourceWorkspace,
+      targetWorkspace,
+      source,
+      options,
+      changes,
+      warnings,
+      skipped,
     );
   }
 
@@ -303,11 +334,14 @@ export async function migrateWorkspace(
     if (agentList && Array.isArray(agentList)) {
       for (const agent of agentList) {
         const agentId = typeof agent.id === "string" ? agent.id : "";
-        if (!agentId) { continue; }
+        if (!agentId) {
+          continue;
+        }
 
-        const agentWorkspace = typeof agent.workspace === "string"
-          ? path.resolve(source.dir, agent.workspace)
-          : path.join(source.dir, `workspace-${agentId}`);
+        const agentWorkspace =
+          typeof agent.workspace === "string"
+            ? path.resolve(source.dir, agent.workspace)
+            : path.join(source.dir, `workspace-${agentId}`);
         const targetAgentWorkspace = path.join(targetDir, `workspace-${agentId}`);
 
         const agentResult = await migrateWorkspaceDir(

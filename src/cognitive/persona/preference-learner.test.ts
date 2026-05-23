@@ -23,10 +23,7 @@ describe("extractFromMessage", () => {
   });
 
   it("extracts recent focus phrases", () => {
-    const result = extractFromMessage(
-      "我想了解微服务架构的最佳实践",
-      "微服务架构有几个关键模式",
-    );
+    const result = extractFromMessage("我想了解微服务架构的最佳实践", "微服务架构有几个关键模式");
     expect(result.recentFocus.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -37,10 +34,7 @@ describe("extractFromMessage", () => {
   });
 
   it("assigns higher depth for more keyword matches", () => {
-    const result = extractFromMessage(
-      "我在做AI人工智能相关的机器学习深度学习项目",
-      "好的",
-    );
+    const result = extractFromMessage("我在做AI人工智能相关的机器学习深度学习项目", "好的");
     const aiDomain = result.domains.find((d) => d.name === "AI/机器学习");
     expect(aiDomain).toBeDefined();
     expect(aiDomain?.depth).toBeGreaterThanOrEqual(3);

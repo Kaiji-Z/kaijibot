@@ -7,7 +7,6 @@ title: "Zalo"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Zalo (Bot API)
 
 Status: experimental. DMs are supported. The [Capabilities](#capabilities) section below reflects current Marketplace-bot behavior.

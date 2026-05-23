@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import type { PersonaTree } from "../types.js";
 import type { LlmExtractorDeps } from "./llm-extractor.js";
 import { extractFromMessageLLM } from "./llm-extractor.js";
-import type { PersonaTree } from "../types.js";
-import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 
 type CompleteArgs = Parameters<LlmExtractorDeps["complete"]>;
 
@@ -97,13 +97,7 @@ describe("extractFromMessageLLM", () => {
 
     const wrapped = "```json\n" + json + "\n```";
     const deps = makeSuccessDeps(wrapped);
-    const result = await extractFromMessageLLM(
-      "hello",
-      "hi",
-      undefined,
-      stubConfig,
-      deps,
-    );
+    const result = await extractFromMessageLLM("hello", "hi", undefined, stubConfig, deps);
 
     expect(result.attributes).toHaveLength(1);
     expect(result.recentFocus).toEqual(["topic"]);
@@ -246,9 +240,7 @@ describe("extractFromMessageLLM", () => {
 
   it("clamps confidence to 0-1 range", async () => {
     const json = JSON.stringify({
-      attributes: [
-        { field: "f", value: "v", confidence: 5, source: "explicit", evidence: "e" },
-      ],
+      attributes: [{ field: "f", value: "v", confidence: 5, source: "explicit", evidence: "e" }],
       domains: [],
       recentFocus: [],
     });
@@ -262,13 +254,7 @@ describe("extractFromMessageLLM", () => {
     });
 
     const deps = makeSuccessDeps(json);
-    const result = await extractFromMessageLLM(
-      "hello",
-      "hi",
-      undefined,
-      stubConfig,
-      deps,
-    );
+    const result = await extractFromMessageLLM("hello", "hi", undefined, stubConfig, deps);
 
     expect(result.domains[0]!.depth).toBe(5);
   });
@@ -283,13 +269,7 @@ describe("extractFromMessageLLM", () => {
     });
 
     const deps = makeSuccessDeps(json);
-    const result = await extractFromMessageLLM(
-      "hello",
-      "hi",
-      undefined,
-      stubConfig,
-      deps,
-    );
+    const result = await extractFromMessageLLM("hello", "hi", undefined, stubConfig, deps);
 
     expect(result.attributes[0]!.source).toBe("inferred");
   });

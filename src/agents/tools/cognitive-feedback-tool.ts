@@ -1,13 +1,17 @@
 import { Type } from "@sinclair/typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { stringEnum } from "../schema/typebox.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
-import { stringEnum } from "../schema/typebox.js";
 
 export const CognitiveFeedbackSchema = Type.Object({
   targetId: Type.String({ description: "The message or insight ID this feedback refers to" }),
-  sentiment: stringEnum(["positive", "negative", "neutral"] as const, { description: "User's sentiment toward the target" }),
-  topic: Type.Optional(Type.String({ description: "The domain or topic this feedback relates to" })),
+  sentiment: stringEnum(["positive", "negative", "neutral"] as const, {
+    description: "User's sentiment toward the target",
+  }),
+  topic: Type.Optional(
+    Type.String({ description: "The domain or topic this feedback relates to" }),
+  ),
   textResponse: Type.Optional(Type.String({ description: "Optional free-text feedback" })),
 });
 
@@ -41,27 +45,30 @@ export function createCognitiveFeedbackTool(deps: {
         // TUI/admin sessions have no senderId → skip persona extraction
         const userId = deps.sessionKey?.split(":").pop();
         if (!userId || userId === "main") {
-          return textResult(
-            "No user profile found; feedback stored but not applied to profile.",
-            { status: "no_profile", sentiment: params.sentiment, topic: params.topic },
-          );
+          return textResult("No user profile found; feedback stored but not applied to profile.", {
+            status: "no_profile",
+            sentiment: params.sentiment,
+            topic: params.topic,
+          });
         }
 
         const persona = await store.load(deps.agentId ?? "main", userId);
         if (!persona) {
-          return textResult(
-            "No user profile found; feedback stored but not applied to profile.",
-            { status: "no_profile", sentiment: params.sentiment, topic: params.topic },
-          );
+          return textResult("No user profile found; feedback stored but not applied to profile.", {
+            status: "no_profile",
+            sentiment: params.sentiment,
+            topic: params.topic,
+          });
         }
 
         const feedback = {
           targetId: params.targetId,
-          type: params.sentiment === "positive"
-            ? "positive" as const
-            : params.sentiment === "negative"
-              ? "negative" as const
-              : "neutral" as const,
+          type:
+            params.sentiment === "positive"
+              ? ("positive" as const)
+              : params.sentiment === "negative"
+                ? ("negative" as const)
+                : ("neutral" as const),
           mechanism: "text" as const,
           topic: params.topic,
           timestamp: Date.now(),
@@ -78,10 +85,9 @@ export function createCognitiveFeedbackTool(deps: {
           trustScore: updated.rapport.trustScore.toFixed(2),
         });
       } catch (err) {
-        return textResult(
-          `Feedback acknowledged but could not persist: ${String(err)}`,
-          { status: "error" },
-        );
+        return textResult(`Feedback acknowledged but could not persist: ${String(err)}`, {
+          status: "error",
+        });
       }
     },
   };

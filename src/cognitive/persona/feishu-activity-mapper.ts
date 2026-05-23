@@ -1,10 +1,10 @@
-import type { ExtractionResult } from "./types.js";
 import type {
   FeishuActivityData,
   TaskActivitySummary,
   DocActivitySummary,
   MeetingActivitySummary,
 } from "./feishu-activity-types.js";
+import type { ExtractionResult } from "./types.js";
 
 function docDomainDepth(doc: DocActivitySummary): number {
   return Math.min(5, Math.round(Math.log2(doc.edited + doc.viewed * 0.3 + 1)));
@@ -25,10 +25,7 @@ function extractDocDomains(doc: DocActivitySummary): ExtractionResult["domains"]
     name: theme,
     depth,
     insights: [],
-    questions:
-      doc.viewed > 5 && doc.edited < 2
-        ? [`Reading but not contributing in ${theme}`]
-        : [],
+    questions: doc.viewed > 5 && doc.edited < 2 ? [`Reading but not contributing in ${theme}`] : [],
   }));
 }
 
@@ -39,10 +36,7 @@ function extractMeetingDomains(meeting: MeetingActivitySummary): ExtractionResul
     name: theme,
     depth,
     insights: [],
-    questions:
-      meeting.attended > 0
-        ? [`Meetings in ${theme} without documented outcomes`]
-        : [],
+    questions: meeting.attended > 0 ? [`Meetings in ${theme} without documented outcomes`] : [],
   }));
 }
 
@@ -53,8 +47,7 @@ function extractTaskDomains(task: TaskActivitySummary): ExtractionResult["domain
     name,
     depth,
     insights: [],
-    questions:
-      task.overdue > 0 ? [`Has overdue tasks in ${name}`] : [],
+    questions: task.overdue > 0 ? [`Has overdue tasks in ${name}`] : [],
   }));
 }
 

@@ -19,8 +19,8 @@ import {
   type MemoryRemDreamingConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-status";
 import { writeDailyDreamingPhaseBlock } from "./dreaming-markdown.js";
-import { resolveMemoryPruningConfig, runPruningPhase } from "./dreaming-pruning.js";
 import { generateAndAppendDreamNarrative, type NarrativePhaseData } from "./dreaming-narrative.js";
+import { resolveMemoryPruningConfig, runPruningPhase } from "./dreaming-pruning.js";
 import { asRecord, formatErrorMessage, normalizeTrimmedString } from "./dreaming-shared.js";
 import {
   readShortTermRecallEntries,

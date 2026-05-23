@@ -1,11 +1,8 @@
 import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { checkSemanticNoveltyWithLLM, type LlmInsightDeps } from "./llm-engine.js";
 import type { InsightCandidate } from "./types.js";
-import {
-  checkSemanticNoveltyWithLLM,
-  type LlmInsightDeps,
-} from "./llm-engine.js";
 
 const TEST_MODEL: Model<Api> = {
   id: "test-model",
@@ -76,7 +73,9 @@ function successDeps(responseText: string): LlmInsightDeps {
 }
 
 const errorDeps: LlmInsightDeps = {
-  complete: async () => { throw new Error("LLM error"); },
+  complete: async () => {
+    throw new Error("LLM error");
+  },
   prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
 };
 
@@ -98,9 +97,13 @@ const fivePastInsights = [
 
 describe("checkSemanticNoveltyWithLLM prompt construction", () => {
   it("sends candidate content and past insights to LLM", async () => {
-    const completeSpy = vi.fn().mockResolvedValue(assistantMessage(
-      JSON.stringify({ isNovel: true, similarityToClosest: 0.3, reason: "Different topic" }),
-    ));
+    const completeSpy = vi
+      .fn()
+      .mockResolvedValue(
+        assistantMessage(
+          JSON.stringify({ isNovel: true, similarityToClosest: 0.3, reason: "Different topic" }),
+        ),
+      );
 
     const deps: LlmInsightDeps = {
       complete: completeSpy,
@@ -128,13 +131,18 @@ describe("checkSemanticNoveltyWithLLM prompt construction", () => {
 
   it("shows all 5 past insights truncated to 120 chars", async () => {
     const longInsights = fivePastInsights.map(
-      (base, i) => `${base}，这是一条超过80字符的扩展洞察内容，用于测试截断限制是否生效。追加更多填充文字以确保长度超过一百二十字符。part${i + 1}`,
+      (base, i) =>
+        `${base}，这是一条超过80字符的扩展洞察内容，用于测试截断限制是否生效。追加更多填充文字以确保长度超过一百二十字符。part${i + 1}`,
     );
     const longContent = "A".repeat(200);
 
-    const completeSpy = vi.fn().mockResolvedValue(assistantMessage(
-      JSON.stringify({ isNovel: true, similarityToClosest: 0.1, reason: "Novel" }),
-    ));
+    const completeSpy = vi
+      .fn()
+      .mockResolvedValue(
+        assistantMessage(
+          JSON.stringify({ isNovel: true, similarityToClosest: 0.1, reason: "Novel" }),
+        ),
+      );
 
     const deps: LlmInsightDeps = {
       complete: completeSpy,
@@ -148,7 +156,7 @@ describe("checkSemanticNoveltyWithLLM prompt construction", () => {
       deps,
     );
 
-    const promptText = (completeSpy.mock.calls[0][1].messages[0].content as string);
+    const promptText = completeSpy.mock.calls[0][1].messages[0].content as string;
 
     for (let i = 1; i <= 5; i++) {
       expect(promptText).toContain(`${i}.`);
@@ -168,11 +176,13 @@ describe("checkSemanticNoveltyWithLLM not-novel response", () => {
       makeCandidate(),
       threePastInsights,
       makeConfig(),
-      successDeps(JSON.stringify({
-        isNovel: false,
-        similarityToClosest: 0.92,
-        reason: "Paraphrases past insight about ownership model",
-      })),
+      successDeps(
+        JSON.stringify({
+          isNovel: false,
+          similarityToClosest: 0.92,
+          reason: "Paraphrases past insight about ownership model",
+        }),
+      ),
     );
 
     expect(result.isNovel).toBe(false);
@@ -190,11 +200,13 @@ describe("checkSemanticNoveltyWithLLM novel response", () => {
       makeCandidate(),
       threePastInsights,
       makeConfig(),
-      successDeps(JSON.stringify({
-        isNovel: true,
-        similarityToClosest: 0.2,
-        reason: "Covers embedded systems, a new domain",
-      })),
+      successDeps(
+        JSON.stringify({
+          isNovel: true,
+          similarityToClosest: 0.2,
+          reason: "Covers embedded systems, a new domain",
+        }),
+      ),
     );
 
     expect(result.isNovel).toBe(true);
@@ -275,8 +287,12 @@ describe("checkSemanticNoveltyWithLLM error handling", () => {
 
   it("returns isNovel: true when everything throws", async () => {
     const bombDeps: LlmInsightDeps = {
-      complete: async () => { throw new Error("catastrophic"); },
-      prepareModel: async () => { throw new Error("also broke"); },
+      complete: async () => {
+        throw new Error("catastrophic");
+      },
+      prepareModel: async () => {
+        throw new Error("also broke");
+      },
     };
     const result = await checkSemanticNoveltyWithLLM(
       makeCandidate(),
@@ -319,12 +335,7 @@ describe("checkSemanticNoveltyWithLLM skip conditions", () => {
       prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
     };
 
-    const result = await checkSemanticNoveltyWithLLM(
-      makeCandidate(),
-      [],
-      makeConfig(),
-      deps,
-    );
+    const result = await checkSemanticNoveltyWithLLM(makeCandidate(), [], makeConfig(), deps);
 
     expect(result.isNovel).toBe(true);
     expect(result.reason).toContain("Insufficient history");
@@ -352,9 +363,13 @@ describe("checkSemanticNoveltyWithLLM skip conditions", () => {
   });
 
   it("calls LLM with 2 items in recentInsightContents", async () => {
-    const completeSpy = vi.fn().mockResolvedValue(assistantMessage(
-      JSON.stringify({ isNovel: true, similarityToClosest: 0.4, reason: "New angle" }),
-    ));
+    const completeSpy = vi
+      .fn()
+      .mockResolvedValue(
+        assistantMessage(
+          JSON.stringify({ isNovel: true, similarityToClosest: 0.4, reason: "New angle" }),
+        ),
+      );
 
     const deps: LlmInsightDeps = {
       complete: completeSpy,

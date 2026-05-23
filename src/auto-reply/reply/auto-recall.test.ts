@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PersonaTree } from "../../cognitive/types.js";
-import type { MemorySearchResult } from "../../memory-host-sdk/host/types.js";
 import type { KaijiBotConfig } from "../../config/config.js";
+import type { MemorySearchResult } from "../../memory-host-sdk/host/types.js";
 import { buildAutoRecallContext } from "./auto-recall.js";
 
 function makePersona(recentFocus: string[]): PersonaTree {
@@ -190,9 +190,7 @@ describe("buildAutoRecallContext", () => {
   });
 
   it("uses injected loadPersona when provided", async () => {
-    const searchMemory = vi.fn(async () => [
-      makeSearchResult({ snippet: "test result" }),
-    ]);
+    const searchMemory = vi.fn(async () => [makeSearchResult({ snippet: "test result" })]);
     const loadedPersona = makePersona(["injected-topic"]);
     const loadPersona = vi.fn(async () => loadedPersona);
 

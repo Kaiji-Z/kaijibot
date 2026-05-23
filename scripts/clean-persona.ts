@@ -1,7 +1,7 @@
-import { readFile, writeFile, rename } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { readFile, writeFile, rename } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { completeSimple, type Api, type Model, type TextContent } from "@mariozechner/pi-ai";
 import { prepareSimpleCompletionModel } from "../src/agents/simple-completion-runtime.js";
 
@@ -59,7 +59,9 @@ async function classifyInsights(
 
   const prompt = `You are a persona data cleaning system. Analyze each insight in the "${domainName}" domain and:
 1. Classify into one of these categories:
-${Object.entries(INSIGHT_CATEGORY_DESCRIPTIONS).map(([k, v]) => `   - ${k}: ${v}`).join("\n")}
+${Object.entries(INSIGHT_CATEGORY_DESCRIPTIONS)
+  .map(([k, v]) => `   - ${k}: ${v}`)
+  .join("\n")}
 2. Mark as shouldKeep=false if it is:
    - A generic/vague statement that provides no actionable knowledge (e.g. "正在讨论...", "涉及...", "持续监控...")
    - A duplicate or near-duplicate of another insight in this list
@@ -88,15 +90,27 @@ Rules:
     { apiKey, maxTokens: 2000, temperature: 0.2, signal: AbortSignal.timeout(30_000) },
   );
 
-  const text = result.content.filter(isTextBlock).map((b) => b.text).join("").trim();
-  const cleaned = text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```$/m, "").trim();
+  const text = result.content
+    .filter(isTextBlock)
+    .map((b) => b.text)
+    .join("")
+    .trim();
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```$/m, "")
+    .trim();
 
   try {
     const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item: Record<string, unknown>) => ({
-      text: typeof item.rewritten === "string" ? item.rewritten : insights[(Number(item.index ?? 0)) - 1] ?? "",
-      category: isValidCategory(item.category) ? item.category as InsightCategory : "domain_knowledge",
+      text:
+        typeof item.rewritten === "string"
+          ? item.rewritten
+          : (insights[Number(item.index ?? 0) - 1] ?? ""),
+      category: isValidCategory(item.category)
+        ? (item.category as InsightCategory)
+        : "domain_knowledge",
       shouldKeep: Boolean(item.shouldKeep),
     }));
   } catch {
@@ -148,12 +162,16 @@ async function main() {
     if (key === "技术角色" && v.confidence < 0.6) {
       const merged = { ...v, value: "AI系统开发者/架构师", confidence: 0.9, source: "observed" };
       persona.identity.coreTraits[key] = merged;
-      console.log(`  FIX: ${key}: "${v.value}" → "${merged.value}" (conf ${v.confidence.toFixed(2)} → 0.90)`);
+      console.log(
+        `  FIX: ${key}: "${v.value}" → "${merged.value}" (conf ${v.confidence.toFixed(2)} → 0.90)`,
+      );
       continue;
     }
     if (v.confidence < 0.25) {
       traitsToRemove.push(key);
-      console.log(`  REMOVE: ${key} = "${v.value}" (too low confidence: ${v.confidence.toFixed(2)})`);
+      console.log(
+        `  REMOVE: ${key} = "${v.value}" (too low confidence: ${v.confidence.toFixed(2)})`,
+      );
     }
   }
 
@@ -176,11 +194,18 @@ async function main() {
       continue;
     }
 
-    const allTexts = d.keyInsights.length > 0 ? d.keyInsights : (d.insights ?? []).map((i) => i.text);
+    const allTexts =
+      d.keyInsights.length > 0 ? d.keyInsights : (d.insights ?? []).map((i) => i.text);
     console.log(`  ${domainName}: classifying ${allTexts.length} insights...`);
 
     try {
-      const classified = await classifyInsights(allTexts, domainName, completeSimple, prepared.model, prepared.auth.apiKey);
+      const classified = await classifyInsights(
+        allTexts,
+        domainName,
+        completeSimple,
+        prepared.model,
+        prepared.auth.apiKey,
+      );
       const kept = classified.filter((c) => c.shouldKeep);
       const removed = classified.filter((c) => !c.shouldKeep);
 
@@ -216,7 +241,8 @@ async function main() {
   console.log("\n=== Cleaning activeQuestions ===");
   const oneShotPatterns = [
     /^(什么|怎么|如何|为什么|哪个|哪个|是不是|多少|几)/,
-    /\?$/, /？$/,
+    /\?$/,
+    /？$/,
     /^(最新|最近|今天|昨天)/,
   ];
   for (const [domainName, domain] of Object.entries(persona.domains)) {
@@ -232,10 +258,7 @@ async function main() {
   }
 
   console.log("\n=== Cleaning recentFocus ===");
-  const noisePatterns = [
-    /^(AI|认知|工具|技能)/,
-    /概念理解$/, /架构$/, /运维$/,
-  ];
+  const noisePatterns = [/^(AI|认知|工具|技能)/, /概念理解$/, /架构$/, /运维$/];
   const before = persona.recentFocus.length;
   persona.recentFocus = persona.recentFocus.filter((f: string) => {
     for (const p of noisePatterns) {

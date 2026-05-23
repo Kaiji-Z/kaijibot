@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import {
   MemoryIndexManager,
   type MemoryIndexDeps,
   type MemoryIndexSection,
 } from "./memory-index.js";
+import { createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import { type TopicEntry } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
@@ -58,9 +58,7 @@ export interface FsAdapter {
   stat: (path: string) => Promise<{ mtimeMs: number; size: number }>;
 }
 
-export type ClassifyFn = (
-  entries: ParsedMemoryEntry[],
-) => Promise<ClassifiedEntry[]>;
+export type ClassifyFn = (entries: ParsedMemoryEntry[]) => Promise<ClassifiedEntry[]>;
 
 export interface MigrateOptions {
   workspaceDir: string;
@@ -103,12 +101,10 @@ export function createNodeFsAdapter(): FsAdapter {
   return {
     readFile: (p: string) => fs.readFile(p, "utf-8"),
     writeFile: (p: string, data: string) => fs.writeFile(p, data, "utf-8"),
-    mkdir: (p: string, opts: { recursive: boolean }) =>
-      fs.mkdir(p, opts).then(() => {}),
+    mkdir: (p: string, opts: { recursive: boolean }) => fs.mkdir(p, opts).then(() => {}),
     readdir: (p: string) => fs.readdir(p),
     rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
-    stat: (p: string) =>
-      fs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
+    stat: (p: string) => fs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
   };
 }
 
@@ -141,9 +137,7 @@ export async function parseLegacyMemoryFiles(
     return [];
   }
 
-  const dailyFiles = fileNames
-    .filter((name) => DAILY_FILE_RE.test(name))
-    .toSorted();
+  const dailyFiles = fileNames.filter((name) => DAILY_FILE_RE.test(name)).toSorted();
 
   const allEntries: ParsedMemoryEntry[] = [];
 
@@ -223,9 +217,7 @@ export function heuristicClassify(entries: ParsedMemoryEntry[]): ClassifiedEntry
       type: undefined,
       topicSlug: FALLBACK_SUBJECT,
       title,
-      summary: entry.content.length > 120
-        ? `${entry.content.slice(0, 117)}...`
-        : entry.content,
+      summary: entry.content.length > 120 ? `${entry.content.slice(0, 117)}...` : entry.content,
       importance: "normal",
       originalContent: entry.content,
     };
@@ -359,9 +351,10 @@ export async function routeToTopicFiles(
     const highImportanceCount = classified.filter(
       (e) => e.importance === "high" && resolveTopicFileName(e.subject, e.topicSlug) === meta.file,
     ).length;
-    const summary = highImportanceCount > 0
-      ? `${highImportanceCount} high-priority entries`
-      : `Migrated from legacy daily files`;
+    const summary =
+      highImportanceCount > 0
+        ? `${highImportanceCount} high-priority entries`
+        : `Migrated from legacy daily files`;
     const displayTitle = meta.subject
       .split("-")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -490,7 +483,12 @@ export async function runMemoryMigrate(opts: MigrateOptions): Promise<MigrateRes
 
   if (!opts.dryRun && doArchive && classified.length > 0) {
     const sourceFiles = [...new Set(classified.map((e) => e.sourceFile))];
-    filesArchived = await archiveProcessedFiles(sourceFiles, memoryDir, opts.workspaceDir, fsAdapter);
+    filesArchived = await archiveProcessedFiles(
+      sourceFiles,
+      memoryDir,
+      opts.workspaceDir,
+      fsAdapter,
+    );
   }
 
   return {

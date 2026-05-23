@@ -18,7 +18,11 @@ function extractText(result: { content?: unknown[] }): string {
 
 const SERVERS = {
   context7: { command: "npx", args: ["-y", "@context7/mcp"] },
-  github: { command: "npx", args: ["-y", "@modelcontextprotocol/server-github"], env: { GITHUB_TOKEN: "x" } },
+  github: {
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-github"],
+    env: { GITHUB_TOKEN: "x" },
+  },
 };
 
 describe("createMcpConfigTool", () => {
@@ -30,7 +34,12 @@ describe("createMcpConfigTool", () => {
 
   describe("list action", () => {
     it("returns mcpServers when config is valid", async () => {
-      mockListServers.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: SERVERS });
+      mockListServers.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: SERVERS,
+      });
       const result = await tool.execute("t1", { action: "list" });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(true);
@@ -39,7 +48,12 @@ describe("createMcpConfigTool", () => {
     });
 
     it("returns empty message when no servers configured", async () => {
-      mockListServers.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: {} });
+      mockListServers.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: {},
+      });
       const result = await tool.execute("t2", { action: "list" });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(true);
@@ -57,7 +71,12 @@ describe("createMcpConfigTool", () => {
 
   describe("show action", () => {
     it("returns server when found", async () => {
-      mockListServers.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: SERVERS });
+      mockListServers.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: SERVERS,
+      });
       const result = await tool.execute("t4", { action: "show", name: "context7" });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(true);
@@ -66,7 +85,12 @@ describe("createMcpConfigTool", () => {
     });
 
     it("returns error when not found", async () => {
-      mockListServers.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: SERVERS });
+      mockListServers.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: SERVERS,
+      });
       const result = await tool.execute("t5", { action: "show", name: "nonexistent" });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(false);
@@ -77,8 +101,17 @@ describe("createMcpConfigTool", () => {
   describe("set action", () => {
     it("parses JSON server config and calls setConfiguredMcpServer", async () => {
       const serverJson = JSON.stringify(SERVERS.context7);
-      mockSetServer.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: { context7: SERVERS.context7 } });
-      const result = await tool.execute("t6", { action: "set", name: "context7", server: serverJson });
+      mockSetServer.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: { context7: SERVERS.context7 },
+      });
+      const result = await tool.execute("t6", {
+        action: "set",
+        name: "context7",
+        server: serverJson,
+      });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(true);
       expect(parsed.name).toBe("context7");
@@ -102,7 +135,11 @@ describe("createMcpConfigTool", () => {
 
     it("returns error when setConfiguredMcpServer fails", async () => {
       mockSetServer.mockResolvedValue({ ok: false, path: "/cfg.json", error: "write error" });
-      const result = await tool.execute("t9", { action: "set", name: "x", server: '{"command":"npx"}' });
+      const result = await tool.execute("t9", {
+        action: "set",
+        name: "x",
+        server: '{"command":"npx"}',
+      });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(false);
       expect(parsed.error).toBe("write error");
@@ -111,7 +148,13 @@ describe("createMcpConfigTool", () => {
 
   describe("unset action", () => {
     it("returns success when removed", async () => {
-      mockUnsetServer.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: {}, removed: true });
+      mockUnsetServer.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: {},
+        removed: true,
+      });
       const result = await tool.execute("t10", { action: "unset", name: "context7" });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(true);
@@ -119,7 +162,13 @@ describe("createMcpConfigTool", () => {
     });
 
     it("returns error when server not found", async () => {
-      mockUnsetServer.mockResolvedValue({ ok: true, path: "/cfg.json", config: {}, mcpServers: {}, removed: undefined });
+      mockUnsetServer.mockResolvedValue({
+        ok: true,
+        path: "/cfg.json",
+        config: {},
+        mcpServers: {},
+        removed: undefined,
+      });
       const result = await tool.execute("t11", { action: "unset", name: "nonexistent" });
       const parsed = JSON.parse(extractText(result));
       expect(parsed.ok).toBe(false);

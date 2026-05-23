@@ -1,6 +1,6 @@
-import { codingTools, createReadTool, readTool } from "@mariozechner/pi-coding-agent";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { codingTools, createReadTool, readTool } from "@mariozechner/pi-coding-agent";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ModelCompatConfig } from "../config/types.models.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
@@ -26,8 +26,8 @@ import {
 import { listChannelAgentTools } from "./channel-tools.js";
 import { shouldSuppressManagedWebSearchTool } from "./codex-native-web-search.js";
 import { resolveImageSanitizationLimits } from "./image-sanitization.js";
-import type { ModelAuthMode } from "./model-auth.js";
 import { createKaijiBotTools } from "./kaijibot-tools.js";
+import type { ModelAuthMode } from "./model-auth.js";
 import { wrapToolWithAbortSignal } from "./pi-tools.abort.js";
 import { wrapToolWithBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
 import { filterToolsByMessageProvider } from "./pi-tools.message-provider-policy.js";

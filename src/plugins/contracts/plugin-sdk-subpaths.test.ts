@@ -251,9 +251,7 @@ describe("plugin-sdk subpath exports", () => {
       "createDirectTextMediaOutbound",
       "createScopedChannelMediaMaxBytesResolver",
     ]);
-    for (const subpath of [
-      "feishu",
-    ]) {
+    for (const subpath of ["feishu"]) {
       expectSourceMentions(subpath, ["chunkTextForOutbound"]);
     }
     expectSourceMentions("approval-auth-runtime", [

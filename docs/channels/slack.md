@@ -7,7 +7,6 @@ title: "Slack"
 
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
-
 # Slack
 
 Status: production-ready for DMs + channels via Slack app integrations. Default mode is Socket Mode; HTTP Request URLs are also supported.

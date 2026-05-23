@@ -52,6 +52,7 @@ Skill files define **how to use** tools. This file records **your environment sp
 ## Why Keep It Separate
 
 Skills are universal; your environment is yours. Managing them separately means:
+
 - Updating skills won't lose your environment notes
 - Sharing skills won't leak infrastructure details
 - Switching environments only requires changing TOOLS.md

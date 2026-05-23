@@ -1,3 +1,5 @@
+import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
+import { getProactiveFrequencyFactor, shouldReEngage } from "../persona/lifecycle.js";
 import type { PersonaTree } from "../types.js";
 import type {
   GateDecision,
@@ -6,8 +8,6 @@ import type {
   SchedulerConfig,
   SchedulerEvent,
 } from "./types.js";
-import { getProactiveFrequencyFactor, shouldReEngage } from "../persona/lifecycle.js";
-import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
 
 // ── PRISM cost defaults ──────────────────────────────────────────────
 
@@ -52,10 +52,7 @@ export function checkProactiveGate(
     suggestedDelayMs = remaining;
   }
 
-  if (
-    persona.feedbackProfile.suppressUntil &&
-    persona.feedbackProfile.suppressUntil > now
-  ) {
+  if (persona.feedbackProfile.suppressUntil && persona.feedbackProfile.suppressUntil > now) {
     const remaining = persona.feedbackProfile.suppressUntil - now;
     reasons.push(`Suppressed for ${Math.round(remaining / 3600000)}h`);
     suggestedDelayMs = remaining;
@@ -83,9 +80,7 @@ export function checkProactiveGate(
       const endMinutes = endHour * 60 + endMin;
 
       if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
-        reasons.push(
-          `Outside active hours (${config.activeHoursStart}-${config.activeHoursEnd})`,
-        );
+        reasons.push(`Outside active hours (${config.activeHoursStart}-${config.activeHoursEnd})`);
       }
     } catch {
       // Invalid timezone, skip this gate
@@ -93,9 +88,7 @@ export function checkProactiveGate(
   }
 
   if (persona.rapport.totalExchanges < 5) {
-    reasons.push(
-      `Only ${persona.rapport.totalExchanges} exchanges — need at least 5`,
-    );
+    reasons.push(`Only ${persona.rapport.totalExchanges} exchanges — need at least 5`);
   }
 
   return {
@@ -118,9 +111,7 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
   if (config.activeHoursStart && config.activeHoursEnd && event.type === "timer") {
     const outside = isOutsideActiveHours(now, config);
     if (outside) {
-      reasons.push(
-        `Outside active hours (${config.activeHoursStart}-${config.activeHoursEnd})`,
-      );
+      reasons.push(`Outside active hours (${config.activeHoursStart}-${config.activeHoursEnd})`);
     }
   }
 
@@ -133,9 +124,7 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
   }
 
   if (persona.rapport.totalExchanges < 5) {
-    reasons.push(
-      `Only ${persona.rapport.totalExchanges} exchanges — need at least 5`,
-    );
+    reasons.push(`Only ${persona.rapport.totalExchanges} exchanges — need at least 5`);
   }
 
   // If any hard veto fires, return early with zero probabilities
@@ -198,20 +187,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function computeEngagementFactor(persona: PersonaTree, now: number): number {
   const { lifecycle, domains } = persona;
 
-  const silenceDays = lifecycle.lastActiveAt > 0
-    ? (now - lifecycle.lastActiveAt) / DAY_MS
-    : 999;
+  const silenceDays = lifecycle.lastActiveAt > 0 ? (now - lifecycle.lastActiveAt) / DAY_MS : 999;
 
   let recencyFactor: number;
-  if (lifecycle.stage === "new")       recencyFactor = 0.3;
-  else if (silenceDays <= 1)           recencyFactor = 1.0;
-  else if (silenceDays <= 3)           recencyFactor = 0.9;
-  else if (silenceDays <= 7)           recencyFactor = 0.95;
-  else if (silenceDays <= 14)          recencyFactor = 1.0;
-  else if (silenceDays <= 45)          recencyFactor = 0.75;
-  else if (silenceDays <= 90)          recencyFactor = 0.5;
-  else if (silenceDays <= 180)         recencyFactor = 0.3;
-  else                                 recencyFactor = 0.15;
+  if (lifecycle.stage === "new") recencyFactor = 0.3;
+  else if (silenceDays <= 1) recencyFactor = 1.0;
+  else if (silenceDays <= 3) recencyFactor = 0.9;
+  else if (silenceDays <= 7) recencyFactor = 0.95;
+  else if (silenceDays <= 14) recencyFactor = 1.0;
+  else if (silenceDays <= 45) recencyFactor = 0.75;
+  else if (silenceDays <= 90) recencyFactor = 0.5;
+  else if (silenceDays <= 180) recencyFactor = 0.3;
+  else recencyFactor = 0.15;
 
   const investmentFactor = Math.log2(1 + lifecycle.totalActiveDays) / 7;
 
@@ -246,21 +233,26 @@ export function computeTimeFactor(
   const cadencePeak = Math.min(6, Math.max(2, optFreq * 0.6));
   const sigma = Math.max(1.5, cadencePeak * 0.4);
 
-  const hoursSinceUserActive = persona.lifecycle.lastActiveAt > 0
-    ? Math.max(0, (now - persona.lifecycle.lastActiveAt) / (60 * 60 * 1000))
-    : cadencePeak;
+  const hoursSinceUserActive =
+    persona.lifecycle.lastActiveAt > 0
+      ? Math.max(0, (now - persona.lifecycle.lastActiveAt) / (60 * 60 * 1000))
+      : cadencePeak;
 
   const gaussianArg = -Math.pow(hoursSinceUserActive - cadencePeak, 2) / (2 * sigma * sigma);
   let cadenceFactor = Math.exp(gaussianArg);
 
   if (hoursSinceUserActive > optFreq * 2) {
-    const reEngageSignal = Math.min(0.9, 0.21 * Math.log2(1 + hoursSinceUserActive / (optFreq * 2)));
+    const reEngageSignal = Math.min(
+      0.9,
+      0.21 * Math.log2(1 + hoursSinceUserActive / (optFreq * 2)),
+    );
     cadenceFactor = Math.max(cadenceFactor, reEngageSignal);
   }
 
-  const hoursSinceLastProactive = persona.feedbackProfile.lastProactiveAt > 0
-    ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
-    : optFreq * 2;
+  const hoursSinceLastProactive =
+    persona.feedbackProfile.lastProactiveAt > 0
+      ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
+      : optFreq * 2;
   const recoveryFactor = 1 - Math.exp(-hoursSinceLastProactive / optFreq);
 
   // Hyperbolic backoff: 1/(1+0.3n) with floor, replacing 0.7^n death spiral.
@@ -274,14 +266,20 @@ export function computeTimeFactor(
 
   // Compensatory signal: grows with silence since last proactive, counteracting
   // ignore penalty — mirrors human "compensatory investment" after long silence.
-  const silenceHours = persona.feedbackProfile.lastProactiveAt > 0
-    ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
-    : 0;
+  const silenceHours =
+    persona.feedbackProfile.lastProactiveAt > 0
+      ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
+      : 0;
   const COMPENSATORY_RATE = 0.08;
   const COMPENSATORY_FLOOR_HOURS = 48;
-  const compensatorySignal = silenceHours > COMPENSATORY_FLOOR_HOURS
-    ? Math.min(0.25, COMPENSATORY_RATE * Math.log2(1 + (silenceHours - COMPENSATORY_FLOOR_HOURS) / COMPENSATORY_FLOOR_HOURS))
-    : 0;
+  const compensatorySignal =
+    silenceHours > COMPENSATORY_FLOOR_HOURS
+      ? Math.min(
+          0.25,
+          COMPENSATORY_RATE *
+            Math.log2(1 + (silenceHours - COMPENSATORY_FLOOR_HOURS) / COMPENSATORY_FLOOR_HOURS),
+        )
+      : 0;
 
   const backoffFactor = Math.max(MIN_BACKOFF_FLOOR, ignoreBackoff + compensatorySignal);
 
@@ -303,7 +301,9 @@ function computePNeed(
 
   const reEngageBoost = shouldReEngage(persona.lifecycle, now) ? 1.3 : 1.0;
 
-  return clamp01(BASE_NEED * timeFactor * eventFactor * engagementFactor * depthBonus * reEngageBoost);
+  return clamp01(
+    BASE_NEED * timeFactor * eventFactor * engagementFactor * depthBonus * reEngageBoost,
+  );
 }
 
 // ── p_accept computation ─────────────────────────────────────────────
@@ -314,10 +314,9 @@ function computePAccept(persona: PersonaTree): number {
   const banditEntries = Object.entries(persona.feedbackProfile.topicBandits);
   let banditFactor = 0.5;
   if (banditEntries.length > 0) {
-    const meanPosterior = banditEntries.reduce(
-      (sum, [, b]) => sum + b.alpha / (b.alpha + b.beta),
-      0,
-    ) / banditEntries.length;
+    const meanPosterior =
+      banditEntries.reduce((sum, [, b]) => sum + b.alpha / (b.alpha + b.beta), 0) /
+      banditEntries.length;
     banditFactor = meanPosterior;
   }
 
@@ -389,10 +388,7 @@ function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
 
-function isOutsideActiveHours(
-  nowMs: number,
-  config: SchedulerConfig,
-): boolean {
+function isOutsideActiveHours(nowMs: number, config: SchedulerConfig): boolean {
   if (!config.activeHoursStart || !config.activeHoursEnd) return false;
 
   const nowDate = new Date(nowMs);

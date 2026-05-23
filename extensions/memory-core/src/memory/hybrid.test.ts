@@ -203,8 +203,7 @@ describe("memory hybrid helpers", () => {
             startLine: 1,
             endLine: 2,
             source: "memory",
-            snippet:
-              "KaijiBot proactively sends cognitive insights to users via Feishu",
+            snippet: "KaijiBot proactively sends cognitive insights to users via Feishu",
             vectorScore: 0.95,
           },
           {
@@ -213,8 +212,7 @@ describe("memory hybrid helpers", () => {
             startLine: 1,
             endLine: 2,
             source: "memory",
-            snippet:
-              "KaijiBot proactively sends cognitive insights to users via Feishu chat",
+            snippet: "KaijiBot proactively sends cognitive insights to users via Feishu chat",
             vectorScore: 0.9,
           },
           {

@@ -127,12 +127,12 @@ The cognitive layer runs alongside the agent loop. Key configuration:
 ```json5
 {
   cognitive: {
-    enabled: true,              // master switch
+    enabled: true, // master switch
     proactive: {
-      enabled: true,            // enable proactive insights
-      minIntervalHours: 4,      // minimum hours between proactive messages
+      enabled: true, // enable proactive insights
+      minIntervalHours: 4, // minimum hours between proactive messages
       activeHours: {
-        start: "09:00",         // won't message outside these hours
+        start: "09:00", // won't message outside these hours
         end: "22:00",
         timezone: "Asia/Shanghai",
       },

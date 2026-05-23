@@ -1,11 +1,11 @@
-import type { StreamFn } from "@mariozechner/pi-agent-core";
-import { streamSimple } from "@mariozechner/pi-ai";
 import type { ProviderWrapStreamFnContext } from "@kaijibot/plugin-sdk/plugin-entry";
 import {
   composeProviderStreamWrappers,
   createHtmlEntityToolCallArgumentDecodingWrapper,
   createToolStreamWrapper,
 } from "@kaijibot/plugin-sdk/provider-stream-shared";
+import type { StreamFn } from "@mariozechner/pi-agent-core";
+import { streamSimple } from "@mariozechner/pi-ai";
 
 const XAI_FAST_MODEL_IDS = new Map<string, string>([
   ["grok-3", "grok-3-fast"],

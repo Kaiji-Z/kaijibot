@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { LearnedDomainGraph } from "../types.js";
 import {
   findCrossDomainConnections,
   semanticDistance,
@@ -9,7 +10,6 @@ import {
   decayEdges,
   getEdgeWeight,
 } from "./cross-domain-mapper.js";
-import type { LearnedDomainGraph } from "../types.js";
 
 describe("findCrossDomainConnections", () => {
   it("finds connections between known domains", () => {
@@ -20,9 +20,7 @@ describe("findCrossDomainConnections", () => {
   it("returns connections sorted by distance", () => {
     const connections = findCrossDomainConnections(["AI/机器学习"]);
     for (let i = 1; i < connections.length; i++) {
-      expect(connections[i].distance).toBeGreaterThanOrEqual(
-        connections[i - 1].distance,
-      );
+      expect(connections[i].distance).toBeGreaterThanOrEqual(connections[i - 1].distance);
     }
   });
 
@@ -63,7 +61,7 @@ describe("semanticDistance", () => {
 describe("discoverDomainsFromPersona", () => {
   it("finds domains not in the default graph", () => {
     const persona = {
-      domains: { "量子计算": {}, "AI/机器学习": {} },
+      domains: { 量子计算: {}, "AI/机器学习": {} },
       identity: {
         expertDomains: ["区块链"],
         interestDomains: ["数据科学"],
@@ -78,7 +76,7 @@ describe("discoverDomainsFromPersona", () => {
 
   it("returns empty for known domains only", () => {
     const persona = {
-      domains: { "AI/机器学习": {}, "软件架构": {} },
+      domains: { "AI/机器学习": {}, 软件架构: {} },
       identity: {
         expertDomains: ["数据科学"],
         interestDomains: [],
@@ -101,7 +99,7 @@ describe("discoverDomainsFromPersona", () => {
 
   it("deduplicates across sources", () => {
     const persona = {
-      domains: { "量子计算": {} },
+      domains: { 量子计算: {} },
       identity: {
         expertDomains: ["量子计算"],
         interestDomains: ["量子计算"],
@@ -126,16 +124,14 @@ describe("extendDomainGraph", () => {
 
   it("uses suggested connections when provided", () => {
     const extended = extendDomainGraph(undefined, ["量子计算"], {
-      "量子计算": ["数据科学", "软件架构"],
+      量子计算: ["数据科学", "软件架构"],
     });
     expect(extended["量子计算"]).toEqual(["数据科学", "软件架构"]);
   });
 
   it("skips domains already in the graph", () => {
     const extended = extendDomainGraph(undefined, ["AI/机器学习"]);
-    expect(extended["AI/机器学习"]).toEqual(
-      expect.arrayContaining(["数据科学", "软件架构"]),
-    );
+    expect(extended["AI/机器学习"]).toEqual(expect.arrayContaining(["数据科学", "软件架构"]));
   });
 });
 
@@ -157,12 +153,12 @@ describe("findCrossDomainConnections with extended graph", () => {
 
 describe("semanticDistance with extended graph", () => {
   it("calculates distance in extended graph", () => {
-    const extendedGraph = { "量子计算": ["AI/机器学习"] };
+    const extendedGraph = { 量子计算: ["AI/机器学习"] };
     expect(semanticDistance("量子计算", "AI/机器学习", extendedGraph)).toBe(0.5);
   });
 
   it("finds two-hop path in extended graph", () => {
-    const extendedGraph = { "量子计算": ["AI/机器学习"] };
+    const extendedGraph = { 量子计算: ["AI/机器学习"] };
     expect(semanticDistance("量子计算", "数据科学", extendedGraph)).toBe(0.75);
   });
 });
@@ -203,13 +199,17 @@ describe("observeCoOccurrence", () => {
   it("creates new edges for co-occurring domains", () => {
     const graph = seedDomainGraph();
     const result = observeCoOccurrence(graph, ["量子计算", "生物信息学"], 1000);
-    expect(result.edges.some((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
-    )).toBe(true);
-    const newEdge = result.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    expect(
+      result.edges.some(
+        (e) =>
+          (e.source === "量子计算" && e.target === "生物信息学") ||
+          (e.source === "生物信息学" && e.target === "量子计算"),
+      ),
+    ).toBe(true);
+    const newEdge = result.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     )!;
     expect(newEdge.weight).toBe(0.1);
     expect(newEdge.observations).toBe(1);
@@ -224,17 +224,19 @@ describe("observeCoOccurrence", () => {
 
   it("increments weight and observations on second observation", () => {
     let graph = observeCoOccurrence(seedDomainGraph(), ["量子计算", "生物信息学"], 1000);
-    const firstEdge = graph.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    const firstEdge = graph.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     )!;
     expect(firstEdge.weight).toBe(0.1);
     expect(firstEdge.observations).toBe(1);
 
     graph = observeCoOccurrence(graph, ["量子计算", "生物信息学"], 2000);
-    const secondEdge = graph.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    const secondEdge = graph.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     )!;
     expect(secondEdge.weight).toBeCloseTo(0.2);
     expect(secondEdge.observations).toBe(2);
@@ -259,40 +261,40 @@ describe("decayEdges", () => {
   it("applies exponential decay correctly", () => {
     let graph = observeCoOccurrence(seedDomainGraph(), ["量子计算", "生物信息学"], 0);
     graph = observeCoOccurrence(graph, ["量子计算", "生物信息学"], 0);
-    const edgeBefore = graph.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    const edgeBefore = graph.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     )!;
     expect(edgeBefore.weight).toBeCloseTo(0.2);
 
     const halfLife = 1000;
     const now = 1000;
     const decayed = decayEdges(graph, now, halfLife);
-    const edgeAfter = decayed.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    const edgeAfter = decayed.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     )!;
     expect(edgeAfter.weight).toBeCloseTo(0.1);
   });
 
   it("prunes edges below 0.01 threshold", () => {
-    const graph = observeCoOccurrence(
-      seedDomainGraph(),
-      ["量子计算", "生物信息学"],
-      0,
-    );
-    const edge = graph.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    const graph = observeCoOccurrence(seedDomainGraph(), ["量子计算", "生物信息学"], 0);
+    const edge = graph.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     )!;
     expect(edge.weight).toBe(0.1);
 
     const halfLife = 1000;
     const now = 50000;
     const decayed = decayEdges(graph, now, halfLife);
-    const prunedEdge = decayed.edges.find((e) =>
-      (e.source === "量子计算" && e.target === "生物信息学") ||
-      (e.source === "生物信息学" && e.target === "量子计算"),
+    const prunedEdge = decayed.edges.find(
+      (e) =>
+        (e.source === "量子计算" && e.target === "生物信息学") ||
+        (e.source === "生物信息学" && e.target === "量子计算"),
     );
     expect(prunedEdge).toBeUndefined();
   });
@@ -348,7 +350,13 @@ describe("findCrossDomainConnections with learned graph", () => {
     const domainGraph: LearnedDomainGraph = {
       nodes: ["AI/机器学习", "软件架构", "NicheDomain"],
       edges: [
-        { source: "AI/机器学习", target: "NicheDomain", weight: 0.8, lastObserved: Date.now(), observations: 5 },
+        {
+          source: "AI/机器学习",
+          target: "NicheDomain",
+          weight: 0.8,
+          lastObserved: Date.now(),
+          observations: 5,
+        },
       ],
       totalObservations: 5,
     };

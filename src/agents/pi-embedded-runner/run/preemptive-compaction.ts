@@ -47,7 +47,10 @@ export function estimatePrePromptTokens(params: {
     } else {
       trailingTokens = estimateMessagesTokens(messages);
     }
-    return Math.max(0, Math.ceil((lastUsageTokens + trailingTokens + syntheticTokens) * SAFETY_MARGIN));
+    return Math.max(
+      0,
+      Math.ceil((lastUsageTokens + trailingTokens + syntheticTokens) * SAFETY_MARGIN),
+    );
   }
 
   const estimated = estimateMessagesTokens(messages) + syntheticTokens;
@@ -60,7 +63,12 @@ function findLastAssistantUsageIndex(messages: AgentMessage[]): number | null {
     if (msg.role === "assistant") {
       const usage = (msg as { usage?: Record<string, unknown> }).usage;
       const stopReason = (msg as { stopReason?: string }).stopReason;
-      if (usage && typeof usage === "object" && stopReason !== "aborted" && stopReason !== "error") {
+      if (
+        usage &&
+        typeof usage === "object" &&
+        stopReason !== "aborted" &&
+        stopReason !== "error"
+      ) {
         return i;
       }
     }

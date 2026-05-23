@@ -94,7 +94,7 @@ function makeTrialErrorCandidate(): EvolutionCandidate {
 async function callLLM(prompt: string): Promise<string> {
   const res = await fetch(ZAI_URL, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${ZAI_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${ZAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: MODEL,
       messages: [{ role: "user", content: prompt }],
@@ -102,7 +102,10 @@ async function callLLM(prompt: string): Promise<string> {
       max_tokens: 3000,
     }),
   });
-  const data = await res.json() as { error?: { message: string }; choices?: Array<{ message: { content: string } }> };
+  const data = (await res.json()) as {
+    error?: { message: string };
+    choices?: Array<{ message: { content: string } }>;
+  };
   if (data.error) throw new Error(data.error.message);
   return data.choices?.[0]?.message?.content ?? "";
 }
@@ -123,7 +126,10 @@ type DraftQualityReport = {
   score: number;
 };
 
-function evaluateDraft(draft: { name: string; description: string; triggerPhrases: string[]; bodyMarkdown: string }, candidate: EvolutionCandidate): DraftQualityReport {
+function evaluateDraft(
+  draft: { name: string; description: string; triggerPhrases: string[]; bodyMarkdown: string },
+  candidate: EvolutionCandidate,
+): DraftQualityReport {
   const hasValidName = /^[a-z][a-z0-9-]*$/.test(draft.name);
   const hasDescription = draft.description.length >= 10;
   const hasTriggers = draft.triggerPhrases.length >= 3;
@@ -177,15 +183,27 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
     console.log(`  Description: ${draft.description}`);
     console.log(`  Triggers (${draft.triggerPhrases.length}): ${draft.triggerPhrases.join(", ")}`);
     console.log(`  Body lines: ${draft.bodyMarkdown.split("\n").length}`);
-    console.log(`  Body preview:\n${draft.bodyMarkdown.split("\n").slice(0, 15).map((l) => `    ${l}`).join("\n")}`);
+    console.log(
+      `  Body preview:\n${draft.bodyMarkdown
+        .split("\n")
+        .slice(0, 15)
+        .map((l) => `    ${l}`)
+        .join("\n")}`,
+    );
     console.log(`  ═══════════════════\n`);
 
     const report = evaluateDraft(draft, candidate);
 
     console.log(`  Quality: ${report.score}/10`);
-    console.log(`  Valid name: ${report.hasValidName} | Description: ${report.hasDescription} | Triggers: ${report.hasTriggers} (${report.triggerCount})`);
-    console.log(`  Chinese triggers: ${report.hasChineseTriggers} | English triggers: ${report.hasEnglishTriggers}`);
-    console.log(`  Under 200 lines: ${report.under200Lines} (${report.bodyLineCount}) | Workflow section: ${report.hasWorkflowSection}`);
+    console.log(
+      `  Valid name: ${report.hasValidName} | Description: ${report.hasDescription} | Triggers: ${report.hasTriggers} (${report.triggerCount})`,
+    );
+    console.log(
+      `  Chinese triggers: ${report.hasChineseTriggers} | English triggers: ${report.hasEnglishTriggers}`,
+    );
+    console.log(
+      `  Under 200 lines: ${report.under200Lines} (${report.bodyLineCount}) | Workflow section: ${report.hasWorkflowSection}`,
+    );
     console.log(`  References real tools: ${report.referencesRealTools}\n`);
 
     expect(draft.name).toBeTruthy();
@@ -227,7 +245,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
     const goodOutput = [
       "---",
       "name: feishu-meeting-archive",
-      "description: \"归档飞书会议纪要到知识库并创建跟踪任务\"",
+      'description: "归档飞书会议纪要到知识库并创建跟踪任务"',
       "---",
       "",
       "## Triggers",
@@ -257,7 +275,13 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
       makeComplexCandidate(),
       {
         taskSummary: "批量导出飞书多维表格数据到Excel并按部门分组汇总",
-        toolCalls: ["feishu_base_list", "feishu_base_records", "xlsx_create", "xlsx_write", "xlsx_formula"],
+        toolCalls: [
+          "feishu_base_list",
+          "feishu_base_records",
+          "xlsx_create",
+          "xlsx_write",
+          "xlsx_formula",
+        ],
         uniqueToolCount: 3,
         reasoningTurns: 5,
         durationMs: 120_000,
@@ -277,13 +301,19 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
       const report = evaluateDraft(draft, candidate);
       reports.push(report);
 
-      console.log(`\n  [Round ${i + 1}] "${candidate.taskSummary.slice(0, 30)}..." → ${draft.name}`);
-      console.log(`  Quality: ${report.score}/10 | Triggers: ${report.triggerCount} | Lines: ${report.bodyLineCount}`);
+      console.log(
+        `\n  [Round ${i + 1}] "${candidate.taskSummary.slice(0, 30)}..." → ${draft.name}`,
+      );
+      console.log(
+        `  Quality: ${report.score}/10 | Triggers: ${report.triggerCount} | Lines: ${report.bodyLineCount}`,
+      );
     }
 
     console.log(`\n  All names: ${[...names].join(", ")}`);
     console.log(`  Unique names: ${names.size}/${candidates.length}`);
-    console.log(`  Avg quality: ${(reports.reduce((s, r) => s + r.score, 0) / reports.length).toFixed(1)}/10\n`);
+    console.log(
+      `  Avg quality: ${(reports.reduce((s, r) => s + r.score, 0) / reports.length).toFixed(1)}/10\n`,
+    );
 
     expect(names.size).toBe(candidates.length);
     for (const report of reports) {

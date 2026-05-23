@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PersonaStore, createDefaultPersona } from "./store.js";
 
 describe("PersonaStore", () => {
@@ -94,10 +94,14 @@ describe("PersonaStore", () => {
   it("loadOrCreate returns default persona from JSON with missing required fields", async () => {
     const dir = join(tempDir, "cognitive", "persona", "main");
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "user-missing.json"), JSON.stringify({
-      identity: { coreTraits: {} },
-      // missing domains, recentFocus, feedbackProfile, rapport
-    }), "utf-8");
+    writeFileSync(
+      join(dir, "user-missing.json"),
+      JSON.stringify({
+        identity: { coreTraits: {} },
+        // missing domains, recentFocus, feedbackProfile, rapport
+      }),
+      "utf-8",
+    );
 
     const loaded = await store.loadOrCreate("main", "user-missing");
     expect(loaded.identity.coreTraits).toEqual({});
@@ -117,7 +121,13 @@ describe("PersonaStore", () => {
     persona.identity.interestDomains = ["AI Safety"];
     persona.identity.curiosityDomains = ["Quantum Computing"];
     persona.identity.coreTraits = {
-      细节导向: { value: "是", confidence: 0.85, evidenceCount: 10, lastUpdated: Date.now(), source: "observed" },
+      细节导向: {
+        value: "是",
+        confidence: 0.85,
+        evidenceCount: 10,
+        lastUpdated: Date.now(),
+        source: "observed",
+      },
     };
     persona.domains["分布式系统"] = {
       depth: 8,
@@ -130,7 +140,7 @@ describe("PersonaStore", () => {
     persona.recentFocus = ["Kubernetes", "eBPF"];
     persona.feedbackProfile = {
       topicBandits: {
-        "分布式系统": { alpha: 3, beta: 1 },
+        分布式系统: { alpha: 3, beta: 1 },
       },
       optimalFrequencyHours: 6,
       lastProactiveAt: Date.now(),
@@ -241,7 +251,14 @@ describe("PersonaStore", () => {
   describe("migrateFromFlatLayout", () => {
     it("migrates Feishu open_id persona to main/ subdirectory", async () => {
       const persona = createDefaultPersona();
-      persona.domains["AI"] = { depth: 1, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0 };
+      persona.domains["AI"] = {
+        depth: 1,
+        recurrence: 1,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+      };
       persona.rapport.totalExchanges = 5;
 
       const flatDir = join(tempDir, "cognitive", "persona");
@@ -263,7 +280,11 @@ describe("PersonaStore", () => {
       const flatDir = join(tempDir, "cognitive", "persona");
       mkdirSync(flatDir, { recursive: true });
       writeFileSync(join(flatDir, "main.json"), JSON.stringify(createDefaultPersona()), "utf-8");
-      writeFileSync(join(flatDir, "kaijibot-tui.json"), JSON.stringify(createDefaultPersona()), "utf-8");
+      writeFileSync(
+        join(flatDir, "kaijibot-tui.json"),
+        JSON.stringify(createDefaultPersona()),
+        "utf-8",
+      );
 
       const result = await store.migrateFromFlatLayout();
 
@@ -274,7 +295,14 @@ describe("PersonaStore", () => {
 
     it("is idempotent — no-ops on second call", async () => {
       const persona = createDefaultPersona();
-      persona.domains["Rust"] = { depth: 2, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0 };
+      persona.domains["Rust"] = {
+        depth: 2,
+        recurrence: 1,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+      };
 
       const flatDir = join(tempDir, "cognitive", "persona");
       mkdirSync(flatDir, { recursive: true });

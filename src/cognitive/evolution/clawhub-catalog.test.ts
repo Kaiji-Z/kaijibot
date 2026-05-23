@@ -7,8 +7,22 @@ let catalog: ClawHubCatalog;
 const originalFetch = globalThis.fetch;
 
 const sampleResults: ClawHubSearchResult[] = [
-  { slug: "weather-check", name: "Weather Check", description: "Checks the weather", version: "1.2.0", downloads: 150, author: "alice" },
-  { slug: "pdf-summarizer", name: "PDF Summarizer", description: "Summarizes PDFs", version: "2.0.0", downloads: 300, author: "bob" },
+  {
+    slug: "weather-check",
+    name: "Weather Check",
+    description: "Checks the weather",
+    version: "1.2.0",
+    downloads: 150,
+    author: "alice",
+  },
+  {
+    slug: "pdf-summarizer",
+    name: "PDF Summarizer",
+    description: "Summarizes PDFs",
+    version: "2.0.0",
+    downloads: 300,
+    author: "bob",
+  },
 ];
 
 const sampleDetail: ClawHubSkillDetail = {
@@ -31,7 +45,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function mockFetch(responses: Record<string, { ok: boolean; status: number; json?: unknown; text?: string }>) {
+function mockFetch(
+  responses: Record<string, { ok: boolean; status: number; json?: unknown; text?: string }>,
+) {
   globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
     const urlStr = typeof url === "string" ? url : url.toString();
     const key = Object.keys(responses).find((k) => urlStr.includes(k));

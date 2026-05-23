@@ -122,15 +122,21 @@ describe("isExcludedMemoryContent", () => {
     });
 
     it("feedback confirmation", () => {
-      expect(isExcludedMemoryContent("User confirmed that checking docs first is the right approach")).toBe(false);
+      expect(
+        isExcludedMemoryContent("User confirmed that checking docs first is the right approach"),
+      ).toBe(false);
     });
 
     it("project decision", () => {
-      expect(isExcludedMemoryContent("Team decided to migrate to PostgreSQL on 2026-03-15")).toBe(false);
+      expect(isExcludedMemoryContent("Team decided to migrate to PostgreSQL on 2026-03-15")).toBe(
+        false,
+      );
     });
 
     it("reference pointer", () => {
-      expect(isExcludedMemoryContent("Production API endpoint is api.example.com v2.1")).toBe(false);
+      expect(isExcludedMemoryContent("Production API endpoint is api.example.com v2.1")).toBe(
+        false,
+      );
     });
 
     it("Chinese user context", () => {
@@ -138,7 +144,9 @@ describe("isExcludedMemoryContent", () => {
     });
 
     it("personal relationship", () => {
-      expect(isExcludedMemoryContent("User has a dog named Max and works from home on Fridays")).toBe(false);
+      expect(
+        isExcludedMemoryContent("User has a dog named Max and works from home on Fridays"),
+      ).toBe(false);
     });
   });
 });

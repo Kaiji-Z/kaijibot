@@ -1,7 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { processInsightFeedback, processInsightDeliverySignal, processNoResponse, inferTopicFromContext, extractImplicitSignals, processImplicitFeedback } from "./collector.js";
-import type { NoResponseContext } from "./collector.js";
 import type { PersonaTree, InsightRecord } from "../types.js";
+import {
+  processInsightFeedback,
+  processInsightDeliverySignal,
+  processNoResponse,
+  inferTopicFromContext,
+  extractImplicitSignals,
+  processImplicitFeedback,
+} from "./collector.js";
+import type { NoResponseContext } from "./collector.js";
 
 function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): PersonaTree {
   return {
@@ -16,7 +23,7 @@ function makePersona(overrides: Partial<PersonaTree["feedbackProfile"]> = {}): P
     feedbackProfile: {
       topicBandits: {
         "AI/机器学习": { alpha: 3, beta: 2 },
-        "软件架构": { alpha: 2, beta: 1 },
+        软件架构: { alpha: 2, beta: 1 },
       },
       optimalFrequencyHours: 4,
       lastProactiveAt: 0,
@@ -300,7 +307,9 @@ describe("processInsightDeliverySignal", () => {
 
     expect(result.feedbackProfile.topicBandits).toEqual(persona.feedbackProfile.topicBandits);
     expect(result.rapport.trustScore).toBe(persona.rapport.trustScore);
-    expect(result.feedbackProfile.optimalFrequencyHours).toBe(persona.feedbackProfile.optimalFrequencyHours);
+    expect(result.feedbackProfile.optimalFrequencyHours).toBe(
+      persona.feedbackProfile.optimalFrequencyHours,
+    );
   });
 
   it("does not mutate input persona", () => {
@@ -395,7 +404,10 @@ describe("processNoResponse", () => {
   it("always increments consecutiveNoResponses regardless of context", () => {
     const persona = makePersona({ consecutiveNoResponses: 4 });
 
-    const withCtx = processNoResponse(persona, { previousDomains: ["AI/机器学习"], previousMode: "surprise" });
+    const withCtx = processNoResponse(persona, {
+      previousDomains: ["AI/机器学习"],
+      previousMode: "surprise",
+    });
     expect(withCtx.feedbackProfile.consecutiveNoResponses).toBe(5);
 
     const withoutCtx = processNoResponse(persona);
@@ -437,7 +449,16 @@ describe("inferTopicFromContext", () => {
 
   it("falls back to persona domain keyword match (Level 2)", () => {
     const persona = makePersona();
-    persona.domains = { "量子计算": { depth: 2, recurrence: 1, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0 } };
+    persona.domains = {
+      量子计算: {
+        depth: 2,
+        recurrence: 1,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+      },
+    };
     const extraction = { domains: [] as Array<{ name: string }> };
 
     const result = inferTopicFromContext(persona, extraction, "我在研究量子计算的应用");
@@ -467,18 +488,26 @@ describe("inferTopicFromContext", () => {
 
 describe("extractImplicitSignals with previousTopics", () => {
   it("generates topic_continuation when topic matches recent topic", () => {
-    const signals = extractImplicitSignals("tell me more about that", undefined, "AI/机器学习", ["AI/机器学习", "软件架构"]);
+    const signals = extractImplicitSignals("tell me more about that", undefined, "AI/机器学习", [
+      "AI/机器学习",
+      "软件架构",
+    ]);
 
-    const continuation = signals.find(s => s.type === "topic_continuation");
+    const continuation = signals.find((s) => s.type === "topic_continuation");
     expect(continuation).toBeDefined();
     expect(continuation!.topic).toBe("AI/机器学习");
     expect(continuation!.value).toBe(1);
   });
 
   it("generates topic_abandonment when topic differs from recent topics", () => {
-    const signals = extractImplicitSignals("let's switch to something else", undefined, "量子计算", ["AI/机器学习", "软件架构"]);
+    const signals = extractImplicitSignals(
+      "let's switch to something else",
+      undefined,
+      "量子计算",
+      ["AI/机器学习", "软件架构"],
+    );
 
-    const abandonment = signals.find(s => s.type === "topic_abandonment");
+    const abandonment = signals.find((s) => s.type === "topic_abandonment");
     expect(abandonment).toBeDefined();
     expect(abandonment!.topic).toBe("软件架构"); // most recent previous topic
     expect(abandonment!.value).toBe(1);
@@ -487,8 +516,8 @@ describe("extractImplicitSignals with previousTopics", () => {
   it("does not generate continuation/abandonment without previousTopics", () => {
     const signals = extractImplicitSignals("hello", undefined, "AI/机器学习");
 
-    const continuation = signals.find(s => s.type === "topic_continuation");
-    const abandonment = signals.find(s => s.type === "topic_abandonment");
+    const continuation = signals.find((s) => s.type === "topic_continuation");
+    const abandonment = signals.find((s) => s.type === "topic_abandonment");
     expect(continuation).toBeUndefined();
     expect(abandonment).toBeUndefined();
   });
@@ -496,18 +525,20 @@ describe("extractImplicitSignals with previousTopics", () => {
   it("does not generate continuation/abandonment without topic", () => {
     const signals = extractImplicitSignals("hello", undefined, undefined, ["AI/机器学习"]);
 
-    const continuation = signals.find(s => s.type === "topic_continuation");
-    const abandonment = signals.find(s => s.type === "topic_abandonment");
+    const continuation = signals.find((s) => s.type === "topic_continuation");
+    const abandonment = signals.find((s) => s.type === "topic_abandonment");
     expect(continuation).toBeUndefined();
     expect(abandonment).toBeUndefined();
   });
 
   it("still generates response_length and question_depth signals", () => {
-    const signals = extractImplicitSignals("为什么这个设计是这样的？", undefined, "AI/机器学习", ["AI/机器学习"]);
+    const signals = extractImplicitSignals("为什么这个设计是这样的？", undefined, "AI/机器学习", [
+      "AI/机器学习",
+    ]);
 
-    expect(signals.some(s => s.type === "response_length")).toBe(true);
-    expect(signals.some(s => s.type === "question_depth")).toBe(true);
-    expect(signals.some(s => s.type === "topic_continuation")).toBe(true);
+    expect(signals.some((s) => s.type === "response_length")).toBe(true);
+    expect(signals.some((s) => s.type === "question_depth")).toBe(true);
+    expect(signals.some((s) => s.type === "topic_continuation")).toBe(true);
   });
 });
 
@@ -575,7 +606,12 @@ describe("processImplicitFeedback with response_length/question_depth bandit upd
   it("combines topic_continuation and response_length reinforcement", () => {
     const persona = makePersona();
     const signals = [
-      { type: "topic_continuation" as const, topic: "AI/机器学习", value: 1, timestamp: Date.now() },
+      {
+        type: "topic_continuation" as const,
+        topic: "AI/机器学习",
+        value: 1,
+        timestamp: Date.now(),
+      },
       { type: "response_length" as const, topic: "AI/机器学习", value: 200, timestamp: Date.now() },
     ];
 

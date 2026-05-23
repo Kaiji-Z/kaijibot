@@ -11,13 +11,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { buildInsightPrompt, generateInsightCandidatesLLM } from "./llm-engine.js";
-import type { LlmInsightDeps, WebSearchResult } from "./llm-engine.js";
+import { createDefaultPersona } from "../persona/store.js";
 import { ProactiveScheduler } from "../scheduler/proactive-scheduler.js";
 import type { PersonaTree } from "../types.js";
+import { buildInsightPrompt, generateInsightCandidatesLLM } from "./llm-engine.js";
+import type { LlmInsightDeps, WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
 import type { InsightCandidate } from "./types.js";
-import { createDefaultPersona } from "../persona/store.js";
 
 // ─── Test Personas ─────────────────────────────────────────────────────
 
@@ -27,14 +27,20 @@ function makeTestPersona(): PersonaTree {
     identity: {
       displayName: "测试用户",
       coreTraits: {
-        technical: { value: "高", confidence: 0.9, evidenceCount: 10, lastUpdated: now, source: "inferred" },
+        technical: {
+          value: "高",
+          confidence: 0.9,
+          evidenceCount: 10,
+          lastUpdated: now,
+          source: "inferred",
+        },
       },
       expertDomains: ["AI/机器学习", "TypeScript"],
       interestDomains: ["认知架构"],
       curiosityDomains: [],
     },
     domains: {
-      "TypeScript": {
+      TypeScript: {
         depth: 5,
         recurrence: 20,
         lastMentioned: now - 1000 * 60 * 10,
@@ -42,7 +48,7 @@ function makeTestPersona(): PersonaTree {
         activeQuestions: [],
         negationSignals: 0,
       },
-      "MCP": {
+      MCP: {
         depth: 3,
         recurrence: 5,
         lastMentioned: now - 1000 * 60 * 60,
@@ -50,7 +56,7 @@ function makeTestPersona(): PersonaTree {
         activeQuestions: [],
         negationSignals: 0,
       },
-      "Rust": {
+      Rust: {
         depth: 4,
         recurrence: 8,
         lastMentioned: now - 1000 * 60 * 30,
@@ -69,7 +75,12 @@ function makeTestPersona(): PersonaTree {
       recentInsightDomains: [],
       recentInsightTypes: [],
     },
-    rapport: { trustScore: 0.9, totalExchanges: 200, avgResponseLength: 200, selfDisclosureLevel: 1 },
+    rapport: {
+      trustScore: 0.9,
+      totalExchanges: 200,
+      avgResponseLength: 200,
+      selfDisclosureLevel: 1,
+    },
     domainGraph: {
       nodes: ["TypeScript", "MCP", "Rust"],
       edges: [
@@ -79,7 +90,12 @@ function makeTestPersona(): PersonaTree {
     },
     moodHistory: [],
     domainBlacklist: [],
-    lifecycle: { stage: "active", lastActiveAt: now - 2 * 3600_000, lastStageTransitionAt: now, totalActiveDays: 30 },
+    lifecycle: {
+      stage: "active",
+      lastActiveAt: now - 2 * 3600_000,
+      lastStageTransitionAt: now,
+      totalActiveDays: 30,
+    },
     calibrationHistory: [],
   };
 }
@@ -96,28 +112,42 @@ function makeInput(targetDomains: string[]): InsightEngineInput {
 
 // ─── Mock Factories ────────────────────────────────────────────────────
 
-function makeMockDeps(
-  options?: {
-    llmResponse?: string;
-    webResults?: WebSearchResult[];
-  },
-): LlmInsightDeps {
+function makeMockDeps(options?: {
+  llmResponse?: string;
+  webResults?: WebSearchResult[];
+}): LlmInsightDeps {
   return {
     complete: async () =>
       ({
         role: "assistant" as const,
-        content: [{
-          type: "text" as const,
-          text: options?.llmResponse ?? JSON.stringify([{
-            content: "TypeScript的decorator pattern和MCP的tool schema design本质上在做同一件事——用声明式的方式定义行为边界。差别在于前者在编译时生效，后者在运行时由LLM解析。",
-            rationale: "Connects TypeScript and MCP domains via shared design pattern",
-            targetDomains: ["TypeScript", "MCP"],
-            sourceDomains: ["Rust"],
-            relevanceScore: 0.9,
-            surpriseScore: 0.7,
-          }]),
-        }],
-        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150, input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: { input: 0, output: 0, total: 0 } },
+        content: [
+          {
+            type: "text" as const,
+            text:
+              options?.llmResponse ??
+              JSON.stringify([
+                {
+                  content:
+                    "TypeScript的decorator pattern和MCP的tool schema design本质上在做同一件事——用声明式的方式定义行为边界。差别在于前者在编译时生效，后者在运行时由LLM解析。",
+                  rationale: "Connects TypeScript and MCP domains via shared design pattern",
+                  targetDomains: ["TypeScript", "MCP"],
+                  sourceDomains: ["Rust"],
+                  relevanceScore: 0.9,
+                  surpriseScore: 0.7,
+                },
+              ]),
+          },
+        ],
+        usage: {
+          inputTokens: 100,
+          outputTokens: 50,
+          totalTokens: 150,
+          input: 100,
+          output: 50,
+          cacheRead: 0,
+          cacheWrite: 0,
+          cost: { input: 0, output: 0, total: 0 },
+        },
         model: "test",
         provider: "test",
         api: {},
@@ -125,10 +155,11 @@ function makeMockDeps(
         timestamp: Date.now(),
       }) as any,
     prepareModel: async () =>
-      ({ model: {}, auth: { apiKey: "test", providerId: "test", source: "test", mode: "api-key" as const } }) as any,
-    webSearch: options?.webResults
-      ? async () => options.webResults!
-      : undefined,
+      ({
+        model: {},
+        auth: { apiKey: "test", providerId: "test", source: "test", mode: "api-key" as const },
+      }) as any,
+    webSearch: options?.webResults ? async () => options.webResults! : undefined,
   };
 }
 
@@ -141,7 +172,11 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
     const persona = makeTestPersona();
     const input = makeInput(["TypeScript"]);
     const webResults: WebSearchResult[] = [
-      { title: "TypeScript 5.5 decorators are stable", url: "https://example.com/ts", snippet: "Stage 3 decorator proposal is now stable" },
+      {
+        title: "TypeScript 5.5 decorators are stable",
+        url: "https://example.com/ts",
+        snippet: "Stage 3 decorator proposal is now stable",
+      },
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
@@ -172,8 +207,16 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
 
     const deps = makeMockDeps({
       webResults: [
-        { title: "TypeScript decorator metadata", url: "https://example.com/1", snippet: "New decorator metadata API in TS 5.5" },
-        { title: "Model Context Protocol tools", url: "https://example.com/2", snippet: "MCP tool schema v2 released" },
+        {
+          title: "TypeScript decorator metadata",
+          url: "https://example.com/1",
+          snippet: "New decorator metadata API in TS 5.5",
+        },
+        {
+          title: "Model Context Protocol tools",
+          url: "https://example.com/2",
+          snippet: "MCP tool schema v2 released",
+        },
       ],
     });
 
@@ -246,11 +289,15 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       verificationStatus: "verified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, { insightGenerator: async () => [fakeInsight] });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
     const result = await scheduler.processEvent("user1", {
       type: "timer",
@@ -278,11 +325,17 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       verificationStatus: "verified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => persona,
-      onInsightReady: async () => {},
-      savePersona: async (_agentId, _userId, p) => { savedPersona = p; },
-    }, { insightGenerator: async () => [fakeInsight] });
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
 
     const result = await scheduler.processEvent("user1", {
       type: "info_scan",
@@ -291,7 +344,10 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
 
     expect(result).toBeDefined();
     expect(savedPersona).toBeDefined();
-    expect(savedPersona!.feedbackProfile.recentInsightDomains).toContainEqual(["Rust", "TypeScript"]);
+    expect(savedPersona!.feedbackProfile.recentInsightDomains).toContainEqual([
+      "Rust",
+      "TypeScript",
+    ]);
     expect(savedPersona!.feedbackProfile.recentInsightTypes).toBeDefined();
     expect(savedPersona!.feedbackProfile.recentInsightTypes!.length).toBeGreaterThan(0);
     expect(savedPersona!.feedbackProfile.recentInsightContents).toContain(fakeInsight.content);
@@ -327,20 +383,26 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       verificationStatus: "verified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => {
-        // Return latest saved persona (simulates reload from disk)
-        return savedPersonas.length > 0 ? savedPersonas[savedPersonas.length - 1]! : persona;
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => {
+          // Return latest saved persona (simulates reload from disk)
+          return savedPersonas.length > 0 ? savedPersonas[savedPersonas.length - 1]! : persona;
+        },
+        onInsightReady: async () => {},
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersonas.push(p);
+        },
       },
-      onInsightReady: async () => {},
-      savePersona: async (_agentId, _userId, p) => { savedPersonas.push(p); },
-    }, {
-      insightGenerator: async () => {
-        // First call returns insight1, second returns insight2
-        if (savedPersonas.length === 0) return [insight1];
-        return [insight2];
+      {
+        insightGenerator: async () => {
+          // First call returns insight1, second returns insight2
+          if (savedPersonas.length === 0) return [insight1];
+          return [insight2];
+        },
       },
-    });
+    );
 
     // First delivery should succeed
     const result1 = await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() });
@@ -364,7 +426,11 @@ describe("Improvement #3: Domain matching alias expansion", () => {
     // Domain "MCP" has keyInsight "Model Context Protocol"
     // Web result doesn't mention "MCP" but mentions the full phrase
     const webResults: WebSearchResult[] = [
-      { title: "Model Context Protocol specification v2.0", url: "https://example.com", snippet: "The MCP spec has been updated with new tool schemas" },
+      {
+        title: "Model Context Protocol specification v2.0",
+        url: "https://example.com",
+        snippet: "The MCP spec has been updated with new tool schemas",
+      },
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
@@ -381,7 +447,11 @@ describe("Improvement #3: Domain matching alias expansion", () => {
     // Domain "TypeScript" has keyInsight "decorator pattern"
     // Web result mentions "decorator" (extracted as ≥3 char word)
     const webResults: WebSearchResult[] = [
-      { title: "New TC39 decorator stage 3 update", url: "https://example.com", snippet: "Decorator metadata reflection API progresses" },
+      {
+        title: "New TC39 decorator stage 3 update",
+        url: "https://example.com",
+        snippet: "Decorator metadata reflection API progresses",
+      },
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
@@ -396,7 +466,11 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 
     // Web result about cooking (no overlap with Rust/borrow checker/zero-cost)
     const webResults: WebSearchResult[] = [
-      { title: "Best restaurants in San Francisco", url: "https://example.com", snippet: "Top 10 places to eat in the bay area" },
+      {
+        title: "Best restaurants in San Francisco",
+        url: "https://example.com",
+        snippet: "Top 10 places to eat in the bay area",
+      },
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
@@ -413,7 +487,11 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 
     // No keyInsight overlap, but domain name "Rust" is in the title
     const webResults: WebSearchResult[] = [
-      { title: "Rust 2026 edition roadmap", url: "https://example.com", snippet: "What's coming in the next Rust edition" },
+      {
+        title: "Rust 2026 edition roadmap",
+        url: "https://example.com",
+        snippet: "What's coming in the next Rust edition",
+      },
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
@@ -428,7 +506,11 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 
     const deps = makeMockDeps({
       webResults: [
-        { title: "Model Context Protocol tools design", url: "https://example.com", snippet: "MCP v2 tool schema allows nested objects" },
+        {
+          title: "Model Context Protocol tools design",
+          url: "https://example.com",
+          snippet: "MCP v2 tool schema allows nested objects",
+        },
       ],
     });
 
@@ -457,13 +539,26 @@ describe("Combined: full pipeline with all 3 improvements", () => {
 
     const deps = makeMockDeps({
       webResults: [
-        { title: "Model Context Protocol v2 tools", url: "https://example.com/1", snippet: "MCP tool schema supports async validation" },
-        { title: "Rust borrow checker update", url: "https://example.com/2", snippet: "New NLL rules in Rust 2026" },
-        { title: "TypeScript decorator metadata", url: "https://example.com/3", snippet: "Decorator reflection API stable" },
+        {
+          title: "Model Context Protocol v2 tools",
+          url: "https://example.com/1",
+          snippet: "MCP tool schema supports async validation",
+        },
+        {
+          title: "Rust borrow checker update",
+          url: "https://example.com/2",
+          snippet: "New NLL rules in Rust 2026",
+        },
+        {
+          title: "TypeScript decorator metadata",
+          url: "https://example.com/3",
+          snippet: "Decorator reflection API stable",
+        },
       ],
       llmResponse: JSON.stringify([
         {
-          content: "MCP的tool schema设计跟Rust的borrow checker其实在做同一件事——在边界上做静态验证。只不过MCP验证的是LLM输入的schema，Rust验证的是内存的ownership。",
+          content:
+            "MCP的tool schema设计跟Rust的borrow checker其实在做同一件事——在边界上做静态验证。只不过MCP验证的是LLM输入的schema，Rust验证的是内存的ownership。",
           rationale: "Cross-domain connection between MCP and Rust",
           targetDomains: ["MCP", "Rust"],
           sourceDomains: ["TypeScript"],
@@ -475,10 +570,23 @@ describe("Combined: full pipeline with all 3 improvements", () => {
 
     // Step 1: Generate prompt and verify alias matching + EXTERNAL_FACTS
     const input = makeInput(["MCP", "Rust"]);
-    const { prompt } = buildInsightPrompt(persona, input, [
-      { title: "Model Context Protocol v2 tools", url: "https://example.com/1", snippet: "MCP tool schema supports async validation" },
-      { title: "Rust borrow checker update", url: "https://example.com/2", snippet: "New NLL rules in Rust 2026" },
-    ], persona.feedbackProfile.recentInsightContents);
+    const { prompt } = buildInsightPrompt(
+      persona,
+      input,
+      [
+        {
+          title: "Model Context Protocol v2 tools",
+          url: "https://example.com/1",
+          snippet: "MCP tool schema supports async validation",
+        },
+        {
+          title: "Rust borrow checker update",
+          url: "https://example.com/2",
+          snippet: "New NLL rules in Rust 2026",
+        },
+      ],
+      persona.feedbackProfile.recentInsightContents,
+    );
 
     // Alias: "Model Context Protocol" from keyInsight should match the first result
     expect(prompt).toContain("EXTERNAL_FACTS");
@@ -498,21 +606,31 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       surpriseScore: 0.8,
       compositeScore: 0.85,
       sources: [
-        { url: "https://example.com/1", title: "Model Context Protocol v2 tools", credibility: 0.5 },
+        {
+          url: "https://example.com/1",
+          title: "Model Context Protocol v2 tools",
+          credibility: 0.5,
+        },
         { url: "https://example.com/2", title: "Rust borrow checker update", credibility: 0.5 },
       ],
       verificationStatus: "verified",
     };
 
-    const scheduler = new ProactiveScheduler(config, {
-      loadPersona: async () => {
-        return savedPersonas.length > 0 ? savedPersonas[savedPersonas.length - 1]! : persona;
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => {
+          return savedPersonas.length > 0 ? savedPersonas[savedPersonas.length - 1]! : persona;
+        },
+        onInsightReady: async () => {},
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersonas.push(p);
+        },
       },
-      onInsightReady: async () => {},
-      savePersona: async (_agentId, _userId, p) => { savedPersonas.push(p); },
-    }, {
-      insightGenerator: async () => [insight1],
-    });
+      {
+        insightGenerator: async () => [insight1],
+      },
+    );
 
     // First delivery: should succeed (no recent insights)
     const result1 = await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() });
@@ -538,15 +656,22 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       verificationStatus: "verified",
     };
 
-    const scheduler2 = new ProactiveScheduler(config, {
-      loadPersona: async () => savedPersonas[savedPersonas.length - 1]!,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [insight2],
-    });
+    const scheduler2 = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => savedPersonas[savedPersonas.length - 1]!,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [insight2],
+      },
+    );
 
-    const result2 = await scheduler2.processEvent("user1", { type: "timer", timestamp: Date.now() });
+    const result2 = await scheduler2.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
     expect(result2).toBeUndefined(); // Dedup blocks
 
     // Step 4: Different domain should pass dedup
@@ -566,15 +691,22 @@ describe("Combined: full pipeline with all 3 improvements", () => {
     const latestPersona = savedPersonas[savedPersonas.length - 1]!;
     latestPersona.feedbackProfile.lastProactiveAt = Date.now() - 8 * 3600_000;
 
-    const scheduler3 = new ProactiveScheduler(config, {
-      loadPersona: async () => latestPersona,
-      onInsightReady: async () => {},
-      savePersona: async () => {},
-    }, {
-      insightGenerator: async () => [insight3],
-    });
+    const scheduler3 = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => latestPersona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [insight3],
+      },
+    );
 
-    const result3 = await scheduler3.processEvent("user1", { type: "timer", timestamp: Date.now() });
+    const result3 = await scheduler3.processEvent("user1", {
+      type: "timer",
+      timestamp: Date.now(),
+    });
     expect(result3).toBeDefined(); // Different domain → passes
     expect(result3!.content).toContain("TypeScript");
   });

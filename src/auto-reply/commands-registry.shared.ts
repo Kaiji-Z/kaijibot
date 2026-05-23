@@ -378,8 +378,7 @@ export function buildBuiltinChatCommands(): ChatCommandDefinition[] {
     defineChatCommand({
       key: "focus",
       nativeName: "focus",
-      description:
-        "Bind this thread or group chat to a session target.",
+      description: "Bind this thread or group chat to a session target.",
       textAlias: "/focus",
       category: "management",
       args: [

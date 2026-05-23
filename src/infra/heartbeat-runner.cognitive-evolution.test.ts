@@ -5,10 +5,7 @@ import { setActivePluginRegistry } from "../plugins/runtime.js";
 import { createTestRegistry } from "../test-utils/channel-plugins.js";
 import { buildEvolutionEventPrompt } from "./heartbeat-events-filter.js";
 import { runHeartbeatOnce } from "./heartbeat-runner.js";
-import {
-  seedMainSessionStore,
-  withTempHeartbeatSandbox,
-} from "./heartbeat-runner.test-utils.js";
+import { seedMainSessionStore, withTempHeartbeatSandbox } from "./heartbeat-runner.test-utils.js";
 import {
   enqueueSystemEvent,
   peekSystemEventEntries,
@@ -137,10 +134,8 @@ describe("cognitive-evolution system event delivery through base session (no iso
         replySpy.mockResolvedValue({
           text: "我看到这个任务涉及多次工具调用，我来自主判断是否值得进化为技能。",
         });
-        const signal1 =
-          "[Evolution Signal] 刚完成的任务涉及 3 次工具调用（3 种），持续 2.1 秒。";
-        const signal2 =
-          "[Evolution Signal] 刚完成的任务涉及 4 次工具调用（2 种），持续 6.1 秒。";
+        const signal1 = "[Evolution Signal] 刚完成的任务涉及 3 次工具调用（3 种），持续 2.1 秒。";
+        const signal2 = "[Evolution Signal] 刚完成的任务涉及 4 次工具调用（2 种），持续 6.1 秒。";
         enqueueSystemEvent(signal1, { sessionKey });
         enqueueSystemEvent(signal2, { sessionKey });
 

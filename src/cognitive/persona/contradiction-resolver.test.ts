@@ -1,15 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { detectContradictions, pruneContradictionLog } from "./contradiction-resolver.js";
 import type { ConfidenceValue, ContradictionRecord } from "../types.js";
+import { detectContradictions, pruneContradictionLog } from "./contradiction-resolver.js";
 import type { ExtractedAttribute } from "./types.js";
 
 const NOW = 1_700_000_000_000;
 
-function makeTrait(value: string, confidence: number, source: "explicit" | "inferred" | "observed" = "inferred"): ConfidenceValue {
+function makeTrait(
+  value: string,
+  confidence: number,
+  source: "explicit" | "inferred" | "observed" = "inferred",
+): ConfidenceValue {
   return { value, confidence, evidenceCount: 3, lastUpdated: NOW, source };
 }
 
-function makeAttr(field: string, value: string, confidence: number, source: "explicit" | "inferred" | "observed" = "inferred"): ExtractedAttribute {
+function makeAttr(
+  field: string,
+  value: string,
+  confidence: number,
+  source: "explicit" | "inferred" | "observed" = "inferred",
+): ExtractedAttribute {
   return { field, value, confidence, source, evidence: "test" };
 }
 

@@ -172,17 +172,14 @@ describe("extractFromMessage — English negation patterns", () => {
 
 describe("extractFromMessage — mixed negation scenarios", () => {
   it("one domain negated, another affirmed in same message", () => {
-    const result = extractFromMessage(
-      "我不喜欢数据科学，但我很喜欢机器学习",
-      "",
-    );
+    const result = extractFromMessage("我不喜欢数据科学，但我很喜欢机器学习", "");
     const ds = findDomain(result, "数据科学");
     expect(ds?.negated).toBe(true);
 
     const ai = findDomain(result, "AI/机器学习");
     expect(ai).toBeDefined();
     expect(ai?.negated).toBeFalsy();
-    expect((ai?.depth ?? 0)).toBeGreaterThanOrEqual(1);
+    expect(ai?.depth ?? 0).toBeGreaterThanOrEqual(1);
   });
 
   it("user negates but assistant affirms — domain is positive", () => {
@@ -196,10 +193,7 @@ describe("extractFromMessage — mixed negation scenarios", () => {
   });
 
   it("user negates keyword that also appears in assistant positively", () => {
-    const result = extractFromMessage(
-      "我不关心安全",
-      "安全是系统设计中很重要的一环",
-    );
+    const result = extractFromMessage("我不关心安全", "安全是系统设计中很重要的一环");
     const sec = findDomain(result, "网络安全");
     expect(sec).toBeDefined();
     expect(sec?.negated).toBeFalsy();
@@ -241,10 +235,7 @@ describe("extractFromMessage — double negation", () => {
 
 describe("extractFromMessage — assistant-only messages never negate", () => {
   it("assistant explaining a topic with negation-like words still counts positive", () => {
-    const result = extractFromMessage(
-      "什么是微服务？",
-      "有些人不喜欢微服务架构，但它有它的优势",
-    );
+    const result = extractFromMessage("什么是微服务？", "有些人不喜欢微服务架构，但它有它的优势");
     const arch = findDomain(result, "软件架构");
     expect(arch).toBeDefined();
     expect(arch?.negated).toBeFalsy();
@@ -328,12 +319,12 @@ describe("detectBlacklistIntent — English patterns", () => {
     expect(result).toContain("kubernetes");
   });
 
-  it("detects \"don't ever mention X\"", () => {
+  it('detects "don\'t ever mention X"', () => {
     const result = detectBlacklistIntent("don't ever mention quantum computing");
     expect(result).toContain("quantum computing");
   });
 
-  it("detects \"I'm sick of X\"", () => {
+  it('detects "I\'m sick of X"', () => {
     const result = detectBlacklistIntent("I'm sick of microservices");
     expect(result).toContain("microservices");
   });

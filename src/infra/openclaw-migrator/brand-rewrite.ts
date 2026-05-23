@@ -10,11 +10,7 @@ export const BRAND_REFERENCES = /\b(openclaw|OpenClaw|clawdbot|ClawdBot|moltbot|
 export const MIGRATION_BANNER = "<!-- Migrated from OpenClaw. Review for brand references. -->\n";
 
 /** Brand home-dir prefixes that should be rewritten to ~/.kaijibot/ */
-export const BRAND_HOME_PREFIXES = [
-  "~/.openclaw/",
-  "~/.clawdbot/",
-  "~/.moltbot/",
-];
+export const BRAND_HOME_PREFIXES = ["~/.openclaw/", "~/.clawdbot/", "~/.moltbot/"];
 
 // ─── Brand Replacement Map ───────────────────────────────────────────────────
 
@@ -72,7 +68,15 @@ const AGENTS_KNOWN_SECTIONS = [
 ];
 
 export const STRUCTURAL_REWRITE_REGISTRY = new Map<string, StructuralRewriteRule>([
-  ["AGENTS.md", { filename: "AGENTS.md", mode: "section", templateName: "AGENTS.md", knownSections: AGENTS_KNOWN_SECTIONS }],
+  [
+    "AGENTS.md",
+    {
+      filename: "AGENTS.md",
+      mode: "section",
+      templateName: "AGENTS.md",
+      knownSections: AGENTS_KNOWN_SECTIONS,
+    },
+  ],
   ["TOOLS.md", { filename: "TOOLS.md", mode: "full", templateName: "TOOLS.md" }],
   ["BOOTSTRAP.md", { filename: "BOOTSTRAP.md", mode: "full", templateName: "BOOTSTRAP.md" }],
 ]);
@@ -114,7 +118,10 @@ interface MarkdownSection {
  * Parse markdown into preamble (before first header) and sections by H2/H3.
  * Exported for reuse by migrate-workspace.ts.
  */
-export function extractSectionsByHeaders(content: string): { preamble: string; sections: MarkdownSection[] } {
+export function extractSectionsByHeaders(content: string): {
+  preamble: string;
+  sections: MarkdownSection[];
+} {
   const lines = content.split("\n");
   const preambleLines: string[] = [];
   const sections: MarkdownSection[] = [];

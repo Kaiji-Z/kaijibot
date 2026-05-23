@@ -168,9 +168,7 @@ describe("listSessionsFromStore search", () => {
     const keys = result.sessions.map((s) => s.key);
     expect(keys).toEqual(["agent:main:feishu:direct:ou_abc123"]);
     expect(keys).not.toContain("agent:main:feishu:direct:ou_abc123:heartbeat");
-    expect(keys).not.toContain(
-      "agent:main:feishu:group:oc_xyz789:sender:ou_abc123:heartbeat",
-    );
+    expect(keys).not.toContain("agent:main:feishu:group:oc_xyz789:sender:ou_abc123:heartbeat");
   });
 
   test.each([

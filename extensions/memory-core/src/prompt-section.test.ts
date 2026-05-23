@@ -1,6 +1,6 @@
+import type { MemoryPromptSectionBuilder } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 import { describe, it, expect } from "vitest";
 import { buildPromptSection } from "./prompt-section.js";
-import type { MemoryPromptSectionBuilder } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 
 const fullTools = new Set(["memory_search", "memory_get"]);
 const searchOnly = new Set(["memory_search"]);
@@ -31,9 +31,7 @@ describe("buildPromptSection", () => {
       citationsMode: "auto",
     });
     const joined = lines.join("\n");
-    expect(joined).toContain(
-      '"The memory says X exists" is not the same as "X exists now."',
-    );
+    expect(joined).toContain('"The memory says X exists" is not the same as "X exists now."');
   });
 
   it("works with both memory_search and memory_get (full mode)", () => {

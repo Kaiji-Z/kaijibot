@@ -5,7 +5,10 @@ import { streamAnthropic, type AnthropicOptions, type Model } from "@mariozechne
 function resolveAnthropicVertexProjectId(env: NodeJS.ProcessEnv = process.env): string | undefined {
   return env.ANTHROPIC_VERTEX_PROJECT_ID || env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_CLOUD_PROJECT_ID;
 }
-function resolveAnthropicVertexClientRegion(params?: { baseUrl?: string; env?: NodeJS.ProcessEnv }): string {
+function resolveAnthropicVertexClientRegion(params?: {
+  baseUrl?: string;
+  env?: NodeJS.ProcessEnv;
+}): string {
   const baseUrl = params?.baseUrl?.trim();
   if (baseUrl) {
     try {

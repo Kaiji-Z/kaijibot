@@ -1,7 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { existsSync } from "node:fs";
-import { randomUUID } from "node:crypto";
 
 export type AuditEntry = {
   id: string;

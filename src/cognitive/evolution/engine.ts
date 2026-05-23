@@ -1,6 +1,8 @@
 import { detectTrialAndError, evaluateComplexity } from "./complexity-evaluator.js";
-import { generateSkillDraft } from "./skill-draft-generator.js";
 import type { EvolutionPreferenceAdapter } from "./preference-adapter.js";
+import { generateSkillDraft } from "./skill-draft-generator.js";
+import type { SkillLifecycleManager } from "./skill-lifecycle.js";
+import type { SkillPersistenceWriter } from "./skill-writer.js";
 import { EvolutionStore } from "./store.js";
 import type {
   EvolutionCandidate,
@@ -14,8 +16,6 @@ import type {
   SkillPatchResult,
 } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
-import type { SkillPersistenceWriter } from "./skill-writer.js";
-import type { SkillLifecycleManager } from "./skill-lifecycle.js";
 
 export type DraftGeneratorFn = (candidate: EvolutionCandidate) => Promise<SkillDraft>;
 
@@ -55,7 +55,9 @@ export class EvolutionEngine {
     const reasoningParts: string[] = [];
 
     if (trialError.detected) {
-      reasoningParts.push(`Trial-and-error detected: ${trialError.signals.length} signals, boost +${trialError.boost.toFixed(2)}`);
+      reasoningParts.push(
+        `Trial-and-error detected: ${trialError.signals.length} signals, boost +${trialError.boost.toFixed(2)}`,
+      );
     }
 
     const hasErrors = (candidate.errorProfile?.errorCount ?? 0) > 0;
@@ -64,15 +66,18 @@ export class EvolutionEngine {
     const retryCount = hasErrors ? rawRetryCount : 0;
     const hasRetries = retryCount > 0;
 
-    const threshold = (hasErrors || hasRetries)
-      ? config.errorComplexityThreshold
-      : config.minComplexity;
+    const threshold =
+      hasErrors || hasRetries ? config.errorComplexityThreshold : config.minComplexity;
 
     if (hasErrors) {
-      reasoningParts.push(`Tool errors detected (${candidate.errorProfile!.errorCount} errors in: ${candidate.errorProfile!.failedToolNames.join(", ")}), using error threshold ${threshold}`);
+      reasoningParts.push(
+        `Tool errors detected (${candidate.errorProfile!.errorCount} errors in: ${candidate.errorProfile!.failedToolNames.join(", ")}), using error threshold ${threshold}`,
+      );
     }
     if (hasRetries) {
-      reasoningParts.push(`Tool retries detected (${retryCount} retries), using error threshold ${threshold}`);
+      reasoningParts.push(
+        `Tool retries detected (${retryCount} retries), using error threshold ${threshold}`,
+      );
     }
 
     // Fetch recent suggestions as context for the agent (not a gate)
@@ -89,20 +94,27 @@ export class EvolutionEngine {
         shouldSuggest: false,
         confidence: 0,
         complexityScore: complexity.score,
-        reasoning: reasoningParts.length > 0
-          ? `${reasoningParts.join("; ")}; Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`
-          : `Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`,
+        reasoning:
+          reasoningParts.length > 0
+            ? `${reasoningParts.join("; ")}; Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`
+            : `Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`,
         recentSuggestions,
       };
     }
 
     let confidence = complexity.score;
     if (this.preferenceAdapter) {
-      const domainRate = await this.preferenceAdapter.getDomainAcceptanceRate(agentId, userId, candidate.domain);
+      const domainRate = await this.preferenceAdapter.getDomainAcceptanceRate(
+        agentId,
+        userId,
+        candidate.domain,
+      );
       confidence = confidence * domainRate;
     }
 
-    reasoningParts.push(`Task is complex enough (score ${complexity.score.toFixed(2)}) for skill suggestion`);
+    reasoningParts.push(
+      `Task is complex enough (score ${complexity.score.toFixed(2)}) for skill suggestion`,
+    );
 
     return {
       shouldSuggest: true,
@@ -128,14 +140,15 @@ export class EvolutionEngine {
       return { shouldCreate: true };
     }
 
-    const result = deps?.generateText && existingSkills
-      ? await lifecycle.checkSemanticDuplicate(
-          candidate.taskSummary,
-          candidate.taskSummary,
-          existingSkills,
-          deps,
-        )
-      : await lifecycle.checkDuplicate(candidate.domain, candidate.taskSummary);
+    const result =
+      deps?.generateText && existingSkills
+        ? await lifecycle.checkSemanticDuplicate(
+            candidate.taskSummary,
+            candidate.taskSummary,
+            existingSkills,
+            deps,
+          )
+        : await lifecycle.checkDuplicate(candidate.domain, candidate.taskSummary);
 
     if (result.duplicate) {
       return { shouldCreate: false, existingSkill: result.existingName };

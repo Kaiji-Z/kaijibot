@@ -62,7 +62,9 @@ export async function getRecentSessionContent(
               continue;
             }
             const rawText = extractTextMessageContent(msg.content);
-            if (!rawText) { continue; }
+            if (!rawText) {
+              continue;
+            }
             const text = msg.role === "user" ? stripMessageMetadata(rawText) : rawText;
             if (text && !text.startsWith("/")) {
               allMessages.push(`${role}: ${text}`);

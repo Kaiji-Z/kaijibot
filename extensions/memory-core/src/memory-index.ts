@@ -63,7 +63,12 @@ const RECENT_SESSIONS_HEADING = "## Recent Sessions";
 const PROMOTED_HEADING = "## Promoted From Short-Term Memory";
 const INDEX_TITLE = "# Long-Term Memory";
 
-const INLINE_SECTION_HEADINGS = ["👤 User", "💬 Key Feedback", "🎯 Active Focus", "🔗 Reference"] as const;
+const INLINE_SECTION_HEADINGS = [
+  "👤 User",
+  "💬 Key Feedback",
+  "🎯 Active Focus",
+  "🔗 Reference",
+] as const;
 
 const INLINE_SECTION_SUBJECTS: Record<string, string> = {
   "👤 User": "user",
@@ -167,7 +172,10 @@ export function parseMemoryIndex(content: string): MemoryIndex {
     }
     if (currentInlineSection !== null) {
       // Trim trailing blank lines
-      while (currentInlineLines.length > 0 && currentInlineLines[currentInlineLines.length - 1]!.trim() === "") {
+      while (
+        currentInlineLines.length > 0 &&
+        currentInlineLines[currentInlineLines.length - 1]!.trim() === ""
+      ) {
         currentInlineLines.pop();
       }
       inlineSections.push({ section: currentInlineSection, lines: currentInlineLines });
@@ -225,7 +233,13 @@ export function parseMemoryIndex(content: string): MemoryIndex {
 
     // Check for topic section heading (## Title with → pointer)
     const sectionMatch = trimmed.match(SECTION_HEADING_RE);
-    if (sectionMatch && !isInlineHeading(trimmed) && !isRecentSessionsHeading(trimmed) && !isPromotedHeading(trimmed) && !isReferencesHeading(trimmed)) {
+    if (
+      sectionMatch &&
+      !isInlineHeading(trimmed) &&
+      !isRecentSessionsHeading(trimmed) &&
+      !isPromotedHeading(trimmed) &&
+      !isReferencesHeading(trimmed)
+    ) {
       // Look ahead for → pointer to distinguish from inline headings
       const nextLine = lines[i + 1]?.trim() ?? "";
       if (nextLine.startsWith("→ ")) {
@@ -320,10 +334,7 @@ function serializeInlineSection(inline: InlineContent): string {
 }
 
 function serializeSection(section: MemoryIndexSection): string {
-  const lines = [
-    `## ${section.title}`,
-    `→ ${section.topicFile}`,
-  ];
+  const lines = [`## ${section.title}`, `→ ${section.topicFile}`];
   if (section.summary) {
     lines.push(section.summary);
   }
@@ -421,9 +432,7 @@ export class MemoryIndexManager {
 
   async updateSection(section: MemoryIndexSection): Promise<void> {
     const index = await this.readIndex();
-    const existingIdx = index.sections.findIndex(
-      (s) => s.topicFile === section.topicFile,
-    );
+    const existingIdx = index.sections.findIndex((s) => s.topicFile === section.topicFile);
     if (existingIdx >= 0) {
       index.sections[existingIdx] = section;
     } else {
@@ -548,10 +557,7 @@ export class MemoryIndexManager {
       return content;
     }
 
-    const parts: string[] = [
-      INDEX_TITLE,
-      "",
-    ];
+    const parts: string[] = [INDEX_TITLE, ""];
 
     // Preserve all existing content under promoted heading
     parts.push(`${PROMOTED_HEADING} (legacy)`);

@@ -50,12 +50,15 @@ describe("security audit Feishu doc risk findings", () => {
     if (expectedFinding) {
       expect(
         findings.some(
-          (finding: { checkId: string; severity: string }) => finding.checkId === expectedFinding && finding.severity === "warn",
+          (finding: { checkId: string; severity: string }) =>
+            finding.checkId === expectedFinding && finding.severity === "warn",
         ),
       ).toBe(true);
     }
     if (expectedNoFinding) {
-      expect(findings.some((finding: { checkId: string }) => finding.checkId === expectedNoFinding)).toBe(false);
+      expect(
+        findings.some((finding: { checkId: string }) => finding.checkId === expectedNoFinding),
+      ).toBe(false);
     }
   });
 });

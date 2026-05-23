@@ -15,17 +15,17 @@ This file is auto-loaded into every conversation. Consult this guide first when 
 > **Config keys not listed here** → Use `kaijibot config schema` via CLI to view the full schema (types, defaults, ranges, descriptions).
 > Inside the Agent, use the `gateway` tool's `config.schema.lookup` action to query a subtree by path. **If you can't find it, check the schema. Don't guess.**
 
-| Action | Command / Key |
-|--------|---------------|
-| Switch model | `kaijibot models set "zai/glm-5-turbo"` |
-| Cognitive toggle | `cognitive.enabled` / `cognitive.proactive.enabled` (boolean) |
-| Push frequency | `cognitive.proactive.minIntervalHours` (number, default 0.5 hours) |
-| Active hours | `cognitive.proactive.activeHours.start` / `.end` / `.timezone` (unset = no restriction) |
-| Web search | Env vars `EXA_API_KEY` / `TAVILY_API_KEY` |
-| Feishu channel | `channels.feishu.appId` / `channels.feishu.appSecret` |
-| API Key | Env var `ZAI_API_KEY` or `models.providers.zai.apiKey` |
-| Timezone | `agents.defaults.userTimezone` (e.g. "Asia/Shanghai") |
-| Memory | `memory.backend` ("builtin" \| "qmd") / `memory.citations` |
+| Action           | Command / Key                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| Switch model     | `kaijibot models set "zai/glm-5-turbo"`                                                 |
+| Cognitive toggle | `cognitive.enabled` / `cognitive.proactive.enabled` (boolean)                           |
+| Push frequency   | `cognitive.proactive.minIntervalHours` (number, default 0.5 hours)                      |
+| Active hours     | `cognitive.proactive.activeHours.start` / `.end` / `.timezone` (unset = no restriction) |
+| Web search       | Env vars `EXA_API_KEY` / `TAVILY_API_KEY`                                               |
+| Feishu channel   | `channels.feishu.appId` / `channels.feishu.appSecret`                                   |
+| API Key          | Env var `ZAI_API_KEY` or `models.providers.zai.apiKey`                                  |
+| Timezone         | `agents.defaults.userTimezone` (e.g. "Asia/Shanghai")                                   |
+| Memory           | `memory.backend` ("builtin" \| "qmd") / `memory.citations`                              |
 
 ## Cognitive System
 
@@ -107,12 +107,12 @@ This file is auto-loaded into every conversation. Consult this guide first when 
 
 Use the `mcp_config` tool for programmatic MCP server management:
 
-| Action | Description |
-|--------|-------------|
-| `list` | List all configured MCP servers |
-| `show` | View details of a single server |
-| `set` | Add or update a server (requires name and JSON config string) |
-| `unset` | Remove a specified server |
+| Action  | Description                                                   |
+| ------- | ------------------------------------------------------------- |
+| `list`  | List all configured MCP servers                               |
+| `show`  | View details of a single server                               |
+| `set`   | Add or update a server (requires name and JSON config string) |
+| `unset` | Remove a specified server                                     |
 
 ## Feishu Channel
 
@@ -125,29 +125,29 @@ Use the `mcp_config` tool for programmatic MCP server management:
 
 ## Common Commands
 
-| Command | Description |
-|---------|-------------|
-| `kaijibot gateway run` | Start the gateway |
-| `kaijibot gateway status` | Gateway status + health check |
-| `kaijibot config get <path>` | View a config value |
-| `kaijibot config set <path> <value>` | Set a config value |
-| `kaijibot config schema` | View full schema (**preferred when a config key is not found**) |
-| `kaijibot models list` | List available models |
-| `kaijibot models set <model>` | Switch model |
-| `kaijibot plugins list` | List plugins |
-| `kaijibot skills list` | List skills |
-| `kaijibot status` | System status |
+| Command                              | Description                                                     |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `kaijibot gateway run`               | Start the gateway                                               |
+| `kaijibot gateway status`            | Gateway status + health check                                   |
+| `kaijibot config get <path>`         | View a config value                                             |
+| `kaijibot config set <path> <value>` | Set a config value                                              |
+| `kaijibot config schema`             | View full schema (**preferred when a config key is not found**) |
+| `kaijibot models list`               | List available models                                           |
+| `kaijibot models set <model>`        | Switch model                                                    |
+| `kaijibot plugins list`              | List plugins                                                    |
+| `kaijibot skills list`               | List skills                                                     |
+| `kaijibot status`                    | System status                                                   |
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `ZAI_API_KEY` | Zhipu GLM API key |
-| `EXA_API_KEY` | Exa semantic search |
-| `TAVILY_API_KEY` | Tavily AI search |
-| `KAIJIBOT_GATEWAY_PORT` | Gateway port (default: 18789) |
-| `KAIJIBOT_GATEWAY_TOKEN` | Gateway auth token |
-| `KAIJIBOT_HOME` | Data directory (default: ~/.kaijibot) |
+| Variable                 | Purpose                               |
+| ------------------------ | ------------------------------------- |
+| `ZAI_API_KEY`            | Zhipu GLM API key                     |
+| `EXA_API_KEY`            | Exa semantic search                   |
+| `TAVILY_API_KEY`         | Tavily AI search                      |
+| `KAIJIBOT_GATEWAY_PORT`  | Gateway port (default: 18789)         |
+| `KAIJIBOT_GATEWAY_TOKEN` | Gateway auth token                    |
+| `KAIJIBOT_HOME`          | Data directory (default: ~/.kaijibot) |
 
 ## Agent Operating Rules
 
@@ -159,13 +159,13 @@ Use the `mcp_config` tool for programmatic MCP server management:
 
 ## Common Troubleshooting
 
-| Problem | Troubleshooting |
-|---------|-----------------|
-| Feishu not receiving messages | Check that appId/appSecret are correct, confirm WebSocket event subscription is enabled |
-| Model call failures | Check that `ZAI_API_KEY` is set, use `kaijibot models status` to view the current model |
-| Proactive insights not pushing | Check that `cognitive.enabled` and `cognitive.proactive.enabled` are true; requires at least 5 conversation rounds |
-| Disturbed at night | Set `cognitive.proactive.activeHours.start` and `.end` (e.g. `"09:00"` - `"22:00"`) |
-| Pushes too frequent or too sparse | Adjust `cognitive.proactive.minIntervalHours` (default 0.5 hours) |
-| Repetitive push content | Check that `cognitive.insight.engine` is set to `"dual"` (v2 fragment crystallization adds diversity) |
-| Web search not working | Check that `EXA_API_KEY` or `TAVILY_API_KEY` is set |
-| Gateway fails to start | Use `kaijibot gateway status` to check, verify the port is not occupied |
+| Problem                           | Troubleshooting                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Feishu not receiving messages     | Check that appId/appSecret are correct, confirm WebSocket event subscription is enabled                            |
+| Model call failures               | Check that `ZAI_API_KEY` is set, use `kaijibot models status` to view the current model                            |
+| Proactive insights not pushing    | Check that `cognitive.enabled` and `cognitive.proactive.enabled` are true; requires at least 5 conversation rounds |
+| Disturbed at night                | Set `cognitive.proactive.activeHours.start` and `.end` (e.g. `"09:00"` - `"22:00"`)                                |
+| Pushes too frequent or too sparse | Adjust `cognitive.proactive.minIntervalHours` (default 0.5 hours)                                                  |
+| Repetitive push content           | Check that `cognitive.insight.engine` is set to `"dual"` (v2 fragment crystallization adds diversity)              |
+| Web search not working            | Check that `EXA_API_KEY` or `TAVILY_API_KEY` is set                                                                |
+| Gateway fails to start            | Use `kaijibot gateway status` to check, verify the port is not occupied                                            |

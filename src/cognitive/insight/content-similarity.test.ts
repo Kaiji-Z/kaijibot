@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { extractTrigrams, computeTrigramSimilarity, isDuplicateByContent, extractChinesePhrases, computeContentWordOverlap, isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
+import {
+  extractTrigrams,
+  computeTrigramSimilarity,
+  isDuplicateByContent,
+  extractChinesePhrases,
+  computeContentWordOverlap,
+  isDuplicateBySemanticOverlap,
+  extractContentThemes,
+} from "./content-similarity.js";
 
 describe("extractTrigrams", () => {
   it("extracts trigrams from text", () => {
@@ -53,11 +61,13 @@ describe("isDuplicateByContent", () => {
   });
 
   it("returns true for similar content above threshold", () => {
-    expect(isDuplicateByContent(
-      "飞书skill开发本质上是在写一个能力边界明确的函数",
-      ["飞书skill开发和写函数是同一件事——都是先画能力边界再填实现"],
-      0.2,
-    )).toBe(true);
+    expect(
+      isDuplicateByContent(
+        "飞书skill开发本质上是在写一个能力边界明确的函数",
+        ["飞书skill开发和写函数是同一件事——都是先画能力边界再填实现"],
+        0.2,
+      ),
+    ).toBe(true);
   });
 
   it("respects custom threshold", () => {
@@ -85,7 +95,9 @@ describe("extractChinesePhrases", () => {
   });
 
   it("filters out short and long tokens", () => {
-    const phrases = extractChinesePhrases("a 人工智能核心算法研究与实际应用场景深度剖析和未来发展趋势预测");
+    const phrases = extractChinesePhrases(
+      "a 人工智能核心算法研究与实际应用场景深度剖析和未来发展趋势预测",
+    );
     for (const p of phrases) {
       expect(p.length).toBeGreaterThanOrEqual(2);
       expect(p.length).toBeLessThanOrEqual(20);
@@ -103,10 +115,7 @@ describe("computeContentWordOverlap", () => {
   });
 
   it("returns 0 for completely different Chinese content", () => {
-    const overlap = computeContentWordOverlap(
-      "量子计算的纠错码设计",
-      "有机农业的土壤改良方法",
-    );
+    const overlap = computeContentWordOverlap("量子计算的纠错码设计", "有机农业的土壤改良方法");
     expect(overlap).toBeLessThan(0.15);
   });
 
@@ -117,17 +126,19 @@ describe("computeContentWordOverlap", () => {
 
 describe("isDuplicateBySemanticOverlap", () => {
   it("catches paraphrases via content-word overlap", () => {
-    expect(isDuplicateBySemanticOverlap(
-      "Transformer架构的自注意力机制改变了自然语言处理的研究方向",
-      ["Transformer自注意力机制彻底革新了自然语言处理的技术路线"],
-    )).toBe(true);
+    expect(
+      isDuplicateBySemanticOverlap("Transformer架构的自注意力机制改变了自然语言处理的研究方向", [
+        "Transformer自注意力机制彻底革新了自然语言处理的技术路线",
+      ]),
+    ).toBe(true);
   });
 
   it("allows clearly different content", () => {
-    expect(isDuplicateBySemanticOverlap(
-      "Rust语言的内存安全模型通过所有权机制避免了数据竞争",
-      ["飞书机器人的Webhook回调需要验证签名才能处理请求"],
-    )).toBe(false);
+    expect(
+      isDuplicateBySemanticOverlap("Rust语言的内存安全模型通过所有权机制避免了数据竞争", [
+        "飞书机器人的Webhook回调需要验证签名才能处理请求",
+      ]),
+    ).toBe(false);
   });
 
   it("catches identical content via trigram", () => {
@@ -154,8 +165,9 @@ describe("extractContentThemes", () => {
   });
 
   it("limits to 15 themes", () => {
-    const contents = Array.from({ length: 20 }, (_, i) =>
-      `主题${i}主题${i}话题${i}讨论${i}分析${i}`,
+    const contents = Array.from(
+      { length: 20 },
+      (_, i) => `主题${i}主题${i}话题${i}讨论${i}分析${i}`,
     );
     const themes = extractContentThemes(contents);
     expect(themes.length).toBeLessThanOrEqual(15);

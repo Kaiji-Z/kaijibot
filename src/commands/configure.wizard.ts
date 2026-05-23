@@ -347,9 +347,7 @@ export async function runConfigureWizard(
         );
       }
       if (!snapshot.valid) {
-        outro(
-          `配置无效。运行 \`${formatCliCommand("kaijibot doctor")}\` 修复后重新执行配置。`,
-        );
+        outro(`配置无效。运行 \`${formatCliCommand("kaijibot doctor")}\` 修复后重新执行配置。`);
         runtime.exit(1);
         return;
       }

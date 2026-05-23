@@ -328,9 +328,7 @@ describe("registerFeishuTaskTools", () => {
     const tool = toolFactory?.({ agentAccountId: undefined });
 
     const result = await tool.execute("call-6", { action: "delete" });
-    expect(result.details).toEqual(
-      expect.objectContaining({ error: "Unknown action: delete" }),
-    );
+    expect(result.details).toEqual(expect.objectContaining({ error: "Unknown action: delete" }));
   });
 
   it("surfaces API errors via toolExecutionErrorResult", async () => {

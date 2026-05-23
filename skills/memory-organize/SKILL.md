@@ -1,15 +1,7 @@
 ---
 name: memory-organize
 description: "整理记忆：历遍所有会话记录，提取并整理记忆到结构化的主题文件中。当用户说'整理记忆'、'整理一下记忆'、'记忆太乱了'、'重新组织记忆'时使用。也用于系统触发时自动整理 MEMORY.md。"
-metadata:
-  {
-    "kaijibot":
-      {
-        "emoji": "🗃️",
-        "requires": { "bins": [] },
-        "install": [],
-      },
-  }
+metadata: { "kaijibot": { "emoji": "🗃️", "requires": { "bins": [] }, "install": [] } }
 ---
 
 # Memory Organize
@@ -31,14 +23,14 @@ Use this skill immediately when the user asks any of:
 
 记忆来自以下层级，按优先级读取。所有路径均为 workspace 根目录下的相对路径（由系统自动解析）：
 
-| 优先级 | 数据源 | 路径/获取方式 | 格式 | 说明 |
-|--------|--------|---------------|------|------|
-| ⭐ 1 | MEMORY.md | `MEMORY.md` | Markdown | **先修复结构**，处理晋升条目、重复、预算超支 |
-| 2 | 会话原始文件 | `sessions_list` 工具 → `transcriptPath` | JSONL | 始终存在，最完整，包含所有 User/Assistant 对话 |
-| 3 | QMD 会话 | 由 `memory.qmd.sessions.exportDir` 配置决定 | Markdown | 可选，比 JSONL 更可读（需 `memory.qmd.sessions.enabled: true`） |
-| 4 | 每日笔记 | `memory/YYYY-MM-DD.md` | Markdown | 自动生成的结构化摘要（含会话文件指针，不含原始对话） |
-| 5 | 会话语料 | `memory/.dreams/session-corpus/*.txt` | Text | 与上述有重叠，仅补充用 |
-| 6 | 已有主题 | `memory/topics/*.md` | Markdown | 已分类的记忆条目（用于去重判断） |
+| 优先级 | 数据源       | 路径/获取方式                               | 格式     | 说明                                                            |
+| ------ | ------------ | ------------------------------------------- | -------- | --------------------------------------------------------------- |
+| ⭐ 1   | MEMORY.md    | `MEMORY.md`                                 | Markdown | **先修复结构**，处理晋升条目、重复、预算超支                    |
+| 2      | 会话原始文件 | `sessions_list` 工具 → `transcriptPath`     | JSONL    | 始终存在，最完整，包含所有 User/Assistant 对话                  |
+| 3      | QMD 会话     | 由 `memory.qmd.sessions.exportDir` 配置决定 | Markdown | 可选，比 JSONL 更可读（需 `memory.qmd.sessions.enabled: true`） |
+| 4      | 每日笔记     | `memory/YYYY-MM-DD.md`                      | Markdown | 自动生成的结构化摘要（含会话文件指针，不含原始对话）            |
+| 5      | 会话语料     | `memory/.dreams/session-corpus/*.txt`       | Text     | 与上述有重叠，仅补充用                                          |
+| 6      | 已有主题     | `memory/topics/*.md`                        | Markdown | 已分类的记忆条目（用于去重判断）                                |
 
 **会话原始文件格式说明**（JSONL）：
 
@@ -50,6 +42,7 @@ Use this skill immediately when the user asks any of:
 ```
 
 **跳过的文件**（系统元数据，不是真实对话）：
+
 - `sessions.json` — 会话注册表
 - `session-ranking.*` / `session-bootstrap.*` — 系统元数据
 - `dreaming-*.*` — dreaming agent 内部文件
@@ -66,6 +59,7 @@ Use this skill immediately when the user asks any of:
 不使用预设的主题列表或关键词映射。读取每条记忆内容后，根据内容的**语义**判断它属于哪个主题。
 
 **判断原则：**
+
 1. **按内容领域归类**——同一领域的记忆放同一个文件，方便查找。例如所有飞书相关的（配置、wiki 方法、bot 管理）都归 `feishu`
 2. **主题粒度适中**——不要太粗（所有东西都放 `misc`），也不要太细（每条记忆一个主题）。目标是每个主题文件 5-20 条记忆
 3. **主题名用 kebab-case 英文**——如 `feishu`、`philosophy`、`product`、`football`、`cooking`
@@ -101,6 +95,7 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 5. **孤立内容**：不在任何主题文件中、也不属于内联区域的零散内容。判断 subject 后归入主题文件。
 
 **修复操作**：
+
 - 对每条需要归档的记忆，调用 `memory_save(content=..., topic=..., importance=...)`
 - 不要直接编辑 MEMORY.md 文件——通过 `memory_save` 和 `memory_tidy` 工具操作
 - Promoted 条目归档后，该 section 可以被清理（条目已进入 topic 文件）
@@ -151,12 +146,14 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 4. 按需读会话语料 `memory/.dreams/session-corpus/*.txt`（仅当上述来源仍有信息缺口时）
 
 **提取后立即写入**，每条记忆调用 `memory_save`：
+
 - `content`: 记忆内容（简洁的一句话或一段描述）
 - `topic`: 主题名（必填，kebab-case，如 `feishu`、`philosophy`）
 - `importance`: 重要性（`high`/`normal`/`low`）
 - `type`: 分类（可选，`user`/`feedback`/`project`/`reference`）
 
 示例调用：
+
 ```
 memory_save(content="飞书 is_cross_tenant 在 search API 的 result_meta 里", topic="feishu", importance="high", type="project")
 memory_save(content="不要乱猜测，不确定时先调查", topic="feedback", importance="high", type="feedback")
@@ -199,6 +196,7 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 ```
 
 这会自动：
+
 - 去除重复条目（Jaccard 相似度 ≥ 0.85）
 - 合并相似条目
 - 归档 90 天以上的低重要性条目

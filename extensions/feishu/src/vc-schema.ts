@@ -1,10 +1,9 @@
 import { Type, type Static } from "@sinclair/typebox";
 
 export const FeishuVcSchema = Type.Object({
-  action: Type.Union(
-    [Type.Literal("search"), Type.Literal("notes"), Type.Literal("detail")],
-    { description: "VC meeting action: search meetings, get meeting notes, get meeting detail" },
-  ),
+  action: Type.Union([Type.Literal("search"), Type.Literal("notes"), Type.Literal("detail")], {
+    description: "VC meeting action: search meetings, get meeting notes, get meeting detail",
+  }),
   start_time: Type.Optional(
     Type.String({ description: "Start time in ISO format or unix timestamp (ms) for search" }),
   ),

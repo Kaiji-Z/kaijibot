@@ -1,9 +1,5 @@
 export { CorrectionStore } from "./store.js";
-export type {
-  CorrectionRecord,
-  CorrectionProvenance,
-  CorrectionStoreData,
-} from "./types.js";
+export type { CorrectionRecord, CorrectionProvenance, CorrectionStoreData } from "./types.js";
 export {
   CORRECTION_STORE_VERSION,
   DEFAULT_CORRECTION_TTL_DAYS,

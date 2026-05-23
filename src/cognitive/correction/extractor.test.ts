@@ -27,7 +27,12 @@ describe("extractCorrectionsFromTranscript", () => {
   it("extracts corrections from clear user correction", async () => {
     const mockGenerateText = vi.fn().mockResolvedValue(
       JSON.stringify([
-        { domain: "feishu-doc", trigger: "创建飞书文档", mistake: "只传标题参数", correction: "创建后必须用update API写入正文" },
+        {
+          domain: "feishu-doc",
+          trigger: "创建飞书文档",
+          mistake: "只传标题参数",
+          correction: "创建后必须用update API写入正文",
+        },
       ]),
     );
     const result = await extractCorrectionsFromTranscript("some transcript", mockGenerateText);
@@ -56,21 +61,25 @@ describe("extractCorrectionsFromTranscript", () => {
   });
 
   it("handles JSON in markdown code blocks", async () => {
-    const mockGenerateText = vi.fn().mockResolvedValue(
-      '```json\n[{"domain":"test","trigger":"test","mistake":"wrong","correction":"right"}]\n```',
-    );
+    const mockGenerateText = vi
+      .fn()
+      .mockResolvedValue(
+        '```json\n[{"domain":"test","trigger":"test","mistake":"wrong","correction":"right"}]\n```',
+      );
     const result = await extractCorrectionsFromTranscript("transcript", mockGenerateText);
     expect(result).toHaveLength(1);
   });
 
   it("skips malformed entries", async () => {
-    const mockGenerateText = vi.fn().mockResolvedValue(
-      JSON.stringify([
-        { domain: "test", mistake: "wrong", correction: "right" },
-        { domain: "test", mistake: "" },
-        "not an object",
-      ]),
-    );
+    const mockGenerateText = vi
+      .fn()
+      .mockResolvedValue(
+        JSON.stringify([
+          { domain: "test", mistake: "wrong", correction: "right" },
+          { domain: "test", mistake: "" },
+          "not an object",
+        ]),
+      );
     const result = await extractCorrectionsFromTranscript("transcript", mockGenerateText);
     expect(result).toHaveLength(1);
   });

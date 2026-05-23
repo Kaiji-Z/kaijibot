@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { EvolutionPreferenceAdapter } from "./preference-adapter.js";
 
 let tempDir: string;
@@ -23,7 +23,7 @@ describe("EvolutionPreferenceAdapter", () => {
     const bandit = await adapter.getRawBandit(AGENT, "user-1", "feishu-wiki");
     expect(bandit).toBeDefined();
     expect(bandit!.alpha).toBe(3); // prior(2) + 1
-    expect(bandit!.beta).toBe(1);  // prior unchanged
+    expect(bandit!.beta).toBe(1); // prior unchanged
   });
 
   it("reject increases beta for domain", async () => {
@@ -31,7 +31,7 @@ describe("EvolutionPreferenceAdapter", () => {
     const bandit = await adapter.getRawBandit(AGENT, "user-1", "code-review");
     expect(bandit).toBeDefined();
     expect(bandit!.alpha).toBe(2); // prior unchanged
-    expect(bandit!.beta).toBe(2);  // prior(1) + 1
+    expect(bandit!.beta).toBe(2); // prior(1) + 1
   });
 
   it("modified counts as partial acceptance (alpha + 0.5)", async () => {
@@ -39,7 +39,7 @@ describe("EvolutionPreferenceAdapter", () => {
     const bandit = await adapter.getRawBandit(AGENT, "user-1", "analytics");
     expect(bandit).toBeDefined();
     expect(bandit!.alpha).toBe(2.5); // prior(2) + 0.5
-    expect(bandit!.beta).toBe(1);    // prior unchanged
+    expect(bandit!.beta).toBe(1); // prior unchanged
   });
 
   it("domain with no history returns prior (~0.67)", async () => {

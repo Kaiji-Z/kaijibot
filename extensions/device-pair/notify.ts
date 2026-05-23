@@ -157,7 +157,12 @@ function notifySubscriberKey(subscriber: {
   accountId?: string;
   messageThreadId?: string | number;
 }): string {
-  return [subscriber.to, subscriber.channel ?? "", subscriber.accountId ?? "", subscriber.messageThreadId ?? ""].join("|");
+  return [
+    subscriber.to,
+    subscriber.channel ?? "",
+    subscriber.accountId ?? "",
+    subscriber.messageThreadId ?? "",
+  ].join("|");
 }
 
 type NotifyTarget = {
@@ -264,12 +269,12 @@ async function notifySubscriber(params: {
   subscriber: NotifySubscription;
   text: string;
 }): Promise<boolean> {
-  const adapter = await params.api.runtime.channel.outbound.loadAdapter(params.subscriber.channel ?? "feishu");
+  const adapter = await params.api.runtime.channel.outbound.loadAdapter(
+    params.subscriber.channel ?? "feishu",
+  );
   const send = adapter?.sendText;
   if (!send) {
-    params.api.logger.warn(
-      "device-pair: outbound adapter unavailable for pairing notifications",
-    );
+    params.api.logger.warn("device-pair: outbound adapter unavailable for pairing notifications");
     return false;
   }
 

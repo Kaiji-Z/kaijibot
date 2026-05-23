@@ -3,8 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTrackedTempDirs } from "../../test-utils/tracked-temp-dirs.js";
-import { detectMigrationSource, detectScenario } from "./detect.js";
 import { enumerateSourceAgents, enumerateSourceSkills } from "./agent-enumeration.js";
+import { detectMigrationSource, detectScenario } from "./detect.js";
 import { runFreshMigration, runImportMigration, runMigration } from "./index.js";
 import { migrateConfig, rewriteConfigPaths } from "./migrate-config.js";
 import { migrateSessions } from "./migrate-sessions.js";
@@ -137,10 +137,7 @@ describe("migrateConfig", () => {
     const targetDir = await createTempDir();
     const source = makeSource(sourceDir);
 
-    await fs.writeFile(
-      source.configPath,
-      JSON.stringify({ cognitive: { enabled: false } }),
-    );
+    await fs.writeFile(source.configPath, JSON.stringify({ cognitive: { enabled: false } }));
 
     await migrateConfig(source, targetDir, defaultOptions());
 
@@ -158,10 +155,7 @@ describe("migrateConfig", () => {
     const source = makeSource(sourceDir);
 
     await fs.writeFile(source.configPath, JSON.stringify({ agent: { model: "gpt-4" } }));
-    await fs.writeFile(
-      path.join(targetDir, "kaijibot.json"),
-      JSON.stringify({ existing: true }),
-    );
+    await fs.writeFile(path.join(targetDir, "kaijibot.json"), JSON.stringify({ existing: true }));
 
     const result = await migrateConfig(source, targetDir, defaultOptions());
 
@@ -197,16 +191,9 @@ describe("migrateConfig", () => {
     const source = makeSource(sourceDir);
 
     await fs.writeFile(source.configPath, JSON.stringify({ agent: { model: "gpt-4" } }));
-    await fs.writeFile(
-      path.join(targetDir, "kaijibot.json"),
-      JSON.stringify({ existing: true }),
-    );
+    await fs.writeFile(path.join(targetDir, "kaijibot.json"), JSON.stringify({ existing: true }));
 
-    const result = await migrateConfig(
-      source,
-      targetDir,
-      defaultOptions({ overwrite: true }),
-    );
+    const result = await migrateConfig(source, targetDir, defaultOptions({ overwrite: true }));
 
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]!.kind).toBe("merge");
@@ -230,9 +217,9 @@ describe("migrateConfig", () => {
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]!.detail).toContain("Would create");
 
-    await expect(
-      fs.readFile(path.join(targetDir, "kaijibot.json"), "utf-8"),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.readFile(path.join(targetDir, "kaijibot.json"), "utf-8")).rejects.toMatchObject(
+      { code: "ENOENT" },
+    );
   });
 
   it("returns warning when source config is unreadable", async () => {
@@ -264,9 +251,9 @@ describe("migrateWorkspace", () => {
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
 
     expect(result.changes.length).toBeGreaterThanOrEqual(2);
-    await expect(
-      fs.readFile(path.join(targetDir, "workspace", "SOUL.md"), "utf-8"),
-    ).resolves.toBe("# Soul content");
+    await expect(fs.readFile(path.join(targetDir, "workspace", "SOUL.md"), "utf-8")).resolves.toBe(
+      "# Soul content",
+    );
     await expect(
       fs.readFile(path.join(targetDir, "workspace", "IDENTITY.md"), "utf-8"),
     ).resolves.toBe("# Identity");
@@ -278,10 +265,7 @@ describe("migrateWorkspace", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "workspace", "memory"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "workspace", "memory", "2025-01-01.md"),
-      "# Daily log",
-    );
+    await fs.writeFile(path.join(sourceDir, "workspace", "memory", "2025-01-01.md"), "# Daily log");
     await fs.writeFile(source.configPath, "{}");
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
@@ -309,15 +293,10 @@ describe("migrateWorkspace", () => {
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
 
-    const topicChanges = result.changes.filter(
-      (c) => c.target.includes("topics"),
-    );
+    const topicChanges = result.changes.filter((c) => c.target.includes("topics"));
     expect(topicChanges.length).toBeGreaterThanOrEqual(1);
     await expect(
-      fs.readFile(
-        path.join(targetDir, "workspace", "memory", "topics", "ai-research.md"),
-        "utf-8",
-      ),
+      fs.readFile(path.join(targetDir, "workspace", "memory", "topics", "ai-research.md"), "utf-8"),
     ).resolves.toBe("# AI Research topic");
   });
 
@@ -327,7 +306,10 @@ describe("migrateWorkspace", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
-    await fs.writeFile(path.join(sourceDir, "workspace", "MEMORY.md"), "# Src Section\nSrc content");
+    await fs.writeFile(
+      path.join(sourceDir, "workspace", "MEMORY.md"),
+      "# Src Section\nSrc content",
+    );
     await fs.writeFile(source.configPath, "{}");
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
@@ -358,14 +340,9 @@ describe("migrateWorkspace", () => {
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
 
-    const output = await fs.readFile(
-      path.join(targetDir, "workspace", "MEMORY.md"),
-      "utf-8",
-    );
+    const output = await fs.readFile(path.join(targetDir, "workspace", "MEMORY.md"), "utf-8");
     expect(Buffer.byteLength(output, "utf-8")).toBe(Buffer.byteLength(largeContent, "utf-8"));
-    expect(result.warnings).not.toContainEqual(
-      expect.stringContaining("truncat"),
-    );
+    expect(result.warnings).not.toContainEqual(expect.stringContaining("truncat"));
   });
 
   it("merges large MEMORY.md with existing target preserving all sections", async () => {
@@ -392,18 +369,13 @@ describe("migrateWorkspace", () => {
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
 
-    const merged = await fs.readFile(
-      path.join(targetDir, "workspace", "MEMORY.md"),
-      "utf-8",
-    );
+    const merged = await fs.readFile(path.join(targetDir, "workspace", "MEMORY.md"), "utf-8");
     expect(merged).toContain("Section A");
     expect(merged).toContain("Section B");
     expect(merged).toContain("Section C");
     expect(merged).toContain("Section D");
     expect(merged).toContain("Section E");
-    expect(result.warnings).not.toContainEqual(
-      expect.stringContaining("truncat"),
-    );
+    expect(result.warnings).not.toContainEqual(expect.stringContaining("truncat"));
   });
 
   it("skips identical files by SHA-256", async () => {
@@ -418,11 +390,7 @@ describe("migrateWorkspace", () => {
     await fs.writeFile(path.join(targetDir, "workspace", "SOUL.md"), content);
     await fs.writeFile(source.configPath, "{}");
 
-    const result = await migrateWorkspace(
-      source,
-      targetDir,
-      defaultOptions({ overwrite: true }),
-    );
+    const result = await migrateWorkspace(source, targetDir, defaultOptions({ overwrite: true }));
 
     const soulChanges = result.changes.filter((c) => c.target.includes("SOUL.md"));
     expect(soulChanges).toHaveLength(0);
@@ -444,9 +412,9 @@ describe("migrateWorkspace", () => {
     const soulSkipped = result.skipped.filter((s) => s.includes("SOUL.md"));
     expect(soulSkipped).toHaveLength(1);
 
-    await expect(
-      fs.readFile(path.join(targetDir, "workspace", "SOUL.md"), "utf-8"),
-    ).resolves.toBe("# Target");
+    await expect(fs.readFile(path.join(targetDir, "workspace", "SOUL.md"), "utf-8")).resolves.toBe(
+      "# Target",
+    );
   });
 
   it("migrates multi-agent workspaces from agents.list", async () => {
@@ -475,10 +443,7 @@ describe("migrateWorkspace", () => {
     );
     expect(researcherChanges.length).toBeGreaterThanOrEqual(1);
     await expect(
-      fs.readFile(
-        path.join(targetDir, "workspace-researcher", "SOUL.md"),
-        "utf-8",
-      ),
+      fs.readFile(path.join(targetDir, "workspace-researcher", "SOUL.md"), "utf-8"),
     ).resolves.toBe("# Researcher soul");
   });
 
@@ -490,10 +455,7 @@ describe("migrateWorkspace", () => {
     await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
     await fs.mkdir(path.join(sourceDir, "workspace", ".qmd"), { recursive: true });
     await fs.mkdir(path.join(sourceDir, "workspace", ".vectors"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "workspace", "memory.db"),
-      "binary data",
-    );
+    await fs.writeFile(path.join(sourceDir, "workspace", "memory.db"), "binary data");
     await fs.writeFile(source.configPath, "{}");
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
@@ -564,15 +526,9 @@ describe("migrateSkills", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "skills", "weather"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "skills", "weather", "SKILL.md"),
-      "# Source Weather",
-    );
+    await fs.writeFile(path.join(sourceDir, "skills", "weather", "SKILL.md"), "# Source Weather");
     await fs.mkdir(path.join(targetDir, "skills", "weather"), { recursive: true });
-    await fs.writeFile(
-      path.join(targetDir, "skills", "weather", "SKILL.md"),
-      "# Target Weather",
-    );
+    await fs.writeFile(path.join(targetDir, "skills", "weather", "SKILL.md"), "# Target Weather");
 
     const result = await migrateSkills(source, targetDir, defaultOptions());
 
@@ -588,21 +544,11 @@ describe("migrateSkills", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "skills", "weather"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "skills", "weather", "SKILL.md"),
-      "# New Weather",
-    );
+    await fs.writeFile(path.join(sourceDir, "skills", "weather", "SKILL.md"), "# New Weather");
     await fs.mkdir(path.join(targetDir, "skills", "weather"), { recursive: true });
-    await fs.writeFile(
-      path.join(targetDir, "skills", "weather", "SKILL.md"),
-      "# Old Weather",
-    );
+    await fs.writeFile(path.join(targetDir, "skills", "weather", "SKILL.md"), "# Old Weather");
 
-    const result = await migrateSkills(
-      source,
-      targetDir,
-      defaultOptions({ overwrite: true }),
-    );
+    const result = await migrateSkills(source, targetDir, defaultOptions({ overwrite: true }));
 
     const moveChanges = result.changes.filter((c) => c.kind === "move");
     const copyChanges = result.changes.filter((c) => c.kind === "copy");
@@ -621,17 +567,14 @@ describe("migrateSkills", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "skills", "notaskill"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "skills", "notaskill", "README.md"),
-      "Just a readme",
-    );
+    await fs.writeFile(path.join(sourceDir, "skills", "notaskill", "README.md"), "Just a readme");
 
     const result = await migrateSkills(source, targetDir, defaultOptions());
 
     expect(result.changes).toHaveLength(0);
-    await expect(
-      fs.stat(path.join(targetDir, "skills", "notaskill")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.stat(path.join(targetDir, "skills", "notaskill"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("handles dry-run mode", async () => {
@@ -640,22 +583,13 @@ describe("migrateSkills", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "skills", "weather"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "skills", "weather", "SKILL.md"),
-      "# Weather",
-    );
+    await fs.writeFile(path.join(sourceDir, "skills", "weather", "SKILL.md"), "# Weather");
 
-    const result = await migrateSkills(
-      source,
-      targetDir,
-      defaultOptions({ dryRun: true }),
-    );
+    const result = await migrateSkills(source, targetDir, defaultOptions({ dryRun: true }));
 
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]!.detail).toContain("Would copy");
-    await expect(
-      fs.stat(path.join(targetDir, "skills")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.stat(path.join(targetDir, "skills"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
 
@@ -667,7 +601,7 @@ describe("migrateSessions", () => {
     const targetDir = await createTempDir();
     const source = makeSource(sourceDir);
 
-    const sessionData = { "desk": { sessionId: "s1", updatedAt: 100 } };
+    const sessionData = { desk: { sessionId: "s1", updatedAt: 100 } };
     await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "sessions", "sessions.json"),
@@ -702,9 +636,7 @@ describe("migrateSessions", () => {
       }),
     );
 
-    const targetSessionDir = path.join(
-      targetDir, "state", "agents", "main", "sessions",
-    );
+    const targetSessionDir = path.join(targetDir, "state", "agents", "main", "sessions");
     await fs.mkdir(targetSessionDir, { recursive: true });
     await fs.writeFile(
       path.join(targetSessionDir, "sessions.json"),
@@ -714,11 +646,7 @@ describe("migrateSessions", () => {
       }),
     );
 
-    const result = await migrateSessions(
-      source,
-      targetDir,
-      defaultOptions({ overwrite: true }),
-    );
+    const result = await migrateSessions(source, targetDir, defaultOptions({ overwrite: true }));
 
     const mergeChanges = result.changes.filter((c) => c.kind === "merge");
     expect(mergeChanges).toHaveLength(1);
@@ -744,9 +672,7 @@ describe("migrateSessions", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const transcriptChanges = result.changes.filter((c) =>
-      c.detail.includes("transcript"),
-    );
+    const transcriptChanges = result.changes.filter((c) => c.detail.includes("transcript"));
     expect(transcriptChanges).toHaveLength(1);
 
     await expect(
@@ -762,7 +688,7 @@ describe("migrateSessions", () => {
     const targetDir = await createTempDir();
     const source = makeSource(sourceDir);
 
-    const sessionData = { "desk": { sessionId: "s1", updatedAt: 100 } };
+    const sessionData = { desk: { sessionId: "s1", updatedAt: 100 } };
     await fs.mkdir(path.join(sourceDir, "state", "sessions"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "state", "sessions", "sessions.json"),
@@ -797,14 +723,14 @@ describe("migrateSessions", () => {
       }),
     );
 
-    const researcherData = { "r1": { sessionId: "rs1", updatedAt: 50 } };
+    const researcherData = { r1: { sessionId: "rs1", updatedAt: 50 } };
     await fs.mkdir(path.join(sourceDir, "state", "sessions-researcher"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "state", "sessions-researcher", "sessions.json"),
       JSON.stringify(researcherData),
     );
 
-    const coderData = { "c1": { sessionId: "cs1", updatedAt: 80 } };
+    const coderData = { c1: { sessionId: "cs1", updatedAt: 80 } };
     await fs.mkdir(path.join(sourceDir, "state", "sessions-coder"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "state", "sessions-coder", "sessions.json"),
@@ -847,7 +773,7 @@ describe("migrateSessions", () => {
     );
 
     // Default sessions in sessions/
-    const defaultData = { "d1": { sessionId: "ds1", updatedAt: 10 } };
+    const defaultData = { d1: { sessionId: "ds1", updatedAt: 10 } };
     await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "sessions", "sessions.json"),
@@ -855,7 +781,7 @@ describe("migrateSessions", () => {
     );
 
     // Named agent sessions in state/sessions-researcher/
-    const researcherData = { "r1": { sessionId: "rs1", updatedAt: 20 } };
+    const researcherData = { r1: { sessionId: "rs1", updatedAt: 20 } };
     await fs.mkdir(path.join(sourceDir, "state", "sessions-researcher"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "state", "sessions-researcher", "sessions.json"),
@@ -906,9 +832,7 @@ describe("migrateSessions", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const transcriptChanges = result.changes.filter((c) =>
-      c.detail.includes("transcript"),
-    );
+    const transcriptChanges = result.changes.filter((c) => c.detail.includes("transcript"));
     expect(transcriptChanges).toHaveLength(1);
 
     await expect(
@@ -932,15 +856,10 @@ describe("migrateSessions", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const approvalChanges = result.changes.filter((c) =>
-      c.target.includes("exec-approvals"),
-    );
+    const approvalChanges = result.changes.filter((c) => c.target.includes("exec-approvals"));
     expect(approvalChanges).toHaveLength(1);
     await expect(
-      fs.readFile(
-        path.join(targetDir, "state", "exec-approvals.json"),
-        "utf-8",
-      ),
+      fs.readFile(path.join(targetDir, "state", "exec-approvals.json"), "utf-8"),
     ).resolves.toContain("cmd1");
   });
 
@@ -950,16 +869,11 @@ describe("migrateSessions", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "hooks"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "hooks", "on-message.sh"),
-      "#!/bin/bash\necho hello",
-    );
+    await fs.writeFile(path.join(sourceDir, "hooks", "on-message.sh"), "#!/bin/bash\necho hello");
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const hookChanges = result.changes.filter((c) =>
-      c.target.includes("hooks"),
-    );
+    const hookChanges = result.changes.filter((c) => c.target.includes("hooks"));
     expect(hookChanges).toHaveLength(1);
     await expect(
       fs.readFile(path.join(targetDir, "hooks", "on-message.sh"), "utf-8"),
@@ -979,13 +893,9 @@ describe("migrateSessions", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const cronChanges = result.changes.filter((c) =>
-      c.target.includes("cron"),
-    );
+    const cronChanges = result.changes.filter((c) => c.target.includes("cron"));
     expect(cronChanges).toHaveLength(1);
-    expect(result.warnings).toContainEqual(
-      expect.stringContaining("Cron jobs migrated"),
-    );
+    expect(result.warnings).toContainEqual(expect.stringContaining("Cron jobs migrated"));
   });
 
   it("skips credentials without --migrate-secrets", async () => {
@@ -994,17 +904,18 @@ describe("migrateSessions", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "credentials"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "credentials", "api-keys.json"),
-      '{"key":"secret"}',
+    await fs.writeFile(path.join(sourceDir, "credentials", "api-keys.json"), '{"key":"secret"}');
+
+    const result = await migrateSessions(
+      source,
+      targetDir,
+      defaultOptions({ migrateSecrets: false }),
     );
 
-    const result = await migrateSessions(source, targetDir, defaultOptions({ migrateSecrets: false }));
-
     expect(result.skipped).toContainEqual(expect.stringContaining("credentials"));
-    await expect(
-      fs.stat(path.join(targetDir, "credentials")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.stat(path.join(targetDir, "credentials"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("copies credentials with --migrate-secrets", async () => {
@@ -1013,10 +924,7 @@ describe("migrateSessions", () => {
     const source = makeSource(sourceDir);
 
     await fs.mkdir(path.join(sourceDir, "credentials"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "credentials", "api-keys.json"),
-      '{"key":"secret"}',
-    );
+    await fs.writeFile(path.join(sourceDir, "credentials", "api-keys.json"), '{"key":"secret"}');
 
     const result = await migrateSessions(
       source,
@@ -1024,18 +932,11 @@ describe("migrateSessions", () => {
       defaultOptions({ migrateSecrets: true }),
     );
 
-    const credChanges = result.changes.filter((c) =>
-      c.target.includes("credentials"),
-    );
+    const credChanges = result.changes.filter((c) => c.target.includes("credentials"));
     expect(credChanges).toHaveLength(1);
-    expect(result.warnings).toContainEqual(
-      expect.stringContaining("Credentials were migrated"),
-    );
+    expect(result.warnings).toContainEqual(expect.stringContaining("Credentials were migrated"));
     await expect(
-      fs.readFile(
-        path.join(targetDir, "credentials", "api-keys.json"),
-        "utf-8",
-      ),
+      fs.readFile(path.join(targetDir, "credentials", "api-keys.json"), "utf-8"),
     ).resolves.toContain("secret");
   });
 
@@ -1044,10 +945,7 @@ describe("migrateSessions", () => {
     const targetDir = await createTempDir();
     const source = makeSource(sourceDir);
 
-    await fs.writeFile(
-      path.join(sourceDir, ".env"),
-      "ZAI_API_KEY=test-key\n",
-    );
+    await fs.writeFile(path.join(sourceDir, ".env"), "ZAI_API_KEY=test-key\n");
 
     const result = await migrateSessions(
       source,
@@ -1055,16 +953,10 @@ describe("migrateSessions", () => {
       defaultOptions({ migrateSecrets: true }),
     );
 
-    const envChanges = result.changes.filter((c) =>
-      c.target.includes(".env"),
-    );
+    const envChanges = result.changes.filter((c) => c.target.includes(".env"));
     expect(envChanges).toHaveLength(1);
-    expect(result.warnings).toContainEqual(
-      expect.stringContaining(".env"),
-    );
-    await expect(
-      fs.readFile(path.join(targetDir, ".env"), "utf-8"),
-    ).resolves.toContain("test-key");
+    expect(result.warnings).toContainEqual(expect.stringContaining(".env"));
+    await expect(fs.readFile(path.join(targetDir, ".env"), "utf-8")).resolves.toContain("test-key");
   });
 });
 
@@ -1080,15 +972,9 @@ describe("runMigration", () => {
       JSON.stringify({ agent: { model: "gpt-4" } }),
     );
     await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "workspace", "SOUL.md"),
-      "# My soul",
-    );
+    await fs.writeFile(path.join(sourceDir, "workspace", "SOUL.md"), "# My soul");
     await fs.mkdir(path.join(sourceDir, "skills", "weather"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "skills", "weather", "SKILL.md"),
-      "# Weather",
-    );
+    await fs.writeFile(path.join(sourceDir, "skills", "weather", "SKILL.md"), "# Weather");
     await fs.mkdir(path.join(sourceDir, "sessions"), { recursive: true });
     await fs.writeFile(
       path.join(sourceDir, "sessions", "sessions.json"),
@@ -1112,10 +998,7 @@ describe("runMigration", () => {
     const sourceDir = await createTempDir();
     const targetDir = await createTempDir();
 
-    await fs.writeFile(
-      path.join(sourceDir, "openclaw.json"),
-      JSON.stringify({}),
-    );
+    await fs.writeFile(path.join(sourceDir, "openclaw.json"), JSON.stringify({}));
 
     const report = await runMigration({
       dryRun: false,
@@ -1153,10 +1036,7 @@ describe("runMigration", () => {
       JSON.stringify({ agent: { model: "gpt-4" } }),
     );
     await fs.mkdir(path.join(sourceDir, "workspace"), { recursive: true });
-    await fs.writeFile(
-      path.join(sourceDir, "workspace", "SOUL.md"),
-      "# My soul",
-    );
+    await fs.writeFile(path.join(sourceDir, "workspace", "SOUL.md"), "# My soul");
 
     const report = await runMigration({
       dryRun: true,
@@ -1299,12 +1179,12 @@ describe("blacklist workspace migration", () => {
 
     const result = await migrateWorkspace(source, targetDir, defaultOptions());
 
-    await expect(
-      fs.stat(path.join(targetDir, "workspace", ".qmd")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(
-      fs.stat(path.join(targetDir, "workspace", ".vectors")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.stat(path.join(targetDir, "workspace", ".qmd"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(fs.stat(path.join(targetDir, "workspace", ".vectors"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     const memoryChanges = result.changes.filter((c) => c.target.includes("MEMORY.md"));
     expect(memoryChanges.length).toBeGreaterThanOrEqual(1);
   });
@@ -1366,13 +1246,9 @@ describe("runImportMigration", () => {
 
     const source = makeSource(sourceDir);
     const selections = [{ agentId: "main", dataTypes: ["workspace", "memory"] as DataType[] }];
-    const report = await runImportMigration(
-      source,
-      targetDir,
-      defaultOptions(),
-      selections,
-      ["weather"],
-    );
+    const report = await runImportMigration(source, targetDir, defaultOptions(), selections, [
+      "weather",
+    ]);
 
     expect(report.scenario).toBe("import");
     expect(report.totalChanges).toBeGreaterThan(0);
@@ -1394,9 +1270,9 @@ describe("runImportMigration", () => {
     await expect(
       fs.readFile(path.join(targetDir, "skills", "weather", "SKILL.md"), "utf-8"),
     ).resolves.toContain("Weather");
-    await expect(
-      fs.stat(path.join(targetDir, "skills", "github")),
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.stat(path.join(targetDir, "skills", "github"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 });
 
@@ -1445,7 +1321,11 @@ describe("rewriteConfigPaths", () => {
     const config = {
       workspacePath: "~/.openclaw/workspace-researcher",
     };
-    const result = rewriteConfigPaths(config, path.join(os.homedir(), ".openclaw"), path.join(os.homedir(), ".kaijibot"));
+    const result = rewriteConfigPaths(
+      config,
+      path.join(os.homedir(), ".openclaw"),
+      path.join(os.homedir(), ".kaijibot"),
+    );
     expect(result.workspacePath).toBe("~/.kaijibot/workspace-researcher");
   });
 
@@ -1470,7 +1350,11 @@ describe("rewriteConfigPaths", () => {
         ],
       },
     };
-    const result = rewriteConfigPaths(config, path.join(os.homedir(), ".openclaw"), path.join(os.homedir(), ".kaijibot"));
+    const result = rewriteConfigPaths(
+      config,
+      path.join(os.homedir(), ".openclaw"),
+      path.join(os.homedir(), ".kaijibot"),
+    );
     const list = (result.agents as Record<string, unknown>).list as Array<Record<string, unknown>>;
     expect(list[0]!.workspace).toBe("~/.kaijibot/workspace-researcher");
     expect(list[1]!.workspace).toBe("~/.kaijibot/workspace-coder");
@@ -1549,10 +1433,7 @@ describe("migrateConfig multi-agent binding warnings", () => {
       source.configPath,
       JSON.stringify({
         agents: {
-          list: [
-            { id: "researcher" },
-            { id: "coder" },
-          ],
+          list: [{ id: "researcher" }, { id: "coder" }],
         },
       }),
     );
@@ -1562,9 +1443,7 @@ describe("migrateConfig multi-agent binding warnings", () => {
     expect(result.warnings).toContainEqual(
       expect.stringContaining("Multi-agent config migrated but no bindings found"),
     );
-    expect(result.warnings).toContainEqual(
-      expect.stringContaining("bindings are configured"),
-    );
+    expect(result.warnings).toContainEqual(expect.stringContaining("bindings are configured"));
   });
 
   it("does not warn when only 1 agent", async () => {
@@ -1583,9 +1462,7 @@ describe("migrateConfig multi-agent binding warnings", () => {
 
     const result = await migrateConfig(source, targetDir, defaultOptions());
 
-    expect(result.warnings).not.toContainEqual(
-      expect.stringContaining("Multi-agent"),
-    );
+    expect(result.warnings).not.toContainEqual(expect.stringContaining("Multi-agent"));
   });
 
   it("does not warn when bindings exist", async () => {
@@ -1610,9 +1487,7 @@ describe("migrateConfig multi-agent binding warnings", () => {
 
     const result = await migrateConfig(source, targetDir, defaultOptions());
 
-    expect(result.warnings).not.toContainEqual(
-      expect.stringContaining("Multi-agent"),
-    );
+    expect(result.warnings).not.toContainEqual(expect.stringContaining("Multi-agent"));
   });
 
   it("does not warn when no agents.list", async () => {
@@ -1624,9 +1499,7 @@ describe("migrateConfig multi-agent binding warnings", () => {
 
     const result = await migrateConfig(source, targetDir, defaultOptions());
 
-    expect(result.warnings).not.toContainEqual(
-      expect.stringContaining("Multi-agent"),
-    );
+    expect(result.warnings).not.toContainEqual(expect.stringContaining("Multi-agent"));
   });
 });
 
@@ -1730,7 +1603,9 @@ describe("runFreshMigration single workspace migration", () => {
     expect(workspaceResult).toBeDefined();
     const workspaceTargets = workspaceResult!.changes.map((c) => c.target);
     expect(workspaceTargets.some((t) => t.includes("workspace-researcher"))).toBe(true);
-    expect(workspaceTargets.some((t) => t.includes("workspace") && !t.includes("workspace-researcher"))).toBe(true);
+    expect(
+      workspaceTargets.some((t) => t.includes("workspace") && !t.includes("workspace-researcher")),
+    ).toBe(true);
   });
 });
 
@@ -1750,15 +1625,17 @@ describe("migrateSessions archived transcripts", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const archiveChanges = result.changes.filter((c) =>
-      c.target.includes(".reset."),
-    );
+    const archiveChanges = result.changes.filter((c) => c.target.includes(".reset."));
     expect(archiveChanges).toHaveLength(1);
 
     await expect(
       fs.readFile(
         path.join(
-          targetDir, "state", "agents", "main", "sessions",
+          targetDir,
+          "state",
+          "agents",
+          "main",
+          "sessions",
           "sess-main.jsonl.reset.2026-02-16T22-26-33.000Z",
         ),
         "utf-8",
@@ -1779,9 +1656,7 @@ describe("migrateSessions archived transcripts", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const deletedChanges = result.changes.filter((c) =>
-      c.target.includes(".deleted."),
-    );
+    const deletedChanges = result.changes.filter((c) => c.target.includes(".deleted."));
     expect(deletedChanges).toHaveLength(1);
   });
 
@@ -1806,9 +1681,7 @@ describe("migrateSessions archived transcripts", () => {
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const transcriptChanges = result.changes.filter((c) =>
-      c.detail.includes("transcript"),
-    );
+    const transcriptChanges = result.changes.filter((c) => c.detail.includes("transcript"));
     expect(transcriptChanges).toHaveLength(3);
 
     await expect(
@@ -1819,7 +1692,14 @@ describe("migrateSessions archived transcripts", () => {
     ).resolves.toContain("active");
     await expect(
       fs.readFile(
-        path.join(targetDir, "state", "agents", "main", "sessions", "sess-active.jsonl.reset.2026-02-16T22-26-33.000Z"),
+        path.join(
+          targetDir,
+          "state",
+          "agents",
+          "main",
+          "sessions",
+          "sess-active.jsonl.reset.2026-02-16T22-26-33.000Z",
+        ),
         "utf-8",
       ),
     ).resolves.toContain("archived");
@@ -1836,20 +1716,32 @@ describe("migrateSessions archived transcripts", () => {
     );
     await fs.mkdir(path.join(sourceDir, "state", "sessions-researcher"), { recursive: true });
     await fs.writeFile(
-      path.join(sourceDir, "state", "sessions-researcher", "sess-r1.jsonl.reset.2026-05-11T10-30-00.000Z"),
+      path.join(
+        sourceDir,
+        "state",
+        "sessions-researcher",
+        "sess-r1.jsonl.reset.2026-05-11T10-30-00.000Z",
+      ),
       '{"role":"user","content":"research"}\n',
     );
 
     const result = await migrateSessions(source, targetDir, defaultOptions());
 
-    const archiveChanges = result.changes.filter((c) =>
-      c.target.includes(".reset.") && c.target.includes("researcher"),
+    const archiveChanges = result.changes.filter(
+      (c) => c.target.includes(".reset.") && c.target.includes("researcher"),
     );
     expect(archiveChanges).toHaveLength(1);
 
     await expect(
       fs.readFile(
-        path.join(targetDir, "state", "agents", "researcher", "sessions", "sess-r1.jsonl.reset.2026-05-11T10-30-00.000Z"),
+        path.join(
+          targetDir,
+          "state",
+          "agents",
+          "researcher",
+          "sessions",
+          "sess-r1.jsonl.reset.2026-05-11T10-30-00.000Z",
+        ),
         "utf-8",
       ),
     ).resolves.toContain("research");

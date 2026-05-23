@@ -2,9 +2,19 @@ import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi
 import { describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import { generateInsightCandidatesLLM, buildInsightPrompt, buildSurpriseInsightPrompt, buildVoiceSection, extractKeyTerms, buildSearchQuery, matchWebResultsToDomainsLLM, type LlmInsightDeps, type WebSearchResult } from "./llm-engine.js";
-import type { InsightEngineInput, SearchStrategy } from "./types.js";
 import type { InterestInferenceDeps } from "./interest-inference.js";
+import {
+  generateInsightCandidatesLLM,
+  buildInsightPrompt,
+  buildSurpriseInsightPrompt,
+  buildVoiceSection,
+  extractKeyTerms,
+  buildSearchQuery,
+  matchWebResultsToDomainsLLM,
+  type LlmInsightDeps,
+  type WebSearchResult,
+} from "./llm-engine.js";
+import type { InsightEngineInput, SearchStrategy } from "./types.js";
 
 const TEST_MODEL: Model<Api> = {
   id: "test-model",
@@ -237,12 +247,7 @@ describe("generateInsightCandidatesLLM", () => {
       prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
     };
 
-    await generateInsightCandidatesLLM(
-      makePersona(),
-      makeInput(),
-      makeConfig(),
-      deps,
-    );
+    await generateInsightCandidatesLLM(makePersona(), makeInput(), makeConfig(), deps);
 
     expect(capturedPrompt).toContain("typescript");
     expect(capturedPrompt).toContain("rust");
@@ -362,7 +367,11 @@ describe("generateInsightCandidatesLLM", () => {
       complete: async () => assistantMessage(validLLMResponse()),
       prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
       webSearch: async () => [
-        { title: "TypeScript 5.5 Release", url: "https://example.com/ts55", snippet: "New type predicates" },
+        {
+          title: "TypeScript 5.5 Release",
+          url: "https://example.com/ts55",
+          snippet: "New type predicates",
+        },
       ],
     };
 
@@ -458,7 +467,11 @@ describe("buildInsightPrompt — domain alias matching", () => {
     });
     const input = makeInput({ targetDomains: ["TypeScript"] });
     const { prompt } = buildInsightPrompt(persona, input, [
-      { title: "New TC39 decorator metadata", url: "https://example.com", snippet: "Stage 3 decorator proposal" },
+      {
+        title: "New TC39 decorator metadata",
+        url: "https://example.com",
+        snippet: "Stage 3 decorator proposal",
+      },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("Stage 3 decorator proposal");
@@ -479,7 +492,11 @@ describe("buildInsightPrompt — domain alias matching", () => {
     });
     const input = makeInput({ targetDomains: ["TypeScript"] });
     const { prompt } = buildInsightPrompt(persona, input, [
-      { title: "TypeScript 5.5 Release", url: "https://example.com", snippet: "New type predicates" },
+      {
+        title: "TypeScript 5.5 Release",
+        url: "https://example.com",
+        snippet: "New type predicates",
+      },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("New type predicates");
@@ -500,7 +517,11 @@ describe("buildInsightPrompt — domain alias matching", () => {
     });
     const input = makeInput({ targetDomains: ["MCP"] });
     const { prompt } = buildInsightPrompt(persona, input, [
-      { title: "Model Context Protocol spec v2", url: "https://example.com", snippet: "MCP spec updated" },
+      {
+        title: "Model Context Protocol spec v2",
+        url: "https://example.com",
+        snippet: "MCP spec updated",
+      },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
   });
@@ -572,7 +593,9 @@ describe("extractKeyTerms", () => {
   it("handles English technical terms", () => {
     const terms = extractKeyTerms("How to optimize React server components");
     expect(terms.length).toBeGreaterThanOrEqual(1);
-    expect(terms.some((t) => t.toLowerCase().includes("react") || t.toLowerCase().includes("server"))).toBe(true);
+    expect(
+      terms.some((t) => t.toLowerCase().includes("react") || t.toLowerCase().includes("server")),
+    ).toBe(true);
   });
 });
 
@@ -618,7 +641,11 @@ describe("buildSearchQuery", () => {
   it("caps query at 120 characters", () => {
     const input = makeInput({
       targetDomains: ["domain"],
-      recentFocus: ["这是一个非常非常长的搜索查询包含了很多关键词和描述性文字希望能够超过一百二十个字符的限制以便测试截断功能是否正常工作呀".repeat(3)],
+      recentFocus: [
+        "这是一个非常非常长的搜索查询包含了很多关键词和描述性文字希望能够超过一百二十个字符的限制以便测试截断功能是否正常工作呀".repeat(
+          3,
+        ),
+      ],
     });
     const query = buildSearchQuery(input);
     expect(query.length).toBeLessThanOrEqual(120);
@@ -733,11 +760,13 @@ const TEST_STRATEGY: SearchStrategy = {
 
 describe("buildSurpriseInsightPrompt", () => {
   it("includes INFERRED LATENT INTEREST section with strategy fields", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
 
     expect(prompt).toContain("INFERRED LATENT INTEREST");
     expect(prompt).toContain("eBPF distributed tracing");
@@ -746,11 +775,13 @@ describe("buildSurpriseInsightPrompt", () => {
   });
 
   it("includes SPECIFIC FACTS and anchor block", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
 
     expect(prompt).toContain("SPECIFIC FACTS YOU KNOW ABOUT THIS USER");
     expect(prompt).toContain("type narrowing");
@@ -759,57 +790,71 @@ describe("buildSurpriseInsightPrompt", () => {
 
   it("includes EXTERNAL_FACTS when web results exist", () => {
     const webResults: WebSearchResult[] = [
-      { title: "eBPF Tracing Guide", url: "https://example.com/ebpf", snippet: "Rust-based eBPF distributed tracing" },
+      {
+        title: "eBPF Tracing Guide",
+        url: "https://example.com/ebpf",
+        snippet: "Rust-based eBPF distributed tracing",
+      },
     ];
 
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    webResults,
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      webResults,
+      [],
+      TEST_STRATEGY,
+    );
 
     expect(prompt).toContain("EXTERNAL_FACTS");
     expect(prompt).toContain("Rust-based eBPF distributed tracing");
   });
 
   it("includes language instruction for Chinese by default", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
 
     expect(prompt).toContain("用中文输出。");
   });
 
   it("includes English language instruction when outputLanguage is 'en'", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,
-    "en",);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+      "en",
+    );
 
     expect(prompt).toContain("Output in English.");
   });
 
   it("includes PAST INSIGHTS when recentInsightContents provided", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    ["Rust的所有权模型在并发场景下有独特的优势", "TypeScript 5.5新增了类型推断的改进"],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      ["Rust的所有权模型在并发场景下有独特的优势", "TypeScript 5.5新增了类型推断的改进"],
+      TEST_STRATEGY,
+    );
 
     expect(prompt).toContain("PAST INSIGHTS");
     expect(prompt).toContain("Rust的所有权模型在并发场景下有独特的优势");
   });
 
   it("includes opening bans from recent insight contents", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    ["最近发现了一个有趣的技术", "你有没有想过eBPF"],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      ["最近发现了一个有趣的技术", "你有没有想过eBPF"],
+      TEST_STRATEGY,
+    );
 
     expect(prompt).toContain("不要以");
   });
@@ -907,26 +952,38 @@ describe("generateInsightCandidatesLLM — surprise mode", () => {
 
 describe("parseLLMInsights robust parsing", () => {
   it("extracts JSON array from text with leading prose", async () => {
-    const raw = 'Here are the insights:\n[{"content":"TypeScript和Rust的内存管理模型有深刻的设计共鸣","rationale":"跨域连接","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const raw =
+      'Here are the insights:\n[{"content":"TypeScript和Rust的内存管理模型有深刻的设计共鸣","rationale":"跨域连接","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.7}]';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("TypeScript");
   });
 
   it("extracts JSON array from text with trailing prose", async () => {
-    const raw = '[{"content":"Rust的所有权模型和TypeScript的类型体操有有趣的共鸣","rationale":"跨域","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.6}]\n\nHope this helps!';
+    const raw =
+      '[{"content":"Rust的所有权模型和TypeScript的类型体操有有趣的共鸣","rationale":"跨域","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.6}]\n\nHope this helps!';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 
   it("handles trailing comma before closing bracket", async () => {
-    const raw = '[{"content":"TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象","rationale":"test","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.6},]';
+    const raw =
+      '[{"content":"TypeScript的类型系统和Rust的所有权模型都体现了零成本抽象","rationale":"test","targetDomains":["typescript"],"sourceDomains":["rust"],"relevanceScore":0.8,"surpriseScore":0.6},]';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
@@ -934,23 +991,33 @@ describe("parseLLMInsights robust parsing", () => {
   it("returns empty for completely unparseable input", async () => {
     const raw = "This is just plain text with no JSON at all.";
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result).toEqual([]);
   });
 
   it("still parses valid JSON correctly (regression)", async () => {
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(validLLMResponse()),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(validLLMResponse()),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("TypeScript");
   });
 
   it("handles Chinese curly quotes in content (existing repair)", async () => {
-    const raw = '[{"content":"他说\u201c你好\u201d吗，这个方向值得深入研究","rationale":"test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const raw =
+      '[{"content":"他说\u201c你好\u201d吗，这个方向值得深入研究","rationale":"test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("他说");
@@ -958,27 +1025,39 @@ describe("parseLLMInsights robust parsing", () => {
 
   it("handles unescaped ASCII inner quotes via aggressive repair", async () => {
     // Construct the string with raw unescaped quotes inside the content value
-    const raw = '[{"content":"他说"你好"吗，这个方向值得深入研究","rationale":"test rationale","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const raw =
+      '[{"content":"他说"你好"吗，这个方向值得深入研究","rationale":"test rationale","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("他说");
   });
 
   it("handles properly escaped quotes (regression)", async () => {
-    const raw = '[{"content":"他说\\\"你好\\\"吗，这个方向值得深入研究","rationale":"test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const raw =
+      '[{"content":"他说\\\"你好\\\"吗，这个方向值得深入研究","rationale":"test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("他说");
   });
 
   it("handles multiple inner ASCII quotes across fields", async () => {
-    const raw = '[{"content":"A说"B"和C说"D"都有道理","rationale":"multi-quote test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
+    const raw =
+      '[{"content":"A说"B"和C说"D"都有道理","rationale":"multi-quote test","targetDomains":["AI"],"sourceDomains":[],"relevanceScore":0.8,"surpriseScore":0.7}]';
     const result = await generateInsightCandidatesLLM(
-      makePersona(), makeInput(), makeConfig(), successDeps(raw),
+      makePersona(),
+      makeInput(),
+      makeConfig(),
+      successDeps(raw),
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result[0]!.content).toContain("A说");
@@ -1025,7 +1104,11 @@ describe("buildInsightPrompt — bigram similarity matching", () => {
     });
     const input = makeInput({ targetDomains: ["artificialintelligence"] });
     const { prompt } = buildInsightPrompt(persona, input, [
-      { title: "New breakthroughs in artificial intelligence", url: "https://example.com", snippet: "AI research advances" },
+      {
+        title: "New breakthroughs in artificial intelligence",
+        url: "https://example.com",
+        snippet: "AI research advances",
+      },
     ] as WebSearchResult[]);
     expect(prompt).toContain("EXTERNAL_FACTS");
   });
@@ -1195,7 +1278,10 @@ describe("buildSearchQuery — query diversification", () => {
     });
     const q0 = buildSearchQuery({ ...base, recentQueryHistory: [] });
     const q1 = buildSearchQuery({ ...base, recentQueryHistory: ["kubernetes 最新进展"] });
-    const q2 = buildSearchQuery({ ...base, recentQueryHistory: ["kubernetes 最新进展", "kubernetes 实践案例"] });
+    const q2 = buildSearchQuery({
+      ...base,
+      recentQueryHistory: ["kubernetes 最新进展", "kubernetes 实践案例"],
+    });
 
     const suffixes = ["最新进展", "实践案例", "最佳实践", "技术趋势", "新方向"];
     const hasSuffix = (q: string) => suffixes.some((s) => q.includes(s));
@@ -1216,7 +1302,10 @@ describe("buildSearchQuery — query diversification", () => {
     });
 
     const queries = Array.from({ length: 5 }, (_, i) =>
-      buildSearchQuery({ ...base, recentQueryHistory: Array.from({ length: i }, (_, j) => `query ${j}`) })
+      buildSearchQuery({
+        ...base,
+        recentQueryHistory: Array.from({ length: i }, (_, j) => `query ${j}`),
+      }),
     );
 
     const suffixes = ["最新进展", "实践案例", "最佳实践", "技术趋势", "新方向"];
@@ -1294,9 +1383,15 @@ describe("buildSearchQuery — query diversification", () => {
     const suffixes = ["最新进展", "实践案例", "最佳实践", "技术趋势", "新方向"];
     const collected: string[] = [];
     for (let i = 0; i < 5; i++) {
-      const q = buildSearchQuery({ ...base, recentQueryHistory: Array.from({ length: i }, (_, j) => `q${j}`) });
+      const q = buildSearchQuery({
+        ...base,
+        recentQueryHistory: Array.from({ length: i }, (_, j) => `q${j}`),
+      });
       for (const s of suffixes) {
-        if (q.includes(s)) { collected.push(s); break; }
+        if (q.includes(s)) {
+          collected.push(s);
+          break;
+        }
       }
     }
     expect(collected).toEqual(suffixes);
@@ -1395,29 +1490,35 @@ describe("generateInsightCandidatesLLM — domain force-alignment", () => {
 
 describe("buildInsightPrompt — TARGET DOMAINS constraint", () => {
   it("includes TARGET DOMAINS section with input targetDomains", () => {
-    const { prompt } = buildInsightPrompt(makePersona(),
-    makeInput({ targetDomains: ["软件架构", "网络安全"] }),
-    [],
-    [],);
+    const { prompt } = buildInsightPrompt(
+      makePersona(),
+      makeInput({ targetDomains: ["软件架构", "网络安全"] }),
+      [],
+      [],
+    );
     expect(prompt).toContain("TARGET DOMAINS");
     expect(prompt).toContain("软件架构");
     expect(prompt).toContain("网络安全");
   });
 
   it("includes domain alignment requirement in hard constraints", () => {
-    const { prompt } = buildInsightPrompt(makePersona(),
-    makeInput({ targetDomains: ["编程语言"] }),
-    [],
-    [],);
+    const { prompt } = buildInsightPrompt(
+      makePersona(),
+      makeInput({ targetDomains: ["编程语言"] }),
+      [],
+      [],
+    );
     expect(prompt).toContain("TARGET DOMAINS");
     expect(prompt).toContain("targetDomains字段必须包含这些域");
   });
 
   it("includes CRITICAL domain constraint in JSON schema section", () => {
-    const { prompt } = buildInsightPrompt(makePersona(),
-    makeInput({ targetDomains: ["数据科学"] }),
-    [],
-    [],);
+    const { prompt } = buildInsightPrompt(
+      makePersona(),
+      makeInput({ targetDomains: ["数据科学"] }),
+      [],
+      [],
+    );
     expect(prompt).toContain("targetDomains MUST include at least one of: 数据科学");
   });
 });
@@ -1448,8 +1549,16 @@ describe("buildInsightPrompt — targetDomains in keyword map", () => {
 describe("matchWebResultsToDomainsLLM", () => {
   it("classifies web results to domains via LLM", async () => {
     const webResults: WebSearchResult[] = [
-      { title: "Rust ownership model explained", url: "https://example.com/1", snippet: "Understanding how Rust's borrow checker ensures memory safety" },
-      { title: "TypeScript 5.0 features", url: "https://example.com/2", snippet: "New type system features in TypeScript" },
+      {
+        title: "Rust ownership model explained",
+        url: "https://example.com/1",
+        snippet: "Understanding how Rust's borrow checker ensures memory safety",
+      },
+      {
+        title: "TypeScript 5.0 features",
+        url: "https://example.com/2",
+        snippet: "New type system features in TypeScript",
+      },
     ];
     const mockComplete = vi.fn().mockResolvedValue({
       content: [{ type: "text", text: '{"1": ["rust"], "2": ["typescript"]}' }],
@@ -1458,21 +1567,35 @@ describe("matchWebResultsToDomainsLLM", () => {
       complete: mockComplete,
       prepareModel: vi.fn().mockResolvedValue({ model: TEST_MODEL, auth: TEST_AUTH }),
     };
-    const result = await matchWebResultsToDomainsLLM(webResults, makePersona(), {} as KaijiBotConfig, deps);
+    const result = await matchWebResultsToDomainsLLM(
+      webResults,
+      makePersona(),
+      {} as KaijiBotConfig,
+      deps,
+    );
     expect(result.has("rust")).toBe(true);
     expect(result.has("typescript")).toBe(true);
   });
 
   it("falls back to keyword matching on LLM failure", async () => {
     const webResults: WebSearchResult[] = [
-      { title: "TypeScript tricks", url: "https://example.com/1", snippet: "Advanced TypeScript patterns" },
+      {
+        title: "TypeScript tricks",
+        url: "https://example.com/1",
+        snippet: "Advanced TypeScript patterns",
+      },
     ];
     const mockComplete = vi.fn().mockRejectedValue(new Error("LLM unavailable"));
     const deps: LlmInsightDeps = {
       complete: mockComplete,
       prepareModel: vi.fn().mockResolvedValue({ model: TEST_MODEL, auth: TEST_AUTH }),
     };
-    const result = await matchWebResultsToDomainsLLM(webResults, makePersona(), {} as KaijiBotConfig, deps);
+    const result = await matchWebResultsToDomainsLLM(
+      webResults,
+      makePersona(),
+      {} as KaijiBotConfig,
+      deps,
+    );
     expect(result).toBeDefined();
     expect(result instanceof Map).toBe(true);
   });
@@ -1497,7 +1620,12 @@ describe("buildVoiceSection", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "casual",
+          verbosity: "concise",
+          technicalLevel: "expert",
+          preferredLanguage: "zh",
+        },
       },
     });
     const section = buildVoiceSection(persona);
@@ -1509,7 +1637,12 @@ describe("buildVoiceSection", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "beginner", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "formal",
+          verbosity: "detailed",
+          technicalLevel: "beginner",
+          preferredLanguage: "zh",
+        },
       },
     });
     const section = buildVoiceSection(persona);
@@ -1521,7 +1654,12 @@ describe("buildVoiceSection", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "casual",
+          verbosity: "concise",
+          technicalLevel: "expert",
+          preferredLanguage: "zh",
+        },
       },
     });
     const section = buildVoiceSection(persona);
@@ -1533,7 +1671,12 @@ describe("buildVoiceSection", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "mixed", verbosity: "moderate", technicalLevel: "beginner", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "mixed",
+          verbosity: "moderate",
+          technicalLevel: "beginner",
+          preferredLanguage: "zh",
+        },
       },
     });
     const section = buildVoiceSection(persona);
@@ -1545,7 +1688,12 @@ describe("buildVoiceSection", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "casual",
+          verbosity: "concise",
+          technicalLevel: "expert",
+          preferredLanguage: "zh",
+        },
       },
     });
     const section = buildVoiceSection(persona);
@@ -1557,7 +1705,12 @@ describe("buildVoiceSection", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "intermediate", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "formal",
+          verbosity: "detailed",
+          technicalLevel: "intermediate",
+          preferredLanguage: "zh",
+        },
       },
     });
     const section = buildVoiceSection(persona);
@@ -1566,7 +1719,9 @@ describe("buildVoiceSection", () => {
   });
 
   it("uses 'the user' when no displayName", () => {
-    const persona = makePersona({ identity: { ...makePersona().identity, displayName: undefined } });
+    const persona = makePersona({
+      identity: { ...makePersona().identity, displayName: undefined },
+    });
     const section = buildVoiceSection(persona);
     expect(section).toContain("the user");
   });
@@ -1583,7 +1738,12 @@ describe("buildInsightPrompt — communicationStyle", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "casual", verbosity: "concise", technicalLevel: "expert", preferredLanguage: "zh" },
+        communicationStyle: {
+          formality: "casual",
+          verbosity: "concise",
+          technicalLevel: "expert",
+          preferredLanguage: "zh",
+        },
       },
     });
     const { prompt } = buildInsightPrompt(persona, makeInput());
@@ -1611,36 +1771,35 @@ describe("buildSurpriseInsightPrompt — communicationStyle", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
-        communicationStyle: { formality: "formal", verbosity: "detailed", technicalLevel: "beginner", preferredLanguage: "en" },
+        communicationStyle: {
+          formality: "formal",
+          verbosity: "detailed",
+          technicalLevel: "beginner",
+          preferredLanguage: "en",
+        },
       },
     });
-    const { prompt } = buildSurpriseInsightPrompt(persona,
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(persona, makeInput(), [], [], TEST_STRATEGY);
     expect(prompt).toContain("professional but warm");
     expect(prompt).toContain("2-3 sentences");
     expect(prompt).toContain("Avoid jargon");
   });
 
   it("includes few-shot examples in surprise prompt", () => {
-    const { prompt } = buildSurpriseInsightPrompt(makePersona(),
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
     expect(prompt).toContain("EXAMPLES of ideal insights");
     expect(prompt).toContain("Context:");
   });
 
   it("has voice section at top of surprise prompt", () => {
     const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Bob" } });
-    const { prompt } = buildSurpriseInsightPrompt(persona,
-    makeInput(),
-    [],
-    [],
-    TEST_STRATEGY,);
+    const { prompt } = buildSurpriseInsightPrompt(persona, makeInput(), [], [], TEST_STRATEGY);
     const firstLine = prompt.split("\n")[0]!;
     expect(firstLine).toContain("Bob");
   });

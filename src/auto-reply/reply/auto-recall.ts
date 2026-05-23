@@ -1,6 +1,6 @@
 import type { PersonaTree } from "../../cognitive/types.js";
-import type { MemorySearchResult } from "../../memory-host-sdk/host/types.js";
 import type { KaijiBotConfig } from "../../config/config.js";
+import type { MemorySearchResult } from "../../memory-host-sdk/host/types.js";
 
 export interface AutoRecallOptions {
   cfg: KaijiBotConfig;
@@ -12,10 +12,13 @@ export interface AutoRecallOptions {
 }
 
 export interface AutoRecallSearchFn {
-  (query: string, opts: {
-    maxResults?: number;
-    minScore?: number;
-  }): Promise<MemorySearchResult[]>;
+  (
+    query: string,
+    opts: {
+      maxResults?: number;
+      minScore?: number;
+    },
+  ): Promise<MemorySearchResult[]>;
 }
 
 export interface AutoRecallDeps {
@@ -38,9 +41,7 @@ function formatSnippet(result: MemorySearchResult): string {
   }
   const source = result.path;
   const lineRange =
-    result.startLine && result.endLine
-      ? `:${result.startLine}-${result.endLine}`
-      : "";
+    result.startLine && result.endLine ? `:${result.startLine}-${result.endLine}` : "";
   lines.push(`Source: ${source}${lineRange}`);
   return lines.join("\n");
 }
@@ -48,10 +49,7 @@ function formatSnippet(result: MemorySearchResult): string {
 /**
  * Format search results for a single topic.
  */
-function formatTopicResults(
-  topic: string,
-  results: MemorySearchResult[],
-): string {
+function formatTopicResults(topic: string, results: MemorySearchResult[]): string {
   if (results.length === 0) return "";
   const snippets = results.map((r) => formatSnippet(r)).join("\n\n");
   return `### ${topic}\n${snippets}`;
@@ -75,9 +73,7 @@ export async function buildAutoRecallContext(
   const maxResults = opts.maxResults ?? DEFAULT_MAX_RESULTS;
   const maxChars = opts.maxChars ?? DEFAULT_MAX_CHARS;
 
-  const persona = deps?.loadPersona
-    ? await deps.loadPersona()
-    : opts.persona;
+  const persona = deps?.loadPersona ? await deps.loadPersona() : opts.persona;
 
   if (!persona?.recentFocus?.length) return "";
 
@@ -90,9 +86,7 @@ export async function buildAutoRecallContext(
     searchFn = deps.searchMemory;
   } else {
     try {
-      const { getActiveMemorySearchManager } = await import(
-        "../../plugins/memory-runtime.js"
-      );
+      const { getActiveMemorySearchManager } = await import("../../plugins/memory-runtime.js");
       const { manager } = await getActiveMemorySearchManager({
         cfg: opts.cfg,
         agentId: opts.agentId,

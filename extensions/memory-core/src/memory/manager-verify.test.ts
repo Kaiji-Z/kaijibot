@@ -33,9 +33,7 @@ describe("applyVerification (post-search verification hook)", () => {
     return dir;
   }
 
-  async function createWorkspaceWithFiles(
-    files: Map<string, string>,
-  ): Promise<string> {
+  async function createWorkspaceWithFiles(files: Map<string, string>): Promise<string> {
     const dir = await createTmpDir();
     for (const [relPath, content] of files) {
       const fullPath = path.join(dir, relPath);
@@ -45,9 +43,7 @@ describe("applyVerification (post-search verification hook)", () => {
     return dir;
   }
 
-  function makeResults(
-    overrides: Partial<MemorySearchResult>[] = [],
-  ): MemorySearchResult[] {
+  function makeResults(overrides: Partial<MemorySearchResult>[] = []): MemorySearchResult[] {
     return overrides.map((o) => ({
       path: o.path ?? "notes.md",
       startLine: o.startLine ?? 1,
@@ -78,9 +74,8 @@ describe("applyVerification (post-search verification hook)", () => {
       },
     };
 
-    const method = (
-      MemoryIndexManager.prototype as unknown as Record<string, unknown>
-    ).applyVerification as (
+    const method = (MemoryIndexManager.prototype as unknown as Record<string, unknown>)
+      .applyVerification as (
       this: ManagerLike,
       results: MemorySearchResult[],
     ) => Promise<MemorySearchResult[]>;

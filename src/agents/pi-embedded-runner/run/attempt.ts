@@ -1801,13 +1801,18 @@ export async function runEmbeddedAttempt(
               if (msg.role === "assistant") {
                 const usage = (msg as { usage?: Record<string, unknown> }).usage;
                 const stopReason = (msg as { stopReason?: string }).stopReason;
-                if (usage && typeof usage === "object" && stopReason !== "aborted" && stopReason !== "error") {
+                if (
+                  usage &&
+                  typeof usage === "object" &&
+                  stopReason !== "aborted" &&
+                  stopReason !== "error"
+                ) {
                   const input = typeof usage.input === "number" ? usage.input : 0;
                   const output = typeof usage.output === "number" ? usage.output : 0;
                   const cacheRead = typeof usage.cacheRead === "number" ? usage.cacheRead : 0;
                   const cacheWrite = typeof usage.cacheWrite === "number" ? usage.cacheWrite : 0;
                   const total = typeof usage.totalTokens === "number" ? usage.totalTokens : 0;
-                  lastUsageTokens = total || (input + output + cacheRead + cacheWrite);
+                  lastUsageTokens = total || input + output + cacheRead + cacheWrite;
                   break;
                 }
               }
@@ -2185,98 +2190,128 @@ export async function runEmbeddedAttempt(
         // Cognitive layer: fire-and-forget persona extraction (must not block response).
         // Only extract from genuine user-initiated turns — heartbeat, cron, memory,
         // and overflow turns contain system-internal content that pollutes the persona.
-        if (!aborted && !promptError && params.sessionKey && (params.trigger === "user" || params.trigger === "manual")) {
+        if (
+          !aborted &&
+          !promptError &&
+          params.sessionKey &&
+          (params.trigger === "user" || params.trigger === "manual")
+        ) {
           const turnSnapshot = messagesSnapshot.slice(prePromptMessageCount);
           const senderId = params.senderId;
           const sessionKey = params.sessionKey;
           const agentId = params.agentId ?? "main";
 
           // Fire-and-forget: cognitive layer must not block the response
-          Promise.resolve().then(async () => {
-            try {
-              const { extractFromMessageLLM, createDefaultDeps } = await import("../../../cognitive/persona/llm-extractor.js");
-              const { PersonaStore } = await import("../../../cognitive/persona/store.js");
-              const { mergeExtraction, prunePersona } = await import("../../../cognitive/persona/curator.js");
-              const { resolveConfigDir } = await import("../../../utils.js");
-              const { extractImplicitSignals, processImplicitFeedback, inferTopicFromContext } = await import("../../../cognitive/feedback/collector.js");
-
-              const configDir = resolveConfigDir();
-              const store = new PersonaStore(configDir);
-              // TUI/admin sessions have no senderId → skip persona extraction entirely
-              const userId = senderId;
-              if (!userId) return;
-
-              const extractText = (content: unknown): string => {
-                if (typeof content === "string") return content;
-                if (!Array.isArray(content)) return "";
-                return content
-                  .filter((p): p is { type: string; text: string } =>
-                    p && typeof p === "object" && typeof p.text === "string" &&
-                    (p.type === "text" || p.type === "output_text" || p.type === "input_text"))
-                  .map((p) => p.text)
-                  .join(" ");
-              };
-
-              const userText = turnSnapshot
-                .filter((m) => m.role === "user")
-                .map((m) => extractText((m as unknown as Record<string, unknown>).content))
-                .join(" ")
-                .slice(-2000);
-              const assistantText = turnSnapshot
-                .filter((m) => m.role === "assistant")
-                .map((m) => extractText((m as unknown as Record<string, unknown>).content))
-                .join(" ")
-                .slice(-2000);
-
-              const persona = await store.loadOrCreate(agentId, userId);
-              const deps = createDefaultDeps();
-              if (!params.config) return;
-              const extraction = await extractFromMessageLLM(userText, assistantText, persona, params.config, deps);
-              const merged = mergeExtraction(persona, extraction);
-              const pruned = prunePersona(merged);
-
-              const topic = inferTopicFromContext(pruned, extraction, userText);
-              const previousTopics = pruned.recentFocus;
-              const signals = extractImplicitSignals(userText, undefined, topic, previousTopics);
-              const feedbackUpdated = processImplicitFeedback(pruned, signals);
-              await store.save(agentId, userId, feedbackUpdated);
-
+          Promise.resolve()
+            .then(async () => {
               try {
-                log.info(`fragment diag: entering collectFragments block`, {
-                  userId,
-                  userTextLen: userText.length,
-                  assistantTextLen: assistantText.length,
-                  configExists: !!params.config,
-                });
-                const { collectFragments, createDefaultFragmentCollectorDeps } = await import("../../../cognitive/insight/fragment-collector.js");
-                const { FragmentStore } = await import("../../../cognitive/insight/fragment-store.js");
+                const { extractFromMessageLLM, createDefaultDeps } =
+                  await import("../../../cognitive/persona/llm-extractor.js");
+                const { PersonaStore } = await import("../../../cognitive/persona/store.js");
+                const { mergeExtraction, prunePersona } =
+                  await import("../../../cognitive/persona/curator.js");
+                const { resolveConfigDir } = await import("../../../utils.js");
+                const { extractImplicitSignals, processImplicitFeedback, inferTopicFromContext } =
+                  await import("../../../cognitive/feedback/collector.js");
 
-                log.info(`fragment diag: imports resolved`, { userId });
+                const configDir = resolveConfigDir();
+                const store = new PersonaStore(configDir);
+                // TUI/admin sessions have no senderId → skip persona extraction entirely
+                const userId = senderId;
+                if (!userId) return;
 
-                const fragStore = new FragmentStore(configDir);
-                const fragDeps = createDefaultFragmentCollectorDeps();
-                const newFragments = await collectFragments(
-                  userText, assistantText, feedbackUpdated, params.config, fragDeps,
+                const extractText = (content: unknown): string => {
+                  if (typeof content === "string") return content;
+                  if (!Array.isArray(content)) return "";
+                  return content
+                    .filter(
+                      (p): p is { type: string; text: string } =>
+                        p &&
+                        typeof p === "object" &&
+                        typeof p.text === "string" &&
+                        (p.type === "text" || p.type === "output_text" || p.type === "input_text"),
+                    )
+                    .map((p) => p.text)
+                    .join(" ");
+                };
+
+                const userText = turnSnapshot
+                  .filter((m) => m.role === "user")
+                  .map((m) => extractText((m as unknown as Record<string, unknown>).content))
+                  .join(" ")
+                  .slice(-2000);
+                const assistantText = turnSnapshot
+                  .filter((m) => m.role === "assistant")
+                  .map((m) => extractText((m as unknown as Record<string, unknown>).content))
+                  .join(" ")
+                  .slice(-2000);
+
+                const persona = await store.loadOrCreate(agentId, userId);
+                const deps = createDefaultDeps();
+                if (!params.config) return;
+                const extraction = await extractFromMessageLLM(
+                  userText,
+                  assistantText,
+                  persona,
+                  params.config,
+                  deps,
                 );
-                log.info(`fragment diag: collectFragments returned`, { userId, count: newFragments.length });
-                for (const frag of newFragments) {
-                  frag.userId = userId;
-                  await fragStore.addFragment(agentId, userId, frag);
+                const merged = mergeExtraction(persona, extraction);
+                const pruned = prunePersona(merged);
+
+                const topic = inferTopicFromContext(pruned, extraction, userText);
+                const previousTopics = pruned.recentFocus;
+                const signals = extractImplicitSignals(userText, undefined, topic, previousTopics);
+                const feedbackUpdated = processImplicitFeedback(pruned, signals);
+                await store.save(agentId, userId, feedbackUpdated);
+
+                try {
+                  log.info(`fragment diag: entering collectFragments block`, {
+                    userId,
+                    userTextLen: userText.length,
+                    assistantTextLen: assistantText.length,
+                    configExists: !!params.config,
+                  });
+                  const { collectFragments, createDefaultFragmentCollectorDeps } =
+                    await import("../../../cognitive/insight/fragment-collector.js");
+                  const { FragmentStore } =
+                    await import("../../../cognitive/insight/fragment-store.js");
+
+                  log.info(`fragment diag: imports resolved`, { userId });
+
+                  const fragStore = new FragmentStore(configDir);
+                  const fragDeps = createDefaultFragmentCollectorDeps();
+                  const newFragments = await collectFragments(
+                    userText,
+                    assistantText,
+                    feedbackUpdated,
+                    params.config,
+                    fragDeps,
+                  );
+                  log.info(`fragment diag: collectFragments returned`, {
+                    userId,
+                    count: newFragments.length,
+                  });
+                  for (const frag of newFragments) {
+                    frag.userId = userId;
+                    await fragStore.addFragment(agentId, userId, frag);
+                  }
+                } catch (fragErr) {
+                  const isFragTimeout =
+                    fragErr instanceof DOMException && fragErr.name === "TimeoutError";
+                  if (isFragTimeout) {
+                    log.warn(`fragment collection timed out, skipping`);
+                  } else {
+                    log.error(`fragment collection failed: ${String(fragErr)}`);
+                  }
                 }
-              } catch (fragErr) {
-                const isFragTimeout = fragErr instanceof DOMException && fragErr.name === "TimeoutError";
-                if (isFragTimeout) {
-                  log.warn(`fragment collection timed out, skipping`);
-                } else {
-                  log.error(`fragment collection failed: ${String(fragErr)}`);
-                }
+              } catch (err) {
+                log.warn(`cognitive write-path skipped: ${String(err)}`);
               }
-            } catch (err) {
+            })
+            .catch((err) => {
               log.warn(`cognitive write-path skipped: ${String(err)}`);
-            }
-          }).catch((err) => {
-            log.warn(`cognitive write-path skipped: ${String(err)}`);
-          });
+            });
         }
       } finally {
         clearTimeout(abortTimer);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { banditWeightedSelect, selectMode } from "./mode-selection.js";
 import type { TopicBandit } from "../types.js";
 import type { ContentStrategyHint } from "./content-strategy.js";
+import { banditWeightedSelect, selectMode } from "./mode-selection.js";
 
 describe("banditWeightedSelect", () => {
   it("returns the only candidate when single", () => {
@@ -25,16 +25,8 @@ describe("banditWeightedSelect", () => {
       pattern: { alpha: 3, beta: 2 },
       surprise: { alpha: 2, beta: 1 },
     };
-    const r1 = banditWeightedSelect(
-      ["pattern", "surprise", "extend"],
-      bandits,
-      1234,
-    );
-    const r2 = banditWeightedSelect(
-      ["pattern", "surprise", "extend"],
-      bandits,
-      1234,
-    );
+    const r1 = banditWeightedSelect(["pattern", "surprise", "extend"], bandits, 1234);
+    const r2 = banditWeightedSelect(["pattern", "surprise", "extend"], bandits, 1234);
     expect(r1).toBe(r2);
   });
 
@@ -47,9 +39,7 @@ describe("banditWeightedSelect", () => {
     };
     // Seeds must span full 0-9999 range: roll = (seed % 10000) / 10000
     for (let seed = 0; seed < 10000; seed += 100) {
-      results.add(
-        banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed),
-      );
+      results.add(banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed));
     }
     expect(results.size).toBeGreaterThanOrEqual(2);
   });
@@ -62,10 +52,7 @@ describe("banditWeightedSelect", () => {
     let surpriseCount = 0;
     const n = 10000;
     for (let seed = 0; seed < n; seed++) {
-      if (
-        banditWeightedSelect(["surprise", "extend"], bandits, seed) ===
-        "surprise"
-      ) {
+      if (banditWeightedSelect(["surprise", "extend"], bandits, seed) === "surprise") {
         surpriseCount++;
       }
     }
@@ -76,11 +63,7 @@ describe("banditWeightedSelect", () => {
     const counts = { pattern: 0, surprise: 0, extend: 0 };
     const n = 10000;
     for (let seed = 0; seed < n; seed++) {
-      const r = banditWeightedSelect(
-        ["pattern", "surprise", "extend"],
-        undefined,
-        seed,
-      );
+      const r = banditWeightedSelect(["pattern", "surprise", "extend"], undefined, seed);
       counts[r]++;
     }
     expect(counts.extend).toBeGreaterThan(0);
@@ -96,11 +79,7 @@ describe("banditWeightedSelect", () => {
     const counts = { pattern: 0, surprise: 0, extend: 0 };
     const n = 10000;
     for (let seed = 0; seed < n; seed++) {
-      const r = banditWeightedSelect(
-        ["pattern", "surprise", "extend"],
-        bandits,
-        seed,
-      );
+      const r = banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed);
       counts[r]++;
     }
     expect(counts.pattern).toBeGreaterThan(counts.surprise);
@@ -115,10 +94,7 @@ describe("banditWeightedSelect", () => {
     };
     let extendCount = 0;
     for (let seed = 0; seed < 10000; seed++) {
-      if (
-        banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed) ===
-        "extend"
-      ) {
+      if (banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed) === "extend") {
         extendCount++;
       }
     }

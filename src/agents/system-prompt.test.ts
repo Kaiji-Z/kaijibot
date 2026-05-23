@@ -156,9 +156,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("/help");
     expect(prompt).toContain("/tools");
     // Capabilities must appear before Tooling section
-    expect(prompt.indexOf("## Capabilities")).toBeLessThan(
-      prompt.indexOf("## Tooling"),
-    );
+    expect(prompt.indexOf("## Capabilities")).toBeLessThan(prompt.indexOf("## Tooling"));
     // Capabilities must appear above cache boundary
     expect(prompt.indexOf("## Capabilities")).toBeLessThan(
       prompt.indexOf(SYSTEM_PROMPT_CACHE_BOUNDARY),

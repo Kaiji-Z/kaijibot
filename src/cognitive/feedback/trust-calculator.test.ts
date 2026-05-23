@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { updateTrustFromFeedback, getInteractionPhase, getPhaseBehaviorAdvice, calculateTrustScore } from "./trust-calculator.js";
 import type { RapportMetrics } from "../types.js";
+import {
+  updateTrustFromFeedback,
+  getInteractionPhase,
+  getPhaseBehaviorAdvice,
+  calculateTrustScore,
+} from "./trust-calculator.js";
 
 function makeRapport(overrides?: Partial<RapportMetrics>): RapportMetrics {
   return {
@@ -15,25 +20,45 @@ function makeRapport(overrides?: Partial<RapportMetrics>): RapportMetrics {
 describe("updateTrustFromFeedback", () => {
   it("increases trust on positive feedback", () => {
     const rapport = makeRapport({ trustScore: 0.5 });
-    const result = updateTrustFromFeedback(rapport, { targetId: "1", type: "positive", mechanism: "emoji", timestamp: Date.now() });
+    const result = updateTrustFromFeedback(rapport, {
+      targetId: "1",
+      type: "positive",
+      mechanism: "emoji",
+      timestamp: Date.now(),
+    });
     expect(result.trustScore).toBeGreaterThan(0.5);
   });
 
   it("decreases trust on negative feedback", () => {
     const rapport = makeRapport({ trustScore: 0.5 });
-    const result = updateTrustFromFeedback(rapport, { targetId: "1", type: "negative", mechanism: "button", timestamp: Date.now() });
+    const result = updateTrustFromFeedback(rapport, {
+      targetId: "1",
+      type: "negative",
+      mechanism: "button",
+      timestamp: Date.now(),
+    });
     expect(result.trustScore).toBeLessThan(0.5);
   });
 
   it("does not go below baseline", () => {
     const rapport = makeRapport({ trustScore: 0.1 });
-    const result = updateTrustFromFeedback(rapport, { targetId: "1", type: "negative", mechanism: "button", timestamp: Date.now() });
+    const result = updateTrustFromFeedback(rapport, {
+      targetId: "1",
+      type: "negative",
+      mechanism: "button",
+      timestamp: Date.now(),
+    });
     expect(result.trustScore).toBe(0.1);
   });
 
   it("does not exceed 1.0", () => {
     const rapport = makeRapport({ trustScore: 0.99 });
-    const result = updateTrustFromFeedback(rapport, { targetId: "1", type: "engaged", mechanism: "emoji", timestamp: Date.now() });
+    const result = updateTrustFromFeedback(rapport, {
+      targetId: "1",
+      type: "engaged",
+      mechanism: "emoji",
+      timestamp: Date.now(),
+    });
     expect(result.trustScore).toBeLessThanOrEqual(1.0);
   });
 });

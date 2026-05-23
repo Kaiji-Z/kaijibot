@@ -145,7 +145,10 @@ export function deduplicateBySimilarity<T extends DedupableItem>(
     const losers = sorted.slice(1);
     representativeIds.add(winner.id);
     if (losers.length > 0) {
-      mergedFromMap.set(winner.id, losers.map((l) => l.id));
+      mergedFromMap.set(
+        winner.id,
+        losers.map((l) => l.id),
+      );
     }
   }
 
