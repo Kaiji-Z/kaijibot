@@ -11,6 +11,7 @@ import {
   type ThinkingLevel,
 } from "@mariozechner/pi-ai";
 import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
+import { parseJsonObjectPreservingUnsafeIntegers } from "./json-unsafe-integers.js";
 import {
   applyAnthropicPayloadPolicyToParams,
   resolveAnthropicPayloadPolicy,
@@ -209,6 +210,10 @@ function convertContentBlocks(
 
 function normalizeToolCallId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+}
+
+function parseAnthropicToolCallArguments(inputJson: string): unknown {
+  return parseJsonObjectPreservingUnsafeIntegers(inputJson) ?? parseStreamingJson(inputJson);
 }
 
 function convertAnthropicMessages(
@@ -761,8 +766,8 @@ export function createAnthropicMessagesTransportStreamFn(): StreamFn {
               delta?.type === "input_json_delta" &&
               typeof delta.partial_json === "string"
             ) {
-              block.partialJson += delta.partial_json;
-              block.arguments = parseStreamingJson(block.partialJson);
+              block.partialJson = `${block.partialJson ?? ""}${delta.partial_json}`;
+              block.arguments = parseAnthropicToolCallArguments(block.partialJson);
               stream.push({
                 type: "toolcall_delta",
                 contentIndex: index,
@@ -807,7 +812,7 @@ export function createAnthropicMessagesTransportStreamFn(): StreamFn {
             }
             if (block.type === "toolCall") {
               if (typeof block.partialJson === "string" && block.partialJson.length > 0) {
-                block.arguments = parseStreamingJson(block.partialJson);
+                block.arguments = parseAnthropicToolCallArguments(block.partialJson);
               }
               delete block.partialJson;
               stream.push({

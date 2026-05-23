@@ -188,6 +188,7 @@ type SyntheticProviderAuthResolution = {
 function resolveProviderSyntheticRuntimeAuth(params: {
   cfg: KaijiBotConfig | undefined;
   provider: string;
+  modelApi?: string;
 }): SyntheticProviderAuthResolution {
   const resolveFromConfig = (
     config: KaijiBotConfig | undefined,
@@ -230,8 +231,13 @@ function resolveProviderSyntheticRuntimeAuth(params: {
 function resolveSyntheticLocalProviderAuth(params: {
   cfg: KaijiBotConfig | undefined;
   provider: string;
+  modelApi?: string;
 }): ResolvedProviderAuth | null {
-  const syntheticProviderAuth = resolveProviderSyntheticRuntimeAuth(params);
+  const syntheticProviderAuth = resolveProviderSyntheticRuntimeAuth({
+    cfg: params.cfg,
+    provider: params.provider,
+    modelApi: params.modelApi,
+  });
   if (syntheticProviderAuth.auth) {
     return syntheticProviderAuth.auth;
   }
@@ -326,6 +332,7 @@ function shouldDeferSyntheticProfileAuth(params: {
   cfg: KaijiBotConfig | undefined;
   provider: string;
   resolvedApiKey: string | undefined;
+  modelApi?: string;
 }): boolean {
   const providerConfig = resolveProviderConfig(params.cfg, params.provider);
   return (
@@ -353,6 +360,7 @@ export async function resolveApiKeyForProvider(params: {
    *  silently overridden by env/config credentials (e.g. ollama-local). */
   lockedProfile?: boolean;
   credentialPrecedence?: ProviderCredentialPrecedence;
+  modelApi?: string;
 }): Promise<ResolvedProviderAuth> {
   const { provider, cfg, profileId, preferredProfile } = params;
 
@@ -385,6 +393,7 @@ export async function resolveApiKeyForProvider(params: {
         cfg,
         provider,
         resolvedApiKey: resolved.apiKey,
+        modelApi: params.modelApi,
       })
     ) {
       return resolveApiKeyForProvider({ ...params, profileId: undefined, lockedProfile: true }) //
@@ -458,6 +467,7 @@ export async function resolveApiKeyForProvider(params: {
             cfg,
             provider,
             resolvedApiKey: resolved.apiKey,
+            modelApi: params.modelApi,
           })
         ) {
           deferredAuthProfileResult ??= result;
@@ -493,7 +503,7 @@ export async function resolveApiKeyForProvider(params: {
     return deferredAuthProfileResult;
   }
 
-  const syntheticLocalAuth = resolveSyntheticLocalProviderAuth({ cfg, provider });
+  const syntheticLocalAuth = resolveSyntheticLocalProviderAuth({ cfg, provider, modelApi: params.modelApi });
   if (syntheticLocalAuth) {
     return syntheticLocalAuth;
   }
@@ -665,6 +675,7 @@ export async function getApiKeyForModel(params: {
     agentDir: params.agentDir,
     lockedProfile: params.lockedProfile,
     credentialPrecedence: params.credentialPrecedence,
+    modelApi: params.model.api,
   });
 }
 

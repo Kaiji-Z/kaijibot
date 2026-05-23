@@ -332,6 +332,13 @@ export async function handleFeishuSubagentSpawning(
     return {
       status: "ok" as const,
       threadBindingReady: true,
+      deliveryOrigin: resolveFeishuDeliveryOrigin({
+        conversationId: binding.conversationId,
+        parentConversationId: binding.parentConversationId,
+        accountId: binding.accountId,
+        deliveryTo: binding.deliveryTo,
+        deliveryThreadId: binding.deliveryThreadId,
+      }),
     };
   } catch (err) {
     return {
