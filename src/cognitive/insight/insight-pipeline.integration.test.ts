@@ -37,6 +37,8 @@ import { scoreSerendipity } from "./serendipity-scorer.js";
 import { InsightStore } from "./store.js";
 import type { InsightEngineInput, InsightCandidate } from "./types.js";
 
+const AGENT = "main";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -200,9 +202,9 @@ describe("Pipeline: happy path (generate → score → store → feedback)", () 
 
   it("stores and retrieves insight records", async () => {
     const record = makeInsightRecord();
-    await store.save("user-1", record);
+    await store.save(AGENT, "user-1", record);
 
-    const loaded = await store.load("user-1", record.id);
+    const loaded = await store.load(AGENT, "user-1", record.id);
     expect(loaded).toBeDefined();
     expect(loaded!.id).toBe(record.id);
     expect(loaded!.content).toBe(record.content);
@@ -210,11 +212,11 @@ describe("Pipeline: happy path (generate → score → store → feedback)", () 
 
   it("stores feedback on insights", async () => {
     const record = makeInsightRecord();
-    await store.save("user-1", record);
+    await store.save(AGENT, "user-1", record);
 
-    await store.updateFeedback("user-1", record.id, "positive", "很有启发");
+    await store.updateFeedback(AGENT, "user-1", record.id, "positive", "很有启发");
 
-    const loaded = await store.load("user-1", record.id);
+    const loaded = await store.load(AGENT, "user-1", record.id);
     expect(loaded!.feedback).toBe("positive");
     expect(loaded!.userResponse).toBe("很有启发");
   });
@@ -237,16 +239,16 @@ describe("Pipeline: happy path (generate → score → store → feedback)", () 
       sources: best.sources,
     };
 
-    await store.save("user-1", record);
+    await store.save(AGENT, "user-1", record);
 
     // Simulate delivery
-    const loaded = await store.load("user-1", record.id);
+    const loaded = await store.load(AGENT, "user-1", record.id);
     expect(loaded).toBeDefined();
 
     // Simulate positive feedback
-    await store.updateFeedback("user-1", record.id, "engaged", "说得太对了，我马上试试");
+    await store.updateFeedback(AGENT, "user-1", record.id, "engaged", "说得太对了，我马上试试");
 
-    const withFeedback = await store.load("user-1", record.id);
+    const withFeedback = await store.load(AGENT, "user-1", record.id);
     expect(withFeedback!.feedback).toBe("engaged");
     expect(withFeedback!.userResponse).toBe("说得太对了，我马上试试");
   });
@@ -672,11 +674,11 @@ describe("Pipeline: store multi-user isolation", () => {
     const r1 = makeInsightRecord({ id: "ins-a", content: "User A insight" });
     const r2 = makeInsightRecord({ id: "ins-b", content: "User B insight" });
 
-    await store.save("user-a", r1);
-    await store.save("user-b", r2);
+    await store.save(AGENT, "user-a", r1);
+    await store.save(AGENT, "user-b", r2);
 
-    const aRecords = await store.listRecent("user-a");
-    const bRecords = await store.listRecent("user-b");
+    const aRecords = await store.listRecent(AGENT, "user-a");
+    const bRecords = await store.listRecent(AGENT, "user-b");
 
     expect(aRecords.length).toBe(1);
     expect(bRecords.length).toBe(1);
@@ -686,13 +688,13 @@ describe("Pipeline: store multi-user isolation", () => {
 
   it("feedback on user A's insight does not affect user B", async () => {
     const record = makeInsightRecord({ id: "ins-shared" });
-    await store.save("user-a", record);
-    await store.save("user-b", { ...record });
+    await store.save(AGENT, "user-a", record);
+    await store.save(AGENT, "user-b", { ...record });
 
-    await store.updateFeedback("user-a", "ins-shared", "positive", "好");
+    await store.updateFeedback(AGENT, "user-a", "ins-shared", "positive", "好");
 
-    const aLoaded = await store.load("user-a", "ins-shared");
-    const bLoaded = await store.load("user-b", "ins-shared");
+    const aLoaded = await store.load(AGENT, "user-a", "ins-shared");
+    const bLoaded = await store.load(AGENT, "user-b", "ins-shared");
 
     expect(aLoaded!.feedback).toBe("positive");
     expect(bLoaded!.feedback).toBeUndefined();
@@ -707,10 +709,10 @@ describe("Pipeline: store listRecent ordering and limit", () => {
     const r1 = makeInsightRecord({ id: "old", generatedAt: Date.now() - 86400000 });
     const r2 = makeInsightRecord({ id: "new", generatedAt: Date.now() });
 
-    await store.save("user-1", r1);
-    await store.save("user-1", r2);
+    await store.save(AGENT, "user-1", r1);
+    await store.save(AGENT, "user-1", r2);
 
-    const records = await store.listRecent("user-1");
+    const records = await store.listRecent(AGENT, "user-1");
     expect(records[0].id).toBe("new");
     expect(records[1].id).toBe("old");
   });
@@ -718,6 +720,7 @@ describe("Pipeline: store listRecent ordering and limit", () => {
   it("respects limit parameter", async () => {
     for (let i = 0; i < 5; i++) {
       await store.save(
+        AGENT,
         "user-1",
         makeInsightRecord({
           id: `ins-${i}`,
@@ -726,12 +729,12 @@ describe("Pipeline: store listRecent ordering and limit", () => {
       );
     }
 
-    const limited = await store.listRecent("user-1", 2);
+    const limited = await store.listRecent(AGENT, "user-1", 2);
     expect(limited.length).toBe(2);
   });
 
   it("returns empty for nonexistent user", async () => {
-    const records = await store.listRecent("nobody");
+    const records = await store.listRecent(AGENT, "nobody");
     expect(records).toEqual([]);
   });
 });
@@ -741,12 +744,12 @@ describe("Pipeline: store listRecent ordering and limit", () => {
 // ===========================================================================
 describe("Pipeline: store edge cases", () => {
   it("load returns undefined for nonexistent id", async () => {
-    const result = await store.load("user-1", "does-not-exist");
+    const result = await store.load(AGENT, "user-1", "does-not-exist");
     expect(result).toBeUndefined();
   });
 
   it("updateFeedback is a no-op for nonexistent record", async () => {
-    await expect(store.updateFeedback("user-1", "ghost", "positive")).resolves.toBeUndefined();
+    await expect(store.updateFeedback(AGENT, "user-1", "ghost", "positive")).resolves.toBeUndefined();
   });
 });
 
@@ -924,33 +927,33 @@ describe("Pipeline: graph evolution → connections pipeline", () => {
 describe("Pipeline: feedback update lifecycle", () => {
   it("stores positive → negative → neutral feedback progression", async () => {
     const record = makeInsightRecord();
-    await store.save("user-1", record);
+    await store.save(AGENT, "user-1", record);
 
-    await store.updateFeedback("user-1", record.id, "positive");
-    let loaded = await store.load("user-1", record.id);
+    await store.updateFeedback(AGENT, "user-1", record.id, "positive");
+    let loaded = await store.load(AGENT, "user-1", record.id);
     expect(loaded!.feedback).toBe("positive");
 
-    await store.updateFeedback("user-1", record.id, "negative", "不太对");
-    loaded = await store.load("user-1", record.id);
+    await store.updateFeedback(AGENT, "user-1", record.id, "negative", "不太对");
+    loaded = await store.load(AGENT, "user-1", record.id);
     expect(loaded!.feedback).toBe("negative");
     expect(loaded!.userResponse).toBe("不太对");
 
-    await store.updateFeedback("user-1", record.id, "neutral");
-    loaded = await store.load("user-1", record.id);
+    await store.updateFeedback(AGENT, "user-1", record.id, "neutral");
+    loaded = await store.load(AGENT, "user-1", record.id);
     expect(loaded!.feedback).toBe("neutral");
     // userResponse from previous update remains (updateFeedback only sets if provided)
   });
 
   it("persists deliveredAt when record is updated", async () => {
     const record = makeInsightRecord({ deliveredAt: undefined });
-    await store.save("user-1", record);
+    await store.save(AGENT, "user-1", record);
 
     // Update with delivery timestamp
-    const loaded = await store.load("user-1", record.id);
+    const loaded = await store.load(AGENT, "user-1", record.id);
     const updated: InsightRecord = { ...loaded!, deliveredAt: Date.now() };
-    await store.save("user-1", updated);
+    await store.save(AGENT, "user-1", updated);
 
-    const after = await store.load("user-1", record.id);
+    const after = await store.load(AGENT, "user-1", record.id);
     expect(after!.deliveredAt).toBeDefined();
     expect(after!.deliveredAt!).toBeGreaterThan(0);
   });

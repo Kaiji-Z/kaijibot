@@ -6,26 +6,26 @@ import type { InsightRecord } from "../types.js";
 export class InsightStore {
   constructor(private readonly configDir: string) {}
 
-  private insightsDir(userId: string): string {
-    return join(this.configDir, "cognitive", "insights", userId);
+  private insightsDir(agentId: string, userId: string): string {
+    return join(this.configDir, "cognitive", "insights", agentId, userId);
   }
 
-  async save(userId: string, record: InsightRecord): Promise<void> {
-    const dir = this.insightsDir(userId);
+  async save(agentId: string, userId: string, record: InsightRecord): Promise<void> {
+    const dir = this.insightsDir(agentId, userId);
     await mkdir(dir, { recursive: true });
     const path = join(dir, `${record.id}.json`);
     await writeFile(path, JSON.stringify(record, null, 2), "utf-8");
   }
 
-  async load(userId: string, id: string): Promise<InsightRecord | undefined> {
-    const path = join(this.insightsDir(userId), `${id}.json`);
+  async load(agentId: string, userId: string, id: string): Promise<InsightRecord | undefined> {
+    const path = join(this.insightsDir(agentId, userId), `${id}.json`);
     if (!existsSync(path)) return undefined;
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw) as InsightRecord;
   }
 
-  async listRecent(userId: string, limit?: number): Promise<InsightRecord[]> {
-    const dir = this.insightsDir(userId);
+  async listRecent(agentId: string, userId: string, limit?: number): Promise<InsightRecord[]> {
+    const dir = this.insightsDir(agentId, userId);
     if (!existsSync(dir)) return [];
 
     const files = await readdir(dir);
@@ -46,15 +46,16 @@ export class InsightStore {
   }
 
   async updateFeedback(
+    agentId: string,
     userId: string,
     id: string,
     feedback: InsightRecord["feedback"],
     userResponse?: string,
   ): Promise<void> {
-    const record = await this.load(userId, id);
+    const record = await this.load(agentId, userId, id);
     if (!record) return;
     record.feedback = feedback;
     if (userResponse !== undefined) record.userResponse = userResponse;
-    await this.save(userId, record);
+    await this.save(agentId, userId, record);
   }
 }
