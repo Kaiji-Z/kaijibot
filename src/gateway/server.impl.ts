@@ -9,6 +9,7 @@ import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js
 import { runChannelPluginStartupMaintenance } from "../channels/plugins/lifecycle-startup.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { createDefaultDeps } from "../cli/deps.js";
+import type { SchedulerEvent } from "../cognitive/scheduler/types.js";
 import { isRestartEnabled } from "../config/commands.js";
 import {
   type ConfigFileSnapshot,
@@ -25,7 +26,6 @@ import { formatConfigIssueLines } from "../config/issue-format.js";
 import { applyPluginAutoEnable } from "../config/plugin-auto-enable.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
 import { clearAgentRunContext, onAgentEvent } from "../infra/agent-events.js";
-import type { SchedulerEvent } from "../cognitive/scheduler/types.js";
 import {
   ensureControlUiAssetsBuilt,
   isPackageProvenControlUiRootSync,
@@ -756,28 +756,24 @@ export async function startGatewayServer(
       cwd: process.cwd(),
     });
     if (!resolvedRoot) {
-      const ensureResult = await ensureControlUiAssetsBuilt(gatewayRuntime);
-      if (!ensureResult.ok && ensureResult.message) {
-        log.warn(`gateway: ${ensureResult.message}`);
-      }
-      resolvedRoot = resolveControlUiRootSync({
-        moduleUrl: import.meta.url,
-        argv1: process.argv[1],
-        cwd: process.cwd(),
-      });
-    }
-    controlUiRootState = resolvedRoot
-      ? {
-          kind: isPackageProvenControlUiRootSync(resolvedRoot, {
-            moduleUrl: import.meta.url,
-            argv1: process.argv[1],
-            cwd: process.cwd(),
-          })
-            ? "bundled"
-            : "resolved",
-          path: resolvedRoot,
+      controlUiRootState = { kind: "missing" };
+      void ensureControlUiAssetsBuilt(gatewayRuntime).then((ensureResult) => {
+        if (!ensureResult.ok && ensureResult.message) {
+          log.warn(`gateway: ${ensureResult.message}`);
         }
-      : { kind: "missing" };
+      });
+    } else {
+      controlUiRootState = {
+        kind: isPackageProvenControlUiRootSync(resolvedRoot, {
+          moduleUrl: import.meta.url,
+          argv1: process.argv[1],
+          cwd: process.cwd(),
+        })
+          ? "bundled"
+          : "resolved",
+        path: resolvedRoot,
+      };
+    }
   }
 
   const wizardRunner = opts.wizardRunner ?? runSetupWizard;
@@ -911,7 +907,11 @@ export async function startGatewayServer(
   const skillsRefreshDelayMs = 30_000;
   let skillsChangeUnsub = () => {};
   let channelHealthMonitor: ReturnType<typeof startChannelHealthMonitor> | null = null;
-  let infoScanSource: InstanceType<typeof import("../cognitive/scheduler/event-sources/info-scan-source.js").InfoScanSource> | undefined;
+  let infoScanSource:
+    | InstanceType<
+        typeof import("../cognitive/scheduler/event-sources/info-scan-source.js").InfoScanSource
+      >
+    | undefined;
   let stopModelPricingRefresh = () => {};
   let mcpServer: { port: number; close: () => Promise<void> } | undefined;
   let configReloader: { stop: () => Promise<void> } = { stop: async () => {} };
@@ -1279,160 +1279,193 @@ export async function startGatewayServer(
       heartbeatRunner = startHeartbeatRunner({ cfg: cfgAtStart });
     }
 
-    // Cognitive layer: start proactive scheduler if enabled
-    if (!minimalTestGateway && cfgAtStart.cognitive?.proactive?.enabled !== false && cfgAtStart.cognitive?.enabled !== false) {
-      try {
-        const { ProactiveScheduler } = await import("../cognitive/scheduler/proactive-scheduler.js");
-        const { InfoScanSource } = await import("../cognitive/scheduler/event-sources/info-scan-source.js");
-        const { PersonaChangeSource } = await import("../cognitive/scheduler/event-sources/persona-change-source.js");
-        const { PersonaStore } = await import("../cognitive/persona/store.js");
-        const { resolveConfigDir } = await import("../utils.js");
-        const { generateInsightCandidatesLLM, createDefaultInsightDeps, loadWorkspacePersonaContext } = await import("../cognitive/insight/llm-engine.js");
-        const cognitiveStore = new PersonaStore(resolveConfigDir());
-        await cognitiveStore.migrateFromFlatLayout();
-        const baseInsightDeps = createDefaultInsightDeps();
-        const workspacePersonaContext = await loadWorkspacePersonaContext(defaultWorkspaceDir);
+    // Cognitive layer: deferred to post-ready — the scheduler only fires
+    // on timers/events, so nothing depends on it being synchronous here.
+    if (
+      !minimalTestGateway &&
+      cfgAtStart.cognitive?.proactive?.enabled !== false &&
+      cfgAtStart.cognitive?.enabled !== false
+    ) {
+      void (async () => {
+        try {
+          const { ProactiveScheduler } =
+            await import("../cognitive/scheduler/proactive-scheduler.js");
+          const { InfoScanSource } =
+            await import("../cognitive/scheduler/event-sources/info-scan-source.js");
+          const { PersonaChangeSource } =
+            await import("../cognitive/scheduler/event-sources/persona-change-source.js");
+          const { PersonaStore } = await import("../cognitive/persona/store.js");
+          const { resolveConfigDir } = await import("../utils.js");
+          const {
+            generateInsightCandidatesLLM,
+            createDefaultInsightDeps,
+            loadWorkspacePersonaContext,
+          } = await import("../cognitive/insight/llm-engine.js");
+          const cognitiveStore = new PersonaStore(resolveConfigDir());
+          await cognitiveStore.migrateFromFlatLayout();
+          const baseInsightDeps = createDefaultInsightDeps();
+          const workspacePersonaContext = await loadWorkspacePersonaContext(defaultWorkspaceDir);
 
-        const insightDeps = {
-          ...baseInsightDeps,
-          webSearch: async (query: string) => {
-            try {
-              const { runWebSearch } = await import("../web-search/runtime.js");
-              const { result } = await runWebSearch({
-                config: cfgAtStart,
-                args: { query, count: 3 },
-              });
-              const results = (result as Record<string, unknown>).results as Array<{ title: string; url: string; snippet?: string; description?: string }> | undefined;
-              const SEARCH_PROVIDER_HOSTS = new Set(["exa.ai", "api.exa.ai", "tavily.com", "api.tavily.com", "search.brave.com"]);
-              return (results ?? [])
-                .filter((r) => {
-                  try {
-                    const hostname = new URL(r.url).hostname.toLowerCase();
-                    return !SEARCH_PROVIDER_HOSTS.has(hostname);
-                  } catch {
-                    return true;
-                  }
-                })
-                .map((r) => ({
-                  title: String(r.title ?? ""),
-                  url: String(r.url ?? ""),
-                  snippet: String(r.snippet ?? r.description ?? ""),
-                }));
-            } catch {
-              return [];
-            }
-          },
-        };
-
-        const personaChangeSource = new PersonaChangeSource();
-        const scanIntervalMs = (cfgAtStart.cognitive?.insight?.sources?.scanIntervalHours ?? 6) * 3600_000;
-        infoScanSource = new InfoScanSource(scanIntervalMs);
-
-        // ── Insight engine setup ──
-        const { FragmentStore: FragmentStoreCtor } = await import("../cognitive/insight/fragment-store.js");
-        const sharedFragmentStore = new FragmentStoreCtor(resolveConfigDir());
-
-        const engineMode = cfgAtStart.cognitive?.insight?.engine ?? "dual";
-        const normalizedMode = engineMode === "v2" ? "pattern" : engineMode === "v1" ? "knowledge" : engineMode === "dual" ? "unified" : engineMode;
-        log.info(`cognitive insight engine: ${normalizedMode} active (requested: ${engineMode})`);
-
-        const proactiveScheduler = new ProactiveScheduler(
-          {
-            minIntervalHours: cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5,
-            minTrustScore: 0.5,
-            activeHoursStart: cfgAtStart.cognitive?.proactive?.activeHours?.start,
-            activeHoursEnd: cfgAtStart.cognitive?.proactive?.activeHours?.end,
-            timezone: cfgAtStart.cognitive?.proactive?.activeHours?.timezone,
-            patternModeRatio: cfgAtStart.cognitive?.insight?.patternModeRatio,
-            patternVerification: cfgAtStart.cognitive?.insight?.patternVerification,
-            llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
-          },
-          {
-            loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
-            savePersona: async (agentId, userId, persona) => {
-              await cognitiveStore.save(agentId, userId, persona);
-              const domainKeys = Object.keys(persona.domains);
-              personaChangeSource.checkPersonaUpdate(domainKeys.length, []);
-            },
-            async onInsightReady(agentId: string, userId: string, candidate) {
+          const insightDeps = {
+            ...baseInsightDeps,
+            webSearch: async (query: string) => {
               try {
-                const { resolveCognitiveDeliveryTarget } = await import("./cognitive-delivery.js");
-                const { deliverOutboundPayloads } = await import("../infra/outbound/deliver.js");
-                const { buildOutboundSessionContext } = await import("../infra/outbound/session-context.js");
-
-                const target = resolveCognitiveDeliveryTarget(cfgAtStart, userId);
-                if (!target) {
-                  log.info(`cognitive insight: no routable session for ${userId}, skipping delivery`);
-                  return;
-                }
-
-                const insightText = candidate.content;
-                const session = buildOutboundSessionContext({
-                  cfg: cfgAtStart,
-                  sessionKey: target.sessionKey,
+                const { runWebSearch } = await import("../web-search/runtime.js");
+                const { result } = await runWebSearch({
+                  config: cfgAtStart,
+                  args: { query, count: 3 },
                 });
-
-                await deliverOutboundPayloads({
-                  cfg: cfgAtStart,
-                  channel: target.channel,
-                  to: target.to,
-                  accountId: target.accountId,
-                  payloads: [{ text: insightText }],
-                  session,
-                  mirror: {
-                    sessionKey: target.sessionKey,
-                    agentId,
-                    text: insightText,
-                    idempotencyKey: `cognitive-insight-${Date.now()}`,
-                  },
-                  bestEffort: true,
-                });
-                log.info(`cognitive insight delivered to ${userId} via ${target.channel}`);
-              } catch (err) {
-                log.warn(`cognitive insight delivery failed: ${String(err)}`);
+                const results = (result as Record<string, unknown>).results as
+                  | Array<{ title: string; url: string; snippet?: string; description?: string }>
+                  | undefined;
+                const SEARCH_PROVIDER_HOSTS = new Set([
+                  "exa.ai",
+                  "api.exa.ai",
+                  "tavily.com",
+                  "api.tavily.com",
+                  "search.brave.com",
+                ]);
+                return (results ?? [])
+                  .filter((r) => {
+                    try {
+                      const hostname = new URL(r.url).hostname.toLowerCase();
+                      return !SEARCH_PROVIDER_HOSTS.has(hostname);
+                    } catch {
+                      return true;
+                    }
+                  })
+                  .map((r) => ({
+                    title: String(r.title ?? ""),
+                    url: String(r.url ?? ""),
+                    snippet: String(r.snippet ?? r.description ?? ""),
+                  }));
+              } catch {
+                return [];
               }
             },
-          },
-          {
-            insightGenerator: async (persona, input, options) =>
-              generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
-                maxCandidates: options?.maxCandidates,
-                timeout: 20_000,
-                systemContext: workspacePersonaContext || undefined,
-              }),
-            fragmentStore: sharedFragmentStore,
-            llmDeps: insightDeps,
-            botConfig: cfgAtStart,
-          },
-        );
+          };
 
-        const handleEventForAllUsers = async (event: SchedulerEvent) => {
-          const agentIds = await cognitiveStore.listAgentIds();
-          const allEntries: Array<{ agentId: string; userId: string }> = [];
-          for (const agentId of agentIds) {
-            const userIds = (await cognitiveStore.listUserIds(agentId)).filter(
-              (id) => !id.startsWith("kaijibot-"),
-            );
-            for (const userId of userIds) {
-              allEntries.push({ agentId, userId });
+          const personaChangeSource = new PersonaChangeSource();
+          const scanIntervalMs =
+            (cfgAtStart.cognitive?.insight?.sources?.scanIntervalHours ?? 6) * 3600_000;
+          infoScanSource = new InfoScanSource(scanIntervalMs);
+
+          // ── Insight engine setup ──
+          const { FragmentStore: FragmentStoreCtor } =
+            await import("../cognitive/insight/fragment-store.js");
+          const sharedFragmentStore = new FragmentStoreCtor(resolveConfigDir());
+
+          const engineMode = cfgAtStart.cognitive?.insight?.engine ?? "dual";
+          const normalizedMode =
+            engineMode === "v2"
+              ? "pattern"
+              : engineMode === "v1"
+                ? "knowledge"
+                : engineMode === "dual"
+                  ? "unified"
+                  : engineMode;
+          log.info(`cognitive insight engine: ${normalizedMode} active (requested: ${engineMode})`);
+
+          const proactiveScheduler = new ProactiveScheduler(
+            {
+              minIntervalHours: cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5,
+              minTrustScore: 0.5,
+              activeHoursStart: cfgAtStart.cognitive?.proactive?.activeHours?.start,
+              activeHoursEnd: cfgAtStart.cognitive?.proactive?.activeHours?.end,
+              timezone: cfgAtStart.cognitive?.proactive?.activeHours?.timezone,
+              patternModeRatio: cfgAtStart.cognitive?.insight?.patternModeRatio,
+              patternVerification: cfgAtStart.cognitive?.insight?.patternVerification,
+              llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
+            },
+            {
+              loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
+              savePersona: async (agentId, userId, persona) => {
+                await cognitiveStore.save(agentId, userId, persona);
+                const domainKeys = Object.keys(persona.domains);
+                personaChangeSource.checkPersonaUpdate(domainKeys.length, []);
+              },
+              async onInsightReady(agentId: string, userId: string, candidate) {
+                try {
+                  const { resolveCognitiveDeliveryTarget } =
+                    await import("./cognitive-delivery.js");
+                  const { deliverOutboundPayloads } = await import("../infra/outbound/deliver.js");
+                  const { buildOutboundSessionContext } =
+                    await import("../infra/outbound/session-context.js");
+
+                  const target = resolveCognitiveDeliveryTarget(cfgAtStart, userId);
+                  if (!target) {
+                    log.info(
+                      `cognitive insight: no routable session for ${userId}, skipping delivery`,
+                    );
+                    return;
+                  }
+
+                  const insightText = candidate.content;
+                  const session = buildOutboundSessionContext({
+                    cfg: cfgAtStart,
+                    sessionKey: target.sessionKey,
+                  });
+
+                  await deliverOutboundPayloads({
+                    cfg: cfgAtStart,
+                    channel: target.channel,
+                    to: target.to,
+                    accountId: target.accountId,
+                    payloads: [{ text: insightText }],
+                    session,
+                    mirror: {
+                      sessionKey: target.sessionKey,
+                      agentId,
+                      text: insightText,
+                      idempotencyKey: `cognitive-insight-${Date.now()}`,
+                    },
+                    bestEffort: true,
+                  });
+                  log.info(`cognitive insight delivered to ${userId} via ${target.channel}`);
+                } catch (err) {
+                  log.warn(`cognitive insight delivery failed: ${String(err)}`);
+                }
+              },
+            },
+            {
+              insightGenerator: async (persona, input, options) =>
+                generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
+                  maxCandidates: options?.maxCandidates,
+                  timeout: 20_000,
+                  systemContext: workspacePersonaContext || undefined,
+                }),
+              fragmentStore: sharedFragmentStore,
+              llmDeps: insightDeps,
+              botConfig: cfgAtStart,
+            },
+          );
+
+          const handleEventForAllUsers = async (event: SchedulerEvent) => {
+            const agentIds = await cognitiveStore.listAgentIds();
+            const allEntries: Array<{ agentId: string; userId: string }> = [];
+            for (const agentId of agentIds) {
+              const userIds = (await cognitiveStore.listUserIds(agentId)).filter(
+                (id) => !id.startsWith("kaijibot-"),
+              );
+              for (const userId of userIds) {
+                allEntries.push({ agentId, userId });
+              }
             }
-          }
-          for (const { agentId, userId } of allEntries) {
-            try {
-              await proactiveScheduler.processEvent(userId, event, agentId);
-            } catch (e) {
-              log.warn(`cognitive event failed for ${agentId}/${userId}: ${String(e)}`);
+            for (const { agentId, userId } of allEntries) {
+              try {
+                await proactiveScheduler.processEvent(userId, event, agentId);
+              } catch (e) {
+                log.warn(`cognitive event failed for ${agentId}/${userId}: ${String(e)}`);
+              }
             }
-          }
-        };
-        personaChangeSource.onEvent(handleEventForAllUsers);
-        infoScanSource.onEvent(handleEventForAllUsers);
-        infoScanSource.start();
-        const schedulerIntervalMs = process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS
-          ? Number(process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS)
-          : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5) * 3600_000;
-        proactiveScheduler.start(
-          async () => {
+          };
+          personaChangeSource.onEvent(handleEventForAllUsers);
+          infoScanSource.onEvent(handleEventForAllUsers);
+          infoScanSource.start();
+          const schedulerIntervalMs = process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS
+            ? Number(process.env.KAIJIBOT_COGNITIVE_TEST_INTERVAL_MS)
+            : (cfgAtStart.cognitive?.proactive?.minIntervalHours ?? 0.5) * 3600_000;
+          proactiveScheduler.start(async () => {
             const agentIds = await cognitiveStore.listAgentIds();
             const entries: Array<{ agentId: string; userId: string }> = [];
             for (const agentId of agentIds) {
@@ -1444,14 +1477,15 @@ export async function startGatewayServer(
               }
             }
             return entries;
-          },
-          schedulerIntervalMs,
-        );
+          }, schedulerIntervalMs);
 
-        log.info(`cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`);
-      } catch (err) {
-        log.warn(`cognitive scheduler skipped: ${String(err)}`);
-      }
+          log.info(
+            `cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`,
+          );
+        } catch (err) {
+          log.warn(`cognitive scheduler skipped: ${String(err)}`);
+        }
+      })();
     }
 
     const healthCheckMinutes = cfgAtStart.gateway?.channelHealthCheckMinutes;

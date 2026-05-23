@@ -215,9 +215,7 @@ export async function finalizeSetupWizard(
       } catch (err) {
         installError = formatErrorMessage(err);
       } finally {
-        progress.stop(
-          installError ? "网关服务安装失败。" : "网关服务已安装。",
-        );
+        progress.stop(installError ? "网关服务安装失败。" : "网关服务已安装。");
       }
       if (installError) {
         await prompter.note(`网关服务安装失败：${installError}`, "Gateway");
@@ -245,10 +243,7 @@ export async function finalizeSetupWizard(
       } catch (err) {
         runtime.error(formatHealthCheckFailure(err));
         await prompter.note(
-          [
-            "Docs:",
-            "https://github.com/Kaiji-Z/kaijibot/issues",
-          ].join("\n"),
+          ["Docs:", "https://github.com/Kaiji-Z/kaijibot/issues"].join("\n"),
           "Health check help",
         );
       }
@@ -261,10 +256,7 @@ export async function finalizeSetupWizard(
         ),
       );
       await prompter.note(
-        [
-          "Docs:",
-          "https://github.com/Kaiji-Z/kaijibot/issues",
-        ].join("\n"),
+        ["Docs:", "https://github.com/Kaiji-Z/kaijibot/issues"].join("\n"),
         "Health check help",
       );
     } else {
@@ -290,10 +282,7 @@ export async function finalizeSetupWizard(
     }
   }
 
-  await prompter.note(
-    "",
-    "Optional apps",
-  );
+  await prompter.note("", "Optional apps");
 
   const controlUiBasePath =
     nextConfig.gateway?.controlUi?.basePath ?? baseConfig.gateway?.controlUi?.basePath;
@@ -456,10 +445,7 @@ export async function finalizeSetupWizard(
   }
 
   await prompter.note(
-    [
-      "Back up your agent workspace.",
-      "Docs: https://github.com/Kaiji-Z/kaijibot",
-    ].join("\n"),
+    ["Back up your agent workspace.", "Docs: https://github.com/Kaiji-Z/kaijibot"].join("\n"),
     "Workspace backup",
   );
 
@@ -623,10 +609,7 @@ export async function finalizeSetupWizard(
     );
   }
 
-  await prompter.note(
-    "接下来：探索 KaijiBot 的认知功能，与你的机器人开始对话。",
-    "What now",
-  );
+  await prompter.note("接下来：探索 KaijiBot 的认知功能，与你的机器人开始对话。", "What now");
 
   await prompter.outro(
     controlUiOpened

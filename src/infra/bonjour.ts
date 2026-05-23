@@ -35,6 +35,12 @@ function isDisabledByEnv() {
   if (process.env.VITEST) {
     return true;
   }
+  // mDNS/Bonjour is unreliable on Windows — repeated probe/restart cycles
+  // add ~5s+ to gateway startup on NTFS.  Disable by default; users who
+  // need it can set KAIJIBOT_ENABLE_BONJOUR=1.
+  if (process.platform === "win32" && !isTruthyEnvValue(process.env.KAIJIBOT_ENABLE_BONJOUR)) {
+    return true;
+  }
   return false;
 }
 

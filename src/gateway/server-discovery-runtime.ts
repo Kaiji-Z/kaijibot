@@ -26,7 +26,8 @@ export async function startGatewayDiscovery(params: {
     mdnsMode !== "off" &&
     process.env.KAIJIBOT_DISABLE_BONJOUR !== "1" &&
     process.env.NODE_ENV !== "test" &&
-    !process.env.VITEST;
+    !process.env.VITEST &&
+    !(process.platform === "win32" && process.env.KAIJIBOT_ENABLE_BONJOUR !== "1");
   const mdnsMinimal = mdnsMode !== "full";
   const tailscaleEnabled = params.tailscaleMode !== "off";
   const needsTailnetDns = bonjourEnabled || params.wideAreaDiscoveryEnabled;

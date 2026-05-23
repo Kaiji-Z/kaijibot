@@ -11,16 +11,6 @@ import type { KaijiBotConfig } from "../config/config.js";
 import { readConfigFileSnapshot, resolveGatewayPort, writeConfigFile } from "../config/config.js";
 import { normalizeSecretInputString } from "../config/types.secrets.js";
 import { formatErrorMessage } from "../infra/errors.js";
-import {
-  detectMigrationSource,
-  enumerateSourceAgents,
-  enumerateSourceSkills,
-  runFreshMigration,
-} from "../infra/openclaw-migrator/index.js";
-import {
-  buildPluginCompatibilityNotices,
-  formatPluginCompatibilityNotice,
-} from "../plugins/status.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
@@ -149,15 +139,14 @@ export async function runSetupWizard(
   }
 
   const compatibilityNotices = snapshot.valid
-    ? buildPluginCompatibilityNotices({ config: baseConfig })
+    ? (await import("../plugins/status.js")).buildPluginCompatibilityNotices({ config: baseConfig })
     : [];
   if (compatibilityNotices.length > 0) {
+    const { formatPluginCompatibilityNotice: fmtNotice } = await import("../plugins/status.js");
     await prompter.note(
       [
         `Detected ${compatibilityNotices.length} plugin compatibility notice${compatibilityNotices.length === 1 ? "" : "s"} in the current config.`,
-        ...compatibilityNotices
-          .slice(0, 4)
-          .map((notice) => `- ${formatPluginCompatibilityNotice(notice)}`),
+        ...compatibilityNotices.slice(0, 4).map((notice) => `- ${fmtNotice(notice)}`),
         ...(compatibilityNotices.length > 4
           ? [`- ... +${compatibilityNotices.length - 4} more`]
           : []),
@@ -170,13 +159,23 @@ export async function runSetupWizard(
   }
 
   if (!snapshot.exists) {
+    const {
+      detectMigrationSource,
+      enumerateSourceAgents,
+      enumerateSourceSkills,
+      runFreshMigration,
+    } = await import("../infra/openclaw-migrator/index.js");
     const migrationSource = detectMigrationSource();
     if (migrationSource) {
       const agentList = await enumerateSourceAgents(migrationSource);
       const skillsList = await enumerateSourceSkills(migrationSource);
 
-      runtime.log(`  ${theme.info("→")} Found ${migrationSource.brand} installation at: ${migrationSource.dir}`);
-      runtime.log(`    Agents: ${agentList.length > 0 ? agentList.map((a) => a.id).join(", ") : "main"}`);
+      runtime.log(
+        `  ${theme.info("→")} Found ${migrationSource.brand} installation at: ${migrationSource.dir}`,
+      );
+      runtime.log(
+        `    Agents: ${agentList.length > 0 ? agentList.map((a) => a.id).join(", ") : "main"}`,
+      );
       runtime.log(`    Skills: ${skillsList.length}`);
       runtime.log("");
 
@@ -200,7 +199,11 @@ export async function runSetupWizard(
         );
 
         runtime.log("");
-        runtime.log(theme.success(`Migration complete: ${report.totalChanges} change(s), ${report.totalSkipped} skipped.`));
+        runtime.log(
+          theme.success(
+            `Migration complete: ${report.totalChanges} change(s), ${report.totalSkipped} skipped.`,
+          ),
+        );
         if (report.totalWarnings > 0) {
           runtime.log(theme.warn(`  ${report.totalWarnings} warning(s).`));
         }
@@ -506,7 +509,7 @@ export async function runSetupWizard(
     (flow === "quickstart"
       ? (baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE)
       : await prompter.text({
-           message: "工作空间目录",
+          message: "工作空间目录",
           initialValue: baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE,
         }));
 
