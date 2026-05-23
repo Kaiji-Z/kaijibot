@@ -50,6 +50,11 @@ import {
   restoreMemoryPluginState,
 } from "./memory-state.js";
 import { isPathInside, safeStatSync } from "./path-safety.js";
+import {
+  createPluginModuleLoaderCache,
+  getCachedPluginModuleLoader,
+  type PluginModuleLoaderCache,
+} from "./plugin-module-loader-cache.js";
 import { createPluginRegistry, type PluginRecord, type PluginRegistry } from "./registry.js";
 import { resolvePluginCacheInputs } from "./roots.js";
 import {
@@ -239,34 +244,23 @@ function toSafeImportPath(specifier: string): string {
   return specifier;
 }
 
-function createPluginJitiLoader(options: Pick<PluginLoadOptions, "pluginSdkResolution">) {
-  const jitiLoaders = new Map<string, ReturnType<typeof createJiti>>();
+function createPluginModuleLoader(options: Pick<PluginLoadOptions, "pluginSdkResolution">) {
+  const moduleLoaders: PluginModuleLoaderCache = createPluginModuleLoaderCache();
   return (modulePath: string) => {
-    const tryNative = shouldPreferNativeJiti(modulePath);
-    const aliasMap = buildPluginLoaderAliasMap(
+    const loader = getCachedPluginModuleLoader({
+      cache: moduleLoaders,
       modulePath,
-      process.argv[1],
-      import.meta.url,
-      options.pluginSdkResolution,
-    );
-    const cacheKey = JSON.stringify({
-      tryNative,
-      aliasMap: Object.entries(aliasMap).toSorted(([left], [right]) => left.localeCompare(right)),
+      importerUrl: import.meta.url,
+      loaderFilename: modulePath,
+      aliasMap: buildPluginLoaderAliasMap(
+        modulePath,
+        process.argv[1],
+        import.meta.url,
+        options.pluginSdkResolution,
+      ),
+      pluginSdkResolution: options.pluginSdkResolution,
     });
-    const cached = jitiLoaders.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-    const loader = createJiti(import.meta.url, {
-      ...buildPluginLoaderJitiOptions(aliasMap),
-      // Source .ts runtime shims import sibling ".js" specifiers that only exist
-      // after build. Disable native loading for source entries so Jiti rewrites
-      // those imports against the source graph, while keeping native dist/*.js
-      // loading for the canonical built module graph.
-      tryNative,
-    });
-    jitiLoaders.set(cacheKey, loader);
-    return loader;
+    return (importPath: string) => loader(toSafeImportPath(importPath));
   };
 }
 
@@ -283,6 +277,7 @@ export const __testing = {
   shouldLoadChannelPluginInSetupRuntime,
   shouldPreferNativeJiti,
   toSafeImportPath,
+  createPluginModuleLoader,
   getCompatibleActivePluginRegistry,
   resolvePluginLoadCacheContext,
   get maxPluginRegistryCacheEntries() {
@@ -1140,7 +1135,7 @@ export function loadKaijiBotPlugins(options: PluginLoadOptions = {}): PluginRegi
     }
 
     // Lazy: avoid creating the Jiti loader when all plugins are disabled (common in unit tests).
-    const getJiti = createPluginJitiLoader(options);
+    const getJiti = createPluginModuleLoader(options);
 
     let createPluginRuntimeFactory:
       | ((options?: CreatePluginRuntimeOptions) => PluginRuntime)
@@ -1830,7 +1825,7 @@ export async function loadKaijiBotPluginCliRegistry(
     });
   const logger = options.logger ?? defaultLogger();
   const onlyPluginIdSet = onlyPluginIds ? new Set(onlyPluginIds) : null;
-  const getJiti = createPluginJitiLoader(options);
+  const getJiti = createPluginModuleLoader(options);
   const { registry, registerCli } = createPluginRegistry({
     logger,
     runtime: {} as PluginRuntime,
