@@ -361,18 +361,31 @@ function appendModelSnapshot(sessionManager: SessionManager, data: ModelSnapshot
 }
 
 function isSameModelSnapshot(a: ModelSnapshotEntry, b: ModelSnapshotEntry): boolean {
-  const normalize = (value?: string | null) => value ?? "";
-  return (
-    normalize(a.provider) === normalize(b.provider) &&
-    normalize(a.modelApi) === normalize(b.modelApi) &&
-    normalize(a.modelId) === normalize(b.modelId)
-  );
+  return a.timestamp === b.timestamp && a.provider === b.provider && a.modelId === b.modelId;
 }
 
-/**
- * Applies the generic replay-history cleanup pipeline before provider-owned
- * replay hooks run.
- */
+export function normalizeAssistantReplayContent(messages: AgentMessage[]): AgentMessage[] {
+  let touched = false;
+  const out: AgentMessage[] = [];
+  for (const message of messages) {
+    if (message?.role !== "assistant") {
+      out.push(message);
+      continue;
+    }
+    const content = (message as { content?: unknown }).content;
+    if (typeof content === "string") {
+      out.push({
+        ...message,
+        content: [{ type: "text", text: content }],
+      });
+      touched = true;
+      continue;
+    }
+    out.push(message);
+  }
+  return touched ? out : messages;
+}
+
 export async function sanitizeSessionHistory(params: {
   messages: AgentMessage[];
   modelApi?: string | null;
