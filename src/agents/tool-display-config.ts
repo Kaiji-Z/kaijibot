@@ -588,6 +588,11 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Record Correction",
       detailKeys: ["domain", "saved", "reinforced"],
     },
+    switch_soul: {
+      emoji: "🎭",
+      title: "Switch Soul",
+      detailKeys: ["preset"],
+    },
   },
 };
 
