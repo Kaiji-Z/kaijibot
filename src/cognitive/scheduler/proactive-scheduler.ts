@@ -1,23 +1,31 @@
-import type { PersonaTree } from "../types.js";
-import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
-import { computeGradedGate } from "./gate.js";
-import { processNoResponse, resetNoResponseStreak } from "../feedback/collector.js";
-import type { NoResponseContext } from "../feedback/collector.js";
-import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
-import { generateInsightCandidates } from "../insight/engine.js";
-import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
-import { isDuplicateBySemanticOverlap, computeTrigramSimilarity } from "../insight/content-similarity.js";
-import { pickBestTopic } from "../feedback/preference-learner.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
-import { FragmentStore } from "../insight/fragment-store.js";
-import { critiqueInsightWithLLM, refineInsightWithLLM, verifyInsightWithLLM, checkSemanticNoveltyWithLLM } from "../insight/llm-engine.js";
-import type { LlmInsightDeps } from "../insight/llm-engine.js";
-import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
-import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
-import { computeContentStrategy } from "./content-strategy.js";
-import { selectMode } from "./mode-selection.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
+import { processNoResponse, resetNoResponseStreak } from "../feedback/collector.js";
+import type { NoResponseContext } from "../feedback/collector.js";
+import { pickBestTopic } from "../feedback/preference-learner.js";
+import {
+  isDuplicateBySemanticOverlap,
+  computeTrigramSimilarity,
+} from "../insight/content-similarity.js";
+import { findCrossDomainConnections, semanticDistance } from "../insight/cross-domain-mapper.js";
+import { generateInsightCandidates } from "../insight/engine.js";
+import { FragmentStore } from "../insight/fragment-store.js";
+import {
+  critiqueInsightWithLLM,
+  refineInsightWithLLM,
+  verifyInsightWithLLM,
+  checkSemanticNoveltyWithLLM,
+} from "../insight/llm-engine.js";
+import type { LlmInsightDeps } from "../insight/llm-engine.js";
+import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
+import type { PersonaTree } from "../types.js";
+import { computeContentStrategy } from "./content-strategy.js";
+import { computeGradedGate } from "./gate.js";
+import { selectMode } from "./mode-selection.js";
+import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
 
 const log = createSubsystemLogger("cognitive/scheduler");
 
@@ -102,7 +110,11 @@ export class ProactiveScheduler {
     private readonly config: SchedulerConfig,
     readonly callbacks: {
       loadPersona: (agentId: string, userId: string) => Promise<PersonaTree | undefined>;
-      onInsightReady: (agentId: string, userId: string, candidate: InsightCandidate) => Promise<void>;
+      onInsightReady: (
+        agentId: string,
+        userId: string,
+        candidate: InsightCandidate,
+      ) => Promise<void>;
       savePersona: (agentId: string, userId: string, persona: PersonaTree) => Promise<void>;
     },
     deps?: {
@@ -139,7 +151,7 @@ export class ProactiveScheduler {
         break;
     }
 
-    opportunities.push(...await this.scanExploration(persona, event));
+    opportunities.push(...(await this.scanExploration(persona, event)));
 
     return filterBlacklistedOpportunities(opportunities, persona.domainBlacklist);
   }
@@ -175,38 +187,51 @@ export class ProactiveScheduler {
     const recentInsightDomainsAll = persona?.feedbackProfile?.recentInsightDomains ?? [];
     const windowDomains = new Set(recentInsightDomainsAll.slice(-STARVATION_WINDOW).flat());
 
-    const boosted = recentInsightDomainsAll.length === 0
-      ? penalized
-      : penalized.map(opp => {
-          if (opp.targetDomains.length === 0) return opp;
-          const starvedDomains = opp.targetDomains.filter(d => !windowDomains.has(d));
-          if (starvedDomains.length === 0) return opp;
-          const starvedRatio = starvedDomains.length / opp.targetDomains.length;
-          return { ...opp, pAct: opp.pAct * (1 + STARVATION_BONUS * starvedRatio) };
-        });
+    const boosted =
+      recentInsightDomainsAll.length === 0
+        ? penalized
+        : penalized.map((opp) => {
+            if (opp.targetDomains.length === 0) return opp;
+            const starvedDomains = opp.targetDomains.filter((d) => !windowDomains.has(d));
+            if (starvedDomains.length === 0) return opp;
+            const starvedRatio = starvedDomains.length / opp.targetDomains.length;
+            return { ...opp, pAct: opp.pAct * (1 + STARVATION_BONUS * starvedRatio) };
+          });
 
     const fatigued = getFatiguedDomains(recentDomains);
-    const nonFatigued = fatigued.size > 0
-      ? boosted.filter(opp => !opp.targetDomains.some(d => fatigued.has(d)))
-      : boosted;
+    const nonFatigued =
+      fatigued.size > 0
+        ? boosted.filter((opp) => !opp.targetDomains.some((d) => fatigued.has(d)))
+        : boosted;
     const sorted = [...nonFatigued].sort((a, b) => b.pAct - a.pAct);
     const pool = sorted.length > 0 ? sorted : [...boosted].sort((a, b) => b.pAct - a.pAct);
 
-    const aboveThreshold = pool.filter(opp => opp.pAct > threshold);
+    const aboveThreshold = pool.filter((opp) => opp.pAct > threshold);
     return aboveThreshold.slice(0, 5);
   }
 
-  async resolve(agentId: string, persona: PersonaTree, opportunity: Opportunity): Promise<InsightCandidate | null> {
+  async resolve(
+    agentId: string,
+    persona: PersonaTree,
+    opportunity: Opportunity,
+  ): Promise<InsightCandidate | null> {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentQueryHistory = persona.feedbackProfile.recentInsightQueryHistory ?? [];
     const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
     // Mode selection: prefer explicit metadata.mode (content strategy override),
     // otherwise use bandit-weighted selection from modeCandidates
-    let mode: InsightMode | undefined = (opportunity.metadata as Record<string, unknown> | undefined)?.mode as InsightMode | undefined;
+    let mode: InsightMode | undefined = (
+      opportunity.metadata as Record<string, unknown> | undefined
+    )?.mode as InsightMode | undefined;
     if (!mode) {
       const strategyHint = computeContentStrategy(persona);
-      mode = selectMode(opportunity.modeCandidates, persona.feedbackProfile.modeBandits, strategyHint, Date.now());
+      mode = selectMode(
+        opportunity.modeCandidates,
+        persona.feedbackProfile.modeBandits,
+        strategyHint,
+        Date.now(),
+      );
     }
 
     if (mode === "pattern") {
@@ -252,7 +277,12 @@ export class ProactiveScheduler {
       const candidate = result[0]!;
 
       if (recentInsightContents.length > 0) {
-        if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, { trigramThreshold: 0.95, contentWordThreshold: 0.8 })) {
+        if (
+          isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, {
+            trigramThreshold: 0.95,
+            contentWordThreshold: 0.8,
+          })
+        ) {
           log.info("safety-net dedup: near-identical content blocked", {
             userId,
             contentPreview: candidate.content.slice(0, 60),
@@ -261,12 +291,23 @@ export class ProactiveScheduler {
         }
       }
 
-      if (this.llmDeps && this.botConfig && this.config.llmFreshnessCheck !== false && recentInsightContents.length >= 3) {
+      if (
+        this.llmDeps &&
+        this.botConfig &&
+        this.config.llmFreshnessCheck !== false &&
+        recentInsightContents.length >= 3
+      ) {
         const freshness = await checkSemanticNoveltyWithLLM(
-          candidate, recentInsightContents, this.botConfig, this.llmDeps,
+          candidate,
+          recentInsightContents,
+          this.botConfig,
+          this.llmDeps,
         );
         if (!freshness.isNovel) {
-          log.info("LLM freshness check: pattern semantically repetitive", { userId, reason: freshness.reason });
+          log.info("LLM freshness check: pattern semantically repetitive", {
+            userId,
+            reason: freshness.reason,
+          });
           return null;
         }
       }
@@ -275,7 +316,10 @@ export class ProactiveScheduler {
 
       if (this.llmDeps && this.botConfig && this.config.patternVerification !== false) {
         const verification = await verifyInsightWithLLM(
-          candidate, persona, this.botConfig, this.llmDeps,
+          candidate,
+          persona,
+          this.botConfig,
+          this.llmDeps,
         );
         candidate.verificationStatus = verification.status;
       }
@@ -306,7 +350,7 @@ export class ProactiveScheduler {
       try {
         const allFragments = await this.fragmentStore.load(agentId, userId);
         const allowedKinds = new Set(["knowledge_gap", "assumption", "implicit_priority"]);
-        knowledgeFragments = allFragments.filter(f => allowedKinds.has(f.kind));
+        knowledgeFragments = allFragments.filter((f) => allowedKinds.has(f.kind));
         if (knowledgeFragments.length > 0) {
           log.info("knowledge-mode fragments loaded", { userId, count: knowledgeFragments.length });
         }
@@ -316,12 +360,13 @@ export class ProactiveScheduler {
     }
 
     const input: InsightEngineInput = {
-      targetDomains: opportunity.targetDomains.length > 0
-        ? opportunity.targetDomains
-        : Object.entries(persona.domains)
-            .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
-            .slice(0, 3)
-            .map(([name]) => name),
+      targetDomains:
+        opportunity.targetDomains.length > 0
+          ? opportunity.targetDomains
+          : Object.entries(persona.domains)
+              .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+              .slice(0, 3)
+              .map(([name]) => name),
       recentFocus: persona.recentFocus,
       trustScore: persona.rapport.trustScore,
       recentInsightIds,
@@ -354,7 +399,10 @@ export class ProactiveScheduler {
       const initialResult = await this.generateInsights(persona, input, genOpts);
 
       if (!initialResult || initialResult.length === 0) {
-        log.warn("insight generation produced no candidates", { userId: persona.identity?.userId, mode });
+        log.warn("insight generation produced no candidates", {
+          userId: persona.identity?.userId,
+          mode,
+        });
         return null;
       }
 
@@ -364,13 +412,20 @@ export class ProactiveScheduler {
       if (bestScore < QUALITY_EARLY_EXIT_THRESHOLD) {
         for (let refine = 0; refine < MAX_QUALITY_RETRIES - 1; refine++) {
           const critique = await critiqueInsightWithLLM(
-            bestCandidate, persona, this.botConfig, this.llmDeps,
+            bestCandidate,
+            persona,
+            this.botConfig,
+            this.llmDeps,
           );
           if (!critique) break;
 
           const refined = await refineInsightWithLLM(
-            "", bestCandidate, critique,
-            persona, this.botConfig, this.llmDeps,
+            "",
+            bestCandidate,
+            critique,
+            persona,
+            this.botConfig,
+            this.llmDeps,
           );
           if (!refined) break;
 
@@ -384,7 +439,10 @@ export class ProactiveScheduler {
       }
 
       candidate = bestCandidate;
-      log.info("resolve: self-refine selected candidate", { userId: persona.identity?.userId, finalScore: bestScore });
+      log.info("resolve: self-refine selected candidate", {
+        userId: persona.identity?.userId,
+        finalScore: bestScore,
+      });
     } else {
       // Blind retry fallback (no LLM deps)
       const allCandidates: InsightCandidate[] = [];
@@ -394,12 +452,20 @@ export class ProactiveScheduler {
           allCandidates.push(...result);
         }
         if (attempt > 0) {
-          log.info("resolve: quality retry", { userId: persona.identity?.userId, attempt: attempt + 1, candidatesSoFar: allCandidates.length });
+          log.info("resolve: quality retry", {
+            userId: persona.identity?.userId,
+            attempt: attempt + 1,
+            candidatesSoFar: allCandidates.length,
+          });
         }
         if (allCandidates.length > 0 && attempt < MAX_QUALITY_RETRIES - 1) {
           const bestSoFar = Math.max(...allCandidates.map(scoreCandidate));
           if (bestSoFar >= QUALITY_EARLY_EXIT_THRESHOLD) {
-            log.info("resolve: early exit — quality threshold met", { userId: persona.identity?.userId, attempt: attempt + 1, bestScore: bestSoFar });
+            log.info("resolve: early exit — quality threshold met", {
+              userId: persona.identity?.userId,
+              attempt: attempt + 1,
+              bestScore: bestSoFar,
+            });
             break;
           }
         }
@@ -407,18 +473,29 @@ export class ProactiveScheduler {
 
       if (allCandidates.length === 0) return null;
 
-      const scored = allCandidates.map((c) => ({
-        candidate: c,
-        score: scoreCandidate(c),
-      })).sort((a, b) => b.score - a.score);
+      const scored = allCandidates
+        .map((c) => ({
+          candidate: c,
+          score: scoreCandidate(c),
+        }))
+        .sort((a, b) => b.score - a.score);
 
       candidate = scored[0]!.candidate;
-      log.info("resolve: selected best candidate", { userId: persona.identity?.userId, finalScore: scored[0]!.score, totalCandidates: allCandidates.length });
+      log.info("resolve: selected best candidate", {
+        userId: persona.identity?.userId,
+        finalScore: scored[0]!.score,
+        totalCandidates: allCandidates.length,
+      });
     }
 
     // Safety-net dedup: block near-identical content only
     if (recentInsightContents.length > 0) {
-      if (isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, { trigramThreshold: 0.95, contentWordThreshold: 0.8 })) {
+      if (
+        isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, {
+          trigramThreshold: 0.95,
+          contentWordThreshold: 0.8,
+        })
+      ) {
         log.info("safety-net dedup: near-identical content blocked", {
           userId: persona.identity?.userId,
           contentPreview: candidate.content.slice(0, 60),
@@ -427,19 +504,33 @@ export class ProactiveScheduler {
       }
     }
 
-    if (this.llmDeps && this.botConfig && this.config.llmFreshnessCheck !== false && recentInsightContents.length >= 2) {
+    if (
+      this.llmDeps &&
+      this.botConfig &&
+      this.config.llmFreshnessCheck !== false &&
+      recentInsightContents.length >= 2
+    ) {
       const freshness = await checkSemanticNoveltyWithLLM(
-        candidate, recentInsightContents, this.botConfig, this.llmDeps,
+        candidate,
+        recentInsightContents,
+        this.botConfig,
+        this.llmDeps,
       );
       if (!freshness.isNovel) {
-        log.info("LLM freshness check: semantically repetitive", { userId: persona.identity?.userId, reason: freshness.reason });
+        log.info("LLM freshness check: semantically repetitive", {
+          userId: persona.identity?.userId,
+          reason: freshness.reason,
+        });
         return null;
       }
     }
 
     if (this.llmDeps && this.botConfig) {
       const verification = await verifyInsightWithLLM(
-        candidate, persona, this.botConfig, this.llmDeps,
+        candidate,
+        persona,
+        this.botConfig,
+        this.llmDeps,
       );
       candidate.verificationStatus = verification.status;
       log.info("knowledge-mode insight verification complete", {
@@ -459,12 +550,12 @@ export class ProactiveScheduler {
       candidate.verificationStatus = candidate.sources.length > 0 ? "verified" : "unverified";
     }
 
-    // Block knowledge-mode insights with zero sources (no web evidence)
-    if (candidate.sources.length === 0) {
+    if (candidate.sources.length === 0 && opportunity.type !== "exploration") {
       log.warn("knowledge-mode insight has zero sources, skipping delivery", {
         userId: persona.identity?.userId,
         content: candidate.content.slice(0, 80),
         mode,
+        opportunityType: opportunity.type,
       });
       return null;
     }
@@ -486,7 +577,9 @@ export class ProactiveScheduler {
     agentId?: string,
   ): Promise<InsightCandidate | undefined> {
     const effectiveAgentId = agentId ?? "main";
-    return this.processEventQueue.enqueue(userId, () => this._processEventInner(effectiveAgentId, userId, event));
+    return this.processEventQueue.enqueue(userId, () =>
+      this._processEventInner(effectiveAgentId, userId, event),
+    );
   }
 
   private async _processEventInner(
@@ -501,8 +594,10 @@ export class ProactiveScheduler {
     // counter when the user has been active since the last proactive.
     // The increment is deferred to AFTER a successful insight delivery, so
     // the counter only grows when we actually sent something and got no reply.
-    if (persona.lifecycle.lastActiveAt > 0
-        && persona.lifecycle.lastActiveAt > persona.feedbackProfile.lastProactiveAt) {
+    if (
+      persona.lifecycle.lastActiveAt > 0 &&
+      persona.lifecycle.lastActiveAt > persona.feedbackProfile.lastProactiveAt
+    ) {
       persona = resetNoResponseStreak(persona);
     }
 
@@ -514,10 +609,23 @@ export class ProactiveScheduler {
     };
     const gateResult = computeGradedGate(gateContext);
     if (!gateResult.decision) {
-      log.info("gate vetoed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct, reasons: gateResult.reasons, eventType: event.type });
+      log.info("gate vetoed", {
+        userId,
+        pNeed: gateResult.pNeed,
+        pAccept: gateResult.pAccept,
+        pAct: gateResult.pAct,
+        reasons: gateResult.reasons,
+        eventType: event.type,
+      });
       return undefined;
     }
-    log.info("gate passed", { userId, pNeed: gateResult.pNeed, pAccept: gateResult.pAccept, pAct: gateResult.pAct, eventType: event.type });
+    log.info("gate passed", {
+      userId,
+      pNeed: gateResult.pNeed,
+      pAccept: gateResult.pAccept,
+      pAct: gateResult.pAct,
+      eventType: event.type,
+    });
 
     const opportunities = await this.search(persona, event);
     const byType: Record<string, number> = {};
@@ -531,9 +639,16 @@ export class ProactiveScheduler {
       log.info("identify selected nothing", { userId });
       return undefined;
     }
-    log.info("identify selected pool", { userId, poolSize: candidates.length, topType: candidates[0].type, topTargetDomains: candidates[0].targetDomains, topPAct: candidates[0].pAct, recentTypes });
+    log.info("identify selected pool", {
+      userId,
+      poolSize: candidates.length,
+      topType: candidates[0].type,
+      topTargetDomains: candidates[0].targetDomains,
+      topPAct: candidates[0].pAct,
+      recentTypes,
+    });
 
-    const ddCount = recentTypes.filter(t => t === "domain_depth").length;
+    const ddCount = recentTypes.filter((t) => t === "domain_depth").length;
     if (ddCount >= 4) {
       log.info("identify: domain_depth dominance detected", {
         recentTypes,
@@ -548,14 +663,24 @@ export class ProactiveScheduler {
     let selected: Opportunity | undefined;
     for (const candidate of candidates) {
       if (isTopicStale(candidate, recentInsightContents, recentInsightDomains)) {
-        log.info("pre-gen freshness check: skipping stale candidate", { userId, type: candidate.type, targetDomains: candidate.targetDomains });
+        log.info("pre-gen freshness check: skipping stale candidate", {
+          userId,
+          type: candidate.type,
+          targetDomains: candidate.targetDomains,
+        });
         continue;
       }
 
       selected = candidate;
-      const attemptedDomains = [...(persona.feedbackProfile.recentInsightDomains ?? []), selected.targetDomains].slice(-5);
+      const attemptedDomains = [
+        ...(persona.feedbackProfile.recentInsightDomains ?? []),
+        selected.targetDomains,
+      ].slice(-5);
       persona.feedbackProfile.recentInsightDomains = attemptedDomains;
-      const attemptedTypes = [...(persona.feedbackProfile.recentInsightTypes ?? []), selected.type].slice(-5);
+      const attemptedTypes = [
+        ...(persona.feedbackProfile.recentInsightTypes ?? []),
+        selected.type,
+      ].slice(-5);
       persona.feedbackProfile.recentInsightTypes = attemptedTypes;
 
       insight = await this.resolve(agentId, persona, selected);
@@ -598,10 +723,13 @@ export class ProactiveScheduler {
     // After delivering a new insight, check whether the user responded to
     // the *previous* one.  If lastProactive > lastActive at this point the
     // user never replied to our last proactive, so increment the streak.
-    if (persona.feedbackProfile.lastProactiveAt > 0
-        && persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt) {
+    if (
+      persona.feedbackProfile.lastProactiveAt > 0 &&
+      persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt
+    ) {
       const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-      const prevInsightDomains = recentDomains.length >= 1 ? recentDomains[recentDomains.length - 1] : [];
+      const prevInsightDomains =
+        recentDomains.length >= 1 ? recentDomains[recentDomains.length - 1] : [];
       const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
       const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
       const noResponseCtx: NoResponseContext = {
@@ -614,7 +742,10 @@ export class ProactiveScheduler {
     persona.feedbackProfile.lastProactiveAt = event.timestamp;
     const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);
     persona.feedbackProfile.recentInsightIds = ids;
-    const contents = [...(persona.feedbackProfile.recentInsightContents ?? []), insight.content].slice(-5);
+    const contents = [
+      ...(persona.feedbackProfile.recentInsightContents ?? []),
+      insight.content,
+    ].slice(-5);
     persona.feedbackProfile.recentInsightContents = contents;
     const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
     const replacedDomains = [...prevDomains.slice(0, -1), insight.targetDomains].slice(-5);
@@ -627,7 +758,10 @@ export class ProactiveScheduler {
     const replacedModes = [...prevModes.slice(0, -1), mode].slice(-5);
     persona.feedbackProfile.recentInsightModes = replacedModes;
     if (insight.searchQueryUsed) {
-      const queries = [...(persona.feedbackProfile.recentInsightQueryHistory ?? []), insight.searchQueryUsed].slice(-10);
+      const queries = [
+        ...(persona.feedbackProfile.recentInsightQueryHistory ?? []),
+        insight.searchQueryUsed,
+      ].slice(-10);
       persona.feedbackProfile.recentInsightQueryHistory = queries;
     }
     await this.callbacks.savePersona(agentId, userId, persona);
@@ -635,9 +769,11 @@ export class ProactiveScheduler {
     return insight;
   }
 
-  start(listUsers: () => Promise<Array<{ agentId: string; userId: string }>>, intervalMs?: number): void {
-    const baseInterval =
-      intervalMs ?? this.config.minIntervalHours * 60 * 60 * 1000;
+  start(
+    listUsers: () => Promise<Array<{ agentId: string; userId: string }>>,
+    intervalMs?: number,
+  ): void {
+    const baseInterval = intervalMs ?? this.config.minIntervalHours * 60 * 60 * 1000;
 
     const scheduleNext = (): void => {
       const jitter = baseInterval * (0.5 + Math.random());
@@ -650,11 +786,18 @@ export class ProactiveScheduler {
       log.info("timer tick", { userCount: users.length, baseInterval });
       for (const { agentId, userId } of users) {
         try {
-          const result = await this.processEvent(userId, {
-            type: "timer",
-            timestamp: Date.now(),
-          }, agentId);
-          log.info("processEvent done", { userId, result: result ? "insight generated" : "no insight" });
+          const result = await this.processEvent(
+            userId,
+            {
+              type: "timer",
+              timestamp: Date.now(),
+            },
+            agentId,
+          );
+          log.info("processEvent done", {
+            userId,
+            result: result ? "insight generated" : "no insight",
+          });
         } catch (err) {
           log.warn("tick failed", { userId, error: String(err) });
         }
@@ -666,14 +809,20 @@ export class ProactiveScheduler {
     scheduleNext();
   }
 
-  private async scanExploration(persona: PersonaTree, event: SchedulerEvent): Promise<Opportunity[]> {
+  private async scanExploration(
+    persona: PersonaTree,
+    event: SchedulerEvent,
+  ): Promise<Opportunity[]> {
     const userDomainKeys = Object.keys(persona.domains);
     if (userDomainKeys.length === 0) return [];
 
     const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
     const strategy = computeContentStrategy(persona);
     const allExcluded = new Set([...fatigued, ...strategy.excludeDomains]);
-    const baseline = computeBaselinePAccept(persona, allExcluded.size > 0 ? allExcluded : undefined);
+    const baseline = computeBaselinePAccept(
+      persona,
+      allExcluded.size > 0 ? allExcluded : undefined,
+    );
 
     if (strategy.forceMode) {
       log.info("content strategy override", {
@@ -685,36 +834,40 @@ export class ProactiveScheduler {
       });
       const fatiguedList = [...allExcluded];
       const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
-      const targetDomain = bestTopic ?? userDomainKeys.find(d => !allExcluded.has(d));
+      const targetDomain = bestTopic ?? userDomainKeys.find((d) => !allExcluded.has(d));
       if (!targetDomain && strategy.forceMode !== "pattern") {
-        return [{
+        return [
+          {
+            type: "exploration" as const,
+            targetDomains: [],
+            sourceDomains: [],
+            pNeed: strategy.noveltyBoost ? 0.6 : 0.55,
+            pAccept: baseline,
+            pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
+            metadata: { mode: strategy.forceMode },
+            modeCandidates: [strategy.forceMode],
+          },
+        ];
+      }
+      return [
+        {
           type: "exploration" as const,
-          targetDomains: [],
+          targetDomains: targetDomain ? [targetDomain] : [],
           sourceDomains: [],
           pNeed: strategy.noveltyBoost ? 0.6 : 0.55,
           pAccept: baseline,
           pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
           metadata: { mode: strategy.forceMode },
           modeCandidates: [strategy.forceMode],
-        }];
-      }
-      return [{
-        type: "exploration" as const,
-        targetDomains: targetDomain ? [targetDomain] : [],
-        sourceDomains: [],
-        pNeed: strategy.noveltyBoost ? 0.6 : 0.55,
-        pAccept: baseline,
-        pAct: (strategy.noveltyBoost ? 0.6 : 0.55) * baseline,
-        metadata: { mode: strategy.forceMode },
-        modeCandidates: [strategy.forceMode],
-      }];
+        },
+      ];
     }
 
     // No content strategy override — all three modes are candidates
     // Mode selection deferred to resolve() via banditWeightedSelect
     const fatiguedList = [...allExcluded];
     const bestTopic = pickBestTopic(persona.feedbackProfile, { excludeTopics: fatiguedList });
-    const targetDomain = bestTopic ?? userDomainKeys.find(d => !allExcluded.has(d));
+    const targetDomain = bestTopic ?? userDomainKeys.find((d) => !allExcluded.has(d));
 
     log.info("exploration mode candidates set", {
       userId: persona.identity?.userId,
@@ -724,15 +877,17 @@ export class ProactiveScheduler {
       streak: persona.feedbackProfile.consecutiveNoResponses,
     });
 
-    return [{
-      type: "exploration" as const,
-      targetDomains: targetDomain ? [targetDomain] : [],
-      sourceDomains: [],
-      pNeed: 0.55,
-      pAccept: baseline,
-      pAct: 0.55 * baseline,
-      modeCandidates: ["pattern", "surprise", "extend"],
-    }];
+    return [
+      {
+        type: "exploration" as const,
+        targetDomains: targetDomain ? [targetDomain] : [],
+        sourceDomains: [],
+        pNeed: 0.55,
+        pAccept: baseline,
+        pAct: 0.55 * baseline,
+        modeCandidates: ["pattern", "surprise", "extend"],
+      },
+    ];
   }
 
   stop(): void {
@@ -838,7 +993,12 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
 
     for (let i = 0; i < userDomains.length; i++) {
       for (let j = i + 1; j < userDomains.length; j++) {
-        const d = semanticDistance(userDomains[i]!, userDomains[j]!, undefined, persona.domainGraph);
+        const d = semanticDistance(
+          userDomains[i]!,
+          userDomains[j]!,
+          undefined,
+          persona.domainGraph,
+        );
         if (d > maxDist) {
           maxDist = d;
           weakestPair = { from: userDomains[i]!, to: userDomains[j]!, distance: d };
@@ -870,14 +1030,16 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
   const pAccept = computeBaselinePAccept(persona);
   const now = Date.now();
 
-  const recentDomainSet = new Set(
-    (persona.feedbackProfile.recentInsightDomains ?? []).flat(),
+  const recentDomainSet = new Set((persona.feedbackProfile.recentInsightDomains ?? []).flat());
+
+  const filtered = Object.entries(persona.domains).filter(
+    ([name, d]) => d.depth >= 3 && !recentDomainSet.has(name),
   );
 
-  const filtered = Object.entries(persona.domains)
-    .filter(([name, d]) => d.depth >= 3 && !recentDomainSet.has(name));
-
-  const entries = filtered.length > 0 ? filtered : Object.entries(persona.domains).filter(([, d]) => d.depth >= 3);
+  const entries =
+    filtered.length > 0
+      ? filtered
+      : Object.entries(persona.domains).filter(([, d]) => d.depth >= 3);
 
   return entries
     .sort(([, a], [, b]) => {
@@ -889,7 +1051,7 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
     .map(([domainName, domain]) => {
       const daysSinceMention = (now - domain.lastMentioned) / (24 * 60 * 60 * 1000);
       const recencyBoost = Math.max(0, 1 - daysSinceMention / 7);
-      const pNeed = Math.min(0.40, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
+      const pNeed = Math.min(0.4, 0.3 + 0.1 * Math.min(domain.depth, 8) + 0.2 * recencyBoost);
 
       return {
         type: "domain_depth" as const,
@@ -909,15 +1071,17 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
   const newDomains = payload?.newDomains ?? [];
 
   if (newDomains.length === 0) {
-    return Object.keys(persona.domains).slice(0, 1).map((domain) => ({
-      type: "cross_domain" as const,
-      targetDomains: [domain],
-      sourceDomains: [],
-      pNeed: 0.7,
-      pAccept,
-      pAct: 0.7 * pAccept,
-      modeCandidates: ["surprise"],
-    }));
+    return Object.keys(persona.domains)
+      .slice(0, 1)
+      .map((domain) => ({
+        type: "cross_domain" as const,
+        targetDomains: [domain],
+        sourceDomains: [],
+        pNeed: 0.7,
+        pAccept,
+        pAct: 0.7 * pAccept,
+        modeCandidates: ["surprise"],
+      }));
   }
 
   return newDomains.map((domain) => {
@@ -959,15 +1123,15 @@ function scanInfoScan(persona: PersonaTree, event: SchedulerEvent): Opportunity[
 
 function computeBaselinePAccept(persona: PersonaTree, fatiguedDomains?: Set<string>): number {
   const trustFactor = persona.rapport.trustScore;
-  const banditEntries = Object.entries(persona.feedbackProfile.topicBandits)
-    .filter(([topic]) => !fatiguedDomains?.has(topic));
+  const banditEntries = Object.entries(persona.feedbackProfile.topicBandits).filter(
+    ([topic]) => !fatiguedDomains?.has(topic),
+  );
 
   let banditFactor = 0.5;
   if (banditEntries.length > 0) {
-    const meanPosterior = banditEntries.reduce(
-      (sum, [, b]) => sum + b.alpha / (b.alpha + b.beta),
-      0,
-    ) / banditEntries.length;
+    const meanPosterior =
+      banditEntries.reduce((sum, [, b]) => sum + b.alpha / (b.alpha + b.beta), 0) /
+      banditEntries.length;
     banditFactor = meanPosterior;
   }
 
@@ -977,7 +1141,6 @@ function computeBaselinePAccept(persona: PersonaTree, fatiguedDomains?: Set<stri
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
-
 
 export function filterBlacklistedOpportunities(
   opportunities: Opportunity[],
