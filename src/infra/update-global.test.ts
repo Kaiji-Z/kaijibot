@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { bundledDistPluginFile } from "../../test/helpers/bundled-plugin-paths.js";
 import { BUNDLED_RUNTIME_SIDECAR_PATHS } from "../plugins/runtime-sidecar-paths.js";
 import { withTempDir } from "../test-helpers/temp-dir.js";
 import { captureEnv } from "../test-utils/env.js";
@@ -24,7 +23,9 @@ import {
   type CommandRunner,
 } from "./update-global.js";
 
-const MATRIX_HELPER_API = bundledDistPluginFile("matrix", "helper-api.js");
+const FIRST_SIDECAR = BUNDLED_RUNTIME_SIDECAR_PATHS.find(
+  (p) => p.includes("feishu"),
+) ?? BUNDLED_RUNTIME_SIDECAR_PATHS[0]!;
 
 describe("update global helpers", () => {
   let envSnapshot: ReturnType<typeof captureEnv> | undefined;
@@ -350,7 +351,7 @@ describe("update global helpers", () => {
     });
   });
 
-  it("checks bundled runtime sidecars, including Matrix helper-api", async () => {
+  it("checks bundled runtime sidecars — detects missing file", async () => {
     await withTempDir({ prefix: "kaijibot-update-global-pkg-" }, async (packageRoot) => {
       await fs.writeFile(
         path.join(packageRoot, "package.json"),
@@ -365,9 +366,9 @@ describe("update global helpers", () => {
 
       await expect(collectInstalledGlobalPackageErrors({ packageRoot })).resolves.toEqual([]);
 
-      await fs.rm(path.join(packageRoot, MATRIX_HELPER_API));
+      await fs.rm(path.join(packageRoot, FIRST_SIDECAR));
       await expect(collectInstalledGlobalPackageErrors({ packageRoot })).resolves.toContain(
-        `missing bundled runtime sidecar ${MATRIX_HELPER_API}`,
+        `missing bundled runtime sidecar ${FIRST_SIDECAR}`,
       );
     });
   });
