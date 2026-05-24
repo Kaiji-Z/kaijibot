@@ -275,6 +275,7 @@ export class ProactiveScheduler {
       }
 
       const candidate = result[0]!;
+      candidate.source = "pattern";
 
       if (recentInsightContents.length > 0) {
         if (
@@ -700,7 +701,7 @@ export class ProactiveScheduler {
       sourceCount: insight.sources.length,
       hasWebSources: insight.sources.length > 0,
       targetDomains: insight.targetDomains,
-      source: insight.source ?? "v1",
+      source: insight.source ?? "knowledge",
       verificationStatus: insight.verificationStatus,
       mode: selected.metadata?.mode ?? "knowledge",
       opportunityType: selected.type,

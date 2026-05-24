@@ -41,7 +41,7 @@ This file is auto-loaded into every conversation. Consult this guide first when 
   - `start` — start time (e.g. `"09:00"`, unset = no restriction)
   - `end` — end time (e.g. `"22:00"`, unset = no restriction)
   - `timezone` — timezone (default: `"Asia/Shanghai"`)
-- `cognitive.proactive.digestMode` — push mode `"realtime"` / `"daily"` / `"weekly"` (reserved, currently all behave as realtime)
+- `cognitive.proactive.digestMode` — **reserved** (not yet implemented; all pushes are realtime regardless of this setting)
 
 ### Persona Extraction
 
@@ -51,13 +51,14 @@ This file is auto-loaded into every conversation. Consult this guide first when 
 
 ### Insight Engine
 
-- `cognitive.insight.engine` — engine version `"v1"` / `"v2"` / `"dual"` (default: `"dual"`)
-  - `v1`: direct LLM generation + optional web search
-  - `v2`: dialog fragment collection -> clustering -> crystallization
-  - `dual`: v1 + v2 in parallel, deduplicated and merged (recommended)
+- `cognitive.insight.engine` — engine mode `"knowledge"` / `"pattern"` / `"unified"` (default: `"unified"`)
+  - `knowledge`: LLM generation + web search, with self-refine loop (critique→rewrite) and LLM verification
+  - `pattern`: dialog fragment collection → clustering → behavioral insight generation
+  - `unified`: single pipeline with 3-mode routing (default, recommended). Modes: pattern (50%), surprise (40%), extend (10%)
+  - Legacy aliases: `"v1"` → `"knowledge"`, `"v2"` → `"pattern"`, `"dual"` → `"unified"`
+- `cognitive.insight.patternModeRatio` — pattern mode ratio 0-1 in unified engine (default: 0.5)
 - `cognitive.insight.verificationLevel` — fact verification strictness `"basic"` / `"strict"` / `"paranoid"` (default: `"basic"`)
 - `cognitive.insight.inferenceModel` — model used for inference (unset = use main model)
-- `cognitive.insight.surpriseRatio` — surprise mode ratio 0-1 (default: 0.8)
 - `cognitive.insight.outputLanguage` — output language (default: `"zh"`, auto-detected from persona)
 - `cognitive.insight.sources.scanIntervalHours` — info scan interval (default: 6, range: 1-168)
 - `cognitive.insight.sources.webSearchProvider` — web search provider
@@ -66,17 +67,16 @@ This file is auto-loaded into every conversation. Consult this guide first when 
 ### Skill Evolution
 
 - `cognitive.evolution.enabled` — evolution engine toggle (default: true)
-- `cognitive.evolution.minComplexity` — minimum complexity to trigger suggestions 0-1 (default: 0.6)
-- `cognitive.evolution.errorComplexityThreshold` — lowered threshold on errors 0-1 (default: 0.3)
-- `cognitive.evolution.cooldownHours` — suggestion cooldown (default: 24, range: 1-168)
-- `cognitive.evolution.maxSuggestionsPerDay` — daily cap (default: 3, range: 1-50)
 - `cognitive.evolution.clawhubEnabled` — ClawHub sharing (default: false)
-- `cognitive.evolution.clawhubAutoPublish` — auto-publish (default: false)
+- `cognitive.evolution.clawhubRegistry` — ClawHub registry URL
 
 ### Feedback
 
-- `cognitive.feedback.mechanism` — feedback method `"emoji"` / `"buttons"` / `"text"` (default: `"emoji"`)
-- `cognitive.feedback.implicitFeedback` — collect implicit feedback (default: true)
+- `cognitive.proactive.enabled` — proactive insights toggle (default: true)
+- `cognitive.proactive.minIntervalHours` — minimum interval between proactive messages (default: 0.5)
+- `cognitive.proactive.activeHours.start` — active hours start (e.g. "08:00")
+- `cognitive.proactive.activeHours.end` — active hours end (e.g. "22:00")
+- `cognitive.proactive.activeHours.timezone` — timezone (default: system timezone)
 
 ## Models and Providers
 
@@ -166,6 +166,6 @@ Use the `mcp_config` tool for programmatic MCP server management:
 | Proactive insights not pushing    | Check that `cognitive.enabled` and `cognitive.proactive.enabled` are true; requires at least 5 conversation rounds |
 | Disturbed at night                | Set `cognitive.proactive.activeHours.start` and `.end` (e.g. `"09:00"` - `"22:00"`)                                |
 | Pushes too frequent or too sparse | Adjust `cognitive.proactive.minIntervalHours` (default 0.5 hours)                                                  |
-| Repetitive push content           | Check that `cognitive.insight.engine` is set to `"dual"` (v2 fragment crystallization adds diversity)              |
+| Repetitive push content           | Check that `cognitive.insight.engine` is set to `"unified"` (default) — pattern mode adds behavioral diversity              |
 | Web search not working            | Check that `EXA_API_KEY` or `TAVILY_API_KEY` is set                                                                |
 | Gateway fails to start            | Use `kaijibot gateway status` to check, verify the port is not occupied                                            |

@@ -353,8 +353,8 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
   console.log(`  域分布: ${uniqueDomains.size} unique domains: ${[...uniqueDomains].join(", ")}`);
 
   // 4. Source diversity
-  const patternCount = resolved.filter((r) => r.insight?.source === "v2").length;
-  const knowledgeCount = resolved.filter((r) => r.insight?.source !== "v2").length;
+  const patternCount = resolved.filter((r) => r.insight?.source === "pattern").length;
+  const knowledgeCount = resolved.filter((r) => r.insight?.source !== "pattern").length;
   console.log(
     `  Knowledge 洞察: ${knowledgeCount}/${resolved.length}, Pattern 洞察: ${patternCount}/${resolved.length}`,
   );
@@ -503,7 +503,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)(
             }
 
             console.log(
-              `    洞察 (${insight.source ?? "v1"}): ${insight.content.slice(0, 120)}...`,
+              `    洞察 (${insight.source ?? "knowledge"}): ${insight.content.slice(0, 120)}...`,
             );
             console.log(`    Web sources: ${insight.sources.length}`);
           } else {
@@ -531,7 +531,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)(
               ? {
                   id: insight.id,
                   content: insight.content,
-                  source: insight.source ?? "v1",
+                  source: insight.source ?? "knowledge",
                   targetDomains: insight.targetDomains,
                   hasWebSources: insight.sources.length > 0,
                 }

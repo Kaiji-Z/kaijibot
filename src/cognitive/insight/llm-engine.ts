@@ -1656,7 +1656,7 @@ function parseLLMInsights(text: string, maxCandidates: number): InsightCandidate
           2,
         sources: [],
         verificationStatus: "unverified" as const,
-        source: "v1" as const,
+        source: "knowledge" as const,
       }))
       .filter((c: InsightCandidate) => c.content.length > 0 && isSubstantiveContent(c.content));
   } catch (err) {

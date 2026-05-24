@@ -463,7 +463,7 @@ describe("insight pipeline integration", () => {
     expect(delivered[0]!.id).toBe(result!.id);
   });
 
-  it("search produces exploration opportunity with correct mode based on timestamp", async () => {
+  it("search produces exploration opportunity with modeCandidates for deferred selection", async () => {
     const persona = makePersona();
     const scheduler = new ProactiveScheduler(makeSchedulerConfig(), {
       loadPersona: async () => persona,
@@ -473,14 +473,14 @@ describe("insight pipeline integration", () => {
 
     const surpriseEvent: SchedulerEvent = { type: "timer", timestamp: surpriseTimestamp() };
     const surpriseOpps = await scheduler.search(persona, surpriseEvent);
-    const explorationSurprise = surpriseOpps.find((o) => o.type === "exploration");
-    expect(explorationSurprise).toBeDefined();
-    expect((explorationSurprise!.metadata as Record<string, unknown>)?.mode).toBe("surprise");
+    const exploration = surpriseOpps.find((o) => o.type === "exploration");
+    expect(exploration).toBeDefined();
+    expect(exploration!.modeCandidates).toEqual(["pattern", "surprise", "extend"]);
 
     const extendEvent: SchedulerEvent = { type: "timer", timestamp: extendTimestamp() };
     const extendOpps = await scheduler.search(persona, extendEvent);
     const explorationExtend = extendOpps.find((o) => o.type === "exploration");
     expect(explorationExtend).toBeDefined();
-    expect((explorationExtend!.metadata as Record<string, unknown>)?.mode).toBe("extend");
+    expect(explorationExtend!.modeCandidates).toEqual(["pattern", "surprise", "extend"]);
   });
 });

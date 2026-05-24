@@ -3,14 +3,12 @@ import { extractFromMessage } from "./extractor.js";
 import { createDefaultPersona } from "./store.js";
 
 describe("extractFromMessage", () => {
-  it("detects domain keywords in messages", () => {
+  it("returns no domains — domain detection is LLM-driven", () => {
     const result = extractFromMessage(
       "我想用typescript写一个机器学习项目",
       "好的，我们可以用Python或者TypeScript来实现",
     );
-    const domainNames = result.domains.map((d) => d.name);
-    expect(domainNames).toContain("编程语言");
-    expect(domainNames).toContain("AI/机器学习");
+    expect(result.domains).toEqual([]);
   });
 
   it("extracts explicit self-disclosure as attributes", () => {
@@ -33,11 +31,10 @@ describe("extractFromMessage", () => {
     expect(result.domains).toEqual([]);
   });
 
-  it("assigns higher depth for more keyword matches", () => {
+  it("populates recentFocus even when no domain mapping exists", () => {
     const result = extractFromMessage("我在做AI人工智能相关的机器学习深度学习项目", "好的");
-    const aiDomain = result.domains.find((d) => d.name === "AI/机器学习");
-    expect(aiDomain).toBeDefined();
-    expect(aiDomain?.depth).toBeGreaterThanOrEqual(3);
+    expect(result.domains).toEqual([]);
+    expect(result.recentFocus.length).toBeGreaterThan(0);
   });
 
   it("does not mutate existing persona", () => {

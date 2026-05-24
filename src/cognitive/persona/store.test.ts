@@ -61,7 +61,13 @@ describe("PersonaStore", () => {
     };
     await store.save("main", "user-123", persona);
     const loaded = await store.load("main", "user-123");
-    expect(loaded?.domains["AI/机器学习"]).toEqual(persona.domains["AI/机器学习"]);
+    const domain = loaded?.domains["AI/机器学习"];
+    expect(domain).toBeDefined();
+    expect(domain!.depth).toBe(5);
+    expect(domain!.recurrence).toBe(3);
+    expect(domain!.keyInsights).toEqual(["偏好 Rust 实现"]);
+    expect(domain!.activeQuestions).toEqual(["如何优化推理延迟?"]);
+    expect(domain!.phase).toBe("stable");
   });
 
   it("loadOrCreate returns valid persona from well-formed JSON", async () => {

@@ -21978,11 +21978,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               inferenceModel: {
                 type: "string",
               },
-              surpriseRatio: {
-                type: "number",
-                minimum: 0,
-                maximum: 1,
-              },
               outputLanguage: {
                 type: "string",
               },

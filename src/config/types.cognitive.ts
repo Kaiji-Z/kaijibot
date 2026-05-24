@@ -13,7 +13,7 @@ export type CognitiveConfig = {
       end?: string;
       timezone?: string;
     };
-    /** Digest mode for proactive insights */
+    /** Digest mode (reserved — not yet implemented; all pushes are realtime) */
     digestMode?: "realtime" | "daily" | "weekly";
   };
   /** User cognitive model settings */
@@ -42,8 +42,6 @@ export type CognitiveConfig = {
     engine?: "v1" | "v2" | "dual" | "knowledge" | "pattern" | "unified";
     /** Model used for interest inference and insight generation (default: uses main model). */
     inferenceModel?: string;
-    /** Ratio of surprise-mode insights vs extend-mode (0-1, default 0.8 = 80% surprise). */
-    surpriseRatio?: number;
     /** Ratio of pattern-mode (behavioral) vs knowledge-mode insights (0-1, default 0.5). */
     patternModeRatio?: number;
     /** Output language for generated insights (default: "zh"). Auto-detected from persona if omitted. */
@@ -53,11 +51,11 @@ export type CognitiveConfig = {
     /** Use LLM to check semantic novelty after trigram dedup passes (default: true). */
     llmFreshnessCheck?: boolean;
   };
-  /** Feedback settings */
+  /** Feedback settings (reserved — currently unused by runtime; feedback is collected implicitly by default) */
   feedback?: {
-    /** Feedback mechanism */
+    /** Feedback mechanism (reserved — not yet implemented) */
     mechanism?: "emoji" | "buttons" | "text";
-    /** Collect implicit feedback (default: true) */
+    /** Collect implicit feedback (reserved — always true in practice) */
     implicitFeedback?: boolean;
   };
   /** Skill evolution settings */
