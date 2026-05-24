@@ -1,10 +1,9 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, stat, writeFile, unlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, readdir, rename, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
 import { safeParsePersona } from "./persona-schema.js";
+import { writeTextAtomic } from "../../infra/json-files.js";
 
 const COGNITIVE_DIR = "cognitive";
 const PERSONA_DIR = "persona";
@@ -143,12 +142,8 @@ export class PersonaStore {
   }
 
   async save(agentId: string, userId: string, persona: PersonaTree): Promise<void> {
-    const dir = join(this.configDir, COGNITIVE_DIR, PERSONA_DIR, agentId);
-    await mkdir(dir, { recursive: true });
     const targetPath = this.personaPath(agentId, userId);
-    const tmpPath = join(tmpdir(), `kaijibot-persona-${randomUUID()}.json`);
-    await writeFile(tmpPath, JSON.stringify(persona, null, 2), "utf-8");
-    await rename(tmpPath, targetPath);
+    await writeTextAtomic(targetPath, JSON.stringify(persona, null, 2));
   }
 
   async loadOrCreate(agentId: string, userId: string): Promise<PersonaTree> {

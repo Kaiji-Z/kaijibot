@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { Fragment, FragmentCluster, FragmentStoreFile } from "./fragment-types.js";
 import { isFragmentExpired, computeFragmentDecay } from "./fragment-types.js";
+import { writeTextAtomic } from "../../infra/json-files.js";
 
 const log = createSubsystemLogger("cognitive/fragment-store");
 const FRAGMENTS_DIR = "cognitive/fragments";
@@ -71,13 +71,9 @@ export class FragmentStore {
   }
 
   async save(agentId: string, userId: string, fragments: Fragment[]): Promise<void> {
-    const dir = join(this.configDir, FRAGMENTS_DIR, agentId);
-    await mkdir(dir, { recursive: true });
     const targetPath = this.filePath(agentId, userId);
-    const tmpPath = join(tmpdir(), `kaijibot-fragments-${randomUUID()}.json`);
     const payload: FragmentStoreFile = { version: 1, fragments };
-    await writeFile(tmpPath, JSON.stringify(payload, null, 2), "utf-8");
-    await rename(tmpPath, targetPath);
+    await writeTextAtomic(targetPath, JSON.stringify(payload, null, 2));
     this.cache.set(this.cacheKey(agentId, userId), { fragments, loadedAt: Date.now() });
   }
 

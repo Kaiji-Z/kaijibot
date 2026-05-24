@@ -1,10 +1,9 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { EvolutionRecord, EvolutionConfig } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
+import { writeTextAtomic } from "../../infra/json-files.js";
 
 const COGNITIVE_DIR = "cognitive";
 const EVOLUTION_DIR = "evolution";
@@ -42,7 +41,7 @@ export class EvolutionStore {
       records.push(record);
     }
 
-    await this.atomicWrite(targetPath, JSON.stringify(records, null, 2));
+    await writeTextAtomic(targetPath, JSON.stringify(records, null, 2));
   }
 
   async list(agentId: string, userId: string): Promise<EvolutionRecord[]> {
@@ -69,7 +68,7 @@ export class EvolutionStore {
   async saveConfig(agentId: string, config: EvolutionConfig): Promise<void> {
     const dir = createEvolutionDir(this.configDir, agentId);
     await mkdir(dir, { recursive: true });
-    await this.atomicWrite(this.configPath(agentId), JSON.stringify(config, null, 2));
+    await writeTextAtomic(this.configPath(agentId), JSON.stringify(config, null, 2));
   }
 
   private async loadRecords(agentId: string, userId: string): Promise<EvolutionRecord[]> {
@@ -81,12 +80,6 @@ export class EvolutionStore {
     } catch {
       return [];
     }
-  }
-
-  private async atomicWrite(targetPath: string, content: string): Promise<void> {
-    const tmpPath = join(tmpdir(), `kaijibot-evolution-${randomUUID()}.json`);
-    await writeFile(tmpPath, content, "utf-8");
-    await rename(tmpPath, targetPath);
   }
 
   async listUserIds(agentId: string): Promise<string[]> {

@@ -10,7 +10,11 @@ import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
 import { sleep } from "../utils.js";
 import { parseCmdScriptCommandLine, quoteCmdScriptArg } from "./cmd-argv.js";
 import { assertNoCmdLineBreak, parseCmdSetAssignment, renderCmdSetAssignment } from "./cmd-set.js";
-import { resolveGatewayServiceDescription, resolveGatewayWindowsTaskName } from "./constants.js";
+import {
+  resolveGatewayServiceDescription,
+  resolveGatewayWatchdogTaskName,
+  resolveGatewayWindowsTaskName,
+} from "./constants.js";
 import { formatLine, writeFormattedLines } from "./output.js";
 import { resolveGatewayStateDir } from "./paths.js";
 import { parseKeyValueOutput } from "./runtime-parse.js";
@@ -691,6 +695,147 @@ async function activateScheduledTask(params: {
   );
 }
 
+function resolveWatchdogTaskName(env: GatewayServiceEnv): string {
+  const override = env.KAIJIBOT_WATCHDOG_TASK_NAME?.trim();
+  if (override) {
+    return override;
+  }
+  return resolveGatewayWatchdogTaskName(env.KAIJIBOT_PROFILE);
+}
+
+export function resolveWatchdogScriptsDir(env: GatewayServiceEnv): string {
+  return path.join(resolveGatewayStateDir(env), "scripts");
+}
+
+export function resolveWatchdogLogDir(env: GatewayServiceEnv): string {
+  return path.join(resolveGatewayStateDir(env), "logs");
+}
+
+export function buildWatchdogCmdScript(env: GatewayServiceEnv): string {
+  const logDir = resolveWatchdogLogDir(env);
+  const gatewayTaskName = resolveTaskName(env);
+  assertNoCmdLineBreak(gatewayTaskName, "Gateway task name for watchdog");
+
+  const lines: string[] = [
+    "@echo off",
+    "rem KaijiBot Gateway Watchdog - checks if gateway is running",
+    "setlocal",
+    "",
+    `set "LOGDIR=${logDir}"`,
+    'if not exist "%LOGDIR%" mkdir "%LOGDIR%"',
+    'set "LOGFILE=%LOGDIR%\\watchdog.log"',
+    "",
+    "powershell -NoProfile -Command \"if (Get-CimInstance Win32_Process -Filter \\\"Name='node.exe'\\\" | Where-Object { $_.CommandLine -match 'kaijibot.*gateway' }) { exit 0 } else { exit 1 }\"",
+    "if errorlevel 1 (",
+    '    echo [%date% %time%] Gateway not running, triggering restart ^>^> "%LOGFILE%"',
+    `    schtasks /run /tn "${gatewayTaskName}"`,
+    ") else (",
+    '    echo [%date% %time%] Gateway is running ^>^> "%LOGFILE%"',
+    ")",
+    "endlocal",
+  ];
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+export function buildWatchdogVbsScript(env: GatewayServiceEnv): string {
+  const scriptsDir = resolveWatchdogScriptsDir(env);
+  const cmdPath = path.join(scriptsDir, "watchdog.cmd");
+  const escapedPath = cmdPath.replace(/"/g, '""');
+  const lines: string[] = [
+    "' KaijiBot Gateway Watchdog VBS wrapper - runs watchdog.cmd without visible window",
+    'Set objShell = CreateObject("WScript.Shell")',
+    `objShell.Run "cmd /c ""${escapedPath}""", 0, True`,
+  ];
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+export async function installWatchdogTask(
+  env: GatewayServiceEnv,
+  stdout: NodeJS.WritableStream,
+): Promise<void> {
+  const scriptsDir = resolveWatchdogScriptsDir(env);
+  await fs.mkdir(scriptsDir, { recursive: true });
+
+  const cmdPath = path.join(scriptsDir, "watchdog.cmd");
+  const cmdContent = buildWatchdogCmdScript(env);
+  await fs.writeFile(cmdPath, cmdContent, "utf8");
+
+  const vbsPath = path.join(scriptsDir, "watchdog.vbs");
+  const vbsContent = buildWatchdogVbsScript(env);
+  await fs.writeFile(vbsPath, vbsContent, "utf8");
+
+  const taskName = resolveWatchdogTaskName(env);
+  const trValue = `wscript.exe ${quoteSchtasksArg(vbsPath)}`;
+  const baseArgs = [
+    "/Create",
+    "/F",
+    "/SC",
+    "MINUTE",
+    "/MO",
+    "1",
+    "/RL",
+    "LIMITED",
+    "/TN",
+    taskName,
+    "/TR",
+    trValue,
+  ];
+
+  const taskUser = resolveTaskUser(env);
+  let create = await execSchtasks(
+    taskUser ? [...baseArgs, "/RU", taskUser, "/NP", "/IT"] : baseArgs,
+  );
+  if (create.code !== 0 && taskUser) {
+    create = await execSchtasks(baseArgs);
+  }
+  if (create.code !== 0) {
+    const detail = create.stderr || create.stdout;
+    if (shouldFallbackToStartupEntry({ code: create.code, detail })) {
+      return;
+    }
+    stdout.write(`${formatLine("Watchdog task creation skipped", detail.trim())}\n`);
+    return;
+  }
+
+  writeFormattedLines(
+    stdout,
+    [
+      { label: "Installed Scheduled Task", value: taskName },
+      { label: "Watchdog script", value: cmdPath },
+      { label: "Watchdog VBS wrapper", value: vbsPath },
+    ],
+    { leadingBlankLine: true },
+  );
+}
+
+export async function uninstallWatchdogTask(
+  env: GatewayServiceEnv,
+  stdout: NodeJS.WritableStream,
+): Promise<void> {
+  const taskName = resolveWatchdogTaskName(env);
+
+  try {
+    const res = await execSchtasks(["/Query", "/TN", taskName]);
+    if (res.code === 0) {
+      await execSchtasks(["/Delete", "/F", "/TN", taskName]);
+      stdout.write(`${formatLine("Removed Scheduled Task", taskName)}\n`);
+    }
+  } catch {
+    // Task might not exist, skip silently
+  }
+
+  const scriptsDir = resolveWatchdogScriptsDir(env);
+  for (const filename of ["watchdog.cmd", "watchdog.vbs"] as const) {
+    const filePath = path.join(scriptsDir, filename);
+    try {
+      await fs.unlink(filePath);
+      stdout.write(`${formatLine("Removed watchdog script", filePath)}\n`);
+    } catch {
+      // File might not exist, skip silently
+    }
+  }
+}
+
 export async function installScheduledTask(
   args: GatewayServiceInstallArgs,
 ): Promise<{ scriptPath: string }> {
@@ -701,6 +846,11 @@ export async function installScheduledTask(
     scriptPath: staged.scriptPath,
     description: staged.taskDescription,
   });
+  try {
+    await installWatchdogTask(args.env, args.stdout);
+  } catch {
+    // Watchdog is best-effort; skip silently if schtasks unavailable
+  }
   return { scriptPath: staged.scriptPath };
 }
 
@@ -713,6 +863,12 @@ export async function uninstallScheduledTask({
   const taskInstalled = await isRegisteredScheduledTask(env).catch(() => false);
   if (taskInstalled) {
     await execSchtasks(["/Delete", "/F", "/TN", taskName]);
+  }
+
+  try {
+    await uninstallWatchdogTask(env, stdout);
+  } catch {
+    // Watchdog cleanup is best-effort
   }
 
   const startupEntryPath = resolveStartupEntryPath(env);

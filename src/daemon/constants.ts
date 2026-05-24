@@ -4,6 +4,7 @@ import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
 export const GATEWAY_LAUNCH_AGENT_LABEL = "ai.kaijibot.gateway";
 export const GATEWAY_SYSTEMD_SERVICE_NAME = "kaijibot-gateway";
 export const GATEWAY_WINDOWS_TASK_NAME = "KaijiBot Gateway";
+export const GATEWAY_WATCHDOG_TASK_NAME = "KaijiBot Gateway Watchdog";
 export const GATEWAY_SERVICE_MARKER = "kaijibot";
 export const GATEWAY_SERVICE_KIND = "gateway";
 export const NODE_LAUNCH_AGENT_LABEL = "ai.kaijibot.node";
@@ -56,6 +57,14 @@ export function resolveGatewayWindowsTaskName(profile?: string): string {
     return GATEWAY_WINDOWS_TASK_NAME;
   }
   return `KaijiBot Gateway (${normalized})`;
+}
+
+export function resolveGatewayWatchdogTaskName(profile?: string): string {
+  const normalized = normalizeGatewayProfile(profile);
+  if (!normalized) {
+    return GATEWAY_WATCHDOG_TASK_NAME;
+  }
+  return `KaijiBot Gateway Watchdog (${normalized})`;
 }
 
 export function formatGatewayServiceDescription(params?: {

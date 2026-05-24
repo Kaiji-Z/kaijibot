@@ -1,9 +1,8 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { writeTextAtomic } from "../../infra/json-files.js";
 import {
   CORRECTION_STORE_VERSION,
   DEFAULT_CORRECTION_TTL_DAYS,
@@ -53,12 +52,6 @@ export class CorrectionStore {
     return join(this.correctionDir(agentId), `${userId}.json`);
   }
 
-  private async atomicWrite(targetPath: string, content: string): Promise<void> {
-    const tmpPath = join(tmpdir(), `kaijibot-correction-${randomUUID()}.json`);
-    await writeFile(tmpPath, content, "utf-8");
-    await rename(tmpPath, targetPath);
-  }
-
   private async loadRecords(agentId: string, userId: string): Promise<CorrectionRecord[]> {
     const path = this.recordPath(agentId, userId);
     if (!existsSync(path)) {
@@ -87,7 +80,7 @@ export class CorrectionStore {
       corrections: records.slice(-MAX_CORRECTIONS_PER_USER),
       version: CORRECTION_STORE_VERSION,
     };
-    await this.atomicWrite(this.recordPath(agentId, userId), JSON.stringify(data, null, 2));
+    await writeTextAtomic(this.recordPath(agentId, userId), JSON.stringify(data, null, 2));
   }
 
   async add(agentId: string, userId: string, record: CorrectionRecord): Promise<void> {
