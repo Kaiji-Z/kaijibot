@@ -1,7 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { beforeEach, afterEach, describe, expect, it } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryIndexManager } from "./memory-index.js";
 import { resetMemoryToolMockState, setMemoryWorkspaceDir } from "./memory-tool-manager-mock.js";
 import { incrementGroundedCount } from "./short-term-promotion.js";
 import {
@@ -760,5 +761,101 @@ describe("memory_save groundedCount integration", () => {
 
     const after = await readFile(storePath, "utf-8");
     expect(after).toBe(storeContent);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Inline section dedup, date prefix, and rebalance
+// ---------------------------------------------------------------------------
+
+describe("inline section dedup, date prefix, and rebalance", () => {
+  it("adds date-prefixed inline line for typed memory", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    await tool!.execute("tc-inline-1", {
+      content: "User prefers dark mode",
+      topic: "user-profile",
+      type: "user",
+    });
+
+    const indexPath = path.join(tempDir, "MEMORY.md");
+    const content = await readFile(indexPath, "utf-8");
+    expect(content).toContain("## 👤 User");
+    expect(content).toMatch(/- \d{4}-\d{2}-\d{2}: User prefers dark mode/);
+  });
+
+  it("skips adding duplicate inline content via Jaccard dedup", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+
+    // First save — creates inline line
+    await tool!.execute("tc-dedup-1a", {
+      content: "User prefers dark mode for coding",
+      topic: "user-profile",
+      type: "user",
+    });
+
+    // Second save — similar inline text (Jaccard ≈ 0.86 >= 0.8)
+    await tool!.execute("tc-dedup-1b", {
+      content: "User prefers dark mode for coding daily",
+      topic: "user-profile",
+      type: "user",
+    });
+
+    const indexPath = path.join(tempDir, "MEMORY.md");
+    const content = await readFile(indexPath, "utf-8");
+    const userSection = content.split("## 👤 User")[1]?.split("## ")[0] ?? "";
+    const inlineLines = userSection
+      .split("\n")
+      .filter((l) => l.startsWith("- "));
+    // Only one inline line despite two saves — dedup worked
+    expect(inlineLines.length).toBe(1);
+  });
+
+  it("calls rebalanceIndex after inline write", async () => {
+    const rebalanceSpy = vi.spyOn(MemoryIndexManager.prototype, "rebalanceIndex");
+    try {
+      const tool = createMemorySaveTool({
+        config: {
+          agents: { list: [{ id: "main", default: true }] },
+        } as never,
+      });
+      await tool!.execute("tc-rebalance-1", {
+        content: "User prefers dark mode",
+        topic: "user-profile",
+        type: "user",
+      });
+      expect(rebalanceSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      rebalanceSpy.mockRestore();
+    }
+  });
+
+  it("does not create inline section without type parameter", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    await tool!.execute("tc-no-type-1", {
+      content: "Some content without type",
+      topic: "user-profile",
+    });
+
+    const indexPath = path.join(tempDir, "MEMORY.md");
+    const content = await readFile(indexPath, "utf-8");
+    // Topic pointer should exist
+    expect(content).toContain("## Topic Pointers");
+    // No inline section headings should appear
+    expect(content).not.toContain("## 👤 User");
+    expect(content).not.toContain("## 💬 Key Feedback");
+    expect(content).not.toContain("## 🎯 Active Focus");
+    expect(content).not.toContain("## 🔗 Reference");
   });
 });

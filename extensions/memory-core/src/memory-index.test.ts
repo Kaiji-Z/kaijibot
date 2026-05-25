@@ -276,6 +276,108 @@ describe("MemoryIndexManager", () => {
     });
   });
 
+  describe("relocateInlineToTopic dedup", () => {
+    it("skips duplicate lines during relocation", async () => {
+      const { manager, memFs } = createManager();
+      const topicPath = "/test-workspace/memory/topics/user.md";
+
+      // Pre-populate topic file with an entry whose content matches the inline line
+      const topicContent = [
+        "---",
+        "subject: user",
+        "created: 2026-05-20",
+        "updated: 2026-05-20",
+        "entries: 1",
+        "---",
+        "",
+        "## Dark mode preference (2026-05-20)",
+        "",
+        "User prefers dark mode",
+      ].join("\n");
+      memFs.files.set(topicPath, topicContent);
+
+      // Inline section with a dated variant that strips to "User prefers dark mode"
+      await manager.relocateInlineToTopic(
+        { section: "👤 User", lines: ["- 2026-05-25: User prefers dark mode"] },
+        "user",
+      );
+
+      const result = memFs.files.get(topicPath) ?? "";
+      // The duplicate line should NOT appear in the appended content
+      expect(result).not.toContain("## 👤 User (relocated from MEMORY.md)");
+    });
+
+    it("keeps unique lines during relocation", async () => {
+      const { manager, memFs } = createManager();
+      const topicPath = "/test-workspace/memory/topics/user.md";
+
+      // Topic file has a different entry
+      const topicContent = [
+        "---",
+        "subject: user",
+        "created: 2026-05-20",
+        "updated: 2026-05-20",
+        "entries: 1",
+        "---",
+        "",
+        "## Rust knowledge (2026-05-20)",
+        "",
+        "User knows Rust",
+      ].join("\n");
+      memFs.files.set(topicPath, topicContent);
+
+      // Inline section with unique content
+      await manager.relocateInlineToTopic(
+        { section: "👤 User", lines: ["- 2026-05-25: User prefers dark mode"] },
+        "user",
+      );
+
+      const result = memFs.files.get(topicPath) ?? "";
+      // The unique line should be preserved
+      expect(result).toContain("- 2026-05-25: User prefers dark mode");
+      // Existing content still there
+      expect(result).toContain("User knows Rust");
+    });
+
+    it("does not write when all lines are duplicates", async () => {
+      const { manager, memFs } = createManager();
+      const topicPath = "/test-workspace/memory/topics/user.md";
+
+      // Topic file has entries matching all inline lines
+      const topicContent = [
+        "---",
+        "subject: user",
+        "created: 2026-05-20",
+        "updated: 2026-05-20",
+        "entries: 2",
+        "---",
+        "",
+        "## Dark mode (2026-05-20)",
+        "",
+        "User prefers dark mode",
+        "",
+        "## Rust knowledge (2026-05-20)",
+        "",
+        "User knows Rust",
+      ].join("\n");
+      memFs.files.set(topicPath, topicContent);
+      const originalContent = topicContent;
+
+      // Inline lines that both match existing entries after date prefix stripping
+      await manager.relocateInlineToTopic(
+        {
+          section: "👤 User",
+          lines: ["- 2026-05-25: User prefers dark mode", "- 2026-05-25: User knows Rust"],
+        },
+        "user",
+      );
+
+      // Topic file content should be unchanged — no relocate header appended
+      const result = memFs.files.get(topicPath) ?? "";
+      expect(result).toBe(originalContent);
+    });
+  });
+
   describe("migrateLegacy", () => {
     it("wraps old content in promoted section", async () => {
       const legacy = "- User prefers dark mode\n- Project uses PostgreSQL\n";

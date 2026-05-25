@@ -10,6 +10,9 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
+import { tokenize, jaccardSimilarity } from "./memory/mmr.js";
+import { parseTopicFile } from "./topic-types.js";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -526,6 +529,32 @@ export class MemoryIndexManager {
       // file does not exist yet
     }
 
+    let existingEntryContents: string[] = [];
+    if (existingContent) {
+      try {
+        const parsed = parseTopicFile(existingContent);
+        existingEntryContents = parsed.entries.map((e) => e.content);
+      } catch {
+        // If parsing fails, proceed without dedup
+      }
+    }
+
+    const RELOCATE_DEDUP_THRESHOLD = 0.8;
+    const uniqueLines = section.lines.filter((line) => {
+      const trimmed = line
+        .replace(/^- \d{4}-\d{2}-\d{2}: /, "")
+        .replace(/^- /, "")
+        .trim();
+      if (!trimmed) return true; // keep blank lines
+      return !existingEntryContents.some(
+        (entryContent) =>
+          jaccardSimilarity(tokenize(trimmed), tokenize(entryContent)) >=
+          RELOCATE_DEDUP_THRESHOLD,
+      );
+    });
+
+    if (uniqueLines.length === 0) return; // all duplicates, skip write
+
     const frontmatter = !existingContent
       ? [
           "---",
@@ -540,7 +569,7 @@ export class MemoryIndexManager {
 
     const appendContent = [
       `## ${section.section} (relocated from MEMORY.md)`,
-      ...section.lines,
+      ...uniqueLines,
     ].join("\n");
 
     const fullContent = existingContent + frontmatter + appendContent + "\n";

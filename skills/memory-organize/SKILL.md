@@ -85,6 +85,8 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 
 2. **重复内容**：同一信息出现多次（不同格式、不同 section）。保留最完整的版本，删除重复。
 
+3. **注意**：`memory_tidy full` 现在会自动清理 inline sections 中的重复内容。在 Step 3 运行后，inline 与 topic 之间的重复会被自动处理。
+
 3. **结构错误**：缺少应有的 section heading；格式不对的条目；不完整的 HTML 注释标记。
 
 4. **预算超支**：MEMORY.md 超过 8KB 时，把低频内容移到主题文件。MEMORY.md 只保留：
@@ -199,6 +201,7 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 - 去除重复条目（Jaccard 相似度 ≥ 0.85）
 - 合并相似条目
 - 归档 90 天以上的低重要性条目
+- 清理 MEMORY.md inline sections 中的重复内容（section 内去重 + 与 topic 条目交叉去重）
 
 ### Step 4: 最终检查
 

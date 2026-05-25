@@ -332,6 +332,149 @@ describe("memory_tidy", () => {
     });
   });
 
+  describe("actionInlineDedup", () => {
+    it("removes within-section duplicate lines", async () => {
+      const { tidyDeps, memFs } = createTidyDeps();
+      writeMemoryMd(
+        memFs,
+        [
+          "# Long-Term Memory",
+          "",
+          "## 👤 User",
+          "",
+          "- 2026-05-25: User prefers TypeScript for all projects",
+          "- 2026-05-25: User prefers TypeScript for all backend projects",
+          "",
+        ].join("\n"),
+      );
+
+      const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
+
+      expect(result.entriesAffected).toBeGreaterThan(0);
+      expect(result.changes.some((c) => c.includes("deduped") && c.includes("👤 User"))).toBe(true);
+    });
+
+    it("removes inline lines already present in topic files", async () => {
+      const { tidyDeps, memFs } = createTidyDeps();
+      writeMemoryMd(
+        memFs,
+        [
+          "# Long-Term Memory",
+          "",
+          "## 👤 User",
+          "",
+          "- 2026-05-25: User knows Rust programming",
+          "",
+        ].join("\n"),
+      );
+
+      const topicContent = makeTopic("user", "user", [
+        { title: "Rust Knowledge", date: "2026-05-20", content: "User knows Rust programming" },
+      ]);
+      memFs.files.set(join(TOPICS_DIR, "user.md"), topicContent);
+
+      const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
+
+      expect(result.entriesAffected).toBeGreaterThan(0);
+      expect(
+        result.changes.some(
+          (c) => c.includes("removed") && c.includes("topic files") && c.includes("👤 User"),
+        ),
+      ).toBe(true);
+    });
+
+    it("preserves files in dry run mode while reporting changes", async () => {
+      const { tidyDeps, memFs } = createTidyDeps();
+      const memoryContent = [
+        "# Long-Term Memory",
+        "",
+        "## 👤 User",
+        "",
+        "- 2026-05-25: User prefers TypeScript for all projects",
+        "- 2026-05-25: User prefers TypeScript for all backend projects",
+        "",
+      ].join("\n");
+      writeMemoryMd(memFs, memoryContent);
+
+      const result = await runMemoryTidyActions(tidyDeps, { action: "full", dryRun: true });
+
+      expect(result.dryRun).toBe(true);
+      expect(result.changes.some((c) => c.includes("deduped"))).toBe(true);
+
+      const afterContent = memFs.files.get(join(WS, "MEMORY.md"));
+      expect(afterContent).toBe(memoryContent);
+    });
+
+    it("handles MEMORY.md with no inline sections", async () => {
+      const { tidyDeps, memFs } = createTidyDeps();
+      writeMemoryMd(
+        memFs,
+        [
+          "# Long-Term Memory",
+          "",
+          "## Topic Pointers",
+          "- Test → memory/topics/test.md",
+          "",
+        ].join("\n"),
+      );
+
+      const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
+
+      expect(result.entriesAffected).toBe(0);
+    });
+
+    it("preserves blank lines while deduplicating content", async () => {
+      const { tidyDeps, memFs } = createTidyDeps();
+      writeMemoryMd(
+        memFs,
+        [
+          "# Long-Term Memory",
+          "",
+          "## 👤 User",
+          "",
+          "- 2026-05-25: User likes Go for microservices",
+          "",
+          "- 2026-05-25: User likes Go for building microservices",
+          "",
+          "- 2026-05-25: User also knows Python",
+          "",
+        ].join("\n"),
+      );
+
+      const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
+
+      expect(result.changes.some((c) => c.includes("deduped") && c.includes("👤 User"))).toBe(true);
+
+      const after = await memFs.fs.readFile(join(WS, "MEMORY.md"));
+      expect(after).toContain("User likes Go for microservices");
+      expect(after).toContain("User also knows Python");
+      const userSection = after.split("## 👤 User")[1]!;
+      expect(userSection).toMatch(/\n\n/);
+    });
+
+    it("is included in actionFull aggregated results", async () => {
+      const { tidyDeps, memFs } = createTidyDeps();
+      writeMemoryMd(
+        memFs,
+        [
+          "# Long-Term Memory",
+          "",
+          "## 👤 User",
+          "",
+          "- 2026-05-25: User prefers TypeScript for all projects",
+          "- 2026-05-25: User prefers TypeScript for all backend projects",
+          "",
+        ].join("\n"),
+      );
+
+      const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
+
+      expect(result.action).toBe("full");
+      expect(result.changes.some((c) => c.includes("deduped") && c.includes("👤 User"))).toBe(true);
+      expect(result.entriesAffected).toBeGreaterThan(0);
+    });
+  });
+
   describe("isTidyEnabled", () => {
     it("returns true when pluginConfig is undefined", () => {
       expect(isTidyEnabled(undefined)).toBe(true);

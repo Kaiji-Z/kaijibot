@@ -282,16 +282,22 @@ export function createMemorySaveTool(options: {
             const index = await indexManager.readIndex();
             const inlineSections = index.inlineSections ?? [];
             const existingSection = inlineSections.find((s) => s.section === heading);
+            const inlineText = content.slice(0, 120).replace(/\n/g, " ").trim();
+            const inlineLine = `- ${today}: ${inlineText}`;
             if (existingSection) {
-              existingSection.lines.push(`- ${content.slice(0, 120).replace(/\n/g, " ").trim()}`);
-            } else {
-              inlineSections.push({
-                section: heading,
-                lines: [`- ${content.slice(0, 120).replace(/\n/g, " ").trim()}`],
+              const isDup = existingSection.lines.some((l) => {
+                const clean = l.replace(/^- \d{4}-\d{2}-\d{2}: /, "").replace(/^- /, "");
+                return jaccardSimilarity(tokenize(inlineText), tokenize(clean)) >= SIMILARITY_THRESHOLD;
               });
+              if (!isDup) {
+                existingSection.lines.push(inlineLine);
+              }
+            } else {
+              inlineSections.push({ section: heading, lines: [inlineLine] });
             }
             index.inlineSections = inlineSections;
             await indexManager.writeIndex(index);
+            await indexManager.rebalanceIndex();
           } catch {
             // Best-effort inline section update
           }

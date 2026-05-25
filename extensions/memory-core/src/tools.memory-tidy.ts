@@ -77,6 +77,71 @@ function computeJaccard(a: string, b: string): number {
   return jaccardSimilarity(tokenize(a), tokenize(b));
 }
 
+const INLINE_DATE_RE = /^- \d{4}-\d{2}-\d{2}: /;
+function stripInlineDatePrefix(line: string): string {
+  return line.trim().replace(INLINE_DATE_RE, "").replace(/^- /, "");
+}
+
+const INLINE_DEDUP_THRESHOLD = 0.8;
+
+function deduplicateLines(lines: string[]): { kept: string[]; removed: number } {
+  const kept: string[] = [];
+  let removed = 0;
+  for (const line of lines) {
+    const stripped = stripInlineDatePrefix(line);
+    if (stripped.trim() === "") {
+      kept.push(line);
+      continue;
+    }
+    const isDup = kept.some((k) => {
+      const kStripped = stripInlineDatePrefix(k);
+      return kStripped.trim() !== "" && computeJaccard(stripped, kStripped) >= INLINE_DEDUP_THRESHOLD;
+    });
+    if (isDup) {
+      removed++;
+    } else {
+      kept.push(line);
+    }
+  }
+  return { kept, removed };
+}
+
+async function filterLinesAgainstTopics(
+  lines: string[],
+  topicManager: TopicManager,
+): Promise<{ kept: string[]; removed: number }> {
+  const topicNames = await topicManager.listTopics();
+  const allEntryContents: string[] = [];
+  for (const fileName of topicNames) {
+    const name = fileName.replace(/\.md$/, "");
+    const topic = await topicManager.getTopic(name);
+    if (topic) {
+      for (const entry of topic.entries) {
+        allEntryContents.push(entry.content);
+      }
+    }
+  }
+
+  const kept: string[] = [];
+  let removed = 0;
+  for (const line of lines) {
+    const stripped = stripInlineDatePrefix(line);
+    if (stripped.trim() === "") {
+      kept.push(line);
+      continue;
+    }
+    const matchesTopic = allEntryContents.some(
+      (entryContent) => computeJaccard(stripped, entryContent) >= INLINE_DEDUP_THRESHOLD,
+    );
+    if (matchesTopic) {
+      removed++;
+    } else {
+      kept.push(line);
+    }
+  }
+  return { kept, removed };
+}
+
 function isTidyEnabled(pluginConfig: Record<string, unknown> | undefined): boolean {
   if (!pluginConfig || typeof pluginConfig !== "object") {
     return true;
@@ -381,6 +446,61 @@ async function actionArchive(deps: MemoryTidyDeps, dryRun: boolean): Promise<Tid
 }
 
 // ---------------------------------------------------------------------------
+// Action: inline-dedup (deduplicate inline section lines)
+// ---------------------------------------------------------------------------
+
+async function actionInlineDedup(
+  deps: MemoryTidyDeps,
+  dryRun: boolean,
+): Promise<TidyResult> {
+  const changes: string[] = [];
+  let entriesAffected = 0;
+
+  const index = await deps.indexManager.readIndex();
+  const inlineSections = index.inlineSections ?? [];
+  if (inlineSections.length === 0) {
+    return { action: "inline-dedup", filesAffected: 0, entriesAffected: 0, changes: [], dryRun };
+  }
+
+  // Within-section dedup
+  for (const section of inlineSections) {
+    const { kept, removed } = deduplicateLines(section.lines);
+    if (removed > 0) {
+      entriesAffected += removed;
+      changes.push(`deduped ${removed} duplicate lines in "${section.section}"`);
+      if (!dryRun) {
+        section.lines = kept;
+      }
+    }
+  }
+
+  // Cross-dedup inline ↔ topic entries
+  for (const section of inlineSections) {
+    const { kept, removed } = await filterLinesAgainstTopics(section.lines, deps.topicManager);
+    if (removed > 0) {
+      entriesAffected += removed;
+      changes.push(`removed ${removed} inline lines already in topic files from "${section.section}"`);
+      if (!dryRun) {
+        section.lines = kept;
+      }
+    }
+  }
+
+  if (!dryRun && entriesAffected > 0) {
+    index.inlineSections = inlineSections;
+    await deps.indexManager.writeIndex(index);
+  }
+
+  return {
+    action: "inline-dedup",
+    filesAffected: entriesAffected > 0 ? 1 : 0,
+    entriesAffected,
+    changes,
+    dryRun,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Action: full (run all)
 // ---------------------------------------------------------------------------
 
@@ -390,6 +510,7 @@ async function actionFull(
   dryRun: boolean,
 ): Promise<TidyResult> {
   const dedup = await actionDedup(deps, target, dryRun);
+  const inlineDedup = await actionInlineDedup(deps, dryRun);
   const merge = await actionMerge(deps, dryRun);
   const rebalance = await actionRebalance(deps, dryRun);
   const archive = await actionArchive(deps, dryRun);
@@ -397,13 +518,14 @@ async function actionFull(
   return {
     action: "full",
     filesAffected:
-      dedup.filesAffected + merge.filesAffected + rebalance.filesAffected + archive.filesAffected,
+      dedup.filesAffected + inlineDedup.filesAffected + merge.filesAffected + rebalance.filesAffected + archive.filesAffected,
     entriesAffected:
       dedup.entriesAffected +
+      inlineDedup.entriesAffected +
       merge.entriesAffected +
       rebalance.entriesAffected +
       archive.entriesAffected,
-    changes: [...dedup.changes, ...merge.changes, ...rebalance.changes, ...archive.changes],
+    changes: [...dedup.changes, ...inlineDedup.changes, ...merge.changes, ...rebalance.changes, ...archive.changes],
     dryRun,
   };
 }
