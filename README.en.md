@@ -100,7 +100,7 @@ kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
 
 **Built-in Tools**: Code execution, web scraping, PDF operations, image/video/music generation, TTS synthesis, Canvas, file I/O, cron scheduling — 20+ total. Supports model failover and API key rotation.
 
-**Memory System**: Three storage backends (in-memory, LanceDB vector store, Wiki knowledge base). Semantic search over conversation history. Periodic memory consolidation (similar to human sleep-based memory processing). Short-term important info auto-promoted to long-term knowledge. Dream system stores separately, doesn't pollute daily memory files. Session memory: `/new` or `/reset` triggers LLM structured summary generation (technical concepts, errors & fixes, key decisions, topic classification), written to daily journal and routed to topic files. Feishu message metadata stripped during extraction. 16K character budget covers full conversations.
+**Memory System**: Three storage backends (in-memory, LanceDB vector store, Wiki knowledge base). Semantic search over conversation history. MEMORY.md (8KB budget) is injected as context every agent turn, maintained by three complementary systems: session memory (`/new` or `/reset` triggers LLM structured summary → inline + topic), consolidation engine (daily 3 AM scan of 7-day transcripts → high-confidence content to inline sections), and memory-organize skill (manual/periodic full GC + Jaccard dedup). `memory_tidy` covers cross-dedup between inline sections and topic files. Correction memory stored independently, auto-injected into system prompt so the agent sees past corrections every turn.
 
 **Scheduled Tasks**: `at` (one-shot), `every` (interval), `cron` (cron expression + timezone). Supports message delivery, webhook callbacks, or silent execution. Auto-retry on failure.
 
@@ -173,7 +173,7 @@ export EXA_API_KEY="your-key"
 export TAVILY_API_KEY="your-key"
 ```
 
-Config file at `~/.kaijibot/kaijibot.json`, supports hot reload. Cognitive system can be disabled via `cognitive.enabled: false` to fall back to pure OpenClaw experience.
+Config file at `~/.kaijibot/kaijibot.json`, supports hot reload. Cognitive system can be disabled via `cognitive.enabled: false` to fall back to pure OpenClaw experience. Consolidation: `memory.consolidation.enabled`, `memory.consolidation.cron` (default `0 3 * * *`), `memory.consolidation.lookbackDays` (default 7).
 
 ## 🏗️ Architecture
 
@@ -219,6 +219,23 @@ Dual-Path Detection
         Next conversation → context-writer injects into system prompt
               ↓
         Agent sees historical corrections → Avoids repetition
+```
+
+### Memory Consolidation Flow
+
+```
+Daily at 3 AM (cron schedule)
+  → Scan last 7 days of session transcripts (grouped by userId)
+    → LLM batch extraction of structured knowledge (TypedInsights + behavioral patterns + corrections)
+      → Jaccard dedup + conflict resolution
+        → Route to cognitive stores:
+            PersonaStore (domain knowledge, preferences, goals)
+            FragmentStore (behavioral patterns)
+            CorrectionStore (high-confidence corrections)
+          → High-confidence items (≥ 0.7) written to MEMORY.md inline sections:
+              domain_knowledge / stated_preference → 👤 User
+              goal_or_aspiration → 🎯 Active Focus
+          → Append to daily memory file (memory/YYYY-MM-DD.md)
 ```
 
 ### Technical Architecture

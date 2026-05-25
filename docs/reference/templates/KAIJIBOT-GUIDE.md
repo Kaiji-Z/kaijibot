@@ -94,7 +94,7 @@ This file is auto-loaded into every conversation. Consult this guide first when 
   - `"qmd"` — external QMD tool, high-performance indexing
 - `memory.citations` — `"auto"` | `"on"` | `"off"` — whether to annotate memory sources in replies
 - Memory location: `<workspace>/memory/` (daily logs) + `MEMORY.md` (long-term highlights, 4KB budget)
-- Dreaming system: disabled by default (`memory.dreaming.enabled: false`); when enabled, defaults to separate storage (does not pollute daily memory files), runs at 3 AM daily
+- Memory consolidation: enabled by default (`memory.consolidation.enabled: true`); runs daily at 3 AM, scans last 7 days of transcripts, extracts structured knowledge via LLM, routes to cognitive stores and MEMORY.md inline sections
 
 ## Plugins and Skills
 

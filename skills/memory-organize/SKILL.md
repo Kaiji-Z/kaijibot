@@ -17,7 +17,7 @@ Use this skill immediately when the user asks any of:
 - "把旧记忆整理一下"
 - "organize memories" / "tidy up memories"
 - "memory is messy"
-- 系统触发："梦境晋升完成"（自动运行）
+- 系统触发："记忆整合完成"（自动运行）
 
 ## 记忆数据源
 
@@ -239,4 +239,4 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 - JSONL 会话文件可能较大，优先处理最近的会话，按需回溯更早的记录
 - 主题文件按需创建——没有记忆的主题不会有文件，不需要预创建
 - 可以重复运行，幂等安全
-- MEMORY.md 垃圾回收适用于所有场景：梦境晋升、LLM 写入错误、重复内容、结构损坏等
+- MEMORY.md 垃圾回收适用于所有场景：记忆整合、LLM 写入错误、重复内容、结构损坏等

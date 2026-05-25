@@ -101,7 +101,7 @@ kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
 
 **内置工具**：代码执行、网页抓取、PDF 操作、图片/视频/音乐生成、TTS 语音合成、Canvas 画布、文件读写、cron 定时任务，共 20+。支持模型故障转移和 API Key 轮换。
 
-**记忆系统**：三种存储后端（内存、LanceDB 向量库、Wiki 知识库），语义搜索历史对话，定期整理巩固记忆（类似人类睡眠时的记忆处理），短期重要信息自动晋升为长期知识。梦境系统独立存储，不污染每日记忆文件。会话记忆：`/new` 或 `/reset` 时自动生成 LLM 结构化摘要（含技术概念、错误与修复、关键决策、话题分类），写入每日日记文件并路由到话题文件。飞书消息元数据在提取时自动剥离，16K 字符预算覆盖完整对话。纠错记忆独立存储，系统提示自动注入，确保 Agent 每次对话都能看到过去的纠错。
+**记忆系统**：三种存储后端（内存、LanceDB 向量库、Wiki 知识库），语义搜索历史对话。MEMORY.md（8KB 预算）作为 Agent 每轮对话的上下文注入，由三个系统协同维护：会话记忆（`/new` 或 `/reset` 时 LLM 结构化摘要 → inline + topic）、记忆整合引擎（每日凌晨 3 点扫描 7 天会话 → 高置信度内容写入 inline sections）、记忆整理技能（手动/定期全量 GC + Jaccard 去重）。`memory_tidy` 工具覆盖 inline sections 与 topic 文件的交叉去重。纠错记忆独立存储，系统提示自动注入，确保 Agent 每次对话都能看到过去的纠错。
 
 **定时任务**：`at`（一次性）、`every`（间隔）、`cron`（cron 表达式 + 时区），支持消息投递、webhook 回调或静默执行，失败自动重试。
 
@@ -175,7 +175,7 @@ export EXA_API_KEY="your-key"
 export TAVILY_API_KEY="your-key"
 ```
 
-配置文件位于 `~/.kaijibot/kaijibot.json`，支持热重载。认知系统可通过 `cognitive.enabled: false` 关闭，退化为纯 OpenClaw 体验。
+配置文件位于 `~/.kaijibot/kaijibot.json`，支持热重载。认知系统可通过 `cognitive.enabled: false` 关闭，退化为纯 OpenClaw 体验。整合配置：`memory.consolidation.enabled`、`memory.consolidation.cron`（默认 `0 3 * * *`）、`memory.consolidation.lookbackDays`（默认 7）。
 
 ## 🏗️ 架构概览
 
@@ -221,6 +221,23 @@ Agent 完成任务（≥3 次工具调用）
         下次对话 → context-writer 注入系统提示
               ↓
         Agent 看到历史纠错 → 避免重复
+```
+
+### 记忆整合流程
+
+```
+每日凌晨 3 点（cron 调度）
+  → 扫描最近 7 天会话记录（按 userId 分组）
+    → LLM 批量提取结构化知识（TypedInsights + 行为模式 + 纠错）
+      → Jaccard 去重 + 冲突解决
+        → 路由到认知存储：
+            PersonaStore（领域知识、偏好、目标）
+            FragmentStore（行为模式）
+            CorrectionStore（高置信度纠错）
+          → 高置信度内容（≥ 0.7）写入 MEMORY.md inline sections
+              domain_knowledge / stated_preference → 👤 User
+              goal_or_aspiration → 🎯 Active Focus
+          → 写入每日记忆文件（memory/YYYY-MM-DD.md）
 ```
 
 ### 技术架构

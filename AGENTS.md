@@ -243,18 +243,26 @@ Correction (system prompt injection):
 - `src/hooks/bundled/session-memory/summary.ts` — `generateStructuredSummary` uses `createStandaloneGenerateText` (single-turn LLM call, 60s timeout) to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug, memoryType); `memoryType` routes high-importance content to inline sections (👤 User / 💬 Key Feedback / 🎯 Active Focus / 🔗 Reference); transcript budget 16K chars; `formatSummaryAsMarkdown` outputs YAML frontmatter + structured sections
 - `src/hooks/bundled/session-memory/transcript.ts` — `getRecentSessionContent` reads JSONL session files, extracts user/assistant text, strips feishu metadata (`Conversation info`/`Sender` JSON blocks + `ou_xxx:` prefix) via `stripMessageMetadata`; `getRecentSessionContentWithResetFallback` falls back to `.reset.` archived files
 
-### Dreaming
+### Memory Consolidation
 
-- Default storage mode: `"separate"` (`DEFAULT_MEMORY_DREAMING_STORAGE_MODE` in `src/memory-host-sdk/dreaming.ts`); writes dream output to separate files instead of inline in daily memory files
-- `MemoryDreamingStorageMode` type: `"inline" | "separate" | "both"`
-- `extensions/memory-core/src/dreaming.ts` — `enqueueSystemEvent` after memory promotion to trigger downstream processing
+- Replaces the old dreaming system. Scans session transcripts daily (cron `0 3 * * *`, configurable), extracts structured knowledge via LLM, routes to existing cognitive stores.
+- `src/memory-host-sdk/consolidation.ts` — config types + defaults (`DEFAULT_MEMORY_CONSOLIDATION_ENABLED = true`, cron, concurrency, batchSize, lookbackDays)
+- `src/memory-host-sdk/consolidation-userid.ts` — resolves session file → `ou_xxx` userId (sessions.json lookup, 60s TTL cache)
+- `extensions/memory-core/src/consolidation.ts` — orchestrator: `runConsolidationForAgent` / `runConsolidationAllAgents`, per-user pipeline via `resolveUserIdForFile`
+- `extensions/memory-core/src/consolidation-extract.ts` — LLM extraction + Jaccard dedup + conflict resolution
+- `extensions/memory-core/src/consolidation-route.ts` — `routeToStores`: routes to PersonaStore/FragmentStore/CorrectionStore + high-confidence items (≥0.7, behavioral_pattern ≥0.8) to MEMORY.md inline sections + daily file append
+- `extensions/memory-core/src/consolidation-types.ts` — `ExtractedItem`, `RouteItem`, `FileWithUserId`, `ConsolidationCheckpoint`, `ConsolidationResult`
+- Category → inline section mapping: `domain_knowledge`/`stated_preference`/`behavioral_pattern` → 👤 User; `goal_or_aspiration` → 🎯 Active Focus
+- Gateway bootstrap: `src/gateway/server.impl.ts` (~line 1491), uses `croner` Cron for scheduling
+- All LLM/store deps injected as callbacks (no direct core imports from extensions)
 
 ### Memory Organization
 
-- `skills/memory-organize/SKILL.md` — four-step organize flow: GC (MEMORY.md cleanup + dedup) → Deep scan (QMD sessions) → Tidy (`memory_tidy` full) → Final check (8KB budget)
+- `skills/memory-organize/SKILL.md` — four-step organize flow: GC (MEMORY.md cleanup + dedup) → Deep scan (QMD sessions) → Tidy (`memory_tidy` full, now includes inline section dedup) → Final check (8KB budget)
 - MEMORY.md structure: inline sections (👤 User, 💬 Key Feedback, 🎯 Active Focus, 🔗 Reference) for high-frequency content + flat `## Topic Pointers` list for topic file references; no `## Recent Sessions` (removed — redundant with daily files and topic pointers)
 - MEMORY.md 8KB budget enforced by `rebalanceIndex()` in `memory-core/src/memory-index.ts` (`DEFAULT_MAX_BYTES = 8192`); the `memory-organize` skill instructs the LLM to aim for 4KB but the code-level hard limit is 8KB
 - `addRecentSession()` is retained on `MemoryIndexManager` but no longer serialized — the hook uses `updateSection()` for topic pointers instead
+- **Dedup**: Three systems maintain MEMORY.md inline sections — session-memory handler, consolidation, and `memory_save`. All use Jaccard similarity (≥0.8) for inline dedup. `memory_tidy full` includes `actionInlineDedup` (within-section + cross-topic inline↔topic dedup). `memory_save` adds date prefix and calls `rebalanceIndex()`. `relocateInlineToTopic` checks for existing similar content before appending.
 
 ## Coding Style
 
@@ -323,6 +331,7 @@ Correction (system prompt injection):
 - Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only
 - Correction config: enabled by default when `cognitive.enabled` is true; no separate config key
+- Consolidation config: `memory.consolidation.enabled` (default `true`), `memory.consolidation.cron` (default `0 3 * * *`), `memory.consolidation.concurrency` (default 2), `memory.consolidation.batchSize` (default 4000), `memory.consolidation.lookbackDays` (default 7), `memory.consolidation.timezone`
 - Correction data stored at `~/.kaijibot/cognitive/corrections/{userId}.json`. Schema: CorrectionStoreData with records array, each CorrectionRecord has id, domain, trigger, mistake, correction, provenance, reinforcedCount, createdAt, lastReinforced.
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
