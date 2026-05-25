@@ -341,12 +341,12 @@ describe("memory_tidy", () => {
       expect(isTidyEnabled({})).toBe(true);
     });
 
-    it("returns false when autoAfterDreaming is explicitly false", () => {
-      expect(isTidyEnabled({ tidy: { autoAfterDreaming: false } })).toBe(false);
+    it("returns false when autoAfterConsolidation is explicitly false", () => {
+      expect(isTidyEnabled({ tidy: { autoAfterConsolidation: false } })).toBe(false);
     });
 
-    it("returns true when autoAfterDreaming is true", () => {
-      expect(isTidyEnabled({ tidy: { autoAfterDreaming: true } })).toBe(true);
+    it("returns true when autoAfterConsolidation is true", () => {
+      expect(isTidyEnabled({ tidy: { autoAfterConsolidation: true } })).toBe(true);
     });
   });
 });

@@ -137,7 +137,7 @@ describe("memory_search recall tracking", () => {
     }
   });
 
-  it("passes the resolved dreaming timezone into recall tracking", async () => {
+  it("passes the resolved timezone into recall tracking", async () => {
     setMemorySearchImpl(async () => [
       {
         path: "memory/2026-04-03.md",
@@ -151,30 +151,23 @@ describe("memory_search recall tracking", () => {
 
     const tool = createSearchTool(
       asKaijiBotConfig({
+        memory: { backend: "builtin" },
         agents: {
           defaults: {
             userTimezone: "America/Los_Angeles",
           },
           list: [{ id: "main", default: true }],
         },
-        plugins: {
-          entries: {
-            "memory-core": {
-              config: {
-                dreaming: {
-                  timezone: "Europe/London",
-                },
-              },
-            },
-          },
-        },
       }),
     );
 
     await tool.execute("call_recall_timezone", { query: "glacier" });
 
+    // Allow the fire-and-forget recall tracking to complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     expect(recallTrackingMock.recordShortTermRecalls).toHaveBeenCalledTimes(1);
     const [firstCall] = recallTrackingMock.recordShortTermRecalls.mock.calls;
-    expect(firstCall?.[0]?.timezone).toBe("Europe/London");
+    expect(firstCall?.[0]?.timezone).toBe("America/Los_Angeles");
   });
 });

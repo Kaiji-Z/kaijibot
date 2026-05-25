@@ -12,7 +12,7 @@ import {
   type MemoryEmbeddingProviderCreateOptions,
   type MemoryEmbeddingProviderRuntime,
 } from "kaijibot/plugin-sdk/memory-core-host-engine-embeddings";
-import { formatErrorMessage } from "../dreaming-shared.js";
+import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import { canAutoSelectLocal } from "./provider-adapters.js";
 
 export {

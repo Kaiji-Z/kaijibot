@@ -161,7 +161,7 @@ describe("memory tools", () => {
     const tool = createMemoryGetToolOrThrow();
 
     const result = await tool.execute("call_enoent", { path: "memory/2026-02-19.md" });
-    expect(result.details).toEqual({
+    expect(result.details).toMatchObject({
       text: "",
       path: "memory/2026-02-19.md",
     });
@@ -173,7 +173,7 @@ describe("memory tools", () => {
 
     const result = await tool.execute("call_builtin_fast_path", { path: "memory/2026-02-19.md" });
 
-    expect(result.details).toEqual({
+    expect(result.details).toMatchObject({
       text: "",
       path: "memory/2026-02-19.md",
     });

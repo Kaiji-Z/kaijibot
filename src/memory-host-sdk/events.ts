@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { MemoryDreamingPhaseName } from "./dreaming.js";
 
 export const MEMORY_HOST_EVENT_LOG_RELATIVE_PATH = path.join("memory", ".dreams", "events.jsonl");
 
@@ -32,20 +31,9 @@ export type MemoryHostPromotionAppliedEvent = {
   }>;
 };
 
-export type MemoryHostDreamCompletedEvent = {
-  type: "memory.dream.completed";
-  timestamp: string;
-  phase: MemoryDreamingPhaseName;
-  inlinePath?: string;
-  reportPath?: string;
-  lineCount: number;
-  storageMode: "inline" | "separate" | "both";
-};
-
 export type MemoryHostEvent =
   | MemoryHostRecallRecordedEvent
-  | MemoryHostPromotionAppliedEvent
-  | MemoryHostDreamCompletedEvent;
+  | MemoryHostPromotionAppliedEvent;
 
 export function resolveMemoryHostEventLogPath(workspaceDir: string): string {
   return path.join(workspaceDir, MEMORY_HOST_EVENT_LOG_RELATIVE_PATH);

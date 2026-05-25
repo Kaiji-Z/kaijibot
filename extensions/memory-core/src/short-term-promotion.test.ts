@@ -14,7 +14,7 @@ import {
   isShortTermMemoryPath,
   recordGroundedShortTermCandidates,
   rankShortTermPromotionCandidates,
-  recordDreamingPhaseSignals,
+  recordPhaseSignals,
   recordShortTermRecalls,
   removeGroundedShortTermCandidates,
   repairShortTermPromotionArtifacts,
@@ -320,7 +320,7 @@ describe("short-term promotion", () => {
     });
   });
 
-  it("lets repeated dreaming-only daily signals clear the default promotion gates", async () => {
+  it("lets repeated legacy daily signals clear the default promotion gates", async () => {
     await withTempWorkspace(async (workspaceDir) => {
       const queryDays = ["2026-04-01", "2026-04-02", "2026-04-03"];
       let candidateKey = "";
@@ -356,13 +356,13 @@ describe("short-term promotion", () => {
         candidateKey = ranked[0]?.key ?? candidateKey;
         expect(candidateKey).toBeTruthy();
 
-        await recordDreamingPhaseSignals({
+        await recordPhaseSignals({
           workspaceDir,
           phase: "light",
           keys: [candidateKey],
           nowMs,
         });
-        await recordDreamingPhaseSignals({
+        await recordPhaseSignals({
           workspaceDir,
           phase: "rem",
           keys: [candidateKey],
@@ -668,13 +668,13 @@ describe("short-term promotion", () => {
 
       const boostedKey = baseline.find((entry) => entry.path === "memory/2026-04-02.md")?.key;
       expect(boostedKey).toBeTruthy();
-      await recordDreamingPhaseSignals({
+      await recordPhaseSignals({
         workspaceDir,
         phase: "light",
         keys: [boostedKey!],
         nowMs,
       });
-      await recordDreamingPhaseSignals({
+      await recordPhaseSignals({
         workspaceDir,
         phase: "rem",
         keys: [boostedKey!],
@@ -745,7 +745,7 @@ describe("short-term promotion", () => {
       const key = rankedBaseline[0]?.key;
       expect(key).toBeTruthy();
 
-      await recordDreamingPhaseSignals({
+      await recordPhaseSignals({
         workspaceDir,
         phase: "rem",
         keys: [key],
@@ -758,7 +758,7 @@ describe("short-term promotion", () => {
         minUniqueQueries: 0,
         nowMs: Date.parse("2026-04-05T10:00:00.000Z"),
       });
-      await recordDreamingPhaseSignals({
+      await recordPhaseSignals({
         workspaceDir,
         phase: "rem",
         keys: [key],
@@ -1296,7 +1296,7 @@ describe("short-term promotion", () => {
     });
   });
 
-  it("uses dreaming timezone for recall-day bucketing and promotion headers", async () => {
+  it("uses timezone for recall-day bucketing and promotion headers", async () => {
     await withTempWorkspace(async (workspaceDir) => {
       await writeDailyMemoryNote(workspaceDir, "2026-04-01", [
         "Cross-midnight router maintenance window.",
@@ -1602,10 +1602,10 @@ describe("short-term promotion", () => {
     ).toEqual(expect.arrayContaining(["障害対応", "ルーター", "バックアップ", "路由器", "备份"]));
   });
 
-  describe("isContaminatedDreamingSnippet", () => {
-    const { isContaminatedDreamingSnippet } = __testing;
+  describe("isContaminatedSnippet", () => {
+    const { isContaminatedSnippet } = __testing;
 
-    it("treats diff-prefixed dreaming snippets as contaminated", () => {
+    it("treats diff-prefixed contaminated snippets as contaminated", () => {
       const snippet = [
         "@@ -1,1 - Candidate: consolidate async patterns",
         "confidence: 0.78",
@@ -1613,10 +1613,10 @@ describe("short-term promotion", () => {
         "status: staged",
         "recalls: 4",
       ].join("\n");
-      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+      expect(isContaminatedSnippet(snippet)).toBe(true);
     });
 
-    it("treats bracket-prefixed dreaming snippets as contaminated", () => {
+    it("treats bracket-prefixed contaminated snippets as contaminated", () => {
       const snippet = [
         "([ Candidate: move backup strategy to weekly rotation",
         "confidence: 0.76",
@@ -1624,7 +1624,7 @@ describe("short-term promotion", () => {
         "status: staged",
         "recalls: 3",
       ].join("\n");
-      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+      expect(isContaminatedSnippet(snippet)).toBe(true);
     });
 
     it("treats ordinary candidate notes with daily-memory evidence as contaminated via exclusion rules", () => {
@@ -1635,50 +1635,50 @@ describe("short-term promotion", () => {
         "status: staged",
         "recalls: 3",
       ].join("\n");
-      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+      expect(isContaminatedSnippet(snippet)).toBe(true);
     });
 
-    it("treats transcript-style dreaming prompt echoes as contaminated", () => {
+    it("treats transcript-style legacy prompt echoes as contaminated", () => {
       const snippet =
         "[main/dreaming-narrative-light.jsonl#L1] User: Write a dream diary entry from these memory fragments:";
-      expect(isContaminatedDreamingSnippet(snippet)).toBe(true);
+      expect(isContaminatedSnippet(snippet)).toBe(true);
     });
 
     it("returns false for empty or whitespace-only snippets", () => {
-      expect(isContaminatedDreamingSnippet("")).toBe(false);
-      expect(isContaminatedDreamingSnippet("   ")).toBe(false);
+      expect(isContaminatedSnippet("")).toBe(false);
+      expect(isContaminatedSnippet("   ")).toBe(false);
     });
 
     it("rejects code lines via exclusion rules", () => {
-      expect(isContaminatedDreamingSnippet("function foo() {")).toBe(true);
+      expect(isContaminatedSnippet("function foo() {")).toBe(true);
     });
 
     it("rejects file paths via exclusion rules", () => {
-      expect(isContaminatedDreamingSnippet("src/bar.ts has a bug")).toBe(true);
+      expect(isContaminatedSnippet("src/bar.ts has a bug")).toBe(true);
     });
 
     it("rejects git info via exclusion rules", () => {
-      expect(isContaminatedDreamingSnippet("commit abc123 merged")).toBe(true);
+      expect(isContaminatedSnippet("commit abc123 merged")).toBe(true);
     });
 
     it("rejects derivable info via exclusion rules", () => {
-      expect(isContaminatedDreamingSnippet("the file exists in the project")).toBe(true);
+      expect(isContaminatedSnippet("the file exists in the project")).toBe(true);
     });
 
     it("rejects ephemeral state via exclusion rules", () => {
-      expect(isContaminatedDreamingSnippet("currently running task")).toBe(true);
+      expect(isContaminatedSnippet("currently running task")).toBe(true);
     });
 
     it("allows legitimate user preference content", () => {
-      expect(isContaminatedDreamingSnippet("User prefers dark mode")).toBe(false);
+      expect(isContaminatedSnippet("User prefers dark mode")).toBe(false);
     });
 
     it("allows project event content", () => {
-      expect(isContaminatedDreamingSnippet("Project migrated to v2 on 2026-03-01")).toBe(false);
+      expect(isContaminatedSnippet("Project migrated to v2 on 2026-03-01")).toBe(false);
     });
 
     it("allows feedback content", () => {
-      expect(isContaminatedDreamingSnippet("Feedback: always check docs before answering")).toBe(
+      expect(isContaminatedSnippet("Feedback: always check docs before answering")).toBe(
         false,
       );
     });

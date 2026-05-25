@@ -10,10 +10,6 @@ import type {
   MemorySearchResult,
   MemorySearchRuntimeDebug,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-files";
-import {
-  resolveMemoryCorePluginConfig,
-  resolveMemoryDeepDreamingConfig,
-} from "kaijibot/plugin-sdk/memory-core-host-status";
 import { recordShortTermRecalls } from "./short-term-promotion.js";
 import {
   clampResultsByInjectedChars,
@@ -288,10 +284,7 @@ export function createMemorySearchTool(options: {
               ...result,
               corpus: "memory" as const,
             }));
-            const sleepTimezone = resolveMemoryDeepDreamingConfig({
-              pluginConfig: resolveMemoryCorePluginConfig(cfg),
-              cfg,
-            }).timezone;
+            const sleepTimezone = cfg.agents?.defaults?.userTimezone;
             queueShortTermRecallTracking({
               workspaceDir: status.workspaceDir,
               query,

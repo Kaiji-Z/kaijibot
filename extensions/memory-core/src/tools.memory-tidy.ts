@@ -1,6 +1,6 @@
 /**
  * Memory Tidy — maintenance tool for organizing, deduplicating, and
- * rebalancing memory topic files.  Runs automatically after Dreaming
+ * rebalancing memory topic files.  Runs automatically after consolidation
  * Deep Sleep or can be invoked manually via the `memory_tidy` agent tool.
  */
 
@@ -85,7 +85,7 @@ function isTidyEnabled(pluginConfig: Record<string, unknown> | undefined): boole
   if (!tidy || typeof tidy !== "object") {
     return true;
   }
-  return (tidy as Record<string, unknown>)["autoAfterDreaming"] !== false;
+  return (tidy as Record<string, unknown>)["autoAfterConsolidation"] !== false;
 }
 
 // ---------------------------------------------------------------------------
@@ -409,7 +409,7 @@ async function actionFull(
 }
 
 // ---------------------------------------------------------------------------
-// Core function (shared by tool + dreaming)
+// Core function (shared by tool + consolidation)
 // ---------------------------------------------------------------------------
 
 export async function runMemoryTidyActions(
@@ -460,7 +460,7 @@ export function createTidyDepsFromNodeFs(
 }
 
 // ---------------------------------------------------------------------------
-// Re-export helper for dreaming integration
+// Re-export helper for consolidation integration
 // ---------------------------------------------------------------------------
 
 export { isTidyEnabled };
@@ -493,7 +493,7 @@ export function createMemoryTidyTool(options: {
       "Memory maintenance tool: organize, deduplicate, and rebalance memory files. " +
       "Actions: dedup (remove duplicate entries), merge (combine similar topic files), " +
       "rebalance (trim MEMORY.md index to budget), archive (move old topics to archive). " +
-      "Use 'full' to run all actions. Run automatically after Dreaming, or call manually " +
+      "Use 'full' to run all actions. Run automatically after consolidation, or call manually " +
       "when memory feels cluttered.",
     parameters: MemoryTidySchema,
     execute: async (_toolCallId, rawParams) => {

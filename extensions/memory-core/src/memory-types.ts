@@ -25,8 +25,8 @@ const DERIVABLE_PATTERNS = ["the file exists", "the function is", "you can see",
 /** Substring patterns for ephemeral task state. */
 const EPHEMERAL_PATTERNS = ["currently running", "in progress", "todo:", "FIXME"];
 
-/** Substring patterns for dreaming / diagnostic metadata. */
-const DREAMING_PATTERNS = ["confidence:", "evidence:", "status: staged", "recalls:"];
+/** Substring patterns for diagnostic / staged metadata. */
+const DIAGNOSTIC_PATTERNS = ["confidence:", "evidence:", "status: staged", "recalls:"];
 
 /** File path / extension patterns (substring match). */
 const FILE_PATH_PATTERNS = ["/src/", "./", "../", ".ts", ".js", ".py", ".json"];
@@ -34,14 +34,14 @@ const FILE_PATH_PATTERNS = ["/src/", "./", "../", ".ts", ".js", ".py", ".json"];
 /**
  * Returns true if the content looks like something that should NOT be saved
  * as long-term memory (code, git info, derivable facts, ephemeral state,
- * or dreaming metadata).
+ * or diagnostic metadata).
  */
 export function isExcludedMemoryContent(content: string): boolean {
   const lines = content.split("\n");
   const lower = content.toLowerCase();
 
-  // Check dreaming metadata first (high-confidence exclusion)
-  if (DREAMING_PATTERNS.some((p) => lower.includes(p.toLowerCase()))) return true;
+  // Check diagnostic metadata first (high-confidence exclusion)
+  if (DIAGNOSTIC_PATTERNS.some((p) => lower.includes(p.toLowerCase()))) return true;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -79,7 +79,7 @@ export const EXCLUSION_PROMPT_SECTION = `## What NOT to save in memory
 - Anything already documented in project files
 - Ephemeral task details: in-progress work, temporary state, current conversation context
 - Information tools can look up in real-time (weather, time, file contents)
-- Dreaming/diagnostic metadata (confidence scores, evidence paths, status markers)
+- Diagnostic metadata (confidence scores, evidence paths, status markers)
 
 These exclusions apply even when explicitly asked to save. If asked to save a list or summary, ask what was *surprising* or *non-obvious* about it.`;
 
@@ -139,4 +139,4 @@ Rules:
 - Each entry is a ## heading with title and date in parentheses
 - Entry type: optional \`- **Type**: user|feedback|project|reference\` line
 - Entry importance: "high", "normal" (default), or "low"
-- Entry source: "session-compact", "memory-save", "dreaming", etc.`;
+- Entry source: "session-compact", "memory-save", etc.`;

@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { readMemoryHostEvents } from "kaijibot/plugin-sdk/memory-host-events";
 import { describe, expect, it } from "vitest";
-import { writeDailyDreamingPhaseBlock } from "./dreaming-markdown.js";
 import {
   applyShortTermPromotions,
   rankShortTermPromotionCandidates,
@@ -70,30 +69,6 @@ describe("memory host event journal integration", () => {
     expect(events[1]).toMatchObject({
       type: "memory.promotion.applied",
       applied: 1,
-    });
-  });
-
-  it("records dreaming completion events when phase artifacts are written", async () => {
-    const workspaceDir = await createTempWorkspace("memory-core-dream-events-");
-
-    const written = await writeDailyDreamingPhaseBlock({
-      workspaceDir,
-      phase: "light",
-      bodyLines: ["- staged note", "- second note"],
-      nowMs: Date.UTC(2026, 3, 5, 13, 0, 0),
-      storage: { mode: "both", separateReports: true },
-    });
-
-    const events = await readMemoryHostEvents({ workspaceDir });
-
-    expect(written.inlinePath).toBeTruthy();
-    expect(written.reportPath).toBeTruthy();
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({
-      type: "memory.dream.completed",
-      phase: "light",
-      lineCount: 2,
-      storageMode: "both",
     });
   });
 });

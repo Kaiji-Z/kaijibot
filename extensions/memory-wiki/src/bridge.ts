@@ -50,7 +50,7 @@ function shouldImportArtifact(
       return bridgeConfig.indexMemoryRoot;
     case "daily-note":
       return bridgeConfig.indexDailyNotes;
-    case "dream-report":
+    case "legacy-dream-report":
       return bridgeConfig.indexDreamReports;
     case "event-log":
       return bridgeConfig.followMemoryEvents;

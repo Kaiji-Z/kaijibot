@@ -36,7 +36,7 @@ export const MemorySaveSchema = Type.Object({
   }),
   importance: Type.Optional(
     Type.Union([Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")], {
-      description: "Importance level. High importance fast-tracks dreaming promotion.",
+      description: "Importance level. High importance fast-tracks long-term promotion.",
     }),
   ),
   type: Type.Optional(
@@ -175,7 +175,7 @@ export function createMemorySaveTool(options: {
       "Mandatory write step: save structured memories to subject-based topic files with automatic classification and self-editing. " +
       "Route by topic subject (e.g. feishu, philosophy, product). " +
       "Use 'type' to classify: user (personal info), feedback (about assistant), project (work), reference (facts). " +
-      "Detects and resolves conflicts with existing entries (mem0-style self-editing). Importance=high fast-tracks dreaming promotion.",
+      "Detects and resolves conflicts with existing entries (mem0-style self-editing). Importance=high fast-tracks long-term promotion.",
     parameters: MemorySaveSchema,
     execute: async (_toolCallId, params) => {
       const content = readStringParam(params, "content", { required: true });

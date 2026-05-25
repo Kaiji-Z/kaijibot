@@ -2,21 +2,73 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { MemorySearchResult } from "kaijibot/plugin-sdk/memory-core-host-runtime-files";
-import { formatMemoryDreamingDay } from "kaijibot/plugin-sdk/memory-core-host-status";
+import type { KaijiBotConfig } from "kaijibot/plugin-sdk/memory-core";
 import { appendMemoryHostEvent } from "kaijibot/plugin-sdk/memory-host-events";
-import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
+import { asNullableRecord as asRecord, normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
 import {
   deriveConceptTags,
   MAX_CONCEPT_TAGS,
   summarizeConceptTagScriptCoverage,
   type ConceptTagScriptCoverage,
 } from "./concept-vocabulary.js";
-import { asRecord } from "./dreaming-shared.js";
 import { isExcludedMemoryContent } from "./memory-types.js";
 import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 
+function formatLocalIsoDay(epochMs: number): string {
+  const d = new Date(epochMs);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatMemoryDay(epochMs: number, timezone?: string): string {
+  if (!timezone) {
+    return formatLocalIsoDay(epochMs);
+  }
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(epochMs));
+    const values = new Map(parts.map((part) => [part.type, part.value]));
+    const year = values.get("year");
+    const month = values.get("month");
+    const day = values.get("day");
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fall back to host-local day for invalid or unsupported timezones.
+  }
+  return formatLocalIsoDay(epochMs);
+}
+
+export type ShortTermPromotionConfig = {
+  enabled: boolean;
+  cron: string;
+  timezone?: string;
+  limit: number;
+  minScore: number;
+  minRecallCount: number;
+  minUniqueQueries: number;
+  recencyHalfLifeDays: number;
+  maxAgeDays?: number;
+  verboseLogging: boolean;
+  storage: { mode: "inline" | "separate" | "both"; separateReports: boolean };
+};
+
+export const DEFAULT_PROMOTION_CRON = "0 3 * * *";
+export const DEFAULT_PROMOTION_LIMIT = 10;
+export const DEFAULT_PROMOTION_RECENCY_HALF_LIFE_DAYS = 14;
+export const DEFAULT_PROMOTION_VERBOSE_LOGGING = false;
+export const DEFAULT_PROMOTION_STORAGE_MODE = "separate" as const;
+export const DEFAULT_PROMOTION_SEPARATE_REPORTS = false;
+
 const SHORT_TERM_PATH_RE = /(?:^|\/)memory\/(?:[^/]+\/)*(\d{4})-(\d{2})-(\d{2})\.md$/;
-const DREAMING_MEMORY_PATH_RE = /(?:^|\/)memory\/dreaming\//;
+const LEGACY_EXCLUDED_PATH_RE = /(?:^|\/)memory\/dreaming\//;
 const SHORT_TERM_SESSION_CORPUS_RE =
   /(?:^|\/)memory\/\.dreams\/session-corpus\/(\d{4})-(\d{2})-(\d{2})\.(?:md|txt)$/;
 const SHORT_TERM_BASENAME_RE = /^(\d{4})-(\d{2})-(\d{2})\.md$/;
@@ -25,6 +77,27 @@ const DEFAULT_RECENCY_HALF_LIFE_DAYS = 14;
 export const DEFAULT_PROMOTION_MIN_SCORE = 0.75;
 export const DEFAULT_PROMOTION_MIN_RECALL_COUNT = 3;
 export const DEFAULT_PROMOTION_MIN_UNIQUE_QUERIES = 2;
+
+export function resolveShortTermPromotionConfig(_params: {
+  pluginConfig?: Record<string, unknown>;
+  cfg?: KaijiBotConfig;
+}): ShortTermPromotionConfig {
+  return {
+    enabled: false,
+    cron: DEFAULT_PROMOTION_CRON,
+    limit: DEFAULT_PROMOTION_LIMIT,
+    minScore: DEFAULT_PROMOTION_MIN_SCORE,
+    minRecallCount: DEFAULT_PROMOTION_MIN_RECALL_COUNT,
+    minUniqueQueries: DEFAULT_PROMOTION_MIN_UNIQUE_QUERIES,
+    recencyHalfLifeDays: DEFAULT_PROMOTION_RECENCY_HALF_LIFE_DAYS,
+    verboseLogging: DEFAULT_PROMOTION_VERBOSE_LOGGING,
+    storage: {
+      mode: DEFAULT_PROMOTION_STORAGE_MODE,
+      separateReports: DEFAULT_PROMOTION_SEPARATE_REPORTS,
+    },
+  };
+}
+
 const PROMOTION_MARKER_PREFIX = "kaijibot-memory-promotion:";
 const MAX_QUERY_HASHES = 32;
 const MAX_RECALL_DAYS = 16;
@@ -34,16 +107,16 @@ const SHORT_TERM_LOCK_RELATIVE_PATH = path.join("memory", ".dreams", "short-term
 const SHORT_TERM_LOCK_WAIT_TIMEOUT_MS = 10_000;
 const SHORT_TERM_LOCK_STALE_MS = 60_000;
 const SHORT_TERM_LOCK_RETRY_DELAY_MS = 40;
-// Repeated dreaming revisits should be able to clear the default promotion gate
+// Repeated consolidation revisits should be able to clear the default promotion gate
 // without requiring separate organic recall traffic for the same snippet.
 const PHASE_SIGNAL_LIGHT_BOOST_MAX = 0.06;
 const PHASE_SIGNAL_REM_BOOST_MAX = 0.09;
 const PHASE_SIGNAL_HALF_LIFE_DAYS = 14;
 const inProcessShortTermLocks = new Map<string, Promise<void>>();
 const ensuredShortTermDirs = new Map<string, Promise<void>>();
-const DREAMING_TRANSCRIPT_PROMPT_LINE_RE =
+const LEGACY_TRANSCRIPT_PROMPT_LINE_RE =
   /\[[^\]]*dreaming-narrative[^\]]*]\s*(?:User|Assistant):\s*Write a dream diary entry from these memory fragments:?/i;
-const DREAMING_DIFF_PREFIX_RE = /@@\s*-\d+(?:,\d+)?\s+[-*+]\s+/iy;
+const CONTAMINATED_DIFF_PREFIX_RE = /@@\s*-\d+(?:,\d+)?\s+[-*+]\s+/iy;
 
 export type PromotionWeights = {
   frequency: number;
@@ -240,13 +313,13 @@ function normalizeSnippet(raw: string): string {
   return trimmed.replace(/\s+/g, " ");
 }
 
-function consumeDreamingLeadPrefix(snippet: string): string {
+function consumeContaminatedLeadPrefix(snippet: string): string {
   let index = 0;
   while (index < snippet.length) {
-    DREAMING_DIFF_PREFIX_RE.lastIndex = index;
-    const diffMatch = DREAMING_DIFF_PREFIX_RE.exec(snippet);
+    CONTAMINATED_DIFF_PREFIX_RE.lastIndex = index;
+    const diffMatch = CONTAMINATED_DIFF_PREFIX_RE.exec(snippet);
     if (diffMatch) {
-      index = DREAMING_DIFF_PREFIX_RE.lastIndex;
+      index = CONTAMINATED_DIFF_PREFIX_RE.lastIndex;
       continue;
     }
     const char = snippet[index];
@@ -269,29 +342,29 @@ function consumeDreamingLeadPrefix(snippet: string): string {
   return snippet.slice(index);
 }
 
-function hasDreamingNarrativeLead(snippet: string): boolean {
-  const withoutPrefix = consumeDreamingLeadPrefix(snippet);
+function hasNarrativeLead(snippet: string): boolean {
+  const withoutPrefix = consumeContaminatedLeadPrefix(snippet);
   return /^Candidate:/i.test(withoutPrefix) || /^Reflections?:/i.test(withoutPrefix);
 }
 
-function isContaminatedDreamingSnippet(raw: string): boolean {
+function isContaminatedSnippet(raw: string): boolean {
   const snippet = normalizeSnippet(raw);
   if (!snippet) {
     return false;
   }
   if (
     /<!--\s*kaijibot-memory-promotion:/i.test(snippet) ||
-    DREAMING_TRANSCRIPT_PROMPT_LINE_RE.test(snippet)
+    LEGACY_TRANSCRIPT_PROMPT_LINE_RE.test(snippet)
   ) {
     return true;
   }
 
-  const hasNarrativeLead = hasDreamingNarrativeLead(snippet);
+  const hasNarrativeLeadResult = hasNarrativeLead(snippet);
   const hasConfidence = /\bconfidence:\s*\d/i.test(snippet);
   const hasEvidence = /\bevidence:\s*memory\/\.dreams\/session-corpus\//i.test(snippet);
   const hasStatus = /\bstatus:\s*staged\b/i.test(snippet);
   const hasRecalls = /\brecalls:\s*\d+\b/i.test(snippet);
-  if (hasNarrativeLead && hasConfidence && hasEvidence && hasStatus && hasRecalls) {
+  if (hasNarrativeLeadResult && hasConfidence && hasEvidence && hasStatus && hasRecalls) {
     return true;
   }
 
@@ -473,7 +546,7 @@ function normalizeStore(raw: unknown, nowIso: string): ShortTermRecallStore {
           ? entry.claimHash.trim()
           : undefined;
       const snippet = typeof entry.snippet === "string" ? normalizeSnippet(entry.snippet) : "";
-      if (snippet && isContaminatedDreamingSnippet(snippet)) {
+      if (snippet && isContaminatedSnippet(snippet)) {
         continue;
       }
       const queryHashes = Array.isArray(entry.queryHashes)
@@ -867,7 +940,7 @@ async function writeStore(workspaceDir: string, store: ShortTermRecallStore): Pr
 
 export function isShortTermMemoryPath(filePath: string): boolean {
   const normalized = normalizeMemoryPath(filePath);
-  if (DREAMING_MEMORY_PATH_RE.test(normalized)) {
+  if (LEGACY_EXCLUDED_PATH_RE.test(normalized)) {
     return false;
   }
   if (SHORT_TERM_PATH_RE.test(normalized)) {
@@ -909,14 +982,14 @@ export async function recordShortTermRecalls(params: {
   const signalType = params.signalType ?? "recall";
   const queryHash = hashQuery(query);
   const todayBucket =
-    normalizeIsoDay(params.dayBucket ?? "") ?? formatMemoryDreamingDay(nowMs, params.timezone);
+    normalizeIsoDay(params.dayBucket ?? "") ?? formatMemoryDay(nowMs, params.timezone);
   await withShortTermLock(workspaceDir, async () => {
     const store = await readStore(workspaceDir, nowIso);
 
     for (const result of relevant) {
       const normalizedPath = normalizeMemoryPath(result.path);
       const snippet = normalizeSnippet(result.snippet);
-      if (snippet && isContaminatedDreamingSnippet(snippet)) {
+      if (snippet && isContaminatedSnippet(snippet)) {
         continue;
       }
       const claimHash = snippet ? buildClaimHash(snippet) : undefined;
@@ -1024,7 +1097,7 @@ export async function recordGroundedShortTermCandidates(params: {
       const normalizedPath = normalizeMemoryPath(item.path);
       if (
         !snippet ||
-        isContaminatedDreamingSnippet(snippet) ||
+        isContaminatedSnippet(snippet) ||
         !normalizedPath ||
         !isShortTermMemoryPath(normalizedPath) ||
         !Number.isFinite(item.startLine) ||
@@ -1050,7 +1123,7 @@ export async function recordGroundedShortTermCandidates(params: {
 
   const nowMs = Number.isFinite(params.nowMs) ? (params.nowMs as number) : Date.now();
   const nowIso = new Date(nowMs).toISOString();
-  const fallbackDayBucket = formatMemoryDreamingDay(nowMs, params.timezone);
+  const fallbackDayBucket = formatMemoryDay(nowMs, params.timezone);
   await withShortTermLock(workspaceDir, async () => {
     const store = await readStore(workspaceDir, nowIso);
 
@@ -1116,7 +1189,7 @@ export async function recordGroundedShortTermCandidates(params: {
   });
 }
 
-export async function recordDreamingPhaseSignals(params: {
+export async function recordPhaseSignals(params: {
   workspaceDir?: string;
   phase: "light" | "rem";
   keys: string[];
@@ -1207,7 +1280,7 @@ export async function rankShortTermPromotionCandidates(
     if (!entry || entry.source !== "memory" || !isShortTermMemoryPath(entry.path)) {
       continue;
     }
-    if (isContaminatedDreamingSnippet(entry.snippet)) {
+    if (isContaminatedSnippet(entry.snippet)) {
       continue;
     }
     if (!includePromoted && entry.promotedAt) {
@@ -1485,7 +1558,7 @@ function buildPromotionSection(
   nowMs: number,
   timezone?: string,
 ): string {
-  const sectionDate = formatMemoryDreamingDay(nowMs, timezone);
+  const sectionDate = formatMemoryDay(nowMs, timezone);
   const lines = ["", `## Promoted From Short-Term Memory (${sectionDate})`, ""];
 
   for (const candidate of candidates) {
@@ -1548,7 +1621,7 @@ export async function applyShortTermPromotions(
         if (candidate.promotedAt) {
           return false;
         }
-        if (isContaminatedDreamingSnippet(candidate.snippet)) {
+        if (isContaminatedSnippet(candidate.snippet)) {
           return false;
         }
         if (candidate.score < minScore) {
@@ -1598,7 +1671,7 @@ export async function applyShortTermPromotions(
     const rehydratedSelected: PromotionCandidate[] = [];
     for (const candidate of dedupedSelected) {
       const rehydrated = await rehydratePromotionCandidate(workspaceDir, candidate);
-      if (rehydrated && !isContaminatedDreamingSnippet(rehydrated.snippet)) {
+      if (rehydrated && !isContaminatedSnippet(rehydrated.snippet)) {
         rehydratedSelected.push(rehydrated);
       }
     }
@@ -2003,5 +2076,5 @@ export const __testing = {
   calculatePhaseSignalBoost,
   buildClaimHash,
   totalSignalCountForEntry,
-  isContaminatedDreamingSnippet,
+  isContaminatedSnippet,
 };

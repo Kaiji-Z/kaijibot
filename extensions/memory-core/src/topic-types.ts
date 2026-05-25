@@ -28,7 +28,7 @@ export interface TopicEntry {
   date: string; // YYYY-MM-DD
   content: string;
   importance?: "high" | "normal" | "low";
-  source?: string; // e.g., "session-compact", "memory-save", "dreaming"
+  source?: string; // e.g., "session-compact", "memory-save"
   type?: MemoryType; // memory classification
 }
 

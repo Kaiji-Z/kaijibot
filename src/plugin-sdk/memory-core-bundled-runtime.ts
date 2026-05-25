@@ -1,14 +1,6 @@
 // Manual facade. Keep loader boundary explicit.
-type ApiFacadeModule = typeof import("@kaijibot/memory-core/api.js");
 type RuntimeFacadeModule = typeof import("@kaijibot/memory-core/runtime-api.js");
 import { loadBundledPluginPublicSurfaceModuleSync } from "./facade-loader.js";
-
-function loadApiFacadeModule(): ApiFacadeModule {
-  return loadBundledPluginPublicSurfaceModuleSync<ApiFacadeModule>({
-    dirName: "memory-core",
-    artifactBasename: "api.js",
-  });
-}
 
 function loadRuntimeFacadeModule(): RuntimeFacadeModule {
   return loadBundledPluginPublicSurfaceModuleSync<RuntimeFacadeModule>({
@@ -33,22 +25,3 @@ export const removeGroundedShortTermCandidates: RuntimeFacadeModule["removeGroun
     loadRuntimeFacadeModule().removeGroundedShortTermCandidates(
       ...args,
     )) as RuntimeFacadeModule["removeGroundedShortTermCandidates"];
-
-export const previewGroundedRemMarkdown: ApiFacadeModule["previewGroundedRemMarkdown"] = ((
-  ...args
-) =>
-  loadApiFacadeModule().previewGroundedRemMarkdown(
-    ...args,
-  )) as ApiFacadeModule["previewGroundedRemMarkdown"];
-
-export const writeBackfillDiaryEntries: ApiFacadeModule["writeBackfillDiaryEntries"] = ((...args) =>
-  loadApiFacadeModule().writeBackfillDiaryEntries(
-    ...args,
-  )) as ApiFacadeModule["writeBackfillDiaryEntries"];
-
-export const removeBackfillDiaryEntries: ApiFacadeModule["removeBackfillDiaryEntries"] = ((
-  ...args
-) =>
-  loadApiFacadeModule().removeBackfillDiaryEntries(
-    ...args,
-  )) as ApiFacadeModule["removeBackfillDiaryEntries"];

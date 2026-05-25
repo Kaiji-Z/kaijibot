@@ -102,7 +102,7 @@ describe("parseLegacyMemoryFiles", () => {
     expect(entries[1]!.content).toContain("early morning work");
   });
 
-  it("skips dreaming metadata entries", async () => {
+  it("skips diagnostic metadata entries", async () => {
     writeFile(
       memFs,
       "memory/2026-04-17.md",
@@ -110,8 +110,8 @@ describe("parseLegacyMemoryFiles", () => {
         "# Session: 2026-04-17",
         "Regular session with useful info about the deployment pipeline.",
         "",
-        "## Dreaming Output",
-        "kaijibot:dreaming: confidence: 0.85 evidence: recall-store",
+        "## Diagnostic Output",
+        "kaijibot:metadata: confidence: 0.85 evidence: recall-store",
       ].join("\n"),
     );
 

@@ -79,7 +79,7 @@ Analyze the conversation and produce a JSON object with exactly these fields:
 - Anything already documented in project files
 - Ephemeral task details: in-progress work, temporary state, current conversation context
 - Information tools can look up in real-time (weather, time, file contents)
-- Dreaming/diagnostic metadata (confidence scores, evidence paths, status markers)
+- Diagnostic metadata (confidence scores, evidence paths, status markers)
 
 These exclusions apply even when explicitly asked to save. If asked to save a list or summary, ask what was *surprising* or *non-obvious* about it.
 

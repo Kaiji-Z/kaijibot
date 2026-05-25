@@ -83,7 +83,7 @@ const HEADING_RE = /^(#{1,2}) (.+)$/;
 const MIN_ENTRY_LENGTH = 20;
 
 const SKIP_CONTENT_PATTERNS = [
-  /kaijibot:dreaming:/,
+  /kaijibot:metadata:/,
   /\bconfidence:\s*\d/,
   /\bevidence:\s/,
   /^-\s+\*\*Session/,

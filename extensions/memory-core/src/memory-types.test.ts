@@ -98,7 +98,7 @@ describe("isExcludedMemoryContent", () => {
     });
   });
 
-  describe("dreaming metadata → excluded", () => {
+  describe("diagnostic metadata → excluded", () => {
     it("confidence:", () => {
       expect(isExcludedMemoryContent("confidence: 0.85")).toBe(true);
     });
@@ -172,8 +172,8 @@ describe("prompt section constants", () => {
     expect(VERIFICATION_PROMPT_SECTION.length).toBeGreaterThan(0);
   });
 
-  it("exclusion section mentions dreaming", () => {
-    expect(EXCLUSION_PROMPT_SECTION).toContain("Dreaming");
+  it("exclusion section mentions Diagnostic metadata", () => {
+    expect(EXCLUSION_PROMPT_SECTION).toContain("Diagnostic");
   });
 
   it("verification section mentions file path check", () => {

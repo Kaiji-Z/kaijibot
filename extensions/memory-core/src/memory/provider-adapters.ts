@@ -24,7 +24,7 @@ import {
 import { resolveUserPath } from "kaijibot/plugin-sdk/memory-core-host-engine-foundation";
 import { getProviderEnvVars } from "kaijibot/plugin-sdk/provider-env-vars";
 import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
-import { formatErrorMessage } from "../dreaming-shared.js";
+import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import { filterUnregisteredMemoryEmbeddingProviderAdapters } from "./provider-adapter-registration.js";
 
 export type BuiltinMemoryEmbeddingProviderDoctorMetadata = {

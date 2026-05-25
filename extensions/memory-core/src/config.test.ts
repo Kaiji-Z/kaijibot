@@ -7,42 +7,19 @@ const manifest = JSON.parse(
 ) as { configSchema: Record<string, unknown> };
 
 describe("memory-core manifest config schema", () => {
-  it("accepts dreaming phase thresholds used by QA and runtime", () => {
+  it("accepts consolidation config used by runtime", () => {
     const result = validateJsonSchemaValue({
       schema: manifest.configSchema,
-      cacheKey: "memory-core.manifest.dreaming-phase-thresholds",
+      cacheKey: "memory-core.manifest.consolidation",
       value: {
-        dreaming: {
+        consolidation: {
           enabled: true,
-          timezone: "Europe/London",
-          verboseLogging: true,
-          storage: {
-            mode: "inline",
-            separateReports: false,
-          },
-          phases: {
-            light: {
-              enabled: true,
-              lookbackDays: 2,
-              limit: 20,
-              dedupeSimilarity: 0.9,
-            },
-            deep: {
-              enabled: true,
-              limit: 10,
-              minScore: 0,
-              minRecallCount: 3,
-              minUniqueQueries: 3,
-              recencyHalfLifeDays: 14,
-              maxAgeDays: 30,
-            },
-            rem: {
-              enabled: true,
-              lookbackDays: 7,
-              limit: 10,
-              minPatternStrength: 0.75,
-            },
-          },
+          cron: "0 3 * * *",
+          timezone: "UTC",
+          verboseLogging: false,
+          concurrency: 2,
+          batchSize: 4000,
+          lookbackDays: 30,
         },
       },
     });

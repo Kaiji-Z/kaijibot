@@ -25,16 +25,11 @@ describe("listMemoryCorePublicArtifacts", () => {
 
   it("lists public workspace artifacts with stable kinds", async () => {
     const workspaceDir = path.join(fixtureRoot, "workspace-stable-kinds");
-    await fs.mkdir(path.join(workspaceDir, "memory", "dreaming"), { recursive: true });
+    await fs.mkdir(path.join(workspaceDir, "memory"), { recursive: true });
     await fs.writeFile(path.join(workspaceDir, "MEMORY.md"), "# Durable Memory\n", "utf8");
     await fs.writeFile(
       path.join(workspaceDir, "memory", "2026-04-06.md"),
       "# Daily Note\n",
-      "utf8",
-    );
-    await fs.writeFile(
-      path.join(workspaceDir, "memory", "dreaming", "2026-04-06.md"),
-      "# Dream Report\n",
       "utf8",
     );
     await appendMemoryHostEvent(workspaceDir, {
@@ -65,14 +60,6 @@ describe("listMemoryCorePublicArtifacts", () => {
         workspaceDir,
         relativePath: "memory/2026-04-06.md",
         absolutePath: path.join(workspaceDir, "memory", "2026-04-06.md"),
-        agentIds: ["main"],
-        contentType: "markdown",
-      },
-      {
-        kind: "dream-report",
-        workspaceDir,
-        relativePath: "memory/dreaming/2026-04-06.md",
-        absolutePath: path.join(workspaceDir, "memory", "dreaming", "2026-04-06.md"),
         agentIds: ["main"],
         contentType: "markdown",
       },

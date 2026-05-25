@@ -56,14 +56,6 @@ export {
 } from "./memory-core-host-events.js";
 export type { MemoryHostEvent } from "./memory-core-host-events.js";
 export {
-  resolveMemoryCorePluginConfig,
-  formatMemoryDreamingDay,
-  isSameMemoryDreamingDay,
-  resolveMemoryDeepDreamingConfig,
-  resolveMemoryDreamingConfig,
-  resolveMemoryDreamingWorkspaces,
-} from "./memory-core-host-status.js";
-export {
   listMemoryFiles,
   normalizeExtraMemoryPaths,
   readAgentMemoryFile,

@@ -45,7 +45,6 @@ Use this skill immediately when the user asks any of:
 
 - `sessions.json` — 会话注册表
 - `session-ranking.*` / `session-bootstrap.*` — 系统元数据
-- `dreaming-*.*` — dreaming agent 内部文件
 - `*.deleted.*` — 已删除的文件
 
 **注意**：`.reset.` 和 `.deleted.` 归档会话文件**含有真实对话历史**。当使用 `sessions_list` 工具并设置 `includeArchived: true` 时，这些归档会话会被返回并参与深度扫描。

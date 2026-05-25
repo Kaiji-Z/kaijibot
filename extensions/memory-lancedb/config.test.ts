@@ -8,16 +8,13 @@ const manifest = JSON.parse(
 ) as { configSchema: Record<string, unknown> };
 
 describe("memory-lancedb config", () => {
-  it("accepts dreaming in the manifest schema and preserves it in runtime parsing", () => {
+  it("accepts embedding config in the manifest schema and parses it at runtime", () => {
     const manifestResult = validateJsonSchemaValue({
       schema: manifest.configSchema,
-      cacheKey: "memory-lancedb.manifest.dreaming",
+      cacheKey: "memory-lancedb.manifest.embedding",
       value: {
         embedding: {
           apiKey: "sk-test",
-        },
-        dreaming: {
-          enabled: true,
         },
       },
     });
@@ -26,39 +23,20 @@ describe("memory-lancedb config", () => {
       embedding: {
         apiKey: "sk-test",
       },
-      dreaming: {
-        enabled: true,
-      },
     });
 
     expect(manifestResult.ok).toBe(true);
-    expect(parsed.dreaming).toEqual({
-      enabled: true,
-    });
+    expect(parsed.embedding.apiKey).toBe("sk-test");
   });
 
-  it("still rejects unrelated unknown top-level config keys", () => {
+  it("rejects unrelated unknown top-level config keys", () => {
     expect(() => {
       memoryConfigSchema.parse({
         embedding: {
           apiKey: "sk-test",
-        },
-        dreaming: {
-          enabled: true,
         },
         unexpected: true,
       });
     }).toThrow("memory config has unknown keys: unexpected");
-  });
-
-  it("rejects non-object dreaming values in runtime parsing", () => {
-    expect(() => {
-      memoryConfigSchema.parse({
-        embedding: {
-          apiKey: "sk-test",
-        },
-        dreaming: true,
-      });
-    }).toThrow("dreaming config must be an object");
   });
 });

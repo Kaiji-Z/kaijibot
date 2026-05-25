@@ -10,7 +10,6 @@ export type MemoryConfig = {
     baseUrl?: string;
     dimensions?: number;
   };
-  dreaming?: Record<string, unknown>;
   dbPath?: string;
   autoCapture?: boolean;
   autoRecall?: boolean;
@@ -98,7 +97,7 @@ export const memoryConfigSchema = {
     const cfg = value as Record<string, unknown>;
     assertAllowedKeys(
       cfg,
-      ["embedding", "dreaming", "dbPath", "autoCapture", "autoRecall", "captureMaxChars"],
+      ["embedding", "dbPath", "autoCapture", "autoRecall", "captureMaxChars"],
       "memory config",
     );
 
@@ -119,15 +118,6 @@ export const memoryConfigSchema = {
       throw new Error("captureMaxChars must be between 100 and 10000");
     }
 
-    const dreaming =
-      typeof cfg.dreaming === "undefined"
-        ? undefined
-        : cfg.dreaming && typeof cfg.dreaming === "object" && !Array.isArray(cfg.dreaming)
-          ? (cfg.dreaming as Record<string, unknown>)
-          : (() => {
-              throw new Error("dreaming config must be an object");
-            })();
-
     return {
       embedding: {
         provider: "openai",
@@ -137,7 +127,6 @@ export const memoryConfigSchema = {
           typeof embedding.baseUrl === "string" ? resolveEnvVars(embedding.baseUrl) : undefined,
         dimensions: typeof embedding.dimensions === "number" ? embedding.dimensions : undefined,
       },
-      dreaming,
       dbPath: typeof cfg.dbPath === "string" ? cfg.dbPath : DEFAULT_DB_PATH,
       autoCapture: cfg.autoCapture === true,
       autoRecall: cfg.autoRecall !== false,

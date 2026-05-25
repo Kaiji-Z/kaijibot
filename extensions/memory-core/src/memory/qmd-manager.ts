@@ -45,10 +45,10 @@ import {
   type ResolvedQmdMcporterConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-engine-storage";
 import {
+  asNullableRecord as asRecord,
   localeLowercasePreservingWhitespace,
   normalizeLowercaseStringOrEmpty,
 } from "kaijibot/plugin-sdk/text-runtime";
-import { asRecord } from "../dreaming-shared.js";
 import { resolveQmdCollectionPatternFlags, type QmdCollectionPatternFlag } from "./qmd-compat.js";
 
 type SqliteDatabase = import("node:sqlite").DatabaseSync;

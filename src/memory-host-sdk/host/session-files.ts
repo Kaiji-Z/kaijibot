@@ -19,31 +19,7 @@ export type SessionFileEntry = {
   lineMap: number[];
   /** Maps each content line (0-indexed) to epoch ms; 0 means unknown timestamp. */
   messageTimestampsMs: number[];
-  /** True when this transcript belongs to an internal dreaming narrative run. */
-  generatedByDreamingNarrative?: boolean;
 };
-
-function isDreamingNarrativeBootstrapRecord(record: unknown): boolean {
-  if (!record || typeof record !== "object" || Array.isArray(record)) {
-    return false;
-  }
-  const candidate = record as {
-    type?: unknown;
-    customType?: unknown;
-    data?: unknown;
-  };
-  if (
-    candidate.type !== "custom" ||
-    candidate.customType !== "kaijibot:bootstrap-context:full" ||
-    !candidate.data ||
-    typeof candidate.data !== "object" ||
-    Array.isArray(candidate.data)
-  ) {
-    return false;
-  }
-  const runId = (candidate.data as { runId?: unknown }).runId;
-  return typeof runId === "string" && runId.startsWith("dreaming-narrative-");
-}
 
 export async function listSessionFilesForAgent(agentId: string): Promise<string[]> {
   const dir = resolveSessionTranscriptsDirForAgent(agentId);
@@ -128,7 +104,6 @@ export async function buildSessionEntry(absPath: string): Promise<SessionFileEnt
     const collected: string[] = [];
     const lineMap: number[] = [];
     const messageTimestampsMs: number[] = [];
-    let generatedByDreamingNarrative = false;
     for (let jsonlIdx = 0; jsonlIdx < lines.length; jsonlIdx++) {
       const line = lines[jsonlIdx];
       if (!line.trim()) {
@@ -139,9 +114,6 @@ export async function buildSessionEntry(absPath: string): Promise<SessionFileEnt
         record = JSON.parse(line);
       } catch {
         continue;
-      }
-      if (!generatedByDreamingNarrative && isDreamingNarrativeBootstrapRecord(record)) {
-        generatedByDreamingNarrative = true;
       }
       if (
         !record ||
@@ -184,7 +156,6 @@ export async function buildSessionEntry(absPath: string): Promise<SessionFileEnt
       content,
       lineMap,
       messageTimestampsMs,
-      ...(generatedByDreamingNarrative ? { generatedByDreamingNarrative: true } : {}),
     };
   } catch (err) {
     log.debug(`Failed reading session file ${absPath}: ${String(err)}`);

@@ -1,9 +1,27 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveMemoryHostEventLogPath } from "kaijibot/plugin-sdk/memory-core-host-events";
-import { resolveMemoryDreamingWorkspaces } from "kaijibot/plugin-sdk/memory-core-host-status";
 import type { MemoryPluginPublicArtifact } from "kaijibot/plugin-sdk/memory-host-core";
 import type { KaijiBotConfig } from "../api.js";
+
+type WorkspaceEntry = { workspaceDir: string; agentIds: string[] };
+
+function resolveWorkspaces(cfg: KaijiBotConfig): WorkspaceEntry[] {
+  const agentList = Array.isArray(cfg.agents?.list) ? cfg.agents.list : [];
+  if (agentList.length === 0) {
+    return [];
+  }
+  const workspaceMap = new Map<string, string[]>();
+  for (const entry of agentList) {
+    const workspaceDir = (entry as Record<string, unknown>).workspace as string | undefined;
+    const agentId = entry.id as string | undefined;
+    if (!workspaceDir || !agentId) continue;
+    const existing = workspaceMap.get(workspaceDir) ?? [];
+    existing.push(agentId);
+    workspaceMap.set(workspaceDir, existing);
+  }
+  return [...workspaceMap.entries()].map(([workspaceDir, agentIds]) => ({ workspaceDir, agentIds }));
+}
 
 async function pathExists(inputPath: string): Promise<boolean> {
   try {
@@ -59,7 +77,7 @@ async function collectWorkspaceArtifacts(params: {
   for (const absolutePath of await listMarkdownFilesRecursive(memoryDir)) {
     const relativePath = path.relative(params.workspaceDir, absolutePath).replace(/\\/g, "/");
     artifacts.push({
-      kind: relativePath.startsWith("memory/dreaming/") ? "dream-report" : "daily-note",
+      kind: relativePath.startsWith("memory/dreaming/") ? "legacy-dream-report" : "daily-note",
       workspaceDir: params.workspaceDir,
       relativePath,
       absolutePath,
@@ -90,7 +108,7 @@ async function collectWorkspaceArtifacts(params: {
 export async function listMemoryCorePublicArtifacts(params: {
   cfg: KaijiBotConfig;
 }): Promise<MemoryPluginPublicArtifact[]> {
-  const workspaces = resolveMemoryDreamingWorkspaces(params.cfg);
+  const workspaces = resolveWorkspaces(params.cfg);
   const artifacts: MemoryPluginPublicArtifact[] = [];
   for (const workspace of workspaces) {
     artifacts.push(

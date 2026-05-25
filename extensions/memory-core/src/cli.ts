@@ -8,8 +8,6 @@ import type {
   MemoryCommandOptions,
   MemoryPromoteCommandOptions,
   MemoryPromoteExplainOptions,
-  MemoryRemBackfillOptions,
-  MemoryRemHarnessOptions,
   MemorySearchCommandOptions,
 } from "./cli.types.js";
 import {
@@ -55,16 +53,6 @@ async function runMemoryPromoteExplain(
   await runtime.runMemoryPromoteExplain(selectorArg, opts);
 }
 
-async function runMemoryRemHarness(opts: MemoryRemHarnessOptions) {
-  const runtime = await loadMemoryCliRuntime();
-  await runtime.runMemoryRemHarness(opts);
-}
-
-async function runMemoryRemBackfill(opts: MemoryRemBackfillOptions) {
-  const runtime = await loadMemoryCliRuntime();
-  await runtime.runMemoryRemBackfill(opts);
-}
-
 export function registerMemoryCli(program: Command) {
   const memory = program
     .command("memory")
@@ -96,18 +84,6 @@ export function registerMemoryCli(program: Command) {
           [
             'kaijibot memory promote-explain "router vlan"',
             "Explain why a specific candidate would or would not promote.",
-          ],
-          [
-            "kaijibot memory rem-harness --json",
-            "Preview REM reflections, candidate truths, and deep promotion output.",
-          ],
-          [
-            "kaijibot memory rem-backfill --path ./memory",
-            "Write grounded historical REM entries into DREAMS.md for UI review.",
-          ],
-          [
-            "kaijibot memory rem-backfill --path ./memory --stage-short-term",
-            "Also seed durable grounded candidates into the live short-term promotion store.",
           ],
           ["kaijibot memory status --json", "Output machine-readable JSON (good for scripts)."],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/memory", "docs.kaijibot.ai/cli/memory")}\n`,
@@ -185,38 +161,5 @@ export function registerMemoryCli(program: Command) {
     .option("--json", "Print JSON")
     .action(async (selectorArg: string | undefined, opts: MemoryPromoteExplainOptions) => {
       await runMemoryPromoteExplain(selectorArg, opts);
-    });
-
-  memory
-    .command("rem-harness")
-    .description("Preview REM reflections, candidate truths, and deep promotions without writing")
-    .option("--agent <id>", "Agent id (default: default agent)")
-    .option("--path <file-or-dir>", "Seed the harness from historical daily memory file(s)")
-    .option("--grounded", "Also render a grounded day-level REM preview")
-    .option("--include-promoted", "Include already promoted deep candidates", false)
-    .option("--json", "Print JSON")
-    .action(async (opts: MemoryRemHarnessOptions) => {
-      await runMemoryRemHarness(opts);
-    });
-
-  memory
-    .command("rem-backfill")
-    .description("Write grounded historical REM summaries into DREAMS.md for UI review")
-    .option("--agent <id>", "Agent id (default: default agent)")
-    .option("--path <file-or-dir>", "Historical daily memory file(s) or directory")
-    .option("--rollback", "Remove previously written grounded REM backfill entries", false)
-    .option(
-      "--stage-short-term",
-      "Also seed grounded durable candidates into the short-term promotion store",
-      false,
-    )
-    .option(
-      "--rollback-short-term",
-      "Remove previously seeded grounded short-term candidates",
-      false,
-    )
-    .option("--json", "Print JSON")
-    .action(async (opts: MemoryRemBackfillOptions) => {
-      await runMemoryRemBackfill(opts);
     });
 }

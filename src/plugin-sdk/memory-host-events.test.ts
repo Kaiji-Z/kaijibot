@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   appendMemoryHostEvent,
@@ -29,13 +28,20 @@ describe("memory host event journal helpers", () => {
       ],
     });
     await appendMemoryHostEvent(workspaceDir, {
-      type: "memory.dream.completed",
-      timestamp: "2026-04-05T13:00:00.000Z",
-      phase: "light",
-      lineCount: 4,
-      storageMode: "both",
-      inlinePath: path.join(workspaceDir, "memory", "2026-04-05.md"),
-      reportPath: path.join(workspaceDir, "memory", "dreaming", "light", "2026-04-05.md"),
+      type: "memory.promotion.applied",
+      timestamp: "2026-04-05T14:00:00.000Z",
+      memoryPath: "MEMORY.md",
+      applied: 2,
+      candidates: [
+        {
+          key: "glacier-backup",
+          path: "memory/2026-04-05.md",
+          startLine: 1,
+          endLine: 3,
+          score: 0.9,
+          recallCount: 3,
+        },
+      ],
     });
 
     const eventLogPath = resolveMemoryHostEventLogPath(workspaceDir);
@@ -48,8 +54,8 @@ describe("memory host event journal helpers", () => {
 
     expect(events).toHaveLength(2);
     expect(events[0]?.type).toBe("memory.recall.recorded");
-    expect(events[1]?.type).toBe("memory.dream.completed");
+    expect(events[1]?.type).toBe("memory.promotion.applied");
     expect(tail).toHaveLength(1);
-    expect(tail[0]?.type).toBe("memory.dream.completed");
+    expect(tail[0]?.type).toBe("memory.promotion.applied");
   });
 });
