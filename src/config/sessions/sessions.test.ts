@@ -396,4 +396,40 @@ describe("resolveAndPersistSessionFile", () => {
     const saved = loadSessionStore(fixture.storePath(), { skipCache: true });
     expect(saved[sessionKey]?.sessionFile).toBe(fallbackSessionFile);
   });
+
+  it("skips disk persistence for transient entries", async () => {
+    const sessionId = "transient-session-id";
+    const newSessionId = "transient-session-id-v2";
+    const sessionKey = "agent:main:telegram:direct:transient-test";
+    const store = {
+      [sessionKey]: {
+        sessionId,
+        updatedAt: Date.now(),
+        transient: true,
+      },
+    };
+    fs.writeFileSync(fixture.storePath(), JSON.stringify(store), "utf-8");
+    const sessionStore = loadSessionStore(fixture.storePath(), { skipCache: true });
+    const fallbackSessionFile = resolveSessionTranscriptPathInDir(
+      newSessionId,
+      fixture.sessionsDir(),
+    );
+
+    const result = await resolveAndPersistSessionFile({
+      sessionId: newSessionId,
+      sessionKey,
+      sessionStore,
+      storePath: fixture.storePath(),
+      sessionEntry: sessionStore[sessionKey],
+      fallbackSessionFile,
+    });
+
+    // In-memory store should be updated
+    expect(result.sessionEntry.sessionId).toBe(newSessionId);
+    expect(result.sessionFile).toBe(fallbackSessionFile);
+    expect(sessionStore[sessionKey]?.sessionId).toBe(newSessionId);
+    // Disk store should NOT be updated (transient)
+    const saved = loadSessionStore(fixture.storePath(), { skipCache: true });
+    expect(saved[sessionKey]?.sessionId).toBe(sessionId);
+  });
 });

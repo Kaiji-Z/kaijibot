@@ -236,4 +236,19 @@ Check the server logs
 `;
     expect(isHeartbeatContentEffectivelyEmpty(content)).toBe(true);
   });
+
+  it("returns true for markdown code fence lines only", () => {
+    expect(isHeartbeatContentEffectivelyEmpty("```\n```")).toBe(true);
+    expect(isHeartbeatContentEffectivelyEmpty("```markdown\n```")).toBe(true);
+    expect(isHeartbeatContentEffectivelyEmpty("# Header\n\n```")).toBe(true);
+  });
+
+  it("returns true for template with code fences around comments", () => {
+    const template = "# HEARTBEAT.md Template\n\n```markdown\n# Keep this file empty (or with only comments) to skip heartbeat API calls.\n\n# Add tasks below when you want the agent to check something periodically.\n```";
+    expect(isHeartbeatContentEffectivelyEmpty(template)).toBe(true);
+  });
+
+  it("returns false for code fence with actual content", () => {
+    expect(isHeartbeatContentEffectivelyEmpty("```\nCheck daily backups\n```")).toBe(false);
+  });
 });

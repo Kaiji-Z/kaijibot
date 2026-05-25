@@ -33,16 +33,19 @@ export async function resolveAndPersistSessionFile(params: {
   };
   if (baseEntry.sessionId !== sessionId || baseEntry.sessionFile !== sessionFile) {
     sessionStore[sessionKey] = persistedEntry;
-    await updateSessionStore(
-      storePath,
-      (store) => {
-        store[sessionKey] = {
-          ...store[sessionKey],
-          ...persistedEntry,
-        };
-      },
-      params.activeSessionKey ? { activeSessionKey: params.activeSessionKey } : undefined,
-    );
+    // Skip disk persistence for transient sessions
+    if (!persistedEntry.transient) {
+      await updateSessionStore(
+        storePath,
+        (store) => {
+          store[sessionKey] = {
+            ...store[sessionKey],
+            ...persistedEntry,
+          };
+        },
+        params.activeSessionKey ? { activeSessionKey: params.activeSessionKey } : undefined,
+      );
+    }
     return { sessionFile, sessionEntry: persistedEntry };
   }
   sessionStore[sessionKey] = persistedEntry;

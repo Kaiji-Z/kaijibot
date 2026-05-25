@@ -847,6 +847,7 @@ export async function runHeartbeatOnce(opts: {
       forceNew: false,
     });
     cronSession.sessionEntry.heartbeatIsolatedBaseSessionKey = isolatedBaseSessionKey;
+    cronSession.sessionEntry.transient = true;
     cronSession.store[isolatedSessionKey] = cronSession.sessionEntry;
     await saveSessionStore(cronSession.storePath, cronSession.store);
     runSessionKey = isolatedSessionKey;

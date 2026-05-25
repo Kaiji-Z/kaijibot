@@ -39,6 +39,10 @@ async function persistSessionEntryUpdate(params: {
     ...params.sessionStore[params.sessionKey],
     ...params.nextEntry,
   };
+  // Skip disk persistence for transient sessions
+  if (params.sessionStore[params.sessionKey]?.transient) {
+    return;
+  }
   if (!params.storePath) {
     return;
   }

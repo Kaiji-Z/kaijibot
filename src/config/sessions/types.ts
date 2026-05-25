@@ -118,6 +118,8 @@ export type SessionEntry = {
    * Used to collapse repeated `:heartbeat` suffixes on wake-triggered re-entry.
    */
   heartbeatIsolatedBaseSessionKey?: string;
+  /** Mark session as transient — skip transcript persistence (used for heartbeat isolation). */
+  transient?: boolean;
   sessionId: string;
   updatedAt: number;
   sessionFile?: string;

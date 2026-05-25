@@ -668,6 +668,7 @@ export async function runPreparedReply(
       senderE164: normalizeOptionalString(sessionCtx.SenderE164),
       senderIsOwner: command.senderIsOwner,
       sessionFile: preparedSessionState.sessionFile,
+      transient: preparedSessionState.sessionEntry?.transient,
       workspaceDir,
       config: cfg,
       skillsSnapshot,
