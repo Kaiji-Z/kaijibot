@@ -39,6 +39,12 @@ export type ConsolidationRouteDeps = {
     userId: string,
     fragment: { text: string; strength: number },
   ) => Promise<void>;
+  /** Write high-confidence extracted items to MEMORY.md inline sections. */
+  updateMemoryIndex: (params: {
+    workspaceDir: string;
+    items: ExtractedItem[];
+    date: string;
+  }) => Promise<void>;
 };
 
 const CORRECTION_KEYWORDS = [
@@ -63,6 +69,13 @@ function looksLikeCorrection(evidence: string): boolean {
   const lower = evidence.toLowerCase();
   return CORRECTION_KEYWORDS.some((keyword) => lower.includes(keyword));
 }
+
+const CATEGORY_TO_SECTION: Record<string, string> = {
+  domain_knowledge: "👤 User",
+  stated_preference: "👤 User",
+  goal_or_aspiration: "🎯 Active Focus",
+  behavioral_pattern: "👤 User",
+};
 
 /**
  * Route extracted items to the appropriate stores.
@@ -128,8 +141,7 @@ export async function routeToStores(params: {
       }
     }
 
-    // Collect for memory file summary
-    memorySummaryLines.push(`- [${item.category}] ${item.content} (confidence: ${item.confidence.toFixed(2)})`);
+    memorySummaryLines.push(`- ${item.content}`);
   }
 
   // Batch persona writes
@@ -144,10 +156,29 @@ export async function routeToStores(params: {
     }
   }
 
+  // Write high-confidence items to MEMORY.md inline sections
+  const highConfidenceItems = items.filter((ri) => {
+    if (ri.item.confidence < 0.7) return false;
+    if (ri.item.category === "behavioral_pattern" && ri.item.confidence < 0.8) return false;
+    return ri.item.category in CATEGORY_TO_SECTION;
+  });
+  if (highConfidenceItems.length > 0) {
+    try {
+      await deps.updateMemoryIndex({
+        workspaceDir,
+        items: highConfidenceItems.map((ri) => ri.item),
+        date: new Date().toISOString().slice(0, 10),
+      });
+    } catch (err) {
+      errors.push(`Failed to update MEMORY.md for ${workspaceDir}: ${String(err)}`);
+    }
+  }
+
   // Append deduped summary to daily memory file
   if (memorySummaryLines.length > 0) {
     try {
-      const summary = `\n## Consolidation Summary\n${memorySummaryLines.join("\n")}\n`;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const summary = `\n## Consolidation Summary (${dateStr})\n${memorySummaryLines.join("\n")}\n`;
       await deps.appendToMemoryFile(workspaceDir, summary);
     } catch (err) {
       errors.push(`Failed to append memory file for ${workspaceDir}: ${String(err)}`);

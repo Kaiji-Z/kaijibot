@@ -56,6 +56,13 @@ export type TranscriptBatch = {
   files: Array<{ path: string; content: string }>;
 };
 
+/** A session file with its resolved userId. */
+export type FileWithUserId = {
+  path: string;
+  content: string;
+  userId: string;
+};
+
 /** Input to the store routing step — one extracted item with context. */
 export type RouteItem = {
   agentId: string;

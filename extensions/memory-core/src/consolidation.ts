@@ -44,6 +44,7 @@ export type ConsolidationDeps = {
   generateText: (prompt: string) => Promise<string>;
   resolveWorkspaces: (cfg: KaijiBotConfig) => ConsolidationWorkspace[];
   routeDeps: ConsolidationRouteDeps;
+  resolveUserIdForFile: (filePath: string) => Promise<string | null>;
 };
 
 // ---------------------------------------------------------------------------
@@ -243,43 +244,63 @@ export async function runConsolidationForAgent(params: {
     }
   }
 
-  // EXTRACT: split into batches and extract
-  const batches = splitIntoBatches(fileContents, config.batchSize);
-  const batchResults: ExtractedItem[][] = [];
-
-  for (const batch of batches) {
+  // Resolve userId per file, group by user
+  const filesByUser = new Map<string, Array<{ path: string; content: string }>>();
+  for (const file of fileContents) {
+    let userId: string | null = null;
     try {
-      const transcriptBatch: TranscriptBatch = {
-        agentId,
-        userId: agentId,
-        files: batch,
-      };
-      const items = await extractFromBatch(transcriptBatch, deps.generateText);
-      batchResults.push(items);
-    } catch (err) {
-      errors.push(`EXTRACT failed for batch: ${String(err)}`);
+      userId = await deps.resolveUserIdForFile(file.path);
+    } catch {
+      // Fall through to agentId fallback
     }
+    const key = userId ?? agentId;
+    const group = filesByUser.get(key) ?? [];
+    group.push(file);
+    filesByUser.set(key, group);
   }
 
-  // Merge and dedup
-  const merged = mergeAndDedupBatches(batchResults);
+  // EXTRACT + RESOLVE + ROUTE per user group
+  let totalExtracted = 0;
+  let totalConflicts = 0;
+  let totalRouted = 0;
 
-  // RESOLVE: detect and resolve conflicts
-  const { resolved, conflicts } = resolveConflicts(merged);
+  for (const [userId, userFiles] of filesByUser) {
+    const batches = splitIntoBatches(userFiles, config.batchSize);
+    const batchResults: ExtractedItem[][] = [];
 
-  // ROUTE: send to stores
-  const routeItems: RouteItem[] = resolved.map((item) => ({
-    agentId,
-    userId: agentId,
-    item,
-  }));
+    for (const batch of batches) {
+      try {
+        const transcriptBatch: TranscriptBatch = {
+          agentId,
+          userId,
+          files: batch,
+        };
+        const items = await extractFromBatch(transcriptBatch, deps.generateText);
+        batchResults.push(items);
+      } catch (err) {
+        errors.push(`EXTRACT failed for user ${userId}: ${String(err)}`);
+      }
+    }
 
-  const routeResult = await routeToStores({
-    items: routeItems,
-    workspaceDir,
-    deps: deps.routeDeps,
-  });
-  errors.push(...routeResult.errors);
+    const merged = mergeAndDedupBatches(batchResults);
+    const { resolved, conflicts } = resolveConflicts(merged);
+    totalExtracted += merged.length;
+    totalConflicts += conflicts.length;
+
+    const routeItems: RouteItem[] = resolved.map((item) => ({
+      agentId,
+      userId,
+      item,
+    }));
+
+    const routeResult = await routeToStores({
+      items: routeItems,
+      workspaceDir,
+      deps: deps.routeDeps,
+    });
+    totalRouted += routeResult.routed;
+    errors.push(...routeResult.errors);
+  }
 
   // Update checkpoint
   const updatedProcessed = [...checkpoint.processedSessionFiles, ...newFiles];
@@ -289,8 +310,8 @@ export async function runConsolidationForAgent(params: {
       agentId,
       lastRunAt: new Date().toISOString(),
       processedSessionFiles: updatedProcessed,
-      extractedCount: checkpoint.extractedCount + merged.length,
-      routedCount: checkpoint.routedCount + routeResult.routed,
+      extractedCount: checkpoint.extractedCount + totalExtracted,
+      routedCount: checkpoint.routedCount + totalRouted,
     });
   } catch (err) {
     errors.push(`Failed to write checkpoint: ${String(err)}`);
@@ -299,9 +320,9 @@ export async function runConsolidationForAgent(params: {
   return {
     agentId,
     scannedFiles: allFiles.length,
-    extractedItems: merged.length,
-    conflicts: conflicts.length,
-    routedItems: routeResult.routed,
+    extractedItems: totalExtracted,
+    conflicts: totalConflicts,
+    routedItems: totalRouted,
     errors,
     durationMs: Date.now() - startTime,
   };

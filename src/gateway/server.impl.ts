@@ -1488,6 +1488,250 @@ export async function startGatewayServer(
       })();
     }
 
+    if (!minimalTestGateway && cfgAtStart.cognitive?.enabled !== false) {
+      void (async () => {
+        try {
+          const { resolveConsolidationConfig } = await import("../memory-host-sdk/consolidation.js");
+          const consolidationConfig = resolveConsolidationConfig({
+            pluginConfig: {},
+            cfg: cfgAtStart,
+          });
+          if (!consolidationConfig.enabled) return;
+
+          const { runConsolidationAllAgents } = await import("../../extensions/memory-core/index.js");
+          type ConsolidationDeps = import("../../extensions/memory-core/index.js").ConsolidationDeps;
+          const { PersonaStore } = await import("../cognitive/persona/store.js");
+          const { FragmentStore } = await import("../cognitive/insight/fragment-store.js");
+          const { CorrectionStore } = await import("../cognitive/correction/store.js");
+          const { listSessionFilesForAgent } = await import("../memory-host-sdk/host/session-files.js");
+          const { resolveConfigDir } = await import("../utils.js");
+          const { resolveConsolidationWorkspaces } = await import("../memory-host-sdk/consolidation.js");
+          const { resolveUserIdForSessionFile } = await import("../memory-host-sdk/consolidation-userid.js");
+          const { createStandaloneGenerateText } = await import("../cognitive/evolution/standalone-generate.js");
+
+          type TypedInsight = import("../cognitive/types.js").TypedInsight;
+          type InsightCategory = import("../cognitive/types.js").InsightCategory;
+          type Fragment = import("../cognitive/insight/fragment-types.js").Fragment;
+          type CorrectionRecord = import("../cognitive/correction/types.js").CorrectionRecord;
+          type ExtractedItem = import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
+
+          const HALF_LIFE_BY_CONSOLIDATION_CATEGORY: Record<string, number> = {
+            domain_knowledge: 30,
+            stated_preference: 60,
+            behavioral_pattern: 90,
+            goal_or_aspiration: 90,
+          };
+
+          const configDir = resolveConfigDir();
+          const personaStore = new PersonaStore(configDir);
+          const correctionStore = new CorrectionStore(configDir);
+          const fragmentStore = new FragmentStore(configDir);
+          const generateFn = await createStandaloneGenerateText(cfgAtStart);
+
+          const deps: ConsolidationDeps = {
+            listSessionFiles: async (_agentId: string, _lookbackDays: number) => {
+              return listSessionFilesForAgent(_agentId);
+            },
+            readSessionFile: async (filePath: string) => {
+              const fs = await import("node:fs/promises");
+              return fs.readFile(filePath, "utf-8");
+            },
+            generateText: generateFn,
+            resolveWorkspaces: (cfg) => resolveConsolidationWorkspaces(cfg),
+            resolveUserIdForFile: (filePath) => resolveUserIdForSessionFile(filePath),
+            routeDeps: {
+              mergeTypedInsights: async (
+                agentId: string,
+                userId: string,
+                items: ExtractedItem[],
+              ): Promise<number> => {
+                const now = Date.now();
+                const persona = await personaStore.loadOrCreate(agentId, userId);
+                const incomingTyped: TypedInsight[] = items.map((item) => ({
+                  text: item.content,
+                  category: item.category as InsightCategory,
+                  confidence: item.confidence,
+                  source: "inferred" as const,
+                  firstObserved: now,
+                  lastReinforced: now,
+                  evidenceCount: 1,
+                  halfLifeDays: HALF_LIFE_BY_CONSOLIDATION_CATEGORY[item.category] ?? 30,
+                }));
+
+                let merged = 0;
+                for (const insight of incomingTyped) {
+                  const domainKey = `consolidation:${insight.category}`;
+                  let domain = persona.domains[domainKey];
+                  if (!domain) {
+                    domain = {
+                      depth: 1,
+                      recurrence: 1,
+                      lastMentioned: now,
+                      keyInsights: [],
+                      insights: [],
+                      activeQuestions: [],
+                      negationSignals: 0,
+                    };
+                    persona.domains[domainKey] = domain;
+                  }
+                  const existing = domain.insights ?? [];
+                  const isDuplicate = existing.some(
+                    (ex) =>
+                      ex.text.length > 10 &&
+                      insight.text.length > 10 &&
+                      (ex.text === insight.text ||
+                        (ex.text.includes(insight.text.slice(0, 20)) &&
+                          insight.text.includes(ex.text.slice(0, 20)))),
+                  );
+                  if (!isDuplicate) {
+                    existing.push(insight);
+                    domain.insights = existing.slice(-20);
+                    domain.lastMentioned = now;
+                    domain.recurrence += 1;
+                    merged += 1;
+                  }
+                }
+
+                await personaStore.save(agentId, userId, persona);
+                return merged;
+              },
+              addOrReinforceCorrection: async (
+                agentId: string,
+                userId: string,
+                record: { domain: string; trigger: string; mistake: string; correction: string; provenance: string },
+              ): Promise<string> => {
+                const now = Date.now();
+                const fullRecord: CorrectionRecord = {
+                  id: `consolidation-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                  domain: record.domain,
+                  trigger: record.trigger,
+                  mistake: record.mistake,
+                  correction: record.correction,
+                  provenance: record.provenance === "consolidation" ? "user" : (record.provenance as "self" | "user"),
+                  reinforcedCount: 0,
+                  createdAt: now,
+                  lastReinforced: now,
+                };
+                const result = await correctionStore.addOrReinforce(agentId, userId, fullRecord);
+                return result;
+              },
+              appendToMemoryFile: async (workspaceDir: string, content: string) => {
+                const fs = await import("node:fs/promises");
+                const path = await import("node:path");
+                const today = new Date().toISOString().slice(0, 10);
+                const dailyFile = path.join(workspaceDir, "memory", `${today}.md`);
+                await fs.mkdir(path.dirname(dailyFile), { recursive: true });
+                await fs.appendFile(dailyFile, content, "utf-8");
+              },
+              collectFragment: async (
+                agentId: string,
+                userId: string,
+                fragment: { text: string; strength: number },
+              ) => {
+                const now = Date.now();
+                const fullFragment: Fragment = {
+                  id: `consolidation-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                  userId,
+                  createdAt: now,
+                  expiresAt: now + 14 * 86_400_000,
+                  kind: "methodological_habit",
+                  evidence: fragment.text,
+                  domains: [],
+                  structuralTag: `consolidation:${fragment.text.slice(0, 40)}`,
+                  strength: fragment.strength,
+                };
+                await fragmentStore.addFragment(agentId, userId, fullFragment);
+              },
+              updateMemoryIndex: async (params: {
+                workspaceDir: string;
+                items: ExtractedItem[];
+                date: string;
+              }): Promise<void> => {
+                const { MemoryIndexManager } = await import("../../extensions/memory-core/index.js");
+                const nodeFs = await import("node:fs/promises");
+                const fsAdapter = {
+                  readFile: (p: string) => nodeFs.readFile(p, "utf-8"),
+                  writeFile: (p: string, data: string) => nodeFs.writeFile(p, data, "utf-8"),
+                  mkdir: async (p: string, opts: { recursive: boolean }) => {
+                    await nodeFs.mkdir(p, opts);
+                  },
+                  rename: (oldPath: string, newPath: string) => nodeFs.rename(oldPath, newPath),
+                };
+                const indexManager = new MemoryIndexManager({
+                  workspaceDir: params.workspaceDir,
+                  fs: fsAdapter,
+                });
+
+                const index = await indexManager.readIndex();
+                const inlineSections = index.inlineSections ?? [];
+
+                const CATEGORY_TO_SECTION: Record<string, string> = {
+                  domain_knowledge: "👤 User",
+                  stated_preference: "👤 User",
+                  goal_or_aspiration: "🎯 Active Focus",
+                  behavioral_pattern: "👤 User",
+                };
+
+                for (const item of params.items) {
+                  const section = CATEGORY_TO_SECTION[item.category];
+                  if (!section) continue;
+
+                  const contentText = item.content.slice(0, 120).replace(/\n/g, " ").trim();
+                  const line = `- ${params.date}: ${contentText}`;
+
+                  const existingSection = inlineSections.find((s) => s.section === section);
+                  if (existingSection) {
+                    const isDup = existingSection.lines.some((l) => {
+                      const existing = l.replace(/^- \d{4}-\d{2}-\d{2}: /, "");
+                      return existing.slice(0, 30) === contentText.slice(0, 30);
+                    });
+                    if (!isDup) {
+                      existingSection.lines.push(line);
+                    }
+                  } else {
+                    inlineSections.push({ section, lines: [line] });
+                  }
+                }
+
+                index.inlineSections = inlineSections;
+                await indexManager.writeIndex(index);
+                await indexManager.rebalanceIndex();
+              },
+            },
+          };
+
+          const runConsolidation = async () => {
+            try {
+              const results = await runConsolidationAllAgents({
+                config: consolidationConfig,
+                cfg: cfgAtStart,
+                deps,
+              });
+              for (const result of results) {
+                log.info(
+                  `consolidation: agent=${result.agentId} scanned=${result.scannedFiles} extracted=${result.extractedItems} routed=${result.routedItems} errors=${result.errors.length} duration=${result.durationMs}ms`,
+                );
+              }
+            } catch (err) {
+              log.warn(`consolidation run failed: ${String(err)}`);
+            }
+          };
+
+          const { Cron } = await import("croner");
+          const timezone = consolidationConfig.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const cronJob = new Cron(consolidationConfig.cron, { timezone }, () => {
+            void runConsolidation();
+          });
+
+          log.info(
+            `consolidation scheduled (cron=${consolidationConfig.cron}, tz=${timezone}, lookback=${consolidationConfig.lookbackDays}d, next=${cronJob.nextRun()?.toISOString() ?? "unknown"})`,
+          );
+        } catch (err) {
+          log.warn(`consolidation bootstrap skipped: ${String(err)}`);
+        }
+      })();
+    }
+
     const healthCheckMinutes = cfgAtStart.gateway?.channelHealthCheckMinutes;
     const healthCheckDisabled = healthCheckMinutes === 0;
     const staleEventThresholdMinutes = cfgAtStart.gateway?.channelStaleEventThresholdMinutes;

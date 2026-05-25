@@ -40,6 +40,27 @@ export {
   type RecentSession,
 } from "./src/memory-index.js";
 export { incrementGroundedCount } from "./src/short-term-promotion.js";
+export {
+  runConsolidationForAgent,
+  runConsolidationAllAgents,
+  registerConsolidationCron,
+  type ConsolidationDeps,
+  type ConsolidationRouteDeps,
+} from "./src/consolidation.js";
+export type {
+  ExtractedItem,
+  RouteItem,
+  TranscriptBatch,
+  ConsolidationCheckpoint,
+  ConsolidationResult,
+  FileWithUserId,
+} from "./src/consolidation-types.js";
+export { routeToStores } from "./src/consolidation-route.js";
+export {
+  extractFromBatch,
+  mergeAndDedupBatches,
+  resolveConflicts,
+} from "./src/consolidation-extract.js";
 
 export default definePluginEntry({
   id: "memory-core",

@@ -9,7 +9,7 @@ import {
   normalizeStringifiedOptionalString,
 } from "../shared/string-coerce.js";
 
-export const DEFAULT_MEMORY_CONSOLIDATION_ENABLED = false;
+export const DEFAULT_MEMORY_CONSOLIDATION_ENABLED = true;
 export const DEFAULT_MEMORY_CONSOLIDATION_CRON = "0 3 * * *";
 export const DEFAULT_MEMORY_CONSOLIDATION_CONCURRENCY = 2;
 export const DEFAULT_MEMORY_CONSOLIDATION_BATCH_SIZE = 4000;
