@@ -15,6 +15,8 @@ export type CognitiveConfig = {
     };
     /** Digest mode (reserved — not yet implemented; all pushes are realtime) */
     digestMode?: "realtime" | "daily" | "weekly";
+    /** Epsilon-greedy exploration probability (0-1, default 0.2). Promotes exploration candidates with probability ε. Set to 0 to disable. */
+    epsilonGreedy?: number;
   };
   /** User cognitive model settings */
   persona?: {

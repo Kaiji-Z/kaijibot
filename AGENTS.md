@@ -83,6 +83,8 @@ Event Sources (timer / persona_change / info_scan)
             roll < patternModeRatio + surpriseWeight → surprise mode (knowledge, web search)
             else → extend mode (knowledge, user domains)
         → identify() [pick best by pAct, with domain cooldown + type cooldown]
+      → applyEpsilonGreedy() [with probability ε, promote one exploration candidate to front]
+        → resolve loop tries candidates in order (promoted exploration first if triggered)
           → resolve():
               pattern mode: load fragments+clusters → buildPatternInsightPrompt → generateInsightCandidatesLLM(mode="pattern") → partial status, no verification
               knowledge mode (surprise/extend):
@@ -326,7 +328,7 @@ Correction (system prompt injection):
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
-- Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.insight.patternModeRatio` (0-1, default 0.5)
+- Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.insight.patternModeRatio` (0-1, default 0.5), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
 - Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only

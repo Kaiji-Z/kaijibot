@@ -98,6 +98,35 @@ export function isTopicStale(
   return false;
 }
 
+function seededRandom(seed: number): number {
+  const s = (seed * 1103515245 + 12345) & 0x7fffffff;
+  return s / 0x7fffffff;
+}
+
+const DEFAULT_EPSILON_GREEDY = 0.2;
+
+export function applyEpsilonGreedy(
+  candidates: Opportunity[],
+  epsilon: number,
+  seed: number,
+): Opportunity[] {
+  if (epsilon <= 0 || candidates.length <= 1) return candidates;
+  const rng = seededRandom(seed);
+  if (rng >= epsilon) return candidates;
+
+  const explorationIndices = candidates
+    .map((c, i) => (c.type === "exploration" ? i : -1))
+    .filter((i) => i >= 0);
+
+  if (explorationIndices.length === 0) return candidates;
+
+  const pickIdx = explorationIndices[Math.floor(rng * explorationIndices.length) % explorationIndices.length]!;
+  const promoted = candidates[pickIdx]!;
+  const rest = candidates.filter((_, i) => i !== pickIdx);
+
+  return [promoted, ...rest];
+}
+
 export class ProactiveScheduler {
   private timerHandle: ReturnType<typeof setTimeout> | undefined;
   private readonly generateInsights: InsightGeneratorFn;
@@ -660,9 +689,21 @@ export class ProactiveScheduler {
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
 
+    const epsilon = this.config.epsilonGreedy ?? DEFAULT_EPSILON_GREEDY;
+    const orderedCandidates = applyEpsilonGreedy(candidates, epsilon, event.timestamp);
+    if (orderedCandidates !== candidates) {
+      log.info("epsilon-greedy promoted exploration candidate", {
+        userId,
+        promotedType: orderedCandidates[0].type,
+        promotedDomains: orderedCandidates[0].targetDomains,
+        promotedPAct: orderedCandidates[0].pAct,
+        epsilon,
+      });
+    }
+
     let insight: InsightCandidate | null = null;
     let selected: Opportunity | undefined;
-    for (const candidate of candidates) {
+    for (const candidate of orderedCandidates) {
       if (isTopicStale(candidate, recentInsightContents, recentInsightDomains)) {
         log.info("pre-gen freshness check: skipping stale candidate", {
           userId,

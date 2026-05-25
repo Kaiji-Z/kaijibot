@@ -70,4 +70,6 @@ export type SchedulerConfig = {
   patternVerification?: boolean;
   /** Use LLM to check semantic novelty after trigram dedup passes (default: true) */
   llmFreshnessCheck?: boolean;
+  /** Epsilon-greedy exploration probability (0-1, default 0.2). With probability ε, an exploration candidate is promoted to the front of the resolve loop. Set to 0 to disable. */
+  epsilonGreedy?: number;
 };

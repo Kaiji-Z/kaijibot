@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
 import { buildSearchQuery } from "../insight/llm-engine.js";
 import type { InsightCandidate } from "../insight/types.js";
@@ -2896,5 +2896,102 @@ describe("insight hallucination gates", () => {
 
     expect(result).toBeUndefined();
     expect(deliveredCandidates.length).toBe(0);
+  });
+});
+
+describe("applyEpsilonGreedy", () => {
+  let applyEpsilonGreedy: typeof import("./proactive-scheduler.js").applyEpsilonGreedy;
+
+  beforeAll(async () => {
+    const mod = await import("./proactive-scheduler.js");
+    applyEpsilonGreedy = mod.applyEpsilonGreedy;
+  });
+
+  function makeOpp(type: Opportunity["type"], pAct: number): Opportunity {
+    return {
+      type,
+      targetDomains: [`${type}-${pAct}`],
+      sourceDomains: [],
+      pNeed: pAct,
+      pAccept: 1,
+      pAct,
+    };
+  }
+
+  it("returns same array reference when epsilon is 0", () => {
+    const cands = [makeOpp("cross_domain", 0.8), makeOpp("exploration", 0.5)];
+    const result = applyEpsilonGreedy(cands, 0, 12345);
+    expect(result).toBe(cands);
+  });
+
+  it("returns same array reference when epsilon is negative", () => {
+    const cands = [makeOpp("cross_domain", 0.8), makeOpp("exploration", 0.5)];
+    const result = applyEpsilonGreedy(cands, -0.5, 12345);
+    expect(result).toBe(cands);
+  });
+
+  it("returns same array when only one candidate", () => {
+    const cands = [makeOpp("exploration", 0.5)];
+    const result = applyEpsilonGreedy(cands, 1.0, 12345);
+    expect(result).toBe(cands);
+  });
+
+  it("returns same array when no exploration candidates exist", () => {
+    const cands = [makeOpp("cross_domain", 0.8), makeOpp("domain_depth", 0.4)];
+    const result = applyEpsilonGreedy(cands, 1.0, 12345);
+    expect(result).toBe(cands);
+  });
+
+  it("promotes exploration to front when epsilon is 1", () => {
+    const cands = [makeOpp("cross_domain", 0.8), makeOpp("domain_depth", 0.4), makeOpp("exploration", 0.5)];
+    const result = applyEpsilonGreedy(cands, 1.0, 12345);
+    expect(result[0].type).toBe("exploration");
+    expect(result).toHaveLength(3);
+  });
+
+  it("preserves remaining candidates order after promotion", () => {
+    const cross = makeOpp("cross_domain", 0.8);
+    const depth = makeOpp("domain_depth", 0.4);
+    const expl = makeOpp("exploration", 0.5);
+    const cands = [cross, depth, expl];
+    const result = applyEpsilonGreedy(cands, 1.0, 12345);
+    expect(result[0]).toBe(expl);
+    const rest = result.slice(1);
+    expect(rest).toContain(cross);
+    expect(rest).toContain(depth);
+  });
+
+  it("returns same array when seed does not trigger epsilon branch", () => {
+    const cands = [makeOpp("cross_domain", 0.8), makeOpp("exploration", 0.5)];
+    // epsilon=0.001 means we need rng < 0.001 to trigger, which is very unlikely for most seeds
+    // Try multiple seeds to find one that doesn't trigger
+    let foundNonTrigger = false;
+    for (let seed = 1; seed <= 100; seed++) {
+      const result = applyEpsilonGreedy(cands, 0.001, seed);
+      if (result === cands) {
+        foundNonTrigger = true;
+        break;
+      }
+    }
+    expect(foundNonTrigger).toBe(true);
+  });
+
+  it("returns same array when seed triggers epsilon but no exploration candidates", () => {
+    const cands = [makeOpp("cross_domain", 0.8), makeOpp("domain_depth", 0.4)];
+    // With epsilon=1, rng < 1 always triggers, but no exploration candidates to promote
+    const result = applyEpsilonGreedy(cands, 1.0, 42);
+    expect(result).toBe(cands);
+  });
+
+  it("handles multiple exploration candidates", () => {
+    const cross = makeOpp("cross_domain", 0.8);
+    const expl1 = makeOpp("exploration", 0.5);
+    const expl2 = makeOpp("exploration", 0.3);
+    const cands = [cross, expl1, expl2];
+    const result = applyEpsilonGreedy(cands, 1.0, 12345);
+    expect(result[0].type).toBe("exploration");
+    expect(result).toHaveLength(3);
+    const remainingExplorations = result.slice(1).filter((c) => c.type === "exploration");
+    expect(remainingExplorations).toHaveLength(1);
   });
 });

@@ -1376,6 +1376,7 @@ export async function startGatewayServer(
               patternModeRatio: cfgAtStart.cognitive?.insight?.patternModeRatio,
               patternVerification: cfgAtStart.cognitive?.insight?.patternVerification,
               llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
+              epsilonGreedy: cfgAtStart.cognitive?.proactive?.epsilonGreedy,
             },
             {
               loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
