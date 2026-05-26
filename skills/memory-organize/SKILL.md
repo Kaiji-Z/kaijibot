@@ -32,14 +32,28 @@ Use this skill immediately when the user asks any of:
 | 5      | 会话语料     | `memory/.dreams/session-corpus/*.txt`       | Text     | 与上述有重叠，仅补充用                                          |
 | 6      | 已有主题     | `memory/topics/*.md`                        | Markdown | 已分类的记忆条目（用于去重判断）                                |
 
-**会话原始文件格式说明**（JSONL）：
+**会话原始文件读取方式**（JSONL）：
 
-每行是一个 JSON 对象。只关注 `"type": "message"` 的行，提取 `message.role`（`user` 或 `assistant`）和 `message.content`（文本内容）。忽略工具调用、系统消息等非对话内容。
+使用 `read_file` 工具读取 `transcriptPath` 指向的 JSONL 文件后，**必须按以下规则过滤**，只保留有价值的对话内容：
 
-```jsonl
-{"type":"message","message":{"role":"user","content":"帮我查一下天气"}}
-{"type":"message","message":{"role":"assistant","content":"今天北京晴天，25°C"}}
+1. **只处理 `"type": "message"` 的行**，忽略其他类型（session、model_change 等）
+2. **只保留 `message.role` 为 `"user"` 或 `"assistant"` 的消息**，忽略 toolResult、system 等
+3. **提取文本**：从 `message.content` 提取。content 可能是字符串或数组（数组中取 `type: "text"` 的条目的 `text` 字段）
+4. **跳过用户消息中的元数据**：以 `ou_` 开头的前缀（如 `ou_xxx:`）和 `Conversation info` 块都是系统注入的元数据，不是用户真实输入
+5. **跳过斜杠命令**：以 `/` 开头的用户消息（如 `/new`、`/reset`）不需要提取
+6. **工具调用保留名称**：如果 assistant 消息包含工具调用（`type: "toolCall"`），记下工具名称（如 `[tool: web_search, read_file]`）作为上下文信号，但不保留工具的参数和返回值
+7. **忽略 thinking 块**：`type: "thinking"` 的内容不需要提取
+
+**过滤后的示例**（你实际要处理的内容）：
+
 ```
+user: 帮我查一下天气
+assistant: 今天北京晴天，25°C
+user: 分析一下这个项目的架构
+assistant: [tool: read_file, glob] 这个项目的架构是...
+```
+
+**为什么必须过滤**：原始 JSONL 中 97.5% 是系统元数据（会话信息、工具调用细节、thinking 块等）。不过滤会浪费大量上下文窗口，导致能处理的会话数量大幅减少。
 
 **跳过的文件**（系统元数据，不是真实对话）：
 
@@ -236,7 +250,7 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 - 会话原始文件（JSONL）始终存在，是最完整的对话记录
 - QMD 会话是可选的 Markdown 导出，更可读但需要额外配置
 - QMD 会话文件单文件最大 ~80KB，逐个读取即可
-- JSONL 会话文件可能较大，优先处理最近的会话，按需回溯更早的记录
+- JSONL 会话文件可能较大，但过滤后有效内容通常只有原始大小的 2.5%。优先处理最近的会话，按需回溯更早的记录。如果过滤后内容仍然很长，重点提取关键决策、用户偏好和重要事实，跳过纯技术讨论
 - 主题文件按需创建——没有记忆的主题不会有文件，不需要预创建
 - 可以重复运行，幂等安全
 - MEMORY.md 垃圾回收适用于所有场景：记忆整合、LLM 写入错误、重复内容、结构损坏等
