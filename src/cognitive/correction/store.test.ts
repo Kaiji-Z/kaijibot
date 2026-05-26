@@ -256,3 +256,57 @@ describe("CorrectionStore", () => {
     expect(agentIds).toEqual([]);
   });
 });
+
+describe("CJK tokenizer — Jaccard dedup for Chinese", () => {
+  it("reinforces similar Chinese corrections", async () => {
+    const existing = makeCorrection({
+      domain: "feishu",
+      mistake: "创建飞书文档时只传了标题参数",
+    });
+    await store.add(AGENT, USER, existing);
+
+    const incoming = makeCorrection({
+      domain: "feishu",
+      mistake: "创建飞书文档时只传了标题",
+    });
+    const result = await store.addOrReinforce(AGENT, USER, incoming);
+    expect(result).toBe("reinforced");
+
+    const loaded = await store.loadAll(AGENT, USER);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].reinforcedCount).toBe(1);
+  });
+
+  it("adds different Chinese corrections as separate records", async () => {
+    const existing = makeCorrection({
+      domain: "feishu",
+      mistake: "创建飞书文档时只传了标题参数",
+    });
+    await store.add(AGENT, USER, existing);
+
+    const incoming = makeCorrection({
+      domain: "feishu",
+      mistake: "删除飞书文档前没有确认用户意图",
+    });
+    const result = await store.addOrReinforce(AGENT, USER, incoming);
+    expect(result).toBe("added");
+
+    const loaded = await store.loadAll(AGENT, USER);
+    expect(loaded).toHaveLength(2);
+  });
+
+  it("handles mixed Chinese-English corrections", async () => {
+    const existing = makeCorrection({
+      domain: "code",
+      mistake: "使用了 deprecated API endpoint /v1/users",
+    });
+    await store.add(AGENT, USER, existing);
+
+    const incoming = makeCorrection({
+      domain: "code",
+      mistake: "使用了 deprecated API endpoint /v1/posts",
+    });
+    const result = await store.addOrReinforce(AGENT, USER, incoming);
+    expect(result).toBe("reinforced");
+  });
+});

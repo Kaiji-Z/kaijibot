@@ -335,3 +335,118 @@ describe("mergeExtraction — domainBlacklist", () => {
     expect(result.recentFocus).not.toContain("if available");
   });
 });
+
+describe("computeInterestPhase via mergeExtraction", () => {
+  it("high-depth domain with low recurrence becomes stable when re-mentioned", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "deep-domain": {
+        depth: 4.9,
+        recurrence: 2,
+        lastMentioned: now - 1000,
+        keyInsights: ["insight1", "insight2", "insight3", "insight4"],
+        activeQuestions: [],
+        negationSignals: 0,
+      },
+    };
+    const result = mergeExtraction(
+      persona,
+      { attributes: [], domains: [{ name: "deep-domain", depth: 1, insights: [], questions: [] }], recentFocus: [] },
+      now,
+    );
+    expect(result.domains["deep-domain"].phase).toBe("stable");
+  });
+
+  it("moderate recurrence (3-5) becomes stable when re-mentioned", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "moderate-domain": {
+        depth: 0.5,
+        recurrence: 3,
+        lastMentioned: now - 1000,
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+      },
+    };
+    const result = mergeExtraction(
+      persona,
+      { attributes: [], domains: [{ name: "moderate-domain", depth: 0.5, insights: [], questions: [] }], recentFocus: [] },
+      now,
+    );
+    expect(result.domains["moderate-domain"].phase).toBe("stable");
+  });
+
+  it("new domain with low everything becomes emergent", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    const result = mergeExtraction(
+      persona,
+      { attributes: [], domains: [{ name: "fresh-domain", depth: 0.3, insights: [], questions: [] }], recentFocus: [] },
+      now,
+    );
+    expect(result.domains["fresh-domain"].phase).toBe("emergent");
+  });
+
+  it("domain not in extraction retains its declining phase", () => {
+    const now = Date.now();
+    const fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "quiet-domain": {
+        depth: 5,
+        recurrence: 10,
+        lastMentioned: fifteenDaysAgo,
+        keyInsights: ["many insights"],
+        activeQuestions: [],
+        negationSignals: 0,
+        phase: "declining",
+      },
+    };
+    const result = mergeExtraction(persona, { attributes: [], domains: [], recentFocus: [] }, now);
+    expect(result.domains["quiet-domain"].phase).toBe("declining");
+  });
+
+  it("domain not in extraction retains its dormant phase", () => {
+    const now = Date.now();
+    const thirtyOneDaysAgo = now - 31 * 24 * 60 * 60 * 1000;
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "dead-domain": {
+        depth: 5,
+        recurrence: 10,
+        lastMentioned: thirtyOneDaysAgo,
+        keyInsights: ["old insights"],
+        activeQuestions: [],
+        negationSignals: 0,
+        phase: "dormant",
+      },
+    };
+    const result = mergeExtraction(persona, { attributes: [], domains: [], recentFocus: [] }, now);
+    expect(result.domains["dead-domain"].phase).toBe("dormant");
+  });
+
+  it("dormant domain mentioned again becomes revived", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      "revived-domain": {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: now - 1000,
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+        phase: "dormant",
+      },
+    };
+    const result = mergeExtraction(
+      persona,
+      { attributes: [], domains: [{ name: "revived-domain", depth: 1, insights: [], questions: [] }], recentFocus: [] },
+      now,
+    );
+    expect(result.domains["revived-domain"].phase).toBe("revived");
+  });
+});

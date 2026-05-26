@@ -160,6 +160,7 @@ const crossDomainOpp: Opportunity = {
   pNeed: 0.8,
   pAccept: 0.7,
   pAct: 0.56,
+  metadata: { mode: "surprise" },
 };
 
 const explorationOpp: Opportunity = {
@@ -303,7 +304,7 @@ describe("Self-refine: knowledge mode", () => {
     expect(result!.id).toBe("test-id");
   });
 
-  it("respects max retries (2 refine attempts max)", async () => {
+  it("respects max retries (1 refine attempt max)", async () => {
     const persona = personaWithDomains();
     const lowQuality = makeCandidate({ compositeScore: 0.2 });
     const critique: LlmCritiqueResult = {
@@ -317,10 +318,9 @@ describe("Self-refine: knowledge mode", () => {
       improvementSuggestions: ["improve"],
     };
     const refined1 = makeCandidate({ compositeScore: 0.4, id: "refined-1" });
-    const refined2 = makeCandidate({ compositeScore: 0.5, id: "refined-2" });
 
-    mockedCritique.mockResolvedValueOnce(critique).mockResolvedValueOnce(critique);
-    mockedRefine.mockResolvedValueOnce(refined1).mockResolvedValueOnce(refined2);
+    mockedCritique.mockResolvedValueOnce(critique);
+    mockedRefine.mockResolvedValueOnce(refined1);
     mockedVerify.mockResolvedValueOnce({
       status: "verified",
       sources: [],
@@ -335,8 +335,8 @@ describe("Self-refine: knowledge mode", () => {
     const result = await scheduler.resolve("main", persona, crossDomainOpp);
 
     expect(result).not.toBeNull();
-    expect(mockedCritique).toHaveBeenCalledTimes(2);
-    expect(mockedRefine).toHaveBeenCalledTimes(2);
+    expect(mockedCritique).toHaveBeenCalledTimes(1);
+    expect(mockedRefine).toHaveBeenCalledTimes(1);
   });
 
   it("keeps best candidate when refined is worse", async () => {

@@ -57,12 +57,22 @@ function computeInterestPhase(domain: DomainNode, nowMs: number): InterestPhase 
   const wasInactive = prevPhase === "dormant" || prevPhase === "declining";
   const isNowActive = ageSinceLastMention < SEVEN_DAYS_MS;
 
+  // Revived: was inactive, now active again
   if (wasInactive && isNowActive) return "revived";
+
+  // Time-based decay
   if (ageSinceLastMention > THIRTY_DAYS_MS) return "dormant";
   if (ageSinceLastMention > FOURTEEN_DAYS_MS) return "declining";
-  if (domain.recurrence <= 2) return "emergent";
-  if (domain.recurrence > 5 && ageSinceLastMention < SEVEN_DAYS_MS) return "stable";
 
+  // Truly emergent: low recurrence AND shallow depth AND few insights
+  const insightCount = domain.keyInsights.length + (domain.insights?.length ?? 0);
+  if (domain.recurrence <= 2 && domain.depth < 2 && insightCount < 3) return "emergent";
+
+  // Stable: sufficient evidence of sustained interest
+  // recurrence > 2, OR deep engagement (depth >= 2), OR many insights (>= 3)
+  if (isNowActive) return "stable";
+
+  // Active but not recently — keep previous phase, default to emergent
   return prevPhase ?? "emergent";
 }
 

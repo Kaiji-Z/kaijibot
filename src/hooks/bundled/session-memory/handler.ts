@@ -13,6 +13,7 @@ import {
   resolveAgentWorkspaceDir,
 } from "../../../agents/agent-scope.js";
 import type { KaijiBotConfig } from "../../../config/config.js";
+import { resolveCorrectionUserId } from "../../../cognitive/correction/userid.js";
 import { resolveStateDir } from "../../../config/paths.js";
 import { appendFileWithinRoot } from "../../../infra/fs-safe.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
@@ -323,8 +324,14 @@ const saveSessionToMemory: HookHandler = async (event) => {
       try {
         const { hasCorrectionSignals, extractCorrectionsFromTranscript } =
           await import("../../../cognitive/correction/extractor.js");
+        log.info("correction extraction: path B entry", {
+          hasSessionContent: !!sessionContent,
+          hasCfg: !!cfg,
+          allowLlm,
+          sessionKey: event.sessionKey,
+        });
         if (hasCorrectionSignals(sessionContent)) {
-          const userId = extractUserIdFromSessionKey(event.sessionKey);
+          const userId = resolveCorrectionUserId(event.sessionKey);
           if (userId) {
             const { createStandaloneGenerateText } =
               await import("../../../cognitive/evolution/standalone-generate.js");
@@ -345,13 +352,18 @@ const saveSessionToMemory: HookHandler = async (event) => {
               for (const corr of corrections) {
                 await corrStore.addOrReinforce(agentId, userId, corr);
               }
-              log.debug("Correction extraction complete", { count: corrections.length });
+              log.info("Correction extraction complete", { count: corrections.length });
+            } else {
+              log.info("correction extraction: no corrections extracted", {
+                userId,
+                sessionKey: event.sessionKey,
+              });
             }
           }
         }
       } catch (corrErr) {
         const msg = corrErr instanceof Error ? corrErr.message : String(corrErr);
-        log.debug("Correction extraction skipped", { error: msg });
+        log.warn("Correction extraction skipped", { error: msg });
       }
     }
 
@@ -369,20 +381,5 @@ const saveSessionToMemory: HookHandler = async (event) => {
     }
   }
 };
-
-function extractUserIdFromSessionKey(sessionKey: string): string | null {
-  const parts = sessionKey.split(":");
-  // agent:main:feishu:direct:ou_xxx → ou_xxx
-  // agent:main:feishu:group:oc_xxx:...:sender:ou_xxx → ou_xxx
-  const tail = parts[parts.length - 1];
-  if (tail && tail !== "main" && tail.startsWith("ou_")) {
-    return tail;
-  }
-  // Fallback: agent:ou_xxx:rest → ou_xxx
-  if (parts.length >= 3 && parts[1] && parts[1] !== "main") {
-    return parts[1];
-  }
-  return null;
-}
 
 export default saveSessionToMemory;

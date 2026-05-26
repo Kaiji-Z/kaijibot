@@ -478,23 +478,19 @@ export async function generateInsightCandidatesLLM(
 
   let webSnippetByDomain: Map<string, string[]> | undefined;
   if (webResults.length > 0) {
-    try {
-      webSnippetByDomain = await matchWebResultsToDomainsLLM(
-        webResults,
-        persona,
-        config,
-        deps,
-        input.targetDomains,
-      );
-      log.info("LLM domain matching completed", {
-        matchedDomains: [...webSnippetByDomain.keys()],
-        totalResults: webResults.length,
-      });
-    } catch (err) {
-      log.warn("LLM domain matching error, will use keyword fallback in prompt builder", {
-        error: String(err),
-      });
+    const keywordMap = buildDomainKeywordMap(persona.domains);
+    for (const td of input.targetDomains) {
+      if (!keywordMap.has(td)) {
+        const keywords = new Set<string>();
+        keywords.add(td.toLowerCase());
+        for (const part of td.split(/[\/+]/)) {
+          const trimmed = part.trim().toLowerCase();
+          if (trimmed.length >= 2) keywords.add(trimmed);
+        }
+        keywordMap.set(td, keywords);
+      }
     }
+    webSnippetByDomain = matchWebResultsToDomains(webResults, keywordMap);
   }
 
   const { prompt, variant } =

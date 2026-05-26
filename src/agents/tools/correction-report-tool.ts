@@ -3,6 +3,10 @@ import { Type } from "@sinclair/typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
+import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+
+const log = createSubsystemLogger("correction-tool");
 
 export const RecordCorrectionSchema = Type.Object({
   domain: Type.String({ description: "Cognitive domain (e.g. 'feishu-doc', 'code-review')" }),
@@ -38,10 +42,12 @@ export function createCorrectionReportTool(deps: {
       };
 
       try {
-        const userId = resolveUserId(deps.sessionKey, deps.deliveryTo);
+        const userId = resolveCorrectionUserId(deps.sessionKey, deps.deliveryTo);
         if (!userId) {
           return textResult("No user session; correction not recorded.", { status: "no_session" });
         }
+
+        log.info("correction recorded", { userId, domain: params.domain, agentId: deps.agentId ?? "main" });
 
         const { CorrectionStore } = await import("../../cognitive/correction/store.js");
         const { resolveConfigDir } = await import("../../utils.js");
@@ -81,21 +87,4 @@ export function createCorrectionReportTool(deps: {
       }
     },
   };
-}
-
-function resolveUserId(sessionKey?: string, deliveryTo?: string): string | null {
-  if (deliveryTo) {
-    const stripped = deliveryTo.replace(/^(user:|feishu:)/, "");
-    if (stripped && stripped !== "main") {
-      return stripped;
-    }
-  }
-  if (!sessionKey) {
-    return null;
-  }
-  const tail = sessionKey.split(":").pop();
-  if (!tail || tail === "main") {
-    return null;
-  }
-  return tail;
 }

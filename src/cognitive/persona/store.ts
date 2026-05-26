@@ -10,6 +10,22 @@ const PERSONA_DIR = "persona";
 
 const MIGRATION_SKIP_USER_IDS = new Set(["main", "kaijibot-tui", "slug-generator"]);
 
+function backfillStalePhases(persona: PersonaTree): void {
+  const now = Date.now();
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  for (const domain of Object.values(persona.domains)) {
+    const insightCount = domain.keyInsights.length + (domain.insights?.length ?? 0);
+    // Recompute if domain is marked emergent but has evidence of deeper engagement
+    if (domain.phase === "emergent" && (domain.depth >= 2 || insightCount >= 3)) {
+      const ageSinceLastMention = now - domain.lastMentioned;
+      if (ageSinceLastMention < SEVEN_DAYS_MS) {
+        domain.phase = "stable";
+        domain.phaseEnteredAt ??= domain.lastMentioned;
+      }
+    }
+  }
+}
+
 function inferPhase(domain: DomainNode): { phase: InterestPhase; phaseEnteredAt: number } {
   const now = Date.now();
   const age = now - domain.lastMentioned;
@@ -138,6 +154,7 @@ export class PersonaStore {
     if (!validated.identity.userId) {
       validated.identity.userId = userId;
     }
+    backfillStalePhases(validated);
     return migrateToTypedInsights(validated);
   }
 

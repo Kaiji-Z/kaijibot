@@ -62,7 +62,7 @@ export type InsightGeneratorFn = (
   },
 ) => Promise<InsightCandidate[]>;
 
-const MAX_QUALITY_RETRIES = 3;
+const MAX_QUALITY_RETRIES = 2;
 const QUALITY_EARLY_EXIT_THRESHOLD = 0.85;
 
 function scoreCandidate(c: InsightCandidate): number {
@@ -439,7 +439,13 @@ export class ProactiveScheduler {
       let bestCandidate: InsightCandidate = initialResult[0]!;
       let bestScore = scoreCandidate(bestCandidate);
 
-      if (bestScore < QUALITY_EARLY_EXIT_THRESHOLD) {
+      if (bestScore >= 0.7 && bestCandidate.sources.length >= 2) {
+        log.info("heuristic quality gate: skipping refine for high-quality candidate", {
+          userId: persona.identity?.userId,
+          score: bestScore,
+          sources: bestCandidate.sources.length,
+        });
+      } else if (bestScore < QUALITY_EARLY_EXIT_THRESHOLD) {
         for (let refine = 0; refine < MAX_QUALITY_RETRIES - 1; refine++) {
           const critique = await critiqueInsightWithLLM(
             bestCandidate,
@@ -540,18 +546,32 @@ export class ProactiveScheduler {
       this.config.llmFreshnessCheck !== false &&
       recentInsightContents.length >= 2
     ) {
-      const freshness = await checkSemanticNoveltyWithLLM(
-        candidate,
-        recentInsightContents,
-        this.botConfig,
-        this.llmDeps,
-      );
-      if (!freshness.isNovel) {
-        log.info("LLM freshness check: semantically repetitive", {
+      // Cheap trigram pre-check: if all similarities are below 0.3, skip LLM call
+      let maxTrigramSimilarity = 0;
+      for (const recent of recentInsightContents) {
+        const sim = computeTrigramSimilarity(candidate.content, recent);
+        if (sim > maxTrigramSimilarity) maxTrigramSimilarity = sim;
+      }
+
+      if (maxTrigramSimilarity < 0.3) {
+        log.info("freshness: trigram pre-check passed, skipping LLM novelty check", {
           userId: persona.identity?.userId,
-          reason: freshness.reason,
+          maxTrigramSimilarity,
         });
-        return null;
+      } else {
+        const freshness = await checkSemanticNoveltyWithLLM(
+          candidate,
+          recentInsightContents,
+          this.botConfig,
+          this.llmDeps,
+        );
+        if (!freshness.isNovel) {
+          log.info("LLM freshness check: semantically repetitive", {
+            userId: persona.identity?.userId,
+            reason: freshness.reason,
+          });
+          return null;
+        }
       }
     }
 

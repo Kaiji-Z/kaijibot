@@ -15,12 +15,35 @@ const log = createSubsystemLogger("correction");
 const CORRECTIONS_DIR = "cognitive/corrections";
 
 function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .split(/[\s,.;:!?()[\]{}'"<>/\\|~`@#$%^&*+=\-_]+/)
-      .filter(Boolean),
-  );
+  const normalized = text.toLowerCase();
+  const tokens = new Set<string>();
+
+  // Extract CJK characters for bigram generation
+  const cjkChars: string[] = [];
+  for (const char of normalized) {
+    const cp = char.codePointAt(0)!;
+    if ((cp >= 0x4e00 && cp <= 0x9fff) || (cp >= 0x3400 && cp <= 0x4dbf)) {
+      cjkChars.push(char);
+    }
+  }
+
+  // Generate CJK unigrams and bigrams
+  for (const ch of cjkChars) {
+    tokens.add(ch);
+  }
+  for (let i = 0; i < cjkChars.length - 1; i++) {
+    tokens.add(cjkChars[i]! + cjkChars[i + 1]!);
+  }
+
+  // Non-CJK: whitespace+punctuation splitting (original behavior)
+  const nonCjkTokens = normalized
+    .split(/[\s,.;:!?()[\]{}'"<>/\\|~`@#$%^&*+=\-_]+/)
+    .filter((s) => s.length > 0);
+  for (const tok of nonCjkTokens) {
+    tokens.add(tok);
+  }
+
+  return tokens;
 }
 
 function jaccardSimilarity(a: string, b: string): number {
