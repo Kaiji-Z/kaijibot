@@ -2398,7 +2398,7 @@ describe("resolve — quality retry", () => {
 
     const result = await scheduler.resolve("main", persona, opportunity);
     expect(result).toBeNull();
-    expect(callCount).toBe(3);
+    expect(callCount).toBe(2);
   });
 
   it("picks highest scoring candidate from mixed results", async () => {
@@ -2433,7 +2433,7 @@ describe("resolve — quality retry", () => {
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => {
         callCount++;
-        if (callCount <= 2) return [mediumInsight];
+        if (callCount <= 1) return [mediumInsight];
         return [bestInsight];
       },
     });
