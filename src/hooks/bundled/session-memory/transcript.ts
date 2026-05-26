@@ -38,45 +38,92 @@ export function stripMessageMetadata(text: string): string {
   return cleaned.replace(SENDER_ID_PREFIX_RE, "");
 }
 
+/**
+ * Synchronous transcript preprocessor. Parses raw JSONL content and extracts
+ * clean conversation text, stripping metadata, tool results, and thinking blocks.
+ */
+export function preprocessSessionTranscript(
+  rawContent: string,
+  opts?: { maxMessages?: number },
+): string | null {
+  const maxMessages = opts?.maxMessages ?? 500;
+  const lines = rawContent.trim().split("\n");
+
+  const allMessages: string[] = [];
+  for (const line of lines) {
+    let entry: Record<string, unknown>;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (entry.type !== "message" || !entry.message) {
+      continue;
+    }
+
+    const msg = entry.message as {
+      role?: unknown;
+      content?: unknown;
+      provenance?: unknown;
+    };
+    const role = msg.role;
+    if (role !== "user" && role !== "assistant") {
+      continue;
+    }
+    if (!("content" in msg) || !msg.content) {
+      continue;
+    }
+
+    if (role === "user" && hasInterSessionUserProvenance(msg)) {
+      continue;
+    }
+
+    const rawText = extractTextMessageContent(msg.content);
+    if (!rawText) {
+      continue;
+    }
+
+    const text = role === "user" ? stripMessageMetadata(rawText) : rawText;
+    if (!text || text.startsWith("/")) {
+      continue;
+    }
+
+    if (role === "assistant" && Array.isArray(msg.content)) {
+      const toolNames: string[] = [];
+      for (const block of msg.content) {
+        if (
+          block &&
+          typeof block === "object" &&
+          (block as { type?: unknown }).type === "toolCall" &&
+          typeof (block as { name?: unknown }).name === "string"
+        ) {
+          toolNames.push((block as { name: string }).name);
+        }
+      }
+      if (toolNames.length > 0) {
+        allMessages.push(`assistant: [tool: ${toolNames.join(", ")}] ${text}`);
+        continue;
+      }
+    }
+
+    allMessages.push(`${role}: ${text}`);
+  }
+
+  if (allMessages.length === 0) {
+    return null;
+  }
+
+  return allMessages.slice(-maxMessages).join("\n");
+}
+
 export async function getRecentSessionContent(
   sessionFilePath: string,
   messageCount: number = 15,
 ): Promise<string | null> {
   try {
     const content = await fs.readFile(sessionFilePath, "utf-8");
-    const lines = content.trim().split("\n");
-
-    const allMessages: string[] = [];
-    for (const line of lines) {
-      try {
-        const entry = JSON.parse(line);
-        if (entry.type === "message" && entry.message) {
-          const msg = entry.message as {
-            role?: unknown;
-            content?: unknown;
-            provenance?: unknown;
-          };
-          const role = msg.role;
-          if ((role === "user" || role === "assistant") && "content" in msg && msg.content) {
-            if (role === "user" && hasInterSessionUserProvenance(msg)) {
-              continue;
-            }
-            const rawText = extractTextMessageContent(msg.content);
-            if (!rawText) {
-              continue;
-            }
-            const text = msg.role === "user" ? stripMessageMetadata(rawText) : rawText;
-            if (text && !text.startsWith("/")) {
-              allMessages.push(`${role}: ${text}`);
-            }
-          }
-        }
-      } catch {
-        // Skip invalid JSON lines.
-      }
-    }
-
-    return allMessages.slice(-messageCount).join("\n");
+    return preprocessSessionTranscript(content, { maxMessages: messageCount });
   } catch {
     return null;
   }

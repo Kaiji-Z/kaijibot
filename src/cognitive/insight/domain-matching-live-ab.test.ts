@@ -20,7 +20,7 @@ import {
   buildInsightPrompt,
   matchWebResultsToDomainsLLM,
 } from "./llm-engine.js";
-import type { LlmInsightDeps, WebSearchResult } from "./llm-engine.js";
+import type { WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
@@ -249,32 +249,33 @@ function matchWebResultsToDomainsKeyword(
 }
 
 // LLM matching using the actual exported function
-function makeLlmDeps(): LlmInsightDeps {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeLlmDeps(): any {
   return {
-    prepareModel: async (config, modelRef) => {
+    prepareModel: async (config: any, modelRef?: string) => {
       const model = modelRef ?? config.cognitive?.persona?.extractionModel ?? MODEL;
       return {
         model,
         auth: { apiKey: ZAI_API_KEY! },
       };
     },
-    complete: async (model, messages, opts) => {
+    complete: async (_model: any, messages: any, opts: any) => {
       const content =
-        messages.messages[0]?.content ?? messages.messages[0]?.text ?? "";
+        messages.messages[0]?.content ?? "";
       const text = typeof content === "string" ? content : JSON.stringify(content);
       const res = await fetch(ZAI_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${opts.apiKey ?? ZAI_API_KEY}`,
+          Authorization: `Bearer ${opts?.apiKey ?? ZAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: model,
+          model: _model,
           messages: [{ role: "user", content: text }],
-          temperature: opts.temperature ?? 0.2,
-          max_tokens: opts.maxTokens ?? 500,
+          temperature: opts?.temperature ?? 0.2,
+          max_tokens: opts?.maxTokens ?? 500,
         }),
-        signal: opts.signal,
+        signal: opts?.signal,
       });
       const data = (await res.json()) as {
         error?: { message: string };

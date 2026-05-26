@@ -1535,7 +1535,11 @@ export async function startGatewayServer(
             },
             readSessionFile: async (filePath: string) => {
               const fs = await import("node:fs/promises");
-              return fs.readFile(filePath, "utf-8");
+              const { preprocessSessionTranscript } = await import(
+                "../hooks/bundled/session-memory/transcript.js"
+              );
+              const raw = await fs.readFile(filePath, "utf-8");
+              return preprocessSessionTranscript(raw) ?? "";
             },
             generateText: generateFn,
             resolveWorkspaces: (cfg) => resolveConsolidationWorkspaces(cfg),

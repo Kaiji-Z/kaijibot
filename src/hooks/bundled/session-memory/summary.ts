@@ -238,8 +238,8 @@ export async function generateStructuredSummary(params: {
   }
 
   try {
-    const transcriptSlice = transcript.slice(0, 16_000);
-    log.debug("Generating structured summary", { transcriptLength: transcriptSlice.length });
+    const transcriptSlice = transcript;
+    log.debug("Generating structured summary", { transcriptLength: transcript.length });
 
     const generateText = await createStandaloneGenerateText(cfg, {
       maxTokens: 4000,
