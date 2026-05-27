@@ -93,7 +93,7 @@ const createHost = (tab: Tab): SettingsHost => ({
     token: "",
     sessionKey: "main",
     lastActiveSessionKey: "main",
-    theme: "claw",
+    theme: "ink-jade",
     themeMode: "system",
     chatFocusMode: false,
     chatShowThinking: true,
@@ -104,9 +104,9 @@ const createHost = (tab: Tab): SettingsHost => ({
     navGroupsCollapsed: {},
     borderRadius: 50,
   },
-  theme: "claw" as unknown as ThemeName & ThemeMode,
+  theme: "ink-jade" as unknown as ThemeName & ThemeMode,
   themeMode: "system",
-  themeResolved: "dark",
+  themeResolved: "ink-jade",
   applySessionKey: "main",
   sessionKey: "main",
   tab,
@@ -131,32 +131,32 @@ describe("setTabFromRoute", () => {
 
   it("re-resolves the active palette when only themeMode changes", () => {
     const host = createHost("chat");
-    host.settings.theme = "knot";
+    host.settings.theme = "rice-paper";
     host.settings.themeMode = "dark";
-    host.theme = "knot" as unknown as ThemeName & ThemeMode;
+    host.theme = "rice-paper" as unknown as ThemeName & ThemeMode;
     host.themeMode = "dark";
-    host.themeResolved = "openknot";
+    host.themeResolved = "rice-paper";
 
     applySettings(host, {
       ...host.settings,
       themeMode: "light",
     });
 
-    expect(host.theme).toBe("knot");
+    expect(host.theme).toBe("rice-paper");
     expect(host.themeMode).toBe("light");
-    expect(host.themeResolved).toBe("openknot-light");
+    expect(host.themeResolved).toBe("rice-paper");
   });
 
   it("syncs both theme family and mode from persisted settings", () => {
     const host = createHost("chat");
-    host.settings.theme = "dash";
+    host.settings.theme = "glaze";
     host.settings.themeMode = "light";
 
     syncThemeWithSettings(host);
 
-    expect(host.theme).toBe("dash");
+    expect(host.theme).toBe("glaze");
     expect(host.themeMode).toBe("light");
-    expect(host.themeResolved).toBe("dash-light");
+    expect(host.themeResolved).toBe("glaze");
   });
 
   it("applies named system themes on OS preference changes", () => {
@@ -175,15 +175,15 @@ describe("setTabFromRoute", () => {
     });
 
     const host = createHost("chat");
-    host.theme = "knot" as unknown as ThemeName & ThemeMode;
+    host.theme = "rice-paper" as unknown as ThemeName & ThemeMode;
     host.themeMode = "system";
 
     attachThemeListener(host);
     listeners[0]?.({ matches: true } as MediaQueryListEvent);
-    expect(host.themeResolved).toBe("openknot");
+    expect(host.themeResolved).toBe("rice-paper");
 
     listeners[0]?.({ matches: false } as MediaQueryListEvent);
-    expect(host.themeResolved).toBe("openknot");
+    expect(host.themeResolved).toBe("rice-paper");
   });
 
   it("normalizes light family themes to the shared light CSS token", () => {
@@ -194,11 +194,11 @@ describe("setTabFromRoute", () => {
     vi.stubGlobal("document", { documentElement: root } as Document);
 
     const host = createHost("chat");
-    applyResolvedTheme(host, "dash-light");
+    applyResolvedTheme(host, "glaze");
 
-    expect(host.themeResolved).toBe("dash-light");
-    expect(root.dataset.theme).toBe("dash-light");
-    expect(root.style.colorScheme).toBe("light");
+    expect(host.themeResolved).toBe("glaze");
+    expect(root.dataset.theme).toBe("glaze");
+    expect(root.style.colorScheme).toBe("dark");
   });
 });
 

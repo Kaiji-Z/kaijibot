@@ -17,7 +17,7 @@ import {
 import { saveSettings, type UiSettings } from "./storage.ts";
 import { normalizeOptionalString } from "./string-coerce.ts";
 import { startThemeTransition, type ThemeTransitionContext } from "./theme-transition.ts";
-import { resolveTheme, type ResolvedTheme, type ThemeMode, type ThemeName } from "./theme.ts";
+import { resolveTheme, resolveColorScheme, type ResolvedTheme, type ThemeMode, type ThemeName } from "./theme.ts";
 import type { AgentsListResult } from "./types.ts";
 import { resetChatViewState } from "./views/chat.ts";
 
@@ -257,7 +257,7 @@ export function inferBasePath() {
 }
 
 export function syncThemeWithSettings(host: SettingsHost) {
-  host.theme = host.settings.theme ?? "claw";
+  host.theme = host.settings.theme ?? "ink-jade";
   host.themeMode = host.settings.themeMode ?? "system";
   applyResolvedTheme(host, resolveTheme(host.theme, host.themeMode));
   applyBorderRadius(host.settings.borderRadius ?? 50);
@@ -295,10 +295,10 @@ export function applyResolvedTheme(host: SettingsHost, resolved: ResolvedTheme) 
     return;
   }
   const root = document.documentElement;
-  const themeMode = resolved.endsWith("light") ? "light" : "dark";
+  const colorScheme = resolveColorScheme(resolved);
   root.dataset.theme = resolved;
-  root.dataset.themeMode = themeMode;
-  root.style.colorScheme = themeMode;
+  root.dataset.themeMode = colorScheme;
+  root.style.colorScheme = colorScheme;
 }
 
 function syncSystemThemeListener(host: SettingsHost) {

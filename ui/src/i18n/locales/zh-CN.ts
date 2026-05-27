@@ -754,12 +754,12 @@ export const zh_CN: TranslationMap = {
     theme: {
       title: "主题",
       chooseHint: "选择一个主题风格。",
-      claw: "KaijiBot",
-      clawDesc: "色彩系列",
-      knot: "Knot",
-      knotDesc: "黑红配色",
-      dash: "Dash",
-      dashDesc: "巧克力蓝图",
+      inkJade: "墨玉",
+      inkJadeDesc: "深色默认",
+      ricePaper: "宣纸",
+      ricePaperDesc: "暖白浅色",
+      glaze: "琉璃",
+      glazeDesc: "半透明玻璃",
     },
     roundness: {
       title: "圆角",

@@ -185,7 +185,7 @@ export function loadSettings(): UiSettings {
     token: loadSessionToken(defaultUrl),
     sessionKey: "main",
     lastActiveSessionKey: "main",
-    theme: "claw",
+    theme: "ink-jade",
     themeMode: "system",
     chatFocusMode: false,
     chatShowThinking: true,
@@ -211,9 +211,8 @@ export function loadSettings(): UiSettings {
     const parsedGatewayUrl = normalizeOptionalString(parsed.gatewayUrl) ?? defaults.gatewayUrl;
     const gatewayUrl = parsedGatewayUrl === pageDerivedUrl ? defaultUrl : parsedGatewayUrl;
     const scopedSessionSelection = resolveScopedSessionSelection(gatewayUrl, parsed, defaults);
-    const { theme, mode } = parseThemeSelection(
-      (parsed as { theme?: unknown }).theme,
-      (parsed as { themeMode?: unknown }).themeMode,
+    const theme = parseThemeSelection(
+      (parsed as { theme?: unknown }).theme as string | null | undefined,
     );
     const settings = {
       gatewayUrl,
@@ -222,7 +221,13 @@ export function loadSettings(): UiSettings {
       sessionKey: scopedSessionSelection.sessionKey,
       lastActiveSessionKey: scopedSessionSelection.lastActiveSessionKey,
       theme,
-      themeMode: mode,
+      themeMode:
+        typeof (parsed as { themeMode?: unknown }).themeMode === "string" &&
+        ["system", "light", "dark"].includes(
+          (parsed as { themeMode?: string }).themeMode as string,
+        )
+          ? ((parsed as { themeMode?: string }).themeMode as ThemeMode)
+          : defaults.themeMode,
       chatFocusMode:
         typeof parsed.chatFocusMode === "boolean" ? parsed.chatFocusMode : defaults.chatFocusMode,
       chatShowThinking:

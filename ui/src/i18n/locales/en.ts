@@ -759,12 +759,12 @@ export const en: TranslationMap = {
     theme: {
       title: "Theme",
       chooseHint: "Choose a theme family.",
-      claw: "KaijiBot",
-      clawDesc: "Chroma family",
-      knot: "Knot",
-      knotDesc: "Black & red",
-      dash: "Dash",
-      dashDesc: "Chocolate blueprint",
+      inkJade: "Ink Jade",
+      inkJadeDesc: "墨玉 · Deep ink dark",
+      ricePaper: "Rice Paper",
+      ricePaperDesc: "宣纸 · Warm paper light",
+      glaze: "Glaze",
+      glazeDesc: "琉璃 · Translucent glass",
     },
     roundness: {
       title: "Roundness",

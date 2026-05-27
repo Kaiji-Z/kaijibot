@@ -55,9 +55,11 @@ import type {
   ConfigSnapshot,
   ConfigUiHints,
   ChatModelOverride,
+  CognitiveStatusResult,
   CronJob,
   CronRunLogEntry,
   CronStatus,
+  MemoryHealthStatus,
   ModelCatalogEntry,
   ChannelsStatusSnapshot,
   SessionCompactionCheckpoint,
@@ -65,6 +67,7 @@ import type {
   SkillStatusReport,
   ToolsCatalogResult,
   ToolsEffectiveResult,
+  UsageStatusResult,
 } from "./types.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
 import { generateUUID } from "./uuid.ts";
@@ -105,9 +108,9 @@ export class KaijiBotApp extends LitElement {
   @state() tab: Tab = "chat";
   @state() onboarding = resolveOnboardingMode();
   @state() connected = false;
-  @state() theme: ThemeName = this.settings.theme ?? "claw";
+  @state() theme: ThemeName = this.settings.theme ?? "ink-jade";
   @state() themeMode: ThemeMode = this.settings.themeMode ?? "system";
-  @state() themeResolved: ResolvedTheme = "dark";
+  @state() themeResolved: ResolvedTheme = "ink-jade";
   @state() themeOrder: ThemeName[] = this.buildThemeOrder(this.theme);
   @state() hello: GatewayHelloOk | null = null;
   @state() lastError: string | null = null;
@@ -143,6 +146,7 @@ export class KaijiBotApp extends LitElement {
   @state() chatAttachments: ChatAttachment[] = [];
   @state() chatManualRefreshInFlight = false;
   @state() navDrawerOpen = false;
+  @state() modeSwitcherOpen = false;
 
   onSlashAction?: (action: string) => void;
 
@@ -180,6 +184,10 @@ export class KaijiBotApp extends LitElement {
   @state() channelsSnapshot: ChannelsStatusSnapshot | null = null;
   @state() channelsError: string | null = null;
   @state() channelsLastSuccess: number | null = null;
+  @state() gatewayUptimeMs: number | null = null;
+  @state() memoryHealth: MemoryHealthStatus | null = null;
+  @state() usageStatus: UsageStatusResult | null = null;
+  @state() cognitiveStatus: CognitiveStatusResult | null = null;
   @state() agentsLoading = false;
   @state() agentsList: AgentsListResult | null = null;
   @state() agentsError: string | null = null;
@@ -395,7 +403,7 @@ export class KaijiBotApp extends LitElement {
   }
 
   buildThemeOrder(active: ThemeName): ThemeName[] {
-    const all = [...VALID_THEME_NAMES];
+    const all = [...VALID_THEME_NAMES] as ThemeName[];
     const rest = all.filter((id) => id !== active);
     return [active, ...rest];
   }

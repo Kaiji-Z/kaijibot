@@ -37,6 +37,14 @@ import type { GatewaySessionRow, SessionsListResult } from "../types.ts";
 import type { ChatItem, MessageGroup } from "../types/chat-types.ts";
 import type { ChatAttachment, ChatQueueItem } from "../ui-types.ts";
 import { agentLogoUrl, resolveAgentAvatarUrl } from "./agents-utils.ts";
+import {
+  renderInputSettingsPopover,
+  renderModelChip,
+  renderSessionChip,
+  renderThinkingChip,
+  renderTokenRing,
+} from "../app-render.helpers.ts";
+import type { AppViewState } from "../app-view-state.ts";
 import { renderMarkdownSidebar } from "./markdown-sidebar.ts";
 import "../components/resizable-divider.ts";
 
@@ -98,6 +106,7 @@ export type ChatProps = {
   onSplitRatioChange?: (ratio: number) => void;
   onChatScroll?: (event: Event) => void;
   basePath?: string;
+  appState?: unknown;
 };
 
 const COMPACTION_TOAST_DURATION_MS = 5000;
@@ -140,6 +149,10 @@ interface ChatEphemeralState {
   searchOpen: boolean;
   searchQuery: string;
   pinnedExpanded: boolean;
+  inputSettingsOpen: boolean;
+  sessionChipOpen: boolean;
+  modelChipOpen: boolean;
+  thinkingChipOpen: boolean;
 }
 
 function createChatEphemeralState(): ChatEphemeralState {
@@ -155,6 +168,10 @@ function createChatEphemeralState(): ChatEphemeralState {
     searchOpen: false,
     searchQuery: "",
     pinnedExpanded: false,
+    inputSettingsOpen: false,
+    sessionChipOpen: false,
+    modelChipOpen: false,
+    thinkingChipOpen: false,
   };
 }
 
@@ -1158,7 +1175,7 @@ export function renderChat(props: ChatProps) {
 
   return html`
     <section
-      class="card chat"
+      class="chat"
       @drop=${(e: DragEvent) => handleDrop(e, props)}
       @dragover=${(e: DragEvent) => e.preventDefault()}
     >
@@ -1264,6 +1281,33 @@ export function renderChat(props: ChatProps) {
           ? html`<div class="agent-chat__stt-interim">${vs.sttInterimText}</div>`
           : nothing}
 
+        ${(() => {
+          const appState = props.appState as AppViewState | undefined;
+          if (!appState) return nothing;
+          const chipToggle = (key: "sessionChipOpen" | "modelChipOpen" | "thinkingChipOpen") => () => {
+            vs.sessionChipOpen = false;
+            vs.modelChipOpen = false;
+            vs.thinkingChipOpen = false;
+            vs[key] = true;
+            requestUpdate();
+            const close = () => {
+              vs.sessionChipOpen = false;
+              vs.modelChipOpen = false;
+              vs.thinkingChipOpen = false;
+              document.removeEventListener("click", close);
+              requestUpdate();
+            };
+            setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
+          };
+          return html`
+            <div class="chat-input-top-bar">
+              ${renderSessionChip(appState, vs.sessionChipOpen, chipToggle("sessionChipOpen"))}
+              ${renderModelChip(appState, vs.modelChipOpen, chipToggle("modelChipOpen"))}
+              ${renderThinkingChip(appState, vs.thinkingChipOpen, chipToggle("thinkingChipOpen"))}
+            </div>
+          `;
+        })()}
+
         <textarea
           ${ref((el) => el && adjustTextareaHeight(el as HTMLTextAreaElement))}
           .value=${props.draft}
@@ -1343,6 +1387,26 @@ export function renderChat(props: ChatProps) {
                   </button>
                 `
               : nothing}
+            ${(() => {
+              const appState = props.appState as AppViewState | undefined;
+              if (!appState) return nothing;
+              return renderInputSettingsPopover(
+                appState,
+                vs.inputSettingsOpen,
+                () => {
+                  vs.inputSettingsOpen = !vs.inputSettingsOpen;
+                  requestUpdate();
+                  if (vs.inputSettingsOpen) {
+                    const close = () => {
+                      vs.inputSettingsOpen = false;
+                      document.removeEventListener("click", close);
+                      requestUpdate();
+                    };
+                    setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
+                  }
+                },
+              );
+            })()}
             ${tokens ? html`<span class="agent-chat__token-count">${tokens}</span>` : nothing}
           </div>
 
@@ -1369,6 +1433,22 @@ export function renderChat(props: ChatProps) {
             >
               ${icons.download}
             </button>
+
+            ${(() => {
+              const appState = props.appState as AppViewState | undefined;
+              const activeSession = props.sessions?.sessions?.find(
+                (row) => row.key === props.sessionKey,
+              );
+              const used = activeSession?.totalTokens ?? 0;
+              const total =
+                activeSession?.contextTokens ??
+                props.sessions?.defaults?.contextTokens ??
+                0;
+              if (appState && used && total) {
+                return renderTokenRing(used, total);
+              }
+              return nothing;
+            })()}
 
             ${canAbort && (isBusy || props.sending)
               ? html`

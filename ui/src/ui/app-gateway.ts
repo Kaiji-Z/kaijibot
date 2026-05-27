@@ -24,6 +24,12 @@ import { loadChatHistory } from "./controllers/chat.ts";
 import { handleChatEvent, type ChatEventPayload } from "./controllers/chat.ts";
 import { loadSessions, subscribeSessions } from "./controllers/sessions.ts";
 import {
+  loadMemoryHealth,
+  loadUsageStatus,
+  loadCognitiveStatus,
+  type SystemStatusState,
+} from "./controllers/system-status.ts";
+import {
   resolveGatewayErrorDetailCode,
   type GatewayEventFrame,
   type GatewayHelloOk,
@@ -77,6 +83,10 @@ type GatewayHost = {
   refreshSessionsAfterChat: Set<string>;
   updateAvailable: UpdateAvailable | null;
   sessionDetails: Record<string, SessionDetailState>;
+  gatewayUptimeMs: number | null;
+  memoryHealth: import("./types.ts").MemoryHealthStatus | null;
+  usageStatus: import("./types.ts").UsageStatusResult | null;
+  cognitiveStatus: import("./types.ts").CognitiveStatusResult | null;
 };
 
 type SessionDefaultsSnapshot = {
@@ -232,6 +242,9 @@ export function connectGateway(host: GatewayHost, options?: ConnectGatewayOption
       void loadAssistantIdentity(host as unknown as KaijiBotApp);
       void loadAgents(host as unknown as KaijiBotApp);
       void refreshActiveTab(host as unknown as Parameters<typeof refreshActiveTab>[0]);
+      void loadMemoryHealth(host as unknown as SystemStatusState);
+      void loadUsageStatus(host as unknown as SystemStatusState);
+      void loadCognitiveStatus(host as unknown as SystemStatusState);
     },
     onClose: ({ code, reason, error }) => {
       if (host.client !== client) {
@@ -497,6 +510,7 @@ export function applySnapshot(host: GatewayHost, hello: GatewayHelloOk) {
         health?: HealthSummary;
         sessionDefaults?: SessionDefaultsSnapshot;
         updateAvailable?: UpdateAvailable;
+        uptimeMs?: number;
       }
     | undefined;
   if (snapshot?.presence && Array.isArray(snapshot.presence)) {
@@ -510,4 +524,5 @@ export function applySnapshot(host: GatewayHost, hello: GatewayHelloOk) {
     applySessionDefaults(host, snapshot.sessionDefaults);
   }
   host.updateAvailable = snapshot?.updateAvailable ?? null;
+  host.gatewayUptimeMs = snapshot?.uptimeMs ?? null;
 }

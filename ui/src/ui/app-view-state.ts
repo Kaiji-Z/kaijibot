@@ -11,13 +11,16 @@ import type {
   AgentIdentityResult,
   AttentionItem,
   ChannelsStatusSnapshot,
+  CognitiveStatusResult,
   ConfigSnapshot,
   ConfigUiHints,
   ChatModelOverride,
+  MemoryHealthStatus,
   ModelCatalogEntry,
   SessionsListResult,
   SkillStatusReport,
   ToolsCatalogResult,
+  UsageStatusResult,
 } from "./types.ts";
 import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
 import type { SessionDetailState } from "./views/agents-utils.ts";
@@ -61,6 +64,7 @@ export type AppViewState = {
   chatManualRefreshInFlight: boolean;
   chatNewMessagesBelow: boolean;
   navDrawerOpen: boolean;
+  modeSwitcherOpen: boolean;
   sidebarOpen: boolean;
   sidebarContent: string | null;
   sidebarError: string | null;
@@ -119,6 +123,10 @@ export type AppViewState = {
   channelsSnapshot: ChannelsStatusSnapshot | null;
   channelsError: string | null;
   channelsLastSuccess: number | null;
+  gatewayUptimeMs: number | null;
+  memoryHealth: MemoryHealthStatus | null;
+  usageStatus: UsageStatusResult | null;
+  cognitiveStatus: CognitiveStatusResult | null;
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;

@@ -748,4 +748,14 @@ export const ja_JP: TranslationMap = {
       nameRequiredShort: "名前は必須です。",
     },
   },
+  settings: {
+    theme: {
+      inkJade: "墨玉",
+      inkJadeDesc: "深いインク",
+      ricePaper: "宣紙",
+      ricePaperDesc: "暖かい白",
+      glaze: "瑠璃",
+      glazeDesc: "半透明ガラス",
+    },
+  },
 };

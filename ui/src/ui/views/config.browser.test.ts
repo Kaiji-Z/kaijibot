@@ -38,7 +38,7 @@ describe("config view", () => {
     onUpdate: vi.fn(),
     onSubsectionChange: vi.fn(),
     version: "2026.3.11",
-    theme: "claw" as ThemeName,
+    theme: "ink-jade" as ThemeName,
     themeMode: "system" as ThemeMode,
     setTheme: vi.fn(),
     setThemeMode: vi.fn(),

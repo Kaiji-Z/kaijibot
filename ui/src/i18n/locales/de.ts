@@ -754,4 +754,14 @@ export const de: TranslationMap = {
       nameRequiredShort: "Name erforderlich.",
     },
   },
+  settings: {
+    theme: {
+      inkJade: "Ink Jade",
+      inkJadeDesc: "Deep ink dark",
+      ricePaper: "Rice Paper",
+      ricePaperDesc: "Warm paper light",
+      glaze: "Glaze",
+      glazeDesc: "Translucent glass",
+    },
+  },
 };

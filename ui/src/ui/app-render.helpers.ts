@@ -1,7 +1,7 @@
 import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { t } from "../i18n/index.ts";
-import { refreshChat, refreshChatAvatar } from "./app-chat.ts";
+import { refreshChatAvatar } from "./app-chat.ts";
 import { syncUrlWithSessionKey } from "./app-settings.ts";
 import type { AppViewState } from "./app-view-state.ts";
 import { KaijiBotApp } from "./app.ts";
@@ -30,7 +30,7 @@ type SessionDefaultsSnapshot = {
   mainKey?: string;
 };
 
-function resolveSidebarChatSessionKey(state: AppViewState): string {
+export function resolveSidebarChatSessionKey(state: AppViewState): string {
   const snapshot = state.hello?.snapshot as
     | { sessionDefaults?: SessionDefaultsSnapshot }
     | undefined;
@@ -45,7 +45,7 @@ function resolveSidebarChatSessionKey(state: AppViewState): string {
   return "main";
 }
 
-function resetChatStateForSessionSwitch(state: AppViewState, sessionKey: string) {
+export function resetChatStateForSessionSwitch(state: AppViewState, sessionKey: string) {
   state.sessionKey = sessionKey;
   state.chatMessage = "";
   state.chatAttachments = [];
@@ -187,331 +187,7 @@ export function renderChatSessionSelect(state: AppViewState) {
   `;
 }
 
-export function renderChatControls(state: AppViewState) {
-  const hideCron = state.sessionsHideCron ?? true;
-  const hiddenCronCount = hideCron
-    ? countHiddenCronSessions(state.sessionKey, state.sessionsResult)
-    : 0;
-  const disableThinkingToggle = state.onboarding;
-  const disableFocusToggle = state.onboarding;
-  const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
-  const showToolCalls = state.onboarding ? true : state.settings.chatShowToolCalls;
-  const focusActive = state.onboarding ? true : state.settings.chatFocusMode;
-  const toolCallsIcon = html`
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path
-        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-      ></path>
-    </svg>
-  `;
-  const refreshIcon = html`
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-      <path d="M21 3v5h-5"></path>
-    </svg>
-  `;
-  const focusIcon = html`
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M4 7V4h3"></path>
-      <path d="M20 7V4h-3"></path>
-      <path d="M4 17v3h3"></path>
-      <path d="M20 17v3h-3"></path>
-      <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-  `;
-  return html`
-    <div class="chat-controls">
-      <button
-        class="btn btn--sm btn--icon"
-        ?disabled=${state.chatLoading || !state.connected}
-        @click=${async () => {
-          const app = state as unknown as KaijiBotApp;
-          app.chatManualRefreshInFlight = true;
-          app.chatNewMessagesBelow = false;
-          await app.updateComplete;
-          app.resetToolStream();
-          try {
-            await refreshChat(state as unknown as Parameters<typeof refreshChat>[0], {
-              scheduleScroll: false,
-            });
-            app.scrollToBottom({ smooth: true });
-          } finally {
-            requestAnimationFrame(() => {
-              app.chatManualRefreshInFlight = false;
-              app.chatNewMessagesBelow = false;
-            });
-          }
-        }}
-        title=${t("chat.refreshTitle")}
-      >
-        ${refreshIcon}
-      </button>
-      <span class="chat-controls__separator">|</span>
-      <button
-        class="btn btn--sm btn--icon ${showThinking ? "active" : ""}"
-        ?disabled=${disableThinkingToggle}
-        @click=${() => {
-          if (disableThinkingToggle) {
-            return;
-          }
-          state.applySettings({
-            ...state.settings,
-            chatShowThinking: !state.settings.chatShowThinking,
-          });
-        }}
-        aria-pressed=${showThinking}
-        title=${disableThinkingToggle ? t("chat.onboardingDisabled") : t("chat.thinkingToggle")}
-      >
-        ${icons.brain}
-      </button>
-      <button
-        class="btn btn--sm btn--icon ${showToolCalls ? "active" : ""}"
-        ?disabled=${disableThinkingToggle}
-        @click=${() => {
-          if (disableThinkingToggle) {
-            return;
-          }
-          state.applySettings({
-            ...state.settings,
-            chatShowToolCalls: !state.settings.chatShowToolCalls,
-          });
-        }}
-        aria-pressed=${showToolCalls}
-        title=${disableThinkingToggle ? t("chat.onboardingDisabled") : t("chat.toolCallsToggle")}
-      >
-        ${toolCallsIcon}
-      </button>
-      <button
-        class="btn btn--sm btn--icon ${focusActive ? "active" : ""}"
-        ?disabled=${disableFocusToggle}
-        @click=${() => {
-          if (disableFocusToggle) {
-            return;
-          }
-          state.applySettings({
-            ...state.settings,
-            chatFocusMode: !state.settings.chatFocusMode,
-          });
-        }}
-        aria-pressed=${focusActive}
-        title=${disableFocusToggle ? t("chat.onboardingDisabled") : t("chat.focusToggle")}
-      >
-        ${focusIcon}
-      </button>
-      <button
-        class="btn btn--sm btn--icon ${hideCron ? "active" : ""}"
-        @click=${() => {
-          state.sessionsHideCron = !hideCron;
-        }}
-        aria-pressed=${hideCron}
-        title=${hideCron
-          ? hiddenCronCount > 0
-            ? t("chat.showCronSessionsHidden", { count: String(hiddenCronCount) })
-            : t("chat.showCronSessions")
-          : t("chat.hideCronSessions")}
-      >
-        ${renderCronFilterIcon(hiddenCronCount)}
-      </button>
-    </div>
-  `;
-}
 
-/**
- * Mobile-only gear toggle + dropdown for chat controls.
- * Rendered in the topbar so it doesn't consume content-header space.
- * Hidden on desktop via CSS.
- */
-export function renderChatMobileToggle(state: AppViewState) {
-  const sessionGroups = resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult);
-  const disableThinkingToggle = state.onboarding;
-  const disableFocusToggle = state.onboarding;
-  const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
-  const showToolCalls = state.onboarding ? true : state.settings.chatShowToolCalls;
-  const focusActive = state.onboarding ? true : state.settings.chatFocusMode;
-  const toolCallsIcon = html`
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path
-        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-      ></path>
-    </svg>
-  `;
-  const focusIcon = html`
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M4 7V4h3"></path>
-      <path d="M20 7V4h-3"></path>
-      <path d="M4 17v3h3"></path>
-      <path d="M20 17v3h-3"></path>
-      <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-  `;
-
-  return html`
-    <div class="chat-mobile-controls-wrapper">
-      <button
-        class="btn btn--sm btn--icon chat-controls-mobile-toggle"
-        @click=${(e: Event) => {
-          e.stopPropagation();
-          const btn = e.currentTarget as HTMLElement;
-          const dropdown = btn.nextElementSibling as HTMLElement;
-          if (dropdown) {
-            const isOpen = dropdown.classList.toggle("open");
-            if (isOpen) {
-              const close = () => {
-                dropdown.classList.remove("open");
-                document.removeEventListener("click", close);
-              };
-              setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
-            }
-          }
-        }}
-        title="Chat settings"
-        aria-label="Chat settings"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="3"></circle>
-          <path
-            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-          ></path>
-        </svg>
-      </button>
-      <div
-        class="chat-controls-dropdown"
-        @click=${(e: Event) => {
-          e.stopPropagation();
-        }}
-      >
-        <div class="chat-controls">
-          <label class="field chat-controls__session">
-            <select
-              .value=${state.sessionKey}
-              @change=${(e: Event) => {
-                const next = (e.target as HTMLSelectElement).value;
-                switchChatSession(state, next);
-              }}
-            >
-              ${sessionGroups.map(
-                (group) => html`
-                  <optgroup label=${group.label}>
-                    ${group.options.map(
-                      (opt) => html`
-                        <option value=${opt.key} title=${opt.title}>${opt.label}</option>
-                      `,
-                    )}
-                  </optgroup>
-                `,
-              )}
-            </select>
-          </label>
-          ${renderChatThinkingSelect(state)}
-          <div class="chat-controls__thinking">
-            <button
-              class="btn btn--sm btn--icon ${showThinking ? "active" : ""}"
-              ?disabled=${disableThinkingToggle}
-              @click=${() => {
-                if (!disableThinkingToggle) {
-                  state.applySettings({
-                    ...state.settings,
-                    chatShowThinking: !state.settings.chatShowThinking,
-                  });
-                }
-              }}
-              aria-pressed=${showThinking}
-              title=${t("chat.thinkingToggle")}
-            >
-              ${icons.brain}
-            </button>
-            <button
-              class="btn btn--sm btn--icon ${showToolCalls ? "active" : ""}"
-              ?disabled=${disableThinkingToggle}
-              @click=${() => {
-                if (!disableThinkingToggle) {
-                  state.applySettings({
-                    ...state.settings,
-                    chatShowToolCalls: !state.settings.chatShowToolCalls,
-                  });
-                }
-              }}
-              aria-pressed=${showToolCalls}
-              title=${t("chat.toolCallsToggle")}
-            >
-              ${toolCallsIcon}
-            </button>
-            <button
-              class="btn btn--sm btn--icon ${focusActive ? "active" : ""}"
-              ?disabled=${disableFocusToggle}
-              @click=${() => {
-                if (!disableFocusToggle) {
-                  state.applySettings({
-                    ...state.settings,
-                    chatFocusMode: !state.settings.chatFocusMode,
-                  });
-                }
-              }}
-              aria-pressed=${focusActive}
-              title=${t("chat.focusToggle")}
-            >
-              ${focusIcon}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
 
 export function switchChatSession(state: AppViewState, nextSessionKey: string) {
   resetChatStateForSessionSwitch(state, nextSessionKey);
@@ -1094,32 +770,32 @@ const THEME_MODE_OPTIONS: ThemeModeOption[] = [
   { id: "dark", label: "Dark", short: "DARK" },
 ];
 
-export function renderTopbarThemeModeToggle(state: AppViewState) {
+/**
+ * Generic theme-mode selector suitable for settings drawers or context menus.
+ *
+ * CSS for `.theme-mode-select*` lives in `components.css` (Wave 5).
+ * The old `.topbar-theme-mode*` classes are no longer emitted.
+ */
+export function renderThemeModeSelect(state: AppViewState) {
   const modeIcon = (mode: ThemeMode) => {
-    if (mode === "system") {
-      return icons.monitor;
-    }
-    if (mode === "light") {
-      return icons.sun;
-    }
+    if (mode === "system") return icons.monitor;
+    if (mode === "light") return icons.sun;
     return icons.moon;
   };
 
   const applyMode = (mode: ThemeMode, e: Event) => {
-    if (mode === state.themeMode) {
-      return;
-    }
+    if (mode === state.themeMode) return;
     state.setThemeMode(mode, { element: e.currentTarget as HTMLElement });
   };
 
   return html`
-    <div class="topbar-theme-mode" role="group" aria-label="Color mode">
+    <div class="theme-mode-select" role="group" aria-label="Color mode">
       ${THEME_MODE_OPTIONS.map(
         (opt) => html`
           <button
             type="button"
-            class="topbar-theme-mode__btn ${opt.id === state.themeMode
-              ? "topbar-theme-mode__btn--active"
+            class="theme-mode-select__btn ${opt.id === state.themeMode
+              ? "theme-mode-select__btn--active"
               : ""}"
             title=${opt.label}
             aria-label="Color mode: ${opt.label}"
@@ -1127,6 +803,7 @@ export function renderTopbarThemeModeToggle(state: AppViewState) {
             @click=${(e: Event) => applyMode(opt.id, e)}
           >
             ${modeIcon(opt.id)}
+            <span class="theme-mode-select__label">${opt.label}</span>
           </button>
         `,
       )}
@@ -1134,19 +811,448 @@ export function renderTopbarThemeModeToggle(state: AppViewState) {
   `;
 }
 
-export function renderSidebarConnectionStatus(state: AppViewState) {
+/** @deprecated Use renderThemeModeSelect instead */
+export const renderTopbarThemeModeToggle = renderThemeModeSelect;
+
+export function renderConnectionStatusDot(state: AppViewState) {
   const label = state.connected ? t("common.online") : t("common.offline");
   const toneClass = state.connected
-    ? "sidebar-connection-status--online"
-    : "sidebar-connection-status--offline";
+    ? "connection-status__dot"
+    : "connection-status__dot connection-status__dot--disconnected";
 
   return html`
     <span
-      class="sidebar-version__status ${toneClass}"
+      class="${toneClass}"
       role="img"
       aria-live="polite"
       aria-label="Gateway status: ${label}"
       title="Gateway status: ${label}"
     ></span>
+  `;
+}
+
+/** @deprecated Use renderConnectionStatusDot instead */
+export const renderSidebarConnectionStatus = renderConnectionStatusDot;
+
+/* ── Input area controls (model chip, thinking chip, token ring, settings popover) ── */
+
+export function renderModelChip(
+  state: AppViewState,
+  open: boolean,
+  onToggle: () => void,
+) {
+  const { currentOverride, defaultLabel, options } = resolveChatModelSelectState(state);
+  const busy =
+    state.chatLoading || state.chatSending || Boolean(state.chatRunId) || state.chatStream !== null;
+  const disabled =
+    !state.connected || busy || (state.chatModelsLoading && options.length === 0) || !state.client;
+  const selectedLabel =
+    currentOverride === ""
+      ? defaultLabel
+      : (options.find((entry) => entry.value === currentOverride)?.label ?? currentOverride);
+  const display = selectedLabel.length > 22 ? selectedLabel.slice(0, 20) + "…" : selectedLabel;
+  return html`
+    <label class="model-chip" title=${selectedLabel} style="position:relative;display:inline-flex;">
+      <button
+        class="model-chip__trigger"
+        type="button"
+        ?disabled=${disabled}
+        @click=${(e: Event) => { e.stopPropagation(); onToggle(); }}
+      >${display} ▾</button>
+      ${open
+        ? html`<div class="chip-dropdown chip-dropdown--up" @click=${(e: Event) => e.stopPropagation()}>
+            <button
+              class="chip-dropdown__item ${currentOverride === "" ? "chip-dropdown__item--active" : ""}"
+              @click=${async () => { await switchChatModel(state, ""); onToggle(); }}
+            >${defaultLabel}</button>
+            ${repeat(
+              options,
+              (entry) => entry.value,
+              (entry) => html`
+                <button
+                  class="chip-dropdown__item ${entry.value === currentOverride ? "chip-dropdown__item--active" : ""}"
+                  @click=${async () => { await switchChatModel(state, entry.value); onToggle(); }}
+                >${entry.label}</button>
+              `,
+            )}
+          </div>`
+        : nothing}
+    </label>
+  `;
+}
+
+export function renderThinkingChip(
+  state: AppViewState,
+  open: boolean,
+  onToggle: () => void,
+) {
+  const { currentOverride, defaultLabel, options } = resolveChatThinkingSelectState(state);
+  const busy =
+    state.chatLoading || state.chatSending || Boolean(state.chatRunId) || state.chatStream !== null;
+  const disabled = !state.connected || busy || !state.client;
+  const levelDots = (val: string): string => {
+    const n = normalizeLowercaseStringOrEmpty(val);
+    if (n === "off") return "○";
+    if (n === "low") return "●";
+    if (n === "medium") return "●●";
+    if (n === "high") return "●●●";
+    if (n === "default") return "Auto";
+    return val.slice(0, 3);
+  };
+  const display = currentOverride === "" ? "Auto" : levelDots(currentOverride);
+  return html`
+    <label class="thinking-chip" title=${currentOverride === "" ? defaultLabel : currentOverride} style="position:relative;display:inline-flex;">
+      <button
+        class="thinking-chip__trigger"
+        type="button"
+        ?disabled=${disabled}
+        @click=${(e: Event) => { e.stopPropagation(); onToggle(); }}
+      >${display} ▾</button>
+      ${open
+        ? html`<div class="chip-dropdown chip-dropdown--up" @click=${(e: Event) => e.stopPropagation()}>
+            <button
+              class="chip-dropdown__item ${currentOverride === "" ? "chip-dropdown__item--active" : ""}"
+              @click=${async () => { await switchChatThinkingLevel(state, ""); onToggle(); }}
+            >${defaultLabel}</button>
+            ${repeat(
+              options,
+              (entry) => entry.value,
+              (entry) => html`
+                <button
+                  class="chip-dropdown__item ${entry.value === currentOverride ? "chip-dropdown__item--active" : ""}"
+                  @click=${async () => { await switchChatThinkingLevel(state, entry.value); onToggle(); }}
+                >${entry.label}</button>
+              `,
+            )}
+          </div>`
+        : nothing}
+    </label>
+  `;
+}
+
+export function renderSessionChip(
+  state: AppViewState,
+  open: boolean,
+  onToggle: () => void,
+) {
+  const groups = resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult);
+  if (groups.length === 0) {
+    return nothing;
+  }
+  const allOptions = groups.flatMap((g) => g.options);
+  const current = allOptions.find((opt) => opt.key === state.sessionKey);
+  const fullLabel = current?.label ?? state.sessionKey;
+  const displayLabel = fullLabel.length > 20 ? fullLabel.slice(0, 18) + "…" : fullLabel;
+  return html`
+    <label class="session-chip" title=${fullLabel}>
+      <button
+        class="session-chip__trigger"
+        type="button"
+        ?disabled=${!state.connected}
+        @click=${(e: Event) => { e.stopPropagation(); onToggle(); }}
+      >${displayLabel} ▾</button>
+      ${open
+        ? html`<div class="chip-dropdown chip-dropdown--up" @click=${(e: Event) => e.stopPropagation()}>
+            ${groups.map(
+              (group) => html`
+                <div class="chip-dropdown__group">
+                  ${groups.length > 1
+                    ? html`<div class="chip-dropdown__group-label">${group.label}</div>`
+                    : nothing}
+                  ${group.options.map(
+                    (opt) => html`
+                      <button
+                        class="chip-dropdown__item ${opt.key === state.sessionKey ? "chip-dropdown__item--active" : ""}"
+                        @click=${() => {
+                          if (opt.key !== state.sessionKey) {
+                            switchChatSession(state, opt.key);
+                          }
+                          onToggle();
+                        }}
+                      >${opt.label}</button>
+                    `,
+                  )}
+                </div>
+              `,
+            )}
+          </div>`
+        : nothing}
+    </label>
+  `;
+}
+
+export function renderTokenRing(used: number, total: number) {
+  if (!used || !total) return nothing;
+  const ratio = Math.min(used / total, 1);
+  const pct = Math.round(ratio * 100);
+  const r = 9;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - ratio);
+  const color =
+    ratio < 0.5 ? "var(--ok)" : ratio < 0.8 ? "var(--warn)" : "var(--danger)";
+  return html`
+    <span class="token-ring" title="${used.toLocaleString()} / ${total.toLocaleString()} tokens (${pct}%)">
+      <svg class="token-ring__svg" width="32" height="32" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r=${r} fill="none" stroke="var(--border-strong)" stroke-width="2.5" />
+        <circle
+          cx="12"
+          cy="12"
+          r=${r}
+          fill="none"
+          stroke=${color}
+          stroke-width="2.5"
+          stroke-dasharray=${circ}
+          stroke-dashoffset=${offset}
+          stroke-linecap="round"
+          transform="rotate(-90 12 12)"
+        />
+      </svg>
+    </span>
+  `;
+}
+
+export function renderInputSettingsPopover(
+  state: AppViewState,
+  open: boolean,
+  onToggle: () => void,
+) {
+  const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
+  const showToolCalls = state.onboarding ? true : state.settings.chatShowToolCalls;
+  const focusActive = state.onboarding ? true : state.settings.chatFocusMode;
+  const hideCron = state.sessionsHideCron ?? true;
+  const toggleRow = (
+    icon: unknown,
+    label: string,
+    checked: boolean,
+    onChange: () => void,
+  ) => html`
+    <label class="input-settings-popover__toggle-row">
+      <span class="input-settings-popover__toggle-icon">${icon}</span>
+      <span class="input-settings-popover__toggle-label">${label}</span>
+      <input
+        type="checkbox"
+        class="input-settings-popover__checkbox"
+        .checked=${checked}
+        @change=${onChange}
+      />
+      <span class="input-settings-popover__switch">
+        <span class="input-settings-popover__switch-thumb"></span>
+      </span>
+    </label>
+  `;
+  return html`
+    <div class="input-settings-wrapper">
+      <button
+        class="agent-chat__input-btn ${open ? "agent-chat__input-btn--active" : ""}"
+        @click=${(e: Event) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        title="Chat settings"
+        aria-label="Chat settings"
+      >
+        ${icons.settings}
+      </button>
+      ${open
+        ? html`
+            <div class="input-settings-popover" @click=${(e: Event) => e.stopPropagation()}>
+              ${toggleRow(
+                icons.brain,
+                "Show thinking",
+                showThinking,
+                () =>
+                  state.applySettings({
+                    ...state.settings,
+                    chatShowThinking: !state.settings.chatShowThinking,
+                  }),
+              )}
+              ${toggleRow(
+                icons.settings,
+                "Show tool calls",
+                showToolCalls,
+                () =>
+                  state.applySettings({
+                    ...state.settings,
+                    chatShowToolCalls: !state.settings.chatShowToolCalls,
+                  }),
+              )}
+              ${toggleRow(
+                icons.eye,
+                "Focus mode",
+                focusActive,
+                () =>
+                  state.applySettings({
+                    ...state.settings,
+                    chatFocusMode: !state.settings.chatFocusMode,
+                  }),
+              )}
+              ${toggleRow(
+                renderCronFilterIcon(
+                  hideCron
+                    ? countHiddenCronSessions(state.sessionKey, state.sessionsResult)
+                    : 0,
+                ),
+                "Hide cron",
+                hideCron,
+                () => {
+                  state.sessionsHideCron = !hideCron;
+                },
+              )}
+            </div>
+          `
+        : nothing}
+    </div>
+  `;
+}
+
+const ACTIVE_FINE_STATUSES = new Set(["thinking", "tool_call", "streaming"]);
+
+function countActiveSessions(sessionDetails: Record<string, import("./views/agents-utils.js").SessionDetailState>): number {
+  let count = 0;
+  for (const detail of Object.values(sessionDetails)) {
+    if (ACTIVE_FINE_STATUSES.has(detail.fineStatus)) count++;
+  }
+  return count;
+}
+
+function formatRelativeTime(ms: number | null | undefined): string {
+  if (!ms) return "";
+  const diff = ms - Date.now();
+  if (diff <= 0) return "now";
+  const mins = Math.round(diff / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remainMins = mins % 60;
+  return remainMins ? `${hours}h ${remainMins}m` : `${hours}h`;
+}
+
+export function renderSidebarSessionList(state: AppViewState) {
+  const groups = resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult);
+  if (groups.length === 0) {
+    return nothing;
+  }
+  return html`
+    <div class="shell-nav__sessions">
+      <div class="shell-nav__section-title">Sessions</div>
+      ${groups.map(
+        (group) => html`
+          ${groups.length > 1
+            ? html`<div class="shell-nav__session-group-title">${group.label}</div>`
+            : nothing}
+          ${group.options.map(
+            (opt) => html`
+              <button
+                type="button"
+                class="shell-nav__session-item ${opt.key === state.sessionKey
+                  ? "shell-nav__session-item--active"
+                  : ""}"
+                title=${opt.title}
+                ?disabled=${opt.key === state.sessionKey}
+                @click=${() => {
+                  if (opt.key !== state.sessionKey) {
+                    switchChatSession(state, opt.key);
+                  }
+                }}
+              >
+                <span class="shell-nav__session-dot"></span>
+                <span class="shell-nav__session-item-label">${opt.label}</span>
+              </button>
+            `,
+          )}
+        `,
+      )}
+    </div>
+  `;
+}
+
+function formatUptime(ms: number | null | undefined): string {
+  if (!ms) return "—";
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+export function renderSidebarStatusSection(state: AppViewState) {
+  const agents = state.agentsList?.agents ?? [];
+  const agentCount = agents.length;
+  const activeCount = countActiveSessions(state.sessionDetails ?? {});
+  const agentDotClass = activeCount > 0 ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
+
+  const cronEnabled = state.cronStatus?.enabled ?? false;
+  const cronJobs = state.cronStatus?.jobs ?? 0;
+  const nextWake = formatRelativeTime(state.cronStatus?.nextWakeAtMs);
+  const cronDotClass = cronEnabled ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
+
+  const uptime = formatUptime(state.gatewayUptimeMs);
+
+  const usage = state.usageStatus;
+  let usageLabel = "—";
+  let usageDotClass: string = "shell-nav__status-dot--idle";
+  if (usage?.providers?.length) {
+    const peak = Math.max(
+      ...usage.providers.flatMap((p) => p.windows?.map((w) => w.usedPercent ?? 0) ?? []),
+      0,
+    );
+    usageLabel = `${Math.round(peak)}%`;
+    usageDotClass = peak >= 90 ? "shell-nav__status-dot--warn" : peak > 0 ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
+  }
+
+  const cog = state.cognitiveStatus;
+  const cogEnabled = cog?.enabled ?? false;
+  const cogDotClass = cogEnabled ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
+  const cogDomains = cog?.domains ?? 0;
+  const cogInsights = cog?.insights ?? 0;
+  const cogLabel = cogEnabled
+    ? [
+        cogDomains > 0 ? `${cogDomains} domains` : "",
+        cogInsights > 0 ? `${cogInsights} insights` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Active"
+    : "Disabled";
+
+  return html`
+    <div class="shell-nav__section">
+      <div class="shell-nav__section-title">System</div>
+      <div class="shell-nav__status-row">
+        <span class="shell-nav__status-label">Agents</span>
+        <span class="shell-nav__status-value">
+          ${agentCount}${activeCount > 0 ? html` · ${activeCount} active` : ""}
+          <span class="shell-nav__status-dot ${agentDotClass}"></span>
+        </span>
+      </div>
+      <div class="shell-nav__status-row" style="cursor:pointer" @click=${() => state.setTab("cron")}>
+        <span class="shell-nav__status-label">Cron</span>
+        <span class="shell-nav__status-value">
+          ${cronEnabled ? html`${cronJobs} jobs${nextWake ? html` · ${nextWake}` : ""}` : "Disabled"}
+          <span class="shell-nav__status-dot ${cronDotClass}"></span>
+        </span>
+      </div>
+      <div class="shell-nav__status-row">
+        <span class="shell-nav__status-label">Uptime</span>
+        <span class="shell-nav__status-value">
+          ${uptime}
+          <span class="shell-nav__status-dot ${state.gatewayUptimeMs ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle"}"></span>
+        </span>
+      </div>
+      <div class="shell-nav__status-row">
+        <span class="shell-nav__status-label">Usage</span>
+        <span class="shell-nav__status-value">
+          ${usageLabel}
+          <span class="shell-nav__status-dot ${usageDotClass}"></span>
+        </span>
+      </div>
+      <div class="shell-nav__status-row">
+        <span class="shell-nav__status-label">Cognitive</span>
+        <span class="shell-nav__status-value">
+          ${cogLabel}
+          <span class="shell-nav__status-dot ${cogDotClass}"></span>
+        </span>
+      </div>
+    </div>
   `;
 }

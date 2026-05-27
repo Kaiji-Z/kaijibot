@@ -751,3 +751,38 @@ export type AttentionItem = {
   href?: string;
   external?: boolean;
 };
+
+export type MemoryHealthStatus = {
+  ok: boolean;
+  provider?: string;
+  error?: string;
+};
+
+export type UsageWindowSnapshot = {
+  label: string;
+  usedPercent: number;
+  resetAt?: number;
+};
+
+export type ProviderUsageSnapshot = {
+  provider: string;
+  displayName?: string;
+  windows: UsageWindowSnapshot[];
+};
+
+export type UsageStatusResult = {
+  updatedAt: number;
+  providers: ProviderUsageSnapshot[];
+};
+
+export type CognitiveStatusResult = {
+  enabled: boolean;
+  users: number;
+  domains: number;
+  avgTrust: number | null;
+  insights: number;
+  corrections: number;
+  skills: number;
+  agentSkills: number;
+  lastProactiveAt: number | null;
+};

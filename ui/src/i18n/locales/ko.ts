@@ -734,4 +734,14 @@ export const ko: TranslationMap = {
       nameRequiredShort: "이름이 필요합니다.",
     },
   },
+  settings: {
+    theme: {
+      inkJade: "Ink Jade",
+      inkJadeDesc: "Deep ink dark",
+      ricePaper: "Rice Paper",
+      ricePaperDesc: "Warm paper light",
+      glaze: "Glaze",
+      glazeDesc: "Translucent glass",
+    },
+  },
 };

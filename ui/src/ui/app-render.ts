@@ -3,12 +3,14 @@ import { t } from "../i18n/index.ts";
 import { getSafeLocalStorage } from "../local-storage.ts";
 import { refreshChatAvatar } from "./app-chat.ts";
 import {
-  renderChatControls,
-  renderChatMobileToggle,
-  renderChatSessionSelect,
+  renderSidebarSessionList,
+  renderSidebarStatusSection,
   renderTab,
   renderSidebarConnectionStatus,
   renderTopbarThemeModeToggle,
+  resetChatStateForSessionSwitch,
+  resolveSessionOptionGroups,
+  resolveSidebarChatSessionKey,
   switchChatSession,
 } from "./app-render.helpers.ts";
 import type { AppViewState } from "./app-view-state.ts";
@@ -321,109 +323,148 @@ export function renderApp(state: AppViewState) {
 
   return html`
     <div
-      class="shell ${isChat ? "shell--chat" : ""} ${chatFocus
-        ? "shell--chat-focus"
-        : ""} ${navCollapsed ? "shell--nav-collapsed" : ""} ${navDrawerOpen
-        ? "shell--nav-drawer-open"
-        : ""} ${state.onboarding ? "shell--onboarding" : ""}"
+      class="shell ${isChat ? "shell--chat" : ""} ${navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding
+        ? "shell--onboarding"
+        : ""}"
     >
-      <button
-        type="button"
-        class="shell-nav-backdrop"
-        aria-label="${t("nav.collapse")}"
-        @click=${() => {
-          state.navDrawerOpen = false;
-        }}
-      ></button>
-      <header class="topbar">
-        <div class="topnav-shell">
+      <div class="mode-switcher">
+        <button
+          type="button"
+          class="mode-switcher__pill"
+          @click=${() => {
+            state.modeSwitcherOpen = !state.modeSwitcherOpen;
+          }}
+          aria-label="Mode switcher"
+          aria-expanded=${state.modeSwitcherOpen ?? false}
+        >
+          <span class="mode-switcher__brand">KaijiBot</span>
+          <span class="mode-switcher__divider" aria-hidden="true">/</span>
+          <span class="mode-switcher__current-tab">${titleForTab(state.tab)}</span>
+        </button>
+        ${state.modeSwitcherOpen
+          ? html`
+              <div class="mode-switcher__dropdown mode-switcher__dropdown--open">
+                ${TABS.map(
+                  (tab) => html`
+                    <a
+                      href=${pathForTab(tab, state.basePath)}
+                      class="mode-switcher__option ${state.tab === tab
+                        ? "mode-switcher__option--active"
+                        : ""}"
+                      @click=${(event: MouseEvent) => {
+                        if (
+                          event.defaultPrevented ||
+                          event.button !== 0 ||
+                          event.metaKey ||
+                          event.ctrlKey ||
+                          event.shiftKey ||
+                          event.altKey
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        state.modeSwitcherOpen = false;
+                        if (tab === "chat") {
+                          const mainSessionKey = resolveSidebarChatSessionKey(state);
+                          if (state.sessionKey !== mainSessionKey) {
+                            resetChatStateForSessionSwitch(state, mainSessionKey);
+                            void state.loadAssistantIdentity();
+                          }
+                        }
+                        state.setTab(tab);
+                      }}
+                    >
+                      <span aria-hidden="true">${icons[iconForTab(tab)]}</span>
+                      <span>${titleForTab(tab)}</span>
+                    </a>
+                  `,
+                )}
+              </div>
+            `
+          : nothing}
+      </div>
+
+      ${isChat
+        ? html`<div class="mobile-session-select">
+            <select
+              .value=${state.sessionKey}
+              ?disabled=${!state.connected}
+              title="Switch session"
+              @change=${(e: Event) => {
+                const next = (e.target as HTMLSelectElement).value;
+                if (state.sessionKey === next) {
+                  return;
+                }
+                switchChatSession(state, next);
+              }}
+            >
+              ${resolveSessionOptionGroups(
+                state,
+                state.sessionKey,
+                state.sessionsResult,
+              ).map(
+                (group) =>
+                  html`<optgroup label=${group.label}>
+                    ${group.options.map(
+                      (entry) =>
+                        html`<option
+                          value=${entry.key}
+                          title=${entry.title}
+                          ?selected=${entry.key === state.sessionKey}
+                        >
+                          ${entry.label}
+                        </option>`,
+                    )}
+                  </optgroup>`,
+              )}
+            </select>
+          </div>`
+        : nothing}
+
+      <div class="connection-status" role="status" aria-live="polite">
+        <span
+          class="connection-status__dot ${state.connected
+            ? ""
+            : "connection-status__dot--disconnected"}"
+        ></span>
+        <span>${state.connected ? t("common.online") : t("common.offline")}</span>
+      </div>
+
+      <nav class="shell-nav" aria-label="Main navigation">
+        <div class="shell-nav__brand">
+          <pre class="shell-nav__brand-ascii" aria-label="KaijiBot">██╗  ██╗ █████╗ ██╗     ██╗██╗██████╗  ██████╗ ████████╗
+██║ ██╔╝██╔══██╗██║     ██║██║██╔══██╗██╔═══██╗╚══██╔══╝
+█████╔╝ ███████║██║     ██║██║██████╔╝██║   ██║   ██║   
+██╔═██╗ ██╔══██║██║██   ██║██║██╔══██╗██║   ██║   ██║   
+██║  ██╗██║  ██║██║╚█████╔╝██║██████╔╝╚██████╔╝   ██║   
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚════╝ ╚═╝╚═════╝  ╚═════╝    ╚═╝</pre>
           <button
             type="button"
-            class="topbar-nav-toggle"
+            class="shell-nav__toggle"
+            aria-label=${navCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             @click=${() => {
-              state.navDrawerOpen = !navDrawerOpen;
+              state.settings.navCollapsed = !navCollapsed;
+              (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
             }}
-            title="${navDrawerOpen ? t("nav.collapse") : t("nav.expand")}"
-            aria-label="${navDrawerOpen ? t("nav.collapse") : t("nav.expand")}"
-            aria-expanded=${navDrawerOpen}
           >
-            <span class="nav-collapse-toggle__icon" aria-hidden="true">${icons.menu}</span>
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
-          <div class="topnav-shell__content">
-            <dashboard-header .tab=${state.tab}></dashboard-header>
-          </div>
-          <div class="topnav-shell__actions">
-            <div class="topbar-status">
-              ${isChat ? renderChatMobileToggle(state) : nothing}
-              ${renderTopbarThemeModeToggle(state)}
-            </div>
-          </div>
         </div>
-      </header>
-      <div class="shell-nav">
-        <aside class="sidebar ${navCollapsed ? "sidebar--collapsed" : ""}">
-          <div class="sidebar-shell">
-            <div class="sidebar-shell__header">
-              <div class="sidebar-brand">
-                ${navCollapsed
-                  ? nothing
-                  : html`
-                      <img
-                        class="sidebar-brand__logo"
-                        src="${agentLogoUrl(basePath)}"
-                        alt="KaijiBot"
-                      />
-                      <span class="sidebar-brand__copy">
-                        <span class="sidebar-brand__eyebrow">${t("nav.control")}</span>
-                        <span class="sidebar-brand__title">KaijiBot</span>
-                      </span>
-                    `}
-              </div>
-              <button
-                type="button"
-                class="nav-collapse-toggle"
-                @click=${() =>
-                  state.applySettings({
-                    ...state.settings,
-                    navCollapsed: !state.settings.navCollapsed,
-                  })}
-                title="${navCollapsed ? t("nav.expand") : t("nav.collapse")}"
-                aria-label="${navCollapsed ? t("nav.expand") : t("nav.collapse")}"
-              >
-                <span class="nav-collapse-toggle__icon" aria-hidden="true"
-                  >${navCollapsed ? icons.panelLeftOpen : icons.panelLeftClose}</span
-                >
-              </button>
-            </div>
-            <div class="sidebar-shell__body">
-              <nav class="sidebar-nav">
-                ${TABS.map((tab) => renderTab(state, tab, { collapsed: navCollapsed }))}
-              </nav>
-            </div>
-            <div class="sidebar-shell__footer">
-              <div class="sidebar-utility-group">
-                <div class="sidebar-mode-switch">${renderTopbarThemeModeToggle(state)}</div>
-                ${(() => {
-                  const version = state.hello?.server?.version ?? "";
-                  return version
-                    ? html`
-                        <div class="sidebar-version" title=${`v${version}`}>
-                          ${!navCollapsed
-                            ? html`
-                                <span class="sidebar-version__label">${t("common.version")}</span>
-                                <span class="sidebar-version__text">v${version}</span>
-                                ${renderSidebarConnectionStatus(state)}
-                              `
-                            : html` ${renderSidebarConnectionStatus(state)} `}
-                        </div>
-                      `
-                    : nothing;
-                })()}
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
+        ${state.tab === "chat" ? nothing : nothing}
+        <div class="shell-nav__items">
+          ${TABS.map((tab) => renderTab(state, tab))}
+        </div>
+        ${renderSidebarStatusSection(state)}
+        <div class="shell-nav__version">
+          ${state.hello?.server?.version ? `v${state.hello.server.version}` : ""}
+          ${state.connected
+            ? html`<span class="shell-nav__status-dot shell-nav__status-dot--ok" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span>`
+            : html`<span class="shell-nav__status-dot shell-nav__status-dot--idle" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span>`}
+          ${state.updateAvailable && state.updateAvailable.latestVersion !== state.updateAvailable.currentVersion
+            ? html`<span class="shell-nav__update-badge">Update</span>`
+            : ""}
+        </div>
+      </nav>
       <main class="content ${isChat ? "content--chat" : ""}">
         ${state.updateAvailable &&
         state.updateAvailable.latestVersion !== state.updateAvailable.currentVersion &&
@@ -452,22 +493,19 @@ export function renderApp(state: AppViewState) {
               </button>
             </div>`
           : nothing}
-        ${state.tab === "settings"
-          ? nothing
-          : html`<section class="content-header">
-              <div>
-                ${isChat
-                  ? renderChatSessionSelect(state)
-                  : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
-                ${isChat ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
-              </div>
-              <div class="page-meta">
-                ${state.lastError
-                  ? html`<div class="pill danger">${state.lastError}</div>`
-                  : nothing}
-                ${isChat ? renderChatControls(state) : nothing}
-              </div>
-            </section>`}
+        <section class="content-header ${isChat ? "content-header--chat" : ""}">
+            <div>
+              ${isChat
+                ? html`<div class="page-title">${state.assistantName || "Chat"}</div>`
+                : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
+              ${isChat ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
+            </div>
+            <div class="page-meta">
+              ${state.lastError
+                ? html`<div class="pill danger">${state.lastError}</div>`
+                : nothing}
+            </div>
+          </section>
         ${state.tab === "cron"
           ? lazyRender(lazyCron, (m) =>
               m.renderCron({
@@ -1017,6 +1055,7 @@ export function renderApp(state: AppViewState) {
               assistantName: state.assistantName,
               assistantAvatar: state.assistantAvatar,
               basePath: state.basePath ?? "",
+              appState: state,
             })
           : nothing}
         ${state.tab === "settings"
@@ -1071,14 +1110,14 @@ export function renderApp(state: AppViewState) {
             })
           : nothing}
       </main>
-      <nav class="bottom-tab-bar">
-        ${TABS.map((tab) => {
-          const isActive = state.tab === tab;
-          const href = pathForTab(tab, state.basePath);
-          return html`
+      <nav class="deck-bar" aria-label="Main navigation">
+        ${TABS.map(
+          (tab) => html`
             <a
-              href=${href}
-              class="bottom-tab-bar__item ${isActive ? "bottom-tab-bar__item--active" : ""}"
+              href=${pathForTab(tab, state.basePath)}
+              class="deck-bar__item ${state.tab === tab
+                ? "deck-bar__item--active"
+                : ""}"
               @click=${(event: MouseEvent) => {
                 if (
                   event.defaultPrevented ||
@@ -1091,15 +1130,40 @@ export function renderApp(state: AppViewState) {
                   return;
                 }
                 event.preventDefault();
+                if (tab === "chat") {
+                  const mainSessionKey = resolveSidebarChatSessionKey(state);
+                  if (state.sessionKey !== mainSessionKey) {
+                    resetChatStateForSessionSwitch(state, mainSessionKey);
+                    void state.loadAssistantIdentity();
+                  }
+                }
                 state.setTab(tab);
               }}
+              title=${titleForTab(tab)}
             >
-              <span class="bottom-tab-bar__icon" aria-hidden="true">${icons[iconForTab(tab)]}</span>
-              <span class="bottom-tab-bar__label">${titleForTab(tab)}</span>
+              <span class="deck-bar__icon" aria-hidden="true"
+                >${icons[iconForTab(tab)]}</span
+              >
+              <span class="deck-bar__label">${titleForTab(tab)}</span>
             </a>
-          `;
-        })}
+          `,
+        )}
       </nav>
+
+      <div class="cognitive-orb">
+        <button
+          type="button"
+          class="cognitive-orb__button ${state.connected
+            ? "cognitive-orb__button--connected"
+            : "cognitive-orb__button--disconnected"}"
+          aria-label="Cognitive system status"
+        >
+          <span class="cognitive-orb__icon" aria-hidden="true">${icons.orb}</span>
+          <span class="cognitive-orb__tooltip"
+            >${state.connected ? "Cognitive: Active" : "Cognitive: Offline"}</span
+          >
+        </button>
+      </div>
       ${nothing}
     </div>
   `;

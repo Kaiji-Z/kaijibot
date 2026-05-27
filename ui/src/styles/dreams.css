@@ -23,7 +23,7 @@
 .dreams__tab {
   padding: 4px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--muted);
   font-family: inherit;
@@ -33,8 +33,8 @@
   text-transform: uppercase;
   cursor: pointer;
   transition:
-    color 140ms ease,
-    background 140ms ease;
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .dreams__tab:hover {
@@ -43,7 +43,7 @@
 
 .dreams__tab--active {
   color: var(--text);
-  background: color-mix(in oklab, var(--panel) 80%, transparent);
+  background: var(--bg-elevated);
 }
 
 .dreams {
@@ -152,7 +152,7 @@
 
 .dreams__star {
   position: absolute;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: dreams-twinkle 3s ease-in-out infinite alternate;
 }
 
@@ -175,8 +175,8 @@
   left: calc(50% - 200px);
   padding: 16px 20px;
   background: var(--accent-subtle);
-  border: 1px solid rgba(255, 92, 92, 0.12);
-  border-radius: 20px;
+  border: 1px solid var(--accent-subtle);
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -217,9 +217,9 @@
 /* Bubble trail dots */
 .dreams__bubble-dot {
   position: absolute;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--accent-subtle);
-  border: 1px solid rgba(255, 92, 92, 0.1);
+  border: 1px solid var(--accent-subtle);
   animation: dreams-bubble-float 6s ease-in-out infinite;
 }
 
@@ -231,7 +231,7 @@
   right: 80px;
   width: 64px;
   height: 64px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: radial-gradient(circle at 35% 35%, #fef3c7, #fbbf24);
   box-shadow:
     0 0 40px rgba(251, 191, 36, 0.2),
@@ -264,7 +264,7 @@
   transform: translateX(-50%);
   width: 240px;
   height: 100px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: radial-gradient(ellipse, rgba(255, 77, 77, 0.08) 0%, transparent 70%);
   pointer-events: none;
   animation: dreams-glow-pulse 4s ease-in-out infinite;
@@ -327,9 +327,9 @@
 }
 
 .dreams__trace-section {
-  background: color-mix(in oklab, var(--panel) 82%, transparent);
-  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
-  border-radius: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
   padding: 12px;
   min-height: 180px;
   backdrop-filter: blur(14px);
@@ -354,11 +354,11 @@
 .dreams__trace-count {
   min-width: 24px;
   height: 24px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in oklab, var(--accent-subtle) 85%, transparent);
+  background: var(--accent-subtle);
   color: var(--accent);
   font-size: 14px;
   font-weight: 700;
@@ -373,9 +373,9 @@
 
 .dreams__trace-item {
   padding: 10px;
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--panel-raised) 88%, transparent);
-  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 .dreams__trace-snippet {
@@ -413,7 +413,7 @@
   padding: 6px 14px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--panel) 70%, transparent);
+  background: var(--bg-elevated);
   color: var(--muted);
   font-size: 13px;
   font-family: inherit;
@@ -421,24 +421,24 @@
   text-transform: uppercase;
   cursor: pointer;
   transition:
-    border-color 200ms ease,
-    color 200ms ease;
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .dreams__phase-toggle:hover {
-  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  border-color: var(--accent-muted);
 }
 
 .dreams__phase-toggle-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--muted);
   opacity: 0.4;
   transition:
-    background 200ms ease,
-    opacity 200ms ease,
-    box-shadow 200ms ease;
+    background var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .dreams__phase-toggle--on .dreams__phase-toggle-dot {
@@ -449,7 +449,7 @@
 
 .dreams__phase-toggle--on {
   color: var(--text);
-  border-color: color-mix(in oklab, var(--ok) 20%, var(--border));
+  border-color: var(--ok-subtle);
 }
 
 .dreams__phase-toggle-label {
@@ -497,7 +497,7 @@
 .dreams__status-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--ok);
   animation: dreams-dot-pulse 2s ease-in-out infinite;
 }
@@ -546,8 +546,7 @@
   background: linear-gradient(
     180deg,
     var(--bg) 0%,
-    color-mix(in oklab, var(--bg) 94%, #0d0818) 40%,
-    color-mix(in oklab, var(--bg) 88%, #0d0818) 100%
+    var(--bg-elevated) 100%
   );
 }
 
@@ -623,22 +622,22 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
   transition:
-    color 140ms ease,
-    border-color 140ms ease;
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
   padding: 0;
 }
 
 .dreams-diary__nav-btn:hover:not(:disabled) {
   color: var(--text);
-  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  border-color: var(--accent-muted);
 }
 
 .dreams-diary__nav-btn:disabled {
@@ -688,8 +687,8 @@
   border-radius: 2px;
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--accent) 40%, transparent) 0%,
-    color-mix(in oklab, var(--accent) 8%, transparent) 100%
+    var(--accent-muted) 0%,
+    var(--accent-subtle) 100%
   );
   animation: diary-glow-pulse 6s ease-in-out infinite alternate;
 }
@@ -780,9 +779,9 @@
   width: 100%;
   min-width: 0;
   padding: 6px 0;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
-  background: color-mix(in oklab, var(--panel) 84%, transparent);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
   color: var(--muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -791,8 +790,8 @@
 }
 
 .dreams-diary__day-chip--active {
-  border-color: color-mix(in oklab, var(--accent) 44%, transparent);
-  background: color-mix(in oklab, var(--accent-subtle) 88%, transparent);
+  border-color: var(--accent-muted);
+  background: var(--accent-subtle);
   color: var(--text);
 }
 
@@ -814,26 +813,26 @@
 .dreams-diary__heatmap-pill {
   width: 14px;
   aspect-ratio: 1;
-  border: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
-  border-radius: 4px;
-  background: color-mix(in oklab, var(--panel) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
 }
 
 .dreams-diary__heatmap-cell[data-intensity="2"] .dreams-diary__heatmap-pill {
-  background: color-mix(in oklab, var(--accent-subtle) 70%, var(--panel));
+  background: var(--accent-subtle);
 }
 
 .dreams-diary__heatmap-cell[data-intensity="3"] .dreams-diary__heatmap-pill {
-  background: color-mix(in oklab, var(--accent) 18%, var(--panel));
+  background: var(--accent-muted);
 }
 
 .dreams-diary__heatmap-cell[data-intensity="4"] .dreams-diary__heatmap-pill {
-  background: color-mix(in oklab, var(--accent) 32%, var(--panel));
+  background: var(--accent);
 }
 
 .dreams-diary__heatmap-cell--active .dreams-diary__heatmap-pill {
-  border-color: color-mix(in oklab, var(--accent-2) 60%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-2) 32%, transparent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .dreams-diary__grid {
@@ -848,12 +847,12 @@
   gap: 10px;
   min-height: 100%;
   padding: 18px 18px 16px;
-  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
-  border-radius: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--bg-elevated, var(--bg)) 88%, #0d0818) 0%,
-    color-mix(in oklab, var(--bg) 92%, #0d0818) 100%
+    var(--bg-elevated) 0%,
+    var(--bg) 100%
   );
   box-shadow:
     0 12px 30px rgba(0, 0, 0, 0.14),
@@ -875,7 +874,7 @@
   line-height: 1.3;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: color-mix(in oklab, var(--muted) 82%, var(--accent));
+  color: var(--accent-muted);
 }
 
 .dreams-diary__panel-list {
@@ -894,7 +893,7 @@
   gap: 10px;
   align-items: start;
   padding: 10px 0;
-  border-top: 1px solid color-mix(in oklab, var(--border) 58%, transparent);
+  border-top: 1px solid var(--border);
   animation: diary-text-stream 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -907,24 +906,24 @@
   width: 6px;
   height: 6px;
   margin-top: 8px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--accent) 70%, var(--text));
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-subtle) 75%, transparent);
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .dreams-diary__item {
   margin: 0;
   font-size: 15px;
   line-height: 1.6;
-  color: color-mix(in oklab, var(--text) 88%, var(--muted));
+  color: var(--text);
 }
 
 .dreams-diary__item--reflection {
-  color: color-mix(in oklab, var(--text) 78%, var(--accent));
+  color: var(--accent);
 }
 
 .dreams-diary__item--update {
-  color: color-mix(in oklab, var(--text) 86%, var(--accent-2));
+  color: var(--accent);
 }
 
 .dreams-diary__prose {
@@ -935,7 +934,7 @@
   margin: 0 0 12px;
   font-size: 16px;
   line-height: 1.8;
-  color: color-mix(in oklab, var(--text) 85%, var(--muted));
+  color: var(--text);
   font-style: italic;
   animation: diary-text-stream 2.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

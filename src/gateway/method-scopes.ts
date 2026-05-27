@@ -66,6 +66,7 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "node.rename",
   ],
   [READ_SCOPE]: [
+    "cognitive.status",
     "health",
     "doctor.memory.status",
     "doctor.memory.dreamDiary",

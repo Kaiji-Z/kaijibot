@@ -2,6 +2,7 @@ import { listChannelPlugins } from "../channels/plugins/index.js";
 import { GATEWAY_EVENT_UPDATE_AVAILABLE } from "./events.js";
 
 const BASE_METHODS = [
+  "cognitive.status",
   "health",
   "doctor.memory.status",
   "doctor.memory.dreamDiary",

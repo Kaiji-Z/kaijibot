@@ -5,10 +5,10 @@
 @keyframes pulse-green {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 0 0 var(--accent-muted);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 5px transparent;
   }
 }
 
@@ -63,7 +63,7 @@
   grid-template-columns: 280px 1fr;
   gap: 0;
   min-height: 0;
-  animation: dashboard-enter 0.3s var(--ease-out);
+  animation: dashboard-enter var(--duration-normal) var(--ease-out);
 }
 
 /* ===========================================
@@ -115,9 +115,9 @@
   color: var(--text);
   flex-shrink: 0;
   transition:
-    background 200ms var(--ease-out),
-    border-color 200ms var(--ease-out),
-    box-shadow 200ms var(--ease-out);
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .agent-card:hover {
@@ -130,11 +130,11 @@
   background: var(--card);
   border-color: var(--border);
   border-left-color: var(--accent);
-  box-shadow: inset 0 0 12px rgba(34, 197, 94, 0.04);
+  box-shadow: inset 0 0 12px var(--accent-subtle);
 }
 
 .agent-card--selected:hover {
-  background: color-mix(in srgb, var(--bg-hover) 50%, var(--accent-subtle) 50%);
+  background: var(--accent-subtle);
   border-left-color: var(--accent);
   border-color: var(--border);
   border-left-color: var(--accent);
@@ -166,13 +166,13 @@
   background: var(--muted);
   flex-shrink: 0;
   transition:
-    background 200ms var(--ease-out),
-    box-shadow 200ms var(--ease-out);
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .agent-card__indicator--active {
   background: var(--accent);
-  animation: pulse-green 2s ease-in-out infinite;
+  animation: pulse-green 2s var(--ease-in-out) infinite;
 }
 
 .agent-card__avatar {
@@ -248,7 +248,7 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent-subtle) 60%, transparent);
+  background: var(--accent-subtle);
   color: var(--accent);
   font-size: 12px;
   font-weight: 600;
@@ -273,7 +273,7 @@
   letter-spacing: 0.06em;
   line-height: 1.6;
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  background: var(--bg-hover);
   color: var(--muted);
 }
 
@@ -285,16 +285,16 @@
 .agent-card__status-tag--running {
   background: var(--accent-subtle);
   color: var(--accent);
-  animation: pulse-green 2s ease-in-out infinite;
+  animation: pulse-green 2s var(--ease-in-out) infinite;
 }
 
 .agent-card__status-tag--thinking {
-  background: color-mix(in srgb, var(--info) 15%, transparent);
+  background: var(--info-subtle);
   color: var(--info);
 }
 
 .agent-card__status-tag--tool-call {
-  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  background: var(--warn-subtle);
   color: var(--warn);
 }
 
@@ -312,14 +312,14 @@
   height: 3px;
   border-radius: var(--radius-full);
   background: var(--accent);
-  animation: typing-bounce 1.4s ease-in-out infinite;
+  animation: typing-bounce 1.4s var(--ease-in-out) infinite;
   box-shadow:
     6px 0 0 var(--accent),
     12px 0 0 var(--accent);
 }
 
 .agent-card__status-tag--interrupted {
-  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  background: var(--danger-subtle);
   color: var(--danger);
 }
 
@@ -329,7 +329,7 @@
   gap: 3px;
   padding: 1px 7px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  background: var(--warn-subtle);
   color: var(--warn);
   font-family: var(--mono);
   font-size: 10px;
@@ -368,7 +368,7 @@
   width: 100%;
   height: 6px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--border) 50%, transparent);
+  background: var(--border);
   overflow: hidden;
 }
 
@@ -376,7 +376,7 @@
   height: 100%;
   border-radius: var(--radius-full);
   background: var(--accent);
-  transition: width 0.3s var(--ease-out);
+  transition: width var(--duration-normal) var(--ease-out);
 }
 
 /* ===========================================
@@ -389,7 +389,7 @@
   padding: 20px 24px;
   min-height: 0;
   overflow-y: auto;
-  animation: rise 0.25s var(--ease-out);
+  animation: rise 250ms var(--ease-out);
   background: var(--bg);
 }
 
@@ -495,9 +495,9 @@
   cursor: pointer;
   font: inherit;
   transition:
-    color 200ms var(--ease-out),
-    border-bottom-color 200ms var(--ease-out),
-    background 200ms var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    border-bottom-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
   white-space: nowrap;
 }
 
@@ -516,7 +516,7 @@
 
 .agent-detail-section__content {
   padding: 16px;
-  animation: fade-in 0.2s var(--ease-out);
+  animation: fade-in var(--duration-fast) var(--ease-out);
 }
 
 /* Hide all non-first section toggle rows in tab mode — only show tabs from first section */
@@ -570,7 +570,7 @@
   font-family: var(--mono);
   text-decoration: none;
   border-radius: var(--radius-sm);
-  transition: color 200ms var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .workspace-link:hover {
@@ -616,8 +616,8 @@
   border-radius: var(--radius-md);
   min-height: 40px;
   transition:
-    border-color 200ms ease,
-    box-shadow 200ms ease;
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
   cursor: text;
 }
 
@@ -655,8 +655,8 @@
   padding: 0;
   border-radius: var(--radius-full);
   transition:
-    background 200ms var(--ease-out),
-    color 200ms var(--ease-out);
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .agent-chip-input .chip-remove:hover {
@@ -725,7 +725,7 @@
   gap: 12px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  transition: background 200ms var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .agent-tool-row:last-child {
@@ -733,7 +733,7 @@
 }
 
 .agent-tool-row:hover {
-  background: color-mix(in srgb, var(--bg-hover) 50%, transparent);
+  background: var(--bg-hover);
 }
 
 .agent-tool-title {
@@ -807,9 +807,9 @@
   border: 1px solid var(--border);
   position: relative;
   transition:
-    background 200ms var(--ease-out),
-    border-color 200ms var(--ease-out),
-    box-shadow 200ms var(--ease-out);
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .cfg-toggle__track::after {
@@ -822,8 +822,8 @@
   border-radius: var(--radius-full);
   background: var(--muted);
   transition:
-    transform 200ms var(--ease-out),
-    background 200ms var(--ease-out);
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .cfg-toggle input:checked + .cfg-toggle__track {
@@ -872,7 +872,7 @@
   color: var(--text-strong);
   user-select: none;
   list-style: none;
-  transition: background 200ms var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .agent-skills-header::-webkit-details-marker {
@@ -915,9 +915,9 @@
   white-space: nowrap;
   font: inherit;
   transition:
-    color 200ms var(--ease-out),
-    border-bottom-color 200ms var(--ease-out),
-    background 200ms var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    border-bottom-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .agent-tab:hover {
@@ -992,8 +992,8 @@
   outline: none;
   tab-size: 2;
   transition:
-    border-color 200ms ease,
-    box-shadow 200ms ease;
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .agent-file-textarea:focus {
@@ -1027,7 +1027,7 @@
 }
 
 .md-preview-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--chrome-strong);
   backdrop-filter: blur(4px);
 }
 
@@ -1036,8 +1036,8 @@
   flex-direction: column;
   max-height: 85vh;
   transition:
-    max-width 0.3s var(--ease-out),
-    max-height 0.3s var(--ease-out);
+    max-width var(--duration-normal) var(--ease-out),
+    max-height var(--duration-normal) var(--ease-out);
 }
 
 .md-preview-dialog__panel.fullscreen {

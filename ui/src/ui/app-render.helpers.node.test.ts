@@ -316,7 +316,7 @@ describe("switchChatSession", () => {
       locale: "en",
       sessionKey: "main",
       lastActiveSessionKey: "main",
-      theme: "claw",
+      theme: "ink-jade",
       themeMode: "dark",
       splitRatio: 0.6,
       navWidth: 280,

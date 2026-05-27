@@ -14,7 +14,7 @@
 .usage-page .context-details-panel,
 .usage-page .session-logs-compact,
 .usage-page .session-timeseries-compact {
-  animation: rise 0.25s var(--ease-out) backwards;
+  animation: rise var(--duration-fast) var(--ease-out) backwards;
 }
 
 .usage-page .btn.btn--sm {
@@ -104,7 +104,7 @@
   gap: 6px;
   padding: 5px 10px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-muted));
+  background: var(--accent-subtle);
   color: var(--accent);
   font-size: 11px;
   font-weight: 600;
@@ -209,7 +209,7 @@
 .chart-toggle .toggle-btn.active {
   background: var(--accent-subtle);
   border: none;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 1px 2px var(--accent-subtle);
 }
 
 .usage-date-range {
@@ -233,9 +233,9 @@
   font: inherit;
   font-size: 12px;
   transition:
-    border-color 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out),
-    background 0.18s var(--ease-out);
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .usage-date-input,
@@ -254,8 +254,8 @@
 .usage-filters-inline select:focus,
 .usage-filters-inline input[type="text"]:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .usage-separator,
@@ -295,7 +295,7 @@
   font-weight: 500;
   color: var(--muted);
   letter-spacing: 0.01em;
-  transition: border-color 0.18s var(--ease-out);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .usage-metric-badge:hover {
@@ -315,17 +315,17 @@
   background: var(--accent);
   color: var(--primary-foreground);
   font-weight: 600;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: 0 1px 3px var(--accent-subtle);
 }
 
 .usage-action-btn.usage-primary-btn:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: 0 2px 8px var(--accent-subtle);
 }
 
 .chart-toggle .toggle-btn.active {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-color: var(--accent-muted);
   background: var(--accent-subtle);
   color: var(--accent);
   font-weight: 600;
@@ -341,7 +341,7 @@
   display: grid;
   gap: 10px;
   padding-top: 2px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-top: 1px solid var(--border);
 }
 
 .usage-query-bar {
@@ -402,9 +402,9 @@ details.usage-filter-select summary::-webkit-details-marker,
   font-size: 12px;
   font-weight: 500;
   transition:
-    border-color 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out),
-    background 0.18s var(--ease-out);
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .usage-filter-select summary:hover {
@@ -413,8 +413,8 @@ details.usage-filter-select summary::-webkit-details-marker,
 }
 
 .usage-filter-select[open] summary {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .usage-filter-badge {
@@ -470,7 +470,7 @@ details.usage-filter-select summary::-webkit-details-marker,
   border-radius: var(--radius-md);
   background: transparent;
   font-size: 12px;
-  transition: background 0.12s ease;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .usage-filter-option:hover {
@@ -490,9 +490,9 @@ details.usage-filter-select summary::-webkit-details-marker,
   font-size: 12px;
   cursor: pointer;
   transition:
-    border-color 0.18s var(--ease-out),
-    background 0.18s var(--ease-out),
-    color 0.18s var(--ease-out);
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .usage-export-item:hover:not(:disabled) {
@@ -539,9 +539,9 @@ details.usage-filter-select summary::-webkit-details-marker,
 .usage-query-suggestion {
   cursor: pointer;
   transition:
-    border-color 0.18s var(--ease-out),
-    background 0.18s var(--ease-out),
-    color 0.18s var(--ease-out);
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .usage-query-suggestion:hover {
@@ -559,7 +559,7 @@ details.usage-filter-select summary::-webkit-details-marker,
 }
 
 .callout.warning {
-  border-color: color-mix(in srgb, var(--warn) 22%, var(--border));
+  border-color: var(--warn-subtle);
   background: var(--warn-subtle);
   color: var(--text);
 }
@@ -586,7 +586,7 @@ details.usage-filter-select summary::-webkit-details-marker,
 
 .usage-empty-block {
   padding: 18px 14px;
-  border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  border: 1px dashed var(--border);
   border-radius: var(--radius-md);
   text-align: center;
   color: var(--muted);
@@ -639,13 +639,9 @@ details.usage-filter-select summary::-webkit-details-marker,
   align-content: start;
   grid-auto-rows: min-content;
   min-height: 132px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--card) 92%, var(--bg-elevated)) 0%,
-    color-mix(in srgb, var(--card) 84%, var(--bg-muted)) 100%
-  );
+  background: var(--card);
   box-shadow: var(--shadow-sm);
 }
 
@@ -666,14 +662,10 @@ details.usage-filter-select summary::-webkit-details-marker,
   background:
     radial-gradient(
       circle at top right,
-      color-mix(in srgb, var(--accent) 14%, transparent) 0%,
+      var(--accent-subtle) 0%,
       transparent 42%
     ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--card) 92%, var(--bg-elevated)) 0%,
-      color-mix(in srgb, var(--card) 84%, var(--bg-muted)) 100%
-    );
+    var(--card);
 }
 
 .usage-summary-title,
@@ -737,12 +729,12 @@ details.usage-filter-select summary::-webkit-details-marker,
   height: 16px;
   margin-left: 4px;
   border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border: 1px solid var(--border);
   color: var(--muted);
   font-size: 9px;
   cursor: help;
   opacity: 0.7;
-  transition: opacity 0.15s var(--ease-out);
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
 
 .usage-summary-hint:hover {
@@ -767,8 +759,8 @@ details.usage-filter-select summary::-webkit-details-marker,
   border-radius: var(--radius-lg);
   background: var(--card);
   transition:
-    border-color 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out);
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .usage-insight-card:hover {
@@ -795,7 +787,7 @@ details.usage-filter-select summary::-webkit-details-marker,
   gap: 12px;
   align-items: baseline;
   padding: 8px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
 
@@ -892,8 +884,8 @@ details.usage-filter-select summary::-webkit-details-marker,
 .usage-daypart-cell,
 .usage-hour-cell {
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid var(--accent-subtle);
+  background: var(--accent-subtle);
 }
 
 .usage-daypart-cell {
@@ -926,19 +918,19 @@ details.usage-filter-select summary::-webkit-details-marker,
   min-height: 46px;
   cursor: pointer;
   transition:
-    transform 0.18s var(--ease-out),
-    border-color 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out);
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .usage-hour-cell:hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .usage-hour-cell.selected {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .usage-hour-labels {
@@ -1012,23 +1004,22 @@ details.usage-filter-select summary::-webkit-details-marker,
 }
 
 .daily-bar-wrapper.selected .daily-bar {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+  border-color: var(--accent-muted);
 }
 
 .daily-bar {
   width: min(100%, var(--bar-max-width));
   min-height: 6px;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border: 1px solid var(--accent-subtle);
   border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--accent) 82%, white 6%),
-    color-mix(in srgb, var(--accent) 52%, var(--bg-muted))
-  );
+    var(--accent),
+    var(--accent-muted));
   transition:
-    transform 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out);
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .daily-bar-wrapper:hover .daily-bar {
@@ -1069,8 +1060,8 @@ details.usage-filter-select summary::-webkit-details-marker,
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 0.18s var(--ease-out),
-    transform 0.18s var(--ease-out);
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
   z-index: 2;
   font-size: 11px;
 }
@@ -1086,7 +1077,7 @@ details.usage-filter-select summary::-webkit-details-marker,
   min-height: 16px;
   overflow: hidden;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--bg-muted) 82%, transparent);
+  background: var(--bg-muted);
   border: 1px solid var(--border);
 }
 
@@ -1113,9 +1104,9 @@ details.usage-filter-select summary::-webkit-details-marker,
 .context-segment,
 .ts-bar {
   transition:
-    opacity 0.18s var(--ease-out),
-    fill 0.18s var(--ease-out),
-    background 0.18s var(--ease-out);
+    opacity var(--duration-fast) var(--ease-out),
+    fill var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .legend-dot {
@@ -1222,23 +1213,23 @@ details.usage-filter-select summary::-webkit-details-marker,
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--card) 86%, var(--bg-muted));
+  background: var(--card);
   cursor: pointer;
   transition:
-    transform 0.18s var(--ease-out),
-    border-color 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out);
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .session-bar-row:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
-  box-shadow: 0 8px 18px color-mix(in srgb, black 12%, transparent);
+  border-color: var(--accent-subtle);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
 .session-bar-row.selected {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .session-bar-label,
@@ -1337,7 +1328,7 @@ details.usage-filter-select summary::-webkit-details-marker,
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--card) 88%, var(--bg-muted));
+  background: var(--card);
 }
 
 .timeseries-controls {
@@ -1372,7 +1363,7 @@ details.usage-filter-select summary::-webkit-details-marker,
 }
 
 .cursor-handle {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, black 30%, transparent));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .chart-handle-zone {
@@ -1409,7 +1400,7 @@ details.usage-filter-select summary::-webkit-details-marker,
   overflow: hidden;
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-muted) 82%, transparent);
+  background: var(--bg-muted);
 }
 
 .context-legend {
@@ -1483,11 +1474,11 @@ details.usage-filter-select summary::-webkit-details-marker,
 }
 
 .session-log-entry.user {
-  border-color: color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-color: var(--accent-subtle);
 }
 
 .session-log-entry.assistant {
-  border-color: color-mix(in srgb, var(--info) 18%, var(--border));
+  border-color: var(--info-subtle);
 }
 
 .session-log-meta {
@@ -1533,14 +1524,14 @@ details.usage-filter-select summary::-webkit-details-marker,
   align-items: center;
   padding: 6px 8px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 8%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border));
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-subtle);
   font-size: 11px;
 }
 
 :root[data-theme-mode="light"] .usage-daypart-cell,
 :root[data-theme-mode="light"] .usage-hour-cell {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent-subtle);
 }
 
 :root[data-theme-mode="light"] .daily-bar-tooltip,
@@ -1606,9 +1597,9 @@ details.usage-filter-select summary::-webkit-details-marker,
     min-width: 0;
     align-items: flex-start;
     padding: 12px 14px;
-    border: 1px solid color-mix(in srgb, var(--danger) 16%, var(--border));
+    border: 1px solid var(--danger-subtle);
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--danger) 5%, var(--bg-muted));
+    background: var(--danger-subtle);
     flex-direction: column;
     gap: 4px;
   }

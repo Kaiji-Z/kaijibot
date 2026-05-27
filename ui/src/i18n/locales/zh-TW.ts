@@ -730,4 +730,14 @@ export const zh_TW: TranslationMap = {
       nameRequiredShort: "名稱為必填。",
     },
   },
+  settings: {
+    theme: {
+      inkJade: "墨玉",
+      inkJadeDesc: "深色預設",
+      ricePaper: "宣紙",
+      ricePaperDesc: "暖白淺色",
+      glaze: "琉璃",
+      glazeDesc: "半透明玻璃",
+    },
+  },
 };

@@ -203,7 +203,7 @@
   cursor: pointer;
   color: var(--danger);
   opacity: 0.7;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
 
 .update-banner__close:hover {
@@ -344,7 +344,7 @@
   border-radius: var(--radius-md);
   padding: 12px;
   background: var(--bg-elevated);
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .account-card:hover {
@@ -403,7 +403,7 @@
   background: var(--secondary);
   font-size: 14px;
   font-weight: 500;
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .pill:hover {
@@ -594,8 +594,8 @@
   width: 16px;
   height: 16px;
   border-radius: var(--radius-full);
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: var(--bg);
+  box-shadow: var(--shadow-sm);
   transition: transform var(--duration-fast) var(--ease-out);
 }
 
@@ -799,8 +799,8 @@
   outline: none;
   box-shadow: inset 0 1px 0 var(--card-highlight);
   transition:
-    border-color var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .field input:focus,
@@ -1314,14 +1314,14 @@
 }
 
 :root[data-theme-mode="light"] .btn--icon {
-  background: #ffffff;
+  background: var(--bg);
   border-color: var(--border);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  box-shadow: var(--shadow-sm);
   color: var(--muted);
 }
 
 :root[data-theme-mode="light"] .btn--icon:hover {
-  background: #ffffff;
+  background: var(--bg);
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -1430,7 +1430,7 @@
 }
 
 .compaction-indicator--fallback {
-  color: #d97706;
+  color: var(--warn);
   border-color: rgba(217, 119, 6, 0.35);
 }
 
@@ -1525,8 +1525,8 @@
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   transition:
-    color 150ms ease,
-    background 150ms ease;
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .code-block-copy:hover {
@@ -1586,7 +1586,7 @@
   border-radius: var(--radius-md);
   padding: 12px;
   background: var(--card);
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .list-item-clickable {
@@ -1897,7 +1897,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-md);
   background: var(--card);
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .table-row:hover {
@@ -1977,7 +1977,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table-search input:focus {
@@ -2021,7 +2021,7 @@
 
 .data-table th[data-sortable] {
   cursor: pointer;
-  transition: color var(--duration-fast) ease;
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .data-table th[data-sortable]:hover {
@@ -2033,7 +2033,7 @@
   vertical-align: middle;
   margin-left: 4px;
   opacity: 0.4;
-  transition: opacity var(--duration-fast) ease;
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
 
 .data-table-sort-icon svg {
@@ -2066,7 +2066,7 @@
 }
 
 .data-table tbody tr {
-  transition: background var(--duration-fast) ease;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .data-table tbody tr:hover {
@@ -2212,8 +2212,8 @@ td.data-table-key-col {
   color: var(--text);
   cursor: pointer;
   transition:
-    background var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table-pagination__controls button:hover:not(:disabled) {
@@ -2250,7 +2250,7 @@ td.data-table-key-col {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .field-inline input:focus {
@@ -2288,7 +2288,7 @@ td.data-table-key-col {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
-  transition: background var(--duration-fast) ease;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .log-row:hover {
@@ -2382,32 +2382,6 @@ td.data-table-key-col {
 
 .shell--chat .chat {
   flex: 1;
-}
-
-.chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.chat-header__left {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.chat-header__right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chat-session {
-  min-width: 240px;
 }
 
 /* Chat queue */
@@ -2790,75 +2764,6 @@ td.data-table-key-col {
   text-align: right;
 }
 
-/* Chat compose */
-.chat-compose {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.shell--chat .chat-compose {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  margin-top: 0;
-  padding-top: 12px;
-  background: linear-gradient(180deg, transparent 0%, var(--bg) 40%);
-}
-
-.shell--chat-focus .chat-compose {
-  bottom: calc(var(--shell-pad) + 8px);
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
-}
-
-.chat-compose__field {
-  gap: 4px;
-}
-
-.chat-compose__field textarea {
-  min-height: 72px;
-  padding: 10px 14px;
-  border-radius: var(--radius-lg);
-  resize: vertical;
-  white-space: pre-wrap;
-  font-family: var(--font-body);
-  line-height: 1.5;
-  border: 1px solid var(--input);
-  background: var(--card);
-  box-shadow: inset 0 1px 0 var(--card-highlight);
-  transition:
-    border-color var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
-}
-
-.chat-compose__field textarea:focus {
-  border-color: var(--border-strong);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--border-strong) 24%, transparent);
-}
-
-.chat-compose__field textarea:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.chat-compose__actions {
-  justify-content: flex-end;
-  align-self: end;
-}
-
-@media (max-width: 900px) {
-  .chat-session {
-    min-width: 180px;
-  }
-
-  .chat-compose {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ===========================================
    QR Code
    =========================================== */
@@ -2886,8 +2791,8 @@ td.data-table-key-col {
 .exec-approval-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3027,12 +2932,12 @@ td.data-table-key-col {
   outline: none;
   appearance: none;
   transition:
-    border-color var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 :root[data-theme-mode="light"] .agents-select {
-  background-color: white;
+  background-color: var(--bg);
 }
 
 .agents-select:focus {
@@ -3090,7 +2995,7 @@ td.data-table-key-col {
   background: var(--card);
   padding: 8px 12px;
   cursor: pointer;
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .agent-row:hover {
@@ -3105,7 +3010,7 @@ td.data-table-key-col {
 .agent-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--secondary);
   display: grid;
   place-items: center;
@@ -3187,9 +3092,9 @@ td.data-table-key-col {
   background: transparent;
   cursor: pointer;
   transition:
-    border-color var(--duration-fast) ease,
-    background var(--duration-fast) ease,
-    color var(--duration-fast) ease;
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .agent-tab:hover {
@@ -3268,7 +3173,7 @@ td.data-table-key-col {
   cursor: pointer;
   word-break: break-all;
   text-align: left;
-  transition: opacity var(--duration-fast) ease;
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
 
 .workspace-link:hover {
@@ -3294,7 +3199,7 @@ td.data-table-key-col {
   background: var(--bg-accent);
   min-height: 38px;
   cursor: text;
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .agent-chip-input:focus-within {
@@ -3325,7 +3230,7 @@ td.data-table-key-col {
 
 .field textarea.agent-file-textarea {
   min-height: clamp(320px, 56vh, 720px);
-  transition: filter var(--duration-fast) ease;
+  transition: filter var(--duration-fast) var(--ease-out);
 }
 
 .field textarea.agent-file-textarea:not(:focus) {
@@ -3371,8 +3276,8 @@ td.data-table-key-col {
   cursor: pointer;
   text-align: left;
   transition:
-    border-color var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
   min-height: 44px;
 }
 
@@ -3400,10 +3305,10 @@ td.data-table-key-col {
 .agent-card__indicator {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--muted);
   flex-shrink: 0;
-  transition: background var(--duration-fast) ease;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .agent-card__indicator--active {
@@ -3414,7 +3319,7 @@ td.data-table-key-col {
 .agent-card__avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--secondary);
   display: grid;
   place-items: center;
@@ -3553,8 +3458,8 @@ td.data-table-key-col {
   text-align: left;
   min-height: 44px;
   transition:
-    background var(--duration-fast) ease,
-    color var(--duration-fast) ease;
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .agent-detail-section__toggle:hover {
@@ -3871,7 +3776,7 @@ td.data-table-key-col {
   content: "▸";
   font-size: 14px;
   color: var(--muted);
-  transition: transform var(--duration-fast) ease;
+  transition: transform var(--duration-fast) var(--ease-out);
   margin-left: 8px;
 }
 
@@ -3941,7 +3846,7 @@ td.data-table-key-col {
   justify-content: center;
   padding-top: min(20vh, 160px);
   background: rgba(0, 0, 0, 0.5);
-  animation: fade-in 0.12s ease-out;
+  animation: fade-in var(--duration-fast) var(--ease-out);
 }
 
 .cmd-palette {
@@ -3951,7 +3856,7 @@ td.data-table-key-col {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  animation: scale-in 0.15s ease-out;
+  animation: scale-in var(--duration-fast) var(--ease-out);
 }
 
 .cmd-palette__input {
@@ -3991,7 +3896,7 @@ td.data-table-key-col {
   padding: 8px 18px;
   font-size: 16px;
   cursor: pointer;
-  transition: background var(--duration-fast) ease;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .cmd-palette__item:hover,
@@ -4236,7 +4141,7 @@ td.data-table-key-col {
   background: var(--card);
   font-size: 15px;
   align-items: center;
-  transition: border-color var(--duration-fast) ease;
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .ov-recent__row:hover {
@@ -4535,7 +4440,7 @@ details[open] > .ov-expandable-toggle::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--duration-fast) ease;
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
 .collapse-chevron svg {
@@ -4584,10 +4489,9 @@ details[open] > .ov-expandable-toggle::after {
   flex-direction: column;
   overflow: hidden;
   animation: scale-in 0.2s var(--ease-out);
-  transition:
-    width 0.2s var(--ease-out),
-    max-height 0.2s var(--ease-out),
-    margin 0.2s var(--ease-out);
+  transition: width var(--duration-fast) var(--ease-out),
+    max-height var(--duration-fast) var(--ease-out),
+    margin var(--duration-fast) var(--ease-out);
 }
 
 .md-preview-dialog__header {
@@ -4691,7 +4595,9 @@ details[open] > .ov-expandable-toggle::after {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-bottom: 72px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 16px;
 }
 
 .cron-job-list {
@@ -4703,7 +4609,7 @@ details[open] > .ov-expandable-toggle::after {
 .cron-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius, 8px);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -4792,7 +4698,7 @@ details[open] > .ov-expandable-toggle::after {
 .cron-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   flex-shrink: 0;
 }
 
@@ -4833,8 +4739,8 @@ details[open] > .ov-expandable-toggle::after {
   cursor: pointer;
   inset: 0;
   background-color: var(--muted);
-  border-radius: 22px;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .toggle-switch__slider::before {
@@ -4844,9 +4750,9 @@ details[open] > .ov-expandable-toggle::after {
   width: 16px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
-  border-radius: 50%;
-  transition: transform 0.2s;
+  background-color: var(--bg);
+  border-radius: var(--radius-full);
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
 .toggle-switch input:checked + .toggle-switch__slider {
@@ -4865,26 +4771,26 @@ details[open] > .ov-expandable-toggle::after {
   right: 16px;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: none;
   background: var(--accent);
   color: white;
   font-size: 24px;
   font-weight: 300;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
   z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
   transition:
-    transform 0.15s,
-    box-shadow 0.15s;
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .cron-fab:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .cron-fab:disabled {
@@ -4944,6 +4850,6 @@ details[open] > .ov-expandable-toggle::after {
     left: auto;
     width: 480px;
     border-left: 1px solid var(--border);
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg);
   }
 }

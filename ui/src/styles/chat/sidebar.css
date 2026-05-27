@@ -12,8 +12,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Smooth transition when sidebar opens/closes */
-  transition: flex 250ms ease-out;
+  transition: flex var(--duration-normal) var(--ease-out);
 }
 
 .chat-sidebar {
@@ -23,7 +22,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slide-in 200ms ease-out;
+  animation: slide-in var(--duration-fast) var(--ease-out);
 }
 
 @keyframes slide-in {
@@ -163,8 +162,8 @@
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
-  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  transition: text-decoration-color var(--duration-fast) ease;
+  text-decoration-color: var(--accent-muted);
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
 }
 
 .sidebar-markdown :where(a:hover) {
@@ -181,18 +180,18 @@
 .sidebar-markdown :where(:not(pre) > code) {
   padding: 0.15em 0.4em;
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--bg-hover);
   border: 1px solid var(--border);
 }
 
 :root[data-theme-mode="light"] .sidebar-markdown :where(:not(pre) > code) {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--secondary);
 }
 
 /* ── Code blocks ── */
 
 .sidebar-markdown pre {
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--bg-hover);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 14px 16px;
@@ -201,7 +200,7 @@
 }
 
 :root[data-theme-mode="light"] .sidebar-markdown pre {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--secondary);
 }
 
 .sidebar-markdown :where(pre code) {
@@ -220,12 +219,12 @@
   margin-left: 0;
   margin-top: 0.75em;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--accent-subtle);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 :root[data-theme-mode="light"] .sidebar-markdown :where(blockquote) {
-  background: rgba(0, 0, 0, 0.025);
+  background: var(--secondary);
 }
 
 .sidebar-markdown :where(blockquote blockquote) {
@@ -288,7 +287,7 @@
   height: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--secondary) 70%, transparent);
+  background: var(--secondary);
   object-fit: contain;
   margin-top: 0.75em;
 }
@@ -309,7 +308,7 @@
   font-weight: 500;
   font-size: 15px;
   user-select: none;
-  transition: background var(--duration-fast) ease;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .sidebar-markdown :where(summary:hover) {

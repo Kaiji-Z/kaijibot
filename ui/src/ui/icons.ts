@@ -459,6 +459,23 @@ export const icons = {
       <line x1="3" x2="10" y1="21" y2="14" />
     </svg>
   `,
+
+  // Cognitive orb — pulsing concentric circles
+  orb: html`
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="8" opacity="0.4" />
+      <circle cx="12" cy="12" r="11" opacity="0.15" />
+    </svg>
+  `,
+  // Command palette — search/terminal hybrid
+  commandPalette: html`
+    <svg viewBox="0 0 24 24">
+      <path d="M15 6v12a3 3 0 1 0 3-3H6" />
+      <path d="M3 12h7" />
+      <path d="M6 9l3 3-3 3" />
+    </svg>
+  `,
 } as const;
 
 export type IconName = keyof typeof icons;
