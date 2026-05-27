@@ -4,8 +4,15 @@ import type { KaijiBotApp } from "./app.ts";
 import { loadAgentFiles } from "./controllers/agent-files.ts";
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgents } from "./controllers/agents.ts";
+import { loadPersonaList } from "./controllers/cognitive.ts";
 import { loadConfig, loadConfigSchema } from "./controllers/config.ts";
+import { loadCorrectionUsers } from "./controllers/corrections.ts";
 import { loadCronJobs, loadCronRuns, loadCronStatus } from "./controllers/cron.ts";
+import { loadEvolutionRecords } from "./controllers/evolution.ts";
+import { loadHistorySessions } from "./controllers/history.ts";
+import { loadInsights } from "./controllers/insights.ts";
+import { loadSkillsInstalled } from "./controllers/skills-manager.ts";
+import { loadUsageCost } from "./controllers/usage.ts";
 import {
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -17,7 +24,13 @@ import {
 import { saveSettings, type UiSettings } from "./storage.ts";
 import { normalizeOptionalString } from "./string-coerce.ts";
 import { startThemeTransition, type ThemeTransitionContext } from "./theme-transition.ts";
-import { resolveTheme, resolveColorScheme, type ResolvedTheme, type ThemeMode, type ThemeName } from "./theme.ts";
+import {
+  resolveTheme,
+  resolveColorScheme,
+  type ResolvedTheme,
+  type ThemeMode,
+  type ThemeName,
+} from "./theme.ts";
 import type { AgentsListResult } from "./types.ts";
 import { resetChatViewState } from "./views/chat.ts";
 
@@ -241,6 +254,67 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "settings") {
     await loadConfigSchema(host as unknown as KaijiBotApp);
     await loadConfig(host as unknown as KaijiBotApp);
+  }
+  if (host.tab === "cognitive") {
+    void loadPersonaList(host as unknown as Parameters<typeof loadPersonaList>[0]);
+  }
+  if (host.tab === "corrections") {
+    const app = host as unknown as KaijiBotApp;
+    if (!app.correctionsAgentId || !app.correctionsUserId) {
+      const list = app.cognitivePersonaList as unknown as Array<{
+        agentId: string;
+        users: Array<{ userId: string }>;
+      }>;
+      if (list && list.length > 0 && list[0].users.length > 0) {
+        app.correctionsAgentId = list[0].agentId;
+        app.correctionsUserId = list[0].users[0].userId;
+        void import("./controllers/corrections.ts").then((c) => {
+          void c.loadCorrections(app as Parameters<typeof c.loadCorrections>[0]);
+        });
+      }
+    }
+  }
+  if (host.tab === "insights") {
+    const app2 = host as unknown as KaijiBotApp;
+    if (!app2.insightsAgentId || !app2.insightsUserId) {
+      const list = app2.cognitivePersonaList as unknown as Array<{
+        agentId: string;
+        users: Array<{ userId: string }>;
+      }>;
+      if (list && list.length > 0 && list[0].users.length > 0) {
+        app2.insightsAgentId = list[0].agentId;
+        app2.insightsUserId = list[0].users[0].userId;
+        void import("./controllers/insights.ts").then((c) => {
+          void c.loadInsights(app2 as Parameters<typeof c.loadInsights>[0]);
+        });
+      }
+    }
+  }
+  if (host.tab === "evolution") {
+    const app3 = host as unknown as KaijiBotApp;
+    if (!app3.evolutionAgentId || !app3.evolutionUserId) {
+      const list = app3.cognitivePersonaList as unknown as Array<{
+        agentId: string;
+        users: Array<{ userId: string }>;
+      }>;
+      if (list && list.length > 0 && list[0].users.length > 0) {
+        app3.evolutionAgentId = list[0].agentId;
+        app3.evolutionUserId = list[0].users[0].userId;
+        void import("./controllers/evolution.ts").then((c) => {
+          void c.loadEvolutionRecords(app3 as Parameters<typeof c.loadEvolutionRecords>[0]);
+          void c.loadEvolutionAudit(app3 as Parameters<typeof c.loadEvolutionAudit>[0]);
+        });
+      }
+    }
+  }
+  if (host.tab === "skills") {
+    void loadSkillsInstalled(host as unknown as Parameters<typeof loadSkillsInstalled>[0]);
+  }
+  if (host.tab === "usage") {
+    void loadUsageCost(host as unknown as Parameters<typeof loadUsageCost>[0]);
+  }
+  if (host.tab === "history") {
+    void loadHistorySessions(host as unknown as Parameters<typeof loadHistorySessions>[0]);
   }
 }
 

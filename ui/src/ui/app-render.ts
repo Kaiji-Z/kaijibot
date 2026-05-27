@@ -107,6 +107,13 @@ function createLazy<T>(loader: () => Promise<T>): () => T | null {
 
 const lazyAgents = createLazy(() => import("./views/agents.ts"));
 const lazyCron = createLazy(() => import("./views/cron.ts"));
+const lazyCognitive = createLazy(() => import("./views/cognitive.ts"));
+const lazyInsights = createLazy(() => import("./views/insights.ts"));
+const lazyEvolution = createLazy(() => import("./views/evolution.ts"));
+const lazyUsage = createLazy(() => import("./views/usage.ts"));
+const lazySkillsManager = createLazy(() => import("./views/skills-manager.ts"));
+const lazyCorrections = createLazy(() => import("./views/corrections.ts"));
+const lazyHistory = createLazy(() => import("./views/history.ts"));
 
 function lazyRender<M>(getter: () => M | null, render: (mod: M) => unknown) {
   const mod = getter();
@@ -238,7 +245,16 @@ export function renderApp(state: AppViewState) {
   _pendingUpdate = requestHostUpdate;
 
   if (!state.connected) {
-    return html`${nothing}`;
+    return html`
+      <div
+        style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;"
+      >
+        <div style="text-align:center;max-width:360px;">
+          <h3 style="margin:0 0 12px;">KaijiBot Control</h3>
+          <p style="color:var(--muted);">${state.lastError ?? "Connecting to gateway…"}</p>
+        </div>
+      </div>
+    `;
   }
 
   const chatDisabledReason = state.connected ? null : t("chat.disconnected");
@@ -323,9 +339,9 @@ export function renderApp(state: AppViewState) {
 
   return html`
     <div
-      class="shell ${isChat ? "shell--chat" : ""} ${navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding
-        ? "shell--onboarding"
-        : ""}"
+      class="shell ${isChat ? "shell--chat" : ""} ${navCollapsed
+        ? "shell--nav-collapsed"
+        : ""} ${state.onboarding ? "shell--onboarding" : ""}"
     >
       <div class="mode-switcher">
         <button
@@ -398,11 +414,7 @@ export function renderApp(state: AppViewState) {
                 switchChatSession(state, next);
               }}
             >
-              ${resolveSessionOptionGroups(
-                state,
-                state.sessionKey,
-                state.sessionsResult,
-              ).map(
+              ${resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult).map(
                 (group) =>
                   html`<optgroup label=${group.label}>
                     ${group.options.map(
@@ -432,12 +444,14 @@ export function renderApp(state: AppViewState) {
 
       <nav class="shell-nav" aria-label="Main navigation">
         <div class="shell-nav__brand">
-          <pre class="shell-nav__brand-ascii" aria-label="KaijiBot">██╗  ██╗ █████╗ ██╗     ██╗██╗██████╗  ██████╗ ████████╗
+          <pre class="shell-nav__brand-ascii" aria-label="KaijiBot">
+██╗  ██╗ █████╗ ██╗     ██╗██╗██████╗  ██████╗ ████████╗
 ██║ ██╔╝██╔══██╗██║     ██║██║██╔══██╗██╔═══██╗╚══██╔══╝
 █████╔╝ ███████║██║     ██║██║██████╔╝██║   ██║   ██║   
 ██╔═██╗ ██╔══██║██║██   ██║██║██╔══██╗██║   ██║   ██║   
 ██║  ██╗██║  ██║██║╚█████╔╝██║██████╔╝╚██████╔╝   ██║   
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚════╝ ╚═╝╚═════╝  ╚═════╝    ╚═╝</pre>
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚════╝ ╚═╝╚═════╝  ╚═════╝    ╚═╝</pre
+          >
           <button
             type="button"
             class="shell-nav__toggle"
@@ -451,16 +465,21 @@ export function renderApp(state: AppViewState) {
           </button>
         </div>
         ${state.tab === "chat" ? nothing : nothing}
-        <div class="shell-nav__items">
-          ${TABS.map((tab) => renderTab(state, tab))}
-        </div>
+        <div class="shell-nav__items">${TABS.map((tab) => renderTab(state, tab))}</div>
         ${renderSidebarStatusSection(state)}
         <div class="shell-nav__version">
           ${state.hello?.server?.version ? `v${state.hello.server.version}` : ""}
           ${state.connected
-            ? html`<span class="shell-nav__status-dot shell-nav__status-dot--ok" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span>`
-            : html`<span class="shell-nav__status-dot shell-nav__status-dot--idle" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span>`}
-          ${state.updateAvailable && state.updateAvailable.latestVersion !== state.updateAvailable.currentVersion
+            ? html`<span
+                class="shell-nav__status-dot shell-nav__status-dot--ok"
+                style="display:inline-block;vertical-align:middle;margin-left:4px;"
+              ></span>`
+            : html`<span
+                class="shell-nav__status-dot shell-nav__status-dot--idle"
+                style="display:inline-block;vertical-align:middle;margin-left:4px;"
+              ></span>`}
+          ${state.updateAvailable &&
+          state.updateAvailable.latestVersion !== state.updateAvailable.currentVersion
             ? html`<span class="shell-nav__update-badge">Update</span>`
             : ""}
         </div>
@@ -494,18 +513,16 @@ export function renderApp(state: AppViewState) {
             </div>`
           : nothing}
         <section class="content-header ${isChat ? "content-header--chat" : ""}">
-            <div>
-              ${isChat
-                ? html`<div class="page-title">${state.assistantName || "Chat"}</div>`
-                : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
-              ${isChat ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
-            </div>
-            <div class="page-meta">
-              ${state.lastError
-                ? html`<div class="pill danger">${state.lastError}</div>`
-                : nothing}
-            </div>
-          </section>
+          <div>
+            ${isChat
+              ? html`<div class="page-title">${state.assistantName || "Chat"}</div>`
+              : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
+            ${isChat ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
+          </div>
+          <div class="page-meta">
+            ${state.lastError ? html`<div class="pill danger">${state.lastError}</div>` : nothing}
+          </div>
+        </section>
         ${state.tab === "cron"
           ? lazyRender(lazyCron, (m) =>
               m.renderCron({
@@ -940,6 +957,226 @@ export function renderApp(state: AppViewState) {
               }),
             )
           : nothing}
+        ${state.tab === "cognitive"
+          ? lazyRender(lazyCognitive, (m) =>
+              m.renderCognitive({
+                loading: state.cognitiveLoading,
+                error: state.cognitiveError,
+                personaList: state.cognitivePersonaList,
+                personaDetail: state.cognitivePersonaDetail,
+                agentId: state.cognitiveAgentId,
+                userId: state.cognitiveUserId,
+                onAgentChange: (agentId: string) => {
+                  state.cognitiveAgentId = agentId;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                },
+                onUserSelect: (agentId: string, userId: string) => {
+                  state.cognitiveAgentId = agentId;
+                  state.cognitiveUserId = userId;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                  import("./controllers/cognitive.ts").then((c) => {
+                    void c.loadPersonaDetail(state as Parameters<typeof c.loadPersonaDetail>[0]);
+                  });
+                },
+                onRefresh: () => {
+                  import("./controllers/cognitive.ts").then((c) => {
+                    void c.loadPersonaList(state as Parameters<typeof c.loadPersonaList>[0]);
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "insights"
+          ? lazyRender(lazyInsights, (m) =>
+              m.renderInsights({
+                loading: state.insightsLoading,
+                error: state.insightsError,
+                insights: state.insightsList,
+                personaList: state.cognitivePersonaList,
+                agentId: state.insightsAgentId,
+                userId: state.insightsUserId,
+                onUserSelect: (agentId: string, userId: string) => {
+                  state.insightsAgentId = agentId;
+                  state.insightsUserId = userId;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                  import("./controllers/insights.ts").then((c) => {
+                    void c.loadInsights(state as Parameters<typeof c.loadInsights>[0]);
+                  });
+                },
+                onFeedback: (id: string, feedback: string) => {
+                  import("./controllers/insights.ts").then((c) => {
+                    const agentId = state.insightsAgentId ?? "";
+                    const userId = state.insightsUserId ?? "";
+                    void c.submitFeedback(
+                      state as Parameters<typeof c.submitFeedback>[0],
+                      agentId,
+                      userId,
+                      id,
+                      feedback,
+                    );
+                  });
+                },
+                onRefresh: () => {
+                  import("./controllers/insights.ts").then((c) => {
+                    void c.loadInsights(state as Parameters<typeof c.loadInsights>[0]);
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "evolution"
+          ? lazyRender(lazyEvolution, (m) =>
+              m.renderEvolution({
+                loading: state.evolutionLoading,
+                error: state.evolutionError,
+                records: state.evolutionRecords,
+                auditEntries: state.evolutionAuditEntries,
+                agentId: state.evolutionAgentId,
+                userId: state.evolutionUserId,
+                personaList: state.cognitivePersonaList,
+                onUserSelect: (agentId: string, userId: string) => {
+                  state.evolutionAgentId = agentId;
+                  state.evolutionUserId = userId;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                  import("./controllers/evolution.ts").then((c) => {
+                    void c.loadEvolutionRecords(
+                      state as Parameters<typeof c.loadEvolutionRecords>[0],
+                    );
+                    void c.loadEvolutionAudit(state as Parameters<typeof c.loadEvolutionAudit>[0]);
+                  });
+                },
+                onRefresh: () => {
+                  import("./controllers/evolution.ts").then((c) => {
+                    void c.loadEvolutionRecords(
+                      state as Parameters<typeof c.loadEvolutionRecords>[0],
+                    );
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "corrections"
+          ? lazyRender(lazyCorrections, (m) =>
+              m.renderCorrections({
+                loading: state.correctionsLoading,
+                error: state.correctionsError,
+                personaList: state.cognitivePersonaList,
+                corrections: state.correctionsList as Parameters<
+                  typeof m.renderCorrections
+                >[0]["corrections"],
+                agentId: state.correctionsAgentId,
+                userId: state.correctionsUserId,
+                onUserSelect: (agentId: string, userId: string) => {
+                  state.correctionsAgentId = agentId;
+                  state.correctionsUserId = userId;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                  import("./controllers/corrections.ts").then((c) => {
+                    void c.loadCorrections(state as Parameters<typeof c.loadCorrections>[0]);
+                  });
+                },
+                onRefresh: () => {
+                  import("./controllers/corrections.ts").then((c) => {
+                    void c.loadCorrections(state as Parameters<typeof c.loadCorrections>[0]);
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "skills"
+          ? lazyRender(lazySkillsManager, (m) =>
+              m.renderSkillsManager({
+                loading: state.skillsManagerLoading,
+                error: state.skillsManagerError,
+                installed: state.skillsManagerInstalled,
+                searchQuery: state.skillsManagerSearchQuery,
+                searchResults: state.skillsManagerSearchResults,
+                detail: state.skillsManagerDetail,
+                installing: state.skillsManagerInstalling ?? false,
+                updating: state.skillsManagerUpdating ?? false,
+                actionSlug: state.skillsManagerActionSlug ?? null,
+                onSearch: (query: string) => {
+                  import("./controllers/skills-manager.ts").then((c) => {
+                    void c.searchSkills(state as Parameters<typeof c.searchSkills>[0], query);
+                  });
+                },
+                onInstall: (slug: string) => {
+                  import("./controllers/skills-manager.ts").then((c) => {
+                    void c.installSkill(state as Parameters<typeof c.installSkill>[0], slug);
+                  });
+                },
+                onUpdate: (slug: string) => {
+                  import("./controllers/skills-manager.ts").then((c) => {
+                    void c.updateSkill(state as Parameters<typeof c.updateSkill>[0], slug);
+                  });
+                },
+                onDetail: () => {},
+                onRefresh: () => {
+                  import("./controllers/skills-manager.ts").then((c) => {
+                    void c.loadSkillsInstalled(
+                      state as Parameters<typeof c.loadSkillsInstalled>[0],
+                    );
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "usage"
+          ? lazyRender(lazyUsage, (m) =>
+              m.renderUsageDashboard({
+                loading: state.usageDashboardLoading,
+                error: state.usageDashboardError,
+                costData: state.usageCostData,
+                sessionsData: state.usageSessionsData,
+                providerStatus: state.usageProviderStatus,
+                onRefresh: () => {
+                  import("./controllers/usage.ts").then((c) => {
+                    void c.loadUsageCost(state as Parameters<typeof c.loadUsageCost>[0]);
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "history"
+          ? lazyRender(lazyHistory, (m) =>
+              m.renderHistory({
+                loading: state.historyLoading,
+                error: state.historyError,
+                sessions: state.historySessions,
+                searchQuery: state.historySearchQuery,
+                selectedKey: state.historySelectedKey,
+                preview: state.historyPreview,
+                messages: state.historyMessages,
+                onSearch: (query: string) => {
+                  state.historySearchQuery = query;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                },
+                onSelectSession: (key: string) => {
+                  import("./controllers/history.ts").then((c) => {
+                    void c.loadSessionMessages(
+                      state as Parameters<typeof c.loadSessionMessages>[0],
+                      key,
+                    );
+                  });
+                },
+                onRefresh: () => {
+                  import("./controllers/history.ts").then((c) => {
+                    void c.loadHistorySessions(
+                      state as Parameters<typeof c.loadHistorySessions>[0],
+                    );
+                  });
+                },
+                onDeleteSession: (key: string) => {
+                  if (!confirm(`Delete session "${key}"? This cannot be undone.`)) return;
+                  import("./controllers/history.ts").then((c) => {
+                    void c.deleteHistorySession(
+                      state as Parameters<typeof c.deleteHistorySession>[0],
+                      key,
+                    );
+                  });
+                },
+              }),
+            )
+          : nothing}
         ${state.tab === "chat"
           ? renderChat({
               sessionKey: state.sessionKey,
@@ -1115,9 +1352,7 @@ export function renderApp(state: AppViewState) {
           (tab) => html`
             <a
               href=${pathForTab(tab, state.basePath)}
-              class="deck-bar__item ${state.tab === tab
-                ? "deck-bar__item--active"
-                : ""}"
+              class="deck-bar__item ${state.tab === tab ? "deck-bar__item--active" : ""}"
               @click=${(event: MouseEvent) => {
                 if (
                   event.defaultPrevented ||
@@ -1141,9 +1376,7 @@ export function renderApp(state: AppViewState) {
               }}
               title=${titleForTab(tab)}
             >
-              <span class="deck-bar__icon" aria-hidden="true"
-                >${icons[iconForTab(tab)]}</span
-              >
+              <span class="deck-bar__icon" aria-hidden="true">${icons[iconForTab(tab)]}</span>
               <span class="deck-bar__label">${titleForTab(tab)}</span>
             </a>
           `,
