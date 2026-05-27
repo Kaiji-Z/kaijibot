@@ -308,6 +308,50 @@ describe("runConsolidationForAgent", () => {
       expect(userIds).toContain("main");
     });
   });
+
+  it("propagates domain field through extract → route pipeline", async () => {
+    await withTempWorkspace(async (workspaceDir) => {
+      const deps = makeDeps(workspaceDir);
+      deps.generateText = vi.fn().mockResolvedValue(
+        JSON.stringify([
+          {
+            category: "domain_knowledge",
+            content: "User deploys K8s on Alibaba Cloud",
+            confidence: 0.9,
+            evidence: "我在阿里云上部署了 Kubernetes",
+            domain: "Kubernetes",
+          },
+          {
+            category: "behavioral_pattern",
+            content: "User prefers test-driven development",
+            confidence: 0.8,
+            evidence: "I always write tests first",
+            domain: "软件工程",
+          },
+        ]),
+      );
+
+      await runConsolidationForAgent({
+        agentId: "main",
+        workspaceDir,
+        config: makeConfig(),
+        deps,
+      });
+
+      const mergeCalls = (deps.routeDeps.mergeTypedInsights as ReturnType<typeof vi.fn>).mock.calls;
+      const personaItems = mergeCalls[0]?.[2] as Array<{ domain?: string }> | undefined;
+      expect(personaItems).toBeDefined();
+      const domainKnowledgeItem = personaItems!.find(
+        (i: Record<string, unknown>) => i.domain === "Kubernetes",
+      );
+      expect(domainKnowledgeItem).toBeDefined();
+
+      const fragmentCalls = (deps.routeDeps.collectFragment as ReturnType<typeof vi.fn>).mock.calls;
+      expect(fragmentCalls.length).toBeGreaterThan(0);
+      const fragmentArg = fragmentCalls[0]![2] as { domains?: string[] };
+      expect(fragmentArg.domains).toEqual(["软件工程"]);
+    });
+  });
 });
 
 describe("runConsolidationAllAgents", () => {

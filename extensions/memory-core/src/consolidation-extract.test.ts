@@ -136,6 +136,73 @@ describe("extractFromBatch", () => {
     expect(result[0]!.content).toBe("valid");
   });
 
+  it("preserves domain field from LLM output", async () => {
+    const generateText = vi.fn().mockResolvedValue(
+      JSON.stringify([
+        {
+          category: "domain_knowledge",
+          content: "User deploys Kubernetes clusters on Alibaba Cloud",
+          confidence: 0.9,
+          evidence: "我在阿里云上部署了三个 Kubernetes 集群",
+          domain: "Kubernetes",
+        },
+        {
+          category: "behavioral_pattern",
+          content: "User prefers async patterns for I/O",
+          confidence: 0.8,
+          evidence: "I always use async",
+          domain: "异步编程",
+        },
+      ]),
+    );
+    const result = await extractFromBatch(
+      makeBatch([{ path: "s.jsonl", content: "transcript" }]),
+      generateText,
+    );
+    expect(result).toHaveLength(2);
+    expect(result[0]!.domain).toBe("Kubernetes");
+    expect(result[1]!.domain).toBe("异步编程");
+  });
+
+  it("sets domain to undefined when LLM omits it", async () => {
+    const generateText = vi.fn().mockResolvedValue(
+      JSON.stringify([
+        {
+          category: "domain_knowledge",
+          content: "Some knowledge",
+          confidence: 0.8,
+          evidence: "evidence text",
+        },
+      ]),
+    );
+    const result = await extractFromBatch(
+      makeBatch([{ path: "s.jsonl", content: "transcript" }]),
+      generateText,
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]!.domain).toBeUndefined();
+  });
+
+  it("sets domain to undefined when LLM returns empty string", async () => {
+    const generateText = vi.fn().mockResolvedValue(
+      JSON.stringify([
+        {
+          category: "domain_knowledge",
+          content: "Some knowledge",
+          confidence: 0.8,
+          evidence: "evidence text",
+          domain: "   ",
+        },
+      ]),
+    );
+    const result = await extractFromBatch(
+      makeBatch([{ path: "s.jsonl", content: "transcript" }]),
+      generateText,
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]!.domain).toBeUndefined();
+  });
+
   it("sets source to transcript on all items", async () => {
     const generateText = vi.fn().mockResolvedValue(
       JSON.stringify([
@@ -215,6 +282,49 @@ describe("mergeAndDedupBatches", () => {
     ];
     const result = mergeAndDedupBatches([batch1, batch2]);
     expect(result).toHaveLength(2);
+  });
+
+  it("preserves domain field through dedup", () => {
+    const batch1 = [
+      makeItem({
+        content: "User prefers TypeScript for backend",
+        confidence: 0.7,
+        category: "domain_knowledge",
+        domain: "TypeScript",
+      }),
+      makeItem({
+        content: "Unique Rust knowledge",
+        confidence: 0.8,
+        category: "domain_knowledge",
+        domain: "Rust",
+      }),
+    ];
+    const batch2 = [
+      makeItem({
+        content: "User prefers TypeScript for backend development",
+        confidence: 0.85,
+        category: "domain_knowledge",
+        domain: "TypeScript",
+      }),
+    ];
+    const result = mergeAndDedupBatches([batch1, batch2]);
+    expect(result).toHaveLength(2);
+    const tsItem = result.find((i) => i.domain === "TypeScript");
+    expect(tsItem).toBeDefined();
+    expect(tsItem!.confidence).toBe(0.85);
+    const rustItem = result.find((i) => i.domain === "Rust");
+    expect(rustItem).toBeDefined();
+  });
+
+  it("handles items with and without domain field in same batch", () => {
+    const items = [
+      makeItem({ content: "Item with domain", confidence: 0.8, category: "domain_knowledge", domain: "Go" }),
+      makeItem({ content: "Item without domain", confidence: 0.7, category: "domain_knowledge" }),
+    ];
+    const result = mergeAndDedupBatches([items]);
+    expect(result).toHaveLength(2);
+    expect(result[0]!.domain).toBe("Go");
+    expect(result[1]!.domain).toBeUndefined();
   });
 });
 

@@ -264,6 +264,103 @@ describe("routeToStores", () => {
     expect(result.routed).toBeGreaterThanOrEqual(1);
   });
 
+  it("passes domain from item to fragment store as domains array", async () => {
+    const items = [
+      makeRouteItem({
+        category: "behavioral_pattern",
+        confidence: 0.8,
+        content: "User prefers test-driven development",
+        domain: "软件工程",
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.collectFragment).toHaveBeenCalledWith(
+      "test-agent",
+      "test-user",
+      expect.objectContaining({
+        text: "User prefers test-driven development",
+        strength: 0.8,
+        domains: ["软件工程"],
+      }),
+    );
+  });
+
+  it("passes empty domains array when item.domain is undefined", async () => {
+    const items = [
+      makeRouteItem({
+        category: "behavioral_pattern",
+        confidence: 0.75,
+        content: "User asks many follow-up questions",
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.collectFragment).toHaveBeenCalledWith(
+      "test-agent",
+      "test-user",
+      expect.objectContaining({
+        domains: [],
+      }),
+    );
+  });
+
+  it("uses item.domain as correction domain when available", async () => {
+    const items = [
+      makeRouteItem({
+        category: "domain_knowledge",
+        confidence: 0.95,
+        content: "Use async/await for I/O operations",
+        evidence: "This was wrong, should use async",
+        domain: "异步编程",
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.addOrReinforceCorrection).toHaveBeenCalledWith(
+      "test-agent",
+      "test-user",
+      expect.objectContaining({
+        domain: "异步编程",
+        provenance: "consolidation",
+      }),
+    );
+  });
+
+  it("falls back to item.category as correction domain when item.domain is undefined", async () => {
+    const items = [
+      makeRouteItem({
+        category: "domain_knowledge",
+        confidence: 0.95,
+        content: "Correct way to handle errors",
+        evidence: "This was wrong, the correct approach is different",
+        // domain intentionally omitted
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.addOrReinforceCorrection).toHaveBeenCalledWith(
+      "test-agent",
+      "test-user",
+      expect.objectContaining({
+        domain: "domain_knowledge",
+        provenance: "consolidation",
+      }),
+    );
+  });
+
+  it("always sets correction provenance to consolidation literal", async () => {
+    const items = [
+      makeRouteItem({
+        category: "stated_preference",
+        confidence: 0.92,
+        content: "Prefers light theme",
+        evidence: "The mistake was choosing dark theme, should be light",
+        domain: "UI设计",
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    const callArgs = (deps.addOrReinforceCorrection as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const record = callArgs[2] as { provenance: string };
+    expect(record.provenance).toBe("consolidation");
+  });
+
   it("writes clean format to daily file without category labels", async () => {
     const items = [
       makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "User knows Rust" }),
