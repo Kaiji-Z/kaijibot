@@ -1,4 +1,4 @@
-export type CorrectionProvenance = "self" | "user";
+export type CorrectionProvenance = "self" | "user" | "consolidation";
 
 export type CorrectionRecord = {
   id: string;

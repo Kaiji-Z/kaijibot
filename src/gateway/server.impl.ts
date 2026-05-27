@@ -1564,8 +1564,10 @@ export async function startGatewayServer(
                 }));
 
                 let merged = 0;
-                for (const insight of incomingTyped) {
-                  const domainKey = `consolidation:${insight.category}`;
+                for (let i = 0; i < incomingTyped.length; i++) {
+                  const insight = incomingTyped[i]!;
+                  const item = items[i]!;
+                  const domainKey = item.domain || item.category;
                   let domain = persona.domains[domainKey];
                   if (!domain) {
                     domain = {
@@ -1594,6 +1596,20 @@ export async function startGatewayServer(
                     domain.lastMentioned = now;
                     domain.recurrence += 1;
                     merged += 1;
+                  } else {
+                    const match = existing.find(
+                      (ex) =>
+                        ex.text.length > 10 &&
+                        insight.text.length > 10 &&
+                        (ex.text === insight.text ||
+                          (ex.text.includes(insight.text.slice(0, 20)) &&
+                            insight.text.includes(ex.text.slice(0, 20)))),
+                    );
+                    if (match) {
+                      match.evidenceCount += 1;
+                      match.lastReinforced = now;
+                      match.confidence = Math.max(match.confidence, insight.confidence);
+                    }
                   }
                 }
 
@@ -1612,7 +1628,7 @@ export async function startGatewayServer(
                   trigger: record.trigger,
                   mistake: record.mistake,
                   correction: record.correction,
-                  provenance: record.provenance === "consolidation" ? "user" : (record.provenance as "self" | "user"),
+                  provenance: record.provenance as "self" | "user" | "consolidation",
                   reinforcedCount: 0,
                   createdAt: now,
                   lastReinforced: now,
@@ -1631,7 +1647,7 @@ export async function startGatewayServer(
               collectFragment: async (
                 agentId: string,
                 userId: string,
-                fragment: { text: string; strength: number },
+                fragment: { text: string; strength: number; domains?: string[] },
               ) => {
                 const now = Date.now();
                 const fullFragment: Fragment = {
@@ -1641,8 +1657,8 @@ export async function startGatewayServer(
                   expiresAt: now + 14 * 86_400_000,
                   kind: "methodological_habit",
                   evidence: fragment.text,
-                  domains: [],
-                  structuralTag: `consolidation:${fragment.text.slice(0, 40)}`,
+                  domains: fragment.domains ?? [],
+                  structuralTag: "consolidation:behavioral_pattern",
                   strength: fragment.strength,
                 };
                 await fragmentStore.addFragment(agentId, userId, fullFragment);
@@ -1688,7 +1704,7 @@ export async function startGatewayServer(
                   if (existingSection) {
                     const isDup = existingSection.lines.some((l) => {
                       const existing = l.replace(/^- \d{4}-\d{2}-\d{2}: /, "");
-                      return existing.slice(0, 30) === contentText.slice(0, 30);
+                      return existing.slice(0, 60) === contentText.slice(0, 60);
                     });
                     if (!isDup) {
                       existingSection.lines.push(line);

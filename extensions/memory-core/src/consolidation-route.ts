@@ -37,7 +37,7 @@ export type ConsolidationRouteDeps = {
   collectFragment: (
     agentId: string,
     userId: string,
-    fragment: { text: string; strength: number },
+    fragment: { text: string; strength: number; domains?: string[] },
   ) => Promise<void>;
   /** Write high-confidence extracted items to MEMORY.md inline sections. */
   updateMemoryIndex: (params: {
@@ -118,6 +118,7 @@ export async function routeToStores(params: {
         await deps.collectFragment(agentId, userId, {
           text: item.content,
           strength: item.confidence,
+          domains: item.domain ? [item.domain] : [],
         });
         routed += 1;
       } catch (err) {
@@ -129,7 +130,7 @@ export async function routeToStores(params: {
     if (item.confidence >= 0.9 && looksLikeCorrection(item.evidence)) {
       try {
         await deps.addOrReinforceCorrection(agentId, userId, {
-          domain: item.category,
+          domain: item.domain || item.category,
           trigger: item.evidence,
           mistake: item.evidence,
           correction: item.content,
