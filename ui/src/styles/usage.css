@@ -1757,3 +1757,117 @@ details.usage-filter-select summary::-webkit-details-marker,
     background-position: -100% 0;
   }
 }
+
+/* ── Usage Table (model breakdown) ──────────────── */
+
+.usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.usage-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.usage-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.usage-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Provider Quota Grid ────────────────────────── */
+
+.usage-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.usage-provider-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  display: grid;
+  gap: 10px;
+}
+
+.usage-provider-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.usage-provider-windows-empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.usage-window {
+  display: grid;
+  gap: 4px;
+}
+
+.usage-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.usage-window-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.usage-window-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-window-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.usage-window-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  transition: width var(--duration-fast) var(--ease-out);
+}
+
+.usage-window-fill--warn {
+  background: var(--warn);
+}
+
+.usage-window-fill--danger {
+  background: var(--danger);
+}

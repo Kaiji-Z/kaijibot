@@ -92,4 +92,182 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
       respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
     }
   },
+
+  "cognitive.persona.list": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { PersonaStore } = await import("../../cognitive/persona/store.js");
+
+      const store = new PersonaStore(configDir);
+      const targetAgentId = params.agentId as string | undefined;
+      const agentIds = targetAgentId ? [targetAgentId] : await store.listAgentIds();
+
+      const agents: Array<{
+        agentId: string;
+        users: Array<{
+          userId: string;
+          displayName?: string;
+          domainCount: number;
+          trustScore?: number;
+          phase?: string;
+          lastActive?: number;
+        }>;
+      }> = [];
+
+      for (const agentId of agentIds) {
+        const userIds = await store.listUserIds(agentId);
+        const users: Array<{
+          userId: string;
+          displayName?: string;
+          domainCount: number;
+          trustScore?: number;
+          phase?: string;
+          lastActive?: number;
+        }> = [];
+
+        for (const userId of userIds) {
+          const persona = await store.load(agentId, userId);
+          users.push({
+            userId,
+            displayName: persona?.identity.displayName,
+            domainCount: persona ? Object.keys(persona.domains).length : 0,
+            trustScore: persona?.rapport?.trustScore,
+            phase: persona?.lifecycle?.stage,
+            lastActive: persona?.lifecycle?.lastActiveAt,
+          });
+        }
+
+        agents.push({ agentId, users });
+      }
+
+      respond(true, { agents });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.persona.detail": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { PersonaStore } = await import("../../cognitive/persona/store.js");
+
+      const agentId = params.agentId as string;
+      const userId = params.userId as string;
+      const store = new PersonaStore(configDir);
+      const persona = await store.load(agentId, userId);
+
+      respond(true, persona ?? null);
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.insights.list": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { InsightStore } = await import("../../cognitive/insight/store.js");
+
+      const agentId = params.agentId as string;
+      const userId = params.userId as string;
+      const limit = params.limit as number | undefined;
+      const store = new InsightStore(configDir);
+      const insights = await store.listRecent(agentId, userId, limit);
+
+      respond(true, { insights });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.insights.feedback": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { InsightStore } = await import("../../cognitive/insight/store.js");
+
+      const agentId = params.agentId as string;
+      const userId = params.userId as string;
+      const id = params.id as string;
+      const feedback = params.feedback as string;
+      const userResponse = params.userResponse as string | undefined;
+      const store = new InsightStore(configDir);
+      await store.updateFeedback(agentId, userId, id, feedback as "positive" | "negative" | "neutral" | "engaged", userResponse);
+
+      respond(true, { ok: true });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.evolution.list": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { EvolutionStore } = await import("../../cognitive/evolution/store.js");
+
+      const agentId = params.agentId as string;
+      const userId = params.userId as string;
+      const store = new EvolutionStore(configDir);
+      const records = await store.list(agentId, userId);
+
+      respond(true, { records });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.evolution.audit": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
+
+      const log = new AuditLog(configDir);
+      const entries = await log.query({
+        operation: params.operation as string | undefined,
+        actor: params.actor as string | undefined,
+        since: params.since as number | undefined,
+      });
+
+      respond(true, { entries });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.corrections.list": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { CorrectionStore } = await import("../../cognitive/correction/store.js");
+
+      const agentId = params.agentId as string;
+      const userId = params.userId as string;
+      const store = new CorrectionStore(configDir);
+      const corrections = await store.listActive(agentId, userId);
+
+      respond(true, { corrections });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
+
+  "cognitive.corrections.users": async ({ respond, params }) => {
+    try {
+      const { resolveConfigDir } = await import("../../utils.js");
+      const configDir = resolveConfigDir();
+      const { CorrectionStore } = await import("../../cognitive/correction/store.js");
+
+      const agentId = params.agentId as string;
+      const store = new CorrectionStore(configDir);
+      const userIds = await store.listUserIds(agentId);
+
+      respond(true, { userIds });
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+    }
+  },
 };

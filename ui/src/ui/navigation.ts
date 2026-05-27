@@ -2,13 +2,20 @@ import { t } from "../i18n/index.ts";
 import type { IconName } from "./icons.js";
 import { normalizeLowercaseStringOrEmpty } from "./string-coerce.ts";
 
-export const TABS = ["chat", "agents", "cron", "settings"] as const;
+export const TABS = ["chat", "agents", "cognitive", "insights", "evolution", "corrections", "skills", "usage", "history", "cron", "settings"] as const;
 
 export type Tab = (typeof TABS)[number];
 
 const TAB_PATHS: Record<Tab, string> = {
   chat: "/chat",
   agents: "/agents",
+  cognitive: "/cognitive",
+  insights: "/insights",
+  evolution: "/evolution",
+  corrections: "/corrections",
+  skills: "/skills",
+  usage: "/usage",
+  history: "/history",
   cron: "/cron",
   settings: "/settings",
 };
@@ -102,6 +109,20 @@ export function iconForTab(tab: Tab): IconName {
       return "messageSquare";
     case "agents":
       return "brain";
+    case "cognitive":
+      return "eye";
+    case "insights":
+      return "spark";
+    case "evolution":
+      return "puzzle";
+    case "corrections":
+      return "check";
+    case "skills":
+      return "wrench";
+    case "usage":
+      return "barChart";
+    case "history":
+      return "scrollText";
     case "cron":
       return "fileText";
     case "settings":

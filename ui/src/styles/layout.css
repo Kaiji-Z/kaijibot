@@ -1019,5 +1019,125 @@
   display: none;
 }
 
+/* ===========================================
+   Skills Manager
+   =========================================== */
+
+.skills-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skills-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 800px) {
+  .skills-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skills-panel {
+  min-width: 0;
+}
+
+.skills-group {
+  margin-bottom: 8px;
+}
+
+.skills-group-label {
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.skills-card-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+}
+
+.skills-entry {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  display: grid;
+  gap: 4px;
+}
+
+.skills-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.skills-entry-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.skills-entry-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.skills-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skills-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.skills-entry-actions .btn {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.skills-search-bar input[type="text"] {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
+  margin-top: 8px;
+}
+
+.skills-search-bar input[type="text"]:focus {
+  border-color: var(--border-strong);
+  box-shadow: var(--focus-ring);
+}
+
+.pill-ok {
+  color: var(--ok);
+  border-color: rgba(34, 197, 94, 0.3);
+  background: var(--ok-subtle);
+}
+
+.pill-warn {
+  color: var(--warn);
+  border-color: rgba(245, 158, 11, 0.3);
+  background: var(--warn-subtle);
+}
 
 

@@ -19,9 +19,14 @@
     left: 0;
     right: 0;
     height: calc(var(--deck-height, 56px) + env(safe-area-inset-bottom, 0px));
-    padding: 0 8px;
+    padding: 0 4px;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .deck-bar::-webkit-scrollbar { display: none; }
 
   /* Mode switcher — show on mobile */
   .mode-switcher {
@@ -252,7 +257,8 @@
 
   /* Deck bar — icon only */
   .deck-bar__label { display: none; }
-  .deck-bar__item { padding: 10px 6px; min-width: 44px; min-height: 44px; }
+  .deck-bar__item { padding: 10px 4px; min-width: 40px; min-height: 44px; }
+  .deck-bar__icon { width: 20px; height: 20px; }
 
   /* Mode switcher — brand only, no current tab */
   .mode-switcher__pill { padding: 6px 10px; font-size: 0; white-space: nowrap; }

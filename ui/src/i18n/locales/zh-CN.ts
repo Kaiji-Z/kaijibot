@@ -165,6 +165,11 @@ export const zh_CN: TranslationMap = {
     debug: "调试",
     logs: "日志",
     settings: "设置",
+    cognitive: "认知",
+    insights: "洞察",
+    evolution: "进化",
+    corrections: "纠错",
+    history: "历史",
   },
   subtitles: {
     agents: "工作区、工具、身份。",
@@ -186,6 +191,11 @@ export const zh_CN: TranslationMap = {
     debug: "快照、事件、RPC。",
     logs: "实时网关日志。",
     settings: "主题、配置和系统设置。",
+    cognitive: "用户画像、领域、信任度、主动引擎。",
+    insights: "主动洞察历史和质量。",
+    evolution: "技能进化与自我改进。",
+    corrections: "已学习纠错和强化记录。",
+    history: "会话记录和记忆。",
   },
   overview: {
     access: {

@@ -15,6 +15,7 @@ import type {
   ConfigSnapshot,
   ConfigUiHints,
   ChatModelOverride,
+  GatewaySessionRow,
   MemoryHealthStatus,
   ModelCatalogEntry,
   SessionsListResult,
@@ -22,6 +23,7 @@ import type {
   ToolsCatalogResult,
   UsageStatusResult,
 } from "./types.ts";
+import type { TranscriptMessage } from "./controllers/history.ts";
 import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
 import type { SessionDetailState } from "./views/agents-utils.ts";
 
@@ -127,6 +129,50 @@ export type AppViewState = {
   memoryHealth: MemoryHealthStatus | null;
   usageStatus: UsageStatusResult | null;
   cognitiveStatus: CognitiveStatusResult | null;
+  cognitiveLoading: boolean;
+  cognitiveError: string | null;
+  cognitiveAgentId: string | null;
+  cognitiveUserId: string | null;
+  cognitivePersonaList: unknown | null;
+  cognitivePersonaDetail: unknown | null;
+  insightsLoading: boolean;
+  insightsError: string | null;
+  insightsAgentId: string | null;
+  insightsUserId: string | null;
+  insightsList: unknown[];
+  evolutionLoading: boolean;
+  evolutionError: string | null;
+  evolutionAgentId: string | null;
+  evolutionUserId: string | null;
+  evolutionRecords: unknown[];
+  evolutionAuditEntries: unknown[];
+  correctionsLoading: boolean;
+  correctionsError: string | null;
+  correctionsAgentId: string | null;
+  correctionsUserId: string | null;
+  correctionsUserIds: string[];
+  correctionsList: unknown[];
+  usageDashboardLoading: boolean;
+  usageDashboardError: string | null;
+  usageCostData: unknown | null;
+  usageSessionsData: unknown | null;
+  usageProviderStatus: unknown | null;
+  skillsManagerLoading: boolean;
+  skillsManagerError: string | null;
+  skillsManagerInstalled: import("./types.js").SkillStatusReport | null;
+  skillsManagerSearchQuery: string;
+  skillsManagerSearchResults: import("../../../src/infra/clawhub.js").ClawHubSkillSearchResult[];
+  skillsManagerDetail: unknown | null;
+  skillsManagerInstalling: boolean;
+  skillsManagerUpdating: boolean;
+  skillsManagerActionSlug: string | null;
+  historyLoading: boolean;
+  historyError: string | null;
+  historySessions: GatewaySessionRow[];
+  historySearchQuery: string;
+  historySelectedKey: string | null;
+  historyPreview: unknown | null;
+  historyMessages: TranscriptMessage[];
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;

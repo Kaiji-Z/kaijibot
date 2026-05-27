@@ -188,6 +188,17 @@ export class KaijiBotApp extends LitElement {
   @state() memoryHealth: MemoryHealthStatus | null = null;
   @state() usageStatus: UsageStatusResult | null = null;
   @state() cognitiveStatus: CognitiveStatusResult | null = null;
+  @state() cognitiveLoading = false;
+  @state() cognitiveError: string | null = null;
+  @state() cognitiveAgentId: string | null = null;
+  @state() cognitiveUserId: string | null = null;
+  @state() cognitivePersonaList: unknown | null = null;
+  @state() cognitivePersonaDetail: unknown | null = null;
+  @state() usageDashboardLoading = false;
+  @state() usageDashboardError: string | null = null;
+  @state() usageCostData: unknown | null = null;
+  @state() usageSessionsData: unknown | null = null;
+  @state() usageProviderStatus: unknown | null = null;
   @state() agentsLoading = false;
   @state() agentsList: AgentsListResult | null = null;
   @state() agentsError: string | null = null;
@@ -270,6 +281,44 @@ export class KaijiBotApp extends LitElement {
   @state() cronBusy = false;
 
   @state() updateAvailable: import("./types.js").UpdateAvailable | null = null;
+
+  @state() skillsManagerLoading = false;
+  @state() skillsManagerError: string | null = null;
+  @state() skillsManagerInstalled: import("./types.js").SkillStatusReport | null = null;
+  @state() skillsManagerSearchQuery = "";
+  @state() skillsManagerSearchResults: import("../../../src/infra/clawhub.js").ClawHubSkillSearchResult[] = [];
+  @state() skillsManagerDetail: unknown = null;
+  @state() skillsManagerInstalling = false;
+  @state() skillsManagerUpdating = false;
+  @state() skillsManagerActionSlug: string | null = null;
+
+  @state() historyLoading = false;
+  @state() historyError: string | null = null;
+  @state() historySessions: import("./types.js").GatewaySessionRow[] = [];
+  @state() historySearchQuery = "";
+  @state() historySelectedKey: string | null = null;
+  @state() historyPreview: unknown = null;
+  @state() historyMessages: unknown[] = [];
+
+  @state() correctionsLoading = false;
+  @state() correctionsError: string | null = null;
+  @state() correctionsAgentId: string | null = null;
+  @state() correctionsUserId: string | null = null;
+  @state() correctionsUserIds: string[] = [];
+  @state() correctionsList: unknown[] = [];
+
+  @state() evolutionLoading = false;
+  @state() evolutionError: string | null = null;
+  @state() evolutionRecords: unknown[] = [];
+  @state() evolutionAuditEntries: unknown[] = [];
+  @state() evolutionAgentId: string | null = null;
+  @state() evolutionUserId: string | null = null;
+
+  @state() insightsLoading = false;
+  @state() insightsError: string | null = null;
+  @state() insightsList: unknown[] = [];
+  @state() insightsAgentId: string | null = null;
+  @state() insightsUserId: string | null = null;
 
   client: GatewayBrowserClient | null = null;
   private chatScrollFrame: number | null = null;

@@ -176,8 +176,13 @@ export class PersonaStore {
     try {
       const entries = await readdir(dir);
       return entries
-        .filter((name) => name.endsWith(".json"))
+        .filter((name) => name.endsWith(".json") && !name.endsWith(".bak"))
         .map((name) => name.slice(0, -5))
+        .filter((userId) => {
+          if (userId === agentId) return false;
+          if (userId.includes("-control-ui")) return false;
+          return true;
+        })
         .sort();
     } catch {
       return [];

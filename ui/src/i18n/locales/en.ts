@@ -164,6 +164,11 @@ export const en: TranslationMap = {
     debug: "Debug",
     logs: "Logs",
     settings: "Settings",
+    cognitive: "Cognitive",
+    insights: "Insights",
+    evolution: "Evolution",
+    corrections: "Corrections",
+    history: "History",
   },
   subtitles: {
     agents: "Workspaces, tools, identities.",
@@ -185,6 +190,11 @@ export const en: TranslationMap = {
     debug: "Snapshots, events, RPC.",
     logs: "Live gateway logs.",
     settings: "Theme, configuration, and system settings.",
+    cognitive: "Persona, domains, trust, proactive engine.",
+    insights: "Proactive insight history and quality.",
+    evolution: "Skill evolution and self-improvement.",
+    corrections: "Learned corrections and reinforcement.",
+    history: "Session transcripts and memory.",
   },
   overview: {
     access: {
