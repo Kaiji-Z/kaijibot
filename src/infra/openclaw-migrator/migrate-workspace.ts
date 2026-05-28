@@ -270,29 +270,7 @@ async function migrateWorkspaceDir(
     );
   }
 
-  if (!options.dryRun) {
-    await seedGuideFile(targetWorkspace, warnings);
-  }
-
   return { changes, warnings, skipped };
-}
-
-async function seedGuideFile(targetWorkspace: string, warnings: string[]): Promise<void> {
-  const guidePath = path.join(targetWorkspace, "KAIJIBOT-GUIDE.md");
-  const guideExists = await fileExists(guidePath);
-  if (guideExists) {
-    return;
-  }
-
-  try {
-    const template = await loadKaijiBotTemplate("KAIJIBOT-GUIDE.md");
-    const fd = await fs.open(guidePath, "wx");
-    await fd.writeFile(template, "utf-8");
-    await fd.close();
-  } catch {
-    // Template not found or file already created concurrently — non-critical
-    warnings.push("KAIJIBOT-GUIDE.md template not found, skipping seed.");
-  }
 }
 
 export async function migrateWorkspace(

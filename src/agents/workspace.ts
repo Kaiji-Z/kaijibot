@@ -339,7 +339,6 @@ export async function ensureAgentWorkspace(params?: {
   userPath?: string;
   heartbeatPath?: string;
   bootstrapPath?: string;
-  guidePath?: string;
 }> {
   const rawDir = params?.dir?.trim() ? params.dir.trim() : DEFAULT_AGENT_WORKSPACE_DIR;
   const dir = resolveUserPath(rawDir);
@@ -391,10 +390,6 @@ export async function ensureAgentWorkspace(params?: {
   await writeFileIfMissing(identityPath, identityTemplate);
   await writeFileIfMissing(userPath, userTemplate);
   await writeFileIfMissing(heartbeatPath, heartbeatTemplate);
-
-  const guidePath = path.join(dir, DEFAULT_GUIDE_FILENAME);
-  const guideTemplate = await loadTemplate(DEFAULT_GUIDE_FILENAME);
-  await writeFileIfMissing(guidePath, guideTemplate);
 
   let state = await readWorkspaceSetupState(statePath);
   let stateDirty = false;
@@ -469,7 +464,6 @@ export async function ensureAgentWorkspace(params?: {
     userPath,
     heartbeatPath,
     bootstrapPath,
-    guidePath,
   };
 }
 
@@ -500,10 +494,6 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
     name: WorkspaceBootstrapFileName;
     filePath: string;
   }> = [
-    {
-      name: DEFAULT_GUIDE_FILENAME,
-      filePath: path.join(resolvedDir, DEFAULT_GUIDE_FILENAME),
-    },
     {
       name: DEFAULT_AGENTS_FILENAME,
       filePath: path.join(resolvedDir, DEFAULT_AGENTS_FILENAME),
@@ -559,7 +549,23 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
 
   applySoulPresetOverride(result);
 
+  await injectGuideFromTemplate(result);
+
   return result;
+}
+
+async function injectGuideFromTemplate(files: WorkspaceBootstrapFile[]): Promise<void> {
+  try {
+    const content = await loadTemplate(DEFAULT_GUIDE_FILENAME);
+    files.unshift({
+      name: DEFAULT_GUIDE_FILENAME,
+      path: `template:${DEFAULT_GUIDE_FILENAME}`,
+      content,
+      missing: false,
+    });
+  } catch {
+    files.unshift({ name: DEFAULT_GUIDE_FILENAME, path: "", missing: true });
+  }
 }
 
 function applySoulPresetOverride(files: WorkspaceBootstrapFile[]): void {
