@@ -1515,13 +1515,7 @@ export async function startGatewayServer(
           type Fragment = import("../cognitive/insight/fragment-types.js").Fragment;
           type CorrectionRecord = import("../cognitive/correction/types.js").CorrectionRecord;
           type ExtractedItem = import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
-
-          const HALF_LIFE_BY_CONSOLIDATION_CATEGORY: Record<string, number> = {
-            domain_knowledge: 30,
-            stated_preference: 60,
-            behavioral_pattern: 90,
-            goal_or_aspiration: 90,
-          };
+          const { mergeTypedInsights, HALF_LIFE_BY_CATEGORY } = await import("../cognitive/persona/curator.js");
 
           const configDir = resolveConfigDir();
           const personaStore = new PersonaStore(configDir);
@@ -1552,22 +1546,26 @@ export async function startGatewayServer(
               ): Promise<number> => {
                 const now = Date.now();
                 const persona = await personaStore.loadOrCreate(agentId, userId);
-                const incomingTyped: TypedInsight[] = items.map((item) => ({
-                  text: item.content,
-                  category: item.category as InsightCategory,
-                  confidence: item.confidence,
-                  source: "inferred" as const,
-                  firstObserved: now,
-                  lastReinforced: now,
-                  evidenceCount: 1,
-                  halfLifeDays: HALF_LIFE_BY_CONSOLIDATION_CATEGORY[item.category] ?? 30,
-                }));
+
+                const domainGroups = new Map<string, TypedInsight[]>();
+                for (const item of items) {
+                  const key = item.domain || item.category;
+                  const group = domainGroups.get(key) ?? [];
+                  group.push({
+                    text: item.content,
+                    category: item.category as InsightCategory,
+                    confidence: item.confidence,
+                    source: "inferred" as const,
+                    firstObserved: now,
+                    lastReinforced: now,
+                    evidenceCount: 1,
+                    halfLifeDays: HALF_LIFE_BY_CATEGORY[item.category as InsightCategory] ?? 30,
+                  });
+                  domainGroups.set(key, group);
+                }
 
                 let merged = 0;
-                for (let i = 0; i < incomingTyped.length; i++) {
-                  const insight = incomingTyped[i]!;
-                  const item = items[i]!;
-                  const domainKey = item.domain || item.category;
+                for (const [domainKey, incoming] of domainGroups) {
                   let domain = persona.domains[domainKey];
                   if (!domain) {
                     domain = {
@@ -1581,36 +1579,12 @@ export async function startGatewayServer(
                     };
                     persona.domains[domainKey] = domain;
                   }
-                  const existing = domain.insights ?? [];
-                  const isDuplicate = existing.some(
-                    (ex) =>
-                      ex.text.length > 10 &&
-                      insight.text.length > 10 &&
-                      (ex.text === insight.text ||
-                        (ex.text.includes(insight.text.slice(0, 20)) &&
-                          insight.text.includes(ex.text.slice(0, 20)))),
-                  );
-                  if (!isDuplicate) {
-                    existing.push(insight);
-                    domain.insights = existing.slice(-20);
-                    domain.lastMentioned = now;
-                    domain.recurrence += 1;
-                    merged += 1;
-                  } else {
-                    const match = existing.find(
-                      (ex) =>
-                        ex.text.length > 10 &&
-                        insight.text.length > 10 &&
-                        (ex.text === insight.text ||
-                          (ex.text.includes(insight.text.slice(0, 20)) &&
-                            insight.text.includes(ex.text.slice(0, 20)))),
-                    );
-                    if (match) {
-                      match.evidenceCount += 1;
-                      match.lastReinforced = now;
-                      match.confidence = Math.max(match.confidence, insight.confidence);
-                    }
-                  }
+                  const before = (domain.insights ?? []).length;
+                  domain.insights = mergeTypedInsights(domain.insights ?? [], incoming);
+                  const after = domain.insights.length;
+                  merged += Math.max(0, after - before);
+                  domain.lastMentioned = now;
+                  domain.recurrence += incoming.length;
                 }
 
                 await personaStore.save(agentId, userId, persona);

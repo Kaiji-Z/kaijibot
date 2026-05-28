@@ -23,7 +23,7 @@ const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
 const AUTO_BLACKLIST_NEGATION_THRESHOLD = 3;
 const AUTO_BLACKLIST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-const HALF_LIFE_BY_CATEGORY: Record<InsightCategory, number> = {
+export const HALF_LIFE_BY_CATEGORY: Record<InsightCategory, number> = {
   tool_config: 7,
   contextual_fact: 14,
   domain_knowledge: 30,
@@ -119,7 +119,7 @@ function levenshteinDistance(a: string, b: string): number {
   return dp[n];
 }
 
-function mergeTypedInsights(existing: TypedInsight[], incoming: TypedInsight[]): TypedInsight[] {
+export function mergeTypedInsights(existing: TypedInsight[], incoming: TypedInsight[]): TypedInsight[] {
   const result = [...existing];
   for (const inc of incoming) {
     let matched = false;
