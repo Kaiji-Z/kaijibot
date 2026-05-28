@@ -4,15 +4,11 @@ import type { KaijiBotApp } from "./app.ts";
 import { loadAgentFiles } from "./controllers/agent-files.ts";
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgents } from "./controllers/agents.ts";
-import { loadPersonaList } from "./controllers/cognitive.ts";
 import { loadConfig, loadConfigSchema } from "./controllers/config.ts";
 import { loadCorrectionUsers } from "./controllers/corrections.ts";
 import { loadCronJobs, loadCronRuns, loadCronStatus } from "./controllers/cron.ts";
 import { loadEvolutionRecords } from "./controllers/evolution.ts";
-import { loadHistorySessions } from "./controllers/history.ts";
 import { loadInsights } from "./controllers/insights.ts";
-import { loadSkillsInstalled } from "./controllers/skills-manager.ts";
-import { loadUsageCost } from "./controllers/usage.ts";
 import {
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -256,7 +252,9 @@ export async function refreshActiveTab(host: SettingsHost) {
     await loadConfig(host as unknown as KaijiBotApp);
   }
   if (host.tab === "cognitive") {
-    void loadPersonaList(host as unknown as Parameters<typeof loadPersonaList>[0]);
+    void import("./controllers/cognitive.ts").then((c) => {
+      void c.loadPersonaList(host as unknown as Parameters<typeof c.loadPersonaList>[0]);
+    });
   }
   if (host.tab === "corrections") {
     const app = host as unknown as KaijiBotApp;
@@ -308,13 +306,19 @@ export async function refreshActiveTab(host: SettingsHost) {
     }
   }
   if (host.tab === "skills") {
-    void loadSkillsInstalled(host as unknown as Parameters<typeof loadSkillsInstalled>[0]);
+    void import("./controllers/skills-manager.ts").then((c) => {
+      void c.loadSkillsInstalled(host as unknown as Parameters<typeof c.loadSkillsInstalled>[0]);
+    });
   }
   if (host.tab === "usage") {
-    void loadUsageCost(host as unknown as Parameters<typeof loadUsageCost>[0]);
+    void import("./controllers/usage.ts").then((c) => {
+      void c.loadUsageCost(host as unknown as Parameters<typeof c.loadUsageCost>[0]);
+    });
   }
   if (host.tab === "history") {
-    void loadHistorySessions(host as unknown as Parameters<typeof loadHistorySessions>[0]);
+    void import("./controllers/history.ts").then((c) => {
+      void c.loadHistorySessions(host as unknown as Parameters<typeof c.loadHistorySessions>[0]);
+    });
   }
 }
 
