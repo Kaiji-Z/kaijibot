@@ -99,6 +99,9 @@ const FeishuToolsConfigSchema = z
     drive: z.boolean().optional(), // Cloud storage operations (default: true)
     perm: z.boolean().optional(), // Permission management (default: false, sensitive)
     scopes: z.boolean().optional(), // App scopes diagnostic (default: true)
+    vc: z.boolean().optional(), // Video conference operations (default: true)
+    task: z.boolean().optional(), // Task management operations (default: true)
+    bitable: z.boolean().optional(), // Bitable (Base) operations (default: true)
   })
   .strict()
   .optional();

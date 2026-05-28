@@ -34,6 +34,8 @@ import {
 } from "../infra/control-ui-assets.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { isTruthyEnvValue, logAcceptedEnvOption } from "../infra/env.js";
+import { buildLarkCliEnv, isLarkCliAvailable } from "../infra/lark-cli/index.js";
+import { shouldDisableNativeTools, buildDisabledToolsConfig, buildDisabledSkillEntries } from "../infra/lark-cli/auto-disable.ts";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
 import { startHeartbeatRunner, type HeartbeatRunner } from "../infra/heartbeat-runner.js";
@@ -587,6 +589,48 @@ export async function startGatewayServer(
       startupInternalWriteHash = configSnapshot.hash ?? null;
     } catch (err) {
       log.warn(`gateway: failed to persist dmScope default: ${String(err)}`);
+    }
+  }
+
+  // --- Lark-CLI integration ---
+  // When lark-cli binary is available, propagate feishu credentials as env vars
+  // and auto-disable native feishu tools/skills in favor of CLI-based operations.
+  const feishuChannelCfg = cfgAtStart.channels?.feishu as Record<string, unknown> | undefined;
+  if (feishuChannelCfg && isLarkCliAvailable()) {
+    const appId = feishuChannelCfg.appId as string | undefined;
+    const appSecret = feishuChannelCfg.appSecret as string | undefined;
+    const domain = feishuChannelCfg.domain as string | undefined;
+
+    // Set env vars for lark-cli
+    const larkEnv = buildLarkCliEnv({ appId, appSecret, domain });
+    for (const [key, value] of Object.entries(larkEnv)) {
+      if (value) process.env[key] = value;
+    }
+    log.info("lark-cli: env vars set from feishu config");
+
+    // Auto-disable native feishu tools if user hasn't explicitly configured them
+    const userToolsCfg = feishuChannelCfg.tools as Record<string, unknown> | undefined;
+    if (shouldDisableNativeTools(userToolsCfg)) {
+      if (!feishuChannelCfg.tools) {
+        feishuChannelCfg.tools = {};
+      }
+      const disabledTools = buildDisabledToolsConfig();
+      const toolsMap = feishuChannelCfg.tools as Record<string, unknown>;
+      for (const [key, value] of Object.entries(disabledTools)) {
+        toolsMap[key] = value;
+      }
+      log.info("lark-cli: native feishu tools auto-disabled (lark-cli available)");
+
+      // Auto-disable feishu skills
+      const disabledSkills = buildDisabledSkillEntries();
+      if (!cfgAtStart.skills) cfgAtStart.skills = {};
+      if (!cfgAtStart.skills.entries) cfgAtStart.skills.entries = {};
+      for (const [id, cfg] of Object.entries(disabledSkills)) {
+        if (!cfgAtStart.skills.entries[id]) {
+          cfgAtStart.skills.entries[id] = cfg;
+        }
+      }
+      log.info("lark-cli: feishu skills auto-disabled (lark-cli available)");
     }
   }
 

@@ -1,0 +1,50 @@
+import { execSync } from "node:child_process";
+
+let cachedPath: string | undefined | null = null;
+
+/**
+ * Resolve the lark-cli binary path.
+ *
+ * The @larksuite/cli package has no main/exports — it ships a Go binary
+ * behind a Node wrapper at `scripts/run.js`. Resolution strategy:
+ *
+ * 1. Try `require.resolve("@larksuite/cli/scripts/run.js")` — the Node wrapper
+ * 2. Fall back to `lark-cli` in $PATH via `which`
+ *
+ * Result is cached after the first call. Returns `undefined` if not available.
+ */
+export function resolveLarkCliPath(): string | undefined {
+  if (cachedPath !== null) {
+    return cachedPath;
+  }
+
+  // Strategy 1: resolve via require.resolve
+  try {
+    const runJs = require.resolve("@larksuite/cli/scripts/run.js");
+    cachedPath = runJs;
+    return runJs;
+  } catch {
+    // Package not installed or not resolvable
+  }
+
+  // Strategy 2: check $PATH for the bin symlink
+  try {
+    const which = execSync("which lark-cli", { encoding: "utf-8", timeout: 3000 }).trim();
+    if (which) {
+      cachedPath = which;
+      return which;
+    }
+  } catch {
+    // Not in PATH
+  }
+
+  cachedPath = undefined;
+  return undefined;
+}
+
+/**
+ * Check if lark-cli is available (binary can be resolved).
+ */
+export function isLarkCliAvailable(): boolean {
+  return resolveLarkCliPath() !== undefined;
+}

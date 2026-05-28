@@ -33,6 +33,7 @@ vi.spyOn(toolAccountModule, "resolveAnyEnabledFeishuToolsConfig").mockReturnValu
   scopes: false,
   vc: false,
   task: false,
+  bitable: false,
 });
 vi.spyOn(toolAccountModule, "resolveFeishuToolAccount").mockImplementation((...args) =>
   resolveFeishuToolAccountMock(...args),

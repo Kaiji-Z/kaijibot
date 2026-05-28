@@ -81,6 +81,7 @@ export function resolveAnyEnabledFeishuToolsConfig(
     scopes: false,
     vc: false,
     task: false,
+    bitable: false,
   };
   for (const account of accounts) {
     const cfg = resolveToolsConfig(account.config.tools);
@@ -92,6 +93,7 @@ export function resolveAnyEnabledFeishuToolsConfig(
     merged.scopes = merged.scopes || cfg.scopes;
     merged.vc = merged.vc || cfg.vc;
     merged.task = merged.task || cfg.task;
+    merged.bitable = merged.bitable || cfg.bitable;
   }
   return merged;
 }

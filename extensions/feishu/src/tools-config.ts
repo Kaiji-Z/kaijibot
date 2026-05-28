@@ -14,6 +14,7 @@ export const DEFAULT_TOOLS_CONFIG: Required<FeishuToolsConfig> = {
   scopes: true,
   vc: true,
   task: true,
+  bitable: true,
 };
 
 /**

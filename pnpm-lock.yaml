@@ -250,6 +250,9 @@ importers:
         specifier: ^4.1.2
         version: 4.1.2(@opentelemetry/api@1.9.1)(@types/node@25.5.2)(@vitest/browser-playwright@4.1.2)(jsdom@29.0.1(@noble/hashes@2.0.1))(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.2)(esbuild@0.27.4)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
     optionalDependencies:
+      '@larksuite/cli':
+        specifier: latest
+        version: 1.0.41
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -1439,6 +1442,13 @@ packages:
     os: [darwin, linux, win32]
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
+
+  '@larksuite/cli@1.0.41':
+    resolution: {integrity: sha512-RY4RhQZ3pSW2S7bt9NVVhEyDjnhNIFSir89IeKUofk10YShjX8iWBALzv2a+2sJjz7g2B64YuFPvxkPMXBIuCw==}
+    engines: {node: '>=16'}
+    cpu: [x64, arm64]
+    os: [darwin, linux, win32]
+    hasBin: true
 
   '@larksuiteoapi/node-sdk@1.60.0':
     resolution: {integrity: sha512-MS1eXx7K6HHIyIcCBkJLb21okoa8ZatUGQWZaCCUePm6a37RWFmT6ZKlKvHxAanSX26wNuNlwP0RhgscsE+T6g==}
@@ -6147,6 +6157,11 @@ snapshots:
       '@lancedb/lancedb-linux-x64-musl': 0.27.2
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
+
+  '@larksuite/cli@1.0.41':
+    dependencies:
+      '@clack/prompts': 1.2.0
+    optional: true
 
   '@larksuiteoapi/node-sdk@1.60.0':
     dependencies:

@@ -3,7 +3,7 @@ import { Type } from "@sinclair/typebox";
 import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import type { KaijiBotPluginApi } from "../runtime-api.js";
 import { listEnabledFeishuAccounts } from "./accounts.js";
-import { createFeishuToolClient } from "./tool-account.js";
+import { createFeishuToolClient, resolveAnyEnabledFeishuToolsConfig } from "./tool-account.js";
 
 // ============ Helpers ============
 
@@ -550,6 +550,12 @@ export function registerFeishuBitableTools(api: KaijiBotPluginApi) {
   const accounts = listEnabledFeishuAccounts(api.config);
   if (accounts.length === 0) {
     api.logger.debug?.("feishu_bitable: No Feishu accounts configured, skipping bitable tools");
+    return;
+  }
+
+  const toolsCfg = resolveAnyEnabledFeishuToolsConfig(accounts);
+  if (!toolsCfg.bitable) {
+    api.logger.debug?.("feishu_bitable: bitable tool disabled in config");
     return;
   }
 

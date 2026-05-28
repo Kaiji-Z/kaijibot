@@ -658,6 +658,29 @@ export async function runSetupWizard(
     nextConfig = await setupSkills(nextConfig, workspaceDir, runtime, prompter);
   }
 
+  // Auto-install lark-cli skills when feishu channel is configured and lark-cli is available
+  {
+    const { isChannelConfigured } = await import("../config/channel-configured.js");
+    const { installLarkCliSkills } = await import("../infra/lark-cli/install-skills.js");
+    if (isChannelConfigured(nextConfig, "feishu")) {
+      try {
+        const result = await installLarkCliSkills();
+        if (result.ok) {
+          const count = result.installed ?? "";
+          await prompter.note(
+            `Installed ${count} lark-cli skills to ~/.agents/skills/`,
+            "Lark CLI Skills",
+          );
+        } else if (result.error !== "lark-cli not available") {
+          // lark-cli not available is expected — skip silently
+          runtime.log(`  ⚠ lark-cli skills install skipped: ${result.error}`);
+        }
+      } catch {
+        // Non-blocking: never fail setup over optional skill installation
+      }
+    }
+  }
+
   // Plugin configuration (sandbox backends, tool plugins, etc.)
   if (flow !== "quickstart") {
     const { setupPluginConfig } = await import("./setup.plugin-config.js");
