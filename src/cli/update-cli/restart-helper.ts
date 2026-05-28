@@ -136,7 +136,7 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":${port} .*LISTENING"'
 :port_released
 schtasks /Run /TN "${taskName}"
 REM Self-cleanup
-del "%~f0"
+del "%~f0" & exit /b 0
 `;
     } else {
       return null;

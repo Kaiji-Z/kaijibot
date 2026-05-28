@@ -41,7 +41,7 @@ function buildScheduledTaskRestartScript(taskName: string, taskScriptPath?: stri
     const quotedScript = quoteCmdScriptArg(taskScriptPath);
     lines.push(`if exist ${quotedScript} (`, `  start "" /min cmd.exe /d /c ${quotedScript}`, ")");
   }
-  lines.push(":cleanup", 'del "%~f0" >nul 2>&1');
+  lines.push(":cleanup", 'del "%~f0" >nul 2>&1 & exit /b 0');
   return lines.join("\r\n");
 }
 
