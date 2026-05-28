@@ -51,8 +51,8 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
             }
           }
 
-          // Insight count (recent)
-          const insights = await insightStore.listRecent(agentId, userId, 100);
+          // Insight count (active)
+          const insights = await insightStore.listActive(agentId, userId);
           totalInsights += insights.length;
 
           // Active corrections

@@ -1387,6 +1387,29 @@ export async function startGatewayServer(
               },
               async onInsightReady(agentId: string, userId: string, candidate) {
                 try {
+                  const { resolveConfigDir } = await import("../utils.js");
+                  const { InsightStore } = await import(
+                    "../cognitive/insight/store.js"
+                  );
+                  const insightStore = new InsightStore(resolveConfigDir());
+                  const record = {
+                    id: candidate.id,
+                    generatedAt: Date.now(),
+                    triggerSource: "scheduled" as const,
+                    targetDomains: candidate.targetDomains,
+                    sourceDomains: candidate.sourceDomains,
+                    content: candidate.content,
+                    rationale: candidate.rationale,
+                    sources: candidate.sources,
+                    deliveredAt: Date.now(),
+                    promptVariant: candidate.promptVariant,
+                  };
+                  await insightStore.save(agentId, userId, record);
+                } catch (err) {
+                  log.warn(`cognitive insight persistence failed: ${String(err)}`);
+                }
+
+                try {
                   const { resolveCognitiveDeliveryTarget } =
                     await import("./cognitive-delivery.js");
                   const { deliverOutboundPayloads } = await import("../infra/outbound/deliver.js");
