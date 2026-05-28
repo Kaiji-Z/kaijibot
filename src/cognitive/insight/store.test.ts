@@ -123,7 +123,78 @@ describe("InsightStore", () => {
     expect(loadedA?.content).toBe("New transformer architecture reduces inference latency by 40%.");
     expect(loadedB?.content).toBe("Different content");
 
-    expect(existsSync(join(tempDir, "cognitive", "insights", "agent-a", "user-1"))).toBe(true);
-    expect(existsSync(join(tempDir, "cognitive", "insights", "agent-b", "user-1"))).toBe(true);
+    expect(existsSync(join(tempDir, "cognitive", "insights", "agent-a", "user-1.json"))).toBe(true);
+    expect(existsSync(join(tempDir, "cognitive", "insights", "agent-b", "user-1.json"))).toBe(true);
+  });
+
+  it("listActive filters by TTL", async () => {
+    const now = Date.now();
+    const DAY = 86_400_000;
+    await store.save(AGENT, "user-1", makeInsight({ id: "old", generatedAt: now - 90 * DAY }));
+    await store.save(AGENT, "user-1", makeInsight({ id: "recent", generatedAt: now - 10 * DAY }));
+    await store.save(AGENT, "user-1", makeInsight({ id: "fresh", generatedAt: now }));
+
+    const active = await store.listActive(AGENT, "user-1");
+    expect(active.map((r) => r.id)).toEqual(["fresh", "recent"]);
+  });
+
+  it("listActive respects limit", async () => {
+    const now = Date.now();
+    for (let i = 0; i < 5; i++) {
+      await store.save(AGENT, "user-1", makeInsight({ id: `ins-${i}`, generatedAt: now - i * 1000 }));
+    }
+    const result = await store.listActive(AGENT, "user-1", 60, 3);
+    expect(result).toHaveLength(3);
+  });
+
+  it("removeStale removes old records", async () => {
+    const now = Date.now();
+    const DAY = 86_400_000;
+    await store.save(AGENT, "user-1", makeInsight({ id: "stale-1", generatedAt: now - 90 * DAY }));
+    await store.save(AGENT, "user-1", makeInsight({ id: "stale-2", generatedAt: now - 100 * DAY }));
+    await store.save(AGENT, "user-1", makeInsight({ id: "fresh", generatedAt: now - 10 * DAY }));
+
+    const removed = await store.removeStale(AGENT, "user-1");
+    expect(removed).toBe(2);
+
+    const remaining = await store.listRecent(AGENT, "user-1");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe("fresh");
+  });
+
+  it("removeStale with custom TTL", async () => {
+    const now = Date.now();
+    const DAY = 86_400_000;
+    await store.save(AGENT, "user-1", makeInsight({ id: "old-5d", generatedAt: now - 5 * DAY }));
+    await store.save(AGENT, "user-1", makeInsight({ id: "fresh-1d", generatedAt: now - 1 * DAY }));
+
+    const removed = await store.removeStale(AGENT, "user-1", 3);
+    expect(removed).toBe(1);
+
+    const remaining = await store.listRecent(AGENT, "user-1");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe("fresh-1d");
+  });
+
+  it("writeRecords keeps records within cap", async () => {
+    for (let i = 0; i < 5; i++) {
+      await store.save(AGENT, "user-1", makeInsight({ id: `ins-${i}`, generatedAt: i }));
+    }
+    const all = await store.listRecent(AGENT, "user-1", 200);
+    expect(all).toHaveLength(5);
+  });
+
+  it("persistence format: file contains InsightStoreData with version", async () => {
+    await store.save(AGENT, "user-1", makeInsight({ id: "fmt-test" }));
+
+    const raw = await readFile(
+      join(tempDir, "cognitive", "insights", AGENT, "user-1.json"),
+      "utf-8",
+    );
+    const parsed = JSON.parse(raw);
+    expect(parsed).toHaveProperty("version", 1);
+    expect(Array.isArray(parsed.insights)).toBe(true);
+    expect(parsed.insights).toHaveLength(1);
+    expect(parsed.insights[0].id).toBe("fmt-test");
   });
 });
