@@ -21,7 +21,7 @@ export interface TopicFile {
   raw: string; // original markdown for round-trip
 }
 
-export type MemoryType = "user" | "feedback" | "project" | "reference";
+export type MemoryType = "core" | "active" | "user" | "feedback" | "project" | "reference";
 
 export interface TopicEntry {
   title: string;
@@ -82,11 +82,11 @@ export function parseTopicEntry(entryMarkdown: string): TopicEntry {
   // Extract type from content if present
   let type: MemoryType | undefined;
   const typeLineIdx = contentLines.findIndex((l) =>
-    l.trim().match(/^- \*\*Type\*\*: (user|feedback|project|reference)$/),
+    l.trim().match(/^- \*\*Type\*\*: (core|active|user|feedback|project|reference)$/),
   );
   if (typeLineIdx >= 0) {
     const typeMatch = contentLines[typeLineIdx]!.trim().match(
-      /^- \*\*Type\*\*: (user|feedback|project|reference)$/,
+      /^- \*\*Type\*\*: (core|active|user|feedback|project|reference)$/,
     );
     if (typeMatch) {
       type = typeMatch[1] as MemoryType;

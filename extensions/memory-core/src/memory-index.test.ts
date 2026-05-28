@@ -298,13 +298,13 @@ describe("MemoryIndexManager", () => {
 
       // Inline section with a dated variant that strips to "User prefers dark mode"
       await manager.relocateInlineToTopic(
-        { section: "👤 User", lines: ["- 2026-05-25: User prefers dark mode"] },
+        { section: "⚡ Core Memory", lines: ["- 2026-05-25: User prefers dark mode"] },
         "user",
       );
 
       const result = memFs.files.get(topicPath) ?? "";
       // The duplicate line should NOT appear in the appended content
-      expect(result).not.toContain("## 👤 User (relocated from MEMORY.md)");
+      expect(result).not.toContain("## ⚡ Core Memory (relocated from MEMORY.md)");
     });
 
     it("keeps unique lines during relocation", async () => {
@@ -328,7 +328,7 @@ describe("MemoryIndexManager", () => {
 
       // Inline section with unique content
       await manager.relocateInlineToTopic(
-        { section: "👤 User", lines: ["- 2026-05-25: User prefers dark mode"] },
+        { section: "⚡ Core Memory", lines: ["- 2026-05-25: User prefers dark mode"] },
         "user",
       );
 
@@ -366,7 +366,7 @@ describe("MemoryIndexManager", () => {
       // Inline lines that both match existing entries after date prefix stripping
       await manager.relocateInlineToTopic(
         {
-          section: "👤 User",
+          section: "⚡ Core Memory",
           lines: ["- 2026-05-25: User prefers dark mode", "- 2026-05-25: User knows Rust"],
         },
         "user",
@@ -405,6 +405,110 @@ describe("MemoryIndexManager", () => {
         fs: createMemoryFs().deps,
       }).migrateLegacy("");
       expect(result).toBe("");
+    });
+  });
+
+  describe("legacy section migration", () => {
+    it("parses old 4-section MEMORY.md into 2 new sections", () => {
+      const oldFormat = [
+        "# Long-Term Memory",
+        "",
+        "## 👤 User",
+        "- Timezone: UTC+8",
+        "- Language: zh-CN",
+        "",
+        "## 💬 Key Feedback",
+        "- Wants shorter answers",
+        "",
+        "## 🎯 Active Focus",
+        "- Working on memory system redesign",
+        "",
+        "## 🔗 Reference",
+        "- Vitest for testing",
+        "",
+      ].join("\n");
+
+      const index = parseMemoryIndex(oldFormat);
+
+      expect(index.inlineSections).toBeDefined();
+      const coreMemory = index.inlineSections!.find((s) => s.section === "⚡ Core Memory");
+      expect(coreMemory).toBeDefined();
+      expect(coreMemory!.lines).toContain("- Timezone: UTC+8");
+      expect(coreMemory!.lines).toContain("- Wants shorter answers");
+      expect(coreMemory!.lines).toContain("- Vitest for testing");
+
+      const activeContext = index.inlineSections!.find((s) => s.section === "🔥 Active Context");
+      expect(activeContext).toBeDefined();
+      expect(activeContext!.lines).toContain("- Working on memory system redesign");
+    });
+
+    it("handles mixed old and new sections", () => {
+      const mixed = [
+        "# Long-Term Memory",
+        "",
+        "## 👤 User",
+        "- Old user info",
+        "",
+        "## ⚡ Core Memory",
+        "- New core info",
+        "",
+        "## 🔗 Reference",
+        "- Old reference",
+        "",
+        "## 🔥 Active Context",
+        "- New active context",
+        "",
+      ].join("\n");
+
+      const index = parseMemoryIndex(mixed);
+
+      const coreMemory = index.inlineSections!.find((s) => s.section === "⚡ Core Memory");
+      expect(coreMemory).toBeDefined();
+      expect(coreMemory!.lines).toContain("- Old user info");
+      expect(coreMemory!.lines).toContain("- New core info");
+      expect(coreMemory!.lines).toContain("- Old reference");
+
+      const activeContext = index.inlineSections!.find((s) => s.section === "🔥 Active Context");
+      expect(activeContext).toBeDefined();
+      expect(activeContext!.lines).toContain("- New active context");
+    });
+
+    it("round-trips new format correctly", async () => {
+      const { manager, memFs } = createManager();
+      const index: MemoryIndex = {
+        sections: [
+          {
+            subject: "user",
+            title: "User Profile",
+            topicFile: "memory/topics/user-profile.md",
+            summary: "",
+          },
+        ],
+        recentSessions: [],
+        promotedContent: "",
+        inlineSections: [
+          { section: "⚡ Core Memory", lines: ["- Timezone: UTC+8", "- Language: zh-CN"] },
+          { section: "🔥 Active Context", lines: ["- Working on redesign"] },
+        ],
+      };
+      await manager.writeIndex(index);
+
+      const read = await manager.readIndex();
+      expect(read.inlineSections).toHaveLength(2);
+      expect(read.inlineSections![0]!.section).toBe("⚡ Core Memory");
+      expect(read.inlineSections![0]!.lines).toContain("- Timezone: UTC+8");
+      expect(read.inlineSections![1]!.section).toBe("🔥 Active Context");
+      expect(read.inlineSections![1]!.lines).toContain("- Working on redesign");
+
+      await manager.writeIndex(read);
+      const read2 = await manager.readIndex();
+      expect(read2.inlineSections).toEqual(read.inlineSections);
+
+      const raw = memFs.files.get("/test-workspace/MEMORY.md") ?? "";
+      expect(raw).toContain("## ⚡ Core Memory");
+      expect(raw).toContain("## 🔥 Active Context");
+      expect(raw).not.toContain("## 👤 User");
+      expect(raw).not.toContain("## 💬 Key Feedback");
     });
   });
 });

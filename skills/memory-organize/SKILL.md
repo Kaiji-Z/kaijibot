@@ -79,6 +79,17 @@ assistant: [tool: read_file, glob] 这个项目的架构是...
 4. **已有主题优先**——先查看 `memory/topics/` 下已有哪些主题文件，新记忆尽量归入已有主题
 5. **遇到全新领域时创建新主题**——用户开始聊一个完全没见过的话题时，开新文件
 
+### 主题命名规范
+
+主题名直接影响记忆检索质量和可读性。遵循以下规则：
+
+1. **使用描述性 kebab-case**：名称应直接反映内容领域。好的例子：`rust-learning`、`career-planning`、`feishu-wiki`、`home-automation`、`ai-agent-arch`
+2. **避免模糊名称**：以下名称禁止使用：`general-discussion`、`misc`、`other`、`various`、`untitled`。如果发现已有主题使用了这些名称，在整理时重命名为能反映实际内容的名称
+3. **名称要反映实际内容**：如果一个主题叫 `tools` 但里面全是关于飞书 API 的内容，应重命名为 `feishu-api`
+4. **长度限制**：最长 30 个字符，超出时缩写（如 `distributed-system-design` → `dist-sys-design`）
+5. **自动格式化**：非 kebab-case 的名称会被自动转换为 kebab-case（空格→连字符，大写→小写，特殊字符移除）
+6. **整理时重命名**：在 Step 3 `memory_tidy` 之后，检查所有主题名称是否准确反映其内容。如果发现名称与内容不匹配，记录在最终汇报中并建议重命名
+
 ## How it works
 
 **必须严格按顺序完成所有 4 个步骤。不要跳过任何步骤。** 每个步骤完成后有明确的检查点，必须输出检查点内容后才能继续下一步。
@@ -104,7 +115,7 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 3. **结构错误**：缺少应有的 section heading；格式不对的条目；不完整的 HTML 注释标记。
 
 4. **预算超支**：MEMORY.md 超过 8KB 时，把低频内容移到主题文件。MEMORY.md 只保留：
-   - 高频内联内容（4 类：👤 User、💬 Key Feedback、🎯 Active Focus、🔗 Reference）
+   - 高频内联内容（2 类：⚡ Core Memory、🔥 Active Context）
    - 主题文件指针（`- topic-name → memory/topics/topic-name.md`）
 
 5. **孤立内容**：不在任何主题文件中、也不属于内联区域的零散内容。判断 subject 后归入主题文件。
@@ -120,17 +131,11 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 ```
 # Long-Term Memory
 
-## 👤 User
-- inline high-frequency user info (preferences, interests, communication style)
+## ⚡ Core Memory
+- [important assertions: user preferences, knowledge, behavioral patterns, key facts]
 
-## 💬 Key Feedback
-- inline high-frequency feedback about assistant behavior
-
-## 🎯 Active Focus
-- inline high-frequency project/work info
-
-## 🔗 Reference
-- inline high-frequency reference knowledge
+## 🔥 Active Context
+- [time-sensitive work items: current goals, active projects, recent focus areas]
 
 ## Topic Pointers
 - feishu → memory/topics/feishu.md
@@ -143,7 +148,7 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 （这些条目在下次整理时会被归档到主题文件并从此 section 移除）
 ```
 
-**inline sections 自动填充**：session-memory hook 在每次会话结束时自动将高优先级内容路由到对应的 inline section（基于 LLM 返回的 `memoryType` 字段：`user` → 👤 User，`feedback` → 💬 Key Feedback，`project` → 🎯 Active Focus，`reference` → 🔗 Reference）。hook 同时调用 `rebalanceIndex()` 确保 MEMORY.md 不超过 8KB 预算。手动 `memory_save` 也会写入 inline sections。两个来源的内容会合并。
+**inline sections 自动填充**：session-memory hook 在每次会话结束时自动将高优先级内容路由到对应的 inline section（基于 LLM 返回的 `memoryType` 字段：用户偏好/知识/行为 → ⚡ Core Memory，当前目标/项目/工作 → 🔥 Active Context）。hook 同时调用 `rebalanceIndex()` 确保 MEMORY.md 不超过 8KB 预算。手动 `memory_save` 也会写入 inline sections。两个来源的内容会合并。
 
 **没有 `## Recent Sessions`**：该 section 已移除——会话信息已存在于 daily 文件和 topic 文件中，属于冗余数据。
 
@@ -165,7 +170,7 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 - `content`: 记忆内容（简洁的一句话或一段描述）
 - `topic`: 主题名（必填，kebab-case，如 `feishu`、`philosophy`）
 - `importance`: 重要性（`high`/`normal`/`low`）
-- `type`: 分类（可选，`user`/`feedback`/`project`/`reference`）
+- `type`: 分类（可选，`core` → ⚡ Core Memory，`active` → 🔥 Active Context）
 
 示例调用：
 
@@ -215,7 +220,7 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 - 去除重复条目（Jaccard 相似度 ≥ 0.85）
 - 合并相似条目
 - 归档 90 天以上的低重要性条目
-- 清理 MEMORY.md inline sections 中的重复内容（section 内去重 + 与 topic 条目交叉去重）
+- 清理 MEMORY.md inline sections 中的重复内容（`⚡ Core Memory` 和 `🔥 Active Context` section 内去重 + 与 topic 条目交叉去重）
 
 ### Step 4: 最终检查
 

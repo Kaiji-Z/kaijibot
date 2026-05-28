@@ -1,8 +1,8 @@
 /**
  * MemoryIndexManager — reads, writes, and maintains the MEMORY.md index file.
  *
- * Hybrid format: the first 4 sections (👤 User, 💬 Key Feedback, 🎯 Active
- * Focus, 🔗 Reference) contain INLINE content directly in MEMORY.md. Remaining sections
+ * Hybrid format: the first 2 sections (⚡ Core Memory, 🔥 Active Context) contain
+ * INLINE content directly in MEMORY.md. Remaining sections
  * are topic pointers under `## Title`. Legacy promoted content is always
  * preserved below new-format sections.
  */
@@ -31,7 +31,7 @@ export interface RecentSession {
 }
 
 export interface InlineContent {
-  section: string; // heading like "👤 User", "💬 Key Feedback", "🎯 Active Focus", "🔗 Reference"
+  section: string; // heading like "⚡ Core Memory", "🔥 Active Context"
   lines: string[]; // actual content lines (high-frequency info)
 }
 
@@ -67,17 +67,21 @@ const PROMOTED_HEADING = "## Promoted From Short-Term Memory";
 const INDEX_TITLE = "# Long-Term Memory";
 
 const INLINE_SECTION_HEADINGS = [
-  "👤 User",
-  "💬 Key Feedback",
-  "🎯 Active Focus",
-  "🔗 Reference",
+  "⚡ Core Memory",
+  "🔥 Active Context",
 ] as const;
 
 const INLINE_SECTION_SUBJECTS: Record<string, string> = {
-  "👤 User": "user",
-  "💬 Key Feedback": "feedback",
-  "🎯 Active Focus": "project",
-  "🔗 Reference": "reference",
+  "⚡ Core Memory": "core",
+  "🔥 Active Context": "active",
+};
+
+/** Old section headings that map to new sections for backward-compatible parsing. */
+const LEGACY_SECTION_MIGRATION: Record<string, string> = {
+  "👤 User": "⚡ Core Memory",
+  "💬 Key Feedback": "⚡ Core Memory",
+  "🔗 Reference": "⚡ Core Memory",
+  "🎯 Active Focus": "🔥 Active Context",
 };
 
 // ---------------------------------------------------------------------------
@@ -104,6 +108,9 @@ function parseInlineHeading(line: string): string | null {
   const trimmed = line.trim();
   for (const h of INLINE_SECTION_HEADINGS) {
     if (trimmed === `## ${h}`) return h;
+  }
+  for (const [legacy, migrated] of Object.entries(LEGACY_SECTION_MIGRATION)) {
+    if (trimmed === `## ${legacy}`) return migrated;
   }
   return null;
 }
@@ -181,7 +188,13 @@ export function parseMemoryIndex(content: string): MemoryIndex {
       ) {
         currentInlineLines.pop();
       }
-      inlineSections.push({ section: currentInlineSection, lines: currentInlineLines });
+      // Merge into existing section with same name (legacy migration)
+      const existing = inlineSections.find((s) => s.section === currentInlineSection);
+      if (existing) {
+        existing.lines.push(...currentInlineLines);
+      } else {
+        inlineSections.push({ section: currentInlineSection, lines: currentInlineLines });
+      }
       currentInlineSection = null;
       currentInlineLines = [];
     }

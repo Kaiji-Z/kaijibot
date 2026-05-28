@@ -783,7 +783,7 @@ describe("inline section dedup, date prefix, and rebalance", () => {
 
     const indexPath = path.join(tempDir, "MEMORY.md");
     const content = await readFile(indexPath, "utf-8");
-    expect(content).toContain("## 👤 User");
+    expect(content).toContain("## ⚡ Core Memory");
     expect(content).toMatch(/- \d{4}-\d{2}-\d{2}: User prefers dark mode/);
   });
 
@@ -810,8 +810,8 @@ describe("inline section dedup, date prefix, and rebalance", () => {
 
     const indexPath = path.join(tempDir, "MEMORY.md");
     const content = await readFile(indexPath, "utf-8");
-    const userSection = content.split("## 👤 User")[1]?.split("## ")[0] ?? "";
-    const inlineLines = userSection
+    const coreSection = content.split("## ⚡ Core Memory")[1]?.split("## ")[0] ?? "";
+    const inlineLines = coreSection
       .split("\n")
       .filter((l) => l.startsWith("- "));
     // Only one inline line despite two saves — dedup worked
@@ -853,9 +853,89 @@ describe("inline section dedup, date prefix, and rebalance", () => {
     // Topic pointer should exist
     expect(content).toContain("## Topic Pointers");
     // No inline section headings should appear
+    expect(content).not.toContain("## ⚡ Core Memory");
+    expect(content).not.toContain("## 🔥 Active Context");
     expect(content).not.toContain("## 👤 User");
     expect(content).not.toContain("## 💬 Key Feedback");
     expect(content).not.toContain("## 🎯 Active Focus");
     expect(content).not.toContain("## 🔗 Reference");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeTopicName (tested indirectly through tool execute)
+// ---------------------------------------------------------------------------
+
+describe("sanitizeTopicName (via tool execute)", () => {
+  it("converts to kebab-case", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    const raw = await tool!.execute("tc-sanitize-1", {
+      content: "Some content",
+      topic: "My Cool Topic",
+    });
+    const result = parseResult(raw);
+    expect(result.topicFile).toBe("my-cool-topic.md");
+  });
+
+  it("caps at 30 chars", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    const longTopic = "a".repeat(50);
+    const raw = await tool!.execute("tc-sanitize-2", {
+      content: "Long topic name",
+      topic: longTopic,
+    });
+    const result = parseResult(raw);
+    expect((result.topicFile as string).length).toBeLessThanOrEqual(33); // 30 + ".md"
+    expect(result.topicFile).toBe("a".repeat(30) + ".md");
+  });
+
+  it("rejects empty result after sanitization", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    await expect(
+      tool!.execute("tc-sanitize-3", {
+        content: "No valid topic",
+        topic: "!!!",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects dots-only input as empty after sanitization", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    await expect(
+      tool!.execute("tc-sanitize-4", {
+        content: "Dots input",
+        topic: "..",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("passes valid kebab-case names unchanged", async () => {
+    const tool = createMemorySaveTool({
+      config: {
+        agents: { list: [{ id: "main", default: true }] },
+      } as never,
+    });
+    const raw = await tool!.execute("tc-sanitize-5", {
+      content: "Valid name",
+      topic: "rust-learning",
+    });
+    const result = parseResult(raw);
+    expect(result.topicFile).toBe("rust-learning.md");
   });
 });

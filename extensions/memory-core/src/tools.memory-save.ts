@@ -32,7 +32,7 @@ export const MemorySaveSchema = Type.Object({
   }),
   topic: Type.String({
     description:
-      "Subject-based topic name (kebab-case, e.g. 'feishu', 'philosophy'). Determines the topic file.",
+      "Subject-based topic name (e.g. 'feishu', 'philosophy'). Auto-sanitized to kebab-case lowercase, max 30 chars (e.g. 'My Cool Topic' → 'my-cool-topic'). Determines the topic file.",
   }),
   importance: Type.Optional(
     Type.Union([Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")], {
@@ -74,6 +74,31 @@ export type LlmDecideFn = (existing: string, newContent: string) => Promise<Self
 
 const SIMILARITY_THRESHOLD = 0.8;
 const LLM_DECIDE_TIMEOUT_MS = 10_000;
+
+/**
+ * Sanitize a topic name: lowercase, kebab-case, max 30 chars, no path traversal.
+ * Returns the sanitized name or throws on dangerous input.
+ */
+function sanitizeTopicName(raw: string): string {
+  let name = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 30);
+
+  // Reject path traversal attempts (after sanitization, these should be impossible)
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    throw new Error(`Invalid topic name: ${raw}`);
+  }
+
+  // Ensure non-empty after sanitization
+  if (!name) {
+    throw new Error(`Topic name is empty after sanitization: ${raw}`);
+  }
+
+  return name;
+}
 
 // ---------------------------------------------------------------------------
 // Node.js fs adapter
@@ -179,7 +204,8 @@ export function createMemorySaveTool(options: {
     parameters: MemorySaveSchema,
     execute: async (_toolCallId, params) => {
       const content = readStringParam(params, "content", { required: true });
-      const topicName = readStringParam(params, "topic", { required: true });
+      const rawTopicName = readStringParam(params, "topic", { required: true });
+      const topicName = sanitizeTopicName(rawTopicName);
       const importance = readStringParam(params, "importance") as
         | "high"
         | "normal"
@@ -271,10 +297,13 @@ export function createMemorySaveTool(options: {
       // Route typed memories to inline section in MEMORY.md
       if (typeValue) {
         const TYPE_TO_INLINE_HEADING: Record<string, string> = {
-          user: "👤 User",
-          feedback: "💬 Key Feedback",
-          project: "🎯 Active Focus",
-          reference: "🔗 Reference",
+          core: "⚡ Core Memory",
+          active: "🔥 Active Context",
+          // Legacy mappings for backward compatibility
+          user: "⚡ Core Memory",
+          feedback: "⚡ Core Memory",
+          project: "🔥 Active Context",
+          reference: "⚡ Core Memory",
         };
         const heading = TYPE_TO_INLINE_HEADING[typeValue];
         if (heading) {

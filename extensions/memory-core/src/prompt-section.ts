@@ -41,7 +41,7 @@ export const buildPromptSection: MemoryPromptSectionBuilder = ({
   lines.push("");
 
   lines.push(
-    "MEMORY.md format: hybrid — high-frequency info (user identity, key feedback, active focus) is inline;",
+    "MEMORY.md format: hybrid — ⚡ Core Memory (preferences, knowledge, patterns) + 🔥 Active Context (goals, recent focus) inline;",
     "low-frequency details are in memory/topics/*.md files, organized by subject (e.g. feishu.md, philosophy.md).",
     "Budget: 4KB. Exceeding this triggers relocation of lower-priority content to topic files.",
   );

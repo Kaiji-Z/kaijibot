@@ -71,10 +71,10 @@ function looksLikeCorrection(evidence: string): boolean {
 }
 
 const CATEGORY_TO_SECTION: Record<string, string> = {
-  domain_knowledge: "👤 User",
-  stated_preference: "👤 User",
-  goal_or_aspiration: "🎯 Active Focus",
-  behavioral_pattern: "👤 User",
+  domain_knowledge: "⚡ Core Memory",
+  stated_preference: "⚡ Core Memory",
+  goal_or_aspiration: "🔥 Active Context",
+  behavioral_pattern: "⚡ Core Memory",
 };
 
 /**

@@ -290,8 +290,8 @@ describe("memory_tidy rebalance", () => {
     // Add large inline sections to guarantee exceeding budget
     const index = await idx.readIndex();
     index.inlineSections = [
-      { section: "👤 User", lines: ["- " + "x".repeat(3000)] },
-      { section: "💬 Key Feedback", lines: ["- " + "y".repeat(3000)] },
+      { section: "⚡ Core Memory", lines: ["- " + "x".repeat(3000)] },
+      { section: "🔥 Active Context", lines: ["- " + "y".repeat(3000)] },
     ];
     await idx.writeIndex(index);
 
@@ -502,10 +502,10 @@ describe("Simulated session-memory hook flow", () => {
   let idx: MemoryIndexManager;
 
   const MEMORY_TYPE_TO_SECTION: Record<string, string> = {
-    user: "👤 User",
-    feedback: "💬 Key Feedback",
-    project: "🎯 Active Focus",
-    reference: "🔗 Reference",
+    user: "⚡ Core Memory",
+    feedback: "⚡ Core Memory",
+    project: "🔥 Active Context",
+    reference: "⚡ Core Memory",
   };
 
   async function simulateHookWrite(
@@ -591,7 +591,7 @@ describe("Simulated session-memory hook flow", () => {
 
     const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
     expect(rawMemory).toContain("# Long-Term Memory");
-    expect(rawMemory).toContain("## 🎯 Active Focus");
+    expect(rawMemory).toContain("## 🔥 Active Context");
     expect(rawMemory).toContain(
       "2026-05-11: Discussed the cognitive insight pipeline architecture",
     );
@@ -604,7 +604,7 @@ describe("Simulated session-memory hook flow", () => {
     expect(index.sections).toHaveLength(1);
     expect(index.inlineSections).toBeDefined();
     expect(index.inlineSections!.length).toBeGreaterThanOrEqual(1);
-    const focusSection = index.inlineSections!.find((s) => s.section === "🎯 Active Focus");
+    const focusSection = index.inlineSections!.find((s) => s.section === "🔥 Active Context");
     expect(focusSection).toBeDefined();
     expect(focusSection!.lines.some((l) => l.includes("cognitive insight"))).toBe(true);
 
@@ -641,7 +641,7 @@ describe("Simulated session-memory hook flow", () => {
     expect(topicPointers).not.toBeNull();
     expect(topicPointers!.length).toBeGreaterThanOrEqual(1);
 
-    const inlineSections = rawMemory.match(/^## [👤💬🎯🔗]/gm);
+    const inlineSections = rawMemory.match(/^## [⚡🔥]/gm);
     expect(inlineSections).not.toBeNull();
     expect(inlineSections!.length).toBeGreaterThanOrEqual(1);
   });
@@ -663,6 +663,8 @@ describe("Simulated session-memory hook flow", () => {
     const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
     expect(rawMemory).toContain("## Topic Pointers");
     expect(rawMemory).toContain("- casual-chat → memory/topics/casual-chat.md");
+    expect(rawMemory).not.toContain("## ⚡ Core Memory");
+    expect(rawMemory).not.toContain("## 🔥 Active Context");
     expect(rawMemory).not.toContain("## 👤 User");
     expect(rawMemory).not.toContain("## 💬 Key Feedback");
     expect(rawMemory).not.toContain("## 🎯 Active Focus");
@@ -701,7 +703,7 @@ describe("Simulated session-memory hook flow", () => {
 
     const index = await idx.readIndex();
     expect(index.inlineSections).toHaveLength(1);
-    expect(index.inlineSections![0]!.section).toBe("👤 User");
+    expect(index.inlineSections![0]!.section).toBe("⚡ Core Memory");
     expect(index.sections).toHaveLength(1);
     expect(index.sections[0]!.title).toBe("User Profile");
     expect(index.recentSessions).toHaveLength(2);
@@ -719,10 +721,10 @@ describe("Simulated session-memory hook flow", () => {
     expect(rawMemory).toContain("- new-topic → memory/topics/new-topic.md");
     expect(rawMemory).toContain("- User Profile → memory/topics/user-profile.md");
     expect(rawMemory).not.toContain("## Recent Sessions");
-    expect(rawMemory).toContain("## 👤 User");
+    expect(rawMemory).toContain("## ⚡ Core Memory");
   });
 
-  it("feedback type routes to 💬 Key Feedback inline section", async () => {
+  it("feedback type routes to ⚡ Core Memory inline section", async () => {
     ws = await createTempWorkspace();
     nodeFs = createNodeFsAdapter();
     tm = new TopicManager({ workspaceDir: ws, fs: nodeFs });
@@ -737,12 +739,12 @@ describe("Simulated session-memory hook flow", () => {
     );
 
     const rawMemory = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
-    expect(rawMemory).toContain("## 💬 Key Feedback");
+    expect(rawMemory).toContain("## ⚡ Core Memory");
     expect(rawMemory).toContain("too verbose");
     expect(rawMemory).toContain("Decision: Reduce response length");
 
     const index = await idx.readIndex();
-    const feedbackSection = index.inlineSections!.find((s) => s.section === "💬 Key Feedback");
-    expect(feedbackSection).toBeDefined();
+    const coreSection = index.inlineSections!.find((s) => s.section === "⚡ Core Memory");
+    expect(coreSection).toBeDefined();
   });
 });

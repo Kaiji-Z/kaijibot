@@ -233,8 +233,8 @@ Daily at 3 AM (cron schedule)
             FragmentStore (behavioral patterns)
             CorrectionStore (high-confidence corrections)
           → High-confidence items (≥ 0.7) written to MEMORY.md inline sections:
-              domain_knowledge / stated_preference → 👤 User
-              goal_or_aspiration → 🎯 Active Focus
+              domain_knowledge / stated_preference / behavioral_pattern → ⚡ Core Memory
+              goal_or_aspiration → 🔥 Active Context
           → Append to daily memory file (memory/YYYY-MM-DD.md)
 ```
 

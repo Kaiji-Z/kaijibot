@@ -235,8 +235,8 @@ Agent 完成任务（≥3 次工具调用）
             FragmentStore（行为模式）
             CorrectionStore（高置信度纠错）
           → 高置信度内容（≥ 0.7）写入 MEMORY.md inline sections
-              domain_knowledge / stated_preference → 👤 User
-              goal_or_aspiration → 🎯 Active Focus
+              domain_knowledge / stated_preference / behavioral_pattern → ⚡ Core Memory
+              goal_or_aspiration → 🔥 Active Context
           → 写入每日记忆文件（memory/YYYY-MM-DD.md）
 ```
 

@@ -340,7 +340,7 @@ describe("memory_tidy", () => {
         [
           "# Long-Term Memory",
           "",
-          "## 👤 User",
+          "## ⚡ Core Memory",
           "",
           "- 2026-05-25: User prefers TypeScript for all projects",
           "- 2026-05-25: User prefers TypeScript for all backend projects",
@@ -351,7 +351,7 @@ describe("memory_tidy", () => {
       const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
 
       expect(result.entriesAffected).toBeGreaterThan(0);
-      expect(result.changes.some((c) => c.includes("deduped") && c.includes("👤 User"))).toBe(true);
+      expect(result.changes.some((c) => c.includes("deduped") && c.includes("⚡ Core Memory"))).toBe(true);
     });
 
     it("removes inline lines already present in topic files", async () => {
@@ -361,7 +361,7 @@ describe("memory_tidy", () => {
         [
           "# Long-Term Memory",
           "",
-          "## 👤 User",
+          "## ⚡ Core Memory",
           "",
           "- 2026-05-25: User knows Rust programming",
           "",
@@ -378,7 +378,7 @@ describe("memory_tidy", () => {
       expect(result.entriesAffected).toBeGreaterThan(0);
       expect(
         result.changes.some(
-          (c) => c.includes("removed") && c.includes("topic files") && c.includes("👤 User"),
+          (c) => c.includes("removed") && c.includes("topic files") && c.includes("⚡ Core Memory"),
         ),
       ).toBe(true);
     });
@@ -388,7 +388,7 @@ describe("memory_tidy", () => {
       const memoryContent = [
         "# Long-Term Memory",
         "",
-        "## 👤 User",
+        "## ⚡ Core Memory",
         "",
         "- 2026-05-25: User prefers TypeScript for all projects",
         "- 2026-05-25: User prefers TypeScript for all backend projects",
@@ -430,7 +430,7 @@ describe("memory_tidy", () => {
         [
           "# Long-Term Memory",
           "",
-          "## 👤 User",
+          "## ⚡ Core Memory",
           "",
           "- 2026-05-25: User likes Go for microservices",
           "",
@@ -443,13 +443,13 @@ describe("memory_tidy", () => {
 
       const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
 
-      expect(result.changes.some((c) => c.includes("deduped") && c.includes("👤 User"))).toBe(true);
+      expect(result.changes.some((c) => c.includes("deduped") && c.includes("⚡ Core Memory"))).toBe(true);
 
       const after = await memFs.fs.readFile(join(WS, "MEMORY.md"));
       expect(after).toContain("User likes Go for microservices");
       expect(after).toContain("User also knows Python");
-      const userSection = after.split("## 👤 User")[1]!;
-      expect(userSection).toMatch(/\n\n/);
+      const coreSection = after.split("## ⚡ Core Memory")[1]!;
+      expect(coreSection).toMatch(/\n\n/);
     });
 
     it("is included in actionFull aggregated results", async () => {
@@ -459,7 +459,7 @@ describe("memory_tidy", () => {
         [
           "# Long-Term Memory",
           "",
-          "## 👤 User",
+          "## ⚡ Core Memory",
           "",
           "- 2026-05-25: User prefers TypeScript for all projects",
           "- 2026-05-25: User prefers TypeScript for all backend projects",
@@ -470,7 +470,7 @@ describe("memory_tidy", () => {
       const result = await runMemoryTidyActions(tidyDeps, { action: "full" });
 
       expect(result.action).toBe("full");
-      expect(result.changes.some((c) => c.includes("deduped") && c.includes("👤 User"))).toBe(true);
+      expect(result.changes.some((c) => c.includes("deduped") && c.includes("⚡ Core Memory"))).toBe(true);
       expect(result.entriesAffected).toBeGreaterThan(0);
     });
   });

@@ -46,10 +46,13 @@ const log = createSubsystemLogger("hooks/session-memory");
 const MESSAGE_CAP = 500;
 
 const MEMORY_TYPE_TO_SECTION: Record<string, string> = {
-  user: "👤 User",
-  feedback: "💬 Key Feedback",
-  project: "🎯 Active Focus",
-  reference: "🔗 Reference",
+  core: "⚡ Core Memory",
+  active: "🔥 Active Context",
+  // Legacy mappings for backward compatibility
+  user: "⚡ Core Memory",
+  feedback: "⚡ Core Memory",
+  project: "🔥 Active Context",
+  reference: "⚡ Core Memory",
 };
 
 // ---------------------------------------------------------------------------

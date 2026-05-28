@@ -241,8 +241,8 @@ Correction (system prompt injection):
 
 ### Session Memory
 
-- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`; updates MEMORY.md with topic pointer via `indexManager.updateSection()`, routes high-importance content to inline sections based on `summary.memoryType` (user/feedback/project/reference), then calls `rebalanceIndex()` to enforce 8KB budget; also runs post-session correction extraction (regex pre-screen → LLM → CorrectionStore). `extractUserIdFromSessionKey` extracts `ou_xxx` from feishu session keys for per-user correction storage.
-- `src/hooks/bundled/session-memory/summary.ts` — `generateStructuredSummary` uses `createStandaloneGenerateText` (single-turn LLM call, 60s timeout) to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug, memoryType); `memoryType` routes high-importance content to inline sections (👤 User / 💬 Key Feedback / 🎯 Active Focus / 🔗 Reference); transcript budget 16K chars; `formatSummaryAsMarkdown` outputs YAML frontmatter + structured sections
+- `src/hooks/bundled/session-memory/handler.ts` — triggers on `command:new` / `command:reset` / `compaction:after`; generates structured summary via LLM, appends to daily `memory/YYYY-MM-DD.md` file, routes to topic files via `topicManager.appendEntry()`; updates MEMORY.md with topic pointer via `indexManager.updateSection()`, routes high-importance content to inline sections based on `summary.memoryType` (core/active; legacy user/feedback/reference → ⚡ Core Memory, project → 🔥 Active Context), then calls `rebalanceIndex()` to enforce 8KB budget; also runs post-session correction extraction (regex pre-screen → LLM → CorrectionStore). `extractUserIdFromSessionKey` extracts `ou_xxx` from feishu session keys for per-user correction storage.
+- `src/hooks/bundled/session-memory/summary.ts` — `generateStructuredSummary` uses `createStandaloneGenerateText` (single-turn LLM call, 60s timeout) to produce `StructuredSummary` (summary, decisions, followups, topics, participants, topicSlug, memoryType); `memoryType` routes high-importance content to inline sections (⚡ Core Memory / 🔥 Active Context); preferred types: `core` → ⚡ Core Memory, `active` → 🔥 Active Context; legacy types still supported: `user`/`feedback`/`reference` → ⚡ Core Memory, `project` → 🔥 Active Context; transcript budget 16K chars; `formatSummaryAsMarkdown` outputs YAML frontmatter + structured sections
 - `src/hooks/bundled/session-memory/transcript.ts` — `getRecentSessionContent` reads JSONL session files, extracts user/assistant text, strips feishu metadata (`Conversation info`/`Sender` JSON blocks + `ou_xxx:` prefix) via `stripMessageMetadata`; `getRecentSessionContentWithResetFallback` falls back to `.reset.` archived files
 
 ### Memory Consolidation
@@ -254,14 +254,14 @@ Correction (system prompt injection):
 - `extensions/memory-core/src/consolidation-extract.ts` — LLM extraction + Jaccard dedup + conflict resolution
 - `extensions/memory-core/src/consolidation-route.ts` — `routeToStores`: routes to PersonaStore/FragmentStore/CorrectionStore + high-confidence items (≥0.7, behavioral_pattern ≥0.8) to MEMORY.md inline sections + daily file append
 - `extensions/memory-core/src/consolidation-types.ts` — `ExtractedItem`, `RouteItem`, `FileWithUserId`, `ConsolidationCheckpoint`, `ConsolidationResult`
-- Category → inline section mapping: `domain_knowledge`/`stated_preference`/`behavioral_pattern` → 👤 User; `goal_or_aspiration` → 🎯 Active Focus
+- Category → inline section mapping: `domain_knowledge`/`stated_preference`/`behavioral_pattern` → ⚡ Core Memory; `goal_or_aspiration` → 🔥 Active Context
 - Gateway bootstrap: `src/gateway/server.impl.ts` (~line 1491), uses `croner` Cron for scheduling
 - All LLM/store deps injected as callbacks (no direct core imports from extensions)
 
 ### Memory Organization
 
 - `skills/memory-organize/SKILL.md` — four-step organize flow: GC (MEMORY.md cleanup + dedup) → Deep scan (QMD sessions) → Tidy (`memory_tidy` full, now includes inline section dedup) → Final check (8KB budget)
-- MEMORY.md structure: inline sections (👤 User, 💬 Key Feedback, 🎯 Active Focus, 🔗 Reference) for high-frequency content + flat `## Topic Pointers` list for topic file references; no `## Recent Sessions` (removed — redundant with daily files and topic pointers)
+- MEMORY.md structure: inline sections (⚡ Core Memory, 🔥 Active Context) for high-frequency content + flat `## Topic Pointers` list for topic file references; no `## Recent Sessions` (removed — redundant with daily files and topic pointers)
 - MEMORY.md 8KB budget enforced by `rebalanceIndex()` in `memory-core/src/memory-index.ts` (`DEFAULT_MAX_BYTES = 8192`); the `memory-organize` skill instructs the LLM to aim for 4KB but the code-level hard limit is 8KB
 - `addRecentSession()` is retained on `MemoryIndexManager` but no longer serialized — the hook uses `updateSection()` for topic pointers instead
 - **Dedup**: Three systems maintain MEMORY.md inline sections — session-memory handler, consolidation, and `memory_save`. All use Jaccard similarity (≥0.8) for inline dedup. `memory_tidy full` includes `actionInlineDedup` (within-section + cross-topic inline↔topic dedup). `memory_save` adds date prefix and calls `rebalanceIndex()`. `relocateInlineToTopic` checks for existing similar content before appending.
