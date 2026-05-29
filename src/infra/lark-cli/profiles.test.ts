@@ -262,6 +262,36 @@ describe("registerLarkCliProfiles", () => {
     expect(callOrder).toEqual(["default", "cli_2", "cli_3"]);
   });
 
+  it("treats 'already exists' as success (idempotent restart)", async () => {
+    mockExecFileFn.mockImplementation((_file, args, _opts, cb) => {
+      const resolved = (args ?? []) as string[];
+      const nameIdx = resolved.indexOf("--name");
+      const name = resolved[nameIdx + 1];
+      const child = makeMockChild();
+      if (name === "cli_existing") {
+        process.nextTick(
+          () =>
+            (cb as (err: Error, stdout: string, stderr: string) => void)(
+              new Error("exit 1"),
+              "",
+              "Error: profile already exists",
+            ),
+        );
+      } else {
+        process.nextTick(() => (cb as () => void)());
+      }
+      return child;
+    });
+
+    const result = await registerLarkCliProfiles([
+      { name: "default", appId: "cli_1", appSecret: "s1", brand: "feishu" },
+      { name: "cli_existing", appId: "cli_existing", appSecret: "s2", brand: "feishu" },
+    ]);
+
+    expect(result.registered).toEqual(["default", "cli_existing"]);
+    expect(result.failed).toEqual([]);
+  });
+
   it("reports failed registrations", async () => {
     mockExecFileFn.mockImplementation((_file, args, _opts, cb) => {
       const resolved = (args ?? []) as string[];

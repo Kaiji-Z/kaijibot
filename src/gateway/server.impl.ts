@@ -20,6 +20,7 @@ import {
   loadConfig,
   registerConfigWriteListener,
   readConfigFileSnapshot,
+  setRuntimeConfigSnapshot,
   writeConfigFile,
 } from "../config/config.js";
 import { formatConfigIssueLines } from "../config/issue-format.js";
@@ -647,6 +648,21 @@ export async function startGatewayServer(
         for (const [key, value] of Object.entries(disabledTools)) {
           toolsMap[key] = value;
         }
+        // Also inject disabled tools into each account's config so
+        // resolveToolsConfig() doesn't re-enable them via DEFAULT_TOOLS_CONFIG.
+        const accountsMap = feishuChannelCfg.accounts as
+          | Record<string, Record<string, unknown>>
+          | undefined;
+        if (accountsMap) {
+          for (const [acctId, acctCfg] of Object.entries(accountsMap)) {
+            if (!acctCfg.tools) { acctCfg.tools = {}; }
+            const acctTools = acctCfg.tools as Record<string, unknown>;
+            for (const [key, value] of Object.entries(disabledTools)) {
+              acctTools[key] = value;
+            }
+          }
+          log.info(`lark-cli: injected disabled tools into ${Object.keys(accountsMap).length} accounts`);
+        }
         log.info(`lark-cli: native feishu tools auto-disabled (lark-cli v${hc.version} healthy)`);
 
         // Auto-disable feishu skills
@@ -659,6 +675,8 @@ export async function startGatewayServer(
           }
         }
         log.info("lark-cli: feishu skills auto-disabled (lark-cli available)");
+
+        setRuntimeConfigSnapshot(cfgAtStart);
       }
     }
   }

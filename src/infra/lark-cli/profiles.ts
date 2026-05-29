@@ -46,11 +46,12 @@ function registerOneProfile(
       { timeout: PROFILE_ADD_TIMEOUT_MS },
       (error, _stdout, stderr) => {
         if (error) {
-          resolve({
-            name: account.name,
-            ok: false,
-            error: stderr?.trim() || error.message,
-          });
+          const msg = stderr?.trim() || error.message;
+          if (msg.toLowerCase().includes("already exists")) {
+            resolve({ name: account.name, ok: true });
+            return;
+          }
+          resolve({ name: account.name, ok: false, error: msg });
           return;
         }
         resolve({ name: account.name, ok: true });
