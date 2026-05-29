@@ -11,3 +11,5 @@ export {
 } from "./auto-disable.ts";
 export { installLarkCliSkills } from "./install-skills.ts";
 export type { InstallSkillsResult } from "./install-skills.ts";
+export { registerLarkCliProfiles, buildAccountCredentialsList } from "./profiles.ts";
+export type { AccountCredentials, ProfileRegistrationResult } from "./profiles.ts";

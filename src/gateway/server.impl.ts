@@ -34,7 +34,7 @@ import {
 } from "../infra/control-ui-assets.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { isTruthyEnvValue, logAcceptedEnvOption } from "../infra/env.js";
-import { buildLarkCliEnv, isLarkCliAvailable, healthCheck } from "../infra/lark-cli/index.js";
+import { buildLarkCliEnv, isLarkCliAvailable, healthCheck, registerLarkCliProfiles, buildAccountCredentialsList } from "../infra/lark-cli/index.js";
 import { shouldDisableNativeTools, buildDisabledToolsConfig, buildDisabledSkillEntries } from "../infra/lark-cli/auto-disable.ts";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
@@ -607,6 +607,28 @@ export async function startGatewayServer(
       if (value) {process.env[key] = value;}
     }
     log.info("lark-cli: env vars set from feishu config");
+
+    // Register all feishu accounts as lark-cli profiles (multi-bot support).
+    // The default (top-level) bot becomes profile "default", additional accounts
+    // become profiles keyed by their accountId.
+    const accounts = feishuChannelCfg.accounts as
+      | Record<string, { appId?: string; appSecret?: string; domain?: string }>
+      | undefined;
+    const profileAccounts = buildAccountCredentialsList({
+      defaultAppId: appId,
+      defaultAppSecret: appSecret,
+      defaultDomain: domain,
+      accounts,
+    });
+    if (profileAccounts.length > 0) {
+      const regResult = await registerLarkCliProfiles(profileAccounts);
+      if (regResult.registered.length > 0) {
+        log.info(`lark-cli: registered profiles: ${regResult.registered.join(", ")}`);
+      }
+      for (const fail of regResult.failed) {
+        log.warn(`lark-cli: failed to register profile "${fail.name}": ${fail.error}`);
+      }
+    }
 
     // Auto-disable native feishu tools if user hasn't explicitly configured them.
     // Guard: verify the binary actually runs before disabling native tools.
