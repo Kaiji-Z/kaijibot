@@ -18,15 +18,9 @@ describe("isLarkCliAvailable", () => {
 });
 
 describe("buildLarkCliEnv", () => {
-  it("maps feishu config fields to env vars", () => {
-    const env = buildLarkCliEnv({
-      appId: "cli_test123",
-      appSecret: "secret456",
-      domain: "feishu.cn",
-    });
+  it("maps domain to brand and sets bot defaults", () => {
+    const env = buildLarkCliEnv({ domain: "feishu.cn" });
 
-    expect(env.LARKSUITE_CLI_APP_ID).toBe("cli_test123");
-    expect(env.LARKSUITE_CLI_APP_SECRET).toBe("secret456");
     expect(env.LARKSUITE_CLI_BRAND).toBe("feishu");
     expect(env.LARKSUITE_CLI_STRICT_MODE).toBe("bot");
     expect(env.LARKSUITE_CLI_DEFAULT_AS).toBe("bot");
@@ -35,8 +29,6 @@ describe("buildLarkCliEnv", () => {
   it("returns only defaults when config is empty", () => {
     const env = buildLarkCliEnv({});
 
-    expect(env.LARKSUITE_CLI_APP_ID).toBeUndefined();
-    expect(env.LARKSUITE_CLI_APP_SECRET).toBeUndefined();
     expect(env.LARKSUITE_CLI_BRAND).toBeUndefined();
     expect(env.LARKSUITE_CLI_STRICT_MODE).toBe("bot");
     expect(env.LARKSUITE_CLI_DEFAULT_AS).toBe("bot");
@@ -48,10 +40,11 @@ describe("buildLarkCliEnv", () => {
     expect(env.LARKSUITE_CLI_BRAND).toBe("lark");
   });
 
-  it("does not include undefined/empty fields", () => {
-    const env = buildLarkCliEnv({ appId: "", appSecret: undefined });
+  it("never sets credential env vars", () => {
+    const env = buildLarkCliEnv({ domain: "feishu.cn" });
 
-    expect(env.LARKSUITE_CLI_APP_ID).toBeUndefined();
-    expect(env.LARKSUITE_CLI_APP_SECRET).toBeUndefined();
+    expect(
+      Object.keys(env).some((k) => k.includes("APP_ID") || k.includes("APP_SECRET")),
+    ).toBe(false);
   });
 });

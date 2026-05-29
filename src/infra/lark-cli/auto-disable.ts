@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { isLarkCliAvailable } from "./resolve.ts";
@@ -27,9 +27,7 @@ const FEISHU_SKILL_IDS = ["feishu-doc", "feishu-wiki", "feishu-drive", "feishu-p
 export function areLarkSkillsInstalled(): boolean {
   const skillsDir = join(homedir(), ".agents", "skills");
   if (!existsSync(skillsDir)) {return false;}
-  // Check for at least one lark-* skill directory
   try {
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
     const entries = readdirSync(skillsDir, { withFileTypes: true });
     return entries.some((e) => e.isDirectory() && e.name.startsWith("lark-"));
   } catch {

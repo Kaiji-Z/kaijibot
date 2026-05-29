@@ -603,7 +603,7 @@ export async function startGatewayServer(
     const domain = feishuChannelCfg.domain as string | undefined;
 
     // Do not set LARKSUITE_CLI_APP_ID/SECRET — they override --profile credentials.
-    const larkEnv = buildLarkCliEnv({ appId: undefined, appSecret: undefined, domain });
+    const larkEnv = buildLarkCliEnv({ domain });
     for (const [key, value] of Object.entries(larkEnv)) {
       if (value) {process.env[key] = value;}
     }
