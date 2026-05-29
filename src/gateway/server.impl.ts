@@ -34,7 +34,7 @@ import {
 } from "../infra/control-ui-assets.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { isTruthyEnvValue, logAcceptedEnvOption } from "../infra/env.js";
-import { buildLarkCliEnv, isLarkCliAvailable } from "../infra/lark-cli/index.js";
+import { buildLarkCliEnv, isLarkCliAvailable, healthCheck } from "../infra/lark-cli/index.js";
 import { shouldDisableNativeTools, buildDisabledToolsConfig, buildDisabledSkillEntries } from "../infra/lark-cli/auto-disable.ts";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
@@ -608,29 +608,36 @@ export async function startGatewayServer(
     }
     log.info("lark-cli: env vars set from feishu config");
 
-    // Auto-disable native feishu tools if user hasn't explicitly configured them
+    // Auto-disable native feishu tools if user hasn't explicitly configured them.
+    // Guard: verify the binary actually runs before disabling native tools.
+    // Prevents "path resolves but binary crashes" edge case (platform mismatch, corruption).
     const userToolsCfg = feishuChannelCfg.tools as Record<string, unknown> | undefined;
     if (shouldDisableNativeTools(userToolsCfg)) {
-      if (!feishuChannelCfg.tools) {
-        feishuChannelCfg.tools = {};
-      }
-      const disabledTools = buildDisabledToolsConfig();
-      const toolsMap = feishuChannelCfg.tools as Record<string, unknown>;
-      for (const [key, value] of Object.entries(disabledTools)) {
-        toolsMap[key] = value;
-      }
-      log.info("lark-cli: native feishu tools auto-disabled (lark-cli available)");
-
-      // Auto-disable feishu skills
-      const disabledSkills = buildDisabledSkillEntries();
-      if (!cfgAtStart.skills) cfgAtStart.skills = {};
-      if (!cfgAtStart.skills.entries) cfgAtStart.skills.entries = {};
-      for (const [id, cfg] of Object.entries(disabledSkills)) {
-        if (!cfgAtStart.skills.entries[id]) {
-          cfgAtStart.skills.entries[id] = cfg;
+      const hc = await healthCheck();
+      if (!hc.ok) {
+        log.warn(`lark-cli: binary found but health check failed (${hc.error}), keeping native feishu tools`);
+      } else {
+        if (!feishuChannelCfg.tools) {
+          feishuChannelCfg.tools = {};
         }
+        const disabledTools = buildDisabledToolsConfig();
+        const toolsMap = feishuChannelCfg.tools as Record<string, unknown>;
+        for (const [key, value] of Object.entries(disabledTools)) {
+          toolsMap[key] = value;
+        }
+        log.info(`lark-cli: native feishu tools auto-disabled (lark-cli v${hc.version} healthy)`);
+
+        // Auto-disable feishu skills
+        const disabledSkills = buildDisabledSkillEntries();
+        if (!cfgAtStart.skills) cfgAtStart.skills = {};
+        if (!cfgAtStart.skills.entries) cfgAtStart.skills.entries = {};
+        for (const [id, cfg] of Object.entries(disabledSkills)) {
+          if (!cfgAtStart.skills.entries[id]) {
+            cfgAtStart.skills.entries[id] = cfg;
+          }
+        }
+        log.info("lark-cli: feishu skills auto-disabled (lark-cli available)");
       }
-      log.info("lark-cli: feishu skills auto-disabled (lark-cli available)");
     }
   }
 
