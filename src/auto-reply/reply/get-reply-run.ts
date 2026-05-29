@@ -369,7 +369,7 @@ export async function runPreparedReply(
 
   // Inject lark-cli profile hint so the agent uses --profile for multi-bot setups.
   const accountId = sessionCtx.AccountId;
-  if (accountId && accountId !== "default") {
+  if (accountId) {
     extraSystemPromptParts.push(
       `## Lark CLI Profile\nYou are operating as feishu bot account "${accountId}". When using any lark-cli command, always add \`--profile ${accountId}\` to ensure the correct bot credentials are used.`,
     );
