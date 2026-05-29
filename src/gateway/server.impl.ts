@@ -602,12 +602,11 @@ export async function startGatewayServer(
     const appSecret = feishuChannelCfg.appSecret as string | undefined;
     const domain = feishuChannelCfg.domain as string | undefined;
 
-    // Set env vars for lark-cli
-    const larkEnv = buildLarkCliEnv({ appId, appSecret, domain });
+    // Do not set LARKSUITE_CLI_APP_ID/SECRET — they override --profile credentials.
+    const larkEnv = buildLarkCliEnv({ appId: undefined, appSecret: undefined, domain });
     for (const [key, value] of Object.entries(larkEnv)) {
       if (value) {process.env[key] = value;}
     }
-    log.info("lark-cli: env vars set from feishu config");
 
     // Register all feishu accounts as lark-cli profiles (multi-bot support).
     // The default (top-level) bot becomes profile "default", additional accounts
