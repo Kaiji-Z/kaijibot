@@ -27,12 +27,14 @@ export function resolveLarkCliPath(): string | undefined {
     // Package not installed or not resolvable
   }
 
-  // Strategy 2: check $PATH for the bin symlink
+  // Strategy 2: check $PATH for the bin symlink (cross-platform)
   try {
-    const which = execSync("which lark-cli", { encoding: "utf-8", timeout: 3000 }).trim();
-    if (which) {
-      cachedPath = which;
-      return which;
+    const isWin = process.platform === "win32";
+    const cmd = isWin ? "where lark-cli" : "which lark-cli";
+    const result = execSync(cmd, { encoding: "utf-8", timeout: 3000 }).trim();
+    if (result) {
+      cachedPath = result.split("\n")[0].trim();
+      return cachedPath;
     }
   } catch {
     // Not in PATH
