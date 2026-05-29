@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { isLarkCliAvailable } from "./resolve.ts";
 
 /** All native feishu tool keys that can be toggled in channels.feishu.tools.* */
@@ -17,15 +20,35 @@ const ALL_TOOL_KEYS = [
 const FEISHU_SKILL_IDS = ["feishu-doc", "feishu-wiki", "feishu-drive", "feishu-perm"] as const;
 
 /**
+ * Check if lark-* skills are installed in ~/.agents/skills/.
+ * Auto-disable should only activate when CLI skills are ready to replace
+ * native tools — otherwise existing users lose feishu capability on upgrade.
+ */
+export function areLarkSkillsInstalled(): boolean {
+  const skillsDir = join(homedir(), ".agents", "skills");
+  if (!existsSync(skillsDir)) return false;
+  // Check for at least one lark-* skill directory
+  try {
+    const { readdirSync } = require("node:fs") as typeof import("node:fs");
+    const entries = readdirSync(skillsDir, { withFileTypes: true });
+    return entries.some((e) => e.isDirectory() && e.name.startsWith("lark-"));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check if native feishu tools should be auto-disabled.
  * Returns true when:
- * 1. lark-cli binary is available
- * 2. User has NOT explicitly configured any tools.* keys
+ * 1. lark-cli binary is available AND healthy
+ * 2. lark-* skills are installed (CLI has replacements ready)
+ * 3. User has NOT explicitly configured any tools.* keys
  */
 export function shouldDisableNativeTools(
   userToolsConfig: Record<string, unknown> | undefined,
 ): boolean {
   if (!isLarkCliAvailable()) return false;
+  if (!areLarkSkillsInstalled()) return false;
   // If user has set any tool key explicitly, don't auto-disable
   if (userToolsConfig && Object.keys(userToolsConfig).length > 0) return false;
   return true;

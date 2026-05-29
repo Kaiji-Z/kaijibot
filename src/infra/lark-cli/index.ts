@@ -5,6 +5,7 @@ export { healthCheck } from "./health.ts";
 export type { HealthCheckResult } from "./health.ts";
 export {
   shouldDisableNativeTools,
+  areLarkSkillsInstalled,
   buildDisabledToolsConfig,
   buildDisabledSkillEntries,
 } from "./auto-disable.ts";
