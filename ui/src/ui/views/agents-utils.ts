@@ -945,16 +945,16 @@ export function deriveAgentStatusFromSessions(
 }
 
 export function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`;
+  if (tokens >= 1_000_000) {return `${(tokens / 1_000_000).toFixed(1)}M`;}
+  if (tokens >= 1_000) {return `${(tokens / 1_000).toFixed(1)}K`;}
   return String(tokens);
 }
 
 export function formatRelativeTime(ts: number | null): string {
-  if (!ts) return "-";
+  if (!ts) {return "-";}
   const seconds = Math.floor((Date.now() - ts) / 1000);
-  if (seconds < 60) return "刚刚";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟前`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}小时前`;
+  if (seconds < 60) {return "刚刚";}
+  if (seconds < 3600) {return `${Math.floor(seconds / 60)}分钟前`;}
+  if (seconds < 86400) {return `${Math.floor(seconds / 3600)}小时前`;}
   return `${Math.floor(seconds / 86400)}天前`;
 }

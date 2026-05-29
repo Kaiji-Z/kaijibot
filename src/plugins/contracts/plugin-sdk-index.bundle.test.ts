@@ -14,20 +14,6 @@ const bundleTempRootTracker = createSuiteTempRootTracker(
   path.join(process.cwd(), "node_modules", ".cache"),
 );
 
-async function listBuiltJsFiles(rootDir: string): Promise<string[]> {
-  const entries = await fs.readdir(rootDir, { withFileTypes: true });
-  const nested = await Promise.all(
-    entries.map(async (entry) => {
-      const entryPath = path.join(rootDir, entry.name);
-      if (entry.isDirectory()) {
-        return await listBuiltJsFiles(entryPath);
-      }
-      return entry.isFile() && entry.name.endsWith(".js") ? [entryPath] : [];
-    }),
-  );
-  return nested.flat();
-}
-
 describe("plugin-sdk bundled exports", () => {
   afterAll(() => {
     bundleTempRootTracker.cleanup();

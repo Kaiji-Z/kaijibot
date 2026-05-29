@@ -778,13 +778,13 @@ const THEME_MODE_OPTIONS: ThemeModeOption[] = [
  */
 export function renderThemeModeSelect(state: AppViewState) {
   const modeIcon = (mode: ThemeMode) => {
-    if (mode === "system") return icons.monitor;
-    if (mode === "light") return icons.sun;
+    if (mode === "system") {return icons.monitor;}
+    if (mode === "light") {return icons.sun;}
     return icons.moon;
   };
 
   const applyMode = (mode: ThemeMode, e: Event) => {
-    if (mode === state.themeMode) return;
+    if (mode === state.themeMode) {return;}
     state.setThemeMode(mode, { element: e.currentTarget as HTMLElement });
   };
 
@@ -892,11 +892,11 @@ export function renderThinkingChip(
   const disabled = !state.connected || busy || !state.client;
   const levelDots = (val: string): string => {
     const n = normalizeLowercaseStringOrEmpty(val);
-    if (n === "off") return "○";
-    if (n === "low") return "●";
-    if (n === "medium") return "●●";
-    if (n === "high") return "●●●";
-    if (n === "default") return "Auto";
+    if (n === "off") {return "○";}
+    if (n === "low") {return "●";}
+    if (n === "medium") {return "●●";}
+    if (n === "high") {return "●●●";}
+    if (n === "default") {return "Auto";}
     return val.slice(0, 3);
   };
   const display = currentOverride === "" ? "Auto" : levelDots(currentOverride);
@@ -982,7 +982,7 @@ export function renderSessionChip(
 }
 
 export function renderTokenRing(used: number, total: number) {
-  if (!used || !total) return nothing;
+  if (!used || !total) {return nothing;}
   const ratio = Math.min(used / total, 1);
   const pct = Math.round(ratio * 100);
   const r = 9;
@@ -1110,17 +1110,17 @@ const ACTIVE_FINE_STATUSES = new Set(["thinking", "tool_call", "streaming"]);
 function countActiveSessions(sessionDetails: Record<string, import("./views/agents-utils.js").SessionDetailState>): number {
   let count = 0;
   for (const detail of Object.values(sessionDetails)) {
-    if (ACTIVE_FINE_STATUSES.has(detail.fineStatus)) count++;
+    if (ACTIVE_FINE_STATUSES.has(detail.fineStatus)) {count++;}
   }
   return count;
 }
 
 function formatRelativeTime(ms: number | null | undefined): string {
-  if (!ms) return "";
+  if (!ms) {return "";}
   const diff = ms - Date.now();
-  if (diff <= 0) return "now";
+  if (diff <= 0) {return "now";}
   const mins = Math.round(diff / 60000);
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) {return `${mins}m`;}
   const hours = Math.floor(mins / 60);
   const remainMins = mins % 60;
   return remainMins ? `${hours}h ${remainMins}m` : `${hours}h`;
@@ -1166,13 +1166,13 @@ export function renderSidebarSessionList(state: AppViewState) {
 }
 
 function formatUptime(ms: number | null | undefined): string {
-  if (!ms) return "—";
+  if (!ms) {return "—";}
   const totalSec = Math.floor(ms / 1000);
   const days = Math.floor(totalSec / 86400);
   const hours = Math.floor((totalSec % 86400) / 3600);
   const mins = Math.floor((totalSec % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}m`;
+  if (days > 0) {return `${days}d ${hours}h`;}
+  if (hours > 0) {return `${hours}h ${mins}m`;}
   return `${mins}m`;
 }
 

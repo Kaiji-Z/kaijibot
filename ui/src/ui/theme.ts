@@ -54,10 +54,10 @@ export const DEFAULT_THEME: ThemeName = "ink-jade";
 export function parseThemeSelection(
   raw: string | null | undefined,
 ): ThemeName {
-  if (!raw) return DEFAULT_THEME;
-  if (VALID_THEME_NAMES.has(raw)) return raw as ThemeName;
+  if (!raw) {return DEFAULT_THEME;}
+  if (VALID_THEME_NAMES.has(raw)) {return raw as ThemeName;}
   const mapped = LEGACY_MAP[raw];
-  if (mapped) return mapped;
+  if (mapped) {return mapped;}
   return DEFAULT_THEME;
 }
 
@@ -76,8 +76,8 @@ export function resolveTheme(
     const prefersLight = globalThis.matchMedia?.(
       "(prefers-color-scheme: light)",
     )?.matches;
-    if (prefersLight && name === "ink-jade") return "rice-paper";
-    if (!prefersLight && name === "rice-paper") return "ink-jade";
+    if (prefersLight && name === "ink-jade") {return "rice-paper";}
+    if (!prefersLight && name === "rice-paper") {return "ink-jade";}
     // glaze stays glaze regardless of system preference
   }
   return name;

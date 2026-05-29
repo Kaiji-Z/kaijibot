@@ -63,7 +63,7 @@ class UnionFind {
   union(a: string, b: string): void {
     const ra = this.find(a);
     const rb = this.find(b);
-    if (ra === rb) return;
+    if (ra === rb) {return;}
     const rankA = this.rank.get(ra) ?? 0;
     const rankB = this.rank.get(rb) ?? 0;
     if (rankA < rankB) {
@@ -137,8 +137,8 @@ export function deduplicateBySimilarity<T extends DedupableItem>(
 
   for (const group of groups.values()) {
     // Sort by score descending to pick the best; break ties by original order
-    const sorted = [...group].sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+    const sorted = [...group].toSorted((a, b) => {
+      if (b.score !== a.score) {return b.score - a.score;}
       return ids.indexOf(a.id) - ids.indexOf(b.id);
     });
     const winner = sorted[0];
@@ -157,7 +157,7 @@ export function deduplicateBySimilarity<T extends DedupableItem>(
   const result: DedupedItem<T>[] = [];
 
   for (const id of ids) {
-    if (!representativeIds.has(id)) continue;
+    if (!representativeIds.has(id)) {continue;}
     const item = itemMap.get(id)!;
     const merged = mergedFromMap.get(id);
     if (merged && merged.length > 0) {

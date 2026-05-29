@@ -29,8 +29,8 @@ export function createEvolutionSuggestTool(deps: {
   sessionKey?: string;
   deliveryTo?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) return null;
-  if (deps.config?.cognitive?.evolution?.enabled === false) return null;
+  if (deps.config?.cognitive?.enabled === false) {return null;}
+  if (deps.config?.cognitive?.evolution?.enabled === false) {return null;}
 
   return {
     name: "evaluate_skill_evolution",
@@ -130,9 +130,9 @@ export function createEvolutionSuggestTool(deps: {
           const skills: Array<{ name: string; description: string }> = [];
           for (const name of names) {
             const meta = await writer.readSkillMeta(name);
-            if (meta) skills.push({ name: meta.name, description: meta.description });
+            if (meta) {skills.push({ name: meta.name, description: meta.description });}
           }
-          if (skills.length > 0) existingSkills = skills;
+          if (skills.length > 0) {existingSkills = skills;}
 
           let generateTextForDedup: ((prompt: string) => Promise<string>) | undefined;
           try {
@@ -210,10 +210,10 @@ export function createEvolutionSuggestTool(deps: {
 function resolveUserId(sessionKey?: string, deliveryTo?: string): string | null {
   if (deliveryTo) {
     const stripped = deliveryTo.replace(/^(user:|feishu:)/, "");
-    if (stripped && stripped !== "main") return stripped;
+    if (stripped && stripped !== "main") {return stripped;}
   }
-  if (!sessionKey) return null;
+  if (!sessionKey) {return null;}
   const tail = sessionKey.split(":").pop();
-  if (!tail || tail === "main") return null;
+  if (!tail || tail === "main") {return null;}
   return tail;
 }

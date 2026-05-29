@@ -19,7 +19,6 @@ export function generateInsightCandidates(
     maxCandidates?: number;
   },
 ): InsightCandidate[] {
-  const verificationLevel = options?.verificationLevel ?? "basic";
   const maxCandidates = options?.maxCandidates ?? 3;
 
   const candidates: InsightCandidate[] = [];
@@ -30,17 +29,17 @@ export function generateInsightCandidates(
 
   for (const conn of crossConnections.slice(0, 2)) {
     const candidate = buildCrossDomainCandidate(conn, persona);
-    if (candidate) candidates.push(candidate);
+    if (candidate) {candidates.push(candidate);}
   }
 
   // Strategy 2: Domain depth insights (connect user's deep domains with current events)
   const deepDomains = Object.entries(persona.domains)
     .filter(([, d]) => d.depth >= 4)
-    .sort(([, a], [, b]) => b.depth - a.depth);
+    .toSorted(([, a], [, b]) => b.depth - a.depth);
 
   for (const [domainName] of deepDomains.slice(0, 1)) {
     const candidate = buildDomainDepthInsight(domainName);
-    if (candidate) candidates.push(candidate);
+    if (candidate) {candidates.push(candidate);}
   }
 
   // Strategy 4: Exploration — target domains outside user's known graph
@@ -48,7 +47,7 @@ export function generateInsightCandidates(
   if (userDomains.length > 0 && unknownTargets.length > 0) {
     for (const targetDomain of unknownTargets.slice(0, 1)) {
       const candidate = buildExplorationInsight(targetDomain);
-      if (candidate) candidates.push(candidate);
+      if (candidate) {candidates.push(candidate);}
     }
   }
 
@@ -82,7 +81,7 @@ export function generateInsightCandidates(
 
   return scored
     .filter((c) => !isCandidateBlacklisted(c, persona.domainBlacklist))
-    .sort((a, b) => b.compositeScore - a.compositeScore)
+    .toSorted((a, b) => b.compositeScore - a.compositeScore)
     .slice(0, maxCandidates)
     .map((c) => ({ ...c, verificationStatus: "unverified" as const }));
 }
@@ -92,7 +91,7 @@ function buildCrossDomainCandidate(
   persona: PersonaTree,
 ): InsightCandidate | undefined {
   const fromDomain = persona.domains[conn.from];
-  if (!fromDomain) return undefined;
+  if (!fromDomain) {return undefined;}
 
   const bridgeStr = conn.bridge.length > 0 ? ` (通过 ${conn.bridge.join("、")})` : "";
   const insights = fromDomain.keyInsights.slice(0, 2).join("；");
@@ -123,7 +122,7 @@ export function isCandidateBlacklisted(
   candidate: InsightCandidate,
   domainBlacklist: string[] | undefined,
 ): boolean {
-  if (!domainBlacklist || domainBlacklist.length === 0) return false;
+  if (!domainBlacklist || domainBlacklist.length === 0) {return false;}
   const blacklistSet = new Set(domainBlacklist);
   return (
     candidate.targetDomains.some((d) => blacklistSet.has(d)) ||

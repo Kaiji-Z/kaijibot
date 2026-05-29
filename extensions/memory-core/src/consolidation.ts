@@ -8,14 +8,6 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-  DEFAULT_MEMORY_CONSOLIDATION_BATCH_SIZE,
-  DEFAULT_MEMORY_CONSOLIDATION_CONCURRENCY,
-  DEFAULT_MEMORY_CONSOLIDATION_CRON,
-  DEFAULT_MEMORY_CONSOLIDATION_ENABLED,
-  DEFAULT_MEMORY_CONSOLIDATION_LOOKBACK_DAYS,
-  DEFAULT_MEMORY_CONSOLIDATION_VERBOSE_LOGGING,
-} from "kaijibot/plugin-sdk/memory-core-host-status";
 import type { ConsolidationConfig, ConsolidationWorkspace } from "kaijibot/plugin-sdk/memory-core-host-status";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/memory-core";
 import { extractFromBatch, mergeAndDedupBatches, resolveConflicts } from "./consolidation-extract.js";

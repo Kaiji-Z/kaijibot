@@ -90,7 +90,7 @@ describe("SkillPersistenceWriter archive recovery", () => {
 
     expect(await writer.skillExists("recover-me")).toBe(false);
 
-    const path = await writer.recoverSkill("recover-me");
+    await writer.recoverSkill("recover-me");
     expect(await writer.skillExists("recover-me")).toBe(true);
     expect(await writer.listArchivedSkillNames()).not.toContain("recover-me");
   });

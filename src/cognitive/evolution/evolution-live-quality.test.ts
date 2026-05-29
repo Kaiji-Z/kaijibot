@@ -6,7 +6,6 @@
 
 import { describe, it, expect } from "vitest";
 import { generateSkillDraftLLM, buildPrompt, validateAndRepair } from "./llm-draft-generator.js";
-import { SKILL_CREATOR_SPEC } from "./skill-creator-spec.js";
 import type { EvolutionCandidate } from "./types.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
@@ -106,7 +105,7 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {throw new Error(data.error.message);}
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -146,14 +145,14 @@ function evaluateDraft(
   const referencesRealTools = toolNamesInBody.length > 0;
 
   let score = 0;
-  if (hasValidName) score += 2;
-  if (hasDescription) score += 1;
-  if (hasTriggers) score += 2;
-  if (hasChineseTriggers) score += 1;
-  if (hasEnglishTriggers) score += 1;
-  if (under200Lines) score += 1;
-  if (hasWorkflowSection) score += 1;
-  if (referencesRealTools) score += 1;
+  if (hasValidName) {score += 2;}
+  if (hasDescription) {score += 1;}
+  if (hasTriggers) {score += 2;}
+  if (hasChineseTriggers) {score += 1;}
+  if (hasEnglishTriggers) {score += 1;}
+  if (under200Lines) {score += 1;}
+  if (hasWorkflowSection) {score += 1;}
+  if (referencesRealTools) {score += 1;}
 
   return {
     name: draft.name,

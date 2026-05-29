@@ -15,7 +15,7 @@ import type {
 } from "../types.js";
 import { detectContradictions } from "./contradiction-resolver.js";
 import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
-import type { ExtractionResult, ExtractedAttribute, ExtractedInsight } from "./types.js";
+import type { ExtractionResult, ExtractedInsight } from "./types.js";
 const log = createSubsystemLogger("cognitive/persona-curator");
 
 const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -58,19 +58,19 @@ function computeInterestPhase(domain: DomainNode, nowMs: number): InterestPhase 
   const isNowActive = ageSinceLastMention < SEVEN_DAYS_MS;
 
   // Revived: was inactive, now active again
-  if (wasInactive && isNowActive) return "revived";
+  if (wasInactive && isNowActive) {return "revived";}
 
   // Time-based decay
-  if (ageSinceLastMention > THIRTY_DAYS_MS) return "dormant";
-  if (ageSinceLastMention > FOURTEEN_DAYS_MS) return "declining";
+  if (ageSinceLastMention > THIRTY_DAYS_MS) {return "dormant";}
+  if (ageSinceLastMention > FOURTEEN_DAYS_MS) {return "declining";}
 
   // Truly emergent: low recurrence AND shallow depth AND few insights
   const insightCount = domain.keyInsights.length + (domain.insights?.length ?? 0);
-  if (domain.recurrence <= 2 && domain.depth < 2 && insightCount < 3) return "emergent";
+  if (domain.recurrence <= 2 && domain.depth < 2 && insightCount < 3) {return "emergent";}
 
   // Stable: sufficient evidence of sustained interest
   // recurrence > 2, OR deep engagement (depth >= 2), OR many insights (>= 3)
-  if (isNowActive) return "stable";
+  if (isNowActive) {return "stable";}
 
   // Active but not recently — keep previous phase, default to emergent
   return prevPhase ?? "emergent";
@@ -92,9 +92,9 @@ function toTypedInsight(extracted: ExtractedInsight, nowMs: number): TypedInsigh
 function textSimilar(a: string, b: string): boolean {
   const normA = a.trim().toLowerCase();
   const normB = b.trim().toLowerCase();
-  if (normA === normB) return true;
+  if (normA === normB) {return true;}
   const maxLen = Math.max(normA.length, normB.length);
-  if (maxLen === 0) return true;
+  if (maxLen === 0) {return true;}
   const distance = levenshteinDistance(normA, normB);
   return distance / maxLen < 0.3;
 }
@@ -102,13 +102,11 @@ function textSimilar(a: string, b: string): boolean {
 function levenshteinDistance(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const dp: number[] = new Array(n + 1);
-  for (let j = 0; j <= n; j++) dp[j] = j;
+  const dp: number[] = Array.from({ length: n + 1 }, (_, j) => j);
   for (let i = 1; i <= m; i++) {
     const prev = dp[0];
     dp[0] = i;
     for (let j = 1; j <= n; j++) {
-      const temp = dp[j];
       if (a[i - 1] === b[j - 1]) {
         dp[j] = prev;
       } else {
@@ -161,7 +159,7 @@ export function mergeExtraction(
   const coreTraitAttrs = extraction.attributes.filter((a) =>
     a.field.startsWith("identity.coreTraits."),
   );
-  const { records: contradictions, resolvedTraits } = detectContradictions(
+  const { resolvedTraits } = detectContradictions(
     persona.identity.coreTraits,
     coreTraitAttrs,
     now,
@@ -171,7 +169,7 @@ export function mergeExtraction(
   for (const attr of extraction.attributes) {
     if (attr.field.startsWith("identity.coreTraits.")) {
       const traitName = attr.field.replace("identity.coreTraits.", "");
-      if (resolvedTraits[traitName]?.resolution === "resolved_old") continue;
+      if (resolvedTraits[traitName]?.resolution === "resolved_old") {continue;}
       newCoreTraits[traitName] = mergeConfidenceValue(
         newCoreTraits[traitName],
         {
@@ -190,9 +188,9 @@ export function mergeExtraction(
   const newDomains = { ...persona.domains };
 
   const isPlausibleKeyInsight = (s: string): boolean => {
-    if (s.length < 4 || s.length > 200) return false;
+    if (s.length < 4 || s.length > 200) {return false;}
     for (const pat of INSIGHT_ECHO_PATTERNS) {
-      if (pat.test(s)) return false;
+      if (pat.test(s)) {return false;}
     }
     return true;
   };
@@ -300,7 +298,7 @@ export function mergeExtraction(
   }
 
   for (const [name, node] of Object.entries(newDomains)) {
-    if (newBlacklist.includes(name)) continue;
+    if (newBlacklist.includes(name)) {continue;}
     if (
       node.negationSignals >= AUTO_BLACKLIST_NEGATION_THRESHOLD &&
       node.lastNegatedAt !== undefined &&
@@ -489,26 +487,19 @@ export function mergeExtraction(
       .toLowerCase()
       .replace(/[^a-z0-9\s.-]/g, "")
       .trim();
-    if (TECH_DOMAIN_TERMS.has(lower)) return true;
+    if (TECH_DOMAIN_TERMS.has(lower)) {return true;}
     const words = lower.split(/\s+/).filter((w) => w.length > 0);
-    if (words.length === 0) return false;
-    if (words.length === 1 && !TECH_DOMAIN_TERMS.has(words[0]!)) return false;
+    if (words.length === 0) {return false;}
+    if (words.length === 1 && !TECH_DOMAIN_TERMS.has(words[0]!)) {return false;}
     const contentWords = words.filter((w) => !ENGLISH_STOPWORDS.has(w));
     return contentWords.length >= 2;
   };
   const isValidFocus = (s: string) => {
-    if (s.length < 2 || s.length > 30 || /^```/.test(s) || /^[^\p{L}\p{N}]+$/u.test(s))
-      return false;
-    if (!hasCJK(s) && !isPlausibleEnglishTopic(s)) return false;
+    if (s.length < 2 || s.length > 30 || s.startsWith('```') || /^[^\p{L}\p{N}]+$/u.test(s))
+      {return false;}
+    if (!hasCJK(s) && !isPlausibleEnglishTopic(s)) {return false;}
     return true;
   };
-  const isValidQuestion = (s: string) =>
-    s.length >= 4 &&
-    s.length <= 100 &&
-    !s.includes("\\n") &&
-    !/[#*_~`>|]{3,}/.test(s) &&
-    !/^ou_[a-f0-9]{20,}/.test(s) &&
-    !/[\"\\]]$/.test(s.trim());
 
   const newRecentFocus = [...new Set([...extraction.recentFocus, ...persona.recentFocus])]
     .filter(isValidFocus)
@@ -567,9 +558,9 @@ export function mergeExtraction(
   const interestDomains: string[] = [];
   const curiosityDomains: string[] = [];
   for (const [name, node] of Object.entries(newDomains)) {
-    if (node.depth >= 4 && node.recurrence >= 10) expertDomains.push(name);
-    else if (node.depth >= 2) interestDomains.push(name);
-    else if (node.depth >= 1) curiosityDomains.push(name);
+    if (node.depth >= 4 && node.recurrence >= 10) {expertDomains.push(name);}
+    else if (node.depth >= 2) {interestDomains.push(name);}
+    else if (node.depth >= 1) {curiosityDomains.push(name);}
   }
 
   const displayName =
@@ -610,7 +601,7 @@ function mergeConfidenceValue(
   incoming: ConfidenceValue,
   now: number,
 ): ConfidenceValue {
-  if (!existing) return incoming;
+  if (!existing) {return incoming;}
 
   // Weighted confidence update: more evidence = more stable
   const totalEvidence = existing.evidenceCount + 1;
@@ -646,19 +637,19 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
   // Prune low-confidence traits (confidence < 0.2 after 5+ observations)
   const prunedTraits: Record<string, ConfidenceValue> = {};
   for (const [key, val] of Object.entries(persona.identity.coreTraits)) {
-    if (val.evidenceCount >= 5 && val.confidence < 0.2) continue;
+    if (val.evidenceCount >= 5 && val.confidence < 0.2) {continue;}
     prunedTraits[key] = val;
   }
 
   // Prune stale domains
   const prunedDomains: Record<string, DomainNode> = {};
   for (const [name, domain] of Object.entries(persona.domains)) {
-    if (now - domain.lastMentioned > THIRTY_DAYS && domain.recurrence < 3) continue;
-    if ((domain.negationSignals ?? 0) >= 3 && domain.depth < 2) continue;
+    if (now - domain.lastMentioned > THIRTY_DAYS && domain.recurrence < 3) {continue;}
+    if ((domain.negationSignals ?? 0) >= 3 && domain.depth < 2) {continue;}
     const cleanedInsights = domain.keyInsights.filter((s) => {
-      if (s.length < 4 || s.length > 200) return false;
+      if (s.length < 4 || s.length > 200) {return false;}
       for (const pat of INSIGHT_ECHO_PATTERNS) {
-        if (pat.test(s)) return false;
+        if (pat.test(s)) {return false;}
       }
       return true;
     });

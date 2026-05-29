@@ -45,7 +45,7 @@ export class FragmentStore {
     }
 
     const path = this.filePath(agentId, userId);
-    if (!existsSync(path)) return [];
+    if (!existsSync(path)) {return [];}
 
     try {
       const raw = await readFile(path, "utf-8");
@@ -79,7 +79,7 @@ export class FragmentStore {
 
   async addFragment(agentId: string, userId: string, fragment: Fragment): Promise<Fragment[]> {
     const existing = await this.load(agentId, userId);
-    const domainKey = (domains: string[]) => [...domains].sort().join(",");
+    const domainKey = (domains: string[]) => [...domains].toSorted().join(",");
     const dupIdx = existing.findIndex(
       (f) =>
         f.structuralTag === fragment.structuralTag &&
@@ -126,11 +126,11 @@ export class FragmentStore {
 
   async findClusters(agentId: string, userId: string): Promise<FragmentCluster[]> {
     const allFragments = await this.load(agentId, userId);
-    if (allFragments.length === 0) return [];
+    if (allFragments.length === 0) {return [];}
 
     const CLUSTER_MIN_STRENGTH = 0.05;
     const fragments = allFragments.filter((f) => f.strength >= CLUSTER_MIN_STRENGTH);
-    if (fragments.length === 0) return [];
+    if (fragments.length === 0) {return [];}
 
     // Union-find for domain-overlap clustering
     const parent = new Map<string, string>();
@@ -149,7 +149,7 @@ export class FragmentStore {
     const union = (a: string, b: string): void => {
       const ra = find(a);
       const rb = find(b);
-      if (ra !== rb) parent.set(ra, rb);
+      if (ra !== rb) {parent.set(ra, rb);}
     };
 
     // Pre-filter: build domain → fragment IDs index for overlap detection
@@ -160,8 +160,8 @@ export class FragmentStore {
       fragmentDomains.set(f.id, domains);
       for (const d of f.domains) {
         const list = domainToFragments.get(d);
-        if (list) list.push(f.id);
-        else domainToFragments.set(d, [f.id]);
+        if (list) {list.push(f.id);}
+        else {domainToFragments.set(d, [f.id]);}
       }
     }
 
@@ -177,8 +177,8 @@ export class FragmentStore {
     for (const f of fragments) {
       const root = find(f.id);
       const group = groups.get(root);
-      if (group) group.push(f.id);
-      else groups.set(root, [f.id]);
+      if (group) {group.push(f.id);}
+      else {groups.set(root, [f.id]);}
     }
 
     const fragmentMap = new Map(fragments.map((f) => [f.id, f]));
@@ -191,7 +191,7 @@ export class FragmentStore {
       let strengthSum = 0;
 
       for (const f of groupFragments) {
-        for (const d of f.domains) allDomains.add(d);
+        for (const d of f.domains) {allDomains.add(d);}
         if (f.kind === "unresolved_tension" || f.kind === "contradictory_positions") {
           tensionCount++;
         }
@@ -201,9 +201,9 @@ export class FragmentStore {
       const avgStrength = strengthSum / groupFragments.length;
 
       // Pre-filter: ≥2 fragments AND (≥2 domains OR ≥1 tension fragment OR ≥3 fragments in single domain) AND avg strength ≥ 0.15
-      if (groupFragments.length < 2) continue;
-      if (allDomains.size < 2 && tensionCount < 1 && groupFragments.length < 3) continue;
-      if (avgStrength < 0.15) continue;
+      if (groupFragments.length < 2) {continue;}
+      if (allDomains.size < 2 && tensionCount < 1 && groupFragments.length < 3) {continue;}
+      if (avgStrength < 0.15) {continue;}
 
       clusters.push({
         id: randomUUID(),
@@ -251,7 +251,7 @@ export class FragmentStore {
       return entries
         .filter((name) => name.endsWith(".json"))
         .map((name) => name.slice(0, -5))
-        .sort();
+        .toSorted();
     } catch {
       return [];
     }
@@ -265,9 +265,9 @@ export class FragmentStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) result.push(name);
+        if (s.isDirectory()) {result.push(name);}
       }
-      return result.sort();
+      return result.toSorted();
     } catch {
       return [];
     }

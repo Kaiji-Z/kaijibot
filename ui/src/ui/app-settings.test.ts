@@ -5,7 +5,6 @@ import {
   applySettings,
   applySettingsFromUrl,
   attachThemeListener,
-  setTabFromRoute,
   syncThemeWithSettings,
 } from "./app-settings.ts";
 import type { ThemeMode, ThemeName } from "./theme.ts";

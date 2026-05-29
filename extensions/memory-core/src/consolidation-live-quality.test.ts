@@ -31,7 +31,7 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {throw new Error(data.error.message);}
   return data.choices?.[0]?.message?.content ?? "";
 }
 

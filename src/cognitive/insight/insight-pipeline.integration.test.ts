@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 /**
@@ -13,7 +13,7 @@ import { join } from "node:path";
  * All I/O goes to a temp directory; no real API calls.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import type { PersonaTree, DomainNode, InsightRecord, LearnedDomainGraph } from "../types.js";
+import type { PersonaTree, DomainNode, InsightRecord } from "../types.js";
 import {
   findCrossDomainConnections,
   semanticDistance,
@@ -776,7 +776,7 @@ describe("Pipeline: empty persona produces no candidates", () => {
       },
     };
 
-    const candidates = generateInsightCandidates(persona, baseInput());
+    generateInsightCandidates(persona, baseInput());
     // "孤立领域" is not in the default adjacency graph, so no cross-domain connections
     // But it has depth >= 4? No, depth=3. So no domain-depth insight either.
     // buildQuestionInsightCandidate and buildDomainDepthInsight return undefined.

@@ -16,8 +16,8 @@ export function createEvolutionArchiveTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) return null;
-  if (deps.config?.cognitive?.evolution?.enabled === false) return null;
+  if (deps.config?.cognitive?.enabled === false) {return null;}
+  if (deps.config?.cognitive?.evolution?.enabled === false) {return null;}
 
   return {
     name: "manage_archived_skills",
@@ -49,7 +49,7 @@ export function createEvolutionArchiveTool(deps: {
           const skills = [];
           for (const name of names) {
             const meta = await writer.readArchivedSkillMeta(name);
-            if (meta) skills.push({ name: meta.name, description: meta.description });
+            if (meta) {skills.push({ name: meta.name, description: meta.description });}
           }
           return jsonResult({
             status: "listed",

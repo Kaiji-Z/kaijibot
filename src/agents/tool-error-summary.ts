@@ -51,7 +51,7 @@ export type ConsumedErrorProfile = {
 
 export function consumeToolErrorProfile(sessionKey: string): ConsumedErrorProfile | undefined {
   const profile = errorAccumulatorMap.get(sessionKey);
-  if (!profile) return undefined;
+  if (!profile) {return undefined;}
   errorAccumulatorMap.delete(sessionKey);
   return {
     errorCount: profile.errorCount,

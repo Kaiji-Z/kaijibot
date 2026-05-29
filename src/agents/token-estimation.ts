@@ -56,14 +56,14 @@ const CJK_RATIO_2_RANGES: ReadonlyArray<readonly [number, number]> = [
 
 function isCJKRatio15(cp: number): boolean {
   for (const [lo, hi] of CJK_RATIO_1_5_RANGES) {
-    if (cp >= lo && cp <= hi) return true;
+    if (cp >= lo && cp <= hi) {return true;}
   }
   return false;
 }
 
 function isCJKRatio2(cp: number): boolean {
   for (const [lo, hi] of CJK_RATIO_2_RANGES) {
-    if (cp >= lo && cp <= hi) return true;
+    if (cp >= lo && cp <= hi) {return true;}
   }
   return false;
 }
@@ -198,8 +198,8 @@ export function estimateMessageTokens(message: AgentMessage): number {
  * returns a lower ratio, reflecting that fewer characters fit in one token.
  */
 export function effectiveCharsPerToken(text: string): number {
-  if (text.length === 0) return 4;
+  if (text.length === 0) {return 4;}
   const tokens = estimateTextTokens(text);
-  if (tokens === 0) return 4;
+  if (tokens === 0) {return 4;}
   return text.length / tokens;
 }

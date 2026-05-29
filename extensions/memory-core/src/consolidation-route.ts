@@ -159,8 +159,8 @@ export async function routeToStores(params: {
 
   // Write high-confidence items to MEMORY.md inline sections
   const highConfidenceItems = items.filter((ri) => {
-    if (ri.item.confidence < 0.7) return false;
-    if (ri.item.category === "behavioral_pattern" && ri.item.confidence < 0.8) return false;
+    if (ri.item.confidence < 0.7) {return false;}
+    if (ri.item.category === "behavioral_pattern" && ri.item.confidence < 0.8) {return false;}
     return ri.item.category in CATEGORY_TO_SECTION;
   });
   if (highConfidenceItems.length > 0) {

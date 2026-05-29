@@ -117,11 +117,11 @@ function resolveFs(fsOverride?: FsAdapter): FsAdapter {
 // ---------------------------------------------------------------------------
 
 function shouldSkipEntry(heading: string, content: string): boolean {
-  if (content.trim().length < MIN_ENTRY_LENGTH) return true;
-  if (TOPIC_INDEX_HEADING_RE.test(heading)) return true;
+  if (content.trim().length < MIN_ENTRY_LENGTH) {return true;}
+  if (TOPIC_INDEX_HEADING_RE.test(heading)) {return true;}
   const combined = `${heading}\n${content}`;
   for (const pattern of SKIP_CONTENT_PATTERNS) {
-    if (pattern.test(combined)) return true;
+    if (pattern.test(combined)) {return true;}
   }
   return false;
 }
@@ -233,7 +233,7 @@ export async function classifyEntries(
   classifyFn?: ClassifyFn,
   batchSize: number = 10,
 ): Promise<ClassifiedEntry[]> {
-  if (entries.length === 0) return [];
+  if (entries.length === 0) {return [];}
 
   if (classifyFn) {
     const results: ClassifiedEntry[] = [];
@@ -282,7 +282,7 @@ export async function routeToTopicFiles(
     topicsUpdated: [],
   };
 
-  if (classified.length === 0) return result;
+  if (classified.length === 0) {return result;}
 
   const topicDeps: TopicManagerDeps = { workspaceDir, fs: fsAdapter };
   const indexDeps: MemoryIndexDeps = { workspaceDir, fs: fsAdapter };
@@ -385,7 +385,7 @@ export async function archiveProcessedFiles(
   workspaceDir: string,
   fsAdapter: FsAdapter,
 ): Promise<number> {
-  if (files.length === 0) return 0;
+  if (files.length === 0) {return 0;}
 
   const archiveDir = path.join(workspaceDir, ARCHIVE_DIR);
   await fsAdapter.mkdir(archiveDir, { recursive: true });

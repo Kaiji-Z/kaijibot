@@ -1,11 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   MemoryIndexManager,
   parseMemoryIndex,
   type MemoryIndexDeps,
   type MemoryIndex,
-  type MemoryIndexSection,
-  type RecentSession,
 } from "./memory-index.js";
 
 function createMemoryFs(): {
@@ -19,7 +17,7 @@ function createMemoryFs(): {
     deps: {
       readFile: async (path: string) => {
         const content = files.get(path);
-        if (content === undefined) throw new Error(`ENOENT: ${path}`);
+        if (content === undefined) {throw new Error(`ENOENT: ${path}`);}
         return content;
       },
       writeFile: async (path: string, data: string) => {
@@ -28,7 +26,7 @@ function createMemoryFs(): {
       mkdir: async (_path: string, _options: { recursive: boolean }) => {},
       rename: async (oldPath: string, newPath: string) => {
         const content = files.get(oldPath);
-        if (content === undefined) throw new Error(`ENOENT: ${oldPath}`);
+        if (content === undefined) {throw new Error(`ENOENT: ${oldPath}`);}
         files.delete(oldPath);
         files.set(newPath, content);
       },

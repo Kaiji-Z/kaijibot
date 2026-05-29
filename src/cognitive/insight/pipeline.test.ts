@@ -6,7 +6,6 @@ import { FragmentStore } from "./fragment-store.js";
 import type { Fragment, FragmentCluster } from "./fragment-types.js";
 import { createDefaultFragment } from "./fragment-types.js";
 import { createPipelineDeps } from "./pipeline.js";
-import type { PipelineDeps } from "./pipeline.js";
 
 // ─── Helpers ───
 

@@ -20,12 +20,12 @@ export function detectContradictions(
   const resolvedTraits: Record<string, ResolvedTrait> = {};
 
   for (const attr of incomingAttributes) {
-    if (!attr.field.startsWith("identity.coreTraits.")) continue;
+    if (!attr.field.startsWith("identity.coreTraits.")) {continue;}
 
     const traitName = attr.field.replace("identity.coreTraits.", "");
     const existing = existingTraits[traitName];
-    if (!existing) continue;
-    if (existing.value === attr.value) continue;
+    if (!existing) {continue;}
+    if (existing.value === attr.value) {continue;}
 
     const resolution = resolveContradiction(
       existing.confidence,
@@ -57,7 +57,7 @@ export function pruneContradictionLog(
   log: ContradictionRecord[],
   maxSize: number = 50,
 ): ContradictionRecord[] {
-  if (log.length <= maxSize) return log;
+  if (log.length <= maxSize) {return log;}
   return log.slice(log.length - maxSize);
 }
 
@@ -80,6 +80,6 @@ function resolveContradiction(
 
   const diff = oldConfidence - newConfidence;
 
-  if (diff > 0.3) return "resolved_old";
+  if (diff > 0.3) {return "resolved_old";}
   return "resolved_new";
 }

@@ -5,7 +5,7 @@ import type { PersonaTree, UserLifecycleStage } from "../types.js";
  * This is NOT the full persona — just what the agent needs to know right now.
  */
 export function buildPersonaContext(persona: PersonaTree | undefined): string {
-  if (!persona) return "";
+  if (!persona) {return "";}
 
   const lines: string[] = ["## User Cognitive Profile"];
 
@@ -23,14 +23,14 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   const interestDomains = persona.identity.interestDomains;
   if (expertDomains.length > 0 || interestDomains.length > 0) {
     lines.push("### Domain Profile");
-    if (expertDomains.length > 0) lines.push(`Expert: ${expertDomains.join(", ")}`);
-    if (interestDomains.length > 0) lines.push(`Interested: ${interestDomains.join(", ")}`);
+    if (expertDomains.length > 0) {lines.push(`Expert: ${expertDomains.join(", ")}`);}
+    if (interestDomains.length > 0) {lines.push(`Interested: ${interestDomains.join(", ")}`);}
   }
 
   // Active domains (recently mentioned)
   const activeDomains = Object.entries(persona.domains)
     .filter(([, d]) => d.depth >= 3)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+    .toSorted(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
     .slice(0, 5);
 
   if (activeDomains.length > 0) {
@@ -42,7 +42,7 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
       if (d.insights && d.insights.length > 0) {
         const topInsights = d.insights
           .slice()
-          .sort((a, b) => b.confidence - a.confidence)
+          .toSorted((a, b) => b.confidence - a.confidence)
           .slice(0, 3);
         for (const ins of topInsights) {
           lines.push(`  - ${ins.category}: ${ins.text} (${Math.round(ins.confidence * 100)}%)`);
@@ -58,7 +58,7 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   // User Goals and Aspirations
   const goalInsights: Array<{ domain: string; insight: import("../types.js").TypedInsight }> = [];
   for (const [domainName, d] of Object.entries(persona.domains)) {
-    if (!d.insights) continue;
+    if (!d.insights) {continue;}
     for (const ins of d.insights) {
       if (ins.category === "goal_or_aspiration") {
         goalInsights.push({ domain: domainName, insight: ins });

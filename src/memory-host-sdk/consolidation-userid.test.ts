@@ -171,7 +171,6 @@ describe("resolveUserIdForSessionFile", () => {
   });
 
   it("uses cached store on second call within TTL", async () => {
-    let readCount = 0;
     await withSessionDir(
       async (dir) => {
         await fs.writeFile(

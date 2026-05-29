@@ -53,10 +53,10 @@ export function classifyMode(
 
   // Explicit objects (files, URLs, commands, dates)
   const hasExplicitObject =
-    /[\/\\]\S+\.\w{1,10}(\s|$)/.test(trimmed) || // file paths
+    /[/\\]\S+\.\w{1,10}(\s|$)/.test(trimmed) || // file paths
     /https?:\/\//.test(trimmed) || // URLs
     /\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(trimmed) || // dates
-    /^```/.test(trimmed); // code blocks
+    trimmed.startsWith('```'); // code blocks
   if (hasExplicitObject) {
     signals.push("explicit-object");
   }

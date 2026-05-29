@@ -69,9 +69,9 @@ export function computeQualityVerdict(
   composite: number,
   llmVerdict?: "yes" | "no",
 ): "deliver" | "park" | "discard" {
-  if (llmVerdict === "no") return "discard";
-  if (composite >= 0.65) return "deliver";
-  if (composite >= 0.45) return "park";
+  if (llmVerdict === "no") {return "discard";}
+  if (composite >= 0.65) {return "deliver";}
+  if (composite >= 0.45) {return "park";}
   return "discard";
 }
 
@@ -108,7 +108,7 @@ export function createDefaultFragment(
 export function computeFragmentDecay(fragment: Fragment, now?: number): number {
   const current = now ?? Date.now();
   const elapsed = current - fragment.createdAt;
-  if (elapsed >= FRAGMENT_TTL_MS) return 0;
+  if (elapsed >= FRAGMENT_TTL_MS) {return 0;}
   const base = fragment.initialStrength ?? fragment.strength;
   return Math.max(0, base * Math.pow(0.5, elapsed / FRAGMENT_HALF_LIFE_MS));
 }

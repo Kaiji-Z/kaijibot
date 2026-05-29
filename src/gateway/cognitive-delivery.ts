@@ -14,7 +14,7 @@ export function findSessionKeyForUserId(
   cfg: KaijiBotConfig | undefined,
   userId: string,
 ): string | undefined {
-  if (!cfg) return undefined;
+  if (!cfg) {return undefined;}
 
   const storePath = resolveStorePath(cfg.session?.store, { agentId: "main" });
   const store = loadSessionStore(storePath);
@@ -25,8 +25,8 @@ export function findSessionKeyForUserId(
   }
 
   for (const key of Object.keys(store)) {
-    if (isSubagentSessionKey(key) || isCronSessionKey(key)) continue;
-    if (key.endsWith(`:${userId}`)) return key;
+    if (isSubagentSessionKey(key) || isCronSessionKey(key)) {continue;}
+    if (key.endsWith(`:${userId}`)) {return key;}
   }
 
   return undefined;
@@ -41,20 +41,20 @@ export function resolveCognitiveDeliveryTarget(
   cfg: KaijiBotConfig | undefined,
   userId: string,
 ): CognitiveDeliveryTarget | undefined {
-  if (!cfg) return undefined;
+  if (!cfg) {return undefined;}
 
   const storePath = resolveStorePath(cfg.session?.store, { agentId: "main" });
   const store = loadSessionStore(storePath);
 
   const sessionKey = findSessionKeyForUserId(cfg, userId);
-  if (!sessionKey) return undefined;
+  if (!sessionKey) {return undefined;}
 
   const entry = store[sessionKey];
-  if (!entry) return undefined;
+  if (!entry) {return undefined;}
 
   const channel = entry.lastChannel;
   const to = entry.lastTo;
-  if (!channel || channel === "none" || !to) return undefined;
+  if (!channel || channel === "none" || !to) {return undefined;}
 
   return {
     sessionKey,

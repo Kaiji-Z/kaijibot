@@ -1,5 +1,5 @@
 import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
@@ -164,7 +164,7 @@ describe("SkillPersistenceWriter", () => {
     await writer.writeSkill(makeDraft({ name: "skill-b" }));
 
     const names = await writer.listSkillNames();
-    expect(names.sort()).toEqual(["skill-a", "skill-b"]);
+    expect(names.toSorted()).toEqual(["skill-a", "skill-b"]);
   });
 
   it("listSkillNames() skips directories without SKILL.md", async () => {

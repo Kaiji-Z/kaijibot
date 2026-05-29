@@ -21,8 +21,8 @@ export function createEvolutionPatchTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) return null;
-  if (deps.config?.cognitive?.evolution?.enabled === false) return null;
+  if (deps.config?.cognitive?.enabled === false) {return null;}
+  if (deps.config?.cognitive?.evolution?.enabled === false) {return null;}
 
   return {
     name: "patch_skill",
@@ -56,12 +56,12 @@ export function createEvolutionPatchTool(deps: {
         }
         const writer = new SkillPersistenceWriter(skillBaseDir);
 
-        let generateText: ((prompt: string) => Promise<string>) | undefined;
+        let _generateText: ((prompt: string) => Promise<string>) | undefined;
         try {
           if (deps.config) {
             const { createStandaloneGenerateText } =
               await import("../../cognitive/evolution/standalone-generate.js");
-            generateText = await createStandaloneGenerateText(deps.config, {
+            _generateText = await createStandaloneGenerateText(deps.config, {
               maxTokens: 4000,
               timeout: 60_000,
             });

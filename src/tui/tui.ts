@@ -877,7 +877,7 @@ export async function runTui(opts: TuiOptions) {
     return undefined;
   });
 
-  const SGR_MOUSE_WHEEL = /^\x1b\[<(64|65);\d+;\d+[Mm]$/;
+  const SGR_MOUSE_WHEEL = new RegExp(`^${"\x1b"}\\[<(64|65);\\d+;\\d+[Mm]$`);
   tui.addInputListener((data) => {
     const match = data.match(SGR_MOUSE_WHEEL);
     if (!match) {

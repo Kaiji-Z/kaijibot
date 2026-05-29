@@ -35,10 +35,7 @@ import { asNullableRecord as asRecord } from "kaijibot/plugin-sdk/text-runtime";
 import {
   applyShortTermPromotions,
   auditShortTermPromotionArtifacts,
-  removeGroundedShortTermCandidates,
   repairShortTermPromotionArtifacts,
-  readShortTermRecallEntries,
-  recordGroundedShortTermCandidates,
   recordShortTermRecalls,
   rankShortTermPromotionCandidates,
   resolveShortTermRecallLockPath,

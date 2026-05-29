@@ -9,7 +9,6 @@ import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
 import {
   collectFragments,
-  buildFragmentPrompt,
   createDefaultFragmentCollectorDeps,
 } from "./fragment-collector.js";
 

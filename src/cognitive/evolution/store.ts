@@ -60,7 +60,7 @@ export class EvolutionStore {
 
   async loadConfig(agentId: string): Promise<EvolutionConfig> {
     const path = this.configPath(agentId);
-    if (!existsSync(path)) return { ...DEFAULT_EVOLUTION_CONFIG };
+    if (!existsSync(path)) {return { ...DEFAULT_EVOLUTION_CONFIG };}
     const raw = await readFile(path, "utf-8");
     return { ...DEFAULT_EVOLUTION_CONFIG, ...JSON.parse(raw) };
   }
@@ -73,7 +73,7 @@ export class EvolutionStore {
 
   private async loadRecords(agentId: string, userId: string): Promise<EvolutionRecord[]> {
     const path = this.recordPath(agentId, userId);
-    if (!existsSync(path)) return [];
+    if (!existsSync(path)) {return [];}
     try {
       const raw = await readFile(path, "utf-8");
       return JSON.parse(raw) as EvolutionRecord[];
@@ -89,7 +89,7 @@ export class EvolutionStore {
       return entries
         .filter((name) => name.endsWith(".json") && name !== CONFIG_FILE)
         .map((name) => name.slice(0, -5))
-        .sort();
+        .toSorted();
     } catch {
       return [];
     }
@@ -103,9 +103,9 @@ export class EvolutionStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) result.push(name);
+        if (s.isDirectory()) {result.push(name);}
       }
-      return result.sort();
+      return result.toSorted();
     } catch {
       return [];
     }

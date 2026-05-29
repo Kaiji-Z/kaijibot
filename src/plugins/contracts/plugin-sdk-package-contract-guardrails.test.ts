@@ -1,12 +1,8 @@
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import * as tar from "tar";
-import { afterEach, describe, expect, it } from "vitest";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 import { pluginSdkEntrypoints } from "../../plugin-sdk/entrypoints.js";
-import { cleanupTrackedTempDirs, makeTrackedTempDir } from "../test-helpers/fs-fixtures.js";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const REPO_ROOT = resolve(ROOT_DIR, "..");
@@ -15,9 +11,6 @@ const PUBLIC_CONTRACT_REFERENCE_FILES = [
   "src/plugins/contracts/plugin-sdk-subpaths.test.ts",
 ] as const;
 const PLUGIN_SDK_SUBPATH_PATTERN = /kaijibot\/plugin-sdk\/([a-z0-9][a-z0-9-]*)\b/g;
-const NPM_PACK_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
-const WINDOWS_UNSAFE_CMD_CHARS_RE = /[&|<>^%\r\n]/;
-const tempDirs: string[] = [];
 
 function collectPluginSdkPackageExports(): string[] {
   const packageJson = JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf8")) as {
@@ -85,128 +78,6 @@ function collectRuntimeDependencySpecs(packageJson: {
   ]);
 }
 
-function createRootPackageRequire() {
-  return createRequire(pathToFileURL(resolve(REPO_ROOT, "package.json")).href);
-}
-
-function isNpmExecPath(value: string): boolean {
-  return /^npm(?:-cli)?(?:\.(?:c?js|cmd|exe))?$/.test(
-    value.split(/[\\/]/).at(-1)?.toLowerCase() ?? "",
-  );
-}
-
-function escapeForCmdExe(arg: string): string {
-  if (WINDOWS_UNSAFE_CMD_CHARS_RE.test(arg)) {
-    throw new Error(`unsafe Windows cmd.exe argument detected: ${JSON.stringify(arg)}`);
-  }
-  if (!arg.includes(" ") && !arg.includes('"')) {
-    return arg;
-  }
-  return `"${arg.replace(/"/g, '""')}"`;
-}
-
-function buildCmdExeCommandLine(command: string, args: string[]): string {
-  return [escapeForCmdExe(command), ...args.map(escapeForCmdExe)].join(" ");
-}
-
-type NpmCommandInvocation = {
-  command: string;
-  args: string[];
-  env?: NodeJS.ProcessEnv;
-  windowsVerbatimArguments?: boolean;
-};
-
-function resolveNpmCommandInvocation(npmArgs: string[]): NpmCommandInvocation {
-  const npmExecPath = process.env.npm_execpath;
-  if (typeof npmExecPath === "string" && npmExecPath.length > 0 && isNpmExecPath(npmExecPath)) {
-    return { command: process.execPath, args: [npmExecPath, ...npmArgs] };
-  }
-
-  if (process.platform !== "win32") {
-    return { command: "npm", args: npmArgs };
-  }
-
-  const nodeDir = dirname(process.execPath);
-  const npmCliCandidates = [
-    resolve(nodeDir, "../lib/node_modules/npm/bin/npm-cli.js"),
-    resolve(nodeDir, "node_modules/npm/bin/npm-cli.js"),
-  ];
-  const npmCliPath = npmCliCandidates.find((candidate) => existsSync(candidate));
-  if (npmCliPath) {
-    return { command: process.execPath, args: [npmCliPath, ...npmArgs] };
-  }
-
-  const npmExePath = resolve(nodeDir, "npm.exe");
-  if (existsSync(npmExePath)) {
-    return { command: npmExePath, args: npmArgs };
-  }
-
-  const npmCmdPath = resolve(nodeDir, "npm.cmd");
-  if (existsSync(npmCmdPath)) {
-    return {
-      command: process.env.ComSpec ?? "cmd.exe",
-      args: ["/d", "/s", "/c", buildCmdExeCommandLine(npmCmdPath, npmArgs)],
-      windowsVerbatimArguments: true,
-    };
-  }
-
-  return {
-    command: process.env.ComSpec ?? "cmd.exe",
-    args: ["/d", "/s", "/c", buildCmdExeCommandLine("npm.cmd", npmArgs)],
-    windowsVerbatimArguments: true,
-  };
-}
-
-function packKaijiBotToTempDir(packDir: string): string {
-  const invocation = resolveNpmCommandInvocation([
-    "pack",
-    "--ignore-scripts",
-    "--json",
-    "--pack-destination",
-    packDir,
-  ]);
-  const result = spawnSync(invocation.command, invocation.args, {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      ...invocation.env,
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0",
-    },
-    maxBuffer: NPM_PACK_MAX_BUFFER_BYTES,
-    stdio: ["ignore", "pipe", "pipe"],
-    windowsVerbatimArguments: invocation.windowsVerbatimArguments,
-  });
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error((result.stderr || result.stdout || "npm pack failed").trim());
-  }
-  const raw = result.stdout;
-  const parsed = JSON.parse(raw) as Array<{ filename?: string }>;
-  const filename = parsed[0]?.filename?.trim();
-  if (!filename) {
-    throw new Error(`npm pack did not return a filename: ${raw}`);
-  }
-  return join(packDir, filename);
-}
-
-async function readPackedRootPackageJson(archivePath: string): Promise<{
-  dependencies?: Record<string, string>;
-}> {
-  const extractDir = makeTrackedTempDir("kaijibot-packed-root-package-json", tempDirs);
-  await tar.x({
-    file: archivePath,
-    cwd: extractDir,
-    filter: (entryPath) => entryPath === "package/package.json",
-    strict: true,
-  });
-  return JSON.parse(readFileSync(join(extractDir, "package", "package.json"), "utf8")) as {
-    dependencies?: Record<string, string>;
-  };
-}
-
 function collectExtensionFiles(dir: string): string[] {
   const entries = readdirSync(dir, { withFileTypes: true });
   const files: string[] = [];
@@ -261,9 +132,7 @@ function collectExtensionCoreImportLeaks(): Array<{ file: string; specifier: str
 }
 
 describe("plugin-sdk package contract guardrails", () => {
-  afterEach(() => {
-    cleanupTrackedTempDirs(tempDirs);
-  });
+
 
   it("keeps package.json exports aligned with built plugin-sdk entrypoints", () => {
     expect(collectPluginSdkPackageExports()).toEqual([...pluginSdkEntrypoints].toSorted());

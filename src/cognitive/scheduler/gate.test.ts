@@ -554,7 +554,7 @@ describe("computeEngagementFactor", () => {
     persona.lifecycle.lastActiveAt = overrides?.lastActiveAt ?? Date.now();
     persona.lifecycle.totalActiveDays = overrides?.totalActiveDays ?? 10;
     persona.rapport.totalExchanges = 20;
-    if (overrides?.domains) persona.domains = overrides.domains;
+    if (overrides?.domains) {persona.domains = overrides.domains;}
     return persona;
   }
 

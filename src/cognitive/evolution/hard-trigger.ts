@@ -59,7 +59,7 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
       const skills: Array<{ name: string; description: string }> = [];
       for (const name of names) {
         const meta = await writer.readSkillMeta(name);
-        if (meta) skills.push({ name: meta.name, description: meta.description });
+        if (meta) {skills.push({ name: meta.name, description: meta.description });}
       }
       existingSkills = skills.length > 0 ? skills : undefined;
     } catch {
@@ -71,7 +71,7 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
   try {
     const { parseAgentSessionKey } = await import("../../routing/session-key.js");
     const parsed = parseAgentSessionKey(params.sessionKey);
-    if (parsed) agentId = parsed.agentId;
+    if (parsed) {agentId = parsed.agentId;}
   } catch {}
 
   const signalText = buildEvolutionSignal({
@@ -101,9 +101,9 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 }
 
 function resolveUserIdFromSession(sessionKey: string, senderId?: string | null): string | null {
-  if (senderId) return senderId;
+  if (senderId) {return senderId;}
   const tail = sessionKey.split(":").pop();
-  if (!tail || tail === "main") return null;
+  if (!tail || tail === "main") {return null;}
   return tail;
 }
 

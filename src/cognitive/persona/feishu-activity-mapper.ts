@@ -20,7 +20,7 @@ function taskDomainDepth(task: TaskActivitySummary): number {
 
 function extractDocDomains(doc: DocActivitySummary): ExtractionResult["domains"] {
   const depth = docDomainDepth(doc);
-  if (depth === 0 || doc.documentThemes.length === 0) return [];
+  if (depth === 0 || doc.documentThemes.length === 0) {return [];}
   return doc.documentThemes.map((theme) => ({
     name: theme,
     depth,
@@ -31,7 +31,7 @@ function extractDocDomains(doc: DocActivitySummary): ExtractionResult["domains"]
 
 function extractMeetingDomains(meeting: MeetingActivitySummary): ExtractionResult["domains"] {
   const depth = meetingDomainDepth(meeting);
-  if (depth === 0 || meeting.meetingThemes.length === 0) return [];
+  if (depth === 0 || meeting.meetingThemes.length === 0) {return [];}
   return meeting.meetingThemes.map((theme) => ({
     name: theme,
     depth,
@@ -42,7 +42,7 @@ function extractMeetingDomains(meeting: MeetingActivitySummary): ExtractionResul
 
 function extractTaskDomains(task: TaskActivitySummary): ExtractionResult["domains"] {
   const depth = taskDomainDepth(task);
-  if (depth === 0 || task.taskListNames.length === 0) return [];
+  if (depth === 0 || task.taskListNames.length === 0) {return [];}
   return task.taskListNames.map((name) => ({
     name,
     depth,
@@ -63,7 +63,7 @@ function mergeDomains(
       existing.depth = Math.max(existing.depth, d.depth);
       existing.insights = [...new Set([...existing.insights, ...d.insights])].slice(0, 3);
       existing.questions = [...new Set([...existing.questions, ...d.questions])];
-      if (d.negated) existing.negated = d.negated;
+      if (d.negated) {existing.negated = d.negated;}
     } else {
       merged.set(d.name, {
         ...d,

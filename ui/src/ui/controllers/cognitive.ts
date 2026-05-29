@@ -13,7 +13,7 @@ export type CognitiveState = {
 };
 
 export async function loadPersonaList(state: CognitiveState) {
-  if (!state.client || !state.connected) return;
+  if (!state.client || !state.connected) {return;}
   state.cognitiveLoading = true;
   state.requestUpdate?.();
   try {
@@ -29,7 +29,7 @@ export async function loadPersonaList(state: CognitiveState) {
 }
 
 export async function loadPersonaDetail(state: CognitiveState) {
-  if (!state.client || !state.connected || !state.cognitiveAgentId || !state.cognitiveUserId) return;
+  if (!state.client || !state.connected || !state.cognitiveAgentId || !state.cognitiveUserId) {return;}
   state.cognitiveLoading = true;
   state.requestUpdate?.();
   try {

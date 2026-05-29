@@ -1,4 +1,4 @@
-import type { Api, AssistantMessage, Model, TextContent } from "@mariozechner/pi-ai";
+import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
@@ -1312,7 +1312,7 @@ describe("buildSearchQuery — query diversification", () => {
     const usedSuffixes = new Set<string>();
     for (const q of queries) {
       for (const s of suffixes) {
-        if (q.includes(s)) usedSuffixes.add(s);
+        if (q.includes(s)) {usedSuffixes.add(s);}
       }
     }
     expect(usedSuffixes.size).toBeGreaterThanOrEqual(3);

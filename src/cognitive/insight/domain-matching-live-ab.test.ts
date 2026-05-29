@@ -167,7 +167,7 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {throw new Error(data.error.message);}
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -192,16 +192,16 @@ function buildDomainKeywordMap(
   for (const [name, domain] of Object.entries(domains)) {
     const keywords = new Set<string>();
     keywords.add(name.toLowerCase());
-    for (const part of name.split(/[\/\+]/)) {
+    for (const part of name.split(/[/+]/)) {
       const trimmed = part.trim().toLowerCase();
-      if (trimmed.length >= 2) keywords.add(trimmed);
+      if (trimmed.length >= 2) {keywords.add(trimmed);}
     }
     // Add keyInsights as keywords (simulating getFilteredInsights)
     for (const insight of (domain.keyInsights ?? []).slice(0, 3)) {
       const lower = insight.toLowerCase();
       keywords.add(lower);
       for (const word of lower.split(/\s+/)) {
-        if (word.length >= 3) keywords.add(word);
+        if (word.length >= 3) {keywords.add(word);}
       }
     }
     map.set(name, keywords);
@@ -228,7 +228,7 @@ function matchWebResultsToDomainsKeyword(
     const snippetLower = r.snippet.toLowerCase();
     for (const [domainName, keywords] of keywordMap) {
       const matched = [...keywords].some((kw) => {
-        if (titleLower.includes(kw) || snippetLower.includes(kw)) return true;
+        if (titleLower.includes(kw) || snippetLower.includes(kw)) {return true;}
         if (kw.length >= 4) {
           const kwBigrams = extractBigrams(kw);
           const textBigrams = extractBigrams(titleLower + " " + snippetLower);
@@ -281,7 +281,7 @@ function makeLlmDeps(): any {
         error?: { message: string };
         choices?: Array<{ message: { content: string } }>;
       };
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) {throw new Error(data.error.message);}
       const responseText = data.choices?.[0]?.message?.content ?? "";
       return {
         content: [{ type: "text" as const, text: responseText }],
@@ -294,7 +294,7 @@ function makeLlmDeps(): any {
 
 function countExternalFacts(prompt: string): number {
   const match = prompt.match(/EXTERNAL_FACTS[\s\S]*?(\n\n|\nTASK)/);
-  if (!match) return 0;
+  if (!match) {return 0;}
   const block = match[1] ?? match[0];
   return (block.match(/^\d+\./gm) || []).length;
 }
@@ -347,9 +347,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
         if (!keywordMap.has(domain)) {
           const keywords = new Set<string>();
           keywords.add(domain.toLowerCase());
-          for (const part of domain.split(/[\/+]/)) {
+          for (const part of domain.split(/[/+]/)) {
             const trimmed = part.trim().toLowerCase();
-            if (trimmed.length >= 2) keywords.add(trimmed);
+            if (trimmed.length >= 2) {keywords.add(trimmed);}
           }
           keywordMap.set(domain, keywords);
         }
@@ -432,15 +432,15 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
         // 7. Simple quality scoring
         const scoreQuality = (text: string): number => {
           let score = 0;
-          if (text.length >= 30) score += 2;
-          if (text.length >= 50) score += 1;
-          if (/具体|实际|发现|现象|案例/.test(text)) score += 2; // specific/concrete
-          if (!/[？?]$/.test(text.trim())) score += 1; // no question mark ending
-          if (!/值得关注|挺有意思|不得不说/.test(text)) score += 1; // no banned patterns
+          if (text.length >= 30) {score += 2;}
+          if (text.length >= 50) {score += 1;}
+          if (/具体|实际|发现|现象|案例/.test(text)) {score += 2;} // specific/concrete
+          if (!/[？?]$/.test(text.trim())) {score += 1;} // no question mark ending
+          if (!/值得关注|挺有意思|不得不说/.test(text)) {score += 1;} // no banned patterns
           // Check if insight references web information
           const allSnippets = webResults.map((r) => r.snippet).join(" ");
           const overlap = [...text].filter((c) => allSnippets.includes(c)).length / text.length;
-          if (overlap > 0.3) score += 3; // incorporates external facts
+          if (overlap > 0.3) {score += 3;} // incorporates external facts
           return score;
         };
 

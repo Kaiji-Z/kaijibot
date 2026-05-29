@@ -23,7 +23,7 @@ export function resolveCorrectionUserId(
     }
   }
 
-  if (!sessionKey) return null;
+  if (!sessionKey) {return null;}
 
   const parts = sessionKey.split(":");
 

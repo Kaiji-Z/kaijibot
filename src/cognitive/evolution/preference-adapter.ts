@@ -46,8 +46,8 @@ export class EvolutionPreferenceAdapter {
       } while (v <= 0);
       v = v * v * v;
       const u = Math.random();
-      if (u < 1 - 0.0331 * x * x * x * x) return d * v;
-      if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+      if (u < 1 - 0.0331 * x * x * x * x) {return d * v;}
+      if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) {return d * v;}
     }
   }
 
@@ -82,7 +82,7 @@ export class EvolutionPreferenceAdapter {
   async getDomainAcceptanceRate(agentId: string, userId: string, domain: string): Promise<number> {
     const state = await this.loadState(agentId, userId);
     const bandit = state.bandits[domain];
-    if (!bandit) return PRIOR_ALPHA / (PRIOR_ALPHA + PRIOR_BETA);
+    if (!bandit) {return PRIOR_ALPHA / (PRIOR_ALPHA + PRIOR_BETA);}
     return this.sampleBeta(bandit.alpha, bandit.beta);
   }
 
@@ -111,7 +111,7 @@ export class EvolutionPreferenceAdapter {
 
   private async loadState(agentId: string, userId: string): Promise<PreferenceState> {
     const path = this.statePath(agentId, userId);
-    if (!existsSync(path)) return { userId, bandits: {} };
+    if (!existsSync(path)) {return { userId, bandits: {} };}
     try {
       const raw = await readFile(path, "utf-8");
       return JSON.parse(raw) as PreferenceState;

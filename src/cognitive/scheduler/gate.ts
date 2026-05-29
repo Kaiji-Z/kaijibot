@@ -14,7 +14,6 @@ import type {
 const DEFAULT_C_FN = 5.0;
 const DEFAULT_C_FA = 1.0;
 const BASE_NEED = 0.6;
-const SIGMOID_K = 0.5;
 
 const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {
   timer: 0.7,
@@ -101,7 +100,7 @@ export function checkProactiveGate(
 // ── PRISM cost-sensitive graded gate ─────────────────────────────────
 
 export function computeGradedGate(context: GateContext): GradedGateDecision {
-  const { persona, event, recentInsightCount, config } = context;
+  const { persona, event, config } = context;
   const now = event.timestamp;
   const reasons: string[] = [];
   let suggestedDelayMs: number | undefined;
@@ -190,15 +189,15 @@ export function computeEngagementFactor(persona: PersonaTree, now: number): numb
   const silenceDays = lifecycle.lastActiveAt > 0 ? (now - lifecycle.lastActiveAt) / DAY_MS : 999;
 
   let recencyFactor: number;
-  if (lifecycle.stage === "new") recencyFactor = 0.3;
-  else if (silenceDays <= 1) recencyFactor = 1.0;
-  else if (silenceDays <= 3) recencyFactor = 0.9;
-  else if (silenceDays <= 7) recencyFactor = 0.95;
-  else if (silenceDays <= 14) recencyFactor = 1.0;
-  else if (silenceDays <= 45) recencyFactor = 0.75;
-  else if (silenceDays <= 90) recencyFactor = 0.5;
-  else if (silenceDays <= 180) recencyFactor = 0.3;
-  else recencyFactor = 0.15;
+  if (lifecycle.stage === "new") {recencyFactor = 0.3;}
+  else if (silenceDays <= 1) {recencyFactor = 1.0;}
+  else if (silenceDays <= 3) {recencyFactor = 0.9;}
+  else if (silenceDays <= 7) {recencyFactor = 0.95;}
+  else if (silenceDays <= 14) {recencyFactor = 1.0;}
+  else if (silenceDays <= 45) {recencyFactor = 0.75;}
+  else if (silenceDays <= 90) {recencyFactor = 0.5;}
+  else if (silenceDays <= 180) {recencyFactor = 0.3;}
+  else {recencyFactor = 0.15;}
 
   const investmentFactor = Math.log2(1 + lifecycle.totalActiveDays) / 7;
 
@@ -346,7 +345,7 @@ function computePAccept(persona: PersonaTree): number {
  */
 export function computeRepetitionDecay(persona: PersonaTree): number {
   const recentDomains = persona.feedbackProfile.recentInsightDomains;
-  if (!recentDomains || recentDomains.length < 2) return 1;
+  if (!recentDomains || recentDomains.length < 2) {return 1;}
 
   // Compute pairwise Jaccard similarity between recent insight domain sets.
   // This measures whether recent insights are about the same topics,
@@ -361,35 +360,31 @@ export function computeRepetitionDecay(persona: PersonaTree): number {
       pairCount++;
     }
   }
-  if (pairCount === 0) return 1;
+  if (pairCount === 0) {return 1;}
 
   const avgSimilarity = totalSimilarity / pairCount;
-  if (avgSimilarity < 0.3) return 1;
+  if (avgSimilarity < 0.3) {return 1;}
 
   return Math.max(0.25, 1 - avgSimilarity);
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 && b.size === 0) return 0;
+  if (a.size === 0 && b.size === 0) {return 0;}
   let intersection = 0;
   for (const v of a) {
-    if (b.has(v)) intersection++;
+    if (b.has(v)) {intersection++;}
   }
   return intersection / (a.size + b.size - intersection);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function sigmoid(x: number): number {
-  return 1 / (1 + Math.exp(-x));
-}
-
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
 
 function isOutsideActiveHours(nowMs: number, config: SchedulerConfig): boolean {
-  if (!config.activeHoursStart || !config.activeHoursEnd) return false;
+  if (!config.activeHoursStart || !config.activeHoursEnd) {return false;}
 
   const nowDate = new Date(nowMs);
   const tz = config.timezone ?? "Asia/Shanghai";

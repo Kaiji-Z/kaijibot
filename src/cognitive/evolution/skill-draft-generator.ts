@@ -13,7 +13,7 @@ export function sanitizeSkillName(name: string): string {
 
 function generateName(candidate: EvolutionCandidate): string {
   const domain = sanitizeSkillName(candidate.domain);
-  if (candidate.toolCalls.length === 0) return `${domain}-workflow`;
+  if (candidate.toolCalls.length === 0) {return `${domain}-workflow`;}
   const primaryTool = sanitizeSkillName(candidate.toolCalls[0]);
   return `${domain}-${primaryTool}`;
 }
@@ -22,7 +22,7 @@ const MAX_DESCRIPTION_LENGTH = 200;
 
 function generateDescription(candidate: EvolutionCandidate): string {
   const raw = `${candidate.taskSummary}. Use when user needs similar ${candidate.domain} operations.`;
-  if (raw.length <= MAX_DESCRIPTION_LENGTH) return raw;
+  if (raw.length <= MAX_DESCRIPTION_LENGTH) {return raw;}
   return raw.slice(0, MAX_DESCRIPTION_LENGTH - 1) + "…";
 }
 

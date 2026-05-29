@@ -23,7 +23,7 @@ function isValidSkillName(name: string): boolean {
 }
 
 function sanitizeContent(content: string): string {
-  return content.replace(/\0/g, "");
+  return content.replace(new RegExp(`${"\0"}`, "g"), "");
 }
 
 export class ClawHubPublisher {

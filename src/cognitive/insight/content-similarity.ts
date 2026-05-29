@@ -8,13 +8,13 @@ export function extractTrigrams(text: string): Set<string> {
 }
 
 export function computeTrigramSimilarity(a: string, b: string): number {
-  if (a.length < 3 || b.length < 3) return 0;
+  if (a.length < 3 || b.length < 3) {return 0;}
   const trigramsA = extractTrigrams(a);
   const trigramsB = extractTrigrams(b);
-  if (trigramsA.size === 0 || trigramsB.size === 0) return 0;
+  if (trigramsA.size === 0 || trigramsB.size === 0) {return 0;}
   let overlap = 0;
   for (const t of trigramsA) {
-    if (trigramsB.has(t)) overlap++;
+    if (trigramsB.has(t)) {overlap++;}
   }
   return overlap / Math.max(trigramsA.size, trigramsB.size);
 }
@@ -25,7 +25,7 @@ export function isDuplicateByContent(
   threshold: number = 0.6,
 ): boolean {
   for (const recent of recentContents) {
-    if (computeTrigramSimilarity(newContent, recent) > threshold) return true;
+    if (computeTrigramSimilarity(newContent, recent) > threshold) {return true;}
   }
   return false;
 }
@@ -39,7 +39,7 @@ export function extractChinesePhrases(text: string): string[] {
     spaced = spaced.replaceAll(ch, " ");
   }
   return spaced
-    .split(/[\s,，。.？?！!；;：:、""''「」【】（）()\[\]{}<>《》\/\\—–\-]+/)
+    .split(/[\s,，。.？?！!；;：:、""''「」【】（）()[\]{}<>《》/\\—–-]+/)
     .map((s) => s.trim())
     .filter((s) => s.length >= 2 && s.length <= 20);
 }
@@ -47,24 +47,24 @@ export function extractChinesePhrases(text: string): string[] {
 export function computeContentWordOverlap(a: string, b: string): number {
   const phrasesA = extractChinesePhrases(a);
   const phrasesB = extractChinesePhrases(b);
-  if (phrasesA.length === 0 || phrasesB.length === 0) return 0;
+  if (phrasesA.length === 0 || phrasesB.length === 0) {return 0;}
 
   const cjkFilter = (s: string) => [...s].filter((ch) => ch.charCodeAt(0) > 0x2e7f);
   const charsA = new Set(cjkFilter(phrasesA.join("")).map((c) => c.toLowerCase()));
   const charsB = new Set(cjkFilter(phrasesB.join("")).map((c) => c.toLowerCase()));
 
-  if (charsA.size === 0 || charsB.size === 0) return 0;
+  if (charsA.size === 0 || charsB.size === 0) {return 0;}
 
   let intersection = 0;
   for (const ch of charsA) {
-    if (charsB.has(ch)) intersection++;
+    if (charsB.has(ch)) {intersection++;}
   }
   const union = new Set([...charsA, ...charsB]).size;
   return union > 0 ? intersection / union : 0;
 }
 
 export function extractContentThemes(contents: string[]): string[] {
-  if (contents.length === 0) return [];
+  if (contents.length === 0) {return [];}
 
   const freq = new Map<string, number>();
   for (const text of contents) {
@@ -74,7 +74,7 @@ export function extractContentThemes(contents: string[]): string[] {
   }
 
   return [...freq.entries()]
-    .sort((a, b) => b[1] - a[1])
+    .toSorted((a, b) => b[1] - a[1])
     .slice(0, 15)
     .map(([phrase]) => phrase);
 }
@@ -88,8 +88,8 @@ export function isDuplicateBySemanticOverlap(
   const contentWordThreshold = options?.contentWordThreshold ?? 0.15;
 
   for (const recent of recentContents) {
-    if (computeTrigramSimilarity(newContent, recent) > trigramThreshold) return true;
-    if (computeContentWordOverlap(newContent, recent) > contentWordThreshold) return true;
+    if (computeTrigramSimilarity(newContent, recent) > trigramThreshold) {return true;}
+    if (computeContentWordOverlap(newContent, recent) > contentWordThreshold) {return true;}
   }
   return false;
 }

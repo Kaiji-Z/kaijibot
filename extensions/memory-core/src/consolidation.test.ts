@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ConsolidationRouteDeps } from "./consolidation-route.js";
 import {
   runConsolidationForAgent,
@@ -442,7 +442,7 @@ describe("runConsolidationAllAgents", () => {
           deps,
         });
         expect(results).toHaveLength(2);
-        const agentIds = results.map((r) => r.agentId).sort();
+        const agentIds = results.map((r) => r.agentId).toSorted();
         expect(agentIds).toEqual(["agent-a", "agent-b"]);
       });
     });

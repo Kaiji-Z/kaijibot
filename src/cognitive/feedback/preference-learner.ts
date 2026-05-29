@@ -27,9 +27,9 @@ export function decayBandit(
   nowMs: number,
   halfLifeMs: number = DECAY_HALF_LIFE_MS,
 ): TopicBandit {
-  if (bandit.lastUpdated === undefined) return bandit;
+  if (bandit.lastUpdated === undefined) {return bandit;}
   const age = nowMs - bandit.lastUpdated;
-  if (age <= 0) return bandit;
+  if (age <= 0) {return bandit;}
   const factor = Math.exp((-Math.LN2 * age) / halfLifeMs);
   const decayedAlpha = OPTIMISTIC_ALPHA + (bandit.alpha - OPTIMISTIC_ALPHA) * factor;
   const decayedBeta = OPTIMISTIC_BETA + (bandit.beta - OPTIMISTIC_BETA) * factor;
@@ -129,8 +129,8 @@ export function pickBestTopic(
   let bestScore = -1;
 
   for (const [topic, score] of scores) {
-    if (exclude.has(topic)) continue;
-    if (score < minScore) continue;
+    if (exclude.has(topic)) {continue;}
+    if (score < minScore) {continue;}
     if (score > bestScore) {
       bestScore = score;
       bestTopic = topic;
@@ -270,8 +270,8 @@ function sampleGamma(shape: number, rng: () => number): number {
     v = v * v * v;
     const u = rng();
 
-    if (u < 1 - 0.0331 * x * x * x * x) return d * v;
-    if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+    if (u < 1 - 0.0331 * x * x * x * x) {return d * v;}
+    if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) {return d * v;}
   }
 }
 

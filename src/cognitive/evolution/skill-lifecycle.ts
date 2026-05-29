@@ -5,8 +5,8 @@ function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array<number>(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 0; i <= m; i++) {dp[i][0] = i;}
+  for (let j = 0; j <= n; j++) {dp[0][j] = j;}
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       dp[i][j] = Math.min(
@@ -34,7 +34,7 @@ function jaccard(a: string, b: string): number {
   );
   let intersection = 0;
   for (const item of setA) {
-    if (setB.has(item)) intersection++;
+    if (setB.has(item)) {intersection++;}
   }
   const union = setA.size + setB.size - intersection;
   return union === 0 ? 0 : intersection / union;
@@ -48,7 +48,7 @@ export class SkillLifecycleManager {
     const metas: SkillMeta[] = [];
     for (const name of names) {
       const meta = await this.writer.readSkillMeta(name);
-      if (meta) metas.push(meta);
+      if (meta) {metas.push(meta);}
     }
     return metas;
   }
@@ -155,7 +155,7 @@ Consider two skills duplicates if they solve the same class of problems, even if
 
   async markStale(name: string): Promise<void> {
     const raw = await this.writer.readRawSkill(name);
-    if (!raw) return;
+    if (!raw) {return;}
 
     let content = raw;
     if (/^lastUsedAt:\s*\d+/m.test(content)) {
@@ -170,7 +170,7 @@ Consider two skills duplicates if they solve the same class of problems, even if
     let archived = 0;
 
     for (const meta of allMeta) {
-      if (meta.provenance !== "agent") continue;
+      if (meta.provenance !== "agent") {continue;}
       if (meta.lastUsedAt < threshold && meta.usageCount === 0) {
         await this.writer.archiveSkill(meta.name);
         archived++;

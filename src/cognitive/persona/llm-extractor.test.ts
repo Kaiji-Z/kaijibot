@@ -239,7 +239,7 @@ describe("extractFromMessageLLM", () => {
   });
 
   it("clamps confidence to 0-1 range", async () => {
-    const json = JSON.stringify({
+    JSON.stringify({
       attributes: [{ field: "f", value: "v", confidence: 5, source: "explicit", evidence: "e" }],
       domains: [],
       recentFocus: [],

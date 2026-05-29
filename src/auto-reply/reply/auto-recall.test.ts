@@ -112,7 +112,7 @@ describe("buildAutoRecallContext", () => {
   it("skips topic on search failure and continues with others", async () => {
     const persona = makePersona(["Rust", "eBPF", "distributed tracing"]);
     const searchMemory = vi.fn(async (query: string) => {
-      if (query === "eBPF") throw new Error("search backend error");
+      if (query === "eBPF") {throw new Error("search backend error");}
       return [makeSearchResult({ snippet: `${query} result`, path: `memory/${query}.md` })];
     });
 

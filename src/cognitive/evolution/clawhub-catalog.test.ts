@@ -51,7 +51,7 @@ function mockFetch(
   globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
     const urlStr = typeof url === "string" ? url : url.toString();
     const key = Object.keys(responses).find((k) => urlStr.includes(k));
-    if (!key) return new Response("Not found", { status: 404 });
+    if (!key) {return new Response("Not found", { status: 404 });}
 
     const config = responses[key];
     const body = config.json ? JSON.stringify(config.json) : (config.text ?? "");

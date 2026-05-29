@@ -20,7 +20,7 @@ export function createCognitiveFeedbackTool(deps: {
   sessionKey?: string;
   agentId?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) return null;
+  if (deps.config?.cognitive?.enabled === false) {return null;}
 
   return {
     name: "cognitive_feedback",

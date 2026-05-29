@@ -26,7 +26,7 @@ export class InsightStore {
 
   private async loadRecords(agentId: string, userId: string): Promise<InsightRecord[]> {
     const path = this.recordPath(agentId, userId);
-    if (!existsSync(path)) return [];
+    if (!existsSync(path)) {return [];}
     try {
       const raw = await readFile(path, "utf-8");
       const data = JSON.parse(raw) as InsightStoreData;
@@ -63,7 +63,7 @@ export class InsightStore {
 
   async listRecent(agentId: string, userId: string, limit?: number): Promise<InsightRecord[]> {
     const records = await this.loadRecords(agentId, userId);
-    return records.sort((a, b) => b.generatedAt - a.generatedAt).slice(0, limit ?? 20);
+    return records.toSorted((a, b) => b.generatedAt - a.generatedAt).slice(0, limit ?? 20);
   }
 
   async listActive(
@@ -77,7 +77,7 @@ export class InsightStore {
     const records = await this.loadRecords(agentId, userId);
     return records
       .filter((r) => r.generatedAt >= cutoff)
-      .sort((a, b) => b.generatedAt - a.generatedAt)
+      .toSorted((a, b) => b.generatedAt - a.generatedAt)
       .slice(0, limit ?? 20);
   }
 
@@ -90,9 +90,9 @@ export class InsightStore {
   ): Promise<void> {
     const records = await this.loadRecords(agentId, userId);
     const record = records.find((r) => r.id === id);
-    if (!record) return;
+    if (!record) {return;}
     record.feedback = feedback;
-    if (userResponse !== undefined) record.userResponse = userResponse;
+    if (userResponse !== undefined) {record.userResponse = userResponse;}
     await this.writeRecords(agentId, userId, records);
   }
 
@@ -115,7 +115,7 @@ export class InsightStore {
       return entries
         .filter((name) => name.endsWith(".json"))
         .map((name) => name.slice(0, -5))
-        .sort();
+        .toSorted();
     } catch {
       return [];
     }
@@ -129,9 +129,9 @@ export class InsightStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) result.push(name);
+        if (s.isDirectory()) {result.push(name);}
       }
-      return result.sort();
+      return result.toSorted();
     } catch {
       return [];
     }

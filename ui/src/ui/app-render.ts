@@ -3,11 +3,8 @@ import { t } from "../i18n/index.ts";
 import { getSafeLocalStorage } from "../local-storage.ts";
 import { refreshChatAvatar } from "./app-chat.ts";
 import {
-  renderSidebarSessionList,
   renderSidebarStatusSection,
   renderTab,
-  renderSidebarConnectionStatus,
-  renderTopbarThemeModeToggle,
   resetChatStateForSessionSwitch,
   resolveSessionOptionGroups,
   resolveSidebarChatSessionKey,
@@ -55,12 +52,10 @@ import {
   updateCronJobsFilter,
   updateCronRunsFilter,
 } from "./controllers/cron.ts";
-import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "./external-link.ts";
 import "./components/dashboard-header.ts";
 import { icons } from "./icons.ts";
 import {
   iconForTab,
-  normalizeBasePath,
   pathForTab,
   TABS,
   subtitleForTab,
@@ -71,7 +66,6 @@ import {
   parseAgentSessionKey,
   resolveAgentIdFromSessionKey,
 } from "./session-key.ts";
-import { agentLogoUrl } from "./views/agents-utils.ts";
 import {
   resolveAgentConfig,
   resolveConfiguredCronModelSuggestions,
@@ -268,7 +262,6 @@ export function renderApp(state: AppViewState) {
   const chatAvatarUrl = state.chatAvatarUrl ?? assistantAvatarUrl ?? null;
   const configValue =
     state.configForm ?? (state.configSnapshot?.config as Record<string, unknown> | null);
-  const basePath = normalizeBasePath(state.basePath ?? "");
   const resolvedAgentId =
     state.agentsSelectedId ??
     state.agentsList?.defaultId ??
@@ -1166,7 +1159,7 @@ export function renderApp(state: AppViewState) {
                   });
                 },
                 onDeleteSession: (key: string) => {
-                  if (!confirm(`Delete session "${key}"? This cannot be undone.`)) return;
+                  if (!confirm(`Delete session "${key}"? This cannot be undone.`)) {return;}
                   import("./controllers/history.ts").then((c) => {
                     void c.deleteHistorySession(
                       state as Parameters<typeof c.deleteHistorySession>[0],

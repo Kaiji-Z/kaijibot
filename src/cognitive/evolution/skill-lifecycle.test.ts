@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,7 +54,7 @@ describe("SkillLifecycleManager", () => {
 
       const skills = await lifecycle.listSkills();
       expect(skills).toHaveLength(2);
-      const names = skills.map((s) => s.name).sort();
+      const names = skills.map((s) => s.name).toSorted();
       expect(names).toEqual(["feishu-calendar", "feishu-wiki"]);
 
       for (const skill of skills) {

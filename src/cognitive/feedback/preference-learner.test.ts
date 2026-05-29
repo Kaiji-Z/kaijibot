@@ -4,7 +4,6 @@ import {
   updateBanditFromFeedback,
   pickBestTopic,
   adaptFrequency,
-  sampleTopicScores,
   decayBandit,
   decayAllBandits,
   DECAY_HALF_LIFE_MS,
@@ -282,7 +281,7 @@ describe("pickPromptVariant", () => {
   const arms = ["casual", "formal", "concise", "detailed"];
 
   it("cold start: all equal priors produce roughly uniform selection", () => {
-    const counts = new Array(arms.length).fill(0);
+    const counts = Array.from({ length: arms.length }, () => 0);
     const profile = makeProfile();
     for (let i = 0; i < 1000; i++) {
       counts[pickPromptVariant(profile, arms)]++;
@@ -302,7 +301,7 @@ describe("pickPromptVariant", () => {
     };
     let wins = 0;
     for (let i = 0; i < 1000; i++) {
-      if (pickPromptVariant(profile, arms) === 0) wins++;
+      if (pickPromptVariant(profile, arms) === 0) {wins++;}
     }
     expect(wins).toBeGreaterThan(700);
   });
@@ -315,7 +314,7 @@ describe("pickPromptVariant", () => {
     };
     let formalWins = 0;
     for (let i = 0; i < 1000; i++) {
-      if (pickPromptVariant(profile, ["casual", "formal"]) === 1) formalWins++;
+      if (pickPromptVariant(profile, ["casual", "formal"]) === 1) {formalWins++;}
     }
     expect(formalWins).toBeGreaterThan(50);
   });

@@ -23,7 +23,7 @@ function createMemoryFs(): { files: Map<string, string>; fs: FsAdapter } {
       readFile: async (p: string) => {
         const content = files.get(p);
         if (content === undefined)
-          throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
+          {throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });}
         return content;
       },
       writeFile: async (p: string, data: string) => {
@@ -45,13 +45,13 @@ function createMemoryFs(): { files: Map<string, string>; fs: FsAdapter } {
       stat: async (p: string) => {
         const content = files.get(p);
         if (content === undefined)
-          throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
+          {throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });}
         return { mtimeMs: Date.now(), size: content.length };
       },
       rename: async (oldPath: string, newPath: string) => {
         const content = files.get(oldPath);
         if (content === undefined)
-          throw Object.assign(new Error(`ENOENT: ${oldPath}`), { code: "ENOENT" });
+          {throw Object.assign(new Error(`ENOENT: ${oldPath}`), { code: "ENOENT" });}
         files.delete(oldPath);
         files.set(newPath, content);
       },

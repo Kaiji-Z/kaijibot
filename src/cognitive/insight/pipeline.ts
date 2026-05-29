@@ -1,4 +1,3 @@
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   createDefaultFragmentCollectorDeps,
   type FragmentCollectorDeps,
@@ -6,7 +5,6 @@ import {
 import { FragmentStore } from "./fragment-store.js";
 import type { Fragment, FragmentCluster } from "./fragment-types.js";
 
-const log = createSubsystemLogger("cognitive/pipeline");
 
 // ─── Aggregated deps ───
 

@@ -72,7 +72,7 @@ describe("computeCalibrationSlope", () => {
   });
 
   it("returns 1.0 with perfect predictions (predicted=0.8, all positive)", () => {
-    const history = makeRecords(20, 0.8, "positive");
+    makeRecords(20, 0.8, "positive");
     // Σ(0.8×1) / Σ(0.8²) = 20×0.8 / 20×0.64 = 16/12.8 = 1.25... wait
     // Actually: slope = 20 * (0.8 * 1) / (20 * 0.64) = 16 / 12.8 = 1.25
     // For slope=1.0, predicted needs to equal the "perfect" prediction.
@@ -102,7 +102,7 @@ describe("computeCalibrationSlope", () => {
     const fullHistory = [...first50, ...next50];
 
     const slope = computeCalibrationSlope(fullHistory);
-    const expectedSlope = clampSlope(0.0 / (50 * 0.01));
+    const expectedSlope = clampSlope(0);
     expect(slope).toBeCloseTo(expectedSlope, 6);
   });
 

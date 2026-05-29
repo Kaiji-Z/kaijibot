@@ -1,18 +1,9 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/agent-scope.js";
 import { loadConfig } from "../../config/config.js";
-import type { KaijiBotConfig } from "../../config/config.js";
 import { getActiveMemorySearchManager } from "../../plugins/memory-runtime.js";
 import { formatError } from "../server-utils.js";
 import { removeGroundedShortTermCandidates } from "./doctor.memory-core-runtime.js";
-import { asRecord, normalizeTrimmedString } from "./record-shared.js";
 import type { GatewayRequestHandlers } from "./types.js";
-
-const SHORT_TERM_STORE_RELATIVE_PATH = path.join("memory", ".dreams", "short-term-recall.json");
-const MANAGED_DEEP_SLEEP_CRON_NAME = "Memory Promotion";
-const MANAGED_DEEP_SLEEP_CRON_TAG = "[managed-by=memory-core.short-term-promotion]";
-const DEEP_SLEEP_SYSTEM_EVENT_TEXT = "__kaijibot_memory_core_short_term_promotion_dream__";
 
 export type DoctorMemoryStatusPayload = {
   agentId: string;
@@ -30,7 +21,7 @@ export type DoctorMemoryDreamActionPayload = {
 };
 
 export const doctorHandlers: GatewayRequestHandlers = {
-  "doctor.memory.status": async ({ respond, context }) => {
+  "doctor.memory.status": async ({ respond }) => {
     const cfg = loadConfig();
     const agentId = resolveDefaultAgentId(cfg);
     const { manager, error } = await getActiveMemorySearchManager({

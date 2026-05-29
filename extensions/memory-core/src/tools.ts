@@ -108,7 +108,7 @@ const FRESHNESS_WARNING_THRESHOLD_DAYS = 30;
 
 function checkFreshness(path: string): string | undefined {
   const dateMatch = path.match(/(\d{4}-\d{2}-\d{2})/);
-  if (!dateMatch) return undefined;
+  if (!dateMatch) {return undefined;}
 
   const fileDate = new Date(dateMatch[1]!);
   const now = new Date();

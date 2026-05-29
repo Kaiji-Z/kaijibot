@@ -155,7 +155,7 @@ export class TopicManager {
     if (!topic) {
       throw new Error(`Topic not found: ${name}`);
     }
-    if (indices.length === 0) return;
+    if (indices.length === 0) {return;}
 
     for (const idx of indices) {
       if (idx < 0 || idx >= topic.entries.length) {

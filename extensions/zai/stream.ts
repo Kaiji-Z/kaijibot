@@ -9,8 +9,8 @@ import {
 const MAX_SESSION_ID_LENGTH = 256;
 
 function isInjectableSessionId(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  if (value.length === 0 || value.length > MAX_SESSION_ID_LENGTH) return false;
+  if (typeof value !== "string") {return false;}
+  if (value.length === 0 || value.length > MAX_SESSION_ID_LENGTH) {return false;}
   return value.trim().length > 0;
 }
 

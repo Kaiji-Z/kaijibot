@@ -55,7 +55,7 @@ export async function loadSessionMessages(state: HistoryState, key: string) {
 }
 
 export async function deleteHistorySession(state: HistoryState, key: string) {
-  if (!state.client || !state.connected) return;
+  if (!state.client || !state.connected) {return;}
   state.historyLoading = true;
   state.requestUpdate?.();
   try {

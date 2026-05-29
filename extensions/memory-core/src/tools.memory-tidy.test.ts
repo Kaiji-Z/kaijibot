@@ -1,14 +1,12 @@
 import { join } from "node:path";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
 import {
   runMemoryTidyActions,
   isTidyEnabled,
   type MemoryTidyDeps,
-  type TidyResult,
 } from "./tools.memory-tidy.js";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
-import { type TopicEntry, parseTopicFile, serializeTopicFile } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // In-memory FS
@@ -22,7 +20,7 @@ function createMemoryFs() {
     fs: {
       readFile: async (p: string) => {
         const c = files.get(p);
-        if (c === undefined) throw new Error(`ENOENT: ${p}`);
+        if (c === undefined) {throw new Error(`ENOENT: ${p}`);}
         return c;
       },
       writeFile: async (p: string, data: string) => {
@@ -43,12 +41,12 @@ function createMemoryFs() {
       },
       stat: async (p: string) => {
         const c = files.get(p);
-        if (c === undefined) throw new Error(`ENOENT: ${p}`);
+        if (c === undefined) {throw new Error(`ENOENT: ${p}`);}
         return { mtimeMs: Date.now(), size: c.length };
       },
       rename: async (oldPath: string, newPath: string) => {
         const c = files.get(oldPath);
-        if (c === undefined) throw new Error(`ENOENT: ${oldPath}`);
+        if (c === undefined) {throw new Error(`ENOENT: ${oldPath}`);}
         files.delete(oldPath);
         files.set(newPath, c);
       },

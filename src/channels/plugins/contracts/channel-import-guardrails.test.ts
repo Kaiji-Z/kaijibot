@@ -24,14 +24,6 @@ const BUNDLED_EXTENSION_IDS = [...bundledPluginRoots.keys()].toSorted(
 const GUARDED_CHANNEL_EXTENSIONS = new Set(["feishu"]);
 const ALLOWED_CORE_CHANNEL_SDK_SUBPATHS: Set<string> = new Set([]);
 
-function bundledPluginFile(pluginId: string, relativePath: string): string {
-  const rootDir = bundledPluginRoots.get(pluginId);
-  if (!rootDir) {
-    throw new Error(`missing bundled plugin root for ${pluginId}`);
-  }
-  return normalizePath(resolve(rootDir, relativePath));
-}
-
 type GuardedSource = {
   path: string;
   forbiddenPatterns: RegExp[];

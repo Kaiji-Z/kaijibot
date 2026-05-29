@@ -22,7 +22,7 @@ export class TimerSource {
       }
     }, this.intervalMs);
 
-    if (this.handle.unref) this.handle.unref();
+    if (this.handle.unref) {this.handle.unref();}
   }
 
   stop(): void {

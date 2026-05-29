@@ -166,21 +166,21 @@ function evaluateQuality(
   const mentionedDomain = domainNames.some((d) => content.includes(d));
   const mentionedFocus = persona.recentFocus.some((f) => content.includes(f));
   scores.relevance = mentionedDomain || mentionedFocus ? 8 : 3;
-  if (!mentionedDomain && !mentionedFocus) issues.push("未提及用户领域或近期关注");
+  if (!mentionedDomain && !mentionedFocus) {issues.push("未提及用户领域或近期关注");}
 
   // Natural: no banned patterns (use production filter list)
   const bannedHits = GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(content)).length;
   scores.natural = Math.max(2, 10 - bannedHits * 3);
-  if (bannedHits > 0) issues.push(`检测到 ${bannedHits} 个模板句式`);
+  if (bannedHits > 0) {issues.push(`检测到 ${bannedHits} 个模板句式`);}
 
   // Specific: concrete details or keyInsights referenced
   const usesKeyInsight = allKeyInsights.some((k) => content.includes(k));
   scores.specific = usesKeyInsight ? 9 : content.length > 30 ? 5 : 2;
-  if (!usesKeyInsight) issues.push("未引用用户的具体 keyInsight");
+  if (!usesKeyInsight) {issues.push("未引用用户的具体 keyInsight");}
 
   // Personalized
   scores.personalized = usesKeyInsight ? 9 : 3;
-  if (!usesKeyInsight) issues.push("不够个性化");
+  if (!usesKeyInsight) {issues.push("不够个性化");}
 
   // Inspiring: depth of thought
   const hasJudgment = /其实|本质上|关键|核心|真正/.test(content);
@@ -210,7 +210,7 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {throw new Error(data.error.message);}
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -475,7 +475,7 @@ describe("insight pipeline validation (mock LLM)", () => {
     for (let i = 0; i < 20; i++) {
       const { prompt } = buildInsightPrompt(persona, input, [], []);
       const taskMatch = prompt.match(/TASK:\n([\s\S]*?)\n\n ?STRUCTURE/);
-      if (taskMatch) frames.add(taskMatch[1]!.trim());
+      if (taskMatch) {frames.add(taskMatch[1]!.trim());}
     }
     // With 8 frames × random pick × random keyInsight, we should see variety
     expect(frames.size).toBeGreaterThanOrEqual(4);
@@ -486,7 +486,7 @@ describe("insight pipeline validation (mock LLM)", () => {
     for (let i = 0; i < 20; i++) {
       const { prompt } = buildInsightPrompt(persona, input, [], []);
       const seedMatch = prompt.match(/STRUCTURE CONSTRAINT:\n(.*)/);
-      if (seedMatch) seeds.add(seedMatch[1]!.trim());
+      if (seedMatch) {seeds.add(seedMatch[1]!.trim());}
     }
     expect(seeds.size).toBeGreaterThanOrEqual(4);
   });

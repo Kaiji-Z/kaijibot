@@ -210,7 +210,7 @@ describe("ProactiveScheduler", () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async (_agentId, userId) => {
         processedUsers.push(userId);
-        if (processedUsers.length >= 3) allProcessed!();
+        if (processedUsers.length >= 3) {allProcessed!();}
         return personaWithDomains();
       },
       onInsightReady: async () => {},
@@ -222,7 +222,7 @@ describe("ProactiveScheduler", () => {
 
     await Promise.race([allProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
     scheduler.stop();
-    expect(processedUsers.sort()).toEqual(["user-a", "user-b", "user-c"].sort());
+    expect(processedUsers.toSorted()).toEqual(["user-a", "user-b", "user-c"].toSorted());
   });
 
   it("start isolates errors per user", async () => {
@@ -233,7 +233,7 @@ describe("ProactiveScheduler", () => {
     });
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async (_agentId, userId) => {
-        if (userId === "bad-user") throw new Error("load failed");
+        if (userId === "bad-user") {throw new Error("load failed");}
         processedUsers.push(userId);
         goodProcessed!();
         return personaWithDomains();
@@ -2005,8 +2005,8 @@ describe("6-cycle integration test — all fixes together", () => {
 
     // No two consecutive delivered insights should have identical domain sets
     for (let i = 1; i < domains.length; i++) {
-      const prev = domains[i - 1]!.sort().join(",");
-      const curr = domains[i]!.sort().join(",");
+      const prev = domains[i - 1]!.toSorted().join(",");
+      const curr = domains[i]!.toSorted().join(",");
       // Allow some overlap but not 100% identical
       if (prev === curr) {
         // This is acceptable only if there were very few domains delivered
@@ -2040,7 +2040,7 @@ describe("6-cycle integration test — all fixes together", () => {
     }
     const fatigued = new Set<string>();
     for (const [domain, count] of counts) {
-      if (count >= 2) fatigued.add(domain);
+      if (count >= 2) {fatigued.add(domain);}
     }
 
     expect(fatigued.has("AI/机器学习")).toBe(true);
@@ -2354,7 +2354,7 @@ describe("resolve — quality retry", () => {
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => {
         callCount++;
-        if (callCount === 1) return [lowInsight];
+        if (callCount === 1) {return [lowInsight];}
         return [highInsight];
       },
     });
@@ -2433,7 +2433,7 @@ describe("resolve — quality retry", () => {
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => {
         callCount++;
-        if (callCount <= 1) return [mediumInsight];
+        if (callCount <= 1) {return [mediumInsight];}
         return [bestInsight];
       },
     });
@@ -2499,7 +2499,7 @@ describe("processEvent per-user queue", () => {
       timestamp: Date.now(),
     };
 
-    const [result1, result2] = await Promise.all([
+    const [_result1, _result2] = await Promise.all([
       scheduler.processEvent("user-a", event1, "main"),
       scheduler.processEvent("user-a", event2, "main"),
     ]);
@@ -2517,8 +2517,8 @@ describe("processEvent per-user queue", () => {
       config,
       {
         loadPersona: async (_agentId, userId) => {
-          if (userId === "user-a") return personaA;
-          if (userId === "user-b") return personaB;
+          if (userId === "user-a") {return personaA;}
+          if (userId === "user-b") {return personaB;}
           return undefined;
         },
         onInsightReady: async () => {},

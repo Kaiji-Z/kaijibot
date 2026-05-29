@@ -42,7 +42,7 @@ export function computeLifecycleStage(
  * True when dormant AND silent for more than 7 days.
  */
 export function shouldReEngage(lifecycle: UserLifecycle, nowMs: number): boolean {
-  if (lifecycle.stage !== "dormant") return false;
+  if (lifecycle.stage !== "dormant") {return false;}
   return nowMs - lifecycle.lastActiveAt > 7 * DAY_MS;
 }
 

@@ -46,7 +46,7 @@ export function seedDomainGraph(now: number = Date.now()): LearnedDomainGraph {
   for (const [source, targets] of Object.entries(DEFAULT_DOMAIN_ADJACENCIES)) {
     for (const target of targets) {
       const key = edgeKey(source, target);
-      if (seen.has(key)) continue;
+      if (seen.has(key)) {continue;}
       seen.add(key);
       edges.push({
         source,
@@ -66,7 +66,7 @@ export function observeCoOccurrence(
   domains: string[],
   timestamp: number,
 ): LearnedDomainGraph {
-  if (domains.length < 2) return graph;
+  if (domains.length < 2) {return graph;}
 
   const nodes = [...graph.nodes];
   const nodeSet = new Set(nodes);
@@ -161,8 +161,8 @@ function buildAdjacencyFromLearned(graph: LearnedDomainGraph): DomainGraph {
   }
   for (const edge of graph.edges) {
     if (edge.weight >= 0.05) {
-      if (!adj[edge.source]) adj[edge.source] = [];
-      if (!adj[edge.target]) adj[edge.target] = [];
+      if (!adj[edge.source]) {adj[edge.source] = [];}
+      if (!adj[edge.target]) {adj[edge.target] = [];}
       adj[edge.source].push(edge.target);
       adj[edge.target].push(edge.source);
     }
@@ -182,9 +182,9 @@ export function findCrossDomainConnections(
     graph[node] = [...neighbors];
   }
   for (const [node, neighbors] of Object.entries(learnedGraph)) {
-    if (!graph[node]) graph[node] = [];
+    if (!graph[node]) {graph[node] = [];}
     for (const n of neighbors) {
-      if (!graph[node].includes(n)) graph[node].push(n);
+      if (!graph[node].includes(n)) {graph[node].push(n);}
     }
   }
   const connections: Array<{ from: string; to: string; bridge: string[]; distance: number }> = [];
@@ -192,7 +192,7 @@ export function findCrossDomainConnections(
   for (const domain of userDomains) {
     const adjacent = graph[domain] ?? [];
     for (const target of adjacent) {
-      if (userDomains.includes(target)) continue;
+      if (userDomains.includes(target)) {continue;}
 
       const targetAdjacent = graph[target] ?? [];
       const bridges = targetAdjacent.filter((t) => userDomains.includes(t));
@@ -206,7 +206,7 @@ export function findCrossDomainConnections(
     }
   }
 
-  return connections.sort((a, b) => a.distance - b.distance);
+  return connections.toSorted((a, b) => a.distance - b.distance);
 }
 
 export function semanticDistance(
@@ -215,11 +215,11 @@ export function semanticDistance(
   extendedGraph?: DomainGraph,
   domainGraph?: LearnedDomainGraph,
 ): number {
-  if (domainA === domainB) return 0;
+  if (domainA === domainB) {return 0;}
 
   if (domainGraph) {
     const directWeight = getEdgeWeight(domainGraph, domainA, domainB);
-    if (directWeight > 0.5) return 1 - directWeight;
+    if (directWeight > 0.5) {return 1 - directWeight;}
 
     for (const edge of domainGraph.edges) {
       const edgeDomains = [edge.source, edge.target];
@@ -232,16 +232,16 @@ export function semanticDistance(
       }
     }
 
-    if (directWeight > 0) return 1 - directWeight;
+    if (directWeight > 0) {return 1 - directWeight;}
   }
 
   const graph = resolveGraph(extendedGraph);
   const adjacent = graph[domainA] ?? [];
-  if (adjacent.includes(domainB)) return 0.5;
+  if (adjacent.includes(domainB)) {return 0.5;}
 
   for (const mid of adjacent) {
     const midAdjacent = graph[mid] ?? [];
-    if (midAdjacent.includes(domainB)) return 0.75;
+    if (midAdjacent.includes(domainB)) {return 0.75;}
   }
 
   return 1.0;
@@ -259,7 +259,7 @@ export function discoverDomainsFromPersona(
   const discovered: string[] = [];
 
   for (const domain of Object.keys(persona.domains)) {
-    if (!knownDomains.has(domain)) discovered.push(domain);
+    if (!knownDomains.has(domain)) {discovered.push(domain);}
   }
 
   const identityLists = [
@@ -286,7 +286,7 @@ export function extendDomainGraph(
   const graph: DomainGraph = { ...(baseGraph ?? DEFAULT_DOMAIN_ADJACENCIES) };
 
   for (const domain of newDomains) {
-    if (domain in graph) continue;
+    if (domain in graph) {continue;}
     graph[domain] = suggestedConnections?.[domain] ?? ["AI/机器学习"];
   }
 

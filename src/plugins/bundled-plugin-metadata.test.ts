@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { collectBundledChannelConfigs } from "./bundled-channel-config-metadata.js";
 import {
   type BundledPluginMetadata,
   clearBundledPluginMetadataCache,
@@ -15,11 +14,6 @@ import {
   pluginTestRepoRoot as repoRoot,
   writeJson,
 } from "./generated-plugin-test-helpers.js";
-import {
-  getPackageManifestMetadata,
-  loadPluginManifest,
-  type PackageManifest,
-} from "./manifest.js";
 import { collectBundledRuntimeSidecarPaths } from "./runtime-sidecar-paths-baseline.js";
 import { BUNDLED_RUNTIME_SIDECAR_PATHS } from "./runtime-sidecar-paths.js";
 
@@ -88,25 +82,6 @@ function listRepoBundledPluginMetadata(): readonly BundledPluginMetadata[] {
   });
 }
 
-function readPackageManifest(pluginDir: string): PackageManifest | undefined {
-  const packagePath = path.join(pluginDir, "package.json");
-  return fs.existsSync(packagePath)
-    ? (JSON.parse(fs.readFileSync(packagePath, "utf8")) as PackageManifest)
-    : undefined;
-}
-
-function collectRepoBundledChannelConfigsForTest(dirName: string) {
-  const pluginDir = path.join(repoRoot, "extensions", dirName);
-  const manifest = loadPluginManifest(pluginDir, false);
-  if (!manifest.ok) {
-    throw manifest.error;
-  }
-  return collectBundledChannelConfigs({
-    pluginDir,
-    manifest: manifest.manifest,
-    packageManifest: getPackageManifestMetadata(readPackageManifest(pluginDir)),
-  });
-}
 
 describe("bundled plugin metadata", () => {
   it(

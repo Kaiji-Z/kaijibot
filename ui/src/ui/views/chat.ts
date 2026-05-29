@@ -1283,7 +1283,7 @@ export function renderChat(props: ChatProps) {
 
         ${(() => {
           const appState = props.appState as AppViewState | undefined;
-          if (!appState) return nothing;
+          if (!appState) {return nothing;}
           const chipToggle = (key: "sessionChipOpen" | "modelChipOpen" | "thinkingChipOpen") => () => {
             vs.sessionChipOpen = false;
             vs.modelChipOpen = false;
@@ -1389,7 +1389,7 @@ export function renderChat(props: ChatProps) {
               : nothing}
             ${(() => {
               const appState = props.appState as AppViewState | undefined;
-              if (!appState) return nothing;
+              if (!appState) {return nothing;}
               return renderInputSettingsPopover(
                 appState,
                 vs.inputSettingsOpen,

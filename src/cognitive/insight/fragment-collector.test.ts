@@ -126,7 +126,7 @@ function makeDeps(
 ): FragmentCollectorDeps {
   return {
     complete: vi.fn(async (_model, context, _options) => {
-      if (onCall) onCall(context.messages as Array<{ role: string; content: string }>);
+      if (onCall) {onCall(context.messages as Array<{ role: string; content: string }>);}
       return assistantMessage(response ?? validFragmentResponse());
     }),
     prepareModel: vi.fn(async () => ({ model: TEST_MODEL, auth: TEST_AUTH })),
@@ -458,7 +458,7 @@ describe("buildFragmentPrompt", () => {
   it("captures prompt text via onCall callback", async () => {
     let capturedPrompt = "";
     const deps = makeDeps((messages) => {
-      if (messages.length > 0) capturedPrompt = messages[0]!.content;
+      if (messages.length > 0) {capturedPrompt = messages[0]!.content;}
     });
     await collectFragments(
       SUBSTANTIVE_USER_TEXT,

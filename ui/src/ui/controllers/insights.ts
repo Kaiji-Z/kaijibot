@@ -13,7 +13,7 @@ export type InsightsState = {
 };
 
 export async function loadInsights(state: InsightsState) {
-  if (!state.client || !state.connected || !state.insightsAgentId || !state.insightsUserId) return;
+  if (!state.client || !state.connected || !state.insightsAgentId || !state.insightsUserId) {return;}
   state.insightsLoading = true;
   state.requestUpdate?.();
   try {
@@ -38,7 +38,7 @@ export async function submitFeedback(
   id: string,
   feedback: string,
 ) {
-  if (!state.client || !state.connected) return;
+  if (!state.client || !state.connected) {return;}
   try {
     await state.client.request("cognitive.insights.feedback", {
       agentId,

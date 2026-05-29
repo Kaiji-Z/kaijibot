@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
-import { type TopicEntry, parseTopicFile } from "./topic-types.js";
+import { type TopicEntry } from "./topic-types.js";
 
 function createMemoryFs(): {
   files: Map<string, string>;
@@ -13,7 +13,7 @@ function createMemoryFs(): {
     deps: {
       readFile: async (path: string) => {
         const content = files.get(path);
-        if (content === undefined) throw new Error(`ENOENT: ${path}`);
+        if (content === undefined) {throw new Error(`ENOENT: ${path}`);}
         return content;
       },
       writeFile: async (path: string, data: string) => {
@@ -36,12 +36,12 @@ function createMemoryFs(): {
       },
       stat: async (path: string) => {
         const content = files.get(path);
-        if (content === undefined) throw new Error(`ENOENT: ${path}`);
+        if (content === undefined) {throw new Error(`ENOENT: ${path}`);}
         return { mtimeMs: Date.now(), size: content.length };
       },
       rename: async (oldPath: string, newPath: string) => {
         const content = files.get(oldPath);
-        if (content === undefined) throw new Error(`ENOENT: ${oldPath}`);
+        if (content === undefined) {throw new Error(`ENOENT: ${oldPath}`);}
         files.delete(oldPath);
         files.set(newPath, content);
       },
@@ -219,7 +219,7 @@ describe("TopicManager", () => {
 
   describe("deleteTopic", () => {
     it("writes empty content for deleted topic", async () => {
-      const { manager, fs } = createManager();
+      const { manager } = createManager();
       await manager.createTopic("user", "temp-topic");
       await manager.deleteTopic("temp-topic");
 

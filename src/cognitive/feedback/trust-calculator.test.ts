@@ -4,7 +4,6 @@ import {
   updateTrustFromFeedback,
   getInteractionPhase,
   getPhaseBehaviorAdvice,
-  calculateTrustScore,
 } from "./trust-calculator.js";
 
 function makeRapport(overrides?: Partial<RapportMetrics>): RapportMetrics {

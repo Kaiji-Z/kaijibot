@@ -46,14 +46,14 @@ export function createDefaultFragmentCollectorDeps(): FragmentCollectorDeps {
 
 export function shouldSkipTurn(userText: string): boolean {
   const trimmed = userText.trim();
-  if (trimmed.length < 20) return true;
+  if (trimmed.length < 20) {return true;}
   if (
     /^(好的|嗯|哦|收到|了解|谢谢|感谢|明白|知道|可以|行|对|是|不错|没问题)[！!。.？?]*$/.test(
       trimmed,
     )
   )
-    return true;
-  if (/^[\p{P}\p{S}\s]+$/u.test(trimmed)) return true;
+    {return true;}
+  if (/^[\p{P}\p{S}\s]+$/u.test(trimmed)) {return true;}
   return false;
 }
 
@@ -147,7 +147,7 @@ export function buildFragmentPrompt(
   persona: PersonaTree,
 ): string {
   const domainNames = Object.entries(persona.domains)
-    .sort(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
+    .toSorted(([, a], [, b]) => b.lastMentioned - a.lastMentioned)
     .slice(0, 20)
     .map(([name]) => name);
   const truncatedUser = userText.length > 500 ? userText.slice(0, 500) + "…" : userText;

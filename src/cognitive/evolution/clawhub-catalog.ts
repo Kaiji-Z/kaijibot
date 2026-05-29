@@ -11,7 +11,7 @@ export class ClawHubCatalog {
     const url = `${this.registryUrl}/api/v1/skills/search?q=${encodeURIComponent(query)}&limit=${limit}`;
     try {
       const response = await fetch(url);
-      if (!response.ok) return [];
+      if (!response.ok) {return [];}
       return (await response.json()) as ClawHubSearchResult[];
     } catch {
       return [];
@@ -22,8 +22,8 @@ export class ClawHubCatalog {
     const url = `${this.registryUrl}/api/v1/skills/${encodeURIComponent(slug)}`;
     try {
       const response = await fetch(url);
-      if (response.status === 404) return null;
-      if (!response.ok) return null;
+      if (response.status === 404) {return null;}
+      if (!response.ok) {return null;}
       return (await response.json()) as ClawHubSkillDetail;
     } catch {
       return null;
@@ -34,7 +34,7 @@ export class ClawHubCatalog {
     const url = `${this.registryUrl}/api/v1/skills/popular?limit=${limit}`;
     try {
       const response = await fetch(url);
-      if (!response.ok) return [];
+      if (!response.ok) {return [];}
       return (await response.json()) as ClawHubSearchResult[];
     } catch {
       return [];

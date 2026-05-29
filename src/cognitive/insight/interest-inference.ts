@@ -1,6 +1,5 @@
 import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
-import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
@@ -89,7 +88,7 @@ export function buildInterestInferencePrompt(
   fragments?: Fragment[],
 ): string {
   // Section 1: Known knowledge
-  const domainEntries = Object.entries(persona.domains).sort(([, a], [, b]) => b.depth - a.depth);
+  const domainEntries = Object.entries(persona.domains).toSorted(([, a], [, b]) => b.depth - a.depth);
 
   const knownKnowledge =
     domainEntries.length > 0
@@ -147,7 +146,7 @@ export function buildInterestInferencePrompt(
 
   // Section 4: Domain connections
   const edges = persona.domainGraph?.edges ?? [];
-  const topEdges = [...edges].sort((a, b) => b.observations - a.observations).slice(0, 5);
+  const topEdges = [...edges].toSorted((a, b) => b.observations - a.observations).slice(0, 5);
   const connectionsBlock =
     topEdges.length > 0
       ? topEdges
@@ -162,7 +161,7 @@ export function buildInterestInferencePrompt(
 
   // Top discussed domains for avoidTopics
   const topDiscussed = domainEntries
-    .sort(([, a], [, b]) => b.recurrence - a.recurrence)
+    .toSorted(([, a], [, b]) => b.recurrence - a.recurrence)
     .slice(0, 3)
     .map(([name]) => name);
 

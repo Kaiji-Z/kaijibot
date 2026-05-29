@@ -387,12 +387,12 @@ function clampDepth(n: number): number {
 
 function validSource(value: unknown): "explicit" | "inferred" | "observed" {
   const s = String(value);
-  if (s === "explicit" || s === "inferred" || s === "observed") return s;
+  if (s === "explicit" || s === "inferred" || s === "observed") {return s;}
   return "inferred";
 }
 
 function validInsightCategory(value: unknown): InsightCategory {
   const s = String(value);
-  if (VALID_INSIGHT_CATEGORIES.has(s)) return s as InsightCategory;
+  if (VALID_INSIGHT_CATEGORIES.has(s)) {return s as InsightCategory;}
   return "domain_knowledge";
 }

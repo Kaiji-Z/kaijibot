@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import type { TopicBandit } from "../types.js";
-import type { ContentStrategyHint } from "./content-strategy.js";
 import { banditWeightedSelect, selectMode } from "./mode-selection.js";
 
 describe("banditWeightedSelect", () => {

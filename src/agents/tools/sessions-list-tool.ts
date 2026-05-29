@@ -334,7 +334,7 @@ export function createSessionsListTool(opts?: {
             typeof (e as Record<string, unknown>).key === "string"
               ? (e as Record<string, unknown>).key
               : undefined;
-          if (!key) continue;
+          if (!key) {continue;}
           try {
             const agentId = resolveAgentIdFromSessionKey(key as string);
             dirs.add(resolveSessionTranscriptsDirForAgent(agentId));

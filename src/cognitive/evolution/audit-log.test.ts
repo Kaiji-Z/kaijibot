@@ -56,7 +56,7 @@ describe("AuditLog", () => {
   });
 
   it("query by time range (since) filters correctly", async () => {
-    const entry1 = await log.append({
+    await log.append({
       operation: "a",
       actor: "a",
       target: "t1",
@@ -89,7 +89,7 @@ describe("AuditLog", () => {
     );
 
     const results = await Promise.all(promises);
-    for (const r of results) ids.add(r.id);
+    for (const r of results) {ids.add(r.id);}
     expect(ids.size).toBe(count);
 
     const all = await log.query({});

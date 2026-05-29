@@ -320,7 +320,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
     expect(deliveredDomains.length).toBeGreaterThanOrEqual(3);
 
     // Verify at least 3 unique domain sets were delivered
-    const uniqueDomainSets = new Set(deliveredDomains.map((d) => d.sort().join(",")));
+    const uniqueDomainSets = new Set(deliveredDomains.map((d) => d.toSorted().join(",")));
     expect(uniqueDomainSets.size).toBeGreaterThanOrEqual(3);
 
     // Verify no single domain appears more than 2 times
@@ -330,7 +330,7 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
         domainCounts.set(d, (domainCounts.get(d) ?? 0) + 1);
       }
     }
-    for (const [domain, count] of domainCounts) {
+    for (const [_domain, count] of domainCounts) {
       expect(count).toBeLessThanOrEqual(2);
     }
   });

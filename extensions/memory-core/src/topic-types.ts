@@ -53,7 +53,7 @@ const ENTRY_HEADING_RE = /^## (.+) \((\d{4}-\d{2}-\d{2})\)$/;
  */
 export function parseTopicEntryHeading(line: string): { title: string; date: string } | null {
   const match = line.match(ENTRY_HEADING_RE);
-  if (!match) return null;
+  if (!match) {return null;}
   return { title: match[1]!, date: match[2]! };
 }
 
@@ -107,7 +107,7 @@ function parseYamlFrontmatter(yamlText: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const line of yamlText.split(/\r?\n/)) {
     const colonIdx = line.indexOf(":");
-    if (colonIdx < 0) continue;
+    if (colonIdx < 0) {continue;}
     const key = line.slice(0, colonIdx).trim();
     const value = line.slice(colonIdx + 1).trim();
     result[key] = value;
@@ -226,7 +226,7 @@ export function serializeTopicFile(topic: TopicFile): string {
 /**
  * Create an empty TopicFile with no entries.
  */
-export function createEmptyTopicFile(subject: string, name: string): TopicFile {
+export function createEmptyTopicFile(subject: string, _name: string): TopicFile {
   const today = todayIso();
   const raw = [
     "---",

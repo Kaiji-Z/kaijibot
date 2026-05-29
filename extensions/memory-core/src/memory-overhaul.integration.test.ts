@@ -641,7 +641,7 @@ describe("Simulated session-memory hook flow", () => {
     expect(topicPointers).not.toBeNull();
     expect(topicPointers!.length).toBeGreaterThanOrEqual(1);
 
-    const inlineSections = rawMemory.match(/^## [⚡🔥]/gm);
+    const inlineSections = rawMemory.match(/^## [⚡🔥]/gmu);
     expect(inlineSections).not.toBeNull();
     expect(inlineSections!.length).toBeGreaterThanOrEqual(1);
   });

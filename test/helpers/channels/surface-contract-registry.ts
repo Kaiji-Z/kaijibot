@@ -1,4 +1,3 @@
-import { vi } from "vitest";
 import { listBundledChannelPlugins } from "../../../src/channels/plugins/bundled.js";
 import type { ChannelPlugin } from "../../../src/channels/plugins/types.js";
 import type { KaijiBotConfig } from "../../../src/config/config.js";

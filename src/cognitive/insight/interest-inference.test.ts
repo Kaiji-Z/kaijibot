@@ -250,7 +250,7 @@ describe("inferSearchStrategy", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return; // type guard
+    if (!result.ok) {return;} // type guard
     const strategy: SearchStrategy = result.strategy;
     expect(strategy.inferredInterest).toBe("eBPF distributed tracing");
     expect(strategy.searchQuery).toBe("eBPF distributed tracing observability");
@@ -382,7 +382,7 @@ describe("inferSearchStrategy", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {return;}
     expect(result.strategy.estimatedSurprise).toBe(1);
   });
 

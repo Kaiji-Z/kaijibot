@@ -68,7 +68,7 @@ describe("computeContentStrategy", () => {
       recentInsightModes: ["surprise", "pattern", "extend"],
     });
     const hint = computeContentStrategy(persona);
-    expect(hint.excludeDomains.sort()).toEqual(["rust", "web"].sort());
+    expect(hint.excludeDomains.toSorted()).toEqual(["rust", "web"].toSorted());
     expect(hint.forceMode).toBeDefined();
     expect(hint.forceMode).not.toBe("extend");
     expect(hint.noveltyBoost).toBe(false);
@@ -81,7 +81,7 @@ describe("computeContentStrategy", () => {
       recentInsightModes: ["pattern", "surprise", "extend"],
     });
     const hint = computeContentStrategy(persona);
-    expect(hint.excludeDomains.sort()).toEqual(["b", "c", "d", "e"].sort());
+    expect(hint.excludeDomains.toSorted()).toEqual(["b", "c", "d", "e"].toSorted());
     expect(hint.forceMode).toBe("surprise");
     expect(hint.noveltyBoost).toBe(true);
   });
@@ -176,6 +176,6 @@ describe("computeContentStrategy", () => {
     const hint = computeContentStrategy(persona);
     const unique = new Set(hint.excludeDomains);
     expect(unique.size).toBe(hint.excludeDomains.length);
-    expect(hint.excludeDomains.sort()).toEqual(["ai", "ml", "rust"].sort());
+    expect(hint.excludeDomains.toSorted()).toEqual(["ai", "ml", "rust"].toSorted());
   });
 });

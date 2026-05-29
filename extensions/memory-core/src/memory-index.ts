@@ -107,10 +107,10 @@ async function atomicWrite(
 function parseInlineHeading(line: string): string | null {
   const trimmed = line.trim();
   for (const h of INLINE_SECTION_HEADINGS) {
-    if (trimmed === `## ${h}`) return h;
+    if (trimmed === `## ${h}`) {return h;}
   }
   for (const [legacy, migrated] of Object.entries(LEGACY_SECTION_MIGRATION)) {
-    if (trimmed === `## ${legacy}`) return migrated;
+    if (trimmed === `## ${legacy}`) {return migrated;}
   }
   return null;
 }
@@ -142,10 +142,6 @@ function isReferencesHeading(line: string): boolean {
 
 function isTopicPointersHeading(line: string): boolean {
   return line.trim() === "## Topic Pointers";
-}
-
-function isH2Heading(line: string): boolean {
-  return /^## /.test(line.trim());
 }
 
 // ---------------------------------------------------------------------------
@@ -349,18 +345,6 @@ function serializeInlineSection(inline: InlineContent): string {
   return [`## ${inline.section}`, ...inline.lines].join("\n");
 }
 
-function serializeSection(section: MemoryIndexSection): string {
-  const lines = [`## ${section.title}`, `→ ${section.topicFile}`];
-  if (section.summary) {
-    lines.push(section.summary);
-  }
-  return lines.join("\n");
-}
-
-function serializeRecentSession(session: RecentSession): string {
-  return `- ${session.date} ${session.title} → ${session.topicPath}`;
-}
-
 function serializeIndex(index: MemoryIndex): string {
   const parts: string[] = [INDEX_TITLE, ""];
 
@@ -398,11 +382,11 @@ function isLegacyFormat(content: string): boolean {
   const lines = splitLines(content);
   for (const line of lines) {
     const trimmed = line.trim();
-    if (SECTION_HEADING_RE.test(trimmed)) return false;
-    if (isInlineHeading(trimmed)) return false;
-    if (isPromotedHeading(trimmed)) return false;
-    if (isRecentSessionsHeading(trimmed)) return false;
-    if (isReferencesHeading(trimmed)) return false;
+    if (SECTION_HEADING_RE.test(trimmed)) {return false;}
+    if (isInlineHeading(trimmed)) {return false;}
+    if (isPromotedHeading(trimmed)) {return false;}
+    if (isRecentSessionsHeading(trimmed)) {return false;}
+    if (isReferencesHeading(trimmed)) {return false;}
   }
   // If it has content but no recognized new-format markers, it's legacy
   return content.trim().length > 0;
@@ -482,7 +466,7 @@ export class MemoryIndexManager {
       inlineSections.reduce((sum, s) => sum + inlineBytes(s), 0) +
       promotedBytes;
 
-    if (totalBytes <= maxBytes) return;
+    if (totalBytes <= maxBytes) {return;}
 
     // Step 1: Trim inline section content (remove lines from last section first)
     while (totalBytes > maxBytes) {
@@ -496,7 +480,7 @@ export class MemoryIndexManager {
           break;
         }
       }
-      if (!trimmed) break;
+      if (!trimmed) {break;}
     }
 
     if (totalBytes <= maxBytes) {
@@ -558,7 +542,7 @@ export class MemoryIndexManager {
         .replace(/^- \d{4}-\d{2}-\d{2}: /, "")
         .replace(/^- /, "")
         .trim();
-      if (!trimmed) return true; // keep blank lines
+      if (!trimmed) {return true;} // keep blank lines
       return !existingEntryContents.some(
         (entryContent) =>
           jaccardSimilarity(tokenize(trimmed), tokenize(entryContent)) >=
@@ -566,7 +550,7 @@ export class MemoryIndexManager {
       );
     });
 
-    if (uniqueLines.length === 0) return; // all duplicates, skip write
+    if (uniqueLines.length === 0) {return;} // all duplicates, skip write
 
     const frontmatter = !existingContent
       ? [

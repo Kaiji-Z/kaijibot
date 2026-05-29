@@ -28,7 +28,7 @@ export class EvolutionEngine {
   ) {}
 
   private async effectiveConfig(agentId: string): Promise<EvolutionConfig> {
-    if (this.config) return { ...DEFAULT_EVOLUTION_CONFIG, ...this.config };
+    if (this.config) {return { ...DEFAULT_EVOLUTION_CONFIG, ...this.config };}
     const stored = await this.store.loadConfig(agentId);
     return { ...DEFAULT_EVOLUTION_CONFIG, ...stored };
   }
@@ -126,7 +126,7 @@ export class EvolutionEngine {
   }
 
   async generate(candidate: EvolutionCandidate): Promise<SkillDraft> {
-    if (this.draftGenerator) return this.draftGenerator(candidate);
+    if (this.draftGenerator) {return this.draftGenerator(candidate);}
     return generateSkillDraft(candidate);
   }
 

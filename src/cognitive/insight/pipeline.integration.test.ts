@@ -9,7 +9,7 @@ import {
   type LlmInsightDeps,
   type WebSearchResult,
 } from "./llm-engine.js";
-import type { InsightCandidate, InsightEngineInput, InsightMode } from "./types.js";
+import type { InsightCandidate, InsightMode } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Test infrastructure (local copies, no imports from other test files)
@@ -103,17 +103,6 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     },
     calibrationHistory: [],
     moodHistory: [],
-    ...overrides,
-  };
-}
-
-function makeInput(overrides?: Partial<InsightEngineInput>): InsightEngineInput {
-  return {
-    targetDomains: ["typescript", "rust"],
-    recentFocus: ["wasm"],
-    trustScore: 0.75,
-    recentInsightIds: ["id-1", "id-2"],
-    recentInsightContents: [],
     ...overrides,
   };
 }

@@ -9,7 +9,7 @@ import {
   spyRuntimeJson,
   spyRuntimeLogs,
 } from "../../../src/cli/test-runtime-capture.js";
-import { readShortTermRecallEntries, recordShortTermRecalls } from "./short-term-promotion.js";
+import { recordShortTermRecalls } from "./short-term-promotion.js";
 
 const getMemorySearchManager = vi.hoisted(() => vi.fn());
 const loadConfig = vi.hoisted(() => vi.fn(() => ({})));

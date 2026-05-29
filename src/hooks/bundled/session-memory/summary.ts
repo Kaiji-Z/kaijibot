@@ -108,7 +108,7 @@ function extractJsonObject(text: string): string | null {
 
 function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
   const jsonStr = extractJsonObject(raw);
-  if (!jsonStr) return null;
+  if (!jsonStr) {return null;}
 
   let parsed: Record<string, unknown>;
   try {
@@ -118,7 +118,7 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
   }
 
   const summary = typeof parsed.summary === "string" ? parsed.summary : "";
-  if (!summary) return null;
+  if (!summary) {return null;}
 
   const primaryRequest =
     typeof parsed.primaryRequest === "string" && parsed.primaryRequest.trim()

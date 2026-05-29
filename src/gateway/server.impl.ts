@@ -604,7 +604,7 @@ export async function startGatewayServer(
     // Set env vars for lark-cli
     const larkEnv = buildLarkCliEnv({ appId, appSecret, domain });
     for (const [key, value] of Object.entries(larkEnv)) {
-      if (value) process.env[key] = value;
+      if (value) {process.env[key] = value;}
     }
     log.info("lark-cli: env vars set from feishu config");
 
@@ -629,8 +629,8 @@ export async function startGatewayServer(
 
         // Auto-disable feishu skills
         const disabledSkills = buildDisabledSkillEntries();
-        if (!cfgAtStart.skills) cfgAtStart.skills = {};
-        if (!cfgAtStart.skills.entries) cfgAtStart.skills.entries = {};
+        if (!cfgAtStart.skills) {cfgAtStart.skills = {};}
+        if (!cfgAtStart.skills.entries) {cfgAtStart.skills.entries = {};}
         for (const [id, cfg] of Object.entries(disabledSkills)) {
           if (!cfgAtStart.skills.entries[id]) {
             cfgAtStart.skills.entries[id] = cfg;
@@ -1571,7 +1571,7 @@ export async function startGatewayServer(
             pluginConfig: {},
             cfg: cfgAtStart,
           });
-          if (!consolidationConfig.enabled) return;
+          if (!consolidationConfig.enabled) {return;}
 
           const { runConsolidationAllAgents } = await import("../../extensions/memory-core/index.js");
           type ConsolidationDeps = import("../../extensions/memory-core/index.js").ConsolidationDeps;
@@ -1743,7 +1743,7 @@ export async function startGatewayServer(
 
                 for (const item of params.items) {
                   const section = CATEGORY_TO_SECTION[item.category];
-                  if (!section) continue;
+                  if (!section) {continue;}
 
                   const contentText = item.content.slice(0, 120).replace(/\n/g, " ").trim();
                   const line = `- ${params.date}: ${contentText}`;

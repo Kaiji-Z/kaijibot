@@ -40,7 +40,7 @@ export function processImplicitFeedback(
   persona: PersonaTree,
   signals: ImplicitFeedbackSignal[],
 ): PersonaTree {
-  if (signals.length === 0) return persona;
+  if (signals.length === 0) {return persona;}
 
   const updatedRapport = updateTrustFromImplicit(persona.rapport, signals);
 
@@ -230,7 +230,7 @@ export function processInsightFeedback(
       ...(v.structureSeed !== undefined ? [`seed:${v.structureSeed}`] : []),
       ...(v.patternFrame !== undefined ? [`pattern:${v.patternFrame}`] : []),
     ];
-    let updated = { ...(promptBandits ?? {}) };
+    let updated = { ...promptBandits };
     const timestamp = insight.deliveredAt ?? Date.now();
     for (const key of armKeys) {
       updated = updatePromptBandit({ promptBandits: updated }, key, feedback, timestamp);
@@ -360,7 +360,7 @@ export function processNoResponse(persona: PersonaTree, context?: NoResponseCont
 }
 
 export function resetNoResponseStreak(persona: PersonaTree): PersonaTree {
-  if ((persona.feedbackProfile.consecutiveNoResponses ?? 0) === 0) return persona;
+  if ((persona.feedbackProfile.consecutiveNoResponses ?? 0) === 0) {return persona;}
   log.info("no-response streak reset", { prev: persona.feedbackProfile.consecutiveNoResponses });
   return {
     ...persona,

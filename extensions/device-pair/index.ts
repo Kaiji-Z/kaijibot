@@ -383,19 +383,6 @@ function formatSetupReply(payload: SetupPayload, authLabel: string): string {
   ].join("\n");
 }
 
-function formatSetupInstructions(expiresAtMs: number): string {
-  return [
-    "Pairing setup code generated.",
-    "",
-    ...buildPairingFlowLines("Paste the setup code from my next message and tap Connect"),
-    "",
-    ...buildSecurityNoticeLines({
-      kind: "setup code",
-      expiresAtMs,
-    }),
-  ].join("\n");
-}
-
 function buildQrInfoLines(params: {
   payload: SetupPayload;
   authLabel: string;

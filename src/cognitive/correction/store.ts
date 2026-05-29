@@ -195,7 +195,7 @@ export class CorrectionStore {
       return entries
         .filter((name) => name.endsWith(".json"))
         .map((name) => name.slice(0, -5))
-        .sort();
+        .toSorted();
     } catch {
       return [];
     }
@@ -209,9 +209,9 @@ export class CorrectionStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) result.push(name);
+        if (s.isDirectory()) {result.push(name);}
       }
-      return result.sort();
+      return result.toSorted();
     } catch {
       return [];
     }

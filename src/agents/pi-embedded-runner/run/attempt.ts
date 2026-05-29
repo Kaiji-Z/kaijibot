@@ -2208,7 +2208,6 @@ export async function runEmbeddedAttempt(
         ) {
           const turnSnapshot = messagesSnapshot.slice(prePromptMessageCount);
           const senderId = params.senderId;
-          const sessionKey = params.sessionKey;
           const agentId = params.agentId ?? "main";
 
           // Fire-and-forget: cognitive layer must not block the response
@@ -2228,11 +2227,11 @@ export async function runEmbeddedAttempt(
                 const store = new PersonaStore(configDir);
                 // TUI/admin sessions have no senderId → skip persona extraction entirely
                 const userId = senderId;
-                if (!userId) return;
+                if (!userId) {return;}
 
                 const extractText = (content: unknown): string => {
-                  if (typeof content === "string") return content;
-                  if (!Array.isArray(content)) return "";
+                  if (typeof content === "string") {return content;}
+                  if (!Array.isArray(content)) {return "";}
                   return content
                     .filter(
                       (p): p is { type: string; text: string } =>
@@ -2258,7 +2257,7 @@ export async function runEmbeddedAttempt(
 
                 const persona = await store.loadOrCreate(agentId, userId);
                 const deps = createDefaultDeps();
-                if (!params.config) return;
+                if (!params.config) {return;}
                 const extraction = await extractFromMessageLLM(
                   userText,
                   assistantText,

@@ -1,4 +1,3 @@
-import type { MemoryPromptSectionBuilder } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 import { describe, it, expect } from "vitest";
 import { buildPromptSection } from "./prompt-section.js";
 

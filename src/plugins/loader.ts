@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { createJiti } from "jiti";
 import type { ChannelPlugin } from "../channels/plugins/types.js";
 import { isChannelConfigured } from "../config/channel-configured.js";
 import type { KaijiBotConfig } from "../config/config.js";

@@ -4,7 +4,6 @@ import path from "node:path";
 import {
   extractMarkdownHeaders,
   extractSectionsByHeaderNames,
-  loadKaijiBotTemplate,
   rewriteBrandReferences,
   rewriteWorkspaceFile,
 } from "./brand-rewrite.js";

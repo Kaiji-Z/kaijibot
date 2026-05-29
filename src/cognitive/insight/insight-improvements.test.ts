@@ -11,7 +11,6 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { createDefaultPersona } from "../persona/store.js";
 import { ProactiveScheduler } from "../scheduler/proactive-scheduler.js";
 import type { PersonaTree } from "../types.js";
 import { buildInsightPrompt, generateInsightCandidatesLLM } from "./llm-engine.js";
@@ -398,7 +397,7 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       {
         insightGenerator: async () => {
           // First call returns insight1, second returns insight2
-          if (savedPersonas.length === 0) return [insight1];
+          if (savedPersonas.length === 0) {return [insight1];}
           return [insight2];
         },
       },
@@ -537,7 +536,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
     const persona = makeTestPersona();
     const savedPersonas: PersonaTree[] = [];
 
-    const deps = makeMockDeps({
+    makeMockDeps({
       webResults: [
         {
           title: "Model Context Protocol v2 tools",

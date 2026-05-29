@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, existsSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 /**
@@ -24,7 +24,6 @@ import type {
   EvolutionRecord,
   SkillDraft,
   SkillPatch,
-  ToolErrorProfile,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -678,8 +677,6 @@ describe("Pipeline: audit logging", () => {
   });
 
   it("filters by timestamp", async () => {
-    const now = Date.now();
-
     await audit.append({
       operation: "old_op",
       actor: "user-1",
@@ -839,7 +836,7 @@ describe("Pipeline: skill writer edge cases", () => {
     });
 
     const names = await writer.listSkillNames();
-    expect(names.sort()).toEqual(["skill-a", "skill-b"]);
+    expect(names.toSorted()).toEqual(["skill-a", "skill-b"]);
   });
 
   it("readSkill returns null for nonexistent skill", async () => {
@@ -1017,13 +1014,11 @@ describe("Pipeline: rejection → preference adaptation", () => {
     // First: evaluate and suggest
     const decision1 = await engineWithPrefs.evaluate(complexCandidate({ domain }), AGENT, userId);
     expect(decision1.shouldSuggest).toBe(true);
-    const baseConfidence = decision1.confidence;
 
     // User rejects
     await prefs.recordResponse(AGENT, userId, domain, "rejected");
 
     // Now acceptance rate should be lower
-    const rate = await prefs.getDomainAcceptanceRate(AGENT, userId, domain);
     // With 1 rejection: beta goes from 1→2, alpha stays 2
     // Expected value = 2/(2+2) = 0.5, but it's sampled so just check it decreased on average
     const samples: number[] = [];

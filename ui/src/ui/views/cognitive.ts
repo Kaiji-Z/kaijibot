@@ -2,7 +2,6 @@ import { html, nothing } from "lit";
 import { t } from "../../i18n/index.ts";
 import { formatMs } from "../format.ts";
 import {
-  type PersonaListResult,
   parsePersonaList,
   renderUserSidebar,
   renderEmptyDetail,
