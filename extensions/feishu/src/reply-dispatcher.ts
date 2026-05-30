@@ -5,6 +5,7 @@ import {
   resolveTextChunksWithFallback,
   sendMediaWithLeadingCaption,
 } from "kaijibot/plugin-sdk/reply-payload";
+import { sanitizeTextForCard } from "./card-error.js";
 import { resolveFeishuRuntimeAccount } from "./accounts.js";
 import { createFeishuClient } from "./client.js";
 import { sendMediaFeishu } from "./media.js";
@@ -22,6 +23,7 @@ import { sendMessageFeishu, sendStructuredCardFeishu, type CardHeaderConfig } fr
 import { FeishuStreamingSession, mergeStreamingText } from "./streaming-card.js";
 import { resolveReceiveIdType } from "./targets.js";
 import { addTypingIndicator, removeTypingIndicator, type TypingIndicatorState } from "./typing.js";
+import { UnavailableGuard } from "./message-unavailable.js";
 
 /** Detect if text contains markdown elements that benefit from card rendering */
 function shouldUseCard(text: string): boolean {
@@ -200,6 +202,18 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   let streamingStartPromise: Promise<void> | null = null;
   type StreamTextUpdateMode = "snapshot" | "delta";
 
+  const guard = new UnavailableGuard({
+    replyToMessageId,
+    getCardMessageId: () => streaming?.getMessageId() ?? null,
+    onTerminate: () => {
+      if (streaming?.isActive()) {
+        streaming.abort("unavailable");
+      }
+      streaming = null;
+      streamingStartPromise = null;
+    },
+  });
+
   const formatReasoningPrefix = (thinking: string): string => {
     if (!thinking) {
       return "";
@@ -226,6 +240,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
   const flushStreamingCardUpdate = (combined: string) => {
     partialUpdateQueue = partialUpdateQueue.then(async () => {
+      if (guard.shouldSkip("flushUpdate")) return;
       if (streamingStartPromise) {
         await streamingStartPromise;
       }
@@ -266,6 +281,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   };
 
   const startStreaming = () => {
+    if (guard.shouldSkip("startStreaming")) return;
     if (!streamingEnabled || streamingStartPromise || streaming) {
       return;
     }
@@ -300,12 +316,14 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   };
 
   const closeStreaming = async () => {
+    if (guard.shouldSkip("closeStreaming")) return;
     if (streamingStartPromise) {
       await streamingStartPromise;
     }
     await partialUpdateQueue;
     if (streaming?.isActive()) {
       let text = buildCombinedStreamText(reasoningText, streamText);
+      text = sanitizeTextForCard(text);
       if (mentionTargets?.length) {
         text = buildMentionedCardContent(mentionTargets, text);
       }
@@ -429,7 +447,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
             const cardHeader = resolveCardHeader(agentId, identity);
             const cardNote = resolveCardNote(agentId, identity, prefixContext.prefixContext);
             await sendChunkedTextReply({
-              text,
+              text: sanitizeTextForCard(text),
               useCard: true,
               infoKind: info?.kind,
               sendChunk: async ({ chunk, isFirst }) => {
@@ -474,6 +492,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         params.runtime.error?.(
           `feishu[${account.accountId}] ${info.kind} reply failed: ${String(error)}`,
         );
+        guard.terminate("onError", error);
         await closeStreaming();
         typingCallbacks?.onIdle?.();
       },

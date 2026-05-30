@@ -4,8 +4,20 @@
 
 import type { Client } from "@larksuiteoapi/node-sdk";
 import { fetchWithSsrFGuard } from "kaijibot/plugin-sdk/ssrf-runtime";
+import {
+  CARD_PHASES,
+  type CardPhase,
+  type TerminalReason,
+  isTerminalPhase,
+  THROTTLE_CONSTANTS,
+  transitionPhase,
+} from "./card-types.js";
+import { FlushController } from "./flush-controller.js";
 import { resolveFeishuCardTemplate, type CardHeaderConfig } from "./send.js";
 import type { FeishuDomain } from "./types.js";
+
+export type { CardPhase, TerminalReason } from "./card-types.js";
+export { transitionPhase, isTerminalPhase } from "./card-types.js";
 
 type Credentials = { appId: string; appSecret: string; domain?: FeishuDomain };
 type CardState = {
@@ -162,18 +174,16 @@ export class FeishuStreamingSession {
   private client: Client;
   private creds: Credentials;
   private state: CardState | null = null;
-  private queue: Promise<void> = Promise.resolve();
-  private closed = false;
-  private log?: (msg: string) => void;
-  private lastUpdateTime = 0;
+  private phase: CardPhase = CARD_PHASES.idle;
+  private readonly flushController: FlushController;
   private pendingText: string | null = null;
-  private flushTimer: ReturnType<typeof setTimeout> | null = null;
-  private updateThrottleMs = 100; // Throttle updates to max 10/sec
+  private log?: (msg: string) => void;
 
   constructor(client: Client, creds: Credentials, log?: (msg: string) => void) {
     this.client = client;
     this.creds = creds;
     this.log = log;
+    this.flushController = new FlushController(() => this.performFlush());
   }
 
   async start(
@@ -181,9 +191,11 @@ export class FeishuStreamingSession {
     receiveIdType: "open_id" | "user_id" | "union_id" | "email" | "chat_id" = "chat_id",
     options?: StreamingCardOptions & StreamingStartOptions,
   ): Promise<void> {
-    if (this.state) {
+    if (isTerminalPhase(this.phase) || this.state) {
       return;
     }
+
+    this.phase = transitionPhase(this.phase, CARD_PHASES.creating);
 
     const apiBase = resolveApiBase(this.creds.domain);
     const elements: Record<string, unknown>[] = [
@@ -213,83 +225,90 @@ export class FeishuStreamingSession {
       };
     }
 
-    // Create card entity
-    const { response: createRes, release: releaseCreate } = await fetchWithSsrFGuard({
-      url: `${apiBase}/cardkit/v1/cards`,
-      init: {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${await getToken(this.creds)}`,
-          "Content-Type": "application/json",
+    try {
+      // Create card entity
+      const { response: createRes, release: releaseCreate } = await fetchWithSsrFGuard({
+        url: `${apiBase}/cardkit/v1/cards`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${await getToken(this.creds)}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ type: "card_json", data: JSON.stringify(cardJson) }),
         },
-        body: JSON.stringify({ type: "card_json", data: JSON.stringify(cardJson) }),
-      },
-      policy: { allowedHostnames: resolveAllowedHostnames(this.creds.domain) },
-      auditContext: "feishu.streaming-card.create",
-    });
-    if (!createRes.ok) {
+        policy: { allowedHostnames: resolveAllowedHostnames(this.creds.domain) },
+        auditContext: "feishu.streaming-card.create",
+      });
+      if (!createRes.ok) {
+        await releaseCreate();
+        throw new Error(`Create card request failed with HTTP ${createRes.status}`);
+      }
+      const createData = (await createRes.json()) as {
+        code: number;
+        msg: string;
+        data?: { card_id: string };
+      };
       await releaseCreate();
-      throw new Error(`Create card request failed with HTTP ${createRes.status}`);
-    }
-    const createData = (await createRes.json()) as {
-      code: number;
-      msg: string;
-      data?: { card_id: string };
-    };
-    await releaseCreate();
-    if (createData.code !== 0 || !createData.data?.card_id) {
-      throw new Error(`Create card failed: ${createData.msg}`);
-    }
-    const cardId = createData.data.card_id;
-    const cardContent = JSON.stringify({ type: "card", data: { card_id: cardId } });
+      if (createData.code !== 0 || !createData.data?.card_id) {
+        throw new Error(`Create card failed: ${createData.msg}`);
+      }
+      const cardId = createData.data.card_id;
+      const cardContent = JSON.stringify({ type: "card", data: { card_id: cardId } });
 
-    // Prefer message.reply when we have a reply target — reply_in_thread
-    // reliably routes streaming cards into Feishu topics, whereas
-    // message.create with root_id may silently ignore root_id for card
-    // references (card_id format).
-    let sendRes;
-    const sendOptions = options ?? {};
-    const sendMode = resolveStreamingCardSendMode(sendOptions);
-    if (sendMode === "reply") {
-      sendRes = await this.client.im.message.reply({
-        path: { message_id: sendOptions.replyToMessageId! },
-        data: {
-          msg_type: "interactive",
-          content: cardContent,
-          ...(sendOptions.replyInThread ? { reply_in_thread: true } : {}),
-        },
-      });
-    } else if (sendMode === "root_create") {
-      // root_id is undeclared in the SDK types but accepted at runtime
-      sendRes = await this.client.im.message.create({
-        params: { receive_id_type: receiveIdType },
-        data: Object.assign(
-          { receive_id: receiveId, msg_type: "interactive", content: cardContent },
-          { root_id: sendOptions.rootId },
-        ),
-      });
-    } else {
-      sendRes = await this.client.im.message.create({
-        params: { receive_id_type: receiveIdType },
-        data: {
-          receive_id: receiveId,
-          msg_type: "interactive",
-          content: cardContent,
-        },
-      });
-    }
-    if (sendRes.code !== 0 || !sendRes.data?.message_id) {
-      throw new Error(`Send card failed: ${sendRes.msg}`);
-    }
+      // Prefer message.reply when we have a reply target — reply_in_thread
+      // reliably routes streaming cards into Feishu topics, whereas
+      // message.create with root_id may silently ignore root_id for card
+      // references (card_id format).
+      let sendRes;
+      const sendOptions = options ?? {};
+      const sendMode = resolveStreamingCardSendMode(sendOptions);
+      if (sendMode === "reply") {
+        sendRes = await this.client.im.message.reply({
+          path: { message_id: sendOptions.replyToMessageId! },
+          data: {
+            msg_type: "interactive",
+            content: cardContent,
+            ...(sendOptions.replyInThread ? { reply_in_thread: true } : {}),
+          },
+        });
+      } else if (sendMode === "root_create") {
+        // root_id is undeclared in the SDK types but accepted at runtime
+        sendRes = await this.client.im.message.create({
+          params: { receive_id_type: receiveIdType },
+          data: Object.assign(
+            { receive_id: receiveId, msg_type: "interactive", content: cardContent },
+            { root_id: sendOptions.rootId },
+          ),
+        });
+      } else {
+        sendRes = await this.client.im.message.create({
+          params: { receive_id_type: receiveIdType },
+          data: {
+            receive_id: receiveId,
+            msg_type: "interactive",
+            content: cardContent,
+          },
+        });
+      }
+      if (sendRes.code !== 0 || !sendRes.data?.message_id) {
+        throw new Error(`Send card failed: ${sendRes.msg}`);
+      }
 
-    this.state = {
-      cardId,
-      messageId: sendRes.data.message_id,
-      sequence: 1,
-      currentText: "",
-      hasNote: !!options?.note,
-    };
-    this.log?.(`Started streaming: cardId=${cardId}, messageId=${sendRes.data.message_id}`);
+      this.state = {
+        cardId,
+        messageId: sendRes.data.message_id,
+        sequence: 1,
+        currentText: "",
+        hasNote: !!options?.note,
+      };
+      this.phase = transitionPhase(this.phase, CARD_PHASES.streaming);
+      this.flushController.setCardMessageReady(true);
+      this.log?.(`Started streaming: cardId=${cardId}, messageId=${sendRes.data.message_id}`);
+    } catch (error) {
+      this.phase = transitionPhase(this.phase, CARD_PHASES.creation_failed);
+      throw error;
+    }
   }
 
   private async updateCardContent(text: string, onError?: (error: unknown) => void): Promise<void> {
@@ -321,8 +340,22 @@ export class FeishuStreamingSession {
       .catch((error) => onError?.(error));
   }
 
+  private async performFlush(): Promise<void> {
+    if (!this.state || isTerminalPhase(this.phase) || this.pendingText === null) {
+      return;
+    }
+    const mergedText = mergeStreamingText(this.state.currentText, this.pendingText);
+    if (!mergedText || mergedText === this.state.currentText) {
+      this.pendingText = null;
+      return;
+    }
+    this.pendingText = null;
+    this.state.currentText = mergedText;
+    await this.updateCardContent(mergedText, (e) => this.log?.(`Update failed: ${String(e)}`));
+  }
+
   async update(text: string): Promise<void> {
-    if (!this.state || this.closed) {
+    if (!this.state || isTerminalPhase(this.phase)) {
       return;
     }
     const mergedInput = mergeStreamingText(this.pendingText ?? this.state.currentText, text);
@@ -330,31 +363,8 @@ export class FeishuStreamingSession {
       return;
     }
 
-    // Throttle: skip if updated recently, but remember pending text
-    const now = Date.now();
-    if (now - this.lastUpdateTime < this.updateThrottleMs) {
-      this.pendingText = mergedInput;
-      return;
-    }
-    this.pendingText = null;
-    this.lastUpdateTime = now;
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = null;
-    }
-
-    this.queue = this.queue.then(async () => {
-      if (!this.state || this.closed) {
-        return;
-      }
-      const mergedText = mergeStreamingText(this.state.currentText, mergedInput);
-      if (!mergedText || mergedText === this.state.currentText) {
-        return;
-      }
-      this.state.currentText = mergedText;
-      await this.updateCardContent(mergedText, (e) => this.log?.(`Update failed: ${String(e)}`));
-    });
-    await this.queue;
+    this.pendingText = mergedInput;
+    await this.flushController.throttledUpdate(THROTTLE_CONSTANTS.CARDKIT_MS);
   }
 
   private async updateNoteContent(note: string): Promise<void> {
@@ -387,15 +397,13 @@ export class FeishuStreamingSession {
   }
 
   async close(finalText?: string, options?: { note?: string }): Promise<void> {
-    if (!this.state || this.closed) {
+    if (!this.state || isTerminalPhase(this.phase)) {
       return;
     }
-    this.closed = true;
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = null;
-    }
-    await this.queue;
+    this.phase = transitionPhase(this.phase, CARD_PHASES.completed);
+    this.flushController.cancelPendingFlush();
+    await this.flushController.waitForFlush();
+    this.flushController.complete();
 
     const pendingMerged = mergeStreamingText(this.state.currentText, this.pendingText ?? undefined);
     const text = finalText ? mergeStreamingText(pendingMerged, finalText) : pendingMerged;
@@ -444,7 +452,28 @@ export class FeishuStreamingSession {
     this.log?.(`Closed streaming: cardId=${finalState.cardId}`);
   }
 
+  /** Abort the streaming session, transitioning to a terminal phase. */
+  abort(reason: TerminalReason = "abort"): void {
+    if (isTerminalPhase(this.phase)) return;
+    const targetPhase = reason === "abort" ? CARD_PHASES.aborted : CARD_PHASES.terminated;
+    this.phase = transitionPhase(this.phase, targetPhase);
+    this.flushController.cancelPendingFlush();
+    this.flushController.complete();
+    this.state = null;
+    this.pendingText = null;
+  }
+
   isActive(): boolean {
-    return this.state !== null && !this.closed;
+    return this.state !== null && !isTerminalPhase(this.phase);
+  }
+
+  /** Returns the current card phase. */
+  getPhase(): CardPhase {
+    return this.phase;
+  }
+
+  /** Returns the message ID of the streaming card, or null if not created. */
+  getMessageId(): string | null {
+    return this.state?.messageId ?? null;
   }
 }

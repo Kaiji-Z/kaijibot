@@ -6,6 +6,9 @@ type StreamingSessionStub = {
   update: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   isActive: ReturnType<typeof vi.fn>;
+  abort: ReturnType<typeof vi.fn>;
+  getPhase: ReturnType<typeof vi.fn>;
+  getMessageId: ReturnType<typeof vi.fn>;
 };
 
 const resolveFeishuAccountMock = vi.hoisted(() => vi.fn());
@@ -70,17 +73,28 @@ vi.mock("./streaming-card.js", () => {
     mergeStreamingText,
     FeishuStreamingSession: class {
       active = false;
+      private _phase = "idle";
+      private _messageId: string | null = null;
       start = vi.fn(async () => {
         this.active = true;
+        this._phase = "streaming";
+        this._messageId = "om_card_msg";
       });
       update = vi.fn(async () => {});
       close = vi.fn(async () => {
         this.active = false;
+        this._phase = "completed";
+      });
+      abort = vi.fn((reason?: string) => {
+        this.active = false;
+        this._phase = reason === "abort" ? "aborted" : "terminated";
       });
       isActive = vi.fn(() => this.active);
+      getPhase = vi.fn(() => this._phase);
+      getMessageId = vi.fn(() => this._messageId);
 
       constructor() {
-        streamingInstances.push(this);
+        streamingInstances.push(this as unknown as StreamingSessionStub);
       }
     },
   };
@@ -754,5 +768,39 @@ describe("createFeishuReplyDispatcher streaming behavior", () => {
     } finally {
       streamingInstances.push = origPush;
     }
+  });
+
+  it("exposes abort and getPhase on streaming session instances", async () => {
+    const { options } = createDispatcherHarness({
+      runtime: createRuntimeLogger(),
+    });
+    await options.deliver({ text: "```ts\nconst x = 1\n```" }, { kind: "final" });
+
+    expect(streamingInstances).toHaveLength(1);
+    expect(streamingInstances[0].abort).toBeTypeOf("function");
+    expect(streamingInstances[0].getPhase).toBeTypeOf("function");
+    expect(streamingInstances[0].getMessageId).toBeTypeOf("function");
+  });
+
+  it("sanitizes text for card table limit before static card send", async () => {
+    resolveFeishuAccountMock.mockReturnValue({
+      accountId: "main",
+      appId: "app_id",
+      appSecret: "app_secret",
+      domain: "feishu",
+      config: {
+        renderMode: "card",
+        streaming: false,
+      },
+    });
+
+    const tables = Array.from({ length: 5 }, (_, i) => `| h${i} |\n|---|\n| v${i} |`).join("\n\n");
+    const { options } = createDispatcherHarness();
+    await options.deliver({ text: tables }, { kind: "final" });
+
+    expect(sendStructuredCardFeishuMock).toHaveBeenCalledTimes(1);
+    const sentText = sendStructuredCardFeishuMock.mock.calls[0][0].text as string;
+    const codeBlockCount = (sentText.match(/```/g) ?? []).length;
+    expect(codeBlockCount).toBeGreaterThan(0);
   });
 });

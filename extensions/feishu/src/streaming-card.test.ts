@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { mergeStreamingText, resolveStreamingCardSendMode } from "./streaming-card.js";
+import {
+  mergeStreamingText,
+  resolveStreamingCardSendMode,
+  isTerminalPhase,
+  transitionPhase,
+} from "./streaming-card.js";
+import { CARD_PHASES, type CardPhase } from "./card-types.js";
+import { THROTTLE_CONSTANTS } from "./card-types.js";
 
 describe("mergeStreamingText", () => {
   it("prefers the latest full text when it already includes prior text", () => {
@@ -50,5 +57,53 @@ describe("resolveStreamingCardSendMode", () => {
         replyInThread: true,
       }),
     ).toBe("create");
+  });
+});
+
+describe("CardPhase state machine (re-exported from streaming-card)", () => {
+  it("isTerminalPhase returns true for terminal phases", () => {
+    expect(isTerminalPhase("completed")).toBe(true);
+    expect(isTerminalPhase("aborted")).toBe(true);
+    expect(isTerminalPhase("terminated")).toBe(true);
+    expect(isTerminalPhase("creation_failed")).toBe(true);
+  });
+
+  it("isTerminalPhase returns false for non-terminal phases", () => {
+    expect(isTerminalPhase("idle")).toBe(false);
+    expect(isTerminalPhase("creating")).toBe(false);
+    expect(isTerminalPhase("streaming")).toBe(false);
+  });
+
+  it("transitionPhase allows valid transitions", () => {
+    expect(transitionPhase("idle", "creating")).toBe("creating");
+    expect(transitionPhase("creating", "streaming")).toBe("streaming");
+    expect(transitionPhase("streaming", "completed")).toBe("completed");
+    expect(transitionPhase("streaming", "aborted")).toBe("aborted");
+    expect(transitionPhase("streaming", "terminated")).toBe("terminated");
+  });
+
+  it("transitionPhase rejects invalid transitions", () => {
+    expect(() => transitionPhase("idle", "streaming")).toThrow("Invalid phase transition");
+    expect(() => transitionPhase("completed", "streaming")).toThrow("Invalid phase transition");
+    expect(() => transitionPhase("aborted", "idle")).toThrow("Invalid phase transition");
+  });
+
+  it("CARD_PHASES contains all expected phases", () => {
+    const phases = Object.values(CARD_PHASES);
+    expect(phases).toContain("idle");
+    expect(phases).toContain("creating");
+    expect(phases).toContain("streaming");
+    expect(phases).toContain("completed");
+    expect(phases).toContain("aborted");
+    expect(phases).toContain("terminated");
+    expect(phases).toContain("creation_failed");
+  });
+
+  it("THROTTLE_CONSTANTS has expected values", () => {
+    expect(THROTTLE_CONSTANTS.CARDKIT_MS).toBe(100);
+    expect(THROTTLE_CONSTANTS.PATCH_MS).toBe(1500);
+    expect(THROTTLE_CONSTANTS.LONG_GAP_THRESHOLD_MS).toBe(2000);
+    expect(THROTTLE_CONSTANTS.BATCH_AFTER_GAP_MS).toBe(300);
+    expect(THROTTLE_CONSTANTS.REASONING_STATUS_MS).toBe(1500);
   });
 });
