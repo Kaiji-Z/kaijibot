@@ -223,11 +223,6 @@ export function runBundledPluginPostinstall(params = {}) {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  runBundledPluginPostinstall();
-  installLarkCliSkills();
-}
-
 const DISABLE_LARK_SKILLS_ENV = "KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL";
 const LARK_CLI_SENTINEL = join("node_modules", "@larksuite", "cli", "scripts", "run.js");
 const SKILLS_INSTALL_TIMEOUT_MS = 120_000;
@@ -285,4 +280,9 @@ export function installLarkCliSkills(params = {}) {
   } catch (e) {
     log.warn(`[postinstall] could not install lark-cli skills: ${String(e)}`);
   }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  runBundledPluginPostinstall();
+  installLarkCliSkills();
 }
