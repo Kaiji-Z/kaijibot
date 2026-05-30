@@ -224,7 +224,6 @@ export function runBundledPluginPostinstall(params = {}) {
 }
 
 const DISABLE_LARK_SKILLS_ENV = "KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL";
-const LARK_CLI_SENTINEL = join("node_modules", "@larksuite", "cli", "scripts", "run.js");
 const SKILLS_INSTALL_TIMEOUT_MS = 120_000;
 
 function areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir) {
@@ -238,6 +237,15 @@ function areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir) {
   }
 }
 
+/**
+ * Install lark-* SKILL.md files via `npx skills add larksuite/cli -g --all`.
+ *
+ * This does NOT require @larksuite/cli to be installed locally — the `skills`
+ * npm package fetches SKILL.md files directly from the GitHub repository.
+ * The sentinel check was removed because @larksuite/cli is an optional
+ * dependency that may fail to install (network issues, platform mismatch)
+ * while skills installation only needs npx.
+ */
 export function installLarkCliSkills(params = {}) {
   const env = params.env ?? process.env;
   const packageRoot = params.packageRoot ?? DEFAULT_PACKAGE_ROOT;
@@ -249,7 +257,6 @@ export function installLarkCliSkills(params = {}) {
 
   if (env?.[DISABLE_LARK_SKILLS_ENV]?.trim()) return;
   if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) return;
-  if (!pathExists(join(packageRoot, LARK_CLI_SENTINEL))) return;
   if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) return;
 
   try {
