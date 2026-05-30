@@ -120,13 +120,16 @@ REM Wait briefly to ensure file locks are released after update.
 timeout /t 2 /nobreak >nul
 schtasks /End /TN "${taskName}"
 REM Poll for gateway port release before rerun; force-kill listener if stuck.
+REM Uses PowerShell (single process, no pipe) to avoid orphaned findstr on interrupt.
 set /a attempts=0
 :wait_for_port_release
 set /a attempts+=1
-netstat -ano | findstr /R /C:":${port} .*LISTENING" >nul
-if errorlevel 1 goto port_released
-if %attempts% GEQ 10 goto force_kill_listener
-timeout /t 1 /nobreak >nul
+powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue) { exit 1 } else { exit 0 }"
+if errorlevel 1 goto port_still_listening
+goto port_released
+:port_still_listening
+if %attempts% GEQ 15 goto force_kill_listener
+timeout /t 2 /nobreak >nul
 goto wait_for_port_release
 :force_kill_listener
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":${port} .*LISTENING"') do (

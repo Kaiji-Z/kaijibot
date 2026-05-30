@@ -33,8 +33,11 @@ describe("restart-helper", () => {
     const pollAttemptsInit = "set /a attempts=0";
     const pollLabel = ":wait_for_port_release";
     const pollAttemptIncrement = "set /a attempts+=1";
-    const pollNetstatCheck = `netstat -ano | findstr /R /C:":${port} .*LISTENING" >nul`;
+    // PowerShell is used for the polling loop (no findstr orphan risk).
+    const pollPowerShellCheck = `Get-NetTCPConnection -LocalPort ${port} -State Listen`;
     const forceKillLabel = ":force_kill_listener";
+    // findstr only appears in the one-shot force-kill block (not a loop).
+    const forceKillNetstat = `netstat -ano ^| findstr /R /C:":${port} .*LISTENING"`;
     const forceKillCommand = "taskkill /F /PID %%P >nul 2>&1";
     const portReleasedLabel = ":port_released";
     const runCommand = 'schtasks /Run /TN "';
@@ -42,9 +45,10 @@ describe("restart-helper", () => {
     const attemptsInitIndex = content.indexOf(pollAttemptsInit, endIndex);
     const pollLabelIndex = content.indexOf(pollLabel, attemptsInitIndex);
     const pollAttemptIncrementIndex = content.indexOf(pollAttemptIncrement, pollLabelIndex);
-    const pollNetstatCheckIndex = content.indexOf(pollNetstatCheck, pollAttemptIncrementIndex);
-    const forceKillLabelIndex = content.indexOf(forceKillLabel, pollNetstatCheckIndex);
-    const forceKillCommandIndex = content.indexOf(forceKillCommand, forceKillLabelIndex);
+    const pollPowerShellCheckIndex = content.indexOf(pollPowerShellCheck, pollAttemptIncrementIndex);
+    const forceKillLabelIndex = content.indexOf(forceKillLabel, pollPowerShellCheckIndex);
+    const forceKillNetstatIndex = content.indexOf(forceKillNetstat, forceKillLabelIndex);
+    const forceKillCommandIndex = content.indexOf(forceKillCommand, forceKillNetstatIndex);
     const portReleasedLabelIndex = content.indexOf(portReleasedLabel, forceKillCommandIndex);
     const runIndex = content.indexOf(runCommand, portReleasedLabelIndex);
 
@@ -52,9 +56,10 @@ describe("restart-helper", () => {
     expect(attemptsInitIndex).toBeGreaterThan(endIndex);
     expect(pollLabelIndex).toBeGreaterThan(attemptsInitIndex);
     expect(pollAttemptIncrementIndex).toBeGreaterThan(pollLabelIndex);
-    expect(pollNetstatCheckIndex).toBeGreaterThan(pollAttemptIncrementIndex);
-    expect(forceKillLabelIndex).toBeGreaterThan(pollNetstatCheckIndex);
-    expect(forceKillCommandIndex).toBeGreaterThan(forceKillLabelIndex);
+    expect(pollPowerShellCheckIndex).toBeGreaterThan(pollAttemptIncrementIndex);
+    expect(forceKillLabelIndex).toBeGreaterThan(pollPowerShellCheckIndex);
+    expect(forceKillNetstatIndex).toBeGreaterThan(forceKillLabelIndex);
+    expect(forceKillCommandIndex).toBeGreaterThan(forceKillNetstatIndex);
     expect(portReleasedLabelIndex).toBeGreaterThan(forceKillCommandIndex);
     expect(runIndex).toBeGreaterThan(portReleasedLabelIndex);
 
@@ -162,7 +167,9 @@ describe("restart-helper", () => {
         },
         customPort,
       );
-      expect(content).toContain(`netstat -ano | findstr /R /C:":${customPort} .*LISTENING" >nul`);
+      expect(content).toContain(
+        `Get-NetTCPConnection -LocalPort ${customPort} -State Listen`,
+      );
       expect(content).toContain(
         `for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":${customPort} .*LISTENING"') do (`,
       );
