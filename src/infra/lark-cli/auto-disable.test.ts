@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -40,21 +40,32 @@ describe("areLarkSkillsInstalled", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns true when lark-* directories exist in ~/.agents/skills/", () => {
+  it("returns true when lark-* directories with SKILL.md exist in ~/.agents/skills/", () => {
     const skillsDir = join(tempDir, ".agents", "skills");
     mkdirSync(join(skillsDir, "lark-im"), { recursive: true });
+    writeFileSync(join(skillsDir, "lark-im", "SKILL.md"), "# lark-im");
     mkdirSync(join(skillsDir, "lark-doc"), { recursive: true });
+    writeFileSync(join(skillsDir, "lark-doc", "SKILL.md"), "# lark-doc");
 
     expect(areLarkSkillsInstalled()).toBe(true);
   });
 
-  it("returns true with a single lark-* directory among non-lark directories", () => {
+  it("returns true with a single lark-* directory with SKILL.md among non-lark directories", () => {
     const skillsDir = join(tempDir, ".agents", "skills");
     mkdirSync(join(skillsDir, "other-skill"), { recursive: true });
     mkdirSync(join(skillsDir, "lark-calendar"), { recursive: true });
+    writeFileSync(join(skillsDir, "lark-calendar", "SKILL.md"), "# lark-calendar");
     mkdirSync(join(skillsDir, "weather"), { recursive: true });
 
     expect(areLarkSkillsInstalled()).toBe(true);
+  });
+
+  it("returns false when lark-* directories exist but have no SKILL.md", () => {
+    const skillsDir = join(tempDir, ".agents", "skills");
+    mkdirSync(join(skillsDir, "lark-im"), { recursive: true });
+    mkdirSync(join(skillsDir, "lark-doc"), { recursive: true });
+
+    expect(areLarkSkillsInstalled()).toBe(false);
   });
 
   it("returns false when no lark-* directories exist", () => {
@@ -123,6 +134,7 @@ describe("shouldDisableNativeTools", () => {
   function installLarkSkill() {
     const skillsDir = join(tempDir, ".agents", "skills");
     mkdirSync(join(skillsDir, "lark-im"), { recursive: true });
+    writeFileSync(join(skillsDir, "lark-im", "SKILL.md"), "# lark-im");
   }
 
   it("returns true when all guards pass (CLI available + skills installed + no user override)", () => {

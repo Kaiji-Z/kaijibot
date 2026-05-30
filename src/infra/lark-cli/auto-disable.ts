@@ -29,7 +29,9 @@ export function areLarkSkillsInstalled(): boolean {
   if (!existsSync(skillsDir)) {return false;}
   try {
     const entries = readdirSync(skillsDir, { withFileTypes: true });
-    return entries.some((e) => e.isDirectory() && e.name.startsWith("lark-"));
+    return entries.some(
+      (e) => e.isDirectory() && e.name.startsWith("lark-") && existsSync(join(skillsDir, e.name, "SKILL.md")),
+    );
   } catch {
     return false;
   }

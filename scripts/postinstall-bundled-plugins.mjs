@@ -7,9 +7,10 @@
 // not linger under extensions/* and shadow the root graph.
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { resolveNpmRunner } from "./npm-runner.mjs";
+import { resolveNpmRunner, resolveNpxRunner } from "./npm-runner.mjs";
 
 export const BUNDLED_PLUGIN_INSTALL_TARGETS = [];
 
@@ -224,4 +225,64 @@ export function runBundledPluginPostinstall(params = {}) {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   runBundledPluginPostinstall();
+  installLarkCliSkills();
+}
+
+const DISABLE_LARK_SKILLS_ENV = "KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL";
+const LARK_CLI_SENTINEL = join("node_modules", "@larksuite", "cli", "scripts", "run.js");
+const SKILLS_INSTALL_TIMEOUT_MS = 120_000;
+
+function areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir) {
+  if (!pathExists(skillsDir)) return false;
+  try {
+    return readDir(skillsDir, { withFileTypes: true }).some(
+      (e) => e.isDirectory() && e.name.startsWith("lark-") && pathExists(join(skillsDir, e.name, "SKILL.md")),
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function installLarkCliSkills(params = {}) {
+  const env = params.env ?? process.env;
+  const packageRoot = params.packageRoot ?? DEFAULT_PACKAGE_ROOT;
+  const spawn = params.spawnSync ?? spawnSync;
+  const pathExists = params.existsSync ?? existsSync;
+  const readDir = params.readdirSync ?? readdirSync;
+  const log = params.log ?? console;
+  const skillsDir = params.skillsDir ?? join(homedir(), ".agents", "skills");
+
+  if (env?.[DISABLE_LARK_SKILLS_ENV]?.trim()) return;
+  if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) return;
+  if (!pathExists(join(packageRoot, LARK_CLI_SENTINEL))) return;
+  if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) return;
+
+  try {
+    const npxRunner =
+      params.npxRunner ??
+      resolveNpxRunner({
+        env,
+        execPath: params.execPath,
+        existsSync: pathExists,
+        platform: params.platform,
+        comSpec: params.comSpec,
+        npxArgs: ["skills", "add", "larksuite/cli", "-g", "--all"],
+      });
+    const result = spawn(npxRunner.command, npxRunner.args, {
+      cwd: packageRoot,
+      encoding: "utf8",
+      env: npxRunner.env ?? env,
+      stdio: "pipe",
+      shell: npxRunner.shell,
+      windowsVerbatimArguments: npxRunner.windowsVerbatimArguments,
+      timeout: SKILLS_INSTALL_TIMEOUT_MS,
+    });
+    if (result.status !== 0) {
+      const output = [result.stderr, result.stdout].filter(Boolean).join("\n").trim();
+      throw new Error(output || "npx skills add failed");
+    }
+    log.log("[postinstall] installed lark-cli skills to ~/.agents/skills/");
+  } catch (e) {
+    log.warn(`[postinstall] could not install lark-cli skills: ${String(e)}`);
+  }
 }

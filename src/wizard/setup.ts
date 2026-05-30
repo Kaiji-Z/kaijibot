@@ -661,22 +661,40 @@ export async function runSetupWizard(
   // Auto-install lark-cli skills when feishu channel is configured and lark-cli is available
   {
     const { isChannelConfigured } = await import("../config/channel-configured.js");
-    const { installLarkCliSkills } = await import("../infra/lark-cli/install-skills.js");
     if (isChannelConfigured(nextConfig, "feishu")) {
-      try {
-        const result = await installLarkCliSkills();
-        if (result.ok) {
-          const count = result.installed ?? "";
-          await prompter.note(
-            `Installed ${count} lark-cli skills to ~/.agents/skills/`,
-            "Lark CLI Skills",
-          );
-        } else if (result.error !== "lark-cli not available") {
-          // lark-cli not available is expected — skip silently
-          runtime.log(`  ⚠ lark-cli skills install skipped: ${result.error}`);
+      const { areLarkSkillsInstalled } = await import("../infra/lark-cli/auto-disable.js");
+      if (areLarkSkillsInstalled()) {
+        await prompter.note("lark-cli skills already installed.", "Lark CLI Skills");
+      } else {
+        const { installLarkCliSkills } = await import("../infra/lark-cli/install-skills.js");
+        try {
+          const result = await installLarkCliSkills();
+          if (result.ok) {
+            const count = result.installed ?? "";
+            await prompter.note(
+              `Installed ${count} lark-cli skills to ~/.agents/skills/`,
+              "Lark CLI Skills",
+            );
+          } else if (result.error === "lark-cli not available") {
+            await prompter.note(
+              [
+                "lark-cli is not installed — Feishu skills (lark-*) were not set up.",
+                "",
+                "To install later:",
+                "  npm install -g @larksuite/cli",
+                "  npx skills add larksuite/cli -g --all",
+                "",
+                "Then restart the gateway.",
+              ].join("\n"),
+              "Lark CLI Skills",
+            );
+          } else {
+            runtime.log(`  ⚠ lark-cli skills install failed: ${result.error}`);
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          runtime.log(`  ⚠ lark-cli skills install failed: ${message}`);
         }
-      } catch {
-        // Non-blocking: never fail setup over optional skill installation
       }
     }
   }

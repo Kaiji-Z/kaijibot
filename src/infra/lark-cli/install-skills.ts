@@ -12,6 +12,21 @@ export interface InstallSkillsResult {
 const INSTALL_TIMEOUT_MS = 120_000;
 
 /**
+ * Resolve the npx executable name for the current platform.
+ *
+ * On Windows, `execFile("npx", ...)` fails with ENOENT because cmd.exe
+ * needs the `.cmd` extension to resolve batch/shell scripts.  The npm
+ * bin directory is already on PATH for most setups, but `execFile` does
+ * not go through cmd.exe unless `shell: true` is set.
+ */
+function resolveNpxCommand(): { file: string; useShell: boolean } {
+  if (process.platform === "win32") {
+    return { file: "npx", useShell: true };
+  }
+  return { file: "npx", useShell: false };
+}
+
+/**
  * Install lark-cli skills (lark-*) to ~/.agents/skills/.
  *
  * Runs `npx skills add larksuite/cli -g --all` which installs ~28 lark-*
@@ -28,24 +43,27 @@ export async function installLarkCliSkills(): Promise<InstallSkillsResult> {
     return { ok: false, error: "lark-cli not available" };
   }
 
-  return new Promise<InstallSkillsResult>((resolve) => {
-    execFile(
-      "npx",
-      ["skills", "add", "larksuite/cli", "-g", "--all"],
-      { timeout: INSTALL_TIMEOUT_MS, env: process.env },
-      (error, stdout, stderr) => {
-        if (error) {
-          const detail = stderr?.trim() || error.message;
-          resolve({ ok: false, error: detail });
-          return;
-        }
+  const { file, useShell } = resolveNpxCommand();
 
-        const match = stdout.match(/(\d+)\s+skill/i);
-        resolve({
-          ok: true,
-          installed: match ? parseInt(match[1], 10) : undefined,
-        });
-      },
-    );
+  return new Promise<InstallSkillsResult>((resolve) => {
+    const options: import("node:child_process").ExecFileOptions = {
+      timeout: INSTALL_TIMEOUT_MS,
+      env: process.env,
+      ...(useShell ? { shell: true } : {}),
+    };
+    execFile(file, ["skills", "add", "larksuite/cli", "-g", "--all"], options, (error, stdout, stderr) => {
+      if (error) {
+        const detail = (typeof stderr === "string" ? stderr : "")?.trim() || error.message;
+        resolve({ ok: false, error: detail });
+        return;
+      }
+
+      const out = typeof stdout === "string" ? stdout : "";
+      const match = out.match(/(\d+)\s+skill/i);
+      resolve({
+        ok: true,
+        installed: match ? parseInt(match[1], 10) : undefined,
+      });
+    });
   });
 }
