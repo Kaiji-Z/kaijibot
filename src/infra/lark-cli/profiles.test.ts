@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { ChildProcess } from "node:child_process";
+import { join } from "node:path";
 
-const { mockResolveLarkCliPath, mockExecFileFn } = vi.hoisted(() => ({
+const FAKE_HOME = "/fake/home";
+const CONFIG_PATH = join(FAKE_HOME, ".lark-cli", "config.json");
+
+const { mockResolveLarkCliPath, mockExecFileFn, mockFs } = vi.hoisted(() => ({
   mockResolveLarkCliPath: vi.fn<() => string | undefined>(),
   mockExecFileFn: vi.fn<
     (
@@ -11,6 +15,11 @@ const { mockResolveLarkCliPath, mockExecFileFn } = vi.hoisted(() => ({
       callback: unknown,
     ) => ChildProcess
   >(),
+  mockFs: {
+    existsSync: vi.fn(),
+    readFileSync: vi.fn(),
+    writeFileSync: vi.fn(),
+  },
 }));
 
 vi.mock("./resolve.ts", () => ({
@@ -19,6 +28,16 @@ vi.mock("./resolve.ts", () => ({
 
 vi.mock("node:child_process", () => ({
   execFile: mockExecFileFn,
+}));
+
+vi.mock("node:fs", () => ({
+  existsSync: mockFs.existsSync,
+  readFileSync: mockFs.readFileSync,
+  writeFileSync: mockFs.writeFileSync,
+}));
+
+vi.mock("node:os", () => ({
+  homedir: () => FAKE_HOME,
 }));
 
 import {
@@ -174,6 +193,11 @@ describe("buildAccountCredentialsList", () => {
 describe("registerLarkCliProfiles", () => {
   beforeEach(() => {
     mockResolveLarkCliPath.mockReturnValue("/path/to/run.js");
+    mockFs.existsSync.mockReturnValue(false);
+    mockFs.readFileSync.mockReturnValue("{}");
+    mockFs.readFileSync.mockClear();
+    mockFs.writeFileSync.mockClear();
+    mockFs.existsSync.mockClear();
   });
 
   afterEach(() => {
@@ -320,5 +344,110 @@ describe("registerLarkCliProfiles", () => {
 
     expect(result.registered).toEqual(["default"]);
     expect(result.failed).toEqual([{ name: "cli_bad", error: "duplicate profile" }]);
+  });
+
+  it("restores user profiles lost during registration", async () => {
+    const userConfig = {
+      apps: [
+        {
+          appId: "cli_user_manual",
+          appSecret: { source: "keychain", id: "appsecret:cli_user_manual" },
+          brand: "feishu",
+          users: [{ userOpenId: "ou_123", userName: "TestUser" }],
+        },
+      ],
+    };
+
+    // Config exists before and after profile add
+    mockFs.existsSync.mockReturnValue(true);
+    // First read: snapshot has user profile. Second read: lark-cli dropped it.
+    mockFs.readFileSync
+      .mockReturnValueOnce(JSON.stringify(userConfig))
+      .mockReturnValueOnce(JSON.stringify({ apps: [] }));
+
+    setupSuccessMock();
+
+    const result = await registerLarkCliProfiles([
+      { name: "default", appId: "cli_default", appSecret: "s1", brand: "feishu" },
+    ]);
+
+    expect(result.registered).toEqual(["default"]);
+    // Should have written config with the user profile restored
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      CONFIG_PATH,
+      expect.any(String),
+      "utf-8",
+    );
+    const written = JSON.parse(mockFs.writeFileSync.mock.calls[0][1] as string);
+    expect(written.apps).toHaveLength(1);
+    expect(written.apps[0].appId).toBe("cli_user_manual");
+  });
+
+  it("does not restore managed profiles that were intentionally updated", async () => {
+    const beforeConfig = {
+      apps: [
+        {
+          name: "default",
+          appId: "cli_old_default",
+          appSecret: { source: "keychain", id: "appsecret:cli_old_default" },
+          brand: "feishu",
+        },
+      ],
+    };
+
+    mockFs.existsSync.mockReturnValue(true);
+    // After profile add, the "default" profile is updated with new appId
+    mockFs.readFileSync
+      .mockReturnValueOnce(JSON.stringify(beforeConfig))
+      .mockReturnValueOnce(
+        JSON.stringify({
+          apps: [
+            {
+              name: "default",
+              appId: "cli_new_default",
+              brand: "feishu",
+            },
+          ],
+        }),
+      );
+
+    setupSuccessMock();
+
+    const result = await registerLarkCliProfiles([
+      { name: "default", appId: "cli_new_default", appSecret: "s1", brand: "feishu" },
+    ]);
+
+    expect(result.registered).toEqual(["default"]);
+    // Should NOT have written — no profiles to restore
+    expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it("handles corrupt config.json gracefully", async () => {
+    mockFs.existsSync.mockReturnValue(true);
+    mockFs.readFileSync
+      .mockReturnValueOnce("not json at all")
+      .mockReturnValueOnce("also not json");
+
+    setupSuccessMock();
+
+    const result = await registerLarkCliProfiles([
+      { name: "default", appId: "cli_1", appSecret: "s1", brand: "feishu" },
+    ]);
+
+    expect(result.registered).toEqual(["default"]);
+    expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it("handles missing config.json gracefully", async () => {
+    mockFs.existsSync.mockReturnValue(false);
+
+    setupSuccessMock();
+
+    const result = await registerLarkCliProfiles([
+      { name: "default", appId: "cli_1", appSecret: "s1", brand: "feishu" },
+    ]);
+
+    expect(result.registered).toEqual(["default"]);
+    expect(mockFs.writeFileSync).not.toHaveBeenCalled();
   });
 });

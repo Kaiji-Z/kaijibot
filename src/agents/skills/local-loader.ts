@@ -19,7 +19,6 @@ function readSkillFileSync(params: {
 }): string | null {
   const opened = openVerifiedFileSync({
     filePath: params.filePath,
-    rejectPathSymlink: true,
     maxBytes: params.maxBytes,
   });
   if (!opened.ok) {

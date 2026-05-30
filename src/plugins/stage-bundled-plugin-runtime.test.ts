@@ -389,24 +389,13 @@ describe("stageBundledPluginRuntime", () => {
     expect(fs.existsSync(path.join(repoRoot, "dist-runtime"))).toBe(false);
   });
 
-  it("tolerates EEXIST when an identical runtime symlink is materialized concurrently", () => {
-    const repoRoot = makeRepoRoot("kaijibot-stage-bundled-runtime-eexist-");
+  it("copies SKILL.md files instead of symlinking them", () => {
+    const repoRoot = makeRepoRoot("kaijibot-stage-bundled-skill-copy-");
     createDistPluginDir(repoRoot, "feishu");
     setupRepoFiles(repoRoot, {
       [bundledDistPluginFile("feishu", "index.js")]: "export default {}\n",
       [bundledDistPluginFile("feishu", "skills/feishu-doc/SKILL.md")]: "# Feishu Doc\n",
     });
-
-    const realSymlinkSync = fs.symlinkSync.bind(fs);
-    const symlinkSpy = vi.spyOn(fs, "symlinkSync").mockImplementation(((target, link, type) => {
-      const linkPath = String(link);
-      if (linkPath.endsWith(path.join("skills", "feishu-doc", "SKILL.md"))) {
-        const err = Object.assign(new Error("file already exists"), { code: "EEXIST" });
-        realSymlinkSync(String(target), linkPath, type);
-        throw err;
-      }
-      return realSymlinkSync(String(target), linkPath, type);
-    }) as typeof fs.symlinkSync);
 
     expect(() => stageBundledPluginRuntime({ repoRoot })).not.toThrow();
 
@@ -419,8 +408,42 @@ describe("stageBundledPluginRuntime", () => {
       "feishu-doc",
       "SKILL.md",
     );
-    expect(fs.lstatSync(runtimeSkillPath).isSymbolicLink()).toBe(true);
+    expect(fs.lstatSync(runtimeSkillPath).isFile()).toBe(true);
+    expect(fs.lstatSync(runtimeSkillPath).isSymbolicLink()).toBe(false);
     expect(fs.readFileSync(runtimeSkillPath, "utf8")).toBe("# Feishu Doc\n");
+  });
+
+  it("tolerates EEXIST when an identical runtime symlink is materialized concurrently", () => {
+    const repoRoot = makeRepoRoot("kaijibot-stage-bundled-runtime-eexist-");
+    createDistPluginDir(repoRoot, "feishu");
+    setupRepoFiles(repoRoot, {
+      [bundledDistPluginFile("feishu", "index.js")]: "export default {}\n",
+      [bundledDistPluginFile("feishu", "references/example.md")]: "# Example\n",
+    });
+
+    const realSymlinkSync = fs.symlinkSync.bind(fs);
+    const symlinkSpy = vi.spyOn(fs, "symlinkSync").mockImplementation(((target, link, type) => {
+      const linkPath = String(link);
+      if (linkPath.endsWith(path.join("feishu", "references", "example.md"))) {
+        const err = Object.assign(new Error("file already exists"), { code: "EEXIST" });
+        realSymlinkSync(String(target), linkPath, type);
+        throw err;
+      }
+      return realSymlinkSync(String(target), linkPath, type);
+    }) as typeof fs.symlinkSync);
+
+    expect(() => stageBundledPluginRuntime({ repoRoot })).not.toThrow();
+
+    const runtimeRefPath = path.join(
+      repoRoot,
+      "dist-runtime",
+      "extensions",
+      "feishu",
+      "references",
+      "example.md",
+    );
+    expect(fs.lstatSync(runtimeRefPath).isSymbolicLink()).toBe(true);
+    expect(fs.readFileSync(runtimeRefPath, "utf8")).toBe("# Example\n");
 
     symlinkSpy.mockRestore();
   });
