@@ -37,6 +37,9 @@ export type ConsolidationDeps = {
   resolveWorkspaces: (cfg: KaijiBotConfig) => ConsolidationWorkspace[];
   routeDeps: ConsolidationRouteDeps;
   resolveUserIdForFile: (filePath: string) => Promise<string | null>;
+  repairDeps?: {
+    repairMemoryStructure: (workspaceDir: string) => Promise<ConsolidationResult["repairResult"]>;
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -339,7 +342,6 @@ export async function runConsolidationAllAgents(params: {
 
   const tasks = workspaces.map(
     (workspace: ConsolidationWorkspace) => async (): Promise<ConsolidationResult[]> => {
-      // Each workspace may contain multiple agents sharing the same dir
       const agentTasks = workspace.agentIds.map(
         (agentId: string) => async (): Promise<ConsolidationResult> =>
           runConsolidationForAgent({
@@ -350,6 +352,20 @@ export async function runConsolidationAllAgents(params: {
           }),
       );
       const { results } = await runWithConcurrency(agentTasks, params.config.concurrency);
+
+      if (params.deps.repairDeps) {
+        try {
+          const repairResult = await params.deps.repairDeps.repairMemoryStructure(workspace.workspaceDir);
+          if (results.length > 0 && repairResult) {
+            results[results.length - 1]!.repairResult = repairResult;
+          }
+        } catch (err) {
+          if (results.length > 0) {
+            results[results.length - 1]!.errors.push(`Memory repair failed: ${String(err)}`);
+          }
+        }
+      }
+
       return results;
     },
   );

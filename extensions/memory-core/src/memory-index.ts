@@ -43,6 +43,39 @@ export interface MemoryIndex {
   inlineSections?: InlineContent[];
 }
 
+export interface UnknownHeading {
+  heading: string;
+  line: number;
+  lines: string[];
+}
+
+export interface OrphanLine {
+  line: number;
+  content: string;
+}
+
+export interface DuplicateHeading {
+  heading: string;
+  occurrences: number;
+}
+
+export interface LegacyHeading {
+  original: string;
+  mappedTo: string;
+  line: number;
+}
+
+export interface DiagnosticMemoryIndex {
+  sections: MemoryIndexSection[];
+  recentSessions: RecentSession[];
+  promotedContent: string;
+  inlineSections: InlineContent[];
+  unknownHeadings: UnknownHeading[];
+  orphanLines: OrphanLine[];
+  duplicateHeadings: DuplicateHeading[];
+  legacyHeadings: LegacyHeading[];
+}
+
 export interface MemoryIndexDeps {
   workspaceDir: string;
   fs: {
@@ -338,6 +371,146 @@ export function parseMemoryIndex(content: string): MemoryIndex {
 }
 
 // ---------------------------------------------------------------------------
+// Diagnostic parsing
+// ---------------------------------------------------------------------------
+
+function isRecognizedSectionHeading(
+  trimmed: string,
+  nextLine: string,
+): boolean {
+  if (isInlineHeading(trimmed)) return true;
+  if (isRecentSessionsHeading(trimmed)) return true;
+  if (isPromotedHeading(trimmed)) return true;
+  if (isReferencesHeading(trimmed)) return true;
+  if (isTopicPointersHeading(trimmed)) return true;
+  if (trimmed === INDEX_TITLE) return true;
+  const sectionMatch = trimmed.match(SECTION_HEADING_RE);
+  if (sectionMatch && nextLine.startsWith("→ ")) return true;
+  return false;
+}
+
+export function parseMemoryIndexDiagnostic(content: string): DiagnosticMemoryIndex {
+  const base = parseMemoryIndex(content);
+  const lines = splitLines(content);
+
+  const unknownHeadings: UnknownHeading[] = [];
+  const orphanLines: OrphanLine[] = [];
+  const duplicateHeadings: DuplicateHeading[] = [];
+  const legacyHeadings: LegacyHeading[] = [];
+
+  const headingCounts = new Map<string, number>();
+
+  let activeContext: "none" | "inline" | "topic" | "recent" | "references" | "topicPointers" | "promoted" | "unknown" = "none";
+  let unknownHeadingIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const trimmed = line.trim();
+    const nextLine = lines[i + 1]?.trim() ?? "";
+
+    if (trimmed === INDEX_TITLE || trimmed === "") continue;
+
+    if (isPromotedHeading(trimmed)) {
+      activeContext = "promoted";
+      continue;
+    }
+    if (isRecentSessionsHeading(trimmed)) {
+      activeContext = "recent";
+      continue;
+    }
+    if (isReferencesHeading(trimmed)) {
+      activeContext = "references";
+      continue;
+    }
+    if (isTopicPointersHeading(trimmed)) {
+      activeContext = "topicPointers";
+      continue;
+    }
+
+    const inlineMapping = parseInlineHeading(trimmed);
+    if (inlineMapping) {
+      const legacyMatch = Object.entries(LEGACY_SECTION_MIGRATION).find(
+        ([legacy]) => trimmed === `## ${legacy}`,
+      );
+      if (legacyMatch) {
+        legacyHeadings.push({
+          original: legacyMatch[0],
+          mappedTo: legacyMatch[1],
+          line: i + 1,
+        });
+      }
+      const match = trimmed.match(SECTION_HEADING_RE);
+      if (match) {
+        const name = match[1]!;
+        headingCounts.set(name, (headingCounts.get(name) ?? 0) + 1);
+      }
+      activeContext = "inline";
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(SECTION_HEADING_RE);
+    if (sectionMatch) {
+      const name = sectionMatch[1]!;
+      headingCounts.set(name, (headingCounts.get(name) ?? 0) + 1);
+
+      if (!isRecognizedSectionHeading(trimmed, nextLine)) {
+        unknownHeadings.push({
+          heading: name,
+          line: i + 1,
+          lines: [],
+        });
+        unknownHeadingIdx = unknownHeadings.length - 1;
+        activeContext = "unknown";
+        continue;
+      }
+      activeContext = "topic";
+      continue;
+    }
+
+    if (activeContext === "promoted" || activeContext === "recent" || activeContext === "references" || activeContext === "topicPointers" || activeContext === "topic") {
+      continue;
+    }
+
+    if (activeContext === "unknown" && unknownHeadingIdx >= 0) {
+      unknownHeadings[unknownHeadingIdx]!.lines.push(line);
+      continue;
+    }
+
+    if (activeContext === "inline") {
+      continue;
+    }
+
+    if (activeContext === "none" && trimmed.length > 0) {
+      orphanLines.push({
+        line: i + 1,
+        content: trimmed,
+      });
+    }
+  }
+
+  for (const [heading, count] of headingCounts) {
+    if (count > 1) {
+      duplicateHeadings.push({ heading, occurrences: count });
+    }
+  }
+
+  return {
+    sections: base.sections,
+    recentSessions: base.recentSessions,
+    promotedContent: base.promotedContent,
+    inlineSections: base.inlineSections ?? [],
+    unknownHeadings,
+    orphanLines,
+    duplicateHeadings,
+    legacyHeadings,
+  };
+}
+
+export function getCanonicalSectionOrder(): string[] {
+  return ["⚡ Core Memory", "🔥 Active Context", "Topic Pointers"];
+}
+
+// ---------------------------------------------------------------------------
 // Serialization
 // ---------------------------------------------------------------------------
 
@@ -345,7 +518,7 @@ function serializeInlineSection(inline: InlineContent): string {
   return [`## ${inline.section}`, ...inline.lines].join("\n");
 }
 
-function serializeIndex(index: MemoryIndex): string {
+export function serializeIndex(index: MemoryIndex): string {
   const parts: string[] = [INDEX_TITLE, ""];
 
   // Inline sections first (high-frequency content)

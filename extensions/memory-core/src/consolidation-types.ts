@@ -49,6 +49,14 @@ export type ConsolidationResult = {
   routedItems: number;
   errors: string[];
   durationMs: number;
+  repairResult?: {
+    severity: string;
+    actionsApplied: string[];
+    contentRelocated: number;
+    contentDropped: number;
+    backupPath?: string;
+    verificationPassed: boolean;
+  };
 };
 
 /** Input to the LLM extraction step — a batch of transcript files. */

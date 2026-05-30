@@ -38,6 +38,15 @@ export {
   type MemoryIndex,
   type MemoryIndexSection,
   type RecentSession,
+  parseMemoryIndex,
+  serializeIndex,
+  parseMemoryIndexDiagnostic,
+  getCanonicalSectionOrder,
+  type DiagnosticMemoryIndex,
+  type UnknownHeading,
+  type OrphanLine,
+  type DuplicateHeading,
+  type LegacyHeading,
 } from "./src/memory-index.js";
 export { incrementGroundedCount } from "./src/short-term-promotion.js";
 export {
@@ -47,6 +56,21 @@ export {
   type ConsolidationDeps,
   type ConsolidationRouteDeps,
 } from "./src/consolidation.js";
+export {
+  repairMemoryStructure,
+  diagnoseStructure,
+  planRepair,
+  classifyHeuristic,
+  classifyWithLLM,
+  verifyStructure,
+  type RepairSeverity,
+  type StructuralIssue,
+  type RepairDiagnostic,
+  type RepairAction,
+  type RepairPlan,
+  type RepairResult,
+  type MemoryRepairDeps,
+} from "./src/memory-repair.js";
 export type {
   ExtractedItem,
   RouteItem,

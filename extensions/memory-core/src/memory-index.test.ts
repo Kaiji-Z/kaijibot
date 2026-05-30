@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   MemoryIndexManager,
   parseMemoryIndex,
+  parseMemoryIndexDiagnostic,
+  getCanonicalSectionOrder,
   type MemoryIndexDeps,
   type MemoryIndex,
 } from "./memory-index.js";
@@ -508,5 +510,145 @@ describe("MemoryIndexManager", () => {
       expect(raw).not.toContain("## 👤 User");
       expect(raw).not.toContain("## 💬 Key Feedback");
     });
+  });
+});
+
+describe("parseMemoryIndexDiagnostic", () => {
+  it("returns no diagnostics for clean MEMORY.md", () => {
+    const clean = [
+      "# Long-Term Memory",
+      "",
+      "## ⚡ Core Memory",
+      "- Timezone: UTC+8",
+      "- Language: zh-CN",
+      "",
+      "## 🔥 Active Context",
+      "- Working on memory system redesign",
+      "",
+      "## Topic Pointers",
+      "- User Profile → memory/topics/user.md",
+      "",
+    ].join("\n");
+
+    const diag = parseMemoryIndexDiagnostic(clean);
+    expect(diag.unknownHeadings).toHaveLength(0);
+    expect(diag.orphanLines).toHaveLength(0);
+    expect(diag.duplicateHeadings).toHaveLength(0);
+    expect(diag.legacyHeadings).toHaveLength(0);
+    expect(diag.inlineSections).toHaveLength(2);
+    expect(diag.sections).toHaveLength(1);
+  });
+
+  it("detects unknown headings with content", () => {
+    const md = [
+      "# Long-Term Memory",
+      "",
+      "## ⚡ Core Memory",
+      "- Core info",
+      "",
+      "## 🐛 Debug Notes",
+      "- Some debug info",
+      "- More debug lines",
+      "",
+      "## Topic Pointers",
+      "- Foo → memory/topics/foo.md",
+      "",
+    ].join("\n");
+
+    const diag = parseMemoryIndexDiagnostic(md);
+    expect(diag.unknownHeadings).toHaveLength(1);
+    expect(diag.unknownHeadings[0]!.heading).toBe("🐛 Debug Notes");
+    expect(diag.unknownHeadings[0]!.line).toBe(6);
+    expect(diag.unknownHeadings[0]!.lines).toContain("- Some debug info");
+    expect(diag.unknownHeadings[0]!.lines).toContain("- More debug lines");
+  });
+
+  it("detects orphan lines between sections", () => {
+    const md = [
+      "# Long-Term Memory",
+      "",
+      "orphan line before any section",
+      "",
+      "## ⚡ Core Memory",
+      "- Core info",
+      "",
+    ].join("\n");
+
+    const diag = parseMemoryIndexDiagnostic(md);
+    expect(diag.orphanLines.length).toBeGreaterThanOrEqual(1);
+    expect(diag.orphanLines.some((o) => o.content === "orphan line before any section")).toBe(true);
+  });
+
+  it("detects legacy headings", () => {
+    const md = [
+      "# Long-Term Memory",
+      "",
+      "## 👤 User",
+      "- Old user info",
+      "",
+      "## ⚡ Core Memory",
+      "- New core info",
+      "",
+    ].join("\n");
+
+    const diag = parseMemoryIndexDiagnostic(md);
+    expect(diag.legacyHeadings).toHaveLength(1);
+    expect(diag.legacyHeadings[0]!.original).toBe("👤 User");
+    expect(diag.legacyHeadings[0]!.mappedTo).toBe("⚡ Core Memory");
+    expect(diag.legacyHeadings[0]!.line).toBe(3);
+  });
+
+  it("detects duplicate headings", () => {
+    const md = [
+      "# Long-Term Memory",
+      "",
+      "## ⚡ Core Memory",
+      "- First core",
+      "",
+      "## ⚡ Core Memory",
+      "- Second core",
+      "",
+    ].join("\n");
+
+    const diag = parseMemoryIndexDiagnostic(md);
+    expect(diag.duplicateHeadings).toHaveLength(1);
+    expect(diag.duplicateHeadings[0]!.heading).toBe("⚡ Core Memory");
+    expect(diag.duplicateHeadings[0]!.occurrences).toBe(2);
+  });
+
+  it("detects mixed diagnostics: unknown + legacy + orphan", () => {
+    const md = [
+      "# Long-Term Memory",
+      "",
+      "orphan before sections",
+      "",
+      "## 👤 User",
+      "- Legacy user info",
+      "",
+      "## ⚡ Core Memory",
+      "- Core info",
+      "",
+      "## 🐛 Debug",
+      "- Debug line",
+      "",
+      "## 🔥 Active Context",
+      "- Active info",
+      "",
+    ].join("\n");
+
+    const diag = parseMemoryIndexDiagnostic(md);
+    expect(diag.orphanLines.length).toBeGreaterThanOrEqual(1);
+    expect(diag.orphanLines.some((o) => o.content === "orphan before sections")).toBe(true);
+    expect(diag.legacyHeadings).toHaveLength(1);
+    expect(diag.legacyHeadings[0]!.original).toBe("👤 User");
+    expect(diag.unknownHeadings).toHaveLength(1);
+    expect(diag.unknownHeadings[0]!.heading).toBe("🐛 Debug");
+  });
+});
+
+describe("getCanonicalSectionOrder", () => {
+  it("returns the canonical order", () => {
+    const order = getCanonicalSectionOrder();
+    expect(order).toEqual(["⚡ Core Memory", "🔥 Active Context", "Topic Pointers"]);
   });
 });

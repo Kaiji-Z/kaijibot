@@ -1805,8 +1805,86 @@ export async function startGatewayServer(
                 await indexManager.writeIndex(index);
                 await indexManager.rebalanceIndex();
               },
+          },
+
+          // Memory repair — structural repair step after consolidation routing
+          repairDeps: {
+            repairMemoryStructure: async (workspaceDir: string) => {
+              const { repairMemoryStructure } = await import(
+                "../../extensions/memory-core/src/memory-repair.js"
+              );
+              const nodeFs = await import("node:fs/promises");
+              const path = await import("node:path");
+              const { parseMemoryIndex, serializeIndex } = await import(
+                "../../extensions/memory-core/src/memory-index.js"
+              );
+
+              return repairMemoryStructure(workspaceDir, {
+                readRawMemoryIndex: async (wsDir: string) => {
+                  try {
+                    return await nodeFs.readFile(path.join(wsDir, "MEMORY.md"), "utf-8");
+                  } catch {
+                    return "";
+                  }
+                },
+                writeRawMemoryIndex: async (wsDir: string, content: string) => {
+                  const tmpName = `MEMORY.md.repair.${process.pid}.${Date.now()}.tmp`;
+                  const tmpPath = path.join(wsDir, tmpName);
+                  await nodeFs.writeFile(tmpPath, content, "utf-8");
+                  await nodeFs.rename(tmpPath, path.join(wsDir, "MEMORY.md"));
+                },
+                parseMemoryIndex,
+                serializeIndex,
+                readTopicFile: async (topicPath: string) => {
+                  try {
+                    return await nodeFs.readFile(topicPath, "utf-8");
+                  } catch {
+                    return null;
+                  }
+                },
+                appendToTopicFile: async (topicPath: string, content: string) => {
+                  const dir = path.dirname(topicPath);
+                  await nodeFs.mkdir(dir, { recursive: true });
+                  await nodeFs.appendFile(topicPath, content, "utf-8");
+                },
+                topicFileExists: async (wsDir: string, relativePath: string) => {
+                  try {
+                    await nodeFs.access(path.join(wsDir, relativePath));
+                    return true;
+                  } catch {
+                    return false;
+                  }
+                },
+                listTopicFiles: async (wsDir: string) => {
+                  try {
+                    return await nodeFs.readdir(path.join(wsDir, "memory", "topics"));
+                  } catch {
+                    return [];
+                  }
+                },
+                generateText: generateFn,
+                backupFile: async (filePath: string) => {
+                  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+                  const backupPath = `${filePath}.bak.${ts}`;
+                  await nodeFs.copyFile(filePath, backupPath);
+                  // Rotate: keep last 7 backups
+                  const dir = path.dirname(filePath);
+                  const base = path.basename(filePath);
+                  const backups = (await nodeFs.readdir(dir))
+                    .filter((f: string) => f.startsWith(base) && f.includes(".bak."))
+                    .sort();
+                  for (let i = 0; i < backups.length - 7; i++) {
+                    await nodeFs.unlink(path.join(dir, backups[i]!)).catch(() => {});
+                  }
+                  return backupPath;
+                },
+                log: (message: string) => {
+                  log.info(`memory-repair: ${message}`);
+                },
+              });
             },
-          };
+          },
+        };
 
           const runConsolidation = async () => {
             try {
