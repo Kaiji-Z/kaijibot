@@ -259,6 +259,19 @@ export function installLarkCliSkills(params = {}) {
   if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) return;
   if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) return;
 
+  const npxArgs = ["-y", "skills", "add", "larksuite/cli", "-g", "--all"];
+  const runNpxSkills = (runner) => {
+    return spawn(runner.command, runner.args, {
+      cwd: packageRoot,
+      encoding: "utf8",
+      env: runner.env ?? env,
+      stdio: "pipe",
+      shell: runner.shell,
+      windowsVerbatimArguments: runner.windowsVerbatimArguments,
+      timeout: SKILLS_INSTALL_TIMEOUT_MS,
+    });
+  };
+
   try {
     const npxRunner =
       params.npxRunner ??
@@ -268,24 +281,45 @@ export function installLarkCliSkills(params = {}) {
         existsSync: pathExists,
         platform: params.platform,
         comSpec: params.comSpec,
-        npxArgs: ["skills", "add", "larksuite/cli", "-g", "--all"],
+        npxArgs,
       });
-    const result = spawn(npxRunner.command, npxRunner.args, {
-      cwd: packageRoot,
-      encoding: "utf8",
-      env: npxRunner.env ?? env,
-      stdio: "pipe",
-      shell: npxRunner.shell,
-      windowsVerbatimArguments: npxRunner.windowsVerbatimArguments,
-      timeout: SKILLS_INSTALL_TIMEOUT_MS,
-    });
+
+    let result = runNpxSkills(npxRunner);
+
+    // Retry once after clearing npx cache if first attempt fails
+    // (Windows npm cache corruption: ENOENT package.json in _npx/)
+    if (result.status !== 0) {
+      log.warn("[postinstall] npx skills add failed, clearing npx cache and retrying...");
+      const npmRunner =
+        params.npmRunner ??
+        resolveNpmRunner({
+          env,
+          execPath: params.execPath,
+          existsSync: pathExists,
+          platform: params.platform,
+          comSpec: params.comSpec,
+          npmArgs: ["cache", "clean", "--force"],
+        });
+      spawn(npmRunner.command, npmRunner.args, {
+        cwd: packageRoot,
+        encoding: "utf8",
+        env: npmRunner.env ?? env,
+        stdio: "pipe",
+        shell: npmRunner.shell,
+        windowsVerbatimArguments: npmRunner.windowsVerbatimArguments,
+        timeout: 30_000,
+      });
+      result = runNpxSkills(npxRunner);
+    }
+
     if (result.status !== 0) {
       const output = [result.stderr, result.stdout].filter(Boolean).join("\n").trim();
-      throw new Error(output || "npx skills add failed");
+      throw new Error(output || "npx skills add failed after retry");
     }
     log.log("[postinstall] installed lark-cli skills to ~/.agents/skills/");
   } catch (e) {
     log.warn(`[postinstall] could not install lark-cli skills: ${String(e)}`);
+    log.warn("[postinstall] install manually: npm cache clean --force && npx -y skills add larksuite/cli -g --all");
   }
 }
 
