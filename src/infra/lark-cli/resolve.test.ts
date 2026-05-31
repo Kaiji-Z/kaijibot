@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildLarkCliEnv } from "./env.ts";
-import { resolveLarkCliPath, isLarkCliAvailable } from "./resolve.ts";
+import { resolveLarkCliPath, isLarkCliAvailable, resolveLarkCliBinDir } from "./resolve.ts";
 
 describe("resolveLarkCliPath", () => {
   it("returns a string when @larksuite/cli is installed", () => {
@@ -14,6 +15,15 @@ describe("resolveLarkCliPath", () => {
 describe("isLarkCliAvailable", () => {
   it("returns true when @larksuite/cli is installed", () => {
     expect(isLarkCliAvailable()).toBe(true);
+  });
+});
+
+describe("resolveLarkCliBinDir", () => {
+  it("returns node_modules/.bin dir when lark-cli is installed", () => {
+    const binDir = resolveLarkCliBinDir();
+    expect(binDir).toBeDefined();
+    expect(binDir).toContain(".bin");
+    expect(existsSync(binDir!)).toBe(true);
   });
 });
 

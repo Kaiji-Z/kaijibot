@@ -1,4 +1,4 @@
-export { resolveLarkCliPath, isLarkCliAvailable } from "./resolve.ts";
+export { resolveLarkCliPath, isLarkCliAvailable, resolveLarkCliBinDir } from "./resolve.ts";
 export { buildLarkCliEnv } from "./env.ts";
 export type { LarkCliEnv } from "./env.ts";
 export { healthCheck } from "./health.ts";

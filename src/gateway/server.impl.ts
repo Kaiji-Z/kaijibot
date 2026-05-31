@@ -35,13 +35,14 @@ import {
 } from "../infra/control-ui-assets.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { isTruthyEnvValue, logAcceptedEnvOption } from "../infra/env.js";
-import { buildLarkCliEnv, isLarkCliAvailable, healthCheck, registerLarkCliProfiles, buildAccountCredentialsList } from "../infra/lark-cli/index.js";
+import { buildLarkCliEnv, isLarkCliAvailable, healthCheck, registerLarkCliProfiles, buildAccountCredentialsList, resolveLarkCliBinDir } from "../infra/lark-cli/index.js";
 import { shouldDisableNativeTools, buildDisabledToolsConfig, buildDisabledSkillEntries } from "../infra/lark-cli/auto-disable.ts";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
 import { startHeartbeatRunner, type HeartbeatRunner } from "../infra/heartbeat-runner.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { ensureKaijiBotCliOnPath } from "../infra/path-env.js";
+import { applyPathPrepend } from "../infra/path-prepend.js";
 import { setGatewaySigusr1RestartPolicy, setPreRestartDeferralCheck } from "../infra/restart.js";
 import {
   primeRemoteSkillsCache,
@@ -615,6 +616,12 @@ export async function startGatewayServer(
     const larkEnv = buildLarkCliEnv({ domain });
     for (const [key, value] of Object.entries(larkEnv)) {
       if (value) {process.env[key] = value;}
+    }
+
+    const larkBinDir = resolveLarkCliBinDir();
+    if (larkBinDir) {
+      applyPathPrepend(process.env as Record<string, string>, [larkBinDir]);
+      log.info(`lark-cli: added ${larkBinDir} to PATH`);
     }
 
     // Register all feishu accounts as lark-cli profiles (multi-bot support).
