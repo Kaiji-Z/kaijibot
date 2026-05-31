@@ -6,11 +6,10 @@
 // plugin deps from the workspace root, so stale plugin-local node_modules must
 // not linger under extensions/* and shadow the root graph.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { resolveNpmRunner } from "./npm-runner.mjs";
 
 export const BUNDLED_PLUGIN_INSTALL_TARGETS = [];
 
@@ -225,10 +224,9 @@ export function runBundledPluginPostinstall(params = {}) {
 
 const DISABLE_LARK_SKILLS_ENV = "KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL";
 const SKILLS_INSTALL_TIMEOUT_MS = 120_000;
-const SKILLS_CLI_ENTRY = ["node_modules", "skills", "bin", "cli.mjs"];
 
 function areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir) {
-  if (!pathExists(skillsDir)) return false;
+  if (!pathExists(skillsDir)) { return false; }
   try {
     return readDir(skillsDir, { withFileTypes: true }).some(
       (e) => e.isDirectory() && e.name.startsWith("lark-") && pathExists(join(skillsDir, e.name, "SKILL.md")),
@@ -239,15 +237,11 @@ function areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir) {
 }
 
 /**
- * Install lark-* SKILL.md files by running the `skills` CLI directly.
+ * Install lark-cli skills (~28 lark-* SKILL.md files) to ~/.agents/skills/.
  *
- * Instead of using npx (which has a known bug on Windows + Node 24 where the
- * `_npx/` staging directory's lock mechanism can abort mid-reify, leaving
- * `package.json` missing — see npm/cli#8710), we install the `skills` npm
- * package to a temporary directory and execute its CLI with `node` directly.
- *
- * This completely bypasses the `_npx/` staging mechanism and is reliable
- * across all platforms.
+ * Runs `npx -y skills add larksuite/cli -g --all` — the same command a user
+ * would run manually.  On Windows `shell: true` is required because npx is a
+ * .cmd batch script that cmd.exe must resolve.
  */
 export function installLarkCliSkills(params = {}) {
   const env = params.env ?? process.env;
@@ -257,82 +251,44 @@ export function installLarkCliSkills(params = {}) {
   const readDir = params.readdirSync ?? readdirSync;
   const log = params.log ?? console;
   const skillsDir = params.skillsDir ?? join(homedir(), ".agents", "skills");
-  const mktmp = params.mkdtempSync ?? mkdtempSync;
-  const tmpDirFn = params.tmpdir ?? tmpdir;
-  const removeDir = params.rmSync ?? rmSync;
-  const execPath = params.execPath ?? process.execPath;
+  const platform = params.platform ?? process.platform;
 
-  if (env?.[DISABLE_LARK_SKILLS_ENV]?.trim()) return;
-  if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) return;
-  if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) return;
+  if (env?.[DISABLE_LARK_SKILLS_ENV]?.trim()) { return; }
+  if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) { return; }
+  if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) { return; }
 
-  let tmpDir;
   try {
-    // Create a temporary directory for npm install
-    tmpDir = mktmp(join(tmpDirFn(), "kaijibot-skills-"));
+    const cleanEnv = createNestedNpmInstallEnv(env);
+    const useShell = platform === "win32";
+    const npxArgs = ["-y", "skills", "add", "larksuite/cli", "-g", "--all"];
 
-    // Step 1: Install the `skills` npm package into the temp directory.
-    // This uses `npm install` (not npx), which does not use the _npx/
-    // staging mechanism and avoids npm/cli#8710.
-    const nestedEnv = createNestedNpmInstallEnv(env);
-    const npmRunner =
-      params.npmRunner ??
-      resolveNpmRunner({
-        env: nestedEnv,
-        execPath,
-        existsSync: pathExists,
-        platform: params.platform,
-        comSpec: params.comSpec,
-        npmArgs: ["install", "skills@latest", "--no-save", "--no-package-lock"],
-      });
-
-    const installResult = spawn(npmRunner.command, npmRunner.args, {
-      cwd: tmpDir,
+    const result = spawn("npx", npxArgs, {
+      cwd: homedir(),
       encoding: "utf8",
-      env: npmRunner.env ?? nestedEnv,
-      stdio: "pipe",
-      shell: npmRunner.shell,
-      windowsVerbatimArguments: npmRunner.windowsVerbatimArguments,
-      timeout: SKILLS_INSTALL_TIMEOUT_MS,
-    });
-
-    if (installResult.status !== 0) {
-      const output = [installResult.stderr, installResult.stdout].filter(Boolean).join("\n").trim();
-      throw new Error(`npm install skills failed: ${output || "unknown error"}`);
-    }
-
-    // Step 2: Run the skills CLI directly with node.
-    // process.execPath ensures we use the same node binary that runs kaijibot.
-    const cliPath = join(tmpDir, ...SKILLS_CLI_ENTRY);
-    if (!pathExists(cliPath)) {
-      throw new Error(`skills CLI not found at ${cliPath}`);
-    }
-
-    const skillsResult = spawn(execPath, [cliPath, "add", "larksuite/cli", "-g", "--all"], {
-      cwd: packageRoot,
-      encoding: "utf8",
-      env,
+      env: cleanEnv,
       stdio: "pipe",
       timeout: SKILLS_INSTALL_TIMEOUT_MS,
+      ...(useShell ? { shell: true } : {}),
     });
 
-    if (skillsResult.status !== 0) {
-      const output = [skillsResult.stderr, skillsResult.stdout].filter(Boolean).join("\n").trim();
-      throw new Error(`skills add failed: ${output || "unknown error"}`);
+    if (result.error) {
+      throw new Error(`npx skills add failed: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+      const output = [result.stderr, result.stdout].filter(Boolean).join("\n").trim();
+      throw new Error(`npx skills add exited ${result.status}: ${output || "no output"}`);
+    }
+
+    // Verify installation actually produced lark-* skills.
+    if (!areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) {
+      throw new Error("npx skills add reported success but no lark-* skills found in " + skillsDir);
     }
 
     log.log("[postinstall] installed lark-cli skills to ~/.agents/skills/");
   } catch (e) {
-    log.warn(`[postinstall] could not install lark-cli skills: ${String(e)}`);
-    log.warn("[postinstall] install manually: npx -y skills add larksuite/cli -g --all");
-  } finally {
-    if (tmpDir) {
-      try {
-        removeDir(tmpDir, { recursive: true, force: true });
-      } catch {
-        // Best-effort cleanup; temp dir will be cleaned by OS eventually.
-      }
-    }
+    // Non-fatal: skills are optional, user can install manually.
+    log.error(`[postinstall] could not install lark-cli skills: ${String(e)}`);
+    log.error("[postinstall] install manually: npx -y skills add larksuite/cli -g --all");
   }
 }
 
