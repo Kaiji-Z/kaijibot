@@ -1,6 +1,7 @@
 import { isRestartEnabled } from "../../config/commands.js";
 import { readBestEffortConfig, resolveGatewayPort } from "../../config/config.js";
 import { resolveGatewayService } from "../../daemon/service.js";
+import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { probeGateway } from "../../gateway/probe.js";
 import {
   findVerifiedGatewayListenerPidsOnPortSync,
@@ -183,6 +184,13 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
   const restartWaitMs = POST_RESTART_HEALTH_ATTEMPTS * POST_RESTART_HEALTH_DELAY_MS;
   const restartWaitSeconds = Math.round(restartWaitMs / 1000);
 
+  if (process.platform === "win32") {
+    writeGatewayRestartHandoffSync({
+      restartKind: "full-process",
+      reason: "gateway.restart",
+      supervisorMode: "schtasks",
+    });
+  }
   return await runServiceRestart({
     serviceNoun: "Gateway",
     service,

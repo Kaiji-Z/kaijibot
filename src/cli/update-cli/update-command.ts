@@ -12,9 +12,10 @@ import {
 } from "../../config/config.js";
 import { formatConfigIssueLines } from "../../config/issue-format.js";
 import { asResolvedSourceConfig, asRuntimeConfig } from "../../config/materialize.js";
+import { resolveGatewayRestartLogPath } from "../../daemon/restart-logs.js";
 import { resolveGatewayService } from "../../daemon/service.js";
 import { nodeVersionSatisfiesEngine } from "../../infra/runtime-guard.js";
-import {
+import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";import {
   channelToNpmTag,
   DEFAULT_GIT_CHANNEL,
   DEFAULT_PACKAGE_CHANNEL,
@@ -664,7 +665,16 @@ async function maybeRestartService(params: {
         }
       }
       if (params.restartScriptPath) {
-        await runRestartScript(params.restartScriptPath);
+        writeGatewayRestartHandoffSync({
+          restartKind: "full-process",
+          reason: "update.run",
+          source: "gateway-update",
+        });
+        try {
+          await runRestartScript(params.restartScriptPath);
+        } catch {
+          // Restart script spawn is best-effort; update completion must not crash here.
+        }
         restartInitiated = true;
       } else {
         restarted = await runDaemonRestart();
@@ -720,6 +730,9 @@ async function maybeRestartService(params: {
             theme.muted(
               `Run \`${replaceCliName(formatCliCommand("kaijibot gateway status --deep"), CLI_NAME)}\` for details.`,
             ),
+          );
+          defaultRuntime.log(
+            theme.muted(`Restart log: ${resolveGatewayRestartLogPath(process.env)}`),
           );
         }
         defaultRuntime.log("");

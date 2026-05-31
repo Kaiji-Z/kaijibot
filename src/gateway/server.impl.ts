@@ -422,6 +422,15 @@ export async function startGatewayServer(
 
   // Ensure all default port derivations (browser/canvas) see the actual runtime port.
   process.env.KAIJIBOT_GATEWAY_PORT = String(port);
+
+  {
+    const { readGatewayRestartHandoffSync, clearGatewayRestartHandoffSync, formatGatewayRestartHandoffDiagnostic } = await import("../infra/restart-handoff.js");
+    const restartHandoff = readGatewayRestartHandoffSync();
+    if (restartHandoff) {
+      log.info(formatGatewayRestartHandoffDiagnostic(restartHandoff));
+      clearGatewayRestartHandoffSync();
+    }
+  }
   logAcceptedEnvOption({
     key: "KAIJIBOT_RAW_STREAM",
     description: "raw stream logging enabled",

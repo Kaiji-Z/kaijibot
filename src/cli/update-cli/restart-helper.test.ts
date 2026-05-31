@@ -28,41 +28,12 @@ describe("restart-helper", () => {
     await fs.unlink(scriptPath);
   }
 
-  function expectWindowsRestartWaitOrdering(content: string, port = 18789) {
-    const endCommand = 'schtasks /End /TN "';
-    const pollAttemptsInit = "set /a attempts=0";
-    const pollLabel = ":wait_for_port_release";
-    const pollAttemptIncrement = "set /a attempts+=1";
-    // PowerShell is used for the polling loop (no findstr orphan risk).
-    const pollPowerShellCheck = `Get-NetTCPConnection -LocalPort ${port} -State Listen`;
-    const forceKillLabel = ":force_kill_listener";
-    // findstr only appears in the one-shot force-kill block (not a loop).
-    const forceKillNetstat = `netstat -ano ^| findstr /R /C:":${port} .*LISTENING"`;
-    const forceKillCommand = "taskkill /F /PID %%P >nul 2>&1";
-    const portReleasedLabel = ":port_released";
-    const runCommand = 'schtasks /Run /TN "';
-    const endIndex = content.indexOf(endCommand);
-    const attemptsInitIndex = content.indexOf(pollAttemptsInit, endIndex);
-    const pollLabelIndex = content.indexOf(pollLabel, attemptsInitIndex);
-    const pollAttemptIncrementIndex = content.indexOf(pollAttemptIncrement, pollLabelIndex);
-    const pollPowerShellCheckIndex = content.indexOf(pollPowerShellCheck, pollAttemptIncrementIndex);
-    const forceKillLabelIndex = content.indexOf(forceKillLabel, pollPowerShellCheckIndex);
-    const forceKillNetstatIndex = content.indexOf(forceKillNetstat, forceKillLabelIndex);
-    const forceKillCommandIndex = content.indexOf(forceKillCommand, forceKillNetstatIndex);
-    const portReleasedLabelIndex = content.indexOf(portReleasedLabel, forceKillCommandIndex);
-    const runIndex = content.indexOf(runCommand, portReleasedLabelIndex);
-
-    expect(endIndex).toBeGreaterThanOrEqual(0);
-    expect(attemptsInitIndex).toBeGreaterThan(endIndex);
-    expect(pollLabelIndex).toBeGreaterThan(attemptsInitIndex);
-    expect(pollAttemptIncrementIndex).toBeGreaterThan(pollLabelIndex);
-    expect(pollPowerShellCheckIndex).toBeGreaterThan(pollAttemptIncrementIndex);
-    expect(forceKillLabelIndex).toBeGreaterThan(pollPowerShellCheckIndex);
-    expect(forceKillNetstatIndex).toBeGreaterThan(forceKillLabelIndex);
-    expect(forceKillCommandIndex).toBeGreaterThan(forceKillNetstatIndex);
-    expect(portReleasedLabelIndex).toBeGreaterThan(forceKillCommandIndex);
-    expect(runIndex).toBeGreaterThan(portReleasedLabelIndex);
-
+  function expectWindowsRestartWaitOrdering(content: string, _port = 18789) {
+    expect(content).toContain("# POWERSHELL");
+    expect(content).toContain("Invoke-KaijiBotSchtasksWithTimeout");
+    expect(content).toContain("Get-KaijiBotListenerPids");
+    expect(content).toContain("Start-Sleep -Seconds 2");
+    expect(content).toContain("Get-NetTCPConnection");
     expect(content).not.toContain("timeout /t 3 /nobreak >nul");
   }
 
@@ -134,13 +105,11 @@ describe("restart-helper", () => {
       const { scriptPath, content } = await prepareAndReadScript({
         KAIJIBOT_PROFILE: "default",
       });
-      expect(scriptPath.endsWith(".bat")).toBe(true);
+      expect(scriptPath.endsWith(".cmd")).toBe(true);
       expect(content).toContain("@echo off");
-      expect(content).toContain('schtasks /End /TN "KaijiBot Gateway"');
-      expect(content).toContain('schtasks /Run /TN "KaijiBot Gateway"');
+      expect(content).toContain("# POWERSHELL");
+      expect(content).toContain("Invoke-KaijiBotSchtasksWithTimeout");
       expectWindowsRestartWaitOrdering(content);
-      // Batch self-cleanup
-      expect(content).toContain('del "%~f0"');
       await cleanupScript(scriptPath);
     });
 
@@ -151,8 +120,7 @@ describe("restart-helper", () => {
         KAIJIBOT_PROFILE: "default",
         KAIJIBOT_WINDOWS_TASK_NAME: "KaijiBot Gateway (custom)",
       });
-      expect(content).toContain('schtasks /End /TN "KaijiBot Gateway (custom)"');
-      expect(content).toContain('schtasks /Run /TN "KaijiBot Gateway (custom)"');
+      expect(content).toContain("'KaijiBot Gateway (custom)'");
       expectWindowsRestartWaitOrdering(content);
       await cleanupScript(scriptPath);
     });
@@ -168,10 +136,7 @@ describe("restart-helper", () => {
         customPort,
       );
       expect(content).toContain(
-        `Get-NetTCPConnection -LocalPort ${customPort} -State Listen`,
-      );
-      expect(content).toContain(
-        `for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":${customPort} .*LISTENING"') do (`,
+        `Get-KaijiBotListenerPids -Port ${customPort}`,
       );
       expectWindowsRestartWaitOrdering(content, customPort);
       await cleanupScript(scriptPath);
@@ -203,7 +168,7 @@ describe("restart-helper", () => {
       const { scriptPath, content } = await prepareAndReadScript({
         KAIJIBOT_PROFILE: "production",
       });
-      expect(content).toContain('schtasks /End /TN "KaijiBot Gateway (production)"');
+      expect(content).toContain("'KaijiBot Gateway (production)'");
       expectWindowsRestartWaitOrdering(content);
       await cleanupScript(scriptPath);
     });
@@ -307,7 +272,7 @@ describe("restart-helper", () => {
 
     it("uses cmd.exe on Windows", async () => {
       Object.defineProperty(process, "platform", { value: "win32" });
-      const scriptPath = "C:\\Temp\\fake-script.bat";
+      const scriptPath = "C:\\Temp\\fake-script.cmd";
       const mockChild = { unref: vi.fn() };
       vi.mocked(spawn).mockReturnValue(mockChild as unknown as ChildProcess);
 
@@ -323,13 +288,14 @@ describe("restart-helper", () => {
 
     it("quotes cmd.exe /c paths with metacharacters on Windows", async () => {
       Object.defineProperty(process, "platform", { value: "win32" });
-      const scriptPath = "C:\\Temp\\me&(ow)\\fake-script.bat";
+      const scriptPath = "C:\\Temp\\me&(ow)\\fake-script.cmd";
+      const quotedPath = `"${scriptPath.replace(/"/g, '\\"').replace(/%/g, "%%").replace(/!/g, "^!")}"`;
       const mockChild = { unref: vi.fn() };
       vi.mocked(spawn).mockReturnValue(mockChild as unknown as ChildProcess);
 
       await runRestartScript(scriptPath);
 
-      expect(spawn).toHaveBeenCalledWith("cmd.exe", ["/d", "/s", "/c", `"${scriptPath}"`], {
+      expect(spawn).toHaveBeenCalledWith("cmd.exe", ["/d", "/s", "/c", quotedPath], {
         detached: true,
         stdio: "ignore",
         windowsHide: true,

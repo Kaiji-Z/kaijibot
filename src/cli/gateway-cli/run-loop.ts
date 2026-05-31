@@ -14,6 +14,7 @@ import {
   markGatewaySigusr1RestartHandled,
   scheduleGatewaySigusr1Restart,
 } from "../../infra/restart.js";
+import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { detectRespawnSupervisor } from "../../infra/supervisor-markers.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
@@ -90,6 +91,12 @@ export async function runGatewayLoop(params: {
         // tripping launchd crash-loop throttling before KeepAlive relaunches.
         await new Promise((resolve) => {
           setTimeout(resolve, LAUNCHD_SUPERVISED_RESTART_EXIT_DELAY_MS);
+        });
+      }
+      if (respawn.mode === "supervised") {
+        writeGatewayRestartHandoffSync({
+          restartKind: "full-process",
+          supervisorMode: detectRespawnSupervisor(process.env, process.platform) ?? "external",
         });
       }
       exitProcess(0);

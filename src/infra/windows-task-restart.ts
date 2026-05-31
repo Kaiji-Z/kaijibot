@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { quoteCmdScriptArg } from "../daemon/cmd-argv.js";
 import { resolveGatewayWindowsTaskName } from "../daemon/constants.js";
+import { resolveGatewayRestartLogPath } from "../daemon/restart-logs.js";
 import { resolveTaskScriptPath } from "../daemon/schtasks.js";
 import { formatErrorMessage } from "./errors.js";
 import type { RestartAttempt } from "./restart.types.js";
@@ -20,11 +21,21 @@ function resolveWindowsTaskName(env: NodeJS.ProcessEnv): string {
   return resolveGatewayWindowsTaskName(env.KAIJIBOT_PROFILE);
 }
 
-function buildScheduledTaskRestartScript(taskName: string, taskScriptPath?: string): string {
+function buildScheduledTaskRestartScript(
+  taskName: string,
+  taskScriptPath?: string,
+  env?: NodeJS.ProcessEnv,
+): string {
   const quotedTaskName = quoteCmdScriptArg(taskName);
+  const restartLogPath = resolveGatewayRestartLogPath(env || process.env);
+  const logDir = path.dirname(restartLogPath);
+  const quotedLogDir = quoteCmdScriptArg(logDir);
+  const quotedRestartLogPath = quoteCmdScriptArg(restartLogPath);
   const lines = [
     "@echo off",
     "setlocal",
+    `if not exist ${quotedLogDir} mkdir ${quotedLogDir} >nul 2>&1`,
+    `>> ${quotedRestartLogPath} 2>&1 echo [%DATE% %TIME%] kaijibot task restart log initialized`,
     `schtasks /Query /TN ${quotedTaskName} >nul 2>&1`,
     "if errorlevel 1 goto fallback",
     "set /a attempts=0",
@@ -56,7 +67,7 @@ export function relaunchGatewayScheduledTask(env: NodeJS.ProcessEnv = process.en
   try {
     fs.writeFileSync(
       scriptPath,
-      `${buildScheduledTaskRestartScript(taskName, taskScriptPath)}\r\n`,
+      `${buildScheduledTaskRestartScript(taskName, taskScriptPath, env)}\r\n`,
       "utf8",
     );
     const child = spawn("cmd.exe", ["/d", "/s", "/c", quotedScriptPath], {

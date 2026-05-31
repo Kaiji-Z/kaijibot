@@ -20,7 +20,7 @@ export const DEFAULT_RESTART_HEALTH_ATTEMPTS = Math.ceil(
   DEFAULT_RESTART_HEALTH_TIMEOUT_MS / DEFAULT_RESTART_HEALTH_DELAY_MS,
 );
 const STOPPED_FREE_EARLY_EXIT_GRACE_MS = 10_000;
-const WINDOWS_STOPPED_FREE_EARLY_EXIT_GRACE_MS = 25_000;
+const WINDOWS_STOPPED_FREE_EARLY_EXIT_GRACE_MS = 90_000;
 
 export type GatewayRestartWaitOutcome = "healthy" | "stale-pids" | "stopped-free" | "timeout";
 
@@ -60,12 +60,33 @@ function looksLikeAuthClose(code: number | undefined, reason: string | undefined
     return false;
   }
   const normalized = normalizeLowercaseStringOrEmpty(reason);
+  if (!normalized) {
+    return false;
+  }
+  // The restart probe runs against loopback only and only decides restart
+  // liveness, not authorization. Keep this allowlist exact so a local listener
+  // cannot satisfy the health check with broad device/auth-looking text.
   return (
-    normalized.includes("auth") ||
-    normalized.includes("token") ||
-    normalized.includes("password") ||
-    normalized.includes("scope") ||
-    normalized.includes("role")
+    normalized === "auth required" ||
+    normalized === "owner auth required" ||
+    normalized === "connect failed" ||
+    normalized === "device required" ||
+    normalized === "pairing required" ||
+    normalized.startsWith("pairing required:") ||
+    normalized.startsWith("unauthorized: gateway token missing") ||
+    normalized.startsWith("unauthorized: gateway token mismatch") ||
+    normalized.startsWith("unauthorized: gateway token not configured") ||
+    normalized.startsWith("unauthorized: gateway password missing") ||
+    normalized.startsWith("unauthorized: gateway password mismatch") ||
+    normalized.startsWith("unauthorized: gateway password not configured") ||
+    normalized.startsWith("unauthorized: bootstrap token invalid or expired") ||
+    normalized.startsWith("unauthorized: tailscale identity missing") ||
+    normalized.startsWith("unauthorized: tailscale proxy headers missing") ||
+    normalized.startsWith("unauthorized: tailscale identity check failed") ||
+    normalized.startsWith("unauthorized: tailscale identity mismatch") ||
+    normalized.startsWith("unauthorized: too many failed authentication attempts") ||
+    normalized.startsWith("unauthorized: device token mismatch") ||
+    normalized.startsWith("unauthorized: device token rejected")
   );
 }
 
