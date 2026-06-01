@@ -652,3 +652,40 @@ describe("getCanonicalSectionOrder", () => {
     expect(order).toEqual(["⚡ Core Memory", "🔥 Active Context", "Topic Pointers"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: rebalanceIndex must preserve at least one inline section (Bug 3)
+// ---------------------------------------------------------------------------
+
+describe("rebalanceIndex preserves at least one inline section", () => {
+  it("never evicts all inline sections even when far over budget", async () => {
+    const { manager } = createManager();
+    const index: MemoryIndex = {
+      sections: [],
+      recentSessions: [],
+      promotedContent: "",
+      inlineSections: [
+        {
+          section: "⚡ Core Memory",
+          lines: Array.from({ length: 50 }, (_, i) => `- Core line ${i} with padding`.repeat(3)),
+        },
+        {
+          section: "🔥 Active Context",
+          lines: Array.from({ length: 50 }, (_, i) => `- Active line ${i} with padding`.repeat(3)),
+        },
+      ],
+    };
+    await manager.writeIndex(index);
+
+    const written = await manager.readIndex();
+    const raw = (await createManager().manager.readIndex());
+    // Confirm data was written
+    expect(written.inlineSections!.length).toBe(2);
+
+    // Rebalance with a tiny budget
+    await manager.rebalanceIndex(50);
+
+    const after = await manager.readIndex();
+    expect(after.inlineSections!.length).toBeGreaterThanOrEqual(1);
+  });
+});

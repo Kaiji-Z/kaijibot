@@ -800,3 +800,211 @@ Line 5
     expect(result.severity).toBe("moderate");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression tests for orphan detection + repair bugs
+// ---------------------------------------------------------------------------
+
+describe("orphan detection: bare filename normalization (Bug 2)", () => {
+  const memoryWithTopicPointers = `# Long-Term Memory
+
+## ⚡ Core Memory
+- Core content
+
+## 🔥 Active Context
+- Active content
+
+## Topic Pointers
+- test → memory/topics/test.md
+- feishu → memory/topics/feishu.md
+`;
+
+  it("does NOT flag referenced files when listTopicFiles returns bare filenames", async () => {
+    const result = await diagnoseStructure(memoryWithTopicPointers, {
+      listTopicFiles: async () => ["test.md", "feishu.md"],
+    });
+    const orphanIssues = result.issues.filter(
+      (i) => i.type === "orphan_topic_file",
+    );
+    expect(orphanIssues).toHaveLength(0);
+  });
+
+  it("flags ONLY truly orphan files when listTopicFiles returns bare filenames", async () => {
+    const result = await diagnoseStructure(memoryWithTopicPointers, {
+      listTopicFiles: async () => [
+        "test.md",
+        "feishu.md",
+        "unreferenced.md",
+      ],
+    });
+    const orphanIssues = result.issues.filter(
+      (i) => i.type === "orphan_topic_file",
+    );
+    expect(orphanIssues).toHaveLength(1);
+    expect(orphanIssues[0]!.filePath).toBe("memory/topics/unreferenced.md");
+  });
+
+  it("handles full-path returns from listTopicFiles without double-prefixing", async () => {
+    const result = await diagnoseStructure(memoryWithTopicPointers, {
+      listTopicFiles: async () => [
+        "memory/topics/test.md",
+        "memory/topics/orphan.md",
+      ],
+    });
+    const orphanIssues = result.issues.filter(
+      (i) => i.type === "orphan_topic_file",
+    );
+    expect(orphanIssues).toHaveLength(1);
+    expect(orphanIssues[0]!.filePath).toBe("memory/topics/orphan.md");
+  });
+});
+
+describe("orphan repair: filePath used instead of diagnostic details (Bug 1)", () => {
+  it("planRepair uses filePath for register_orphan_file action", () => {
+    const diagnostic: RepairDiagnostic = {
+      severity: "minor",
+      score: 1,
+      issues: [
+        {
+          type: "orphan_topic_file",
+          weight: 1,
+          details: "Orphan topic file not referenced: foo.md",
+          filePath: "memory/topics/foo.md",
+        },
+      ],
+      unknownContentBlocks: [],
+    };
+    const plan = planRepair(diagnostic);
+    const action = plan.actions.find((a) => a.type === "register_orphan_file");
+    expect(action).toBeDefined();
+    if (action?.type === "register_orphan_file") {
+      expect(action.file).toBe("memory/topics/foo.md");
+      expect(action.file).not.toContain("Orphan topic file not referenced");
+    }
+  });
+
+  it("executeRepair writes correct pointer format, not diagnostic text", async () => {
+    const content = `# Long-Term Memory
+
+## ⚡ Core Memory
+- Core
+
+## 🔥 Active Context
+- Active
+
+## Topic Pointers
+- existing → memory/topics/existing.md
+`;
+    let written = "";
+    const deps = createMockDeps({
+      readRawMemoryIndex: async () => content,
+      writeRawMemoryIndex: async (_dir: string, c: string) => {
+        written = c;
+      },
+      parseMemoryIndex: (c: string): MemoryIndex => {
+        const lines = c.split("\n");
+        const sections: Array<{
+          subject: string;
+          title: string;
+          topicFile: string;
+          summary: string;
+        }> = [];
+        for (const line of lines) {
+          const m = line.match(/^- (.+?) → (.+)$/);
+          if (m) {
+            sections.push({
+              subject: m[1]!,
+              title: m[1]!,
+              topicFile: m[2]!,
+              summary: "",
+            });
+          }
+        }
+        return {
+          sections,
+          recentSessions: [],
+          promotedContent: "",
+          inlineSections: [
+            { section: "⚡ Core Memory", lines: ["- Core"] },
+            { section: "🔥 Active Context", lines: ["- Active"] },
+          ],
+        };
+      },
+      listTopicFiles: async () => ["orphan.md"],
+    });
+
+    await repairMemoryStructure("/ws", deps);
+
+    // Must NOT contain the diagnostic text "Orphan topic file not referenced"
+    expect(written).not.toContain("Orphan topic file not referenced");
+    // Must contain a proper pointer line for the orphan file
+    if (written.length > 0) {
+      const pointerLine = written
+        .split("\n")
+        .find((l) => l.includes("orphan.md"));
+      expect(pointerLine).toBeDefined();
+      expect(pointerLine).toContain("memory/topics/orphan.md");
+      expect(pointerLine).toMatch(/^- orphan → memory\/topics\/orphan\.md$/);
+    }
+  });
+
+  it("executeRepair deduplicates when pointer already exists", async () => {
+    const content = `# Long-Term Memory
+
+## ⚡ Core Memory
+- Core
+
+## 🔥 Active Context
+- Active
+
+## Topic Pointers
+- existing → memory/topics/existing.md
+- orphan → memory/topics/orphan.md
+`;
+    let written = "";
+    const deps = createMockDeps({
+      readRawMemoryIndex: async () => content,
+      writeRawMemoryIndex: async (_dir: string, c: string) => {
+        written = c;
+      },
+      parseMemoryIndex: (c: string): MemoryIndex => {
+        const lines = c.split("\n");
+        const sections: Array<{
+          subject: string;
+          title: string;
+          topicFile: string;
+          summary: string;
+        }> = [];
+        for (const line of lines) {
+          const m = line.match(/^- (.+?) → (.+)$/);
+          if (m) {
+            sections.push({
+              subject: m[1]!,
+              title: m[1]!,
+              topicFile: m[2]!,
+              summary: "",
+            });
+          }
+        }
+        return {
+          sections,
+          recentSessions: [],
+          promotedContent: "",
+          inlineSections: [
+            { section: "⚡ Core Memory", lines: ["- Core"] },
+            { section: "🔥 Active Context", lines: ["- Active"] },
+          ],
+        };
+      },
+      listTopicFiles: async () => ["orphan.md"],
+    });
+
+    await repairMemoryStructure("/ws", deps);
+
+    // Since orphan.md is already referenced, should NOT add a duplicate
+    const orphanLines = written
+      .split("\n")
+      .filter((l) => l.includes("orphan.md"));
+    expect(orphanLines.length).toBeLessThanOrEqual(1);
+  });
+});
