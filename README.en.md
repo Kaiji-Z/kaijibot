@@ -55,13 +55,13 @@ You've done several complex Feishu knowledge base operations with KaijiBot — s
 
 > "I noticed you've been doing similar meeting minute archiving workflows recently. I wrote myself a skill — next time you say 'archive meetings', I'll execute the entire flow automatically."
 
-Or it quietly learns and casually mentions it days later.
+Or it spots a reusable pattern and tells you right away that it created a skill for itself.
 
 How it works:
 
 - **Hard Trigger Detection** — Code does one thing: detect 3+ tool calls in a conversation (noise filter). No LLM calls, no quality judgments.
 - **Agent-Driven Decision** — After detection, a system event is injected (with tool sequence and error info), triggering an Agent turn. The Agent has full conversation context and decides whether it's worth creating a skill. Not worth it? Ignored.
-- **No Cooldown, No Cap** — No code-level rate limits or complexity thresholds. The Agent sees recent suggestion history and decides frequency itself. If it feels frequent but genuinely worthwhile, it silently creates the skill and mentions it at a natural moment.
+- **No Cooldown, No Cap** — No code-level rate limits or complexity thresholds. The Agent sees recent suggestion history and decides frequency itself. Whatever the decision, the user is always notified.
 - **Full Lifecycle** — Dedup check before creation, usage frequency tracking after, 30-day auto-cleanup for unused skills.
 
 ### 🔄 Correction Self-Evolution — Never Makes the Same Mistake Twice

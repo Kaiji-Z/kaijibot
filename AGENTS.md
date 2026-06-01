@@ -116,7 +116,7 @@ Event Sources (timer / persona_change / info_scan)
 
 - `InsightCategory`: 6 categories — `domain_knowledge`, `behavioral_pattern`, `stated_preference`, `tool_config`, `contextual_fact`, `goal_or_aspiration`
 - `TypedInsight`: each insight carries `category`, `confidence`, `source` (explicit/inferred/observed), `evidenceCount`, `halfLifeDays` (category-aware), `firstObserved`, `lastReinforced`
-- `HALF_LIFE_BY_CATEGORY`: category-specific decay — behavioral_pattern (60d), domain_knowledge (90d), stated_preference (120d), goal_or_aspiration (120d), contextual_fact (45d), tool_config (180d)
+- `HALF_LIFE_BY_CATEGORY`: category-specific decay — tool_config (7d), contextual_fact (14d), domain_knowledge (30d), stated_preference (60d), behavioral_pattern (90d), goal_or_aspiration (90d)
 - `InterestPhase` lifecycle: emergent → stable → declining → dormant → revived, tracked via `computeInterestPhase()`
 - `mergeTypedInsights`: deduplication by semantic similarity + category merge with evidence accumulation
 - `getFilteredInsights`: filters out `tool_config` and `contextual_fact` from insight consumption (not useful for insight generation)
@@ -138,9 +138,8 @@ Agent turn completes (≥3 tool calls)
       → heartbeat-runner triggers agent turn
         → Agent sees signal with tool sequence + optional error info
         → Agent decides based on full conversation context:
-            Worth it → calls evaluate_skill_evolution → generateSkillDraftLLM → tells user or silently creates
+            Worth it → calls evaluate_skill_evolution → generateSkillDraftLLM → tells user what was created
             Not worth it → ignores signal
-            Wants to silently create → creates skill, mentions later at a natural moment
 ```
 
 **No code-level gating**: No complexity score threshold, no cooldown, no daily cap, no rate limit. The only code-level filter is ≥3 tool calls (noise reduction, not quality judgment). The Agent receives `recentSuggestions` (last 48h records with domain, skillName, hoursAgo, userResponse) as context and makes its own decision about frequency and worthiness.
