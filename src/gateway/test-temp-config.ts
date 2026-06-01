@@ -10,11 +10,13 @@ export async function withTempConfig(params: {
   prefix?: string;
 }): Promise<void> {
   const prevConfigPath = process.env.KAIJIBOT_CONFIG_PATH;
+  const prevStateDir = process.env.KAIJIBOT_STATE_DIR;
 
   const dir = await mkdtemp(path.join(os.tmpdir(), params.prefix ?? "kaijibot-test-config-"));
   const configPath = path.join(dir, "kaijibot.json");
 
   process.env.KAIJIBOT_CONFIG_PATH = configPath;
+  process.env.KAIJIBOT_STATE_DIR = path.join(dir, ".kaijibot");
 
   try {
     await writeFile(configPath, JSON.stringify(params.cfg, null, 2), "utf-8");
@@ -27,6 +29,11 @@ export async function withTempConfig(params: {
       delete process.env.KAIJIBOT_CONFIG_PATH;
     } else {
       process.env.KAIJIBOT_CONFIG_PATH = prevConfigPath;
+    }
+    if (prevStateDir === undefined) {
+      delete process.env.KAIJIBOT_STATE_DIR;
+    } else {
+      process.env.KAIJIBOT_STATE_DIR = prevStateDir;
     }
     clearConfigCache();
     resetConfigRuntimeState();

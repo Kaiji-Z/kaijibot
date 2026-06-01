@@ -119,6 +119,14 @@ function hasUnsyncedGatewayTestSessionConfig(): boolean {
 }
 
 async function persistTestSessionConfig(): Promise<void> {
+  // Safety guard: prevent writing to real ~/.kaijibot/ if env is misconfigured.
+  const stateDir = process.env.KAIJIBOT_STATE_DIR;
+  if (stateDir && !stateDir.startsWith(os.tmpdir())) {
+    throw new Error(
+      `[test-safety] persistTestSessionConfig: KAIJIBOT_STATE_DIR="${stateDir}" ` +
+        `does not point to a temp directory. Aborting to prevent real config overwrite.`,
+    );
+  }
   const configPaths = new Set<string>();
   if (process.env.KAIJIBOT_CONFIG_PATH) {
     configPaths.add(process.env.KAIJIBOT_CONFIG_PATH);

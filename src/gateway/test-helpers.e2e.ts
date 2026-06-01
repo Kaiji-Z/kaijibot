@@ -52,7 +52,7 @@ export async function connectGatewayClient(params: {
   const role = params.role ?? "operator";
   const scopes = params.scopes ?? (role === "node" ? [] : undefined);
   const platform = params.platform ?? process.platform;
-  const identityRoot = process.env.KAIJIBOT_STATE_DIR ?? process.env.HOME ?? os.tmpdir();
+  const identityRoot = process.env.KAIJIBOT_STATE_DIR ?? os.tmpdir();
   const deviceIdentity =
     params.deviceIdentity ??
     loadOrCreateDeviceIdentity(
