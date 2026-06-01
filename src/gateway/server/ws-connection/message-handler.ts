@@ -893,10 +893,7 @@ export function attachGatewayWsMessageHandler(params: {
               publicKey: devicePublicKey,
               ...clientPairingMetadata,
               ...(bootstrapPairingRoles ? { roles: bootstrapPairingRoles } : {}),
-              silent:
-                reason === "scope-upgrade"
-                  ? false
-                  : allowSilentLocalPairing || allowSilentBootstrapPairing,
+              silent: allowSilentLocalPairing || allowSilentBootstrapPairing,
             });
             const context = buildRequestContext();
             let approved: Awaited<ReturnType<typeof approveDevicePairing>> | undefined;

@@ -619,8 +619,8 @@ export function registerControlUiAndPairingSuite(): void {
     }
   });
 
-  test("auto-approves local-direct operator pairing despite a remote-looking host header", async () => {
-    const { getPairedDevice, listDevicePairing } = await import("../infra/device-pairing.js");
+  test("auto-approves local-direct operator pairing and scope-upgrade despite a remote-looking host header", async () => {
+    const { getPairedDevice } = await import("../infra/device-pairing.js");
     const { server, ws, port, prevToken, identityPath, identity, client } =
       await startServerWithOperatorIdentity();
     ws.close();
@@ -639,11 +639,6 @@ export function registerControlUiAndPairingSuite(): void {
       }),
     });
     expect(initial.ok).toBe(true);
-    let pairing = await listDevicePairing();
-    const pendingAfterRead = pairing.pending.filter(
-      (entry) => entry.deviceId === identity.deviceId,
-    );
-    expect(pendingAfterRead).toHaveLength(0);
     expect(await getPairedDevice(identity.deviceId)).toBeTruthy();
     wsRemoteRead.close();
 
@@ -660,22 +655,18 @@ export function registerControlUiAndPairingSuite(): void {
         nonce: nonce2,
       }),
     });
-    expect(res.ok).toBe(false);
-    expect(res.error?.message ?? "").toContain("pairing required");
-    pairing = await listDevicePairing();
-    const pendingAfterAdmin = pairing.pending.filter(
-      (entry) => entry.deviceId === identity.deviceId,
+    expect(res.ok).toBe(true);
+    const upgraded = await getPairedDevice(identity.deviceId);
+    expect(upgraded?.approvedScopes ?? []).toEqual(
+      expect.arrayContaining(["operator.read", "operator.admin"]),
     );
-    expect(pendingAfterAdmin).toHaveLength(1);
-    expect(pendingAfterAdmin[0]?.scopes ?? []).toEqual(expect.arrayContaining(["operator.admin"]));
-    expect(await getPairedDevice(identity.deviceId)).toBeTruthy();
     ws2.close();
     await server.close();
     restoreGatewayToken(prevToken);
   });
 
-  test("requires approval for loopback scope upgrades for control ui clients", async () => {
-    const { getPairedDevice, listDevicePairing } = await import("../infra/device-pairing.js");
+  test("auto-approves loopback scope upgrades for control ui clients", async () => {
+    const { getPairedDevice } = await import("../infra/device-pairing.js");
     const { server, ws, port, prevToken } = await startControlUiServerWithClient("secret");
     const { identity, identityPath } = await seedApprovedOperatorReadPairing({
       identityPrefix: "kaijibot-device-token-scope-",
@@ -700,14 +691,11 @@ export function registerControlUiAndPairingSuite(): void {
         nonce: nonce2,
       }),
     });
-    expect(upgraded.ok).toBe(false);
-    expect(upgraded.error?.message ?? "").toContain("pairing required");
-    const pending = await listDevicePairing();
-    const pendingUpgrade = pending.pending.filter((entry) => entry.deviceId === identity.deviceId);
-    expect(pendingUpgrade).toHaveLength(1);
-    expect(pendingUpgrade[0]?.scopes ?? []).toEqual(expect.arrayContaining(["operator.admin"]));
+    expect(upgraded.ok).toBe(true);
     const updated = await getPairedDevice(identity.deviceId);
-    expect(updated?.tokens?.operator?.scopes ?? []).not.toContain("operator.admin");
+    expect(updated?.approvedScopes ?? []).toEqual(
+      expect.arrayContaining(["operator.read", "operator.admin"]),
+    );
 
     ws2.close();
     await server.close();
@@ -1064,8 +1052,8 @@ export function registerControlUiAndPairingSuite(): void {
     }
   });
 
-  test("auto-approves local-direct node pairing, then queues operator scope approval", async () => {
-    const { getPairedDevice, listDevicePairing } = await import("../infra/device-pairing.js");
+  test("auto-approves local-direct node pairing, then auto-approves operator scope upgrade", async () => {
+    const { getPairedDevice } = await import("../infra/device-pairing.js");
     const { server, ws, port, prevToken } = await startControlUiServerWithClient("secret");
     ws.close();
     const { identityPath, identity, client } =
@@ -1104,17 +1092,7 @@ export function registerControlUiAndPairingSuite(): void {
     expect(nodeConnect.ok).toBe(true);
 
     const operatorConnect = await connectWithNonce("operator", ["operator.read", "operator.write"]);
-    expect(operatorConnect.ok).toBe(false);
-    expect(operatorConnect.error?.message ?? "").toContain("pairing required");
-
-    const pending = await listDevicePairing();
-    const pendingForTestDevice = pending.pending.filter(
-      (entry) => entry.deviceId === identity.deviceId,
-    );
-    expect(pendingForTestDevice).toHaveLength(1);
-    expect(pendingForTestDevice[0]?.scopes ?? []).toEqual(
-      expect.arrayContaining(["operator.read", "operator.write"]),
-    );
+    expect(operatorConnect.ok).toBe(true);
 
     const paired = await getPairedDevice(identity.deviceId);
     expect(paired?.roles).toEqual(expect.arrayContaining(["node", "operator"]));
@@ -1234,8 +1212,8 @@ export function registerControlUiAndPairingSuite(): void {
     }
   });
 
-  test("requires approval for local scope upgrades even when paired metadata is legacy-shaped", async () => {
-    const { getPairedDevice, listDevicePairing } = await import("../infra/device-pairing.js");
+  test("auto-approves local scope upgrades even when paired metadata is legacy-shaped", async () => {
+    const { getPairedDevice } = await import("../infra/device-pairing.js");
     const { identity, identityPath } = await seedApprovedOperatorReadPairing({
       identityPrefix: "kaijibot-device-legacy-",
       clientId: TEST_OPERATOR_CLIENT.id,
@@ -1267,18 +1245,14 @@ export function registerControlUiAndPairingSuite(): void {
           nonce: upgradeNonce,
         }),
       });
-      expect(upgraded.ok).toBe(false);
-      expect(upgraded.error?.message ?? "").toContain("pairing required");
+      expect(upgraded.ok).toBe(true);
       wsUpgrade.close();
 
-      const pendingUpgrade = (await listDevicePairing()).pending.find(
-        (entry) => entry.deviceId === identity.deviceId,
-      );
-      expect(pendingUpgrade).toBeTruthy();
-      expect(pendingUpgrade?.scopes ?? []).toEqual(expect.arrayContaining(["operator.admin"]));
       const repaired = await getPairedDevice(identity.deviceId);
       expect(repaired?.role).toBe("operator");
-      expect(repaired?.approvedScopes ?? []).toEqual(expect.arrayContaining(["operator.read"]));
+      expect(repaired?.approvedScopes ?? []).toEqual(
+        expect.arrayContaining(["operator.read", "operator.admin"]),
+      );
     } finally {
       ws.close();
       ws2?.close();

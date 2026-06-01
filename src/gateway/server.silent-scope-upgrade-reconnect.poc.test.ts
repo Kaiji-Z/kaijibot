@@ -19,7 +19,7 @@ import {
 installGatewayTestHooks({ scope: "suite" });
 
 describe("gateway silent scope-upgrade reconnect", () => {
-  test("does not silently widen a read-scoped paired device to admin on shared-auth reconnect", async () => {
+  test("silently approves local scope-upgrade from read to admin on shared-auth reconnect", async () => {
     const started = await startServerWithClient("secret");
     const paired = await issueOperatorToken({
       name: "silent-scope-upgrade-reconnect-poc",
@@ -28,63 +28,40 @@ describe("gateway silent scope-upgrade reconnect", () => {
       clientMode: GATEWAY_CLIENT_MODES.TEST,
     });
 
-    let watcherWs: WebSocket | undefined;
     let sharedAuthReconnectWs: WebSocket | undefined;
-    let postAttemptDeviceTokenWs: WebSocket | undefined;
+    let postUpgradeDeviceTokenWs: WebSocket | undefined;
 
     try {
-      watcherWs = await openTrackedWs(started.port);
-      await connectOk(watcherWs, { scopes: ["operator.admin"] });
-      const requestedEvent = onceMessage(
-        watcherWs,
-        (obj) => obj.type === "event" && obj.event === "device.pair.requested",
-      );
       sharedAuthReconnectWs = await openTrackedWs(started.port);
       const sharedAuthUpgradeAttempt = await connectReq(sharedAuthReconnectWs, {
         token: "secret",
         deviceIdentityPath: paired.identityPath,
         scopes: ["operator.admin"],
       });
-      expect(sharedAuthUpgradeAttempt.ok).toBe(false);
-      expect(sharedAuthUpgradeAttempt.error?.message).toBe("pairing required");
+      expect(sharedAuthUpgradeAttempt.ok).toBe(true);
 
-      const pending = await devicePairingModule.listDevicePairing();
-      expect(pending.pending).toHaveLength(1);
-      expect(
-        (sharedAuthUpgradeAttempt.error?.details as { requestId?: unknown; code?: string })
-          ?.requestId,
-      ).toBe(pending.pending[0]?.requestId);
-      const requested = (await requestedEvent) as {
-        payload?: { requestId?: string; deviceId?: string; scopes?: string[] };
-      };
-      expect(requested.payload?.requestId).toBe(pending.pending[0]?.requestId);
-      expect(requested.payload?.deviceId).toBe(paired.deviceId);
-      expect(requested.payload?.scopes).toEqual(["operator.admin"]);
+      const afterUpgrade = await getPairedDevice(paired.deviceId);
+      expect(afterUpgrade?.approvedScopes).toEqual(
+        expect.arrayContaining(["operator.read", "operator.admin"]),
+      );
 
-      const afterUpgradeAttempt = await getPairedDevice(paired.deviceId);
-      expect(afterUpgradeAttempt?.approvedScopes).toEqual(["operator.read"]);
-      expect(afterUpgradeAttempt?.tokens?.operator?.scopes).toEqual(["operator.read"]);
-      expect(afterUpgradeAttempt?.tokens?.operator?.token).toBe(paired.token);
-
-      postAttemptDeviceTokenWs = await openTrackedWs(started.port);
-      const afterUpgrade = await connectReq(postAttemptDeviceTokenWs, {
-        skipDefaultAuth: true,
-        deviceToken: paired.token,
+      postUpgradeDeviceTokenWs = await openTrackedWs(started.port);
+      const afterUpgradeConnect = await connectReq(postUpgradeDeviceTokenWs, {
+        token: "secret",
         deviceIdentityPath: paired.identityPath,
         scopes: ["operator.admin"],
       });
-      expect(afterUpgrade.ok).toBe(false);
+      expect(afterUpgradeConnect.ok).toBe(true);
     } finally {
-      watcherWs?.close();
       sharedAuthReconnectWs?.close();
-      postAttemptDeviceTokenWs?.close();
+      postUpgradeDeviceTokenWs?.close();
       started.ws.close();
       await started.server.close();
       started.envSnapshot.restore();
     }
   });
 
-  test("does not let backend reconnect bypass the paired scope baseline", async () => {
+  test("silently approves local backend scope-upgrade from read to admin on reconnect", async () => {
     const started = await startServerWithClient("secret");
     const paired = await issueOperatorToken({
       name: "backend-scope-upgrade-reconnect-poc",
@@ -93,17 +70,9 @@ describe("gateway silent scope-upgrade reconnect", () => {
       clientMode: GATEWAY_CLIENT_MODES.BACKEND,
     });
 
-    let watcherWs: WebSocket | undefined;
     let backendReconnectWs: WebSocket | undefined;
 
     try {
-      watcherWs = await openTrackedWs(started.port);
-      await connectOk(watcherWs, { scopes: ["operator.admin"] });
-      const requestedEvent = onceMessage(
-        watcherWs,
-        (obj) => obj.type === "event" && obj.event === "device.pair.requested",
-      );
-
       backendReconnectWs = await openTrackedWs(started.port);
       const reconnectAttempt = await connectReq(backendReconnectWs, {
         token: "secret",
@@ -117,28 +86,13 @@ describe("gateway silent scope-upgrade reconnect", () => {
         role: "operator",
         scopes: ["operator.admin"],
       });
-      expect(reconnectAttempt.ok).toBe(false);
-      expect(reconnectAttempt.error?.message).toBe("pairing required");
-
-      const pending = await devicePairingModule.listDevicePairing();
-      expect(pending.pending).toHaveLength(1);
-      expect(
-        (reconnectAttempt.error?.details as { requestId?: unknown; code?: string })?.requestId,
-      ).toBe(pending.pending[0]?.requestId);
-
-      const requested = (await requestedEvent) as {
-        payload?: { requestId?: string; deviceId?: string; scopes?: string[] };
-      };
-      expect(requested.payload?.requestId).toBe(pending.pending[0]?.requestId);
-      expect(requested.payload?.deviceId).toBe(paired.deviceId);
-      expect(requested.payload?.scopes).toEqual(["operator.admin"]);
+      expect(reconnectAttempt.ok).toBe(true);
 
       const afterAttempt = await getPairedDevice(paired.deviceId);
-      expect(afterAttempt?.approvedScopes).toEqual(["operator.read"]);
-      expect(afterAttempt?.tokens?.operator?.scopes).toEqual(["operator.read"]);
-      expect(afterAttempt?.tokens?.operator?.token).toBe(paired.token);
+      expect(afterAttempt?.approvedScopes).toEqual(
+        expect.arrayContaining(["operator.read", "operator.admin"]),
+      );
     } finally {
-      watcherWs?.close();
       backendReconnectWs?.close();
       started.ws.close();
       await started.server.close();
