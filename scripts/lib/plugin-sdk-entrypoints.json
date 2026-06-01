@@ -219,5 +219,18 @@
   "webhook-request-guards",
   "webhook-path",
   "web-media",
-  "zod"
+  "zod",
+  "agent-harness-runtime",
+  "channel-ingress-runtime",
+  "channel-mention-gating",
+  "channel-message",
+  "config-contracts",
+  "config-mutation",
+  "config-types",
+  "gateway-method-runtime",
+  "media-store",
+  "plugin-config-runtime",
+  "skills-runtime",
+  "string-coerce-runtime",
+  "text-utility-runtime"
 ]

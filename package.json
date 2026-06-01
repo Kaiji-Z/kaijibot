@@ -964,6 +964,58 @@
       "types": "./dist/plugin-sdk/zod.d.ts",
       "default": "./dist/plugin-sdk/zod.js"
     },
+    "./plugin-sdk/agent-harness-runtime": {
+      "types": "./dist/plugin-sdk/agent-harness-runtime.d.ts",
+      "default": "./dist/plugin-sdk/agent-harness-runtime.js"
+    },
+    "./plugin-sdk/channel-ingress-runtime": {
+      "types": "./dist/plugin-sdk/channel-ingress-runtime.d.ts",
+      "default": "./dist/plugin-sdk/channel-ingress-runtime.js"
+    },
+    "./plugin-sdk/channel-mention-gating": {
+      "types": "./dist/plugin-sdk/channel-mention-gating.d.ts",
+      "default": "./dist/plugin-sdk/channel-mention-gating.js"
+    },
+    "./plugin-sdk/channel-message": {
+      "types": "./dist/plugin-sdk/channel-message.d.ts",
+      "default": "./dist/plugin-sdk/channel-message.js"
+    },
+    "./plugin-sdk/config-contracts": {
+      "types": "./dist/plugin-sdk/config-contracts.d.ts",
+      "default": "./dist/plugin-sdk/config-contracts.js"
+    },
+    "./plugin-sdk/config-mutation": {
+      "types": "./dist/plugin-sdk/config-mutation.d.ts",
+      "default": "./dist/plugin-sdk/config-mutation.js"
+    },
+    "./plugin-sdk/config-types": {
+      "types": "./dist/plugin-sdk/config-types.d.ts",
+      "default": "./dist/plugin-sdk/config-types.js"
+    },
+    "./plugin-sdk/gateway-method-runtime": {
+      "types": "./dist/plugin-sdk/gateway-method-runtime.d.ts",
+      "default": "./dist/plugin-sdk/gateway-method-runtime.js"
+    },
+    "./plugin-sdk/media-store": {
+      "types": "./dist/plugin-sdk/media-store.d.ts",
+      "default": "./dist/plugin-sdk/media-store.js"
+    },
+    "./plugin-sdk/plugin-config-runtime": {
+      "types": "./dist/plugin-sdk/plugin-config-runtime.d.ts",
+      "default": "./dist/plugin-sdk/plugin-config-runtime.js"
+    },
+    "./plugin-sdk/skills-runtime": {
+      "types": "./dist/plugin-sdk/skills-runtime.d.ts",
+      "default": "./dist/plugin-sdk/skills-runtime.js"
+    },
+    "./plugin-sdk/string-coerce-runtime": {
+      "types": "./dist/plugin-sdk/string-coerce-runtime.d.ts",
+      "default": "./dist/plugin-sdk/string-coerce-runtime.js"
+    },
+    "./plugin-sdk/text-utility-runtime": {
+      "types": "./dist/plugin-sdk/text-utility-runtime.d.ts",
+      "default": "./dist/plugin-sdk/text-utility-runtime.js"
+    },
     "./extension-api": "./dist/extensionAPI.js",
     "./cli-entry": "./kaijibot.mjs"
   },
