@@ -2,69 +2,69 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { isChannelSurfaceTestFile } from "../vitest.channel-paths.mjs";
+import { isChannelSurfaceTestFile } from "../vitest/vitest.channel-paths.mjs";
 import {
   isCommandsLightTarget,
   resolveCommandsLightIncludePattern,
-} from "../vitest.commands-light-paths.mjs";
-import { isAcpxExtensionRoot } from "../vitest.extension-acpx-paths.mjs";
-import { isDiffsExtensionRoot } from "../vitest.extension-diffs-paths.mjs";
-import { isFeishuExtensionRoot } from "../vitest.extension-feishu-paths.mjs";
-import { isMemoryExtensionRoot } from "../vitest.extension-memory-paths.mjs";
-import { isMessagingExtensionRoot } from "../vitest.extension-messaging-paths.mjs";
-import { isProviderExtensionRoot } from "../vitest.extension-provider-paths.mjs";
+} from "../vitest/vitest.commands-light-paths.mjs";
+import { isAcpxExtensionRoot } from "../vitest/vitest.extension-acpx-paths.mjs";
+import { isDiffsExtensionRoot } from "../vitest/vitest.extension-diffs-paths.mjs";
+import { isFeishuExtensionRoot } from "../vitest/vitest.extension-feishu-paths.mjs";
+import { isMemoryExtensionRoot } from "../vitest/vitest.extension-memory-paths.mjs";
+import { isMessagingExtensionRoot } from "../vitest/vitest.extension-messaging-paths.mjs";
+import { isProviderExtensionRoot } from "../vitest/vitest.extension-provider-paths.mjs";
 import {
   isPluginSdkLightTarget,
   resolvePluginSdkLightIncludePattern,
-} from "../vitest.plugin-sdk-paths.mjs";
-import { fullSuiteVitestShards } from "../vitest.test-shards.mjs";
-import { resolveUnitFastTestIncludePattern } from "../vitest.unit-fast-paths.mjs";
-import { isBoundaryTestFile, isBundledPluginDependentUnitTestFile } from "../vitest.unit-paths.mjs";
+} from "../vitest/vitest.plugin-sdk-paths.mjs";
+import { fullSuiteVitestShards } from "../vitest/vitest.test-shards.mjs";
+import { resolveUnitFastTestIncludePattern } from "../vitest/vitest.unit-fast-paths.mjs";
+import { isBoundaryTestFile, isBundledPluginDependentUnitTestFile } from "../vitest/vitest.unit-paths.mjs";
 import { resolveVitestCliEntry, resolveVitestNodeArgs } from "./run-vitest.mjs";
 
-const DEFAULT_VITEST_CONFIG = "vitest.unit.config.ts";
-const AGENTS_VITEST_CONFIG = "vitest.agents.config.ts";
-const ACP_VITEST_CONFIG = "vitest.acp.config.ts";
-const AUTO_REPLY_VITEST_CONFIG = "vitest.auto-reply.config.ts";
-const BOUNDARY_VITEST_CONFIG = "vitest.boundary.config.ts";
-const BUNDLED_VITEST_CONFIG = "vitest.bundled.config.ts";
-const CHANNEL_VITEST_CONFIG = "vitest.channels.config.ts";
-const CLI_VITEST_CONFIG = "vitest.cli.config.ts";
-const COMMANDS_LIGHT_VITEST_CONFIG = "vitest.commands-light.config.ts";
-const COMMANDS_VITEST_CONFIG = "vitest.commands.config.ts";
-const CONTRACTS_VITEST_CONFIG = "vitest.contracts.config.ts";
-const CRON_VITEST_CONFIG = "vitest.cron.config.ts";
-const DAEMON_VITEST_CONFIG = "vitest.daemon.config.ts";
-const E2E_VITEST_CONFIG = "vitest.e2e.config.ts";
-const EXTENSION_ACPX_VITEST_CONFIG = "vitest.extension-acpx.config.ts";
-const EXTENSION_CHANNELS_VITEST_CONFIG = "vitest.extension-channels.config.ts";
-const EXTENSION_DIFFS_VITEST_CONFIG = "vitest.extension-diffs.config.ts";
-const EXTENSION_FEISHU_VITEST_CONFIG = "vitest.extension-feishu.config.ts";
-const EXTENSION_MEMORY_VITEST_CONFIG = "vitest.extension-memory.config.ts";
-const EXTENSION_MESSAGING_VITEST_CONFIG = "vitest.extension-messaging.config.ts";
-const EXTENSION_PROVIDERS_VITEST_CONFIG = "vitest.extension-providers.config.ts";
-const EXTENSIONS_VITEST_CONFIG = "vitest.extensions.config.ts";
-const FULL_EXTENSIONS_VITEST_CONFIG = "vitest.full-extensions.config.ts";
-const GATEWAY_VITEST_CONFIG = "vitest.gateway.config.ts";
-const HOOKS_VITEST_CONFIG = "vitest.hooks.config.ts";
-const INFRA_VITEST_CONFIG = "vitest.infra.config.ts";
-const MEDIA_VITEST_CONFIG = "vitest.media.config.ts";
-const MEDIA_UNDERSTANDING_VITEST_CONFIG = "vitest.media-understanding.config.ts";
-const LOGGING_VITEST_CONFIG = "vitest.logging.config.ts";
-const PLUGIN_SDK_LIGHT_VITEST_CONFIG = "vitest.plugin-sdk-light.config.ts";
-const PLUGIN_SDK_VITEST_CONFIG = "vitest.plugin-sdk.config.ts";
-const PLUGINS_VITEST_CONFIG = "vitest.plugins.config.ts";
-const UNIT_FAST_VITEST_CONFIG = "vitest.unit-fast.config.ts";
-const PROCESS_VITEST_CONFIG = "vitest.process.config.ts";
-const RUNTIME_CONFIG_VITEST_CONFIG = "vitest.runtime-config.config.ts";
-const SECRETS_VITEST_CONFIG = "vitest.secrets.config.ts";
-const SHARED_CORE_VITEST_CONFIG = "vitest.shared-core.config.ts";
-const TASKS_VITEST_CONFIG = "vitest.tasks.config.ts";
-const TOOLING_VITEST_CONFIG = "vitest.tooling.config.ts";
-const TUI_VITEST_CONFIG = "vitest.tui.config.ts";
-const UI_VITEST_CONFIG = "vitest.ui.config.ts";
-const UTILS_VITEST_CONFIG = "vitest.utils.config.ts";
-const WIZARD_VITEST_CONFIG = "vitest.wizard.config.ts";
+const DEFAULT_VITEST_CONFIG = "vitest/vitest.unit.config.ts";
+const AGENTS_VITEST_CONFIG = "vitest/vitest.agents.config.ts";
+const ACP_VITEST_CONFIG = "vitest/vitest.acp.config.ts";
+const AUTO_REPLY_VITEST_CONFIG = "vitest/vitest.auto-reply.config.ts";
+const BOUNDARY_VITEST_CONFIG = "vitest/vitest.boundary.config.ts";
+const BUNDLED_VITEST_CONFIG = "vitest/vitest.bundled.config.ts";
+const CHANNEL_VITEST_CONFIG = "vitest/vitest.channels.config.ts";
+const CLI_VITEST_CONFIG = "vitest/vitest.cli.config.ts";
+const COMMANDS_LIGHT_VITEST_CONFIG = "vitest/vitest.commands-light.config.ts";
+const COMMANDS_VITEST_CONFIG = "vitest/vitest.commands.config.ts";
+const CONTRACTS_VITEST_CONFIG = "vitest/vitest.contracts.config.ts";
+const CRON_VITEST_CONFIG = "vitest/vitest.cron.config.ts";
+const DAEMON_VITEST_CONFIG = "vitest/vitest.daemon.config.ts";
+const E2E_VITEST_CONFIG = "vitest/vitest.e2e.config.ts";
+const EXTENSION_ACPX_VITEST_CONFIG = "vitest/vitest.extension-acpx.config.ts";
+const EXTENSION_CHANNELS_VITEST_CONFIG = "vitest/vitest.extension-channels.config.ts";
+const EXTENSION_DIFFS_VITEST_CONFIG = "vitest/vitest.extension-diffs.config.ts";
+const EXTENSION_FEISHU_VITEST_CONFIG = "vitest/vitest.extension-feishu.config.ts";
+const EXTENSION_MEMORY_VITEST_CONFIG = "vitest/vitest.extension-memory.config.ts";
+const EXTENSION_MESSAGING_VITEST_CONFIG = "vitest/vitest.extension-messaging.config.ts";
+const EXTENSION_PROVIDERS_VITEST_CONFIG = "vitest/vitest.extension-providers.config.ts";
+const EXTENSIONS_VITEST_CONFIG = "vitest/vitest.extensions.config.ts";
+const FULL_EXTENSIONS_VITEST_CONFIG = "vitest/vitest.full-extensions.config.ts";
+const GATEWAY_VITEST_CONFIG = "vitest/vitest.gateway.config.ts";
+const HOOKS_VITEST_CONFIG = "vitest/vitest.hooks.config.ts";
+const INFRA_VITEST_CONFIG = "vitest/vitest.infra.config.ts";
+const MEDIA_VITEST_CONFIG = "vitest/vitest.media.config.ts";
+const MEDIA_UNDERSTANDING_VITEST_CONFIG = "vitest/vitest.media-understanding.config.ts";
+const LOGGING_VITEST_CONFIG = "vitest/vitest.logging.config.ts";
+const PLUGIN_SDK_LIGHT_VITEST_CONFIG = "vitest/vitest.plugin-sdk-light.config.ts";
+const PLUGIN_SDK_VITEST_CONFIG = "vitest/vitest.plugin-sdk.config.ts";
+const PLUGINS_VITEST_CONFIG = "vitest/vitest.plugins.config.ts";
+const UNIT_FAST_VITEST_CONFIG = "vitest/vitest.unit-fast.config.ts";
+const PROCESS_VITEST_CONFIG = "vitest/vitest.process.config.ts";
+const RUNTIME_CONFIG_VITEST_CONFIG = "vitest/vitest.runtime-config.config.ts";
+const SECRETS_VITEST_CONFIG = "vitest/vitest.secrets.config.ts";
+const SHARED_CORE_VITEST_CONFIG = "vitest/vitest.shared-core.config.ts";
+const TASKS_VITEST_CONFIG = "vitest/vitest.tasks.config.ts";
+const TOOLING_VITEST_CONFIG = "vitest/vitest.tooling.config.ts";
+const TUI_VITEST_CONFIG = "vitest/vitest.tui.config.ts";
+const UI_VITEST_CONFIG = "vitest/vitest.ui.config.ts";
+const UTILS_VITEST_CONFIG = "vitest/vitest.utils.config.ts";
+const WIZARD_VITEST_CONFIG = "vitest/vitest.wizard.config.ts";
 const INCLUDE_FILE_ENV_KEY = "KAIJIBOT_VITEST_INCLUDE_FILE";
 const CHANGED_ARGS_PATTERN = /^--changed(?:=(.+))?$/u;
 const VITEST_CONFIG_BY_KIND = {
@@ -114,7 +114,8 @@ const BROAD_CHANGED_RERUN_PATTERNS = [
   /^package\.json$/u,
   /^pnpm-lock\.yaml$/u,
   /^test\/setup(?:\.shared|\.extensions|-kaijibot-runtime)?\.ts$/u,
-  /^vitest(?:\..+)?\.(?:config\.ts|paths\.mjs)$/u,
+  /^vitest\.config\.ts$/u,
+  /^vitest\/vitest(?:\..+)?\.(?:config\.ts|paths\.mjs)$/u,
   /^scripts\/run-vitest\.mjs$/u,
   /^scripts\/test-projects(?:\.test-support)?\.mjs$/u,
 ];

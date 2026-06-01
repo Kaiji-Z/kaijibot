@@ -28,7 +28,7 @@ if (process.argv.slice(2).includes("--help")) {
 }
 
 const opts = parseVitestReportArgs(process.argv.slice(2), {
-  config: "vitest.unit.config.ts",
+  config: "vitest/vitest.unit.config.ts",
   limit: 20,
 });
 const report = loadVitestReportFromArgs(opts, "kaijibot-vitest-hotspots");

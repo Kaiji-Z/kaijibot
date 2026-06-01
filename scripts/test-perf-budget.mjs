@@ -6,7 +6,7 @@ function parseArgs(argv) {
   return parseFlagArgs(
     argv,
     {
-      config: "vitest.unit.config.ts",
+      config: "vitest/vitest.unit.config.ts",
       maxWallMs: readEnvNumber("KAIJIBOT_TEST_PERF_MAX_WALL_MS"),
       baselineWallMs: readEnvNumber("KAIJIBOT_TEST_PERF_BASELINE_WALL_MS"),
       maxRegressionPct: readEnvNumber("KAIJIBOT_TEST_PERF_MAX_REGRESSION_PCT") ?? 10,

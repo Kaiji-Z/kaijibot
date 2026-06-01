@@ -1344,14 +1344,14 @@ otherwise. If it fails, there are new candidates not yet in the baseline.
 4. For false positives: run the interactive audit and mark them as false:
 
    ```bash
-   detect-secrets audit .secrets.baseline
+   detect-secrets audit config/secrets.baseline
    ```
 
-5. If you need new excludes, add them to `.detect-secrets.cfg` and regenerate the
+5. If you need new excludes, add them to `config/detect-secrets.cfg` and regenerate the
    baseline with matching `--exclude-files` / `--exclude-lines` flags (the config
-   file is reference-only; detect-secrets doesn’t read it automatically).
+   file is reference-only; detect-secrets doesn't read it automatically).
 
-Commit the updated `.secrets.baseline` once it reflects the intended state.
+Commit the updated `config/secrets.baseline` once it reflects the intended state.
 
 ## Reporting Security Issues
 

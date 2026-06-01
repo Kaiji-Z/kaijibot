@@ -5,7 +5,7 @@ import baseConfig, {
   resolveLocalVitestMaxWorkers,
   resolveLocalVitestScheduling,
 } from "../../vitest.config.ts";
-import { parseVitestProcessStats } from "../../vitest.system-load.ts";
+import { parseVitestProcessStats } from "../../vitest/vitest.system-load.ts";
 
 describe("resolveLocalVitestMaxWorkers", () => {
   it("uses a moderate local worker cap on larger hosts", () => {
@@ -224,18 +224,18 @@ describe("test scripts", () => {
       "KAIJIBOT_VITEST_MAX_WORKERS=1 node scripts/run-vitest.mjs run --config vitest.config.ts",
     );
     expect(pkg.scripts?.["test:fast"]).toBe(
-      "node scripts/run-vitest.mjs run --config vitest.unit.config.ts",
+      "node scripts/run-vitest.mjs run --config vitest/vitest.unit.config.ts",
     );
     expect(pkg.scripts?.["test:unit"]).toBe(
-      "pnpm test:unit:fast && node scripts/run-vitest.mjs run --config vitest.unit.config.ts",
+      "pnpm test:unit:fast && node scripts/run-vitest.mjs run --config vitest/vitest.unit.config.ts",
     );
     expect(pkg.scripts?.["test:unit:fast"]).toBe(
-      "node scripts/run-vitest.mjs run --config vitest.unit-fast.config.ts",
+      "node scripts/run-vitest.mjs run --config vitest/vitest.unit-fast.config.ts",
     );
     expect(pkg.scripts?.["test:unit:fast:audit"]).toBe("node scripts/test-unit-fast-audit.mjs");
     expect(pkg.scripts?.["test"]).toBe("node scripts/test-projects.mjs");
     expect(pkg.scripts?.["test:gateway"]).toBe(
-      "node scripts/run-vitest.mjs run --config vitest.gateway.config.ts",
+      "node scripts/run-vitest.mjs run --config vitest/vitest.gateway.config.ts",
     );
     expect(pkg.scripts?.["test:single"]).toBeUndefined();
   });

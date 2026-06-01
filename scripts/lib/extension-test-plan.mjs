@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { channelTestRoots } from "../../vitest.channel-paths.mjs";
-import { isAcpxExtensionRoot } from "../../vitest.extension-acpx-paths.mjs";
-import { isDiffsExtensionRoot } from "../../vitest.extension-diffs-paths.mjs";
-import { isFeishuExtensionRoot } from "../../vitest.extension-feishu-paths.mjs";
-import { isMemoryExtensionRoot } from "../../vitest.extension-memory-paths.mjs";
-import { isMessagingExtensionRoot } from "../../vitest.extension-messaging-paths.mjs";
-import { isProviderExtensionRoot } from "../../vitest.extension-provider-paths.mjs";
+import { channelTestRoots } from "../../vitest/vitest.channel-paths.mjs";
+import { isAcpxExtensionRoot } from "../../vitest/vitest.extension-acpx-paths.mjs";
+import { isDiffsExtensionRoot } from "../../vitest/vitest.extension-diffs-paths.mjs";
+import { isFeishuExtensionRoot } from "../../vitest/vitest.extension-feishu-paths.mjs";
+import { isMemoryExtensionRoot } from "../../vitest/vitest.extension-memory-paths.mjs";
+import { isMessagingExtensionRoot } from "../../vitest/vitest.extension-messaging-paths.mjs";
+import { isProviderExtensionRoot } from "../../vitest/vitest.extension-provider-paths.mjs";
 import { BUNDLED_PLUGIN_PATH_PREFIX, BUNDLED_PLUGIN_ROOT_DIR } from "./bundled-plugin-paths.mjs";
 import { listAvailableExtensionIds } from "./changed-extensions.mjs";
 
@@ -98,20 +98,20 @@ export function resolveExtensionTestPlan(params = {}) {
   const usesMessagingConfig = roots.some((root) => isMessagingExtensionRoot(root));
   const usesProviderConfig = roots.some((root) => isProviderExtensionRoot(root));
   const config = usesChannelConfig
-    ? "vitest.extension-channels.config.ts"
+    ? "vitest/vitest.extension-channels.config.ts"
     : usesAcpxConfig
-      ? "vitest.extension-acpx.config.ts"
+      ? "vitest/vitest.extension-acpx.config.ts"
       : usesDiffsConfig
-        ? "vitest.extension-diffs.config.ts"
+        ? "vitest/vitest.extension-diffs.config.ts"
         : usesFeishuConfig
-          ? "vitest.extension-feishu.config.ts"
+          ? "vitest/vitest.extension-feishu.config.ts"
           : usesMemoryConfig
-            ? "vitest.extension-memory.config.ts"
+            ? "vitest/vitest.extension-memory.config.ts"
             : usesMessagingConfig
-              ? "vitest.extension-messaging.config.ts"
+              ? "vitest/vitest.extension-messaging.config.ts"
               : usesProviderConfig
-                ? "vitest.extension-providers.config.ts"
-                : "vitest.extensions.config.ts";
+                ? "vitest/vitest.extension-providers.config.ts"
+                : "vitest/vitest.extensions.config.ts";
   const testFileCount = roots.reduce(
     (sum, root) => sum + countTestFiles(path.join(repoRoot, root)),
     0,

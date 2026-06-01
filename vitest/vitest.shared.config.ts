@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { pluginSdkSubpaths } from "./scripts/lib/plugin-sdk-entries.mjs";
+import { pluginSdkSubpaths } from "../scripts/lib/plugin-sdk-entries.mjs";
 import {
   BUNDLED_PLUGIN_ROOT_DIR,
   BUNDLED_PLUGIN_TEST_GLOB,
@@ -159,7 +159,7 @@ export function resolveDefaultVitestPool(
   return "threads";
 }
 
-const repoRoot = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 const isWindows = process.platform === "win32";
 const defaultPool = resolveDefaultVitestPool();
@@ -216,22 +216,22 @@ export const sharedVitestConfig = {
       "test/setup.shared.ts",
       "test/setup.extensions.ts",
       "test/setup-kaijibot-runtime.ts",
-      "vitest.channel-paths.mjs",
-      "vitest.boundary.config.ts",
-      "vitest.bundled.config.ts",
-      "vitest.e2e.config.ts",
-      "vitest.extensions.config.ts",
-      "vitest.performance-config.ts",
-      "vitest.shared-core.config.ts",
-      "vitest.shared.config.ts",
-      "vitest.unit.config.ts",
-      "vitest.unit-paths.mjs",
-      "vitest.runtime-config.config.ts",
-      "vitest.plugin-sdk.config.ts",
-      "vitest.plugins.config.ts",
+      "vitest/vitest.channel-paths.mjs",
+      "vitest/vitest.boundary.config.ts",
+      "vitest/vitest.bundled.config.ts",
+      "vitest/vitest.e2e.config.ts",
+      "vitest/vitest.extensions.config.ts",
+      "vitest/vitest.performance-config.ts",
+      "vitest/vitest.shared-core.config.ts",
+      "vitest/vitest.shared.config.ts",
+      "vitest/vitest.unit.config.ts",
+      "vitest/vitest.unit-paths.mjs",
+      "vitest/vitest.runtime-config.config.ts",
+      "vitest/vitest.plugin-sdk.config.ts",
+      "vitest/vitest.plugins.config.ts",
       "vitest.config.ts",
-      "vitest.scoped-config.ts",
-      "vitest.hooks.config.ts",
+      "vitest/vitest.scoped-config.ts",
+      "vitest/vitest.hooks.config.ts",
     ],
     include: [
       "src/**/*.test.ts",
