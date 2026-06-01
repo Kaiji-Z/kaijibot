@@ -663,7 +663,9 @@ export class MemoryIndexManager {
     }
 
     // Step 2: Relocate entire inline sections to topic files
-    while (totalBytes > maxBytes && inlineSections.length > 0) {
+    // Guard: preserve at least one section with at least one line so
+    // MEMORY.md always carries meaningful inline content.
+    while (totalBytes > maxBytes && inlineSections.length > 1) {
       const relocated = inlineSections.pop()!;
       totalBytes -= inlineBytes(relocated);
       const subject = INLINE_SECTION_SUBJECTS[relocated.section] ?? "misc";

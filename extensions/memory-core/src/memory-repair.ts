@@ -29,6 +29,7 @@ export type StructuralIssue = {
   weight: number;
   details: string;
   location?: { line?: number; heading?: string };
+  filePath?: string;
 };
 
 export type RepairDiagnostic = {
@@ -429,14 +430,21 @@ export function diagnoseStructure(
         }
       }
       const allFiles = await opts.listTopicFiles();
+      const TOPIC_DIR = "memory/topics/";
       for (const file of allFiles) {
-        if (!referencedFiles.has(file)) {
+        // listTopicFiles returns bare filenames (e.g. "foo.md"),
+        // but referencedFiles stores full relative paths (e.g. "memory/topics/foo.md").
+        // Normalize bare filenames to full paths for consistent comparison.
+        const normalized =
+          file.includes("/") ? file : `${TOPIC_DIR}${file}`;
+        if (!referencedFiles.has(normalized)) {
           const weight = 1;
           score += weight;
           issues.push({
             type: "orphan_topic_file",
             weight,
             details: `Orphan topic file not referenced: ${file}`,
+            filePath: normalized,
           });
         }
       }
@@ -524,7 +532,7 @@ export function planRepair(diagnostic: RepairDiagnostic): RepairPlan {
   // Orphan topic files
   const orphanFileIssues = issues.filter((i) => i.type === "orphan_topic_file");
   for (const issue of orphanFileIssues) {
-    actions.push({ type: "register_orphan_file", file: issue.details });
+    actions.push({ type: "register_orphan_file", file: issue.filePath ?? issue.details });
   }
 
   // Large promoted content
@@ -829,8 +837,17 @@ export async function executeRepair(
           (s) => s.heading === "Topic Pointers",
         );
         if (tpSection) {
+          const TOPIC_DIR = "memory/topics/";
           const fileName = action.file.replace(/^.*\//, "").replace(".md", "");
-          tpSection.lines.push(`- ${fileName} → ${action.file}`);
+          const fullPointer = action.file.includes("/")
+            ? action.file
+            : `${TOPIC_DIR}${action.file}`;
+          const alreadyExists = tpSection.lines.some(
+            (l) => l.trim().includes(fullPointer),
+          );
+          if (!alreadyExists) {
+            tpSection.lines.push(`- ${fileName} → ${fullPointer}`);
+          }
         }
         actionsApplied.push(`register_orphan_file:${action.file}`);
         break;
