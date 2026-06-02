@@ -99,10 +99,10 @@ CONFIG_PATH="${KAIJIBOT_CONFIG_PATH:-${KAIJIBOT_STATE_DIR:-$HOME/.kaijibot}/kaij
 cat "$CONFIG_PATH" | jq -r '.skills.entries["gh-issues"].apiKey // empty'
 ```
 
-If still empty, check `/data/.clawdbot/kaijibot.json`:
+If still empty, check `~/.kaijibot/kaijibot.json`:
 
 ```
-cat /data/.clawdbot/kaijibot.json | jq -r '.skills.entries["gh-issues"].apiKey // empty'
+cat ~/.kaijibot/kaijibot.json | jq -r '.skills.entries["gh-issues"].apiKey // empty'
 ```
 
 Export as GH_TOKEN for subsequent commands:
@@ -269,9 +269,9 @@ Run these checks sequentially via exec:
    Read the claims file (create empty `{}` if missing):
 
    ```
-   CLAIMS_FILE="/data/.clawdbot/gh-issues-claims.json"
+   CLAIMS_FILE="~/.kaijibot/gh-issues-claims.json"
    if [ ! -f "$CLAIMS_FILE" ]; then
-     mkdir -p /data/.clawdbot
+     mkdir -p ~/.kaijibot
      echo '{}' > "$CLAIMS_FILE"
    fi
    ```
@@ -304,7 +304,7 @@ Run these checks sequentially via exec:
 - **Sequential cursor tracking:** Use a cursor file to track which issue to process next:
 
   ```
-  CURSOR_FILE="/data/.clawdbot/gh-issues-cursor-{SOURCE_REPO_SLUG}.json"
+  CURSOR_FILE="~/.kaijibot/gh-issues-cursor-{SOURCE_REPO_SLUG}.json"
   # SOURCE_REPO_SLUG = owner-repo with slashes replaced by hyphens (e.g., kaijibot-kaijibot)
   ```
 
@@ -364,7 +364,7 @@ IMPORTANT: Do NOT use the gh CLI — it is not installed. Use curl with the GitH
 
 First, ensure GH_TOKEN is set. Check: `echo $GH_TOKEN`. If empty, read from config:
 CONFIG_PATH="${KAIJIBOT_CONFIG_PATH:-${KAIJIBOT_STATE_DIR:-$HOME/.kaijibot}/kaijibot.json}"
-GH_TOKEN=$(cat "$CONFIG_PATH" 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty') || GH_TOKEN=$(cat /data/.clawdbot/kaijibot.json 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty')
+GH_TOKEN=$(cat "$CONFIG_PATH" 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty') || GH_TOKEN=$(cat ~/.kaijibot/kaijibot.json 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty')
 
 Use the token in all GitHub API calls:
 curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" ...
@@ -393,7 +393,7 @@ Follow these steps in order. If any step fails, report the failure and stop.
 0. SETUP — Ensure GH_TOKEN is available:
 ```
 
-export GH_TOKEN=$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('/data/.clawdbot/kaijibot.json','utf8')); console.log(c.skills?.entries?.['gh-issues']?.apiKey || '')")
+export GH_TOKEN=$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('~/.kaijibot/kaijibot.json','utf8')); console.log(c.skills?.entries?.['gh-issues']?.apiKey || '')")
 
 ```
 If that fails, also try:
@@ -734,7 +734,7 @@ IMPORTANT: Do NOT use the gh CLI — it is not installed. Use curl with the GitH
 
 First, ensure GH_TOKEN is set. Check: echo $GH_TOKEN. If empty, read from config:
 CONFIG_PATH="${KAIJIBOT_CONFIG_PATH:-${KAIJIBOT_STATE_DIR:-$HOME/.kaijibot}/kaijibot.json}"
-GH_TOKEN=$(cat "$CONFIG_PATH" 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty') || GH_TOKEN=$(cat /data/.clawdbot/kaijibot.json 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty')
+GH_TOKEN=$(cat "$CONFIG_PATH" 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty') || GH_TOKEN=$(cat ~/.kaijibot/kaijibot.json 2>/dev/null | jq -r '.skills.entries["gh-issues"].apiKey // empty')
 
 <config>
 Repository: {SOURCE_REPO}
@@ -765,7 +765,7 @@ Follow these steps in order:
 0. SETUP — Ensure GH_TOKEN is available:
 ```
 
-export GH_TOKEN=$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('/data/.clawdbot/kaijibot.json','utf8')); console.log(c.skills?.entries?.['gh-issues']?.apiKey || '')")
+export GH_TOKEN=$(node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('~/.kaijibot/kaijibot.json','utf8')); console.log(c.skills?.entries?.['gh-issues']?.apiKey || '')")
 
 ```
 Verify: echo "Token: ${GH_TOKEN:0:10}..."

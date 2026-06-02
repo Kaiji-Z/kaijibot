@@ -19,7 +19,6 @@ const HIGH_SIGNAL_LIVE_MODEL_PRIORITY = [
   "openrouter/ai21/jamba-large-1.7",
   "xai/grok-4-1-fast-non-reasoning",
   "zai/glm-4.7",
-  "fireworks/accounts/fireworks/routers/kimi-k2p5-turbo",
   "minimax-portal/minimax-m2.7",
 ] as const;
 

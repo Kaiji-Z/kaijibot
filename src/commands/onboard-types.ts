@@ -53,7 +53,6 @@ export type OnboardOptions = OnboardDynamicProviderOptions & {
   tokenExpiresIn?: string;
   /** API key persistence mode for setup flows (default: plaintext). */
   secretInputMode?: SecretInputMode;
-  arceeaiApiKey?: string;
   cloudflareAiGatewayAccountId?: string;
   cloudflareAiGatewayGatewayId?: string;
   customBaseUrl?: string;
