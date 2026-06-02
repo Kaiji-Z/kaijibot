@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, it, expect, afterEach, afterAll } from "vitest";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
 import {
-  runMemoryTidyActions,
+  runMemoryTidy,
   createTidyDepsFromNodeFs,
   type MemoryTidyDeps,
 } from "./tools.memory-tidy.js";
@@ -248,7 +248,7 @@ describe("memory_tidy dedup", () => {
     const before = await tm.getTopic("dedup-topic");
     expect(before!.entries).toHaveLength(3);
 
-    const result = await runMemoryTidyActions(tidyDeps, { action: "dedup", target: "dedup-topic" });
+    const result = await runMemoryTidy(tidyDeps, {});
 
     expect(result.filesAffected).toBe(1);
     expect(result.entriesAffected).toBe(1);
@@ -299,7 +299,7 @@ describe("memory_tidy rebalance", () => {
     expect(beforeSize).toBeGreaterThan(8192);
 
     const tidyDeps = createTidyDepsFromNodeFs(ws, fs);
-    await runMemoryTidyActions(tidyDeps, { action: "rebalance" });
+    await runMemoryTidy(tidyDeps, {});
 
     const afterRaw = await fs.readFile(join(ws, "MEMORY.md"), "utf-8");
     const afterSize = new TextEncoder().encode(afterRaw).length;
@@ -354,7 +354,7 @@ describe("memory_tidy archive", () => {
       summary: "Old reference material",
     });
 
-    const result = await runMemoryTidyActions(tidyDeps, { action: "archive" });
+    const result = await runMemoryTidy(tidyDeps, {});
 
     expect(result.filesAffected).toBe(1);
     expect(result.changes[0]).toContain("archived");

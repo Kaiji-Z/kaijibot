@@ -93,13 +93,6 @@ export {
   type TopicRegistryDeps,
 } from "./src/topic-registry.js";
 export {
-  routeToTopic,
-  kebabMatch,
-  type TopicCandidate,
-  type RouteResult,
-  type RouteToTopicParams,
-} from "./src/topic-router.js";
-export {
   semanticTopicMerge,
   computeTopicJaccard,
   type TopicForMerge,
