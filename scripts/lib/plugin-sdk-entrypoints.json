@@ -62,6 +62,7 @@
   "secret-ref-runtime",
   "security-runtime",
   "gateway-runtime",
+  "generate-text",
   "cli-runtime",
   "cli-backend",
   "hook-runtime",
