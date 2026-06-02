@@ -46,6 +46,8 @@ export interface StructuredSummary {
   topicSlug: string;
   /** Primary memory classification for inline section routing. Prefer "core" and "active" over legacy types. Omit if none applies. */
   memoryType?: "core" | "active" | "user" | "feedback" | "project" | "reference";
+  /** One-sentence description of what the topic covers (for registry). Only set when creating a new topic. */
+  topicDescription?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +79,7 @@ Analyze the conversation and produce a JSON object with exactly these fields:
     - "project" — (legacy, maps to active) project-related info
     - "reference" — (legacy, maps to core) reference material
   Use "core" for stable knowledge and "active" for current work. Omit if none applies.
+- "topicDescription": one-sentence description of what the topic covers. Only provide when the topic is genuinely new and doesn't match an existing topic. Omit if routing to an existing topic.
 
 ## What NOT to save in memory
 
@@ -183,6 +186,11 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
     ? (rawMemoryType as "core" | "active" | "user" | "feedback" | "project" | "reference")
     : undefined;
 
+  const topicDescription =
+    typeof parsed.topicDescription === "string" && parsed.topicDescription.trim()
+      ? parsed.topicDescription.trim()
+      : undefined;
+
   return {
     summary,
     primaryRequest,
@@ -197,6 +205,7 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
     topics,
     participants,
     topicSlug: topicSlug || "session",
+    topicDescription,
     memoryType,
   };
 }
@@ -222,6 +231,7 @@ function createFallbackSummary(transcript: string): StructuredSummary {
     topics: [],
     participants: ["user"],
     topicSlug: "session",
+    topicDescription: undefined,
   };
 }
 
@@ -237,8 +247,9 @@ function createFallbackSummary(transcript: string): StructuredSummary {
 export async function generateStructuredSummary(params: {
   transcript: string;
   cfg: KaijiBotConfig;
+  existingTopics?: Array<{ name: string; description: string }>;
 }): Promise<StructuredSummary> {
-  const { transcript, cfg } = params;
+  const { transcript, cfg, existingTopics } = params;
 
   if (!transcript.trim()) {
     return createFallbackSummary(transcript);
@@ -253,7 +264,18 @@ export async function generateStructuredSummary(params: {
       timeout: 60_000,
     });
 
-    const prompt = `${SUMMARY_SYSTEM_PROMPT}\n\nConversation transcript:\n${transcriptSlice}`;
+    let prompt = `${SUMMARY_SYSTEM_PROMPT}\n\nConversation transcript:\n${transcriptSlice}`;
+
+    if (existingTopics && existingTopics.length > 0) {
+      const topicList = existingTopics
+        .map((t) => `- "${t.name}": ${t.description}`)
+        .join("\n");
+      prompt += `\n\n## Existing Topics\nThe following topics already exist. Route to one of these if the content fits:\n\n${topicList}\n\nChoose the topicSlug from the list above if the conversation fits. Only create a new slug if the content genuinely doesn't fit any existing topic.`;
+      if (existingTopics.length >= 30) {
+        prompt += "\n\nNote: There are many existing topics. Strongly prefer routing to an existing topic.";
+      }
+    }
+
     const rawResponse = await generateText(prompt);
 
     log.debug("LLM response received", { responseLength: rawResponse.length });

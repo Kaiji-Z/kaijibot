@@ -209,7 +209,17 @@ const saveSessionToMemory: HookHandler = async (event) => {
     const allowLlm = !isTestEnv && hookConfig?.llmSlug !== false;
 
     if (sessionContent && cfg && allowLlm) {
-      summary = await generateStructuredSummary({ transcript: sessionContent, cfg });
+      try {
+        const { createTopicRegistry } =
+          await import("../../../../extensions/memory-core/index.js");
+        const nodeFs = createNodeFsAdapter();
+        const registry = createTopicRegistry({ workspaceDir, fs: nodeFs });
+        await registry.syncFromDisk();
+        const existingTopics = await registry.getDescriptionList();
+        summary = await generateStructuredSummary({ transcript: sessionContent, cfg, existingTopics });
+      } catch {
+        summary = await generateStructuredSummary({ transcript: sessionContent, cfg });
+      }
       log.debug("Structured summary generated", { topicSlug: summary.topicSlug });
     } else if (sessionContent) {
       summary = {
@@ -266,7 +276,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
           topic = await topicManager.createTopic(summary.topicSlug, topicFileName);
         }
 
-        const entryContent = sessionContent ? sessionContent.slice(0, 4000) : summary.summary;
+        const entryContent = summary.summary;
 
         const topicEntry: TopicEntry = {
           title: `${dateStr} session`,
@@ -277,6 +287,18 @@ const saveSessionToMemory: HookHandler = async (event) => {
         };
         await topicManager.appendEntry(topicFileName, topicEntry);
         log.debug("Topic file updated", { topic: topicFileName });
+
+        const { createTopicRegistry } =
+          await import("../../../../extensions/memory-core/index.js");
+        const registry = createTopicRegistry({ workspaceDir, fs: nodeFs });
+        const updatedTopic = await topicManager.getTopic(topicFileName);
+        await registry.upsertTopic({
+          name: summary.topicSlug,
+          description: summary.topicDescription ?? summary.summary.slice(0, 100),
+          entryCount: updatedTopic?.entries.length ?? 1,
+          lastUpdated: dateStr,
+          createdAt: updatedTopic?.frontmatter.created ?? dateStr,
+        });
 
         const indexManager = new MemoryIndexManager({ workspaceDir, fs: nodeFs });
 
