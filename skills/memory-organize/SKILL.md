@@ -8,6 +8,18 @@ metadata: { "kaijibot": { "emoji": "🗃️", "requires": { "bins": [] }, "insta
 
 历遍所有会话记录，提取关键记忆，按主题整理到结构化的主题文件中。同时作为 MEMORY.md 的通用垃圾回收器，修复任何结构问题。
 
+## 三层记忆架构
+
+记忆系统由三层自动/手动维护：
+
+| 层级 | 触发方式 | 做什么 | 涉及的 LLM 调用 |
+|------|---------|--------|----------------|
+| **Layer 1: 生成+存储** | 会话结束（`/new` `/reset`） | LLM 结构化摘要 → 路由到已有 topic（优先）或创建新 topic → 写摘要（非原始对话）→ 更新 registry.json → 更新 MEMORY.md topic pointer | 1 次（摘要生成，含 topic 路由） |
+| **Layer 2: 自动整合** | 每日凌晨 3 点（consolidation cron） | 扫描会话 → LLM 提取结构化知识 → Jaccard 去重 → 路由到认知存储 → 写 MEMORY.md inline sections → rebalance 8KB 预算 | 批量（按用户分组） |
+| **Layer 3: 手动整理** | 用户说"整理记忆"时（本 skill） | MEMORY.md 垃圾回收 → 深度扫描全量会话 → `memory_tidy`（LLM 全权驱动：自动决定去重/合并/重命名/归档/inline 清理）→ 维护 registry.json | 深度扫描 + LLM 驱动的全量整理 |
+
+**本 skill 覆盖 Layer 3**。Layer 1 和 Layer 2 是自动运行的，不需要手动触发。
+
 ## When to use (trigger phrases)
 
 Use this skill immediately when the user asks any of:
@@ -80,7 +92,7 @@ assistant: [tool: read_file, glob] 这个项目的架构是...
 3. **主题名用 kebab-case 英文**——如 `feishu`、`philosophy`、`product`、`football`、`cooking`
 4. **已有主题优先**——系统会在会话结束时自动查看 `memory/topics/registry.json` 中的已有主题列表和描述，LLM 优先路由到匹配的已有主题。新主题只在内容确实不属于任何已有主题时才创建
 5. **遇到全新领域时创建新主题**——用户开始聊一个完全没见过的话题时，开新文件
-6. **主题自动整合**——`memory_tidy consolidate` 使用 LLM 语义判断合并重叠主题（详见 Step 3）
+6. **主题自动整合**——`memory_tidy` 使用 LLM 全权驱动，自动判断合并/重命名/去重/归档/inline 清理（详见 Step 3）
 
 ### 主题命名规范
 
@@ -111,9 +123,7 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 
 1. **未归档的 Promoted 条目**：`## Promoted From Short-Term Memory (YYYY-MM-DD)` 下的条目（格式为 `<!-- kaijibot-memory-promotion:key -->` + `- snippet [score=...]`）应该被提取到主题文件中。逐条判断 subject，调用 `memory_save` 写入对应主题文件。
 
-2. **重复内容**：同一信息出现多次（不同格式、不同 section）。保留最完整的版本，删除重复。
-
-3. **注意**：`memory_tidy full` 现在会自动清理 inline sections 中的重复内容。在 Step 3 运行后，inline 与 topic 之间的重复会被自动处理。
+2. **重复内容**：同一信息出现多次（不同格式、不同 section）。保留最完整的版本，删除重复。inline 与 topic 之间的交叉重复由 Step 3 的 `memory_tidy` 自动处理。
 
 3. **结构错误**：缺少应有的 section heading；格式不对的条目；不完整的 HTML 注释标记。
 
@@ -173,16 +183,16 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 - `content`: 记忆内容（简洁的一句话或一段描述）
 - `topic`: 主题名（必填，kebab-case，如 `feishu`、`philosophy`）
 - `importance`: 重要性（`high`/`normal`/`low`）
-- `type`: 分类（可选，`core` → ⚡ Core Memory，`active` → 🔥 Active Context）
+- `type`: 分类（可选，决定是否写入 MEMORY.md inline section：`core` → ⚡ Core Memory，`active` → 🔥 Active Context。省略则只写 topic 文件不写 inline）
 
 示例调用：
 
 ```
-memory_save(content="飞书 is_cross_tenant 在 search API 的 result_meta 里", topic="feishu", importance="high", type="project")
-memory_save(content="不要乱猜测，不确定时先调查", topic="feedback", importance="high", type="feedback")
-memory_save(content="好的产品不是能赚多少钱而是能得到用户的认可", topic="product", importance="normal", type="project")
-memory_save(content="关注宝玉 from xp.ai 的观点，关注 LLM 上下文管理", topic="ai-tools", type="reference")
-memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences", importance="high", type="user")
+memory_save(content="飞书 is_cross_tenant 在 search API 的 result_meta 里", topic="feishu", importance="high")
+memory_save(content="不要乱猜测，不确定时先调查", topic="feedback", importance="high", type="core")
+memory_save(content="好的产品不是能赚多少钱而是能得到用户的认可", topic="product", importance="normal")
+memory_save(content="关注宝玉 from xp.ai 的观点，关注 LLM 上下文管理", topic="ai-tools")
+memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences", importance="high", type="core")
 ```
 
 **跳过的内容（不要提取）：**
@@ -212,27 +222,29 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 
 ### Step 3: 整理主题文件（`memory_tidy` 工具）
 
-对已有的主题文件进行去重、再平衡：
+`memory_tidy` 是 LLM 全权驱动的记忆整理工具。LLM 读取所有主题文件 + MEMORY.md + registry.json 后，自主决定所有操作：
 
 ```
-调用 memory_tidy 工具，action = "full"
+调用 memory_tidy 工具（无需任何 action 参数）
 ```
 
-这会自动：
+LLM 会自动执行以下操作（根据实际数据决定哪些需要做）：
 
-- 去除重复条目（Jaccard 相似度 ≥ 0.85）
-- 合并相似条目
-- **语义主题整合**（`consolidate`）：使用 LLM 判断主题间的语义重叠，合并相关主题（如 `feishu-api` 和 `feishu-bot` → `feishu`）
-- 归档 90 天以上的低重要性条目
-- 清理 MEMORY.md inline sections 中的重复内容（`⚡ Core Memory` 和 `🔥 Active Context` section 内去重 + 与 topic 条目交叉去重）
+- **merge_topics**：合并语义重叠的主题（如 `feishu-api` + `feishu-bot` → `feishu`）
+- **rename_topic**：重命名名称与内容不匹配的主题
+- **dedup_entries**：合并主题内的重复条目
+- **archive_topic**：归档长期未更新的主题（移到 `archive/`）
+- **clean_inline**：清理 MEMORY.md inline sections 中的冗余行
 
-如果只想运行主题整合（不执行其他操作），可以单独调用：
+所有操作经过代码验证后才执行。操作完成后自动调用 `rebalanceIndex()`（8KB 预算）和 `registry.syncFromDisk()` 维护一致性。
 
-```
-调用 memory_tidy 工具，action = "consolidate"
-```
+**可选参数**：
+- `dryRun: true` — 预览所有操作但不写入文件
+- `focus: "topic-name"` — 只分析指定的主题
 
-这会扫描所有主题文件，使用 LLM 判断哪些主题应该合并，然后执行合并。比 `merge` 更智能——`merge` 只看字符级相似度，`consolidate` 用 LLM 理解语义。
+**LLM 不可用时**：自动退行到 Jaccard 安全操作（去重 + inline 清理 + 归档 + 再平衡），不调用 LLM。
+
+**示例**：`feishu-api`（10 条）和 `feishu-bot`（3 条）→ LLM 判断两者语义重叠 → 自动合并为 `feishu`，维护 registry.json。
 
 ### Step 4: 最终检查
 
@@ -253,16 +265,14 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 当用户说"整理记忆"时：
 
 1. **MEMORY.md 垃圾回收**：完整读取 MEMORY.md，识别并修复所有问题（晋升条目归档、重复删除、结构修复、预算控制）
-2. **会话深度扫描（必做）**：调用 `sessions_list`（`includeArchived: true`）获取所有会话（含归档的 `.reset.` 会话），逐个读取 `transcriptPath`（JSONL 格式），解析 User/Assistant 对话，提取关键记忆并调用 `memory_save(content=..., topic=..., importance=..., type=...)` 写入。如果 QMD 已启用，也读取 QMD 的 Markdown 文件作为更可读的补充。**扫描完成后必须输出 Step 2 扫描摘要检查点**
-3. **每日笔记补充**：读取 `memory/YYYY-MM-DD.md`，提取会话中可能遗漏的摘要信息
-4. 调用 `memory_tidy` 做 `full` 整理（去重、合并、语义整合、再平衡）
-5. 如有大量重叠主题，额外运行 `memory_tidy` `consolidate` 进行 LLM 语义整合
-5. 最终检查 + 汇报（使用 Step 2 扫描摘要的数据）
+2. **会话深度扫描（必做）**：调用 `sessions_list`（`includeArchived: true`）获取所有会话（含归档的 `.reset.` 会话），逐个读取 `transcriptPath`（JSONL 格式），解析 User/Assistant 对话，提取关键记忆并调用 `memory_save(content=..., topic=..., importance=..., type=...)` 写入。如果 QMD 已启用，也读取 QMD 的 Markdown 文件作为更可读的补充。读取 `memory/YYYY-MM-DD.md` 每日笔记补充可能遗漏的摘要信息。**扫描完成后必须输出 Step 2 扫描摘要检查点**
+3. 调用 `memory_tidy`（LLM 全权驱动：自动决定去重/合并/重命名/归档/inline 清理 + 维护 registry.json）
+4. 最终检查 + 汇报（使用 Step 2 扫描摘要的数据）
 
 ## Notes
 
-- `--dry-run` 绝对不会修改任何文件，放心使用
-- `--archive` 会把旧文件移到 `memory/archive/`，不会删除
+- `memory_tidy(dryRun: true)` 只预览不写入，放心使用
+- `memory_tidy` 的 archive 操作把旧文件移到 `memory/topics/archive/`，不会删除
 - 已有主题文件中的内容不会被重复添加（`memory_save` 自动 Jaccard 去重，阈值 0.8）
 - 可以重复运行，幂等安全
 - 会话原始文件（JSONL）始终存在，是最完整的对话记录
@@ -270,5 +280,4 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 - QMD 会话文件单文件最大 ~80KB，逐个读取即可
 - JSONL 会话文件可能较大，但过滤后有效内容通常只有原始大小的 2.5%。优先处理最近的会话，按需回溯更早的记录。如果过滤后内容仍然很长，重点提取关键决策、用户偏好和重要事实，跳过纯技术讨论
 - 主题文件按需创建——没有记忆的主题不会有文件，不需要预创建
-- 可以重复运行，幂等安全
 - MEMORY.md 垃圾回收适用于所有场景：记忆整合、LLM 写入错误、重复内容、结构损坏等
