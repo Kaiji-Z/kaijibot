@@ -71,13 +71,16 @@ assistant: [tool: read_file, glob] 这个项目的架构是...
 
 不使用预设的主题列表或关键词映射。读取每条记忆内容后，根据内容的**语义**判断它属于哪个主题。
 
+系统维护一个 `memory/topics/registry.json` 主题注册表，记录每个主题的名称、描述、条目数和最后更新时间。每次会话结束后自动更新。
+
 **判断原则：**
 
 1. **按内容领域归类**——同一领域的记忆放同一个文件，方便查找。例如所有飞书相关的（配置、wiki 方法、bot 管理）都归 `feishu`
 2. **主题粒度适中**——不要太粗（所有东西都放 `misc`），也不要太细（每条记忆一个主题）。目标是每个主题文件 5-20 条记忆
 3. **主题名用 kebab-case 英文**——如 `feishu`、`philosophy`、`product`、`football`、`cooking`
-4. **已有主题优先**——先查看 `memory/topics/` 下已有哪些主题文件，新记忆尽量归入已有主题
+4. **已有主题优先**——系统会在会话结束时自动查看 `memory/topics/registry.json` 中的已有主题列表和描述，LLM 优先路由到匹配的已有主题。新主题只在内容确实不属于任何已有主题时才创建
 5. **遇到全新领域时创建新主题**——用户开始聊一个完全没见过的话题时，开新文件
+6. **主题自动整合**——`memory_tidy consolidate` 使用 LLM 语义判断合并重叠主题（详见 Step 3）
 
 ### 主题命名规范
 
@@ -219,8 +222,17 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 
 - 去除重复条目（Jaccard 相似度 ≥ 0.85）
 - 合并相似条目
+- **语义主题整合**（`consolidate`）：使用 LLM 判断主题间的语义重叠，合并相关主题（如 `feishu-api` 和 `feishu-bot` → `feishu`）
 - 归档 90 天以上的低重要性条目
 - 清理 MEMORY.md inline sections 中的重复内容（`⚡ Core Memory` 和 `🔥 Active Context` section 内去重 + 与 topic 条目交叉去重）
+
+如果只想运行主题整合（不执行其他操作），可以单独调用：
+
+```
+调用 memory_tidy 工具，action = "consolidate"
+```
+
+这会扫描所有主题文件，使用 LLM 判断哪些主题应该合并，然后执行合并。比 `merge` 更智能——`merge` 只看字符级相似度，`consolidate` 用 LLM 理解语义。
 
 ### Step 4: 最终检查
 
@@ -243,7 +255,8 @@ memory_save(content="用户喜欢简洁的回复风格", topic="user-preferences
 1. **MEMORY.md 垃圾回收**：完整读取 MEMORY.md，识别并修复所有问题（晋升条目归档、重复删除、结构修复、预算控制）
 2. **会话深度扫描（必做）**：调用 `sessions_list`（`includeArchived: true`）获取所有会话（含归档的 `.reset.` 会话），逐个读取 `transcriptPath`（JSONL 格式），解析 User/Assistant 对话，提取关键记忆并调用 `memory_save(content=..., topic=..., importance=..., type=...)` 写入。如果 QMD 已启用，也读取 QMD 的 Markdown 文件作为更可读的补充。**扫描完成后必须输出 Step 2 扫描摘要检查点**
 3. **每日笔记补充**：读取 `memory/YYYY-MM-DD.md`，提取会话中可能遗漏的摘要信息
-4. 调用 `memory_tidy` 做 `full` 整理（去重、合并、再平衡）
+4. 调用 `memory_tidy` 做 `full` 整理（去重、合并、语义整合、再平衡）
+5. 如有大量重叠主题，额外运行 `memory_tidy` `consolidate` 进行 LLM 语义整合
 5. 最终检查 + 汇报（使用 Step 2 扫描摘要的数据）
 
 ## Notes
