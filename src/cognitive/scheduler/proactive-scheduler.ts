@@ -982,7 +982,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
   const userDomains = Object.keys(persona.domains);
   if (userDomains.length === 0) {return [];}
 
-  const connections = findCrossDomainConnections(userDomains, undefined, persona.domainGraph);
+  const connections = findCrossDomainConnections(userDomains, undefined);
   const shuffled = seededShuffle(connections, event.timestamp);
   const pAccept = computeBaselinePAccept(persona);
 
@@ -1001,51 +1001,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
       metadata: { bridge: conn.bridge, distance: conn.distance },
       modeCandidates: ["surprise", "extend"],
     };
-  });
-
-  // 2-hop: userDomain → userDomain neighbor → non-userDomain
-  const userDomainSet = new Set(userDomains);
-  const edges = persona.domainGraph?.edges ?? [];
-  if (edges.length > 0) {
-    const twoHopBest = new Map<string, Opportunity>();
-    for (const domain of userDomains) {
-      if (!persona.domainGraph?.nodes?.includes(domain)) {continue;}
-
-      const midHops = edges
-        .filter((e) => e.source === domain || e.target === domain)
-        .map((e) => (e.source === domain ? e.target : e.source))
-        .filter((n) => userDomainSet.has(n));
-
-      for (const midHop of midHops) {
-        const twoHopTargets = edges
-          .filter((e) => e.source === midHop || e.target === midHop)
-          .map((e) => (e.source === midHop ? e.target : e.source))
-          .filter((n) => !userDomainSet.has(n));
-
-        for (const target of twoHopTargets) {
-          const fromDomain = persona.domains[domain];
-          const depthFactor = fromDomain ? Math.min(fromDomain.depth / 5, 1) : 0.3;
-          const pNeed = Math.max(0.3, 0.55 * depthFactor + 0.3 - 0.1);
-          const opp: Opportunity = {
-            type: "cross_domain" as const,
-            targetDomains: [domain],
-            sourceDomains: [target],
-            pNeed,
-            pAccept,
-            pAct: pNeed * pAccept,
-            metadata: { bridge: [midHop], distance: 2 },
-            modeCandidates: ["surprise", "extend"],
-          };
-
-          const existing = twoHopBest.get(target);
-          if (!existing || opp.pNeed > existing.pNeed) {
-            twoHopBest.set(target, opp);
-          }
-        }
-      }
-    }
-    results.push(...twoHopBest.values());
-  }
+   });
 
   // Fallback: intra-user cross-pollination when graph is fully covered by user domains
   if (results.length === 0 && userDomains.length >= 2) {
@@ -1057,8 +1013,6 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
         const d = semanticDistance(
           userDomains[i]!,
           userDomains[j]!,
-          undefined,
-          persona.domainGraph,
         );
         if (d > maxDist) {
           maxDist = d;

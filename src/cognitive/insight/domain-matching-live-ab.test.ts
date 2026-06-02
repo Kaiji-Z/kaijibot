@@ -97,14 +97,6 @@ function makePersona(): PersonaTree {
       avgResponseLength: 200,
       selfDisclosureLevel: 1,
     },
-    domainGraph: {
-      nodes: ["可观测性", "系统设计", "Rust", "认知架构"],
-      edges: [
-        { source: "系统设计", target: "可观测性", weight: 0.7, lastObserved: now, observations: 5 },
-        { source: "Rust", target: "系统设计", weight: 0.5, lastObserved: now, observations: 3 },
-      ],
-      totalObservations: 8,
-    },
     moodHistory: [],
     domainBlacklist: [],
     lifecycle: {

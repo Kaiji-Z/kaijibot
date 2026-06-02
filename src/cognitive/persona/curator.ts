@@ -1,9 +1,4 @@
 import { createSubsystemLogger } from "../../logging/subsystem.js";
-import {
-  observeCoOccurrence,
-  seedDomainGraph,
-  decayEdges,
-} from "../insight/cross-domain-mapper.js";
 import type {
   PersonaTree,
   ConfidenceValue,
@@ -19,7 +14,6 @@ import type { ExtractionResult, ExtractedInsight } from "./types.js";
 const log = createSubsystemLogger("cognitive/persona-curator");
 
 const DOMAIN_DEPTH_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
-const EDGE_DECAY_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
 const AUTO_BLACKLIST_NEGATION_THRESHOLD = 3;
 const AUTO_BLACKLIST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -511,14 +505,6 @@ export function mergeExtraction(
     totalExchanges: persona.rapport.totalExchanges + 1,
   };
 
-  const mentionedDomains = extraction.domains.map((d) => d.name);
-  const baseGraph = persona.domainGraph ?? seedDomainGraph();
-  const coOccurrenceGraph =
-    mentionedDomains.length >= 2
-      ? observeCoOccurrence(baseGraph, mentionedDomains, now)
-      : baseGraph;
-  const updatedGraph = decayEdges(coOccurrenceGraph, now, EDGE_DECAY_HALF_LIFE_MS);
-
   const newMoodHistory = [...(persona.moodHistory ?? [])];
   if (extraction.sentiment) {
     const prev = newMoodHistory.slice(-2);
@@ -589,7 +575,6 @@ export function mergeExtraction(
     domains: newDomains,
     recentFocus: newRecentFocus,
     rapport: newRapport,
-    domainGraph: updatedGraph,
     moodHistory: newMoodHistory.slice(-10),
     domainBlacklist: newBlacklist,
     lifecycle: newLifecycle,

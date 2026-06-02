@@ -102,26 +102,6 @@ function makeFullStackDevPersona(): PersonaTree {
       avgResponseLength: 235,
       selfDisclosureLevel: 1,
     },
-    domainGraph: {
-      nodes: ["认知系统设计", "Prompt工程", "飞书集成", "TypeScript"],
-      edges: [
-        {
-          source: "认知系统设计",
-          target: "Prompt工程",
-          weight: 0.8,
-          lastObserved: now,
-          observations: 8,
-        },
-        {
-          source: "认知系统设计",
-          target: "飞书集成",
-          weight: 0.6,
-          lastObserved: now,
-          observations: 5,
-        },
-      ],
-      totalObservations: 13,
-    },
     moodHistory: [],
     domainBlacklist: [],
     lifecycle: {

@@ -97,46 +97,6 @@ describe("generateInsightCandidates", () => {
     }
   });
 
-  it("uses persona.domainGraph for cross-domain connections", () => {
-    const persona = personaWithDomains();
-    // Add default adjacency targets as user domains so only CustomDomain remains as a cross-domain target
-    for (const defaultTarget of ["数据科学", "编程语言", "云/基础设施", "网络安全"]) {
-      persona.domains[defaultTarget] = {
-        depth: 1,
-        recurrence: 1,
-        lastMentioned: Date.now(),
-        keyInsights: [],
-        activeQuestions: [],
-        negationSignals: 0,
-      };
-    }
-    persona.domainGraph = {
-      nodes: ["AI/机器学习", "软件架构", "CustomDomain"],
-      edges: [
-        {
-          source: "AI/机器学习",
-          target: "CustomDomain",
-          weight: 0.8,
-          lastObserved: Date.now(),
-          observations: 5,
-        },
-        {
-          source: "软件架构",
-          target: "CustomDomain",
-          weight: 0.8,
-          lastObserved: Date.now(),
-          observations: 5,
-        },
-      ],
-      totalObservations: 10,
-    };
-    const candidates = generateInsightCandidates(persona, baseInput(), { maxCandidates: 10 });
-    const hasCustomDomain = candidates.some(
-      (c) => c.sourceDomains.includes("CustomDomain") || c.targetDomains.includes("CustomDomain"),
-    );
-    expect(hasCustomDomain).toBe(true);
-  });
-
   it("never returns candidates referencing blacklisted domains", () => {
     const persona = personaWithDomains();
     persona.domains["软件架构"].depth = 5;

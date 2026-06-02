@@ -1467,15 +1467,7 @@ export function buildInsightPrompt(
 
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
-  const coOccurrenceBlock =
-    persona.domainGraph && persona.domainGraph.edges.length > 0
-      ? persona.domainGraph.edges
-          .filter((e) => e.observations >= 3)
-          .toSorted((a, b) => b.observations - a.observations)
-          .slice(0, 5)
-          .map((e) => `${e.source} ↔ ${e.target} (${e.observations}次共现)`)
-          .join("\n")
-      : "";
+  const coOccurrenceBlock = "";
 
   const domainNames = sortedDomainEntries.map(([name]) => name);
   const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) =>

@@ -179,27 +179,10 @@ export type PersonaTree = {
   recentFocus: string[];
   feedbackProfile: FeedbackProfile;
   rapport: RapportMetrics;
-  domainGraph?: LearnedDomainGraph;
   moodHistory: MoodSnapshot[];
   domainBlacklist: string[];
   lifecycle: UserLifecycle;
   calibrationHistory: CalibrationRecord[];
-};
-
-// Weighted edge in a learned domain co-occurrence graph
-export type DomainGraphEdge = {
-  source: string;
-  target: string;
-  weight: number;
-  lastObserved: number; // timestamp ms
-  observations: number;
-};
-
-// Learned domain co-occurrence graph (persisted alongside PersonaTree)
-export type LearnedDomainGraph = {
-  nodes: string[];
-  edges: DomainGraphEdge[];
-  totalObservations: number;
 };
 
 // Insight record for proactive suggestions

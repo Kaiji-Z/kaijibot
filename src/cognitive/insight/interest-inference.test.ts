@@ -96,20 +96,6 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
     lifecycle: { stage: "new", lastActiveAt: 0, lastStageTransitionAt: 0, totalActiveDays: 0 },
     calibrationHistory: [],
     moodHistory: [],
-    domainGraph: {
-      nodes: ["typescript", "rust", "wasm"],
-      edges: [
-        {
-          source: "typescript",
-          target: "rust",
-          weight: 0.8,
-          lastObserved: Date.now(),
-          observations: 7,
-        },
-        { source: "rust", target: "wasm", weight: 0.6, lastObserved: Date.now(), observations: 3 },
-      ],
-      totalObservations: 10,
-    },
     ...overrides,
   };
 }
@@ -188,16 +174,6 @@ describe("buildInterestInferencePrompt", () => {
     expect(prompt).toContain("- wasm");
   });
 
-  it("includes DOMAIN CONNECTIONS from domainGraph edges", () => {
-    const prompt = buildInterestInferencePrompt(makePersona(), makeInput());
-
-    expect(prompt).toContain("DOMAIN CONNECTIONS");
-    expect(prompt).toContain("typescript ↔ rust");
-    expect(prompt).toContain("7 co-occurrences");
-    expect(prompt).toContain("rust ↔ wasm");
-    expect(prompt).toContain("3 co-occurrences");
-  });
-
   it("includes RECENT FOCUS section", () => {
     const prompt = buildInterestInferencePrompt(makePersona(), makeInput());
 
@@ -220,18 +196,10 @@ describe("buildInterestInferencePrompt", () => {
   it("handles persona with empty domains gracefully", () => {
     const persona = makePersona({
       domains: {},
-      domainGraph: undefined,
     });
     const prompt = buildInterestInferencePrompt(persona, makeInput());
 
     expect(prompt).toContain("(no domains established yet)");
-    expect(prompt).toContain("(no domain connections yet)");
-  });
-
-  it("handles persona with no domainGraph gracefully", () => {
-    const persona = makePersona({ domainGraph: undefined });
-    const prompt = buildInterestInferencePrompt(persona, makeInput());
-
     expect(prompt).toContain("(no domain connections yet)");
   });
 });

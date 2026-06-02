@@ -108,20 +108,6 @@ function makePersona(): PersonaTree {
       avgResponseLength: 235,
       selfDisclosureLevel: 1,
     },
-    domainGraph: {
-      nodes: ["认知系统设计", "TypeScript", "MCP", "Rust", "飞书集成"],
-      edges: [
-        {
-          source: "认知系统设计",
-          target: "TypeScript",
-          weight: 0.8,
-          lastObserved: now,
-          observations: 8,
-        },
-        { source: "MCP", target: "TypeScript", weight: 0.6, lastObserved: now, observations: 4 },
-      ],
-      totalObservations: 12,
-    },
     moodHistory: [],
     domainBlacklist: [],
     lifecycle: {

@@ -25,7 +25,7 @@ export function generateInsightCandidates(
 
   // Strategy 1: Cross-domain connections
   const userDomains = Object.keys(persona.domains);
-  const crossConnections = findCrossDomainConnections(userDomains, undefined, persona.domainGraph);
+  const crossConnections = findCrossDomainConnections(userDomains, undefined);
 
   for (const conn of crossConnections.slice(0, 2)) {
     const candidate = buildCrossDomainCandidate(conn, persona);

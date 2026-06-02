@@ -3,8 +3,6 @@
  * Uses semantic distance to find unexpected but relevant cross-domain links.
  */
 
-import type { LearnedDomainGraph, DomainGraphEdge } from "../types.js";
-
 /** Graph of domain adjacency relationships */
 export type DomainGraph = Record<string, string[]>;
 
@@ -24,169 +22,11 @@ function resolveGraph(extendedGraph?: DomainGraph): DomainGraph {
   return { ...DEFAULT_DOMAIN_ADJACENCIES, ...extendedGraph };
 }
 
-const LN2 = Math.LN2;
-
-function edgeKey(a: string, b: string): string {
-  return a < b ? `${a}\0${b}` : `${b}\0${a}`;
-}
-
-function buildEdgeIndex(edges: DomainGraphEdge[]): Map<string, DomainGraphEdge> {
-  const index = new Map<string, DomainGraphEdge>();
-  for (const edge of edges) {
-    index.set(edgeKey(edge.source, edge.target), edge);
-  }
-  return index;
-}
-
-export function seedDomainGraph(now: number = Date.now()): LearnedDomainGraph {
-  const nodes: string[] = Object.keys(DEFAULT_DOMAIN_ADJACENCIES);
-  const edges: DomainGraphEdge[] = [];
-  const seen = new Set<string>();
-
-  for (const [source, targets] of Object.entries(DEFAULT_DOMAIN_ADJACENCIES)) {
-    for (const target of targets) {
-      const key = edgeKey(source, target);
-      if (seen.has(key)) {continue;}
-      seen.add(key);
-      edges.push({
-        source,
-        target,
-        weight: 1.0,
-        lastObserved: now,
-        observations: 1,
-      });
-    }
-  }
-
-  return { nodes, edges, totalObservations: 0 };
-}
-
-export function observeCoOccurrence(
-  graph: LearnedDomainGraph,
-  domains: string[],
-  timestamp: number,
-): LearnedDomainGraph {
-  if (domains.length < 2) {return graph;}
-
-  const nodes = [...graph.nodes];
-  const nodeSet = new Set(nodes);
-  const edgeIndex = buildEdgeIndex(graph.edges);
-  let newEdges = [...graph.edges];
-  let addedNodes = false;
-
-  for (const domain of domains) {
-    if (!nodeSet.has(domain)) {
-      nodes.push(domain);
-      nodeSet.add(domain);
-      addedNodes = true;
-    }
-  }
-
-  let observationsAdded = 0;
-
-  for (let i = 0; i < domains.length; i++) {
-    for (let j = i + 1; j < domains.length; j++) {
-      const key = edgeKey(domains[i], domains[j]);
-      const existing = edgeIndex.get(key);
-      observationsAdded++;
-
-      if (existing) {
-        const updated: DomainGraphEdge = {
-          ...existing,
-          weight: existing.weight + 0.1,
-          lastObserved: timestamp,
-          observations: existing.observations + 1,
-        };
-        newEdges = newEdges.map((e) => (edgeKey(e.source, e.target) === key ? updated : e));
-        edgeIndex.set(key, updated);
-      } else {
-        const [src, tgt] =
-          domains[i] < domains[j] ? [domains[i], domains[j]] : [domains[j], domains[i]];
-        const created: DomainGraphEdge = {
-          source: src,
-          target: tgt,
-          weight: 0.1,
-          lastObserved: timestamp,
-          observations: 1,
-        };
-        newEdges = [...newEdges, created];
-        edgeIndex.set(key, created);
-      }
-    }
-  }
-
-  return {
-    nodes: addedNodes ? nodes : graph.nodes,
-    edges: newEdges,
-    totalObservations: graph.totalObservations + observationsAdded,
-  };
-}
-
-export function decayEdges(
-  graph: LearnedDomainGraph,
-  now: number,
-  halfLifeMs: number,
-): LearnedDomainGraph {
-  const pruned: DomainGraphEdge[] = [];
-
-  for (const edge of graph.edges) {
-    const ageMs = now - edge.lastObserved;
-    const decayedWeight = edge.weight * Math.exp((-LN2 * ageMs) / halfLifeMs);
-    if (decayedWeight >= 0.01) {
-      pruned.push({ ...edge, weight: decayedWeight });
-    }
-  }
-
-  return {
-    nodes: graph.nodes,
-    edges: pruned,
-    totalObservations: graph.totalObservations,
-  };
-}
-
-export function getEdgeWeight(graph: LearnedDomainGraph, source: string, target: string): number {
-  const key = edgeKey(source, target);
-  for (const edge of graph.edges) {
-    if (edgeKey(edge.source, edge.target) === key) {
-      return edge.weight;
-    }
-  }
-  return 0.5;
-}
-
-function buildAdjacencyFromLearned(graph: LearnedDomainGraph): DomainGraph {
-  const adj: DomainGraph = {};
-  for (const node of graph.nodes) {
-    adj[node] = [];
-  }
-  for (const edge of graph.edges) {
-    if (edge.weight >= 0.05) {
-      if (!adj[edge.source]) {adj[edge.source] = [];}
-      if (!adj[edge.target]) {adj[edge.target] = [];}
-      adj[edge.source].push(edge.target);
-      adj[edge.target].push(edge.source);
-    }
-  }
-  return adj;
-}
-
 export function findCrossDomainConnections(
   userDomains: string[],
   extendedGraph?: DomainGraph,
-  domainGraph?: LearnedDomainGraph,
 ): Array<{ from: string; to: string; bridge: string[]; distance: number }> {
-  const learnedGraph = domainGraph ? buildAdjacencyFromLearned(domainGraph) : {};
-  const defaultGraph = resolveGraph(extendedGraph);
-  const graph: DomainGraph = {};
-  for (const [node, neighbors] of Object.entries(defaultGraph)) {
-    graph[node] = [...neighbors];
-  }
-  for (const [node, neighbors] of Object.entries(learnedGraph)) {
-    if (!graph[node]) {graph[node] = [];}
-    for (const n of neighbors) {
-      if (!graph[node].includes(n)) {graph[node].push(n);}
-    }
-  }
+  const graph = resolveGraph(extendedGraph);
   const connections: Array<{ from: string; to: string; bridge: string[]; distance: number }> = [];
 
   for (const domain of userDomains) {
@@ -213,27 +53,8 @@ export function semanticDistance(
   domainA: string,
   domainB: string,
   extendedGraph?: DomainGraph,
-  domainGraph?: LearnedDomainGraph,
 ): number {
   if (domainA === domainB) {return 0;}
-
-  if (domainGraph) {
-    const directWeight = getEdgeWeight(domainGraph, domainA, domainB);
-    if (directWeight > 0.5) {return 1 - directWeight;}
-
-    for (const edge of domainGraph.edges) {
-      const edgeDomains = [edge.source, edge.target];
-      if (edgeDomains.includes(domainA)) {
-        const mid = edgeDomains[0] === domainA ? edgeDomains[1] : edgeDomains[0];
-        const midWeight = getEdgeWeight(domainGraph, mid, domainB);
-        if (midWeight > 0.5) {
-          return 1 - Math.min(directWeight, midWeight) * 0.75;
-        }
-      }
-    }
-
-    if (directWeight > 0) {return 1 - directWeight;}
-  }
 
   const graph = resolveGraph(extendedGraph);
   const adjacent = graph[domainA] ?? [];

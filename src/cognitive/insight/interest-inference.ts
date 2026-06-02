@@ -144,15 +144,7 @@ export function buildInterestInferencePrompt(
   const gapsBlock =
     allGaps.length > 0 ? allGaps.map((d) => `- ${d}`).join("\n") : "(no clear gaps identified)";
 
-  // Section 4: Domain connections
-  const edges = persona.domainGraph?.edges ?? [];
-  const topEdges = [...edges].toSorted((a, b) => b.observations - a.observations).slice(0, 5);
-  const connectionsBlock =
-    topEdges.length > 0
-      ? topEdges
-          .map((e) => `- ${e.source} ↔ ${e.target} (${e.observations} co-occurrences)`)
-          .join("\n")
-      : "(no domain connections yet)";
+  const connectionsBlock = "(no domain connections yet)";
 
   // Section 5: Recent focus
   const recentFocus = persona.recentFocus.slice(0, 5);

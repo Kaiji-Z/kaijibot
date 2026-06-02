@@ -17,10 +17,6 @@ import type { PersonaTree, DomainNode, InsightRecord } from "../types.js";
 import {
   findCrossDomainConnections,
   semanticDistance,
-  observeCoOccurrence,
-  decayEdges,
-  getEdgeWeight,
-  seedDomainGraph,
   discoverDomainsFromPersona,
   extendDomainGraph,
 } from "./cross-domain-mapper.js";
@@ -328,126 +324,6 @@ describe("Pipeline: serendipity scoring", () => {
 });
 
 // ===========================================================================
-// SCENARIO 4: Domain graph evolution
-// ===========================================================================
-describe("Pipeline: domain graph evolution", () => {
-  it("seed graph has correct structure", () => {
-    const graph = seedDomainGraph();
-    expect(graph.nodes.length).toBeGreaterThan(0);
-    expect(graph.edges.length).toBeGreaterThan(0);
-    expect(graph.totalObservations).toBe(0);
-  });
-
-  it("observeCoOccurrence adds new edges and updates existing", () => {
-    let graph = seedDomainGraph();
-    const originalEdgeCount = graph.edges.length;
-
-    graph = observeCoOccurrence(graph, ["AI/机器学习", "软件架构"], Date.now());
-    // Existing edge should get updated weight
-    const weight = getEdgeWeight(graph, "AI/机器学习", "软件架构");
-    expect(weight).toBeGreaterThan(1.0);
-
-    graph = observeCoOccurrence(graph, ["AI/机器学习", "量子计算"], Date.now());
-    // New edge added
-    expect(graph.edges.length).toBeGreaterThan(originalEdgeCount);
-
-    const quantumWeight = getEdgeWeight(graph, "AI/机器学习", "量子计算");
-    expect(quantumWeight).toBeGreaterThan(0);
-  });
-
-  it("observeCoOccurrence with < 2 domains is a no-op", () => {
-    const graph = seedDomainGraph();
-    const same = observeCoOccurrence(graph, ["AI/机器学习"], Date.now());
-    expect(same.edges.length).toBe(graph.edges.length);
-    expect(same.totalObservations).toBe(graph.totalObservations);
-  });
-
-  it("decayEdges prunes old edges below threshold", () => {
-    let graph = seedDomainGraph();
-    const now = Date.now();
-
-    // Add an edge observed a long time ago
-    graph = observeCoOccurrence(graph, ["AI/机器学习", "量子计算"], now - 365 * 86400000);
-
-    // Add an edge observed recently
-    graph = observeCoOccurrence(graph, ["AI/机器学习", "数据科学"], now);
-
-    const edgeCountBefore = graph.edges.length;
-
-    // Decay with 30-day half-life
-    const decayed = decayEdges(graph, now, 30 * 86400000);
-    // Old edge should be pruned, recent one kept
-    expect(decayed.edges.length).toBeLessThanOrEqual(edgeCountBefore);
-
-    const recentWeight = getEdgeWeight(decayed, "AI/机器学习", "数据科学");
-    expect(recentWeight).toBeGreaterThan(0);
-  });
-
-  it("cross-domain connections find adjacent unknown domains", () => {
-    const connections = findCrossDomainConnections(["AI/机器学习", "软件架构"]);
-
-    // AI/机器学习 is adjacent to 数据科学, 云/基础设施, 网络安全, 编程语言
-    // but those are NOT in the user's domain list
-    for (const conn of connections) {
-      expect(conn.from).toBeTruthy();
-      expect(conn.to).toBeTruthy();
-      expect(["AI/机器学习", "软件架构"]).toContain(conn.from);
-      expect(["AI/机器学习", "软件架构"]).not.toContain(conn.to);
-    }
-  });
-
-  it("cross-domain connections with learned graph", () => {
-    let graph = seedDomainGraph();
-    graph = observeCoOccurrence(graph, ["AI/机器学习", "量子计算"], Date.now());
-    // Need strong weight
-    for (let i = 0; i < 5; i++) {
-      graph = observeCoOccurrence(graph, ["AI/机器学习", "量子计算"], Date.now());
-    }
-
-    const connections = findCrossDomainConnections(["AI/机器学习"], undefined, graph);
-
-    expect(connections.length).toBeGreaterThan(0);
-  });
-
-  it("semanticDistance returns 0 for same domain", () => {
-    expect(semanticDistance("AI/机器学习", "AI/机器学习")).toBe(0);
-  });
-
-  it("semanticDistance returns small value for adjacent domains", () => {
-    const dist = semanticDistance("AI/机器学习", "软件架构");
-    expect(dist).toBeLessThan(1);
-  });
-
-  it("semanticDistance returns 1 for completely unrelated domains", () => {
-    const dist = semanticDistance("AI/机器学习", "烹饪美食");
-    expect(dist).toBe(1);
-  });
-
-  it("discoverDomainsFromPersona finds unknown domains", () => {
-    const persona = {
-      domains: { 量子计算: {} as DomainNode, 烹饪美食: {} as DomainNode },
-      identity: {
-        expertDomains: ["古生物学"],
-        interestDomains: [],
-        curiosityDomains: [],
-      },
-    };
-
-    const discovered = discoverDomainsFromPersona(persona);
-    expect(discovered).toContain("量子计算");
-    expect(discovered).toContain("烹饪美食");
-    expect(discovered).toContain("古生物学");
-    expect(discovered).not.toContain("AI/机器学习");
-  });
-
-  it("extendDomainGraph adds new domains with default connections", () => {
-    const extended = extendDomainGraph(undefined, ["量子计算", "纳米技术"]);
-    expect(extended["量子计算"]).toBeDefined();
-    expect(extended["纳米技术"]).toBeDefined();
-  });
-});
-
-// ===========================================================================
 // SCENARIO 5: LLM prompt construction
 // ===========================================================================
 describe("Pipeline: LLM prompt construction", () => {
@@ -486,18 +362,6 @@ describe("Pipeline: LLM prompt construction", () => {
     const { prompt } = buildInsightPrompt(persona, input, [], recentInsightContents);
     expect(prompt).toContain("PAST INSIGHTS");
     expect(prompt).toContain("Transformer");
-  });
-
-  it("includes domain co-occurrence graph when present", () => {
-    const persona = richPersona();
-    let graph = seedDomainGraph();
-    for (let i = 0; i < 5; i++) {
-      graph = observeCoOccurrence(graph, ["AI/机器学习", "软件架构"], Date.now());
-    }
-    persona.domainGraph = graph;
-
-    const { prompt } = buildInsightPrompt(persona, baseInput());
-    expect(prompt).toContain("CROSS-DOMAIN CONNECTIONS");
   });
 
   it("prompt works with minimal persona (no identity, no domains)", () => {
@@ -873,51 +737,6 @@ describe("Pipeline: verification integration", () => {
       // Template-based candidates have no sources → unverified
       expect(c.verificationStatus).toBe("unverified");
     }
-  });
-});
-
-// ===========================================================================
-// SCENARIO 16: Domain graph → cross-domain connections pipeline
-// ===========================================================================
-describe("Pipeline: graph evolution → connections pipeline", () => {
-  it("observed co-occurrences enable cross-domain connections via learned graph", () => {
-    let graph = seedDomainGraph();
-
-    // Observe many co-occurrences between AI and a new domain
-    for (let i = 0; i < 10; i++) {
-      graph = observeCoOccurrence(graph, ["AI/机器学习", "区块链"], Date.now());
-    }
-
-    // Now find connections using the learned graph
-    const connections = findCrossDomainConnections(["AI/机器学习"], undefined, graph);
-
-    const blockchainConn = connections.find((c) => c.to === "区块链");
-    expect(blockchainConn).toBeDefined();
-    expect(blockchainConn!.from).toBe("AI/机器学习");
-  });
-
-  it("decayed edges reduce connection quality over time", () => {
-    let graph = seedDomainGraph();
-    const now = Date.now();
-
-    // Strong edge, observed long ago
-    for (let i = 0; i < 10; i++) {
-      graph = observeCoOccurrence(graph, ["AI/机器学习", "量子计算"], now - 180 * 86400000);
-    }
-
-    // After decay, edge weight should be reduced
-    const decayed = decayEdges(graph, now, 30 * 86400000);
-
-    const originalWeight = getEdgeWeight(graph, "AI/机器学习", "量子计算");
-    const decayedWeight = getEdgeWeight(decayed, "AI/机器学习", "量子计算");
-
-    expect(decayedWeight).toBeLessThanOrEqual(originalWeight);
-  });
-
-  it("edge weight retrieval returns 0.5 for unknown pairs in learned graph", () => {
-    const graph = seedDomainGraph();
-    const weight = getEdgeWeight(graph, "AI/机器学习", "完全不相关");
-    expect(weight).toBe(0.5);
   });
 });
 

@@ -80,13 +80,6 @@ function makeTestPersona(): PersonaTree {
       avgResponseLength: 200,
       selfDisclosureLevel: 1,
     },
-    domainGraph: {
-      nodes: ["TypeScript", "MCP", "Rust"],
-      edges: [
-        { source: "TypeScript", target: "MCP", weight: 0.5, lastObserved: now, observations: 4 },
-      ],
-      totalObservations: 4,
-    },
     moodHistory: [],
     domainBlacklist: [],
     lifecycle: {
