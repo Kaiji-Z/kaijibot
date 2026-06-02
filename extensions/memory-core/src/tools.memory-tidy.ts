@@ -16,6 +16,7 @@ import {
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 import { MemoryIndexManager } from "./memory-index.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
+import { semanticTopicMerge, computeTopicJaccard, type TopicForMerge } from "./semantic-merge.js";
 import { TopicManager, createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import { type TopicEntry } from "./topic-types.js";
 
@@ -29,6 +30,7 @@ export const MemoryTidySchema = Type.Object({
     Type.Literal("merge"),
     Type.Literal("rebalance"),
     Type.Literal("archive"),
+    Type.Literal("consolidate"),
     Type.Literal("full"),
   ]),
   target: Type.Optional(Type.String({ description: "Specific topic file to tidy (without .md)" })),
@@ -39,7 +41,7 @@ export const MemoryTidySchema = Type.Object({
 // Types
 // ---------------------------------------------------------------------------
 
-export type TidyAction = "dedup" | "merge" | "rebalance" | "archive" | "full";
+export type TidyAction = "dedup" | "merge" | "rebalance" | "archive" | "consolidate" | "full";
 
 export interface MemoryTidyDeps {
   topicManager: TopicManager;
@@ -50,6 +52,7 @@ export interface MemoryTidyDeps {
     rename: (oldPath: string, newPath: string) => Promise<void>;
   };
   workspaceDir: string;
+  generateText?: (prompt: string) => Promise<string>;
 }
 
 export interface TidyResult {
@@ -273,30 +276,41 @@ async function actionMerge(deps: MemoryTidyDeps, dryRun: boolean): Promise<TidyR
   let entriesAffected = 0;
 
   const topicFileNames = await deps.topicManager.listTopics();
+  if (topicFileNames.length < 2) {
+    return { action: "merge", filesAffected: 0, entriesAffected: 0, changes: ["need at least 2 topics to merge"], dryRun };
+  }
+
   const toMerge: Array<{ from: string; into: string }> = [];
 
-  for (let i = 0; i < topicFileNames.length; i++) {
-    for (let j = i + 1; j < topicFileNames.length; j++) {
-      const nameA = topicFileNames[i]!.replace(/\.md$/, "");
-      const nameB = topicFileNames[j]!.replace(/\.md$/, "");
-      const topicA = await deps.topicManager.getTopic(nameA);
-      const topicB = await deps.topicManager.getTopic(nameB);
-      if (!topicA || !topicB) {
-        continue;
-      }
-      if (topicA.entries.length === 0 || topicB.entries.length === 0) {
-        continue;
-      }
+  if (deps.generateText) {
+    const topicsForMerge = await buildTopicsForMerge(deps, topicFileNames);
+    const result = await semanticTopicMerge({
+      topics: topicsForMerge,
+      generateText: deps.generateText,
+    });
+    for (const m of result.merges) {
+      toMerge.push({ from: m.from, into: m.into });
+    }
+  } else {
+    for (let i = 0; i < topicFileNames.length; i++) {
+      for (let j = i + 1; j < topicFileNames.length; j++) {
+        const nameA = topicFileNames[i]!.replace(/\.md$/, "");
+        const nameB = topicFileNames[j]!.replace(/\.md$/, "");
+        const topicA = await deps.topicManager.getTopic(nameA);
+        const topicB = await deps.topicManager.getTopic(nameB);
+        if (!topicA || !topicB) { continue; }
+        if (topicA.entries.length === 0 || topicB.entries.length === 0) { continue; }
 
-      const contentA = topicA.entries.map((e) => e.content).join(" ");
-      const contentB = topicB.entries.map((e) => e.content).join(" ");
+        const contentA = topicA.entries.map((e) => e.content).join(" ");
+        const contentB = topicB.entries.map((e) => e.content).join(" ");
 
-      if (computeJaccard(contentA, contentB) >= MERGE_THRESHOLD) {
-        const [from, into] =
-          topicA.entries.length >= topicB.entries.length
-            ? [topicFileNames[j]!, topicFileNames[i]!]
-            : [topicFileNames[i]!, topicFileNames[j]!];
-        toMerge.push({ from, into });
+        if (computeJaccard(contentA, contentB) >= MERGE_THRESHOLD) {
+          const [from, into] =
+            topicA.entries.length >= topicB.entries.length
+              ? [topicFileNames[j]!, topicFileNames[i]!]
+              : [topicFileNames[i]!, topicFileNames[j]!];
+          toMerge.push({ from, into });
+        }
       }
     }
   }
@@ -446,6 +460,90 @@ async function actionArchive(deps: MemoryTidyDeps, dryRun: boolean): Promise<Tid
 }
 
 // ---------------------------------------------------------------------------
+// Helper: build TopicForMerge[] from topic file names
+// ---------------------------------------------------------------------------
+
+async function buildTopicsForMerge(
+  deps: MemoryTidyDeps,
+  topicFileNames: string[],
+): Promise<TopicForMerge[]> {
+  const topicsForMerge: TopicForMerge[] = [];
+  for (const fileName of topicFileNames) {
+    const name = fileName.replace(/\.md$/, "");
+    const topic = await deps.topicManager.getTopic(name);
+    if (!topic || topic.entries.length === 0) { continue; }
+
+    const sampleContent = topic.entries
+      .slice(0, 3)
+      .map((e) => e.content.slice(0, 200))
+      .join(" ");
+
+    topicsForMerge.push({
+      name,
+      subject: topic.frontmatter.subject,
+      entryCount: topic.entries.length,
+      sampleContent,
+    });
+  }
+  return topicsForMerge;
+}
+
+// ---------------------------------------------------------------------------
+// Action: consolidate (LLM-powered semantic topic merge)
+// ---------------------------------------------------------------------------
+
+async function actionConsolidate(deps: MemoryTidyDeps, dryRun: boolean): Promise<TidyResult> {
+  if (!deps.generateText) {
+    return actionMerge(deps, dryRun);
+  }
+
+  const topicFileNames = await deps.topicManager.listTopics();
+  if (topicFileNames.length < 2) {
+    return { action: "consolidate", filesAffected: 0, entriesAffected: 0, changes: ["need at least 2 topics to consolidate"], dryRun };
+  }
+
+  const topicsForMerge = await buildTopicsForMerge(deps, topicFileNames);
+
+  const result = await semanticTopicMerge({
+    topics: topicsForMerge,
+    generateText: deps.generateText,
+    jaccardPreFilter: 0.2,
+    llmThreshold: 0.7,
+  });
+
+  const changes: string[] = [];
+  let filesAffected = 0;
+  let entriesAffected = 0;
+
+  for (const merge of result.merges) {
+    const fromTopic = await deps.topicManager.getTopic(merge.from);
+    if (!fromTopic) { continue; }
+
+    filesAffected += 2;
+    entriesAffected += fromTopic.entries.length;
+    changes.push(`consolidated ${merge.from} → ${merge.into} (${merge.reason})`);
+
+    if (!dryRun) {
+      for (const entry of fromTopic.entries) {
+        await deps.topicManager.appendEntry(merge.into, entry);
+      }
+      await deps.topicManager.deleteTopic(merge.from);
+
+      const index = await deps.indexManager.readIndex();
+      const before = index.sections.length;
+      index.sections = index.sections.filter((s) => s.topicFile !== `memory/topics/${merge.from}.md`);
+      if (index.sections.length < before) {
+        await deps.indexManager.writeIndex(index);
+      }
+    }
+  }
+
+  changes.push(`semantic scan: ${result.llmCalls} LLM calls, ${result.skipped} pairs filtered by Jaccard`);
+
+  return { action: "consolidate", filesAffected, entriesAffected, changes, dryRun };
+}
+
+// ---------------------------------------------------------------------------
 // Action: inline-dedup (deduplicate inline section lines)
 // ---------------------------------------------------------------------------
 
@@ -512,20 +610,22 @@ async function actionFull(
   const dedup = await actionDedup(deps, target, dryRun);
   const inlineDedup = await actionInlineDedup(deps, dryRun);
   const merge = await actionMerge(deps, dryRun);
+  const consolidate = await actionConsolidate(deps, dryRun);
   const rebalance = await actionRebalance(deps, dryRun);
   const archive = await actionArchive(deps, dryRun);
 
   return {
     action: "full",
     filesAffected:
-      dedup.filesAffected + inlineDedup.filesAffected + merge.filesAffected + rebalance.filesAffected + archive.filesAffected,
+      dedup.filesAffected + inlineDedup.filesAffected + merge.filesAffected + consolidate.filesAffected + rebalance.filesAffected + archive.filesAffected,
     entriesAffected:
       dedup.entriesAffected +
       inlineDedup.entriesAffected +
       merge.entriesAffected +
+      consolidate.entriesAffected +
       rebalance.entriesAffected +
       archive.entriesAffected,
-    changes: [...dedup.changes, ...inlineDedup.changes, ...merge.changes, ...rebalance.changes, ...archive.changes],
+    changes: [...dedup.changes, ...inlineDedup.changes, ...merge.changes, ...consolidate.changes, ...rebalance.changes, ...archive.changes],
     dryRun,
   };
 }
@@ -548,6 +648,8 @@ export async function runMemoryTidyActions(
       return actionRebalance(deps, dryRun);
     case "archive":
       return actionArchive(deps, dryRun);
+    case "consolidate":
+      return actionConsolidate(deps, dryRun);
     case "full":
       return actionFull(deps, params.target, dryRun);
   }
@@ -614,6 +716,7 @@ export function createMemoryTidyTool(options: {
     description:
       "Memory maintenance tool: organize, deduplicate, and rebalance memory files. " +
       "Actions: dedup (remove duplicate entries), merge (combine similar topic files), " +
+      "consolidate (LLM-powered semantic topic merge), " +
       "rebalance (trim MEMORY.md index to budget), archive (move old topics to archive). " +
       "Use 'full' to run all actions. Run automatically after consolidation, or call manually " +
       "when memory feels cluttered.",
