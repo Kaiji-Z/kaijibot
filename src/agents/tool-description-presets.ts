@@ -8,6 +8,8 @@ export const SESSIONS_HISTORY_TOOL_DISPLAY_SUMMARY =
 export const SESSIONS_SEND_TOOL_DISPLAY_SUMMARY = "Send a message to another visible session.";
 export const SESSIONS_SPAWN_TOOL_DISPLAY_SUMMARY = "Spawn sub-agent or ACP sessions.";
 export const SESSION_STATUS_TOOL_DISPLAY_SUMMARY = "Show session status, usage, and model state.";
+export const SESSION_TRANSCRIPT_TOOL_DISPLAY_SUMMARY =
+  "Read and preprocess a session transcript file into clean conversation text.";
 export const UPDATE_PLAN_TOOL_DISPLAY_SUMMARY = "Track a short structured work plan.";
 
 export function describeSessionsListTool(): string {
@@ -45,6 +47,14 @@ export function describeSessionStatusTool(): string {
     "Show a /status-equivalent session status card for the current or another visible session, including usage, time, cost when available, and linked background task context.",
     "Optional `model` sets a per-session model override; `model=default` resets overrides.",
     "Use this for questions like what model is active or how a session is configured.",
+  ].join(" ");
+}
+
+export function describeSessionTranscriptTool(): string {
+  return [
+    "Read a session transcript file (JSONL) and return preprocessed conversation text containing only user and assistant messages.",
+    "Automatically strips system metadata, tool call details, thinking blocks, slash commands, and feishu routing prefixes.",
+    "Pass `transcriptPath` from `sessions_list` output. Optional `maxMessages` controls how many recent messages to return (default 500).",
   ].join(" ");
 }
 

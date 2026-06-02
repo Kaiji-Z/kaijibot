@@ -7,6 +7,7 @@ import {
   SESSIONS_SEND_TOOL_DISPLAY_SUMMARY,
   SESSIONS_SPAWN_TOOL_DISPLAY_SUMMARY,
   SESSION_STATUS_TOOL_DISPLAY_SUMMARY,
+  SESSION_TRANSCRIPT_TOOL_DISPLAY_SUMMARY,
   UPDATE_PLAN_TOOL_DISPLAY_SUMMARY,
 } from "./tool-description-presets.js";
 
@@ -195,6 +196,14 @@ const CORE_TOOL_DEFINITIONS: CoreToolDefinition[] = [
     description: SESSION_STATUS_TOOL_DISPLAY_SUMMARY,
     sectionId: "sessions",
     profiles: ["minimal", "coding", "messaging"],
+    includeInKaijiBotGroup: true,
+  },
+  {
+    id: "read_session_transcript",
+    label: "read_session_transcript",
+    description: SESSION_TRANSCRIPT_TOOL_DISPLAY_SUMMARY,
+    sectionId: "sessions",
+    profiles: ["coding", "messaging"],
     includeInKaijiBotGroup: true,
   },
   {

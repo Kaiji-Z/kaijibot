@@ -46,26 +46,9 @@ Use this skill immediately when the user asks any of:
 
 **会话原始文件读取方式**（JSONL）：
 
-使用 `read_file` 工具读取 `transcriptPath` 指向的 JSONL 文件后，**必须按以下规则过滤**，只保留有价值的对话内容：
+调用 `read_session_transcript` 工具，传入 `sessions_list` 返回的 `transcriptPath`。工具会自动读取 JSONL 文件并返回预处理后的纯文本对话内容（只含 user/assistant 消息，已去除元数据、系统噪音、thinking 块、工具调用详情）。可选参数 `maxMessages`（默认 500）控制返回的最大消息数。
 
-1. **只处理 `"type": "message"` 的行**，忽略其他类型（session、model_change 等）
-2. **只保留 `message.role` 为 `"user"` 或 `"assistant"` 的消息**，忽略 toolResult、system 等
-3. **提取文本**：从 `message.content` 提取。content 可能是字符串或数组（数组中取 `type: "text"` 的条目的 `text` 字段）
-4. **跳过用户消息中的元数据**：以 `ou_` 开头的前缀（如 `ou_xxx:`）和 `Conversation info` 块都是系统注入的元数据，不是用户真实输入
-5. **跳过斜杠命令**：以 `/` 开头的用户消息（如 `/new`、`/reset`）不需要提取
-6. **工具调用保留名称**：如果 assistant 消息包含工具调用（`type: "toolCall"`），记下工具名称（如 `[tool: web_search, read_file]`）作为上下文信号，但不保留工具的参数和返回值
-7. **忽略 thinking 块**：`type: "thinking"` 的内容不需要提取
-
-**过滤后的示例**（你实际要处理的内容）：
-
-```
-user: 帮我查一下天气
-assistant: 今天北京晴天，25°C
-user: 分析一下这个项目的架构
-assistant: [tool: read_file, glob] 这个项目的架构是...
-```
-
-**为什么必须过滤**：原始 JSONL 中 97.5% 是系统元数据（会话信息、工具调用细节、thinking 块等）。不过滤会浪费大量上下文窗口，导致能处理的会话数量大幅减少。
+**为什么用 `read_session_transcript` 而不是 `read_file`**：原始 JSONL 中 97.5% 是系统元数据。`read_session_transcript` 在代码层面完成过滤，直接返回干净的对话文本，节省大量上下文窗口。
 
 **跳过的文件**（系统元数据，不是真实对话）：
 
@@ -173,7 +156,7 @@ MEMORY.md 是长期记忆的入口，**8KB 预算**。任何不符合结构的�
 
 **读取顺序：**
 
-1. 调用 `sessions_list` 工具（参数：`includeArchived: true`）获取所有会话列表（含 `transcriptPath` 字段，含归档的 `.reset.` 会话）。逐个读取 `transcriptPath` 指向的 JSONL 文件，解析出 User/Assistant 对话内容。按文件修改时间从新到旧处理（最近的对话优先）
+1. 调用 `sessions_list` 工具（参数：`includeArchived: true`）获取所有会话列表（含 `transcriptPath` 字段，含归档的 `.reset.` 会话）。逐个调用 `read_session_transcript` 工具传入 `transcriptPath` 获取预处理后的对话文本。按文件修改时间从新到旧处理（最近的对话优先）
 2. 如果 QMD sessions 已启用（`memory.qmd.sessions.enabled: true`），读取 QMD 导出目录下的 `*.md` 文件作为补充（Markdown 格式更可读，按文件大小从大到小）
 3. 读所有每日笔记 `memory/YYYY-MM-DD.md`（按日期从旧到新，补充上述未覆盖的摘要）
 4. 按需读会话语料 `memory/.dreams/session-corpus/*.txt`（仅当上述来源仍有信息缺口时）
@@ -265,7 +248,7 @@ LLM 会自动执行以下操作（根据实际数据决定哪些需要做）：
 当用户说"整理记忆"时：
 
 1. **MEMORY.md 垃圾回收**：完整读取 MEMORY.md，识别并修复所有问题（晋升条目归档、重复删除、结构修复、预算控制）
-2. **会话深度扫描（必做）**：调用 `sessions_list`（`includeArchived: true`）获取所有会话（含归档的 `.reset.` 会话），逐个读取 `transcriptPath`（JSONL 格式），解析 User/Assistant 对话，提取关键记忆并调用 `memory_save(content=..., topic=..., importance=..., type=...)` 写入。如果 QMD 已启用，也读取 QMD 的 Markdown 文件作为更可读的补充。读取 `memory/YYYY-MM-DD.md` 每日笔记补充可能遗漏的摘要信息。**扫描完成后必须输出 Step 2 扫描摘要检查点**
+2. **会话深度扫描（必做）**：调用 `sessions_list`（`includeArchived: true`）获取所有会话（含归档的 `.reset.` 会话），逐个调用 `read_session_transcript` 传入 `transcriptPath` 获取预处理的对话文本，提取关键记忆并调用 `memory_save(content=..., topic=..., importance=..., type=...)` 写入。如果 QMD 已启用，也读取 QMD 的 Markdown 文件作为更可读的补充。读取 `memory/YYYY-MM-DD.md` 每日笔记补充可能遗漏的摘要信息。**扫描完成后必须输出 Step 2 扫描摘要检查点**
 3. 调用 `memory_tidy`（LLM 全权驱动：自动决定去重/合并/重命名/归档/inline 清理 + 维护 registry.json）
 4. 最终检查 + 汇报（使用 Step 2 扫描摘要的数据）
 
