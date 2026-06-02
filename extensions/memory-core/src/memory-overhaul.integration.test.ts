@@ -44,6 +44,7 @@ function createNodeFsAdapter(): TopicManagerDeps["fs"] & MemoryIndexDeps["fs"] {
     readdir: (p: string) => fs.readdir(p) as Promise<string[]>,
     stat: (p: string) => fs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
     rename: (a: string, b: string) => fs.rename(a, b),
+    unlink: (p: string) => fs.unlink(p),
   };
 }
 

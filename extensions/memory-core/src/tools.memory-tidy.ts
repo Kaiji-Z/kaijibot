@@ -500,7 +500,7 @@ async function executeRenameTopic(
       }
     }
 
-    // Delete old file (write empty to delete via TopicManager)
+    // Delete old file
     await deps.topicManager.deleteTopic(op.from);
 
     // Update MEMORY.md index
@@ -882,6 +882,36 @@ async function runJaccardFallback(
 }
 
 // ---------------------------------------------------------------------------
+// syncMissingPointers: ensure registry topics have MEMORY.md pointers
+// ---------------------------------------------------------------------------
+
+async function syncMissingPointers(deps: MemoryTidyDeps): Promise<{ added: number }> {
+  const registryTopics = await deps.registry.listTopics();
+  if (registryTopics.length === 0) {
+    return { added: 0 };
+  }
+
+  const index = await deps.indexManager.readIndex();
+  const existingTopicFiles = new Set(index.sections.map((s) => s.topicFile));
+
+  let added = 0;
+  for (const meta of registryTopics) {
+    const topicFile = `memory/topics/${meta.name}.md`;
+    if (!existingTopicFiles.has(topicFile)) {
+      await deps.indexManager.updateSection({
+        subject: meta.name,
+        title: meta.name,
+        topicFile,
+        summary: meta.description,
+      });
+      added++;
+    }
+  }
+
+  return { added };
+}
+
+// ---------------------------------------------------------------------------
 // Core function
 // ---------------------------------------------------------------------------
 
@@ -912,6 +942,16 @@ export async function runMemoryTidy(
     // Best-effort
   }
 
+  // Sync missing MEMORY.md pointers for registry topics
+  try {
+    const syncResult = await syncMissingPointers(deps);
+    if (syncResult.added > 0) {
+      result.changes.push(`synced ${syncResult.added} missing topic pointer(s) to MEMORY.md`);
+    }
+  } catch {
+    // Best-effort
+  }
+
   return result;
 }
 
@@ -923,7 +963,7 @@ export function createTidyDepsFromNodeFs(
   workspaceDir: string,
   nodeFs: Pick<
     typeof import("node:fs/promises"),
-    "readFile" | "writeFile" | "mkdir" | "readdir" | "stat" | "rename"
+    "readFile" | "writeFile" | "mkdir" | "readdir" | "stat" | "rename" | "unlink"
   >,
 ): MemoryTidyDeps {
   const fsAdapter: TopicManagerDeps["fs"] = {
@@ -933,6 +973,7 @@ export function createTidyDepsFromNodeFs(
     readdir: (p) => nodeFs.readdir(p) as Promise<string[]>,
     stat: (p) => nodeFs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
     rename: (a, b) => nodeFs.rename(a, b),
+    unlink: (p) => nodeFs.unlink(p),
   };
 
   return {

@@ -56,6 +56,7 @@ export interface FsAdapter {
   readdir: (path: string) => Promise<string[]>;
   rename: (oldPath: string, newPath: string) => Promise<void>;
   stat: (path: string) => Promise<{ mtimeMs: number; size: number }>;
+  unlink: (path: string) => Promise<void>;
 }
 
 export type ClassifyFn = (entries: ParsedMemoryEntry[]) => Promise<ClassifiedEntry[]>;
@@ -105,6 +106,7 @@ export function createNodeFsAdapter(): FsAdapter {
     readdir: (p: string) => fs.readdir(p),
     rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
     stat: (p: string) => fs.stat(p).then((s) => ({ mtimeMs: s.mtimeMs, size: s.size })),
+    unlink: (p: string) => fs.unlink(p),
   };
 }
 

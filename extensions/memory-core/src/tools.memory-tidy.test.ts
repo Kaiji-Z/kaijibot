@@ -51,6 +51,9 @@ function createMemoryFs() {
         files.delete(oldPath);
         files.set(newPath, c);
       },
+      unlink: async (p: string) => {
+        files.delete(p);
+      },
     } satisfies TopicManagerDeps["fs"] & MemoryIndexDeps["fs"] & TopicRegistryDeps["fs"],
   };
 }
@@ -671,6 +674,87 @@ describe("memory_tidy (unified)", () => {
       // Should fall back to Jaccard and still dedup
       expect(result.llmUsed).toBe(false);
       expect(result.entriesAffected).toBeGreaterThan(0);
+    });
+  });
+
+  // =========================================================================
+  // syncMissingPointers
+  // =========================================================================
+  describe("syncMissingPointers", () => {
+    it("adds MEMORY.md pointers for registry topics that lack them", async () => {
+      const { tidyDeps: deps, memFs } = createTidyDeps();
+
+      // Create a topic file with content
+      memFs.files.set(
+        join(TOPICS_DIR, "orphan-topic.md"),
+        makeTopic("orphan-topic", "Orphan", [
+          { title: "Entry 1", date: "2026-05-01", content: "Some content" },
+        ]),
+      );
+
+      // Add to registry
+      await deps.registry.upsertTopic({
+        name: "orphan-topic",
+        description: "An orphan topic",
+        entryCount: 1,
+        lastUpdated: "2026-05-01",
+        createdAt: "2026-05-01",
+      });
+
+      // Write MEMORY.md WITHOUT a pointer for orphan-topic
+      writeMemoryMd(memFs, `# Long-Term Memory
+
+## ⚡ Core Memory
+
+## 🔥 Active Context
+
+## Topic Pointers
+- other-topic → memory/topics/other-topic.md
+`);
+
+      const result = await runMemoryTidy(deps, {});
+
+      const index = await deps.indexManager.readIndex();
+      const hasPointer = index.sections.some(
+        (s) => s.topicFile === "memory/topics/orphan-topic.md",
+      );
+      expect(hasPointer).toBe(true);
+      expect(result.changes).toContain("synced 1 missing topic pointer(s) to MEMORY.md");
+    });
+
+    it("does not add duplicate pointers for topics already in MEMORY.md", async () => {
+      const { tidyDeps: deps, memFs } = createTidyDeps();
+
+      memFs.files.set(
+        join(TOPICS_DIR, "existing-topic.md"),
+        makeTopic("existing-topic", "Existing", [
+          { title: "Entry 1", date: "2026-05-01", content: "Some content" },
+        ]),
+      );
+
+      await deps.registry.upsertTopic({
+        name: "existing-topic",
+        description: "Already has pointer",
+        entryCount: 1,
+        lastUpdated: "2026-05-01",
+        createdAt: "2026-05-01",
+      });
+
+      writeMemoryMd(memFs, `# Long-Term Memory
+
+## ⚡ Core Memory
+
+## 🔥 Active Context
+
+## Topic Pointers
+- existing-topic → memory/topics/existing-topic.md
+`);
+
+      const result = await runMemoryTidy(deps, {});
+
+      expect(result.changes).not.toContain(
+        expect.stringContaining("synced"),
+      );
     });
   });
 });

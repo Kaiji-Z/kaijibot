@@ -8,7 +8,7 @@ import { TopicRegistry, type TopicRegistryDeps, type TopicMeta } from "./topic-r
 function createMemoryFs() {
   const files = new Map<string, string>();
 
-  const deps: TopicRegistryDeps["fs"] = {
+  const deps: TopicRegistryDeps["fs"] & { unlink: (filePath: string) => Promise<void> } = {
     readFile: async (filePath: string) => {
       const content = files.get(filePath);
       if (content === undefined) throw new Error(`ENOENT: ${filePath}`);
@@ -42,6 +42,9 @@ function createMemoryFs() {
       if (content === undefined) throw new Error(`ENOENT: ${oldPath}`);
       files.delete(oldPath);
       files.set(newPath, content);
+    },
+    unlink: async (filePath: string) => {
+      files.delete(filePath);
     },
   };
 

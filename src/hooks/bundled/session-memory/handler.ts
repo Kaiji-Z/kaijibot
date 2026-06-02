@@ -91,6 +91,7 @@ function createNodeFsAdapter() {
       return { mtimeMs: s.mtimeMs, size: s.size };
     },
     rename: (oldPath: string, newPath: string) => fs.rename(oldPath, newPath),
+    unlink: (p: string) => fs.unlink(p),
   };
 }
 

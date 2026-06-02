@@ -45,6 +45,9 @@ function createMemoryFs(): {
         files.delete(oldPath);
         files.set(newPath, content);
       },
+      unlink: async (path: string) => {
+        files.delete(path);
+      },
     },
   };
 }
@@ -218,15 +221,18 @@ describe("TopicManager", () => {
   });
 
   describe("deleteTopic", () => {
-    it("writes empty content for deleted topic", async () => {
-      const { manager } = createManager();
+    it("removes the topic file from disk", async () => {
+      const { manager, fs } = createManager();
       await manager.createTopic("user", "temp-topic");
       await manager.deleteTopic("temp-topic");
 
       const topic = await manager.getTopic("temp-topic");
-      // Empty content parses as empty topic
-      expect(topic).not.toBeNull();
-      expect(topic!.entries).toHaveLength(0);
+      expect(topic).toBeNull();
+    });
+
+    it("does not throw when topic does not exist", async () => {
+      const { manager } = createManager();
+      await expect(manager.deleteTopic("nonexistent")).resolves.toBeUndefined();
     });
   });
 });

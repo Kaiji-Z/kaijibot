@@ -28,6 +28,7 @@ export interface TopicManagerDeps {
     readdir: (path: string) => Promise<string[]>;
     stat: (path: string) => Promise<{ mtimeMs: number; size: number }>;
     rename: (oldPath: string, newPath: string) => Promise<void>;
+    unlink: (path: string) => Promise<void>;
   };
 }
 
@@ -189,7 +190,7 @@ export class TopicManager {
   async deleteTopic(name: string): Promise<void> {
     const filePath = resolveTopicPath(this.workspaceDir, name);
     try {
-      await atomicWrite(this.fs, filePath, "");
+      await this.fs.unlink(filePath);
     } catch {
       // already absent
     }

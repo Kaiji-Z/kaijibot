@@ -14,26 +14,28 @@ function createMemoryFs(): {
 } {
   const files = new Map<string, string>();
 
-  return {
-    files,
-    deps: {
-      readFile: async (path: string) => {
-        const content = files.get(path);
-        if (content === undefined) {throw new Error(`ENOENT: ${path}`);}
-        return content;
-      },
-      writeFile: async (path: string, data: string) => {
-        files.set(path, data);
-      },
-      mkdir: async (_path: string, _options: { recursive: boolean }) => {},
-      rename: async (oldPath: string, newPath: string) => {
-        const content = files.get(oldPath);
-        if (content === undefined) {throw new Error(`ENOENT: ${oldPath}`);}
-        files.delete(oldPath);
-        files.set(newPath, content);
-      },
+  const deps: MemoryIndexDeps["fs"] & { unlink: (path: string) => Promise<void> } = {
+    readFile: async (path: string) => {
+      const content = files.get(path);
+      if (content === undefined) {throw new Error(`ENOENT: ${path}`);}
+      return content;
+    },
+    writeFile: async (path: string, data: string) => {
+      files.set(path, data);
+    },
+    mkdir: async (_path: string, _options: { recursive: boolean }) => {},
+    rename: async (oldPath: string, newPath: string) => {
+      const content = files.get(oldPath);
+      if (content === undefined) {throw new Error(`ENOENT: ${oldPath}`);}
+      files.delete(oldPath);
+      files.set(newPath, content);
+    },
+    unlink: async (path: string) => {
+      files.delete(path);
     },
   };
+
+  return { files, deps };
 }
 
 function createManager(workspaceDir = "/test-workspace"): {
