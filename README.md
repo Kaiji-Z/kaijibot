@@ -2,13 +2,11 @@
 
 > **你的 AI 助手会主动找你聊天，而不是干等着你提问。**
 
-Fork of [OpenClaw](https://github.com/openclaw/openclaw) · 飞书 + 30+ LLM 提供商 · 认知层让 AI 从被动变主动
+可插拔 provider/channel 架构 · 认知层让 AI 从被动变主动 · 30+ LLM 提供商
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6.svg)](https://www.typescriptlang.org/)
-[![Vitest 450+ tests](https://img.shields.io/badge/Vitest-450%2B%20tests-6DA55F.svg)](https://vitest.dev/)
-[![简体中文](https://img.shields.io/badge/语言-简体中文-red.svg)]()
 
 **README** | [English](./README.en.md) | **简体中文**
 
@@ -42,13 +40,13 @@ KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动
 
 它怎么做到的：
 
-- **Persona 画像** — 每次对话都在学习你。采用 LLM 驱动的结构化提取，从对话中自动发现领域、提取 6 类结构化洞察（领域知识、行为模式、偏好、工具配置、上下文事实、目标愿望）并存入画像。洞察按类别衰减（行为模式 60 天，工具配置 180 天），兴趣生命周期自动追踪（萌芽→稳定→衰退→沉寂→复苏）。域名由 LLM 动态发现，不再依赖硬编码关键词表。
-- **跨域洞察** — 你同时关注 A 和 B，它发现二者有潜在联系。你之前问过但没深入的问题，它从新角度跟进。你在某个领域钻得够深了，它推荐延伸方向。领域间通过共现图谱建立关联（支持 2-hop 间接连接），图谱边同样带衰减。域冷却机制避免短期内重复推荐同一领域。LLM 自我精炼循环（生成→评审→改写）保证质量，对比反重复框架确保每次推送都不同于历史，语义新鲜度检查拦截语义重复。
-- **时机门控** — 不是想发就发。基于信号检测论的 PRISM 模型计算每条洞察的期望价值，只有当预期收益超过打扰成本时才推送。凌晨不打扰，信任度低时克制，你最近活跃度低就先等等。
-- **信任演化** — 刚认识时谨慎试探，聊多了之后越来越懂你，最终变成可以大胆推荐的深度伙伴。四个阶段（SARA 框架）：定向 → 探索 → 融洽 → 伙伴，信任等级决定系统被允许做什么。
-- **偏好学习** — 你回复长了、追问了"为什么"，它记下你喜欢这个话题。你敷衍了，它下次换一个方向。每个话题维护一组 Thompson Sampling 参数（Beta 分布），隐式反馈（回复深度、响应延迟）比显式反馈更诚实。
+- **Persona 画像** — 每次对话都在学习你。LLM 驱动的结构化提取，从对话中自动发现领域和兴趣。洞察按类别独立衰减，兴趣生命周期自动追踪。领域由 LLM 动态发现，不依赖硬编码关键词。
+- **跨域洞察** — 你同时关注 A 和 B，它发现二者有潜在联系。你之前问过但没深入的问题，它从新角度跟进。你在某个领域钻得够深了，它推荐延伸方向。LLM 自我精炼保证质量，语义去重确保每次推送都有新意。
+- **时机门控** — 不是想发就发。PRISM 模型计算每条洞察的期望价值，只有预期收益超过打扰成本时才推送。凌晨不打扰，信任度低时克制，你最近活跃度低就先等等。
+- **信任演化** — 刚认识时谨慎试探，聊多了越来越懂你，最终变成可以大胆推荐的深度伙伴。SARA 框架驱动四个阶段的信任演化，信任等级决定系统被允许做什么。
+- **偏好学习** — 你回复长了、追问了"为什么"，它记下你喜欢这个话题。你敷衍了，它下次换一个方向。Thompson Sampling 驱动的偏好学习，隐式反馈比显式反馈更诚实。
 
-洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了 Exa 或 Tavily API Key，洞察会紧跟时事。
+洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了搜索 API Key，洞察会紧跟时事。
 
 ### 🧬 自我进化 — Agent 自主判断何时学新技能
 
@@ -56,56 +54,44 @@ KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动
 
 > "我注意到你最近几次都在做类似的会议纪要归档流程，我给自己写了个技能，以后你说'归档会议'我就自动执行整个流程。"
 
-或者它发现了一个可复用的模式，当场告诉你它给自己写了个技能。
-
 它怎么做到的：
 
-- **Hard Trigger 检测** — 代码层只做一件事：检测你这次对话用了 3 个以上工具（噪音过滤）。不调 LLM、不做质量判断。
-- **Agent 自主决策** — 检测到后注入一条系统事件（含工具序列和错误信息），触发 Agent turn。Agent 拥有完整对话上下文，自己判断是否值得做成技能。不值得就忽略。
-- **无冷却无上限** — 没有代码级的频率限制或复杂度门槛。Agent 看到近期建议历史，自己决定频率。无论是否创建技能，都会告知用户结果。
-- **完整生命周期** — 创建前去重检查、创建后跟踪使用频率、30 天不用自动清理。
+- **Hard Trigger 检测** — 代码层只做噪音过滤，不做质量判断。检测到复杂任务后注入系统事件。
+- **Agent 自主决策** — Agent 拥有完整对话上下文，自己判断是否值得做成技能。不值得就忽略。
+- **完整生命周期** — 创建前去重检查、创建后跟踪使用频率、长期不用自动清理。
 
 ### 🔄 纠错自进化 — 同样的错误不犯第二次
 
-你有没有遇到过这种情况：AI 助手每次新建会话都犯同样的错。比如每次都试图创建一个空白的飞书文档，被你骂了之后改正，下次会话又忘了，照犯不误。
+AI 助手每次新建会话都犯同样的错？KaijiBot 不会。它有一套纠错记忆系统，保证同样的错误只犯一次。
 
-KaijiBot 不会这样。它有一套纠错记忆系统，保证同样的错误只犯一次。
-
-它怎么做到的：
-
-- **双路径检测** — 错误来源有两条路：Path A 是 Agent 自己发现了错误，主动调用 `record_correction` 工具上报；Path B 是你执行 `/new` 或 `/reset` 开启新会话时，系统用 60 个正则模式预筛（覆盖中英文纠正表达、质疑语气、Agent 认错等），命中后再交 LLM 分析上一轮对话，自动提取结构化纠错记录。
-- **Jaccard 去重 + 强化** — 纠错记录存入 `~/.kaijibot/cognitive/corrections/{userId}.json`，用 Jaccard 相似度判断新错误是否和已有记录重复。重复的不会新建，而是增加 `reinforcedCount`，说明这个错误反复出现，优先级更高。每人最多 50 条，TTL 90 天。
-- **系统提示注入** — 这是关键设计。纠错记录被注入到系统提示的 "Known Corrections" 区域，按强化次数排序，最多 15 条。Agent 每一轮对话都能看到它们。为什么不放在技能文件或 MEMORY.md 里？因为技能不一定被读取，MEMORY.md 只在启动时加载，只有系统提示是 Agent 每一轮必定看到的。
+- **双路径检测** — Agent 自报错误，或会话结束时系统自动从对话中提取纠错记录。
+- **去重 + 强化** — 重复的错误不会新建记录，而是增加权重，确保高频问题优先被看到。
+- **系统提示注入** — 纠错记录注入到 Agent 每一轮都能看到的系统提示中，而不是放在可能不被读取的文件里。
 
 同样的坑，踩过一次就够了。
 
-### 🔌 62 个扩展开箱即用
+### 🔌 可插拔架构
 
 不绑死任何一家。国内国际随意切换，`kaijibot onboard` 向导自动发现已配置的 API Key。
 
-| 国内（推荐）                                                                                                               | 国际主流                                                                             | 聚合 / 自部署                                                                                               |
-| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · SGLang · vLLM · Ollama · LMStudio |
+| 国内（推荐）                                     | 国际主流                                           | 聚合 / 自部署                                         |
+| ------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------------- |
+| 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity …    | OpenRouter · Together · Ollama · LMStudio · vLLM …    |
 
 切换模型只需一行：
 
 ```bash
 kaijibot config set agent.model "deepseek/deepseek-chat"
-kaijibot config set agent.model "qwen/qwen-max"
 kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
 ```
 
-### 🛠️ 21 个内置技能 + 完整智能体
+### 🛠️ 完整智能体
 
-**Agent 循环**：推理 → 调用工具 → 观察 → 继续推理，支持流式输出、上下文压缩、子智能体并行派生。
+**Agent 循环**：推理 → 调用工具 → 观察 → 继续推理，支持流式输出、上下文压缩、子智能体并行派生。内置代码执行、网页抓取、PDF 操作、图片/视频/音乐生成、TTS 语音合成、Canvas 画布等工具。
 
-**内置工具**：代码执行、网页抓取、PDF 操作、图片/视频/音乐生成、TTS 语音合成、Canvas 画布、文件读写、cron 定时任务，共 20+。支持模型故障转移和 API Key 轮换。
+**记忆系统**：多存储后端，语义搜索历史对话。会话记忆、每日整合、手动整理三个系统协同维护 Agent 上下文。
 
-**记忆系统**：三种存储后端（内存、LanceDB 向量库、Wiki 知识库），语义搜索历史对话。MEMORY.md（8KB 预算）作为 Agent 每轮对话的上下文注入，由三个系统协同维护：会话记忆（`/new` 或 `/reset` 时 LLM 结构化摘要 → inline + topic）、记忆整合引擎（每日凌晨 3 点扫描 7 天会话 → 高置信度内容写入 inline sections）、记忆整理技能（手动/定期全量 GC + Jaccard 去重）。`memory_tidy` 工具覆盖 inline sections 与 topic 文件的交叉去重。纠错记忆独立存储，系统提示自动注入，确保 Agent 每次对话都能看到过去的纠错。
-
-**定时任务**：`at`（一次性）、`every`（间隔）、`cron`（cron 表达式 + 时区），支持消息投递、webhook 回调或静默执行，失败自动重试。
-
-**技能市场**：github、weather、summarize、coding-agent、notion、obsidian、nano-pdf、taskflow、blogwatcher 等 21 个内置技能，更多从 ClawHub 安装：
+**技能市场**：数十个内置技能（github、weather、summarize、coding-agent、notion、obsidian、taskflow 等），更多从 ClawHub 安装：
 
 ```bash
 kaijibot skills install <skill-name>
@@ -137,7 +123,7 @@ cd kaijibot
 # 国内镜像加速
 pnpm install --registry https://registry.npmmirror.com
 pnpm build
-kaijibot onboard   # 交互式向导，自动配置（首次运行会检测 OpenClaw 并提示迁移）
+kaijibot onboard   # 交互式向导，自动配置
 # 从 OpenClaw 迁移？运行：
 kaijibot migrate
 ```
@@ -155,11 +141,9 @@ kaijibot gateway --port 18789 --verbose
 **必需**：至少一个 LLM 提供商的 API Key + 飞书机器人凭证。
 
 ```bash
-# LLM API Key（任选一个，模型用哪个就配哪个）
+# LLM API Key（任选一个）
 export ZAI_API_KEY="your-key"              # 智谱 GLM
 # export DEEPSEEK_API_KEY="your-key"       # DeepSeek
-# export DASHSCOPE_API_KEY="your-key"      # 通义千问
-# export MOONSHOT_API_KEY="your-key"       # Kimi
 # export ANTHROPIC_API_KEY="your-key"      # Claude
 # export GOOGLE_API_KEY="your-key"         # Gemini
 
@@ -175,99 +159,7 @@ export EXA_API_KEY="your-key"
 export TAVILY_API_KEY="your-key"
 ```
 
-配置文件位于 `~/.kaijibot/kaijibot.json`，支持热重载。认知系统可通过 `cognitive.enabled: false` 关闭，退化为纯 OpenClaw 体验。整合配置：`memory.consolidation.enabled`、`memory.consolidation.cron`（默认 `0 3 * * *`）、`memory.consolidation.lookbackDays`（默认 7）。
-
-## 🏗️ 架构概览
-
-### 认知洞察流程
-
-```
-事件源（定时器 + 随机抖动 / 画像变更 / 信息扫描）
-  → PRISM 门控（pNeed × pAccept > 成本阈值？）
-    → 搜索洞察机会（跨域连接 / 领域深度 / 三模式探索）
-      → 域冷却 + 饥饿加成 → 选最佳机会
-        → 语义新鲜度检查（LLM 判定与近期洞察是否语义重复）
-          → 统一管线生成洞察（模式路由 via timestamp % 100）：
-              知识模式（40%）：Web 搜索 + LLM → LLM 自我精炼（评审→改写）→ 质量重试 → LLM 验证
-              模式（Pattern）模式（50%）：对话碎片聚类 → LLM 行为洞察 → 部分验证
-              延伸模式（10%）：用户已知领域 → LLM 深度建议
-            → 对比反重复 + 安全网去重
-              → 投递到你的飞书会话
-                → 收集反馈 → Thompson Sampling 更新偏好模型
-```
-
-### 自我进化流程
-
-```
-Agent 完成任务（≥3 次工具调用）
-→ 代码检测 ≥3 次工具调用（噪音过滤，不调 LLM）
-→ 直接注入系统事件 → 触发 Agent turn
-      → Agent 看到完整对话上下文 + 近期建议历史
-        → 值得做技能？→ 生成技能草稿 → 问用户或静默创建
-        → 不值得？→ 忽略
-        → 太频繁但值得？→ 默默创建，稍后告知
-```
-
-### 纠错自进化流程
-
-```
-双路径检测
-  Path A: Agent 自报（record_correction 工具）    Path B: 会话后 LLM 提取（/new 或 /reset）
-              ↓                                              ↓
-        CorrectionStore.addOrReinforce（Jaccard 去重 + 强化）
-              ↓
-        ~/.kaijibot/cognitive/corrections/{userId}.json
-              ↓
-        下次对话 → context-writer 注入系统提示
-              ↓
-        Agent 看到历史纠错 → 避免重复
-```
-
-### 记忆整合流程
-
-```
-每日凌晨 3 点（cron 调度）
-  → 扫描最近 7 天会话记录（按 userId 分组）
-    → LLM 批量提取结构化知识（TypedInsights + 行为模式 + 纠错）
-      → Jaccard 去重 + 冲突解决
-        → 路由到认知存储：
-            PersonaStore（领域知识、偏好、目标）
-            FragmentStore（行为模式）
-            CorrectionStore（高置信度纠错）
-          → 高置信度内容（≥ 0.7）写入 MEMORY.md inline sections
-              domain_knowledge / stated_preference / behavioral_pattern → ⚡ Core Memory
-              goal_or_aspiration → 🔥 Active Context
-          → 写入每日记忆文件（memory/YYYY-MM-DD.md）
-```
-
-### 技术架构
-
-Gateway 提供 WebSocket + HTTP 双协议，100+ RPC 方法，兼容 OpenAI API（`/v1/chat/completions`）和 MCP 协议。插件 SDK 支持 20+ 生命周期钩子，扩展可按 npm 包、Git 仓库或内置方式加载。会话按渠道 + 对话方隔离。
-
-Agent 系统实现完整的推理循环：系统提示组装（上下文文件 + 认知模式 + 工具描述 + 记忆搜索）→ LLM 推理 → 工具调用 → 观察 → 继续推理 → 流式输出。支持上下文压缩、子 agent 并行派生、模型故障转移和 API Key 轮换。
-
-项目规模：`src/agents/`（762 文件）、`src/infra/`（484）、`src/gateway/`（356）、`src/plugin-sdk/`（341）、`src/plugins/`（256）、`src/cognitive/`（10+ 模块）。
-
-## 📦 扩展与技能
-
-**62 个扩展**覆盖全部能力层：
-
-| 类别              | 扩展                                                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **消息渠道**      | feishu（飞书）                                                                                                                             |
-| **国内 LLM**      | 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax · 百度千帆 · 阶跃星辰 · 火山引擎 · BytePlus · Kimi Coding · 小米 · Alibaba                 |
-| **国际 LLM**      | Claude · Gemini · Grok · Mistral · Perplexity · Groq · Nvidia · HuggingFace · OpenAI                                                       |
-| **聚合 / 网关**   | OpenRouter · LiteLLM · Together · Fireworks · Cloudflare AI · Vercel AI · Copilot Proxy · Microsoft · Microsoft Foundry · Anthropic Vertex |
-| **自部署**        | Ollama · LMStudio · SGLang · vLLM                                                                                                          |
-| **开发工具**      | OpenCode · OpenCode-Go · Open-Prose · OpenShell · Kilocode · Arcee · Chutes · Venice · Vydra · Runway                                      |
-| **搜索 / 浏览器** | Exa · Tavily · Browser（Playwright）                                                                                                       |
-| **记忆**          | Memory-Core · Memory-LanceDB · Memory-Wiki                                                                                                 |
-| **语音 / 媒体**   | Speech-Core · Talk-Voice · Media-Understanding · Image-Generation                                                                          |
-| **工具类**        | Diffs · LLM-Task · Device-Pair · Webhooks · Shared · GitHub-Copilot                                                                        |
-
-**21 个内置技能**：github、gh-issues、weather、summarize、coding-agent、mcporter、skill-creator、session-logs、healthcheck、notion、obsidian、canvas、nano-pdf、taskflow、taskflow-inbox-triage、clawhub、video-frames、gifgrep、node-connect、blogwatcher、sherpa-onnx-tts。
-
-需要更多？`kaijibot skills install <name>` 从 ClawHub 安装。
+配置文件位于 `~/.kaijibot/kaijibot.json`，支持热重载。认知系统可通过 `cognitive.enabled: false` 关闭。详细配置参考 `AGENTS.md`。
 
 ## 致谢
 
