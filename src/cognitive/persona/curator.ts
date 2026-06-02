@@ -1,4 +1,5 @@
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { decayAllBandits } from "../feedback/preference-learner.js";
 import type {
   PersonaTree,
   ConfidenceValue,
@@ -653,9 +654,18 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
     prunedDomains[name] = updatedDomain;
   }
 
+  // Decay and prune topic bandits
+  const decayedProfile = decayAllBandits(persona.feedbackProfile, now);
+  const prunedBandits: Record<string, typeof persona.feedbackProfile.topicBandits[string]> = {};
+  for (const [topic, bandit] of Object.entries(decayedProfile.topicBandits)) {
+    if (bandit.alpha <= 2.01 && bandit.beta <= 1.01) {continue;}
+    prunedBandits[topic] = bandit;
+  }
+
   return {
     ...persona,
     identity: { ...persona.identity, coreTraits: prunedTraits },
     domains: prunedDomains,
+    feedbackProfile: { ...decayedProfile, topicBandits: prunedBandits },
   };
 }

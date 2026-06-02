@@ -21,14 +21,15 @@ export const DECAY_HALF_LIFE_MS = 90 * 24 * 60 * 60 * 1000;
  * Exponential decay of a single bandit toward priors.
  * Formula: decayed = prior + (current - prior) * exp(-ln2 * age / halfLife)
  * Clamped so alpha/beta never drop below priors.
+ * Legacy bandits without lastUpdated are treated as if updated one half-life ago.
  */
 export function decayBandit(
   bandit: TopicBandit,
   nowMs: number,
   halfLifeMs: number = DECAY_HALF_LIFE_MS,
 ): TopicBandit {
-  if (bandit.lastUpdated === undefined) {return bandit;}
-  const age = nowMs - bandit.lastUpdated;
+  const lastUpdated = bandit.lastUpdated ?? (nowMs - halfLifeMs);
+  const age = nowMs - lastUpdated;
   if (age <= 0) {return bandit;}
   const factor = Math.exp((-Math.LN2 * age) / halfLifeMs);
   const decayedAlpha = OPTIMISTIC_ALPHA + (bandit.alpha - OPTIMISTIC_ALPHA) * factor;
@@ -36,7 +37,7 @@ export function decayBandit(
   return {
     alpha: Math.max(OPTIMISTIC_ALPHA, decayedAlpha),
     beta: Math.max(OPTIMISTIC_BETA, decayedBeta),
-    lastUpdated: bandit.lastUpdated,
+    lastUpdated: bandit.lastUpdated ?? (nowMs - halfLifeMs),
   };
 }
 

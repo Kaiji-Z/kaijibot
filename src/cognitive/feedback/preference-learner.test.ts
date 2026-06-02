@@ -94,7 +94,7 @@ describe("updateBanditFromFeedback", () => {
     expect(result.topicBandits["AI"]!.lastUpdated).toBe(newTs);
   });
 
-  it("does not decay when lastUpdated is missing (legacy)", () => {
+  it("decays legacy bandits using half-life fallback, then updates", () => {
     const ts = 1700000000000;
     const profile = makeProfile({ AI: { alpha: 12, beta: 1 } });
     const feedback: FeedbackEvent = {
@@ -105,17 +105,23 @@ describe("updateBanditFromFeedback", () => {
       topic: "AI",
     };
     const result = updateBanditFromFeedback(profile, feedback);
-    // No decay: 12 + 1 = 13
-    expect(result.topicBandits["AI"]!.alpha).toBe(13);
+    // Legacy: treated as 1 half-life old → 50% decay, then +1 positive
+    // alpha: 2 + (12-2)*0.5 = 7, then +1 = 8
+    expect(result.topicBandits["AI"]!.alpha).toBeCloseTo(8, 5);
+    expect(result.topicBandits["AI"]!.lastUpdated).toBe(ts);
   });
 });
 
 describe("decayBandit", () => {
-  it("returns unchanged when lastUpdated is missing", () => {
+  it("decays legacy bandits using half-life fallback (~50%)", () => {
     const bandit: TopicBandit = { alpha: 10, beta: 5 };
-    const result = decayBandit(bandit, Date.now());
-    expect(result.alpha).toBe(10);
-    expect(result.beta).toBe(5);
+    const now = 1700000000000;
+    const result = decayBandit(bandit, now);
+    // Legacy: lastUpdated = now - halfLife → age = halfLife → 50% decay
+    // alpha: 2 + (10-2)*0.5 = 6
+    expect(result.alpha).toBeCloseTo(6, 5);
+    // beta: 1 + (5-1)*0.5 = 3
+    expect(result.beta).toBeCloseTo(3, 5);
   });
 
   it("returns unchanged when age is zero", () => {
@@ -205,12 +211,14 @@ describe("decayAllBandits", () => {
     expect(profile.topicBandits["AI"]!.alpha).toBe(12);
   });
 
-  it("skips bandits without lastUpdated", () => {
+  it("decays legacy bandits using half-life fallback in decayAllBandits", () => {
     const now = 1700000000000;
     const profile = makeProfile({ AI: { alpha: 10, beta: 5 } });
     const result = decayAllBandits(profile, now + DECAY_HALF_LIFE_MS);
-    expect(result.topicBandits["AI"]!.alpha).toBe(10);
-    expect(result.topicBandits["AI"]!.beta).toBe(5);
+    // Legacy: treated as 1 half-life old → 50% decay
+    // alpha: 2 + (10-2)*0.5 = 6, beta: 1 + (5-1)*0.5 = 3
+    expect(result.topicBandits["AI"]!.alpha).toBeCloseTo(6, 5);
+    expect(result.topicBandits["AI"]!.beta).toBeCloseTo(3, 5);
   });
 });
 

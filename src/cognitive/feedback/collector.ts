@@ -45,14 +45,15 @@ export function processImplicitFeedback(
   const updatedRapport = updateTrustFromImplicit(persona.rapport, signals);
 
   const updatedBandits = { ...persona.feedbackProfile.topicBandits };
+  const now = Date.now();
   for (const signal of signals) {
     if (signal.topic && signal.type === "topic_continuation") {
       const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-      updatedBandits[signal.topic] = { alpha: bandit.alpha + 0.5, beta: bandit.beta };
+      updatedBandits[signal.topic] = { alpha: bandit.alpha + 0.5, beta: bandit.beta, lastUpdated: now };
     }
     if (signal.topic && signal.type === "topic_abandonment") {
       const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-      updatedBandits[signal.topic] = { alpha: bandit.alpha, beta: bandit.beta + 0.3 };
+      updatedBandits[signal.topic] = { alpha: bandit.alpha, beta: bandit.beta + 0.3, lastUpdated: now };
     }
   }
 
@@ -60,15 +61,15 @@ export function processImplicitFeedback(
     if (signal.topic) {
       if (signal.type === "response_length" && signal.value > 100) {
         const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-        updatedBandits[signal.topic] = { ...bandit, alpha: bandit.alpha + 0.3 };
+        updatedBandits[signal.topic] = { ...bandit, alpha: bandit.alpha + 0.3, lastUpdated: now };
       }
       if (signal.type === "response_length" && signal.value < 20) {
         const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-        updatedBandits[signal.topic] = { ...bandit, beta: bandit.beta + 0.2 };
+        updatedBandits[signal.topic] = { ...bandit, beta: bandit.beta + 0.2, lastUpdated: now };
       }
       if (signal.type === "question_depth" && signal.value === 1) {
         const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-        updatedBandits[signal.topic] = { ...bandit, alpha: bandit.alpha + 0.4 };
+        updatedBandits[signal.topic] = { ...bandit, alpha: bandit.alpha + 0.4, lastUpdated: now };
       }
     }
   }
@@ -210,13 +211,14 @@ export function processInsightFeedback(
     trustDelta,
   });
   const updatedBandits = { ...persona.feedbackProfile.topicBandits };
+  const now = Date.now();
   for (const domain of insight.targetDomains) {
     const bandit = updatedBandits[domain];
     if (bandit) {
       if (feedback === "positive" || feedback === "engaged") {
-        updatedBandits[domain] = { ...bandit, alpha: bandit.alpha + 1.0 };
+        updatedBandits[domain] = { ...bandit, alpha: bandit.alpha + 1.0, lastUpdated: now };
       } else if (feedback === "negative") {
-        updatedBandits[domain] = { ...bandit, beta: bandit.beta + 1.0 };
+        updatedBandits[domain] = { ...bandit, beta: bandit.beta + 1.0, lastUpdated: now };
       }
     }
   }
