@@ -85,6 +85,28 @@ export {
   mergeAndDedupBatches,
   resolveConflicts,
 } from "./src/consolidation-extract.js";
+export {
+  TopicRegistry,
+  createTopicRegistry,
+  type TopicMeta,
+  type TopicRegistryData,
+  type TopicRegistryDeps,
+} from "./src/topic-registry.js";
+export {
+  routeToTopic,
+  kebabMatch,
+  type TopicCandidate,
+  type RouteResult,
+  type RouteToTopicParams,
+} from "./src/topic-router.js";
+export {
+  semanticTopicMerge,
+  computeTopicJaccard,
+  type TopicForMerge,
+  type MergeCandidate,
+  type SemanticMergeParams,
+  type SemanticMergeResult,
+} from "./src/semantic-merge.js";
 
 export default definePluginEntry({
   id: "memory-core",
