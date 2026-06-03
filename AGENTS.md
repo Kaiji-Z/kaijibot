@@ -1,6 +1,6 @@
 # KaijiBot — Repository Guidelines
 
-KaijiBot is an independent project — a proactive cognitive AI assistant targeting Chinese users with Feishu + Z.AI (智谱 GLM). Originally forked from [OpenClaw](https://github.com/openclaw/openclaw), now developed independently with its own cognitive layer, architecture, and direction.
+KaijiBot is an independent project — a proactive cognitive AI assistant with a pluggable provider/channel architecture. Supports any LLM provider (35+ bundled) and extensible messaging channels. Originally forked from [OpenClaw](https://github.com/openclaw/openclaw), now developed independently with its own cognitive layer, architecture, and direction.
 
 - Repo: independent project, originally forked from [OpenClaw](https://github.com/openclaw/openclaw)
   - Main (GitHub): `https://github.com/Kaiji-Z/kaijibot`
