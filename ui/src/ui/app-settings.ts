@@ -214,6 +214,24 @@ export function setThemeMode(
   syncSystemThemeListener(host);
 }
 
+async function ensurePersonaAndAutoSelect(
+  host: SettingsHost,
+): Promise<{ agentId: string; userId: string } | null> {
+  const app = host as unknown as KaijiBotApp;
+  if (!app.cognitivePersonaList) {
+    await import("./controllers/cognitive.ts").then((c) =>
+      c.loadPersonaList(app as Parameters<typeof c.loadPersonaList>[0]),
+    );
+  }
+  const raw = app.cognitivePersonaList;
+  if (!raw || typeof raw !== "object") return null;
+  const agents = (raw as { agents?: Array<{ agentId: string; users: Array<{ userId: string }> }> }).agents;
+  if (!agents?.length) return null;
+  const first = agents[0];
+  if (!first.users?.length) return null;
+  return { agentId: first.agentId, userId: first.users[0].userId };
+}
+
 export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "cron") {
     await loadCron(host);
@@ -256,50 +274,44 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "corrections") {
     const app = host as unknown as KaijiBotApp;
     if (!app.correctionsAgentId || !app.correctionsUserId) {
-      const list = app.cognitivePersonaList as unknown as Array<{
-        agentId: string;
-        users: Array<{ userId: string }>;
-      }>;
-      if (list && list.length > 0 && list[0].users.length > 0) {
-        app.correctionsAgentId = list[0].agentId;
-        app.correctionsUserId = list[0].users[0].userId;
-        void import("./controllers/corrections.ts").then((c) => {
-          void c.loadCorrections(app as Parameters<typeof c.loadCorrections>[0]);
-        });
-      }
+      void ensurePersonaAndAutoSelect(host).then((ids) => {
+        if (ids) {
+          app.correctionsAgentId = ids.agentId;
+          app.correctionsUserId = ids.userId;
+          void import("./controllers/corrections.ts").then((c) => {
+            void c.loadCorrections(app as Parameters<typeof c.loadCorrections>[0]);
+          });
+        }
+      });
     }
   }
   if (host.tab === "insights") {
     const app2 = host as unknown as KaijiBotApp;
     if (!app2.insightsAgentId || !app2.insightsUserId) {
-      const list = app2.cognitivePersonaList as unknown as Array<{
-        agentId: string;
-        users: Array<{ userId: string }>;
-      }>;
-      if (list && list.length > 0 && list[0].users.length > 0) {
-        app2.insightsAgentId = list[0].agentId;
-        app2.insightsUserId = list[0].users[0].userId;
-        void import("./controllers/insights.ts").then((c) => {
-          void c.loadInsights(app2 as Parameters<typeof c.loadInsights>[0]);
-        });
-      }
+      void ensurePersonaAndAutoSelect(host).then((ids) => {
+        if (ids) {
+          app2.insightsAgentId = ids.agentId;
+          app2.insightsUserId = ids.userId;
+          void import("./controllers/insights.ts").then((c) => {
+            void c.loadInsights(app2 as Parameters<typeof c.loadInsights>[0]);
+          });
+        }
+      });
     }
   }
   if (host.tab === "evolution") {
     const app3 = host as unknown as KaijiBotApp;
     if (!app3.evolutionAgentId || !app3.evolutionUserId) {
-      const list = app3.cognitivePersonaList as unknown as Array<{
-        agentId: string;
-        users: Array<{ userId: string }>;
-      }>;
-      if (list && list.length > 0 && list[0].users.length > 0) {
-        app3.evolutionAgentId = list[0].agentId;
-        app3.evolutionUserId = list[0].users[0].userId;
-        void import("./controllers/evolution.ts").then((c) => {
-          void c.loadEvolutionRecords(app3 as Parameters<typeof c.loadEvolutionRecords>[0]);
-          void c.loadEvolutionAudit(app3 as Parameters<typeof c.loadEvolutionAudit>[0]);
-        });
-      }
+      void ensurePersonaAndAutoSelect(host).then((ids) => {
+        if (ids) {
+          app3.evolutionAgentId = ids.agentId;
+          app3.evolutionUserId = ids.userId;
+          void import("./controllers/evolution.ts").then((c) => {
+            void c.loadEvolutionRecords(app3 as Parameters<typeof c.loadEvolutionRecords>[0]);
+            void c.loadEvolutionAudit(app3 as Parameters<typeof c.loadEvolutionAudit>[0]);
+          });
+        }
+      });
     }
   }
   if (host.tab === "skills") {
