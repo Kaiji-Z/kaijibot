@@ -1,5 +1,5 @@
 import { createSubsystemLogger } from "../../logging/subsystem.js";
-import { decayAllBandits } from "../feedback/preference-learner.js";
+import { decayAllBandits, decayBandit } from "../feedback/preference-learner.js";
 import type {
   PersonaTree,
   ConfidenceValue,
@@ -8,6 +8,7 @@ import type {
   TypedInsight,
   InsightCategory,
   InterestPhase,
+  TopicBandit,
 } from "../types.js";
 import { detectContradictions } from "./contradiction-resolver.js";
 import { computeLifecycleStage, getDecayMultiplier } from "./lifecycle.js";
@@ -662,10 +663,55 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
     prunedBandits[topic] = bandit;
   }
 
+  // Decay and prune prompt bandits
+  const prunedPromptBandits: Record<string, typeof persona.feedbackProfile.topicBandits[string]> = {};
+  if (decayedProfile.promptBandits) {
+    for (const [key, bandit] of Object.entries(decayedProfile.promptBandits)) {
+      const decayed = decayBandit(bandit, now);
+      if (decayed.alpha > 2.01 || decayed.beta > 1.01) {
+        prunedPromptBandits[key] = decayed;
+      }
+    }
+  }
+
+  // Decay and prune mode bandits
+  const prunedModeBandits: Record<string, typeof persona.feedbackProfile.topicBandits[string]> = {};
+  if (decayedProfile.modeBandits) {
+    for (const [key, bandit] of Object.entries(decayedProfile.modeBandits)) {
+      const decayed = decayBandit(bandit, now);
+      if (decayed.alpha > 2.01 || decayed.beta > 1.01) {
+        prunedModeBandits[key] = decayed;
+      }
+    }
+  }
+
+  // Cap core traits by relevance
+  const MAX_CORE_TRAITS = 30;
+  const traitEntries = Object.entries(prunedTraits)
+    .sort((a, b) => (b[1].evidenceCount * b[1].confidence) - (a[1].evidenceCount * a[1].confidence))
+    .slice(0, MAX_CORE_TRAITS);
+  const finalTraits = Object.fromEntries(traitEntries);
+
+  // Cap domain count by relevance
+  const MAX_DOMAINS = 50;
+  const domainEntries = Object.entries(prunedDomains)
+    .sort((a, b) => {
+      const recencyA = 1 / Math.max(1, (now - a[1].lastMentioned) / THIRTY_DAYS);
+      const recencyB = 1 / Math.max(1, (now - b[1].lastMentioned) / THIRTY_DAYS);
+      return (b[1].recurrence * b[1].depth * recencyB) - (a[1].recurrence * a[1].depth * recencyA);
+    })
+    .slice(0, MAX_DOMAINS);
+  const finalDomains = Object.fromEntries(domainEntries);
+
   return {
     ...persona,
-    identity: { ...persona.identity, coreTraits: prunedTraits },
-    domains: prunedDomains,
-    feedbackProfile: { ...decayedProfile, topicBandits: prunedBandits },
+    identity: { ...persona.identity, coreTraits: finalTraits },
+    domains: finalDomains,
+    feedbackProfile: {
+      ...decayedProfile,
+      topicBandits: prunedBandits,
+      ...(Object.keys(prunedPromptBandits).length > 0 ? { promptBandits: prunedPromptBandits } : {}),
+      ...(Object.keys(prunedModeBandits).length > 0 ? { modeBandits: prunedModeBandits } : {}),
+    },
   };
 }

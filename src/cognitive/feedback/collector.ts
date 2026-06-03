@@ -269,7 +269,7 @@ export function processInsightFeedback(
       optimalFrequencyHours: newFrequency,
       lastProactiveAt,
     },
-    calibrationHistory: [...persona.calibrationHistory, calRecord],
+    calibrationHistory: [...persona.calibrationHistory, calRecord].slice(-50),
   };
 }
 
