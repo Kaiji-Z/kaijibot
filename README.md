@@ -99,15 +99,37 @@ kaijibot skills install <skill-name>
 
 ## 🚀 快速开始
 
-**前置要求**：Node.js >= 22（推荐 24）、pnpm、git
+### macOS / Linux
 
-**方式一：一键安装**
+**一键安装**（推荐，自动检测环境、安装依赖、运行 onboard 向导）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Kaiji-Z/kaijibot/main/install.sh | bash
+curl -fsSL https://kaijibot.ai/install.sh | bash
 ```
 
-**方式二：Docker**
+也支持 npm 全局安装：
+
+```bash
+npm install -g kaijibot
+kaijibot onboard
+```
+
+### Windows
+
+PowerShell 一键安装：
+
+```powershell
+iwr -useb https://kaijibot.ai/install.ps1 | iex
+```
+
+或 npm：
+
+```powershell
+npm install -g kaijibot
+kaijibot onboard
+```
+
+### Docker
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
@@ -115,7 +137,7 @@ cd kaijibot
 docker compose up -d
 ```
 
-**方式三：手动安装**
+### 从源码构建
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
@@ -128,7 +150,7 @@ kaijibot onboard   # 交互式向导，自动配置
 kaijibot migrate
 ```
 
-**启动**
+### 启动
 
 ```bash
 kaijibot gateway --port 18789 --verbose
