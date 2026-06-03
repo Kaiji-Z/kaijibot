@@ -182,10 +182,7 @@ setlocal
 set "KAIJIBOT_RESTART_SCRIPT=%~f0"
 set "KAIJIBOT_RESTART_SCRIPT_DIR=%~dp0."
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=$env:KAIJIBOT_RESTART_SCRIPT; $s=Get-Content -Raw -LiteralPath $p; $m='# POWERSHELL'; $i=$s.IndexOf($m); if ($i -lt 0) { exit 1 }; Invoke-Expression $s.Substring($i)"
-set "status=%ERRORLEVEL%"
-del "%~f0" >nul 2>&1
-rmdir "%KAIJIBOT_RESTART_SCRIPT_DIR%" >nul 2>&1
-exit /b %status%
+exit /b %ERRORLEVEL%
 # POWERSHELL
 # Wait briefly to ensure file locks are released after update.
 $ErrorActionPreference = "Continue"
@@ -367,6 +364,27 @@ if ($status -eq 0) {
   Write-RestartLog "kaijibot restart done source=update"
 } else {
   Write-RestartLog "kaijibot restart failed source=update status=$status"
+}
+
+# Self-cleanup: delete script file and temp directory from within PowerShell.
+# Get-Content -Raw read the file into memory, so the file handle is closed
+# and Remove-Item can safely delete the .cmd wrapper. Retry handles AV locks.
+$scriptFile = $env:KAIJIBOT_RESTART_SCRIPT
+$scriptDir = $env:KAIJIBOT_RESTART_SCRIPT_DIR
+if ($scriptFile) {
+  foreach ($attempt in 1..3) {
+    try {
+      if (Test-Path -LiteralPath $scriptFile) {
+        Remove-Item -LiteralPath $scriptFile -Force -ErrorAction Stop
+      }
+      break
+    } catch {
+      if ($attempt -lt 3) { Start-Sleep -Milliseconds 500 }
+    }
+  }
+}
+if ($scriptDir -and (Test-Path -LiteralPath $scriptDir)) {
+  try { Remove-Item -LiteralPath $scriptDir -Force -Recurse } catch {}
 }
 
 exit $status

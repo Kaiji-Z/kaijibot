@@ -35,6 +35,14 @@ describe("restart-helper", () => {
     expect(content).toContain("Start-Sleep -Seconds 2");
     expect(content).toContain("Get-NetTCPConnection");
     expect(content).not.toContain("timeout /t 3 /nobreak >nul");
+    // Cleanup is done in PowerShell, not CMD — no CMD del/rmdir after PS invocation.
+    expect(content).toContain("Remove-Item -LiteralPath $scriptFile");
+    expect(content).toContain("Remove-Item -LiteralPath $scriptDir");
+    expect(content).not.toContain('del "%~f0"');
+    expect(content).not.toContain('rmdir "%KAIJIBOT_RESTART_SCRIPT_DIR%"');
+    // CMD section should only have exit /b, not exit /b %status%
+    expect(content).toContain("exit /b %ERRORLEVEL%");
+    expect(content).not.toContain("exit /b %status%");
   }
 
   beforeEach(() => {
