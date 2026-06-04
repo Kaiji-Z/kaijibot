@@ -58,6 +58,7 @@ type ResolvedAgentConfig = {
   subagents?: AgentEntry["subagents"];
   sandbox?: AgentEntry["sandbox"];
   tools?: AgentEntry["tools"];
+  soul?: AgentEntry["soul"];
 };
 
 let defaultAgentWarned = false;
@@ -165,6 +166,7 @@ export function resolveAgentConfig(
     subagents: typeof entry.subagents === "object" && entry.subagents ? entry.subagents : undefined,
     sandbox: entry.sandbox,
     tools: entry.tools,
+    soul: entry.soul ?? agentDefaults?.soul,
   };
 }
 

@@ -303,7 +303,11 @@ export async function runPreparedReply(
     if (isSoulOnboardingNeeded) {
       const { readConfigFileSnapshot } = await import("../../config/config.js");
       const snapshot = await readConfigFileSnapshot();
-      const hasSoulPreset = Boolean(snapshot.resolved?.soul?.preset);
+      const hasSoulPreset = Boolean(
+        snapshot.resolved?.soul?.preset ||
+          snapshot.resolved?.agents?.defaults?.soul?.preset ||
+          snapshot.resolved?.agents?.list?.some((a) => a.soul?.preset),
+      );
       if (!hasSoulPreset) {
         extraSystemPromptParts.push(
           [

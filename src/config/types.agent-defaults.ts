@@ -1,5 +1,6 @@
 import type { ChannelId } from "../channels/plugins/types.js";
 import type { AgentModelConfig, AgentSandboxConfig } from "./types.agents-shared.js";
+import type { SoulConfig } from "./types.soul.js";
 import type {
   BlockStreamingChunkConfig,
   BlockStreamingCoalesceConfig,
@@ -336,6 +337,7 @@ export type AgentDefaultsConfig = {
   };
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: AgentSandboxConfig;
+  soul?: SoulConfig;
 };
 
 export type AgentCompactionMode = "default" | "safeguard";

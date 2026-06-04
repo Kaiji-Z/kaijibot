@@ -316,7 +316,7 @@ export function createKaijiBotTools(
         deliveryTo: options?.agentTo,
         agentId: sessionAgentId,
       }),
-      createSwitchSoulTool(),
+      createSwitchSoulTool({ agentId: sessionAgentId }),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),
   ];

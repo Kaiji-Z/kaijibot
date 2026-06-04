@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
 import { readConfigFileSnapshot, replaceConfigFile } from "../config/config.js";
+import { removeSoulFromConfig, setSoulInConfig } from "../config/soul-config-helpers.js";
 import { SOUL_PRESETS, type SoulPreset } from "../config/types.soul.js";
+import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { danger } from "../globals.js";
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
@@ -32,6 +34,14 @@ const SOUL_PRESET_NAMES: Record<SoulPreset, string> = {
   esfp: "表演者 (Entertainer)",
 };
 
+type MutableConfig = Record<string, unknown> & {
+  agents?: {
+    defaults?: { soul?: { preset?: SoulPreset } };
+    list?: Array<{ id: string; soul?: { preset?: SoulPreset } }>;
+  };
+  soul?: { preset?: SoulPreset };
+};
+
 function resolvePresetKey(input: string): SoulPreset | null {
   const lower = input.toLowerCase().trim();
   if (SOUL_PRESETS.includes(lower as SoulPreset)) {
@@ -45,9 +55,42 @@ function loadPresetContent(preset: SoulPreset): string {
   return readFileSync(filePath, "utf-8");
 }
 
-async function runSoulList(): Promise<void> {
+function resolveCurrentPreset(
+  config: MutableConfig,
+  agentId: string,
+): SoulPreset | undefined {
+  const entry = config.agents?.list?.find(
+    (e) => e.id.toLowerCase() === agentId.toLowerCase(),
+  );
+  if (entry?.soul?.preset) {
+    return entry.soul.preset;
+  }
+  if (config.agents?.defaults?.soul?.preset) {
+    return config.agents.defaults.soul.preset;
+  }
+  return config.soul?.preset;
+}
+
+async function resolveEffectiveAgentId(
+  sourceConfig: MutableConfig,
+  agentId?: string,
+): Promise<string> {
+  if (agentId) {
+    return agentId;
+  }
+  return resolveDefaultAgentId(sourceConfig as Parameters<typeof resolveDefaultAgentId>[0]);
+}
+
+async function runSoulList(agentId?: string): Promise<void> {
   const snapshot = await readConfigFileSnapshot();
-  const currentPreset = snapshot.resolved?.soul?.preset;
+  const effectiveAgentId = await resolveEffectiveAgentId(
+    snapshot.sourceConfig as MutableConfig,
+    agentId,
+  );
+  const currentPreset = resolveCurrentPreset(
+    snapshot.sourceConfig as MutableConfig,
+    effectiveAgentId,
+  );
 
   for (const key of SOUL_PRESETS) {
     const name = SOUL_PRESET_NAMES[key];
@@ -59,15 +102,24 @@ async function runSoulList(): Promise<void> {
     );
   }
   defaultRuntime.log("");
-  defaultRuntime.log(`Use ${theme.command("kaijibot soul set <type>")} to select a soul preset.`);
   defaultRuntime.log(
-    `Use ${theme.command("kaijibot soul unset")} to revert to the default SOUL.md.`,
+    `Use ${theme.command(`kaijibot soul set <type> --agent ${effectiveAgentId}`)} to select a soul preset.`,
+  );
+  defaultRuntime.log(
+    `Use ${theme.command(`kaijibot soul unset --agent ${effectiveAgentId}`)} to revert to the default SOUL.md.`,
   );
 }
 
-async function runSoulGet(): Promise<void> {
+async function runSoulGet(agentId?: string): Promise<void> {
   const snapshot = await readConfigFileSnapshot();
-  const currentPreset = snapshot.resolved?.soul?.preset;
+  const effectiveAgentId = await resolveEffectiveAgentId(
+    snapshot.sourceConfig as MutableConfig,
+    agentId,
+  );
+  const currentPreset = resolveCurrentPreset(
+    snapshot.sourceConfig as MutableConfig,
+    effectiveAgentId,
+  );
 
   if (!currentPreset) {
     defaultRuntime.log("No soul preset is currently active. Using default SOUL.md.");
@@ -76,14 +128,14 @@ async function runSoulGet(): Promise<void> {
 
   const name = SOUL_PRESET_NAMES[currentPreset];
   defaultRuntime.log(
-    `Current soul preset: ${theme.heading(currentPreset.toUpperCase())} — ${theme.success(name)}`,
+    `Current soul preset: ${theme.heading(currentPreset.toUpperCase())} — ${theme.success(name)} [agent: ${effectiveAgentId}]`,
   );
   defaultRuntime.log("");
   defaultRuntime.log("--- Preview ---");
   defaultRuntime.log(loadPresetContent(currentPreset));
 }
 
-async function runSoulSet(presetInput: string): Promise<void> {
+async function runSoulSet(presetInput: string, agentId?: string): Promise<void> {
   const preset = resolvePresetKey(presetInput);
   if (!preset) {
     defaultRuntime.error(
@@ -94,32 +146,35 @@ async function runSoulSet(presetInput: string): Promise<void> {
   }
 
   const snapshot = await readConfigFileSnapshot();
-  const sourceConfig = { ...snapshot.sourceConfig };
-  sourceConfig.soul = { ...sourceConfig.soul, preset: preset as SoulPreset };
+  const sourceConfig = { ...snapshot.sourceConfig } as MutableConfig;
+  const effectiveAgentId = await resolveEffectiveAgentId(sourceConfig, agentId);
+  setSoulInConfig(sourceConfig, effectiveAgentId, preset);
 
   await replaceConfigFile({ nextConfig: sourceConfig });
 
   const name = SOUL_PRESET_NAMES[preset];
   defaultRuntime.log(
-    `Soul preset set to ${theme.heading(preset.toUpperCase())} — ${theme.success(name)}`,
+    `Soul preset set to ${theme.heading(preset.toUpperCase())} — ${theme.success(name)} [agent: ${effectiveAgentId}]`,
   );
   defaultRuntime.log("");
   defaultRuntime.log("Change takes effect on the next message (hot-reload).");
 }
 
-async function runSoulUnset(): Promise<void> {
+async function runSoulUnset(agentId?: string): Promise<void> {
   const snapshot = await readConfigFileSnapshot();
-  const sourceConfig = { ...snapshot.sourceConfig };
+  const sourceConfig = { ...snapshot.sourceConfig } as MutableConfig;
+  const effectiveAgentId = await resolveEffectiveAgentId(sourceConfig, agentId);
 
-  if (!sourceConfig.soul?.preset) {
+  const currentPreset = resolveCurrentPreset(sourceConfig, effectiveAgentId);
+  if (!currentPreset) {
     defaultRuntime.log("No soul preset is currently active.");
     return;
   }
 
-  delete sourceConfig.soul;
+  removeSoulFromConfig(sourceConfig, effectiveAgentId);
   await replaceConfigFile({ nextConfig: sourceConfig });
 
-  defaultRuntime.log("Soul preset removed. Reverted to default SOUL.md.");
+  defaultRuntime.log(`Soul preset removed [agent: ${effectiveAgentId}]. Reverted to default SOUL.md.`);
   defaultRuntime.log("");
   defaultRuntime.log("Change takes effect on the next message (hot-reload).");
 }
@@ -128,36 +183,41 @@ export function registerSoulCli(program: Command) {
   const soul = program
     .command("soul")
     .description("Manage soul presets (MBTI-based personality profiles)")
-    .action(async () => {
-      await runSoulList();
+    .option("--agent <id>", "Target a specific agent (default: resolved from config)")
+    .action(async (opts: { agent?: string }) => {
+      await runSoulList(opts.agent);
     });
 
   soul
     .command("list")
     .description("List all available soul presets")
-    .action(async () => {
-      await runSoulList();
+    .option("--agent <id>", "Target a specific agent")
+    .action(async (opts: { agent?: string }) => {
+      await runSoulList(opts.agent);
     });
 
   soul
     .command("get")
     .description("Show the currently active soul preset")
-    .action(async () => {
-      await runSoulGet();
+    .option("--agent <id>", "Target a specific agent")
+    .action(async (opts: { agent?: string }) => {
+      await runSoulGet(opts.agent);
     });
 
   soul
     .command("set")
     .description("Set the active soul preset (e.g., kaijibot soul set intj)")
     .argument("<type>", "MBTI type (e.g., intj, entp, infj)")
-    .action(async (type: string) => {
-      await runSoulSet(type);
+    .option("--agent <id>", "Target a specific agent")
+    .action(async (type: string, opts: { agent?: string }) => {
+      await runSoulSet(type, opts.agent);
     });
 
   soul
     .command("unset")
     .description("Remove the soul preset and revert to default SOUL.md")
-    .action(async () => {
-      await runSoulUnset();
+    .option("--agent <id>", "Target a specific agent")
+    .action(async (opts: { agent?: string }) => {
+      await runSoulUnset(opts.agent);
     });
 }

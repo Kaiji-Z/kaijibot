@@ -6,6 +6,7 @@ import {
   normalizeOptionalString,
 } from "../shared/string-coerce.js";
 import { AgentModelSchema } from "./zod-schema.agent-model.js";
+import { SOUL_PRESETS } from "./types.soul.js";
 import {
   GroupChatSchema,
   HumanDelaySchema,
@@ -824,6 +825,12 @@ export const AgentEntrySchema = z
     params: z.record(z.string(), z.unknown()).optional(),
     tools: AgentToolsSchema,
     runtime: AgentRuntimeSchema,
+    soul: z
+      .object({
+        preset: z.enum(SOUL_PRESETS).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

@@ -2,7 +2,7 @@ import syncFs from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { CONFIG_PATH } from "../config/paths.js";
+import type { SoulPreset } from "../config/types.soul.js";
 import { openBoundaryFile } from "../infra/boundary-file-read.js";
 import { resolveRequiredHomeDir } from "../infra/home-dir.js";
 import { runCommandWithTimeout } from "../process/exec.js";
@@ -487,7 +487,10 @@ async function resolveMemoryBootstrapEntry(
   return null;
 }
 
-export async function loadWorkspaceBootstrapFiles(dir: string): Promise<WorkspaceBootstrapFile[]> {
+export async function loadWorkspaceBootstrapFiles(
+  dir: string,
+  opts?: { soulPreset?: SoulPreset },
+): Promise<WorkspaceBootstrapFile[]> {
   const resolvedDir = resolveUserPath(dir);
 
   const entries: Array<{
@@ -547,7 +550,7 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
     }
   }
 
-  applySoulPresetOverride(result);
+  applySoulPresetOverride(result, opts?.soulPreset);
 
   await injectGuideFromTemplate(result);
 
@@ -568,26 +571,15 @@ async function injectGuideFromTemplate(files: WorkspaceBootstrapFile[]): Promise
   }
 }
 
-function applySoulPresetOverride(files: WorkspaceBootstrapFile[]): void {
-  const preset = readSoulPresetFromConfig();
-  if (!preset) {return;}
+function applySoulPresetOverride(files: WorkspaceBootstrapFile[], soulPreset?: SoulPreset): void {
+  if (!soulPreset) {return;}
 
   const soulEntry = files.find((f) => f.name === DEFAULT_SOUL_FILENAME);
   if (!soulEntry) {return;}
 
-  const content = loadSoulPresetContent(preset);
+  const content = loadSoulPresetContent(soulPreset);
   soulEntry.content = content;
   soulEntry.missing = false;
-}
-
-function readSoulPresetFromConfig(): import("../config/types.soul.js").SoulPreset | undefined {
-  try {
-    const raw = syncFs.readFileSync(CONFIG_PATH, "utf-8");
-    const parsed = JSON.parse(raw);
-    return parsed?.soul?.preset;
-  } catch {
-    return undefined;
-  }
 }
 
 const MINIMAL_BOOTSTRAP_ALLOWLIST = new Set([

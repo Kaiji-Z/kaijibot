@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { SoulPreset } from "../../config/types.soul.js";
+import { removeSoulFromConfig, setSoulInConfig } from "../../config/soul-config-helpers.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
 
@@ -29,7 +30,10 @@ const SOUL_PRESET_NAMES: Record<string, string> = {
   esfp: "表演者 (Entertainer)",
 };
 
-export function createSwitchSoulTool(): AnyAgentTool {
+export function createSwitchSoulTool(opts?: {
+  agentId?: string;
+}): AnyAgentTool {
+  const agentId = opts?.agentId;
   return {
     name: "switch_soul",
     label: "Switch Soul Preset",
@@ -47,10 +51,16 @@ export function createSwitchSoulTool(): AnyAgentTool {
           await import("../../config/config.js");
         const { clearAllBootstrapSnapshots } = await import("../bootstrap-cache.js");
 
+        if (!agentId) {
+          return textResult("switch_soul requires an agentId (session context).", {
+            status: "error",
+          });
+        }
+
         if (preset === "default" || preset === "none" || preset === "reset") {
           const snapshot = await readConfigFileSnapshot();
           const sourceConfig = { ...snapshot.sourceConfig };
-          delete sourceConfig.soul;
+          removeSoulFromConfig(sourceConfig, agentId);
           await replaceConfigFile({ nextConfig: sourceConfig });
           clearAllBootstrapSnapshots();
 
@@ -69,7 +79,7 @@ export function createSwitchSoulTool(): AnyAgentTool {
 
         const snapshot = await readConfigFileSnapshot();
         const sourceConfig = { ...snapshot.sourceConfig };
-        sourceConfig.soul = { ...sourceConfig.soul, preset: preset as SoulPreset };
+        setSoulInConfig(sourceConfig, agentId, preset as SoulPreset);
         await replaceConfigFile({ nextConfig: sourceConfig });
         clearAllBootstrapSnapshots();
 

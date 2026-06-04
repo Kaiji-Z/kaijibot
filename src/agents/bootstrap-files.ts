@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { AgentContextInjection } from "../config/types.agent-defaults.js";
+import type { SoulPreset } from "../config/types.soul.js";
 import { normalizeOptionalString } from "../shared/string-coerce.js";
-import { resolveSessionAgentIds } from "./agent-scope.js";
+import { resolveAgentConfig, resolveSessionAgentIds } from "./agent-scope.js";
 import { getOrLoadBootstrapFiles } from "./bootstrap-cache.js";
 import { applyBootstrapHookOverrides } from "./bootstrap-hooks.js";
 import { shouldIncludeHeartbeatGuidanceForSystemPrompt } from "./heartbeat-system-prompt.js";
@@ -181,6 +182,21 @@ function filterHeartbeatBootstrapFile(
   return files.filter((file) => file.name !== DEFAULT_HEARTBEAT_FILENAME);
 }
 
+export function resolveSoulPreset(
+  config?: KaijiBotConfig,
+  agentId?: string,
+  sessionKey?: string,
+): SoulPreset | undefined {
+  if (!config) {
+    return undefined;
+  }
+  const { sessionAgentId } = resolveSessionAgentIds({ config, agentId, sessionKey });
+  const resolved = resolveAgentConfig(config, sessionAgentId);
+  return (
+    resolved?.soul?.preset ?? config.agents?.defaults?.soul?.preset ?? config.soul?.preset
+  );
+}
+
 export async function resolveBootstrapFilesForRun(params: {
   workspaceDir: string;
   config?: KaijiBotConfig;
@@ -193,12 +209,14 @@ export async function resolveBootstrapFilesForRun(params: {
 }): Promise<WorkspaceBootstrapFile[]> {
   const excludeHeartbeatBootstrapFile = shouldExcludeHeartbeatBootstrapFile(params);
   const sessionKey = params.sessionKey ?? params.sessionId;
+  const soulPreset = resolveSoulPreset(params.config, params.agentId, sessionKey);
   const rawFiles = params.sessionKey
     ? await getOrLoadBootstrapFiles({
         workspaceDir: params.workspaceDir,
         sessionKey: params.sessionKey,
+        soulPreset,
       })
-    : await loadWorkspaceBootstrapFiles(params.workspaceDir);
+    : await loadWorkspaceBootstrapFiles(params.workspaceDir, { soulPreset });
   const bootstrapFiles = applyContextModeFilter({
     files: filterBootstrapFilesForSession(rawFiles, sessionKey),
     contextMode: params.contextMode,

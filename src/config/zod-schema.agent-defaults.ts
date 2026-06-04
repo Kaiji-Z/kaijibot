@@ -6,6 +6,7 @@ import {
   AgentModelSchema,
   MemorySearchSchema,
 } from "./zod-schema.agent-runtime.js";
+import { SOUL_PRESETS } from "./types.soul.js";
 import {
   BlockStreamingChunkSchema,
   BlockStreamingCoalesceSchema,
@@ -219,6 +220,12 @@ export const AgentDefaultsSchema = z
       .strict()
       .optional(),
     sandbox: AgentSandboxSchema,
+    soul: z
+      .object({
+        preset: z.enum(SOUL_PRESETS).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .optional();
