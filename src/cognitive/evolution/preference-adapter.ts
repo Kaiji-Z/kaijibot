@@ -1,8 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { writeJsonAtomic } from "../../infra/json-files.js";
 import type { EvolutionUserResponse } from "./types.js";
 
 type DomainBandit = {
@@ -124,8 +123,6 @@ export class EvolutionPreferenceAdapter {
     const path = this.statePath(agentId, userId);
     const dir = join(path, "..");
     await mkdir(dir, { recursive: true });
-    const tmpPath = join(tmpdir(), `kaijibot-pref-${randomUUID()}.json`);
-    await writeFile(tmpPath, JSON.stringify(state, null, 2), "utf-8");
-    await rename(tmpPath, path);
+    await writeJsonAtomic(path, state);
   }
 }

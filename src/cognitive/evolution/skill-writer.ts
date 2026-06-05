@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile, readFile, rename, access, readdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, rm, readFile, rename, access, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { writeTextAtomic } from "../../infra/json-files.js";
 import type { SkillDraft, SkillMeta } from "./types.js";
 
 const SKILLS_DIR = "skills";
@@ -32,10 +31,7 @@ export class SkillPersistenceWriter {
     const content = this.formatSkillMarkdown(draft);
     const targetPath = join(dir, SKILL_FILE);
 
-    // Atomic write: tmpfile → rename (same pattern as EvolutionStore)
-    const tmpPath = join(tmpdir(), `kaijibot-skill-${randomUUID()}.md`);
-    await writeFile(tmpPath, content, "utf-8");
-    await rename(tmpPath, targetPath);
+    await writeTextAtomic(targetPath, content);
 
     await this.writeBundledFiles(dir, draft);
 
@@ -55,9 +51,7 @@ export class SkillPersistenceWriter {
       for (const [filename, content] of Object.entries(files)) {
         if (filename.includes("..") || filename.startsWith("/")) {continue;}
         const filePath = join(subDir, filename);
-        const tmpPath = join(tmpdir(), `kaijibot-skill-${randomUUID()}-${filename}`);
-        await writeFile(tmpPath, content, "utf-8");
-        await rename(tmpPath, filePath);
+        await writeTextAtomic(filePath, content);
       }
     }
   }
@@ -265,10 +259,7 @@ export class SkillPersistenceWriter {
     }
     const targetPath = join(dir, SKILL_FILE);
 
-    // Atomic write: tmpfile → rename
-    const tmpPath = join(tmpdir(), `kaijibot-skill-${randomUUID()}.md`);
-    await writeFile(tmpPath, content, "utf-8");
-    await rename(tmpPath, targetPath);
+    await writeTextAtomic(targetPath, content);
 
     return targetPath;
   }
@@ -376,9 +367,7 @@ export class SkillPersistenceWriter {
 
     const newContent = `---${updated}---${rest}`;
 
-    const tmpPath = join(tmpdir(), `kaijibot-skill-${randomUUID()}.md`);
-    await writeFile(tmpPath, newContent, "utf-8");
-    await rename(tmpPath, filePath);
+    await writeTextAtomic(filePath, newContent);
   }
 
   private formatSkillMarkdown(draft: SkillDraft): string {
