@@ -23,7 +23,7 @@ KaijiBot is an independent project — a proactive cognitive AI assistant with a
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
 - **`src/infra/openclaw-migrator/`** — OpenClaw → KaijiBot migration: auto-detect OpenClaw installation, import agents/workspace/skills/config with dry-run support, onboard wizard integration
 - **`src/commands/migrate.ts`** — `kaijibot migrate` CLI command
-- **`extensions/`** — 62 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks, shared
+- **`extensions/`** — 62 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks
 - **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk
 - **`skills/`** — 22 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts, memory-organize)
 - **`ui/`** — web control UI
@@ -68,6 +68,41 @@ KaijiBot is an independent project — a proactive cognitive AI assistant with a
 - Extension code imports from `kaijibot/plugin-sdk/*` plus local barrels (`./api.ts`, `./runtime-api.ts`).
 - No relative imports that escape the current extension package root.
 - See progressive disclosure in: `extensions/AGENTS.md`, `src/plugin-sdk/AGENTS.md`, `src/channels/AGENTS.md`, `src/plugins/AGENTS.md`, `src/gateway/protocol/AGENTS.md`
+- **Plugin loading** has three registration modes (`KaijiBotPluginApi.registrationMode`):
+  - `"cli-metadata"` — only CLI command descriptors are registered; no runtime side-effects. Used for fast CLI boot.
+  - `"light"` — registration runs but lazy surfaces stay deferred.
+  - `"full"` — full runtime registration including tools, gateway methods, hooks.
+- **Plugin SDK** (`src/plugin-sdk/*`) exposes 237 subpath entrypoints (`kaijibot/plugin-sdk/*`). API baseline (`src/plugin-sdk/api-baseline.ts`) locks the public export set; CI fails if unauthorized exports leak. The SDK alias map (`src/plugins/sdk-alias.ts`) resolves `kaijibot/plugin-sdk/*` to source TS (dev) or built `dist/plugin-sdk/*` artifacts (prod).
+
+## Atomic File Writes
+
+- **Canonical pattern**: use `writeTextAtomic(filePath, content, options?)` / `writeJsonAtomic(filePath, value, options?)` from `src/infra/json-files.ts` for all persistent file writes. These create temp files in the target's same directory (avoiding EXDEV across filesystems), handle Windows EPERM/EEXIST via `replaceFileWithWindowsFallback`, and ensure dir creation.
+- **Do NOT** use the old `tmpdir() + writeFile + rename` pattern — `tmpdir()` may be on a different filesystem causing `rename()` to fail with EXDEV.
+- `writeJsonAtomic` uses `JSON.stringify(value, null, 2)` internally (2-space indent). Options: `{ mode?, trailingNewline?, ensureDirMode? }`.
+- `writeTextAtomic` options: `{ mode?, ensureDirMode?, appendTrailingNewline? }`. Default mode `0o600`.
+
+## End-to-End Message Flow
+
+```
+User sends message in Feishu
+  → extensions/feishu/src/bot.ts (event decode, dedup, mention gating)
+  → gateway ingress (src/gateway/server-methods/chat.ts)
+  → src/auto-reply/dispatch.ts (dispatchInboundMessage)
+    → allowlist check → command detection → session routing
+    → src/auto-reply/reply/get-reply-run.ts (runPreparedReply)
+      → src/cognitive/context-writer.ts (injects: mode + persona + corrections + evolution)
+      → src/agents/pi-embedded-runner/run.ts (agent loop: LLM streaming + tool execution)
+        → provider plugin (zai) → LLM API
+        → tool execution (feishu docs, memory, browser, etc.)
+        → post-turn: evaluateHardTrigger (≥3 tools → evolution signal)
+        → session-memory hook (summary + correction extraction)
+      → ReplyDispatcher → channel.outbound → Feishu API
+```
+
+Async pipelines (not triggered by user messages):
+- **Proactive insights**: scheduler events (timer/persona-change/info-scan) → PRISM gate → search → identify → resolve → LLM generates insight → deliver via Feishu
+- **Memory consolidation**: cron `0 3 * * *` → scan session files → LLM extract → Jaccard dedup → route to PersonaStore/FragmentStore/CorrectionStore + MEMORY.md inline sections
+- **Skill evolution**: heartbeat triggers agent turn on evolution signal → Agent decides whether to create a skill
 
 ## Cognitive System Architecture
 
@@ -303,7 +338,7 @@ Correction (system prompt injection):
   - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
   - Correction: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/correction/` (38 tests, unit only — no live LLM tests currently)
 - `pnpm test` (full suite) uses a custom runner (`scripts/test-projects.mjs`) that spawns vitest as child processes. **stdout is empty except for the pnpm header**; test output goes to stderr. Judge success by exit code only — do not wait for stdout feedback. For targeted output, use `pnpm test <path-or-filter>`.
-- Known gap: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; use `pnpm tsgo` for type verification when `pnpm test` cannot resolve a path.
+- Known gaps: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; `src/process/**` is excluded from all vitest projects and `scripts/test-projects.mjs` references a non-existent `vitest/vitest.process.config.ts`. For all gap paths, use `pnpm tsgo` for type verification, or create a temporary vitest config to run tests locally.
 
 ## Auditing Default-Disabled Features
 
@@ -337,7 +372,7 @@ Correction (system prompt injection):
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.
-- Persona data stored at `~/.kaijibot/cognitive/persona/{userId}.json`. Schema includes TypedInsights with category-aware decay and InterestPhase lifecycle per domain.
+- Persona data stored at `~/.kaijibot/cognitive/persona/{agentId}/{userId}.json` (per-agent subdirectory). Schema includes TypedInsights with category-aware decay and InterestPhase lifecycle per domain.
 - Evolution records stored at `~/.kaijibot/cognitive/evolution/{userId}.json`; skills at `~/.kaijibot/skills/{name}/SKILL.md`.
 - Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl`.
 - Never commit real phone numbers, API keys, or live config values.
