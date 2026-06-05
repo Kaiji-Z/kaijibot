@@ -139,4 +139,45 @@ describe("killProcessTree", () => {
       expect(killSpy).toHaveBeenCalledWith(-4444, "SIGKILL");
     });
   });
+
+  it("on Unix with detached:false sends SIGTERM to pid only (no group kill)", async () => {
+    killSpy.mockImplementation(((pid: number, signal?: NodeJS.Signals | number) => {
+      if (pid === 5555 && signal === 0) {
+        throw new Error("ESRCH");
+      }
+      return true;
+    }) as typeof process.kill);
+
+    await withPlatform("linux", async () => {
+      killProcessTree(5555, { graceMs: 10, detached: false });
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      // Should NOT use group kill (negative pid)
+      expect(killSpy).not.toHaveBeenCalledWith(-5555, expect.anything());
+      // Should use direct pid kill
+      expect(killSpy).toHaveBeenCalledWith(5555, "SIGTERM");
+    });
+  });
+
+  it("on Unix with detached:false sends SIGKILL to pid only when still alive", async () => {
+    killSpy.mockImplementation(((pid: number, signal?: NodeJS.Signals | number) => {
+      if (pid === 6666 && signal === 0) {
+        return true;
+      }
+      return true;
+    }) as typeof process.kill);
+
+    await withPlatform("linux", async () => {
+      killProcessTree(6666, { graceMs: 5, detached: false });
+
+      await vi.advanceTimersByTimeAsync(5);
+
+      // Should NOT use group kill (negative pid)
+      expect(killSpy).not.toHaveBeenCalledWith(-6666, expect.anything());
+      // Should use direct pid kill
+      expect(killSpy).toHaveBeenCalledWith(6666, "SIGTERM");
+      expect(killSpy).toHaveBeenCalledWith(6666, "SIGKILL");
+    });
+  });
 });

@@ -8,23 +8,26 @@ const MAX_GRACE_MS = 60_000;
  * - Windows: use taskkill /T to include descendants. Sends SIGTERM-equivalent
  *   first (without /F), then force-kills if process survives.
  * - Unix: send SIGTERM to process group first, wait grace period, then SIGKILL.
+ *   When `detached: false`, skips group kill and targets the pid directly
+ *   (useful for processes that don't own a process group).
  *
  * This gives child processes a chance to clean up (close connections, remove
  * temp files, terminate their own children) before being hard-killed.
  */
-export function killProcessTree(pid: number, opts?: { graceMs?: number }): void {
+export function killProcessTree(pid: number, opts?: { graceMs?: number; detached?: boolean }): void {
   if (!Number.isFinite(pid) || pid <= 0) {
     return;
   }
 
   const graceMs = normalizeGraceMs(opts?.graceMs);
+  const useGroupKill = opts?.detached !== false;
 
   if (process.platform === "win32") {
     killProcessTreeWindows(pid, graceMs);
     return;
   }
 
-  killProcessTreeUnix(pid, graceMs);
+  killProcessTreeUnix(pid, graceMs, useGroupKill);
 }
 
 function normalizeGraceMs(value?: number): number {
@@ -43,12 +46,21 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
-function killProcessTreeUnix(pid: number, graceMs: number): void {
-  // Step 1: Try graceful SIGTERM to process group
-  try {
-    process.kill(-pid, "SIGTERM");
-  } catch {
-    // Process group doesn't exist or we lack permission - try direct
+function killProcessTreeUnix(pid: number, graceMs: number, useGroupKill: boolean): void {
+  // Step 1: Try graceful SIGTERM — group kill first (if applicable), then direct
+  if (useGroupKill) {
+    try {
+      process.kill(-pid, "SIGTERM");
+    } catch {
+      // Process group doesn't exist or we lack permission - try direct
+      try {
+        process.kill(pid, "SIGTERM");
+      } catch {
+        // Already gone
+        return;
+      }
+    }
+  } else {
     try {
       process.kill(pid, "SIGTERM");
     } catch {
@@ -59,7 +71,7 @@ function killProcessTreeUnix(pid: number, graceMs: number): void {
 
   // Step 2: Wait grace period, then SIGKILL if still alive
   setTimeout(() => {
-    if (isProcessAlive(-pid)) {
+    if (useGroupKill && isProcessAlive(-pid)) {
       try {
         process.kill(-pid, "SIGKILL");
         return;
