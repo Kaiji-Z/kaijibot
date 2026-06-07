@@ -67,6 +67,7 @@ import { ensureRuntimePluginsLoaded } from "../runtime-plugins.js";
 import { derivePromptTokens, normalizeUsage, type UsageLike } from "../usage.js";
 import { redactRunIdentifier, resolveRunWorkspaceDir } from "../workspace-run.js";
 import { runPostCompactionSideEffects } from "./compact.js";
+import { buildCooldownOverride } from "./run/cooldown-override.js";
 import { buildEmbeddedCompactionRuntimeContext } from "./compaction-runtime-context.js";
 import { runContextEngineMaintenance } from "./context-engine-maintenance.js";
 import { resolveGlobalLane, resolveSessionLane } from "./lanes.js";
@@ -450,6 +451,11 @@ export async function runEmbeddedPiAgent(
         if (!profileId || !reason || reason === "timeout") {
           return;
         }
+        const override = await buildCooldownOverride({
+          profileId,
+          reason,
+          store: authStore,
+        });
         await markAuthProfileFailure({
           store: authStore,
           profileId,
@@ -458,6 +464,7 @@ export async function runEmbeddedPiAgent(
           agentDir,
           runId: params.runId,
           modelId: failure.modelId,
+          override,
         });
       };
       const resolveAuthProfileFailureReason = (

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AuthProfileStore, ProfileUsageStats } from "./types.js";
+import type { AuthProfileFailureReason, AuthProfileStore, ProfileUsageStats } from "./types.js";
 import {
   __testing as authProfileUsageTesting,
   clearAuthProfileCooldown,
@@ -11,6 +11,7 @@ import {
   resolveProfileUnusableUntil,
   resolveProfileUnusableUntilForDisplay,
 } from "./usage.js";
+import type { CooldownOverride } from "./usage.js";
 
 const storeMocks = vi.hoisted(() => ({
   saveAuthProfileStore: vi.fn(),
@@ -1125,5 +1126,218 @@ describe("markAuthProfileFailure — per-model cooldown metadata", () => {
     // Even same-model auth failure should clear model scope (auth is profile-wide)
     expect(stats?.cooldownReason).toBe("auth");
     expect(stats?.cooldownModel).toBeUndefined();
+  });
+});
+
+describe("CooldownOverride priority chain", () => {
+  const FIXED_BACKOFF_FIRST_FAILURE = 30_000;
+
+  async function markFailureAt(params: {
+    store: ReturnType<typeof makeStore>;
+    now: number;
+    override?: CooldownOverride;
+    reason?: AuthProfileFailureReason;
+    profileId?: string;
+  }): Promise<void> {
+    vi.useFakeTimers();
+    vi.setSystemTime(params.now);
+    try {
+      await markAuthProfileFailure({
+        store: params.store,
+        profileId: params.profileId ?? "anthropic:default",
+        reason: params.reason ?? "rate_limit",
+        override: params.override,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("uses retryAfterMs when provided (highest priority)", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now, override: { retryAfterMs: 60_000 } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 60_000);
+  });
+
+  it("uses quotaProbeMs when retryAfterMs absent", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+    const fiveHours = 5 * 3600 * 1000;
+
+    await markFailureAt({ store, now, override: { quotaProbeMs: fiveHours } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + fiveHours);
+  });
+
+  it("uses rateLimitResetMs when both retryAfterMs and quotaProbeMs absent", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now, override: { rateLimitResetMs: 120_000 } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 120_000);
+  });
+
+  it("falls back to fixed backoff when no override signal available", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now, override: {} });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(
+      now + FIXED_BACKOFF_FIRST_FAILURE,
+    );
+  });
+
+  it("falls back to fixed backoff when override is undefined", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(
+      now + FIXED_BACKOFF_FIRST_FAILURE,
+    );
+  });
+
+  it("caps override cooldown at 24h max", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+    const twentyFourHours = 24 * 3600 * 1000;
+
+    await markFailureAt({ store, now, override: { retryAfterMs: 48 * 3600 * 1000 } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + twentyFourHours);
+  });
+
+  it("does not shorten an existing active cooldown", async () => {
+    const now = 1_700_000_000_000;
+    const fiveHours = 5 * 3600 * 1000;
+    const existingDisabledUntil = now + fiveHours;
+    const store = makeStore({
+      "anthropic:default": {
+        disabledUntil: existingDisabledUntil,
+        disabledReason: "billing",
+        errorCount: 1,
+        failureCounts: { billing: 1 },
+        lastFailureAt: now - 60_000,
+      },
+    });
+
+    await markFailureAt({
+      store,
+      now,
+      reason: "billing",
+      override: { retryAfterMs: 60_000 },
+    });
+
+    expect(store.usageStats?.["anthropic:default"]?.disabledUntil).toBe(existingDisabledUntil);
+  });
+
+  it("does not shorten an existing active transient cooldown via override", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now, override: { retryAfterMs: 5 * 3600 * 1000 } });
+    const firstCooldownUntil = store.usageStats?.["anthropic:default"]?.cooldownUntil;
+
+    await markFailureAt({ store, now, override: { retryAfterMs: 60_000 } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(firstCooldownUntil);
+  });
+
+  it("uses shorter override when no active cooldown exists", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now, override: { retryAfterMs: 60_000 } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 60_000);
+  });
+
+  it("retryAfterMs takes priority over quotaProbeMs", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({
+      store,
+      now,
+      override: { retryAfterMs: 30_000, quotaProbeMs: 5 * 3600 * 1000 },
+    });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 30_000);
+  });
+
+  it("retryAfterMs takes priority over rateLimitResetMs", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({
+      store,
+      now,
+      override: { retryAfterMs: 30_000, rateLimitResetMs: 5 * 3600 * 1000 },
+    });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 30_000);
+  });
+
+  it("quotaProbeMs takes priority over rateLimitResetMs", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({
+      store,
+      now,
+      override: { quotaProbeMs: 90_000, rateLimitResetMs: 5 * 3600 * 1000 },
+    });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 90_000);
+  });
+
+  it("existing callers without override param work unchanged", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({ store, now, reason: "rate_limit" });
+
+    const stats = store.usageStats?.["anthropic:default"];
+    expect(stats?.cooldownUntil).toBe(now + FIXED_BACKOFF_FIRST_FAILURE);
+    expect(stats?.cooldownReason).toBe("rate_limit");
+    expect(stats?.errorCount).toBe(1);
+  });
+
+  it("override does not affect billing disabled lane backoff", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({});
+
+    await markFailureAt({
+      store,
+      now,
+      reason: "billing",
+      override: { retryAfterMs: 60_000 },
+    });
+
+    const stats = store.usageStats?.["anthropic:default"];
+    expect(stats?.disabledUntil).toBe(now + 5 * 3600 * 1000);
+    expect(stats?.disabledReason).toBe("billing");
+    expect(stats?.cooldownUntil).toBeUndefined();
+  });
+
+  it("override applies after a previous cooldown has expired", async () => {
+    const now = 1_700_000_000_000;
+    const store = makeStore({
+      "anthropic:default": {
+        cooldownUntil: now - 60_000,
+        errorCount: 2,
+        lastFailureAt: now - 120_000,
+      },
+    });
+
+    await markFailureAt({ store, now, override: { retryAfterMs: 45_000 } });
+
+    expect(store.usageStats?.["anthropic:default"]?.cooldownUntil).toBe(now + 45_000);
   });
 });

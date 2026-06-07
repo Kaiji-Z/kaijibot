@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  FailoverError,
   coerceToFailoverError,
   describeFailoverError,
+  isFailoverError,
   isTimeoutError,
   resolveFailoverReasonFromError,
   resolveFailoverStatus,
@@ -631,5 +633,77 @@ describe("failover-error", () => {
     const described = describeFailoverError(123);
     expect(described.message).toBe("123");
     expect(described.reason).toBeUndefined();
+  });
+
+  it("FailoverError carries retryAfterMs when provided", () => {
+    const err = new FailoverError("rate limited", {
+      reason: "rate_limit",
+      retryAfterMs: 60_000,
+    });
+    expect(err.retryAfterMs).toBe(60_000);
+  });
+
+  it("FailoverError defaults retryAfterMs to undefined when omitted", () => {
+    const err = new FailoverError("timeout", { reason: "timeout" });
+    expect(err.retryAfterMs).toBeUndefined();
+  });
+
+  it("FailoverError accepts retryAfterMs of 0 (retry immediately)", () => {
+    const err = new FailoverError("overloaded", {
+      reason: "overloaded",
+      retryAfterMs: 0,
+    });
+    expect(err.retryAfterMs).toBe(0);
+  });
+
+  it("coerceToFailoverError preserves retryAfterMs from an existing FailoverError", () => {
+    const source = new FailoverError("rate limited", {
+      reason: "rate_limit",
+      retryAfterMs: 30_000,
+      status: 429,
+    });
+    const coerced = coerceToFailoverError(source);
+    expect(coerced).toBe(source);
+    expect(coerced?.retryAfterMs).toBe(30_000);
+  });
+
+  it("coerceToFailoverError leaves retryAfterMs undefined for non-FailoverError sources", () => {
+    const coerced = coerceToFailoverError("credit balance too low");
+    expect(coerced?.reason).toBe("billing");
+    expect(coerced?.retryAfterMs).toBeUndefined();
+  });
+
+  it("coerceToFailoverError leaves retryAfterMs undefined when source FailoverError lacks it", () => {
+    const source = new FailoverError("timeout", { reason: "timeout" });
+    const coerced = coerceToFailoverError(source);
+    expect(coerced?.retryAfterMs).toBeUndefined();
+  });
+
+  it("describeFailoverError surfaces retryAfterMs when present", () => {
+    const err = new FailoverError("rate limited", {
+      reason: "rate_limit",
+      retryAfterMs: 60_000,
+      status: 429,
+    });
+    const described = describeFailoverError(err);
+    expect(described.retryAfterMs).toBe(60_000);
+  });
+
+  it("describeFailoverError reports retryAfterMs undefined when absent", () => {
+    const err = new FailoverError("timeout", { reason: "timeout" });
+    const described = describeFailoverError(err);
+    expect(described.retryAfterMs).toBeUndefined();
+  });
+
+  it("isFailoverError still recognizes FailoverError instances", () => {
+    const err = new FailoverError("rate limited", { reason: "rate_limit" });
+    expect(isFailoverError(err)).toBe(true);
+    expect(isFailoverError(new Error("plain"))).toBe(false);
+  });
+
+  it("isTimeoutError still detects timeout errors", () => {
+    const err = new Error("operation timed out");
+    err.name = "TimeoutError";
+    expect(isTimeoutError(err)).toBe(true);
   });
 });

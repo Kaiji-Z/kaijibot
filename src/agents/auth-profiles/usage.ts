@@ -4,6 +4,19 @@ import { logAuthProfileFailureStateChange } from "./state-observation.js";
 import { saveAuthProfileStore, updateAuthProfileStoreWithLock } from "./store.js";
 import type { AuthProfileFailureReason, AuthProfileStore, ProfileUsageStats } from "./types.js";
 
+/**
+ * Optional override signals for cooldown calculation.
+ * Priority chain: retryAfterMs > quotaProbeMs > rateLimitResetMs > fixedBackoff
+ */
+export type CooldownOverride = {
+  /** Retry-After header value (ms) — most authoritative, server's explicit instruction */
+  retryAfterMs?: number;
+  /** Quota probe result (ms) — real reset time from provider quota API */
+  quotaProbeMs?: number;
+  /** Rate-limit reset header value (ms) — from HTTP response headers */
+  rateLimitResetMs?: number;
+};
+
 const authProfileUsageDeps = {
   saveAuthProfileStore,
   updateAuthProfileStoreWithLock,
@@ -524,7 +537,27 @@ export function calculateAuthProfileCooldownMs(errorCount: number): number {
   if (normalized <= 2) {
     return 60_000; // 1 minute
   }
-  return 5 * 60_000; // 5 minutes max
+  return 5 * 60 * 1000; // 5 minutes max
+}
+
+/**
+ * Maximum cooldown duration regardless of override signal. Guards against
+ * misbehaving provider headers (e.g. a Retry-After pointing months ahead).
+ */
+const MAX_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Resolves cooldown using priority chain: retryAfterMs > quotaProbeMs > rateLimitResetMs > fixedBackoffMs.
+ * Falls back to fixedBackoffMs when no override signal is available or all are undefined.
+ */
+function resolveCooldownWithOverride(
+  fixedBackoffMs: number,
+  override?: CooldownOverride,
+): number {
+  if (!override) return fixedBackoffMs;
+  const overrideMs = override.retryAfterMs ?? override.quotaProbeMs ?? override.rateLimitResetMs;
+  if (overrideMs === undefined) return fixedBackoffMs;
+  return Math.min(Math.max(0, overrideMs), MAX_COOLDOWN_MS);
 }
 
 type ResolvedAuthCooldownConfig = {
@@ -698,6 +731,7 @@ function computeNextProfileUsageStats(params: {
   reason: AuthProfileFailureReason;
   cfgResolved: ResolvedAuthCooldownConfig;
   modelId?: string;
+  override?: CooldownOverride;
 }): ProfileUsageStats {
   const windowMs = params.cfgResolved.failureWindowMs;
   const windowExpired =
@@ -746,13 +780,14 @@ function computeNextProfileUsageStats(params: {
     });
     updatedStats.disabledReason = disabledFailureReason;
   } else {
-    const backoffMs = calculateAuthProfileCooldownMs(nextErrorCount);
+    const fixedBackoffMs = calculateAuthProfileCooldownMs(nextErrorCount);
+    const resolvedBackoffMs = resolveCooldownWithOverride(fixedBackoffMs, params.override);
     // Keep active cooldown windows immutable so retries within the window
     // cannot push recovery further out.
     updatedStats.cooldownUntil = keepActiveWindowOrRecompute({
       existingUntil: params.existing.cooldownUntil,
       now: params.now,
-      recomputedUntil: params.now + backoffMs,
+      recomputedUntil: params.now + resolvedBackoffMs,
     });
     // Update cooldown metadata based on whether the window is still active
     // and whether the same or a different model is failing.
@@ -810,8 +845,9 @@ export async function markAuthProfileFailure(params: {
   agentDir?: string;
   runId?: string;
   modelId?: string;
+  override?: CooldownOverride;
 }): Promise<void> {
-  const { store, profileId, reason, agentDir, cfg, runId, modelId } = params;
+  const { store, profileId, reason, agentDir, cfg, runId, modelId, override } = params;
   const profile = store.profiles[profileId];
   if (!profile || isAuthCooldownBypassedForProvider(profile.provider)) {
     return;
@@ -846,6 +882,7 @@ export async function markAuthProfileFailure(params: {
         reason,
         cfgResolved,
         modelId,
+        override,
       });
       nextStats =
         whamResult && shouldProbeWhamForFailure(profile.provider, reason)
@@ -893,6 +930,7 @@ export async function markAuthProfileFailure(params: {
     reason,
     cfgResolved,
     modelId,
+    override,
   });
   nextStats =
     whamResult && shouldProbeWhamForFailure(store.profiles[profileId]?.provider, reason)

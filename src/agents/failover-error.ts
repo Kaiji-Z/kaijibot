@@ -15,6 +15,7 @@ export class FailoverError extends Error {
   readonly profileId?: string;
   readonly status?: number;
   readonly code?: string;
+  readonly retryAfterMs?: number;
 
   constructor(
     message: string,
@@ -25,6 +26,7 @@ export class FailoverError extends Error {
       profileId?: string;
       status?: number;
       code?: string;
+      retryAfterMs?: number;
       cause?: unknown;
     },
   ) {
@@ -36,6 +38,7 @@ export class FailoverError extends Error {
     this.profileId = params.profileId;
     this.status = params.status;
     this.code = params.code;
+    this.retryAfterMs = params.retryAfterMs;
   }
 }
 
@@ -277,6 +280,7 @@ export function describeFailoverError(err: unknown): {
   reason?: FailoverReason;
   status?: number;
   code?: string;
+  retryAfterMs?: number;
 } {
   if (isFailoverError(err)) {
     return {
@@ -284,6 +288,7 @@ export function describeFailoverError(err: unknown): {
       reason: err.reason,
       status: err.status,
       code: err.code,
+      retryAfterMs: err.retryAfterMs,
     };
   }
   const signal = normalizeErrorSignal(err);
