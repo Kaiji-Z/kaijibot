@@ -74,9 +74,9 @@ AI 助手每次新建会话都犯同样的错？KaijiBot 不会。它有一套�
 
 不绑死任何一家。国内国际随意切换，`kaijibot onboard` 向导自动发现已配置的 API Key。
 
-| 国内（推荐）                                     | 国际主流                                           | 聚合 / 自部署                                         |
-| ------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------------- |
-| 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity …    | OpenRouter · Together · Ollama · LMStudio · vLLM …    |
+| 国内（推荐）                                      | 国际主流                                        | 聚合 / 自部署                                      |
+| ------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
 
 切换模型只需一行：
 
@@ -91,6 +91,11 @@ kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
 
 **记忆系统**：多存储后端，语义搜索历史对话。会话记忆、每日整合、手动整理三个系统协同维护 Agent 上下文。
 
+- **会话记忆** — 每次对话结束自动生成结构化摘要（决策、待办、话题），按日期归档到 `memory/YYYY-MM-DD.md`，按话题拆分到独立主题文件。8KB 预算自动平衡，高频内容内联，低频内容存指针。
+- **每日整合** — 定时扫描历史会话，LLM 提取结构化知识（领域知识、行为模式、偏好、目标），Jaccard 去重后写入 Persona 画像、Fragment 片段库和纠错存储。你的认知模型每天都在进化。
+- **智能检索** — 双引擎架构：FTS 全文搜索 + sqlite-vec 向量语义搜索（配 embedding provider 后启用）。混合检索自动平衡关键词匹配和语义相关性。
+- **手动整理** — 内置 `memory-organize` 技能，四步流程：垃圾回收（清理过期内容）→ 深度扫描（发现遗漏）→ 整理去重（跨文件消重）→ 预算检查（保持精简）。
+
 **技能市场**：数十个内置技能（github、weather、summarize、coding-agent、notion、obsidian、taskflow 等），更多从 ClawHub 安装：
 
 ```bash
@@ -99,32 +104,9 @@ kaijibot skills install <skill-name>
 
 ## 🚀 快速开始
 
-### macOS / Linux
-
-**一键安装**（推荐，自动检测环境、安装依赖、运行 onboard 向导）：
+### npm 全局安装
 
 ```bash
-curl -fsSL https://kaijibot.ai/install.sh | bash
-```
-
-也支持 npm 全局安装：
-
-```bash
-npm install -g kaijibot
-kaijibot onboard
-```
-
-### Windows
-
-PowerShell 一键安装：
-
-```powershell
-iwr -useb https://kaijibot.ai/install.ps1 | iex
-```
-
-或 npm：
-
-```powershell
 npm install -g kaijibot
 kaijibot onboard
 ```
