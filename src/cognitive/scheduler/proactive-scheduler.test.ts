@@ -3117,6 +3117,138 @@ describe("insight hallucination gates", () => {
   });
 });
 
+describe("resolve loop: all modes triggered (no starvation)", () => {
+  function gatePersona(): PersonaTree {
+    const p = personaWithDomains();
+    p.rapport.trustScore = 1.0;
+    p.feedbackProfile.optimalFrequencyHours = 0.5;
+    p.feedbackProfile.lastProactiveAt = 0;
+    p.lifecycle = { ...p.lifecycle, stage: "active", lastActiveAt: Date.now(), totalActiveDays: 50 };
+    return p;
+  }
+
+  function makeCandidateForMode(mode: string): InsightCandidate {
+    const isPattern = mode === "pattern";
+    return {
+      id: `candidate-${mode}-${Date.now()}`,
+      content: `Test insight for ${mode}`,
+      rationale: "statistical test",
+      targetDomains: [],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: isPattern ? [] : [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: isPattern ? "partial" as const : "unverified" as const,
+      source: isPattern ? "pattern" as const : undefined,
+    };
+  }
+
+  function mockFragmentStore() {
+    return {
+      load: async () => [
+        {
+          id: "f1", kind: "knowledge_gap" as const, content: "test", strength: 0.5,
+          userId: "stat-user", createdAt: Date.now(), updatedAt: Date.now(),
+          expiresAt: Date.now() + 14 * 86400000, evidence: "test", domains: ["test"], structuralTag: "test",
+        },
+      ],
+      findClusters: async () => [
+        {
+          id: "c1", fragmentIds: ["f1"], domains: ["test"], structuralPattern: "test",
+          averageStrength: 0.5, createdAt: Date.now(),
+        },
+      ],
+    } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never;
+  }
+
+  it("resolve() selects all 3 modes across 100 iterations with exploration opportunity", async () => {
+    const modeCounts: Record<string, number> = { pattern: 0, surprise: 0, extend: 0 };
+    const iterations = 100;
+    const baseNow = 1700000000000;
+
+    for (let i = 0; i < iterations; i++) {
+      const persona = gatePersona();
+      persona.identity = { ...persona.identity, userId: "stat-user" };
+
+      const seedNow = baseNow + i * 7919;
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(seedNow);
+
+      let capturedMode = "";
+      const scheduler = new ProactiveScheduler(
+        { ...config, epsilonGreedy: 1.0 },
+        { loadPersona: async () => persona, onInsightReady: async () => {}, savePersona: async () => {} },
+        {
+          insightGenerator: async (_p, _input, opts) => {
+            capturedMode = opts?.mode ?? "unknown";
+            return [makeCandidateForMode(capturedMode)];
+          },
+          fragmentStore: mockFragmentStore(),
+        },
+      );
+
+      await scheduler.resolve("main", persona, {
+        type: "exploration",
+        targetDomains: [],
+        sourceDomains: [],
+        pNeed: 0.8,
+        pAccept: 0.7,
+        pAct: 0.56,
+        modeCandidates: ["pattern", "surprise", "extend"],
+      });
+
+      dateSpy.mockRestore();
+      if (capturedMode) {modeCounts[capturedMode] = (modeCounts[capturedMode] ?? 0) + 1;}
+    }
+
+    expect(modeCounts.pattern, "pattern must be selected at least once").toBeGreaterThan(0);
+    expect(modeCounts.surprise, "surprise must be selected at least once").toBeGreaterThan(0);
+    expect(modeCounts.extend, "extend must be selected at least once").toBeGreaterThan(0);
+  });
+
+  it("processEvent delivers insights with all 3 resolvedModes across 50 runs", async () => {
+    const resolvedModes: string[] = [];
+    const iterations = 50;
+    const baseNow = 1700000000000;
+
+    for (let i = 0; i < iterations; i++) {
+      const seedNow = baseNow + i * 7919;
+      const persona = gatePersona();
+      persona.identity = { ...persona.identity, userId: "stat-user" };
+      // Align timestamps with seedNow so gate computation is consistent
+      persona.lifecycle = { ...persona.lifecycle, lastActiveAt: seedNow - 2 * 3600000 };
+      persona.feedbackProfile.lastProactiveAt = seedNow - 8 * 3600000;
+
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(seedNow);
+
+      const scheduler = new ProactiveScheduler(
+        { ...config, epsilonGreedy: 1.0 },
+        {
+          loadPersona: async () => persona,
+          onInsightReady: async (_a, _u, candidate) => {
+            resolvedModes.push(candidate.resolvedMode ?? "unknown");
+          },
+          savePersona: async () => {},
+        },
+        {
+          insightGenerator: async (_p, _input, opts) => {
+            return [makeCandidateForMode(opts?.mode ?? "surprise")];
+          },
+          fragmentStore: mockFragmentStore(),
+        },
+      );
+
+      await scheduler.processEvent("stat-user", { type: "timer", timestamp: seedNow }, "main");
+      dateSpy.mockRestore();
+    }
+
+    const uniqueModes = new Set(resolvedModes);
+    expect(uniqueModes.has("pattern"), "pattern must appear in resolved modes").toBe(true);
+    expect(uniqueModes.has("surprise"), "surprise must appear in resolved modes").toBe(true);
+    expect(uniqueModes.has("extend"), "extend must appear in resolved modes").toBe(true);
+  });
+});
+
 describe("applyEpsilonGreedy", () => {
   let applyEpsilonGreedy: typeof import("./proactive-scheduler.js").applyEpsilonGreedy;
 

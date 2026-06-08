@@ -99,6 +99,73 @@ describe("banditWeightedSelect", () => {
     }
     expect(extendCount).toBeGreaterThan(0);
   });
+
+  it("30% floor guarantees >=15% even with extreme negative bandits", () => {
+    // Extend has baseWeight=0.1 and extreme negative bandit (α=1, β=1000)
+    // Without floor: raw = 0.1 * (1/1001) ≈ 0.0001 → effectively 0%
+    // With 30% floor: floored = 0.3 + 0.7*0.0001 ≈ 0.3001 → normalized ~19.6%
+    const bandits: Record<string, TopicBandit> = {
+      pattern: { alpha: 1000, beta: 1 },
+      surprise: { alpha: 1000, beta: 1 },
+      extend: { alpha: 1, beta: 1000 },
+    };
+    const counts: Record<string, number> = { pattern: 0, surprise: 0, extend: 0 };
+    const n = 10000;
+    for (let seed = 0; seed < n; seed++) {
+      counts[banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed)]++;
+    }
+    // Extend must get at least 15% (theoretical ~19.6%, conservative threshold)
+    expect(counts.extend / n).toBeGreaterThan(0.15);
+    // No single mode should dominate >50% with the floor in place
+    expect(counts.pattern / n).toBeLessThan(0.50);
+    expect(counts.surprise / n).toBeLessThan(0.50);
+  });
+
+  it("all modes get >=10% with default (no) bandits", () => {
+    // Default bandits: all get banditFactor=0.5
+    // pattern: 0.3+0.7*(0.5*0.5)=0.475 → ~38%
+    // surprise: 0.3+0.7*(0.4*0.5)=0.440 → ~35%
+    // extend:   0.3+0.7*(0.1*0.5)=0.335 → ~27%
+    const counts: Record<string, number> = { pattern: 0, surprise: 0, extend: 0 };
+    const n = 10000;
+    for (let seed = 0; seed < n; seed++) {
+      counts[banditWeightedSelect(["pattern", "surprise", "extend"], undefined, seed)]++;
+    }
+    for (const mode of ["pattern", "surprise", "extend"] as const) {
+      expect(counts[mode] / n, `${mode} should be >= 10%`).toBeGreaterThan(0.10);
+    }
+  });
+
+  it("all modes get >=10% with equal bandits", () => {
+    const bandits: Record<string, TopicBandit> = {
+      pattern: { alpha: 2, beta: 2 },
+      surprise: { alpha: 2, beta: 2 },
+      extend: { alpha: 2, beta: 2 },
+    };
+    const counts: Record<string, number> = { pattern: 0, surprise: 0, extend: 0 };
+    const n = 10000;
+    for (let seed = 0; seed < n; seed++) {
+      counts[banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed)]++;
+    }
+    for (const mode of ["pattern", "surprise", "extend"] as const) {
+      expect(counts[mode] / n, `${mode} should be >= 10%`).toBeGreaterThan(0.10);
+    }
+  });
+
+  it("no mode exceeds 60% even with extreme positive bandit", () => {
+    const bandits: Record<string, TopicBandit> = {
+      pattern: { alpha: 10000, beta: 1 },
+      surprise: { alpha: 1, beta: 1 },
+      extend: { alpha: 1, beta: 1 },
+    };
+    const counts: Record<string, number> = { pattern: 0, surprise: 0, extend: 0 };
+    const n = 10000;
+    for (let seed = 0; seed < n; seed++) {
+      counts[banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed)]++;
+    }
+    // Even with extreme positive bandit, floor caps pattern at ~45%
+    expect(counts.pattern / n).toBeLessThan(0.60);
+  });
 });
 
 describe("selectMode", () => {
