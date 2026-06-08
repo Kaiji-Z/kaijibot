@@ -118,7 +118,7 @@ export async function routeToStores(params: {
         await deps.collectFragment(agentId, userId, {
           text: item.content,
           strength: item.confidence,
-          domains: item.domain ? [item.domain] : [],
+          domains: item.domains ?? [],
         });
         routed += 1;
       } catch (err) {
@@ -130,7 +130,7 @@ export async function routeToStores(params: {
     if (item.confidence >= 0.9 && looksLikeCorrection(item.evidence)) {
       try {
         await deps.addOrReinforceCorrection(agentId, userId, {
-          domain: item.domain || item.category,
+          domain: item.domains?.[0] || item.category,
           trigger: item.evidence,
           mistake: item.evidence,
           correction: item.content,

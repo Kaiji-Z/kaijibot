@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { TranscriptBatch, ExtractedItem } from "./consolidation-types.js";
-import { extractFromBatch, mergeAndDedupBatches, resolveConflicts } from "./consolidation-extract.js";
+import { extractFromBatch, mergeAndDedupBatches, resolveConflicts, parseExtractedItems } from "./consolidation-extract.js";
 
 function makeBatch(files: Array<{ path: string; content: string }> = []): TranscriptBatch {
   return { agentId: "test-agent", userId: "test-user", files };
@@ -136,7 +136,7 @@ describe("extractFromBatch", () => {
     expect(result[0]!.content).toBe("valid");
   });
 
-  it("preserves domain field from LLM output", async () => {
+  it("preserves domains array from LLM output", async () => {
     const generateText = vi.fn().mockResolvedValue(
       JSON.stringify([
         {
@@ -144,14 +144,14 @@ describe("extractFromBatch", () => {
           content: "User deploys Kubernetes clusters on Alibaba Cloud",
           confidence: 0.9,
           evidence: "我在阿里云上部署了三个 Kubernetes 集群",
-          domain: "Kubernetes",
+          domains: ["Kubernetes"],
         },
         {
           category: "behavioral_pattern",
           content: "User prefers async patterns for I/O",
           confidence: 0.8,
           evidence: "I always use async",
-          domain: "异步编程",
+          domains: ["异步编程"],
         },
       ]),
     );
@@ -160,11 +160,11 @@ describe("extractFromBatch", () => {
       generateText,
     );
     expect(result).toHaveLength(2);
-    expect(result[0]!.domain).toBe("Kubernetes");
-    expect(result[1]!.domain).toBe("异步编程");
+    expect(result[0]!.domains).toEqual(["Kubernetes"]);
+    expect(result[1]!.domains).toEqual(["异步编程"]);
   });
 
-  it("sets domain to undefined when LLM omits it", async () => {
+  it("sets domains to undefined when LLM omits it", async () => {
     const generateText = vi.fn().mockResolvedValue(
       JSON.stringify([
         {
@@ -180,10 +180,10 @@ describe("extractFromBatch", () => {
       generateText,
     );
     expect(result).toHaveLength(1);
-    expect(result[0]!.domain).toBeUndefined();
+    expect(result[0]!.domains).toBeUndefined();
   });
 
-  it("sets domain to undefined when LLM returns empty string", async () => {
+  it("sets domains to undefined when LLM returns empty string", async () => {
     const generateText = vi.fn().mockResolvedValue(
       JSON.stringify([
         {
@@ -191,7 +191,7 @@ describe("extractFromBatch", () => {
           content: "Some knowledge",
           confidence: 0.8,
           evidence: "evidence text",
-          domain: "   ",
+          domains: "   ",
         },
       ]),
     );
@@ -200,10 +200,10 @@ describe("extractFromBatch", () => {
       generateText,
     );
     expect(result).toHaveLength(1);
-    expect(result[0]!.domain).toBeUndefined();
+    expect(result[0]!.domains).toBeUndefined();
   });
 
-  it("sets source to transcript on all items", async () => {
+  it("accepts singular domain field for backward compat", async () => {
     const generateText = vi.fn().mockResolvedValue(
       JSON.stringify([
         { category: "domain_knowledge", content: "c1", confidence: 0.8, evidence: "e1" },
@@ -217,6 +217,50 @@ describe("extractFromBatch", () => {
     for (const item of result) {
       expect(item.source).toBe("transcript");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseExtractedItems (unit)
+// ---------------------------------------------------------------------------
+
+describe("parseExtractedItems", () => {
+  it("parses domains array from LLM output", () => {
+    const raw = JSON.stringify([{
+      category: "domain_knowledge",
+      content: "User discussed TypeScript and Rust integration",
+      confidence: 0.9,
+      evidence: "I've been mixing TypeScript and Rust",
+      domains: ["TypeScript", "Rust"],
+    }]);
+    const result = parseExtractedItems(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.domains).toEqual(["TypeScript", "Rust"]);
+  });
+
+  it("accepts singular domain field for backward compat", () => {
+    const raw = JSON.stringify([{
+      category: "domain_knowledge",
+      content: "User likes TypeScript",
+      confidence: 0.8,
+      evidence: "I love TypeScript",
+      domain: "TypeScript",
+    }]);
+    const result = parseExtractedItems(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.domains).toEqual(["TypeScript"]);
+  });
+
+  it("returns undefined domains when field absent", () => {
+    const raw = JSON.stringify([{
+      category: "domain_knowledge",
+      content: "Some content",
+      confidence: 0.8,
+      evidence: "some evidence",
+    }]);
+    const result = parseExtractedItems(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.domains).toBeUndefined();
   });
 });
 
@@ -284,19 +328,19 @@ describe("mergeAndDedupBatches", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("preserves domain field through dedup", () => {
+  it("preserves domains field through dedup", () => {
     const batch1 = [
       makeItem({
         content: "User prefers TypeScript for backend",
         confidence: 0.7,
         category: "domain_knowledge",
-        domain: "TypeScript",
+        domains: ["TypeScript"],
       }),
       makeItem({
         content: "Unique Rust knowledge",
         confidence: 0.8,
         category: "domain_knowledge",
-        domain: "Rust",
+        domains: ["Rust"],
       }),
     ];
     const batch2 = [
@@ -304,27 +348,27 @@ describe("mergeAndDedupBatches", () => {
         content: "User prefers TypeScript for backend development",
         confidence: 0.85,
         category: "domain_knowledge",
-        domain: "TypeScript",
+        domains: ["TypeScript"],
       }),
     ];
     const result = mergeAndDedupBatches([batch1, batch2]);
     expect(result).toHaveLength(2);
-    const tsItem = result.find((i) => i.domain === "TypeScript");
+    const tsItem = result.find((i) => i.domains?.includes("TypeScript"));
     expect(tsItem).toBeDefined();
     expect(tsItem!.confidence).toBe(0.85);
-    const rustItem = result.find((i) => i.domain === "Rust");
+    const rustItem = result.find((i) => i.domains?.includes("Rust"));
     expect(rustItem).toBeDefined();
   });
 
-  it("handles items with and without domain field in same batch", () => {
+  it("handles items with and without domains field in same batch", () => {
     const items = [
-      makeItem({ content: "Item with domain", confidence: 0.8, category: "domain_knowledge", domain: "Go" }),
-      makeItem({ content: "Item without domain", confidence: 0.7, category: "domain_knowledge" }),
+      makeItem({ content: "Item with domains", confidence: 0.8, category: "domain_knowledge", domains: ["Go"] }),
+      makeItem({ content: "Item without domains", confidence: 0.7, category: "domain_knowledge" }),
     ];
     const result = mergeAndDedupBatches([items]);
     expect(result).toHaveLength(2);
-    expect(result[0]!.domain).toBe("Go");
-    expect(result[1]!.domain).toBeUndefined();
+    expect(result[0]!.domains).toEqual(["Go"]);
+    expect(result[1]!.domains).toBeUndefined();
   });
 });
 

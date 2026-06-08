@@ -15,8 +15,8 @@ export type ExtractCategory =
 /** A single knowledge item extracted from a transcript batch. */
 export type ExtractedItem = {
   category: ExtractCategory;
-  /** Short noun phrase identifying the knowledge domain (e.g. "TypeScript", "分布式系统设计"). Extracted by LLM; falls back to category when absent. */
-  domain?: string;
+  /** Short noun phrases identifying the knowledge domains (1-3 per item). Extracted by LLM; falls back to category when absent. */
+  domains?: string[];
   content: string;
   confidence: number;
   source: "transcript";

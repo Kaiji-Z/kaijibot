@@ -15,7 +15,7 @@ For each item, provide:
 - content: A concise summary of the knowledge (1-2 sentences)
 - confidence: Your confidence level from 0.0 to 1.0
 - evidence: A brief quote from the transcript that supports this extraction
-- domain: A short noun phrase identifying the knowledge domain (e.g. "TypeScript", "分布式系统设计", "Kubernetes", "AI Agent架构"). Use 2-6 words. Be specific, not generic (NOT "technology" or "programming").
+- domains: An array of short noun phrases identifying the knowledge domains (e.g. ["TypeScript"], ["分布式系统设计", "Kubernetes"]). Use 2-6 words per domain. Be specific, not generic (NOT "technology" or "programming"). Include 1-3 domains per item.
 
 Rules:
 - Extract domain_knowledge for facts, concepts, and technical details the user discussed
@@ -23,7 +23,7 @@ Rules:
 - Extract stated_preference for explicit likes, dislikes, or preferences stated by the user
 - Extract goal_or_aspiration for things the user wants to achieve or work toward
 - Do NOT extract tool_config or contextual_fact categories
-- The domain field should identify the subject area, not the category
+- The domains field should identify the subject area, not the category
 - Each item must have a direct quote as evidence
 - Be conservative: only extract items with confidence >= 0.5
 - Return a JSON array of items, or an empty array if nothing worth extracting
@@ -54,7 +54,7 @@ function jaccardSimilarity(a: string, b: string): number {
   return union.size === 0 ? 0 : intersection.size / union.size;
 }
 
-function parseExtractedItems(raw: string): ExtractedItem[] {
+export function parseExtractedItems(raw: string): ExtractedItem[] {
   const trimmed = raw.trim();
   // Strip markdown code fences if present
   const fenceMatch = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n?```$/);
@@ -88,7 +88,11 @@ function parseExtractedItems(raw: string): ExtractedItem[] {
     const content = typeof record.content === "string" ? record.content.trim().slice(0, 500) : "";
     const confidence = Number(record.confidence);
     const evidence = typeof record.evidence === "string" ? record.evidence.trim().slice(0, 300) : "";
-    const domain = typeof record.domain === "string" ? record.domain.trim().slice(0, 60) : undefined;
+    const rawDomains = Array.isArray(record.domains)
+    ? record.domains.filter((d): d is string => typeof d === "string").map((d) => d.trim().slice(0, 60)).filter((d) => d.length > 0)
+    : typeof record.domain === "string" && record.domain.trim().length > 0
+      ? [record.domain.trim().slice(0, 60)]
+      : [];
 
     if (
       !validCategories.has(category) ||
@@ -107,7 +111,7 @@ function parseExtractedItems(raw: string): ExtractedItem[] {
       confidence,
       source: "transcript",
       evidence,
-      domain: domain && domain.length > 0 ? domain : undefined,
+      domains: rawDomains.length > 0 ? rawDomains : undefined,
     });
   }
   return items;

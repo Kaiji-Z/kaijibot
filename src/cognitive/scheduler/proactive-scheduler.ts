@@ -369,6 +369,7 @@ export class ProactiveScheduler {
         return null;
       }
 
+      candidate.resolvedMode = "pattern";
       return candidate;
     }
 
@@ -617,6 +618,7 @@ export class ProactiveScheduler {
       return null;
     }
 
+    candidate.resolvedMode = mode;
     return candidate;
   }
 
@@ -763,12 +765,12 @@ export class ProactiveScheduler {
       targetDomains: insight.targetDomains,
       source: insight.source ?? "knowledge",
       verificationStatus: insight.verificationStatus,
-      mode: selected.metadata?.mode ?? "knowledge",
+      mode: insight.resolvedMode ?? "unknown",
       opportunityType: selected.type,
     });
 
     // Final safety net: block 0-source knowledge-mode insights that somehow bypassed resolve()
-    const insightMode = String(selected.metadata?.mode ?? "knowledge");
+    const insightMode = insight.resolvedMode ?? "surprise";
     if (insightMode !== "pattern" && insight.sources.length === 0) {
       log.warn("safety-net: blocking 0-source knowledge insight before delivery", {
         userId,
@@ -814,7 +816,7 @@ export class ProactiveScheduler {
     const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
     const replacedTypes = [...prevTypes.slice(0, -1), selected.type].slice(-5);
     persona.feedbackProfile.recentInsightTypes = replacedTypes;
-    const mode = String(selected.metadata?.mode ?? "knowledge");
+    const mode = insight.resolvedMode ?? "surprise";
     const prevModes = persona.feedbackProfile.recentInsightModes ?? [];
     const replacedModes = [...prevModes.slice(0, -1), mode].slice(-5);
     persona.feedbackProfile.recentInsightModes = replacedModes;
@@ -943,9 +945,9 @@ export class ProactiveScheduler {
         type: "exploration" as const,
         targetDomains: targetDomain ? [targetDomain] : [],
         sourceDomains: [],
-        pNeed: 0.55,
+        pNeed: 0.65,
         pAccept: baseline,
-        pAct: 0.55 * baseline,
+        pAct: 0.65 * baseline,
         modeCandidates: ["pattern", "surprise", "extend"],
       },
     ];

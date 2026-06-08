@@ -264,13 +264,13 @@ describe("routeToStores", () => {
     expect(result.routed).toBeGreaterThanOrEqual(1);
   });
 
-  it("passes domain from item to fragment store as domains array", async () => {
+  it("passes domains array from item to fragment store", async () => {
     const items = [
       makeRouteItem({
         category: "behavioral_pattern",
         confidence: 0.8,
         content: "User prefers test-driven development",
-        domain: "软件工程",
+        domains: ["软件工程"],
       }),
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
@@ -285,7 +285,26 @@ describe("routeToStores", () => {
     );
   });
 
-  it("passes empty domains array when item.domain is undefined", async () => {
+  it("passes multi-domain array to collectFragment", async () => {
+    const items = [
+      makeRouteItem({
+        category: "behavioral_pattern",
+        confidence: 0.85,
+        content: "User deploys K8s with CI/CD pipelines",
+        domains: ["Kubernetes", "DevOps"],
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.collectFragment).toHaveBeenCalledWith(
+      "test-agent",
+      "test-user",
+      expect.objectContaining({
+        domains: ["Kubernetes", "DevOps"],
+      }),
+    );
+  });
+
+  it("passes empty domains array when item.domains is undefined", async () => {
     const items = [
       makeRouteItem({
         category: "behavioral_pattern",
@@ -303,14 +322,14 @@ describe("routeToStores", () => {
     );
   });
 
-  it("uses item.domain as correction domain when available", async () => {
+  it("uses item.domains[0] as correction domain when available", async () => {
     const items = [
       makeRouteItem({
         category: "domain_knowledge",
         confidence: 0.95,
         content: "Use async/await for I/O operations",
         evidence: "This was wrong, should use async",
-        domain: "异步编程",
+        domains: ["异步编程"],
       }),
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
@@ -324,7 +343,28 @@ describe("routeToStores", () => {
     );
   });
 
-  it("falls back to item.category as correction domain when item.domain is undefined", async () => {
+  it("uses first domain for correction store when multiple domains exist", async () => {
+    const items = [
+      makeRouteItem({
+        category: "domain_knowledge",
+        confidence: 0.95,
+        content: "Kubernetes cluster setup was incorrect",
+        evidence: "This was wrong, the correct approach is different",
+        domains: ["Kubernetes", "DevOps"],
+      }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.addOrReinforceCorrection).toHaveBeenCalledWith(
+      "test-agent",
+      "test-user",
+      expect.objectContaining({
+        domain: "Kubernetes",
+        provenance: "consolidation",
+      }),
+    );
+  });
+
+  it("falls back to item.category as correction domain when item.domains is undefined", async () => {
     const items = [
       makeRouteItem({
         category: "domain_knowledge",
@@ -352,7 +392,7 @@ describe("routeToStores", () => {
         confidence: 0.92,
         content: "Prefers light theme",
         evidence: "The mistake was choosing dark theme, should be light",
-        domain: "UI设计",
+        domains: ["UI设计"],
       }),
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });

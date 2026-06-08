@@ -113,10 +113,9 @@ Event Sources (timer / persona_change / info_scan)
   → ProactiveScheduler.processEvent(userId, event)
     → computeGradedGate() [pNeed × pAccept vs cost threshold]
       → search() [scan opportunities: cross-domain, domain depth, exploration]
-        → scanExploration: 3-mode routing via timestamp % 100:
-            roll < patternModeRatio → pattern mode (fragment clusters → behavioral insight)
-            roll < patternModeRatio + surpriseWeight → surprise mode (knowledge, web search)
-            else → extend mode (knowledge, user domains)
+        → scanExploration: mode selection deferred to resolve() via banditWeightedSelect
+            modeCandidates: ["pattern", "surprise", "extend"] (or forced single mode via content strategy)
+            resolve() calls selectMode() → banditWeightedSelect() with BASE_WEIGHTS (pattern:0.5, surprise:0.4, extend:0.1)
         → identify() [pick best by pAct, with domain cooldown + type cooldown]
       → applyEpsilonGreedy() [with probability ε, promote one exploration candidate to front]
         → resolve loop tries candidates in order (promoted exploration first if triggered)
@@ -137,7 +136,7 @@ Event Sources (timer / persona_change / info_scan)
 
 - **Knowledge mode** (`generateInsightCandidatesLLM`): LLM generates insight candidates from TypedInsights + cognitive fragments + web search results. `getFilteredInsights()` selects up to N insights per domain, excluding `tool_config` and `contextual_fact` categories. Uses `DIVERSE_FEW_SHOT_SETS` (4 sets × 2 examples) with `DIVERSITY_INSTRUCTION` to avoid formulaic output. `pickPromptVariant` selects prompt variant via Thompson Sampling from `feedbackProfile.topicBandits`. `CONTRASTIVE_INSTRUCTION` ensures each insight differs from past insights. Surprise mode uses `inferSearchStrategy` for web search queries (web results serve as supporting evidence, not primary content). After generation: `critiqueInsightWithLLM` → `refineInsightWithLLM` self-refine loop, quality retries up to 3 attempts with early exit at score ≥ 0.85. Post-generation: `checkSemanticNoveltyWithLLM` freshness gate.
 - **Pattern mode** (`buildPatternInsightPrompt`): Fragment clusters loaded from `FragmentStore` → top fragments by strength → `PATTERN_PROMPT_FRAMES` (4 behavioral observation frames, randomly selected) → LLM generates behavioral insight about the user's thinking patterns. Also uses `pickPromptVariant` for Thompson Sampling prompt selection and `CONTRASTIVE_INSTRUCTION` for dedup. No web search, no verification. Verification status is always `"partial"`.
-- **Mode routing**: `scanExploration()` uses deterministic 3-band routing via `event.timestamp % 100`. Default: 50% pattern, 40% surprise, 10% extend. Configurable via `cognitive.insight.patternModeRatio`.
+- **Mode routing**: `scanExploration()` creates exploration opportunities with `modeCandidates: ["pattern", "surprise", "extend"]`. Mode selection is deferred to `resolve()` which calls `selectMode()` → `banditWeightedSelect()` using `BASE_WEIGHTS` (pattern:0.5, surprise:0.4, extend:0.1) with a 30% probability floor (`BASE_PROBABILITY_FLOOR=0.3`) to prevent starvation. Content strategy override (`computeContentStrategy`) can force a specific mode when no-response streak ≥ 2. The actual resolved mode is propagated via `InsightCandidate.resolvedMode`.
 
 **Scheduler Diversification:**
 
@@ -362,7 +361,7 @@ Correction (system prompt injection):
 - Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
-- Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.insight.patternModeRatio` (0-1, default 0.5), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)
+- Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
 - Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
 - Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only

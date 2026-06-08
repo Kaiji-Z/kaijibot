@@ -69,6 +69,7 @@ export type InsightCandidate = {
   sources: Array<{ url: string; title: string; credibility: number }>;
   verificationStatus: "unverified" | "partial" | "verified" | "contradicted";
   source?: "knowledge" | "pattern";
+  resolvedMode?: InsightMode;
   searchQueryUsed?: string;
   promptVariant?: InsightRecord["promptVariant"];
 };

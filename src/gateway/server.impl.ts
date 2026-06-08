@@ -1479,7 +1479,6 @@ export async function startGatewayServer(
               activeHoursStart: cfgAtStart.cognitive?.proactive?.activeHours?.start,
               activeHoursEnd: cfgAtStart.cognitive?.proactive?.activeHours?.end,
               timezone: cfgAtStart.cognitive?.proactive?.activeHours?.timezone,
-              patternModeRatio: cfgAtStart.cognitive?.insight?.patternModeRatio,
               patternVerification: cfgAtStart.cognitive?.insight?.patternVerification,
               llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
               epsilonGreedy: cfgAtStart.cognitive?.proactive?.epsilonGreedy,
@@ -1678,7 +1677,7 @@ export async function startGatewayServer(
 
                 const domainGroups = new Map<string, TypedInsight[]>();
                 for (const item of items) {
-                  const key = item.domain || item.category;
+                  const key = item.domains?.[0] || item.category;
                   const group = domainGroups.get(key) ?? [];
                   group.push({
                     text: item.content,

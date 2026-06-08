@@ -816,7 +816,7 @@ describe("scanExploration (modeCandidates)", () => {
 
     const exploration = opportunities.find((o) => o.type === "exploration");
     expect(exploration).toBeDefined();
-    expect(exploration!.pNeed).toBe(0.55);
+    expect(exploration!.pNeed).toBe(0.65);
     expect(exploration!.modeCandidates).toEqual(["pattern", "surprise", "extend"]);
   });
 
@@ -2896,6 +2896,224 @@ describe("insight hallucination gates", () => {
 
     expect(result).toBeUndefined();
     expect(deliveredCandidates.length).toBe(0);
+  });
+
+  // ── T1.1: resolve() propagates resolvedMode for pattern mode ──
+
+  it("resolve() sets resolvedMode='pattern' when pattern mode selected via banditWeightedSelect", async () => {
+    const persona = gatePersona();
+    persona.identity = { ...persona.identity, userId: "user1" };
+
+    const fakeInsight: InsightCandidate = {
+      id: "pattern-bandit",
+      content: "A behavioral pattern from bandit selection",
+      rationale: "test",
+      targetDomains: [],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "partial",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [fakeInsight],
+        fragmentStore: {
+          load: async () => [
+            {
+              id: "f1",
+              kind: "knowledge_gap" as const,
+              content: "test",
+              strength: 0.5,
+              userId: "user1",
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              expiresAt: Date.now() + 14 * 86400000,
+              evidence: "test",
+              domains: ["test"],
+              structuralTag: "test",
+            },
+          ],
+          findClusters: async () => [
+            {
+              id: "c1",
+              fragmentIds: ["f1"],
+              domains: ["test"],
+              structuralPattern: "test",
+              averageStrength: 0.5,
+              createdAt: Date.now(),
+            },
+          ],
+        } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+      },
+    );
+
+    // modeCandidates: ["pattern"] with NO metadata.mode → banditWeightedSelect returns "pattern"
+    const opportunity: Opportunity = {
+      type: "exploration",
+      targetDomains: [],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      modeCandidates: ["pattern"],
+    };
+
+    const result = await scheduler.resolve("main", persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.resolvedMode).toBe("pattern");
+  });
+
+  // ── T1.2: resolve() propagates resolvedMode for knowledge mode ──
+
+  it("resolve() sets resolvedMode on knowledge candidates", async () => {
+    const persona = gatePersona();
+
+    const fakeInsight: InsightCandidate = {
+      id: "knowledge-resolved-mode",
+      content: "A valid insight with web sources",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = makeScheduler(config, persona, {
+      insightGenerator: async () => [fakeInsight],
+    });
+
+    const opportunity: Opportunity = {
+      type: "cross_domain",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: ["Rust"],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      metadata: { mode: "surprise" },
+    };
+
+    const result = await scheduler.resolve("main", persona, opportunity);
+    expect(result).not.toBeNull();
+    expect(result!.resolvedMode).toBe("surprise");
+  });
+
+  // ── T1.3: THE CRITICAL TEST — pattern insight survives safety-net in processEvent ──
+
+  it("pattern-mode insight via banditWeightedSelect passes safety-net in processEvent", async () => {
+    // Mock Date.now so selectMode seed deterministically selects "pattern".
+    // banditWeightedSelect: roll = (seed % 10000) / 10000
+    // With modeBandits favoring pattern heavily, pattern prob ≈ 0.517
+    // seed%10000 = 1000 → roll = 0.1 < 0.517 → "pattern" selected
+    const realNow = Date.now();
+    const fixedNow = realNow - (realNow % 10000) + 1000;
+    const dateSpy = vi.spyOn(Date, "now").mockReturnValue(fixedNow);
+
+    const persona = personaWithDomains();
+    persona.identity = { ...persona.identity, userId: "test-user" };
+    persona.feedbackProfile.modeBandits = {
+      pattern: { alpha: 100, beta: 1 },
+      surprise: { alpha: 1, beta: 100 },
+      extend: { alpha: 1, beta: 100 },
+    };
+
+    const deliveredCandidates: InsightCandidate[] = [];
+
+    const patternCandidate: InsightCandidate = {
+      id: "pattern-processEvent",
+      content: "A behavioral pattern observation via full processEvent flow",
+      rationale: "test pattern mode end-to-end",
+      targetDomains: [],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "partial",
+      source: "pattern",
+    };
+
+    // epsilonGreedy: 1.0 ensures exploration is always promoted to front,
+    // avoiding isTopicStale conflicts with cross_domain opportunities
+    const scheduler = new ProactiveScheduler(
+      { ...config, epsilonGreedy: 1.0 },
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async (_agentId, _userId, candidate) => {
+          deliveredCandidates.push(candidate);
+        },
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [patternCandidate],
+        fragmentStore: {
+          load: async () => [
+            {
+              id: "f1",
+              kind: "knowledge_gap" as const,
+              content: "test",
+              strength: 0.5,
+              userId: "test-user",
+              createdAt: fixedNow,
+              updatedAt: fixedNow,
+              expiresAt: fixedNow + 14 * 86400000,
+              evidence: "test",
+              domains: ["test"],
+              structuralTag: "test",
+            },
+          ],
+          findClusters: async () => [
+            {
+              id: "c1",
+              fragmentIds: ["f1"],
+              domains: ["test"],
+              structuralPattern: "test",
+              averageStrength: 0.5,
+              createdAt: fixedNow,
+            },
+          ],
+        } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+      },
+    );
+
+    const result = await scheduler.processEvent(
+      "test-user",
+      { type: "timer", timestamp: fixedNow },
+      "main",
+    );
+
+    dateSpy.mockRestore();
+
+    expect(result).toBeDefined();
+    expect(deliveredCandidates.length).toBe(1);
+    expect(result!.resolvedMode).toBe("pattern");
+  });
+
+  // ── T1.5: scanExploration pNeed boost ──
+
+  it("scanExploration returns pNeed of 0.65 for non-forceMode path", async () => {
+    const persona = personaWithDomains();
+    const scheduler = makeScheduler(config, persona);
+
+    const opportunities = await scheduler.search(persona, {
+      type: "timer",
+      timestamp: 42,
+    });
+
+    const exploration = opportunities.find((o) => o.type === "exploration");
+    expect(exploration).toBeDefined();
+    expect(exploration!.pNeed).toBe(0.65);
   });
 });
 
