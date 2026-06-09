@@ -588,6 +588,16 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Record Correction",
       detailKeys: ["domain", "saved", "reinforced"],
     },
+    dialogue_list: {
+      emoji: "💬",
+      title: "Dialogue List",
+      detailKeys: ["limit", "dateFrom", "dateTo", "topic"],
+    },
+    read_session_transcript: {
+      emoji: "📄",
+      title: "Session Transcript",
+      detailKeys: ["transcriptPath", "maxMessages"],
+    },
     switch_soul: {
       emoji: "🎭",
       title: "Switch Soul",

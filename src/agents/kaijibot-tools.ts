@@ -18,6 +18,7 @@ import { createCognitiveFeedbackTool } from "./tools/cognitive-feedback-tool.js"
 import type { AnyAgentTool } from "./tools/common.js";
 import { createCorrectionReportTool } from "./tools/correction-report-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
+import { createDialogueListTool } from "./tools/dialogue-list-tool.js";
 import { createEvolutionArchiveTool } from "./tools/evolution-archive-tool.js";
 import { createEvolutionPatchTool } from "./tools/evolution-patch-tool.js";
 import { createEvolutionSuggestTool } from "./tools/evolution-suggest-tool.js";
@@ -291,6 +292,7 @@ export function createKaijiBotTools(
       sandboxed: options?.sandboxed,
     }),
     createSessionTranscriptTool(),
+    createDialogueListTool({ config: resolvedConfig }),
     ...collectPresentKaijiBotTools([
       createCognitiveFeedbackTool({
         config: resolvedConfig,

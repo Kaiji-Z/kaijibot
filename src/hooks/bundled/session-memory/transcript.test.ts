@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import {
   preprocessSessionTranscript,
+  getCleanDialogueContent,
   stripMessageMetadata,
+  mergeJsonlContents,
+  updateDialogueStaging,
+  getDialogueWithStaging,
 } from "./transcript.js";
 
 // ---------------------------------------------------------------------------
@@ -355,6 +362,43 @@ describe("preprocessSessionTranscript", () => {
     expect(typeof result).toBe("string");
     expect(result).not.toBeInstanceOf(Promise);
   });
+
+  // --- excludeToolAnnotations option ---
+
+  it("removes [tool: ...] prefix when excludeToolAnnotations is true", () => {
+    const jsonl = buildJsonl(
+      userMsg("Search"),
+      assistantToolMsg("Searching now", [
+        { id: "c1", name: "web_search", arguments: { query: "test" } },
+      ]),
+    );
+    const result = preprocessSessionTranscript(jsonl, { excludeToolAnnotations: true });
+    expect(result).not.toContain("[tool:");
+    expect(result).not.toContain("web_search");
+  });
+
+  it("still includes assistant text content when excludeToolAnnotations is true", () => {
+    const jsonl = buildJsonl(
+      userMsg("Do it"),
+      assistantToolMsg("Working on it", [
+        { id: "c1", name: "run_code", arguments: { code: "1+1" } },
+      ]),
+    );
+    const result = preprocessSessionTranscript(jsonl, { excludeToolAnnotations: true });
+    expect(result).toContain("assistant: Working on it");
+    expect(result).toContain("user: Do it");
+  });
+
+  it("defaults to including tool annotations (backward compatible)", () => {
+    const jsonl = buildJsonl(
+      userMsg("Search"),
+      assistantToolMsg("Found it", [
+        { id: "c1", name: "web_search", arguments: { query: "x" } },
+      ]),
+    );
+    const result = preprocessSessionTranscript(jsonl);
+    expect(result).toContain("[tool: web_search]");
+  });
 });
 
 describe("stripMessageMetadata", () => {
@@ -387,5 +431,226 @@ describe("stripMessageMetadata", () => {
     const result = stripMessageMetadata(text);
     expect(result).not.toContain("[message_id:");
     expect(result).toContain("ou_xyz: Content here");
+  });
+});
+
+describe("getCleanDialogueContent", () => {
+  it("reads file and returns clean dialogue without tool annotations", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-test-"));
+    try {
+      const filePath = path.join(dir, "session.jsonl");
+      const jsonl = buildJsonl(
+        sessionHeader(),
+        userMsg("Hello"),
+        assistantToolMsg("Searching...", [
+          { id: "c1", name: "web_search", arguments: { query: "test" } },
+        ]),
+        assistantMsg("Here is the result"),
+      );
+      await fs.writeFile(filePath, jsonl);
+      const result = await getCleanDialogueContent(filePath);
+      expect(result).not.toBeNull();
+      expect(result).not.toContain("[tool:");
+      expect(result).not.toContain("web_search");
+      expect(result).toContain("user: Hello");
+      expect(result).toContain("assistant: Searching...");
+      expect(result).toContain("assistant: Here is the result");
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("returns null for missing files", async () => {
+    const result = await getCleanDialogueContent("/nonexistent/path/session.jsonl");
+    expect(result).toBeNull();
+  });
+
+  it("includes all messages without cap", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-test-"));
+    try {
+      const filePath = path.join(dir, "session.jsonl");
+      const lines = [sessionHeader()];
+      for (let i = 0; i < 20; i++) {
+        lines.push(userMsg(`User ${i}`));
+        lines.push(assistantMsg(`Assistant ${i}`));
+      }
+      const jsonl = buildJsonl(...lines);
+      await fs.writeFile(filePath, jsonl);
+      const result = await getCleanDialogueContent(filePath);
+      expect(result).not.toBeNull();
+      const messageLines = result!.split("\n");
+      expect(messageLines).toHaveLength(40);
+      expect(messageLines[0]).toBe("user: User 0");
+      expect(messageLines[39]).toBe("assistant: Assistant 19");
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("mergeJsonlContents", () => {
+  it("returns existing when incoming is empty", () => {
+    const existing = buildJsonl(userMsg("A"));
+    const result = mergeJsonlContents(existing, "");
+    expect(result.trim()).toBe(existing.trim());
+  });
+
+  it("appends all incoming when no overlap", () => {
+    const existing = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "A" } });
+    const incoming = JSON.stringify({ type: "message", id: "2", message: { role: "assistant", content: "B" } });
+    const result = mergeJsonlContents(existing, incoming);
+    expect(result).toContain('"id":"1"');
+    expect(result).toContain('"id":"2"');
+  });
+
+  it("deduplicates entries with the same id", () => {
+    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "A" } });
+    const entry2 = JSON.stringify({ type: "message", id: "2", message: { role: "assistant", content: "B" } });
+    const existing = buildJsonl(entry1, entry2);
+    const entry3 = JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "C" } });
+    const incoming = buildJsonl(entry2, entry3);
+    const result = mergeJsonlContents(existing, incoming);
+    expect(result.match(/"id":"1"/g)).toHaveLength(1);
+    expect(result.match(/"id":"2"/g)).toHaveLength(1);
+    expect(result.match(/"id":"3"/g)).toHaveLength(1);
+  });
+
+  it("keeps entries without id from both sides", () => {
+    const noId = JSON.stringify({ type: "session", version: 2 });
+    const existing = noId;
+    const incoming = noId;
+    const result = mergeJsonlContents(existing, incoming);
+    const sessionCount = result.split('"type":"session"').length - 1;
+    expect(sessionCount).toBe(2);
+  });
+
+  it("preserves order: existing first, then new incoming", () => {
+    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "First" } });
+    const entry2 = JSON.stringify({ type: "message", id: "2", message: { role: "user", content: "Second" } });
+    const entry3 = JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "Third" } });
+    const existing = buildJsonl(entry1, entry2);
+    const incoming = buildJsonl(entry2, entry3);
+    const result = mergeJsonlContents(existing, incoming);
+    const idx1 = result.indexOf('"id":"1"');
+    const idx2 = result.indexOf('"id":"2"');
+    const idx3 = result.indexOf('"id":"3"');
+    expect(idx1).toBeLessThan(idx2);
+    expect(idx2).toBeLessThan(idx3);
+  });
+});
+
+describe("updateDialogueStaging", () => {
+  let tmpDir: string;
+  let stagingPath: string;
+  let sessionPath: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-staging-test-"));
+    stagingPath = path.join(tmpDir, "staging", "test-session.jsonl");
+    sessionPath = path.join(tmpDir, "session.jsonl");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("creates staging file with full JSONL on first call", async () => {
+    const jsonl = buildJsonl(sessionHeader(), userMsg("Hello"));
+    await fs.writeFile(sessionPath, jsonl);
+    await updateDialogueStaging(stagingPath, sessionPath);
+    const staged = await fs.readFile(stagingPath, "utf-8");
+    expect(staged).toContain("Hello");
+  });
+
+  it("merges new entries on subsequent call", async () => {
+    const jsonl1 = buildJsonl(sessionHeader(), userMsg("First"));
+    await fs.writeFile(sessionPath, jsonl1);
+    await updateDialogueStaging(stagingPath, sessionPath);
+
+    const jsonl2 = buildJsonl(sessionHeader(), userMsg("First"), assistantMsg("Second"));
+    await fs.writeFile(sessionPath, jsonl2);
+    await updateDialogueStaging(stagingPath, sessionPath);
+
+    const staged = await fs.readFile(stagingPath, "utf-8");
+    expect(staged).toContain("First");
+    expect(staged).toContain("Second");
+  });
+
+  it("does not duplicate entries already in staging", async () => {
+    const entry = JSON.stringify({ type: "message", id: "msg-1", message: { role: "user", content: "A" } });
+    const jsonl1 = buildJsonl(entry);
+    await fs.writeFile(sessionPath, jsonl1);
+    await updateDialogueStaging(stagingPath, sessionPath);
+
+    await fs.writeFile(sessionPath, jsonl1);
+    await updateDialogueStaging(stagingPath, sessionPath);
+
+    const staged = await fs.readFile(stagingPath, "utf-8");
+    expect(staged.match(/"id":"msg-1"/g)).toHaveLength(1);
+  });
+});
+
+describe("getDialogueWithStaging", () => {
+  let tmpDir: string;
+  let stagingPath: string;
+  let sessionPath: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-dialogue-staging-test-"));
+    stagingPath = path.join(tmpDir, "staging", "test-session.jsonl");
+    sessionPath = path.join(tmpDir, "session.jsonl");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("falls back to current JSONL when no staging exists", async () => {
+    const jsonl = buildJsonl(sessionHeader(), userMsg("Hello"), assistantMsg("World"));
+    await fs.writeFile(sessionPath, jsonl);
+    const result = await getDialogueWithStaging(stagingPath, sessionPath);
+    expect(result).toBe("user: Hello\nassistant: World");
+  });
+
+  it("merges staging with current JSONL producing full dialogue", async () => {
+    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "Old" } });
+    const entry2 = JSON.stringify({ type: "message", id: "2", message: { role: "assistant", content: "Reply" } });
+    const entry3 = JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "New" } });
+    const entry4 = JSON.stringify({ type: "message", id: "4", message: { role: "assistant", content: "NewReply" } });
+
+    await fs.mkdir(path.dirname(stagingPath), { recursive: true });
+    await fs.writeFile(stagingPath, buildJsonl(entry1, entry2, entry3));
+
+    await fs.writeFile(sessionPath, buildJsonl(entry3, entry4));
+
+    const result = await getDialogueWithStaging(stagingPath, sessionPath);
+    expect(result).not.toBeNull();
+    expect(result).toContain("user: Old");
+    expect(result).toContain("assistant: Reply");
+    expect(result).toContain("user: New");
+    expect(result).toContain("assistant: NewReply");
+  });
+
+  it("excludes tool annotations from merged dialogue", async () => {
+    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "Search" } });
+    const entry2tool = JSON.stringify({
+      type: "message",
+      id: "2",
+      message: {
+        role: "assistant",
+        content: [
+          { type: "text", text: "Searching" },
+          { type: "toolCall", id: "c1", name: "web_search", arguments: { q: "x" } },
+        ],
+      },
+    });
+
+    await fs.mkdir(path.dirname(stagingPath), { recursive: true });
+    await fs.writeFile(stagingPath, buildJsonl(entry1));
+    await fs.writeFile(sessionPath, buildJsonl(entry2tool));
+
+    const result = await getDialogueWithStaging(stagingPath, sessionPath);
+    expect(result).not.toContain("[tool:");
+    expect(result).toContain("assistant: Searching");
   });
 });

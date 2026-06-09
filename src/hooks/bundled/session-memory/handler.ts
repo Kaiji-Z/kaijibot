@@ -16,6 +16,7 @@ import type { KaijiBotConfig } from "../../../config/config.js";
 import { resolveCorrectionUserId } from "../../../cognitive/correction/userid.js";
 import { resolveStateDir } from "../../../config/paths.js";
 import { appendFileWithinRoot } from "../../../infra/fs-safe.js";
+import { writeTextAtomic } from "../../../infra/json-files.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import {
   parseAgentSessionKey,
@@ -31,7 +32,13 @@ import {
   type SessionPointer,
 } from "./summary.js";
 import type { StructuredSummary } from "./summary.js";
-import { findPreviousSessionFile, getRecentSessionContentWithResetFallback } from "./transcript.js";
+import {
+  findPreviousSessionFile,
+  getCleanDialogueContent,
+  getDialogueWithStaging,
+  getRecentSessionContentWithResetFallback,
+  updateDialogueStaging,
+} from "./transcript.js";
 // Inline type — memory-core types are loaded dynamically to respect the extension boundary.
 interface TopicEntry {
   title: string;
@@ -390,6 +397,57 @@ const saveSessionToMemory: HookHandler = async (event) => {
       } catch (corrErr) {
         const msg = corrErr instanceof Error ? corrErr.message : String(corrErr);
         log.warn("Correction extraction skipped", { error: msg });
+      }
+    }
+
+    const dialogueDir = path.join(memoryDir, "dialogues");
+    const stagingDir = path.join(dialogueDir, ".staging");
+    const stagingFilename = event.sessionKey.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const stagingPath = path.join(stagingDir, `${stagingFilename}.jsonl`);
+
+    if (isCompaction && sessionFile) {
+      try {
+        await updateDialogueStaging(stagingPath, sessionFile);
+        log.info("Dialogue staging updated", {
+          stagingPath: stagingPath.replace(os.homedir(), "~"),
+        });
+      } catch (stagingErr) {
+        const msg = stagingErr instanceof Error ? stagingErr.message : String(stagingErr);
+        log.warn("Dialogue staging update skipped", { error: msg });
+      }
+    }
+
+    if (isResetCommand && sessionFile) {
+      try {
+        const cleanDialogue = await getDialogueWithStaging(stagingPath, sessionFile);
+        if (cleanDialogue && cleanDialogue.trim().length > 0) {
+          const isoTime = now.toISOString().split("T")[1] ?? "0000";
+          const timeStr = isoTime.split(".")[0]?.replace(/:/g, "").slice(0, 4) ?? "0000";
+          const dialogueFilename = `${dateStr}-${timeStr}.md`;
+          const dialoguePath = path.join(dialogueDir, dialogueFilename);
+          const frontmatter = [
+            "---",
+            `date: ${now.toISOString()}`,
+            `participants:`,
+            ...((summary.participants ?? ["user"]).map((p) => `  - ${p}`)),
+            `messageCount: ${cleanDialogue.split("\n").length}`,
+            "---",
+            "",
+            "",
+          ].join("\n");
+          await writeTextAtomic(dialoguePath, frontmatter + cleanDialogue, {
+            ensureDirMode: 0o755,
+            appendTrailingNewline: true,
+          });
+          log.info("Dialogue archive saved", {
+            path: dialoguePath.replace(os.homedir(), "~"),
+            messageCount: cleanDialogue.split("\n").length,
+          });
+        }
+        await fs.unlink(stagingPath).catch(() => {});
+      } catch (dialogueErr) {
+        const msg = dialogueErr instanceof Error ? dialogueErr.message : String(dialogueErr);
+        log.warn("Dialogue archive save skipped", { error: msg });
       }
     }
 

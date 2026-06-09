@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { hasInterSessionUserProvenance } from "../../../sessions/input-provenance.js";
+import { writeTextAtomic } from "../../../infra/json-files.js";
 
 function extractTextMessageContent(content: unknown): string | undefined {
   if (typeof content === "string") {
@@ -44,7 +45,7 @@ export function stripMessageMetadata(text: string): string {
  */
 export function preprocessSessionTranscript(
   rawContent: string,
-  opts?: { maxMessages?: number },
+  opts?: { maxMessages?: number; excludeToolAnnotations?: boolean },
 ): string | null {
   const maxMessages = opts?.maxMessages ?? 500;
   const lines = rawContent.trim().split("\n");
@@ -89,7 +90,7 @@ export function preprocessSessionTranscript(
       continue;
     }
 
-    if (role === "assistant" && Array.isArray(msg.content)) {
+    if (!opts?.excludeToolAnnotations && role === "assistant" && Array.isArray(msg.content)) {
       const toolNames: string[] = [];
       for (const block of msg.content) {
         if (
@@ -115,6 +116,94 @@ export function preprocessSessionTranscript(
   }
 
   return allMessages.slice(-maxMessages).join("\n");
+}
+
+export async function getCleanDialogueContent(
+  sessionFilePath: string,
+): Promise<string | null> {
+  try {
+    const content = await fs.readFile(sessionFilePath, "utf-8");
+    return preprocessSessionTranscript(content, {
+      excludeToolAnnotations: true,
+      maxMessages: Number.MAX_SAFE_INTEGER,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function mergeJsonlContents(existing: string, incoming: string): string {
+  const seenIds = new Set<string>();
+  const keptLines: string[] = [];
+
+  for (const line of existing.trim().split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const entry = JSON.parse(line) as { id?: string };
+      if (entry.id) seenIds.add(entry.id);
+    } catch {}
+    keptLines.push(line);
+  }
+
+  for (const line of incoming.trim().split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const entry = JSON.parse(line) as { id?: string };
+      if (entry.id && seenIds.has(entry.id)) continue;
+      if (entry.id) seenIds.add(entry.id);
+    } catch {}
+    keptLines.push(line);
+  }
+
+  return keptLines.join("\n") + "\n";
+}
+
+export async function updateDialogueStaging(
+  stagingPath: string,
+  sessionFilePath: string,
+): Promise<void> {
+  const currentRaw = await fs.readFile(sessionFilePath, "utf-8");
+
+  let stagingExists = false;
+  try {
+    await fs.access(stagingPath);
+    stagingExists = true;
+  } catch {}
+
+  if (!stagingExists) {
+    await writeTextAtomic(stagingPath, currentRaw, { ensureDirMode: 0o755 });
+    return;
+  }
+
+  const stagingRaw = await fs.readFile(stagingPath, "utf-8");
+  const merged = mergeJsonlContents(stagingRaw, currentRaw);
+  await writeTextAtomic(stagingPath, merged, { appendTrailingNewline: false });
+}
+
+export async function getDialogueWithStaging(
+  stagingPath: string,
+  sessionFilePath: string,
+): Promise<string | null> {
+  let stagingExists = false;
+  try {
+    await fs.access(stagingPath);
+    stagingExists = true;
+  } catch {}
+
+  if (!stagingExists) {
+    return getCleanDialogueContent(sessionFilePath);
+  }
+
+  const [stagingRaw, currentRaw] = await Promise.all([
+    fs.readFile(stagingPath, "utf-8"),
+    fs.readFile(sessionFilePath, "utf-8"),
+  ]);
+
+  const merged = mergeJsonlContents(stagingRaw, currentRaw);
+  return preprocessSessionTranscript(merged, {
+    excludeToolAnnotations: true,
+    maxMessages: Number.MAX_SAFE_INTEGER,
+  });
 }
 
 export async function getRecentSessionContent(
