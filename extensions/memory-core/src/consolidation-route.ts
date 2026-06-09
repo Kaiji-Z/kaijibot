@@ -130,7 +130,7 @@ export async function routeToStores(params: {
     if (item.confidence >= 0.9 && looksLikeCorrection(item.evidence)) {
       try {
         await deps.addOrReinforceCorrection(agentId, userId, {
-          domain: item.domains?.[0] || item.category,
+          domain: (item.domains?.[0] || item.category).toLowerCase().trim(),
           trigger: item.evidence,
           mistake: item.evidence,
           correction: item.content,

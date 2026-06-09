@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { writeTextAtomic } from "../../infra/json-files.js";
+import { textSimilarity } from "../../infra/text-similarity.js";
 import {
   CORRECTION_STORE_VERSION,
   DEFAULT_CORRECTION_TTL_DAYS,
@@ -13,56 +14,6 @@ import type { CorrectionRecord, CorrectionStoreData } from "./types.js";
 
 const log = createSubsystemLogger("correction");
 const CORRECTIONS_DIR = "cognitive/corrections";
-
-function tokenize(text: string): Set<string> {
-  const normalized = text.toLowerCase();
-  const tokens = new Set<string>();
-
-  // Extract CJK characters for bigram generation
-  const cjkChars: string[] = [];
-  for (const char of normalized) {
-    const cp = char.codePointAt(0)!;
-    if ((cp >= 0x4e00 && cp <= 0x9fff) || (cp >= 0x3400 && cp <= 0x4dbf)) {
-      cjkChars.push(char);
-    }
-  }
-
-  // Generate CJK unigrams and bigrams
-  for (const ch of cjkChars) {
-    tokens.add(ch);
-  }
-  for (let i = 0; i < cjkChars.length - 1; i++) {
-    tokens.add(cjkChars[i]! + cjkChars[i + 1]!);
-  }
-
-  // Non-CJK: whitespace+punctuation splitting (original behavior)
-  const nonCjkTokens = normalized
-    .split(/[\s,.;:!?()[\]{}'"<>/\\|~`@#$%^&*+=\-_]+/)
-    .filter((s) => s.length > 0);
-  for (const tok of nonCjkTokens) {
-    tokens.add(tok);
-  }
-
-  return tokens;
-}
-
-function jaccardSimilarity(a: string, b: string): number {
-  const setA = tokenize(a);
-  const setB = tokenize(b);
-  if (setA.size === 0 && setB.size === 0) {
-    return 1;
-  }
-  if (setA.size === 0 || setB.size === 0) {
-    return 0;
-  }
-  let intersection = 0;
-  for (const token of setA) {
-    if (setB.has(token)) {
-      intersection++;
-    }
-  }
-  return intersection / (setA.size + setB.size - intersection);
-}
 
 export class CorrectionStore {
   constructor(private readonly configDir: string) {}
@@ -136,12 +87,13 @@ export class CorrectionStore {
     domain: string,
     mistake: string,
   ): Promise<CorrectionRecord | undefined> {
+    const normalizedDomain = domain.toLowerCase().trim();
     const records = await this.loadRecords(agentId, userId);
     for (const record of records) {
-      if (record.domain !== domain) {
+      if (record.domain.toLowerCase().trim() !== normalizedDomain) {
         continue;
       }
-      const similarity = jaccardSimilarity(record.mistake, mistake);
+      const similarity = textSimilarity(record.mistake, mistake);
       if (similarity > JACCARD_SIMILARITY_THRESHOLD) {
         return record;
       }

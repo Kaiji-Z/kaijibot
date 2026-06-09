@@ -1,5 +1,6 @@
 import type { SkillPersistenceWriter } from "./skill-writer.js";
 import type { SkillMeta, DedupCheckResult } from "./types.js";
+import { textSimilarity } from "../../infra/text-similarity.js";
 
 function levenshtein(a: string, b: string): number {
   const m = a.length;
@@ -17,27 +18,6 @@ function levenshtein(a: string, b: string): number {
     }
   }
   return dp[m][n];
-}
-
-function jaccard(a: string, b: string): number {
-  const setA = new Set(
-    a
-      .toLowerCase()
-      .split(/[\s,，。.、]+/)
-      .filter(Boolean),
-  );
-  const setB = new Set(
-    b
-      .toLowerCase()
-      .split(/[\s,，。.、]+/)
-      .filter(Boolean),
-  );
-  let intersection = 0;
-  for (const item of setA) {
-    if (setB.has(item)) {intersection++;}
-  }
-  const union = setA.size + setB.size - intersection;
-  return union === 0 ? 0 : intersection / union;
 }
 
 export class SkillLifecycleManager {
@@ -60,7 +40,7 @@ export class SkillLifecycleManager {
     for (const existing of allMeta) {
       const maxLen = Math.max(name.length, existing.name.length);
       const nameSim = maxLen === 0 ? 1 : 1 - levenshtein(name, existing.name) / maxLen;
-      const descSim = jaccard(description, existing.description);
+      const descSim = textSimilarity(description, existing.description);
       const combined = 0.4 * nameSim + 0.6 * descSim;
       if (combined > 0.5) {
         results.push(existing.name);
@@ -77,7 +57,7 @@ export class SkillLifecycleManager {
       const match = allMeta.find((m) => m.name === similar[0]);
       const maxLen = Math.max(name.length, similar[0].length);
       const nameSim = maxLen === 0 ? 1 : 1 - levenshtein(name, similar[0]) / maxLen;
-      const descSim = match ? jaccard(description, match.description) : 0;
+      const descSim = match ? textSimilarity(description, match.description) : 0;
       const similarity = 0.4 * nameSim + 0.6 * descSim;
       return {
         duplicate: true,
@@ -140,7 +120,7 @@ Consider two skills duplicates if they solve the same class of problems, even if
           // Compute similarity score for the result
           const maxLen = Math.max(taskSummary.length, match.name.length);
           const nameSim = maxLen === 0 ? 1 : 1 - levenshtein(taskSummary, match.name) / maxLen;
-          const descSim = jaccard(candidateDescription, match.description);
+          const descSim = textSimilarity(candidateDescription, match.description);
           const similarity = 0.4 * nameSim + 0.6 * descSim;
           return { duplicate: true, existingName: match.name, similarity };
         }

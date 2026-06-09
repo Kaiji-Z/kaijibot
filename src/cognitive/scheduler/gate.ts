@@ -1,5 +1,6 @@
 import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
 import { getProactiveFrequencyFactor, shouldReEngage } from "../persona/lifecycle.js";
+import { jaccardSimilarity } from "../../infra/text-similarity.js";
 import type { PersonaTree } from "../types.js";
 import type {
   GateDecision,
@@ -356,7 +357,7 @@ export function computeRepetitionDecay(persona: PersonaTree): number {
   let pairCount = 0;
   for (let i = 0; i < sets.length; i++) {
     for (let j = i + 1; j < sets.length; j++) {
-      totalSimilarity += jaccard(sets[i]!, sets[j]!);
+      totalSimilarity += jaccardSimilarity(sets[i]!, sets[j]!);
       pairCount++;
     }
   }
@@ -366,15 +367,6 @@ export function computeRepetitionDecay(persona: PersonaTree): number {
   if (avgSimilarity < 0.3) {return 1;}
 
   return Math.max(0.25, 1 - avgSimilarity);
-}
-
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 && b.size === 0) {return 0;}
-  let intersection = 0;
-  for (const v of a) {
-    if (b.has(v)) {intersection++;}
-  }
-  return intersection / (a.size + b.size - intersection);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

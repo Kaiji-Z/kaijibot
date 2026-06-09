@@ -52,7 +52,12 @@ export class InsightStore {
 
   async save(agentId: string, userId: string, record: InsightRecord): Promise<void> {
     const records = await this.loadRecords(agentId, userId);
-    records.push(record);
+    const idx = records.findIndex((r) => r.id === record.id);
+    if (idx >= 0) {
+      records[idx] = record;
+    } else {
+      records.push(record);
+    }
     await this.writeRecords(agentId, userId, records);
   }
 

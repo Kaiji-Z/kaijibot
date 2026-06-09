@@ -87,6 +87,27 @@ export interface MemoryIndexDeps {
 }
 
 // ---------------------------------------------------------------------------
+// Async lock (inline — extensions cannot import from src/infra)
+// ---------------------------------------------------------------------------
+
+function createAsyncLock() {
+  let lock: Promise<void> = Promise.resolve();
+  return async function withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = lock;
+    let release: (() => void) | undefined;
+    lock = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await prev;
+    try {
+      return await fn();
+    } finally {
+      release?.();
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
@@ -571,6 +592,7 @@ function isLegacyFormat(content: string): boolean {
 
 export class MemoryIndexManager {
   private readonly deps: MemoryIndexDeps;
+  private readonly indexLock = createAsyncLock();
 
   constructor(deps: MemoryIndexDeps) {
     this.deps = deps;
@@ -604,83 +626,87 @@ export class MemoryIndexManager {
   }
 
   async updateSection(section: MemoryIndexSection): Promise<void> {
-    const index = await this.readIndex();
-    const existingIdx = index.sections.findIndex((s) => s.topicFile === section.topicFile);
-    if (existingIdx >= 0) {
-      index.sections[existingIdx] = section;
-    } else {
-      index.sections.push(section);
-    }
-    await this.writeIndex(index);
+    return this.indexLock(async () => {
+      const index = await this.readIndex();
+      const existingIdx = index.sections.findIndex((s) => s.topicFile === section.topicFile);
+      if (existingIdx >= 0) {
+        index.sections[existingIdx] = section;
+      } else {
+        index.sections.push(section);
+      }
+      await this.writeIndex(index);
+    });
   }
 
   async addRecentSession(session: RecentSession): Promise<void> {
-    const index = await this.readIndex();
-    index.recentSessions.unshift(session);
-    await this.writeIndex(index);
+    return this.indexLock(async () => {
+      const index = await this.readIndex();
+      index.recentSessions.unshift(session);
+      await this.writeIndex(index);
+    });
   }
 
   async rebalanceIndex(maxBytes: number = DEFAULT_MAX_BYTES): Promise<void> {
-    const index = await this.readIndex();
-    const promotedBytes = new TextEncoder().encode(index.promotedContent).length;
+    return this.indexLock(async () => {
+      const index = await this.readIndex();
+      const promotedBytes = new TextEncoder().encode(index.promotedContent).length;
 
-    const sectionBytes = (section: MemoryIndexSection): number => {
-      return new TextEncoder().encode(`- ${section.title} → ${section.topicFile}\n`).length;
-    };
+      const sectionBytes = (section: MemoryIndexSection): number => {
+        return new TextEncoder().encode(`- ${section.title} → ${section.topicFile}\n`).length;
+      };
 
-    const inlineBytes = (inline: InlineContent): number => {
-      return new TextEncoder().encode(serializeInlineSection(inline) + "\n\n").length;
-    };
+      const inlineBytes = (inline: InlineContent): number => {
+        return new TextEncoder().encode(serializeInlineSection(inline) + "\n\n").length;
+      };
 
-    const inlineSections = index.inlineSections ?? [];
+      const inlineSections = index.inlineSections ?? [];
 
-    let totalBytes =
-      index.sections.reduce((sum, s) => sum + sectionBytes(s), 0) +
-      inlineSections.reduce((sum, s) => sum + inlineBytes(s), 0) +
-      promotedBytes;
+      let totalBytes =
+        index.sections.reduce((sum, s) => sum + sectionBytes(s), 0) +
+        inlineSections.reduce((sum, s) => sum + inlineBytes(s), 0) +
+        promotedBytes;
 
-    if (totalBytes <= maxBytes) {return;}
+      if (totalBytes <= maxBytes) {return;}
 
-    // Step 1: Trim inline section content (remove lines from last section first)
-    while (totalBytes > maxBytes) {
-      let trimmed = false;
-      for (let i = inlineSections.length - 1; i >= 0; i--) {
-        const inline = inlineSections[i]!;
-        if (inline.lines.length > 0) {
-          const removedLine = inline.lines.pop()!;
-          totalBytes -= new TextEncoder().encode(removedLine + "\n").length;
-          trimmed = true;
-          break;
+      // Step 1: Trim inline section content (remove lines from last section first)
+      while (totalBytes > maxBytes) {
+        let trimmed = false;
+        for (let i = inlineSections.length - 1; i >= 0; i--) {
+          const inline = inlineSections[i]!;
+          if (inline.lines.length > 0) {
+            const removedLine = inline.lines.pop()!;
+            totalBytes -= new TextEncoder().encode(removedLine + "\n").length;
+            trimmed = true;
+            break;
+          }
         }
+        if (!trimmed) {break;}
       }
-      if (!trimmed) {break;}
-    }
 
-    if (totalBytes <= maxBytes) {
+      if (totalBytes <= maxBytes) {
+        index.inlineSections = inlineSections;
+        await this.writeIndex(index);
+        return;
+      }
+
+      // Step 2: Relocate entire inline sections to topic files
+      while (totalBytes > maxBytes && inlineSections.length > 1) {
+        const relocated = inlineSections.pop()!;
+        totalBytes -= inlineBytes(relocated);
+        const subject = INLINE_SECTION_SUBJECTS[relocated.section] ?? "misc";
+        await this.relocateInlineToTopic(relocated, subject);
+      }
+
       index.inlineSections = inlineSections;
+
+      // Step 3: Remove oldest section entries from the end, never touch promoted
+      while (totalBytes > maxBytes && index.sections.length > 0) {
+        const removed = index.sections.pop()!;
+        totalBytes -= sectionBytes(removed);
+      }
+
       await this.writeIndex(index);
-      return;
-    }
-
-    // Step 2: Relocate entire inline sections to topic files
-    // Guard: preserve at least one section with at least one line so
-    // MEMORY.md always carries meaningful inline content.
-    while (totalBytes > maxBytes && inlineSections.length > 1) {
-      const relocated = inlineSections.pop()!;
-      totalBytes -= inlineBytes(relocated);
-      const subject = INLINE_SECTION_SUBJECTS[relocated.section] ?? "misc";
-      await this.relocateInlineToTopic(relocated, subject);
-    }
-
-    index.inlineSections = inlineSections;
-
-    // Step 3: Remove oldest section entries from the end, never touch promoted
-    while (totalBytes > maxBytes && index.sections.length > 0) {
-      const removed = index.sections.pop()!;
-      totalBytes -= sectionBytes(removed);
-    }
-
-    await this.writeIndex(index);
+    });
   }
 
   /**

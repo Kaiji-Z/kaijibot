@@ -7,6 +7,7 @@
  */
 
 import type { ExtractedItem, ConflictResolution, TranscriptBatch } from "./consolidation-types.js";
+import { textSimilarity } from "./memory/mmr.js";
 
 const EXTRACTION_PROMPT = `You are a memory consolidation assistant. Analyze the following session transcript and extract structured knowledge items.
 
@@ -33,26 +34,6 @@ Rules:
 `;
 
 const JACCARD_THRESHOLD = 0.7;
-
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((token) => token.length > 0),
-  );
-}
-
-function jaccardSimilarity(a: string, b: string): number {
-  const setA = tokenize(a);
-  const setB = tokenize(b);
-  if (setA.size === 0 && setB.size === 0) {
-    return 1;
-  }
-  const intersection = new Set([...setA].filter((x) => setB.has(x)));
-  const union = new Set([...setA, ...setB]);
-  return union.size === 0 ? 0 : intersection.size / union.size;
-}
 
 export function parseExtractedItems(raw: string): ExtractedItem[] {
   const trimmed = raw.trim();
@@ -162,7 +143,7 @@ export function mergeAndDedupBatches(batches: ExtractedItem[][]): ExtractedItem[
     const kept: ExtractedItem[] = [];
     for (const item of items) {
       const duplicateIndex = kept.findIndex(
-        (existing) => jaccardSimilarity(existing.content, item.content) >= JACCARD_THRESHOLD,
+        (existing) => textSimilarity(existing.content, item.content) >= JACCARD_THRESHOLD,
       );
       if (duplicateIndex >= 0) {
         // Keep the higher confidence version
@@ -206,7 +187,7 @@ export function resolveConflicts(items: ExtractedItem[]): {
       if (items[i]!.category !== items[j]!.category) {
         continue;
       }
-      const similarity = jaccardSimilarity(items[i]!.content, items[j]!.content);
+      const similarity = textSimilarity(items[i]!.content, items[j]!.content);
       // Contradiction: similar topic (medium overlap) but different claims
       if (similarity >= 0.3 && similarity < JACCARD_THRESHOLD) {
         const kept = items[i]!.confidence >= items[j]!.confidence ? i : j;

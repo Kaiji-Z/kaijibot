@@ -55,7 +55,7 @@ export function createCorrectionReportTool(deps: {
         const store = new CorrectionStore(resolveConfigDir());
         const record = {
           id: randomUUID(),
-          domain: params.domain,
+          domain: params.domain.toLowerCase().trim(),
           trigger: params.trigger,
           mistake: params.mistake,
           correction: params.correction,

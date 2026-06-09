@@ -358,7 +358,7 @@ describe("routeToStores", () => {
       "test-agent",
       "test-user",
       expect.objectContaining({
-        domain: "Kubernetes",
+        domain: "kubernetes",
         provenance: "consolidation",
       }),
     );

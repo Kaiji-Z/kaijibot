@@ -94,7 +94,7 @@ export async function extractCorrectionsFromTranscript(
 
     return parsed.map((item) => ({
       id: randomUUID(),
-      domain: item.domain ?? "general",
+      domain: (item.domain ?? "general").toLowerCase().trim(),
       trigger: item.trigger ?? "general",
       mistake: item.mistake,
       correction: item.correction,
