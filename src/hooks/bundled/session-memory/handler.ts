@@ -421,13 +421,18 @@ const saveSessionToMemory: HookHandler = async (event) => {
       try {
         const cleanDialogue = await getDialogueWithStaging(stagingPath, sessionFile);
         if (cleanDialogue && cleanDialogue.trim().length > 0) {
-          const isoTime = now.toISOString().split("T")[1] ?? "0000";
-          const timeStr = isoTime.split(".")[0]?.replace(/:/g, "").slice(0, 4) ?? "0000";
-          const dialogueFilename = `${dateStr}-${timeStr}.md`;
+          const localY = now.getFullYear().toString();
+          const localM = (now.getMonth() + 1).toString().padStart(2, "0");
+          const localD = now.getDate().toString().padStart(2, "0");
+          const localHH = now.getHours().toString().padStart(2, "0");
+          const localMM = now.getMinutes().toString().padStart(2, "0");
+          const localDateStr = `${localY}-${localM}-${localD}`;
+          const localTimeStr = `${localHH}${localMM}`;
+          const dialogueFilename = `${localDateStr}-${localTimeStr}.md`;
           const dialoguePath = path.join(dialogueDir, dialogueFilename);
           const frontmatter = [
             "---",
-            `date: ${now.toISOString()}`,
+            `date: ${localDateStr}T${localHH}:${localMM}:00`,
             `participants:`,
             ...((summary.participants ?? ["user"]).map((p) => `  - ${p}`)),
             `messageCount: ${cleanDialogue.split("\n").length}`,
