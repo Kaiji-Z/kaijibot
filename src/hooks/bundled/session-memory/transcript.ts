@@ -180,6 +180,34 @@ export async function updateDialogueStaging(
   await writeTextAtomic(stagingPath, merged, { appendTrailingNewline: false });
 }
 
+/**
+ * Resolve the session file path to a readable file.
+ * When /new or /reset fires, the JSONL may already be renamed to `.reset.XXX`.
+ * This mirrors the fallback in getRecentSessionContentWithResetFallback.
+ */
+async function resolveReadableSessionFile(sessionFilePath: string): Promise<string | null> {
+  try {
+    await fs.access(sessionFilePath);
+    return sessionFilePath;
+  } catch {}
+
+  try {
+    const dir = path.dirname(sessionFilePath);
+    const base = path.basename(sessionFilePath);
+    const resetPrefix = `${base}.reset.`;
+    const files = await fs.readdir(dir);
+    const resetCandidates = files.filter((name) => name.startsWith(resetPrefix)).toSorted();
+
+    if (resetCandidates.length === 0) {
+      return null;
+    }
+
+    return path.join(dir, resetCandidates[resetCandidates.length - 1]);
+  } catch {
+    return null;
+  }
+}
+
 export async function getDialogueWithStaging(
   stagingPath: string,
   sessionFilePath: string,
@@ -190,13 +218,18 @@ export async function getDialogueWithStaging(
     stagingExists = true;
   } catch {}
 
+  const resolvedFile = await resolveReadableSessionFile(sessionFilePath);
+  if (!resolvedFile) {
+    return null;
+  }
+
   if (!stagingExists) {
-    return getCleanDialogueContent(sessionFilePath);
+    return getCleanDialogueContent(resolvedFile);
   }
 
   const [stagingRaw, currentRaw] = await Promise.all([
     fs.readFile(stagingPath, "utf-8"),
-    fs.readFile(sessionFilePath, "utf-8"),
+    fs.readFile(resolvedFile, "utf-8"),
   ]);
 
   const merged = mergeJsonlContents(stagingRaw, currentRaw);
