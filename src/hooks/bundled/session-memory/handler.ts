@@ -39,6 +39,7 @@ import {
   getRecentSessionContentWithResetFallback,
   updateDialogueStaging,
 } from "./transcript.js";
+import { localDateStr, localTimeStr, localDateTimeStr } from "../../../shared/local-date.js";
 // Inline type — memory-core types are loaded dynamically to respect the extension boundary.
 interface TopicEntry {
   title: string;
@@ -144,7 +145,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
     await fs.mkdir(memoryDir, { recursive: true });
 
     const now = new Date(event.timestamp);
-    const dateStr = now.toISOString().split("T")[0];
+    const dateStr = localDateStr(now);
 
     const sessionEntry = (context.previousSessionEntry || context.sessionEntry || {}) as Record<
       string,
@@ -239,7 +240,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
         topicSlug: "session",
       };
     } else {
-      const timeStr = now.toISOString().split("T")[1].split(".")[0].replace(/:/g, "").slice(0, 4);
+      const timeStr = localTimeStr(now);
       summary = {
         summary: `(empty session at ${timeStr})`,
         decisions: [],
@@ -421,18 +422,11 @@ const saveSessionToMemory: HookHandler = async (event) => {
       try {
         const cleanDialogue = await getDialogueWithStaging(stagingPath, sessionFile);
         if (cleanDialogue && cleanDialogue.trim().length > 0) {
-          const localY = now.getFullYear().toString();
-          const localM = (now.getMonth() + 1).toString().padStart(2, "0");
-          const localD = now.getDate().toString().padStart(2, "0");
-          const localHH = now.getHours().toString().padStart(2, "0");
-          const localMM = now.getMinutes().toString().padStart(2, "0");
-          const localDateStr = `${localY}-${localM}-${localD}`;
-          const localTimeStr = `${localHH}${localMM}`;
-          const dialogueFilename = `${localDateStr}-${localTimeStr}.md`;
+          const dialogueFilename = `${localDateStr(now)}-${localTimeStr(now)}.md`;
           const dialoguePath = path.join(dialogueDir, dialogueFilename);
           const frontmatter = [
             "---",
-            `date: ${localDateStr}T${localHH}:${localMM}:00`,
+            `date: ${localDateTimeStr(now)}`,
             `participants:`,
             ...((summary.participants ?? ["user"]).map((p) => `  - ${p}`)),
             `messageCount: ${cleanDialogue.split("\n").length}`,

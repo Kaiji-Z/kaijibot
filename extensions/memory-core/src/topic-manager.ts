@@ -7,6 +7,7 @@
 
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { localDateStr } from "./local-date.js";
 import {
   type TopicFile,
   type TopicEntry,
@@ -126,7 +127,7 @@ export class TopicManager {
       throw new Error(`Topic not found: ${name}`);
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     topic.entries.push(entry);
     topic.frontmatter.entries = topic.entries.length;
     topic.frontmatter.updated = today;
@@ -145,7 +146,7 @@ export class TopicManager {
     }
 
     topic.entries[entryIndex]!.content = newContent;
-    topic.frontmatter.updated = new Date().toISOString().slice(0, 10);
+    topic.frontmatter.updated = localDateStr();
 
     const filePath = resolveTopicPath(this.workspaceDir, name);
     await atomicWrite(this.fs, filePath, serializeTopicFile(topic));
@@ -181,7 +182,7 @@ export class TopicManager {
     topic.entries.splice(sortedIndices[0]!, 0, mergedEntry);
 
     topic.frontmatter.entries = topic.entries.length;
-    topic.frontmatter.updated = new Date().toISOString().slice(0, 10);
+    topic.frontmatter.updated = localDateStr();
 
     const filePath = resolveTopicPath(this.workspaceDir, name);
     await atomicWrite(this.fs, filePath, serializeTopicFile(topic));

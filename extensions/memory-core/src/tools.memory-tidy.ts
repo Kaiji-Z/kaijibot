@@ -17,6 +17,7 @@ import {
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 import { MemoryIndexManager } from "./memory-index.js";
+import { localDateStr } from "./local-date.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { TopicManager, createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import { type TopicEntry } from "./topic-types.js";
@@ -831,7 +832,7 @@ async function runJaccardFallback(
   // 3. Archive topics not updated in 90 days
   const now = Date.now();
   const thresholdMs = ARCHIVE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
-  const thresholdDate = new Date(now - thresholdMs).toISOString().slice(0, 10);
+  const thresholdDate = localDateStr(new Date(now - thresholdMs));
 
   for (const fileName of topicFileNames) {
     const name = fileName.replace(/\.md$/, "");

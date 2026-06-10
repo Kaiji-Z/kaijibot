@@ -16,6 +16,7 @@ import {
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
+import { localDateStr } from "./local-date.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { incrementGroundedCount } from "./short-term-promotion.js";
 import { getMemoryManagerContextWithPurpose, resolveMemoryToolContext } from "./tools.shared.js";
@@ -250,7 +251,7 @@ export function createMemorySaveTool(options: {
 
       const typeValue = readStringParam(params, "type") as MemoryType | undefined;
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localDateStr();
       const newEntry: TopicEntry = {
         title: deriveEntryTitle(content),
         date: today,

@@ -6,6 +6,7 @@ import {
   type MemoryFlushPlan,
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
+import { localDateStr } from "./local-date.js";
 import {
   CLASSIFICATION_PROMPT_SECTION,
   EXCLUSION_PROMPT_SECTION,
@@ -59,7 +60,7 @@ function formatDateStampInTimezone(nowMs: number, timezone: string): string {
   if (year && month && day) {
     return `${year}-${month}-${day}`;
   }
-  return new Date(nowMs).toISOString().slice(0, 10);
+  return localDateStr(new Date(nowMs));
 }
 
 function normalizeNonNegativeInt(value: unknown): number | null {

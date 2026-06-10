@@ -10,6 +10,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
+import { localDateStr } from "./local-date.js";
 import { tokenize, jaccardSimilarity } from "./memory/mmr.js";
 import { parseTopicFile } from "./topic-types.js";
 
@@ -716,7 +717,7 @@ export class MemoryIndexManager {
    */
   async relocateInlineToTopic(section: InlineContent, subject: string): Promise<void> {
     const topicFile = `${subject}.md`;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
 
     let existingContent = "";
     try {

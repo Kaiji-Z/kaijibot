@@ -5,6 +5,7 @@ import {
   type MemoryIndexDeps,
   type MemoryIndexSection,
 } from "./memory-index.js";
+import { localDateStr } from "./local-date.js";
 import { createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
 import { type TopicEntry } from "./topic-types.js";
 
@@ -210,7 +211,7 @@ export async function parseLegacyMemoryFiles(
 export function heuristicClassify(entries: ParsedMemoryEntry[]): ClassifiedEntry[] {
   return entries.map((entry) => {
     const dateMatch = entry.sourceFile.match(/^(\d{4}-\d{2}-\d{2})/);
-    const datePart = dateMatch?.[1] ?? new Date().toISOString().slice(0, 10);
+    const datePart = dateMatch?.[1] ?? localDateStr();
     const rawTitle = `${datePart}: ${entry.heading}`;
     const title = rawTitle.length > 60 ? `${rawTitle.slice(0, 57)}...` : rawTitle;
     return {
@@ -266,7 +267,7 @@ function resolveTopicFileName(subject: string, topicSlug: string): string {
 function buildTopicEntry(classified: ClassifiedEntry): TopicEntry {
   return {
     title: classified.title,
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateStr(),
     content: classified.summary,
     importance: classified.importance,
     source: "memory-migrate",

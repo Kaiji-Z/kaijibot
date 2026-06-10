@@ -12,6 +12,7 @@ import {
   type ConceptTagScriptCoverage,
 } from "./concept-vocabulary.js";
 import { isExcludedMemoryContent } from "./memory-types.js";
+import { localDateStr } from "./local-date.js";
 import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 
 function formatLocalIsoDay(epochMs: number): string {
@@ -1945,7 +1946,7 @@ export async function repairShortTermPromotionArtifacts(params: {
       const nextEntries = Object.fromEntries(
         Object.entries(normalized.entries).map(([key, entry]) => {
           const conceptTags = deriveConceptTags({ path: entry.path, snippet: entry.snippet });
-          const fallbackDay = normalizeIsoDay(entry.lastRecalledAt) ?? nowIso.slice(0, 10);
+          const fallbackDay = normalizeIsoDay(entry.lastRecalledAt) ?? localDateStr();
           return [
             key,
             {

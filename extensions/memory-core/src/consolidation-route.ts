@@ -11,6 +11,7 @@
  */
 
 import type { ExtractedItem, RouteItem } from "./consolidation-types.js";
+import { localDateStr } from "./local-date.js";
 
 /** Brief correction record for the correction store. */
 export type CorrectionRecord = {
@@ -168,7 +169,7 @@ export async function routeToStores(params: {
       await deps.updateMemoryIndex({
         workspaceDir,
         items: highConfidenceItems.map((ri) => ri.item),
-        date: new Date().toISOString().slice(0, 10),
+        date: localDateStr(),
       });
     } catch (err) {
       errors.push(`Failed to update MEMORY.md for ${workspaceDir}: ${String(err)}`);
@@ -178,7 +179,7 @@ export async function routeToStores(params: {
   // Append deduped summary to daily memory file
   if (memorySummaryLines.length > 0) {
     try {
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const dateStr = localDateStr();
       const summary = `\n## Consolidation Summary (${dateStr})\n${memorySummaryLines.join("\n")}\n`;
       await deps.appendToMemoryFile(workspaceDir, summary);
     } catch (err) {
