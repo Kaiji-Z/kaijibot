@@ -20,14 +20,14 @@ describe("onboard-hooks", () => {
     vi.clearAllMocks();
   });
 
-  const createMockPrompter = (multiselectValue: string[]): WizardPrompter => ({
+  const createMockPrompter = (): WizardPrompter => ({
     confirm: vi.fn().mockResolvedValue(true),
     note: vi.fn().mockResolvedValue(undefined),
     intro: vi.fn().mockResolvedValue(undefined),
     outro: vi.fn().mockResolvedValue(undefined),
     text: vi.fn().mockResolvedValue(""),
     select: vi.fn().mockResolvedValue(""),
-    multiselect: vi.fn().mockResolvedValue(multiselectValue),
+    multiselect: vi.fn().mockResolvedValue([]),
     progress: vi.fn().mockReturnValue({
       stop: vi.fn(),
       update: vi.fn(),
@@ -117,7 +117,6 @@ describe("onboard-hooks", () => {
   });
 
   async function runSetupInternalHooks(params: {
-    selected: string[];
     cfg?: KaijiBotConfig;
     eligible?: boolean;
   }) {
@@ -127,65 +126,33 @@ describe("onboard-hooks", () => {
     );
 
     const cfg = params.cfg ?? {};
-    const prompter = createMockPrompter(params.selected);
+    const prompter = createMockPrompter();
     const runtime = createMockRuntime();
     const result = await setupInternalHooks(cfg, runtime, prompter);
     return { result, cfg, prompter };
   }
 
   describe("setupInternalHooks", () => {
-    it("should enable hooks when user selects them", async () => {
-      const { result, prompter } = await runSetupInternalHooks({
-        selected: ["session-memory"],
-      });
+    it("auto-enables all eligible hooks", async () => {
+      const { result } = await runSetupInternalHooks({});
 
       expect(result.hooks?.internal?.enabled).toBe(true);
       expect(result.hooks?.internal?.entries).toEqual({
         "session-memory": { enabled: true },
-      });
-      expect(prompter.note).toHaveBeenCalledTimes(2);
-      expect(prompter.multiselect).toHaveBeenCalledWith({
-        message: "Enable hooks?",
-        options: [
-          { value: "__skip__", label: "Skip for now" },
-          {
-            value: "session-memory",
-            label: "💾 session-memory",
-            hint: "Save session context to memory when /new or /reset command is issued",
-          },
-          {
-            value: "command-logger",
-            label: "📝 command-logger",
-            hint: "Log all command events to a centralized audit file",
-          },
-        ],
+        "command-logger": { enabled: true },
       });
     });
 
-    it("should not enable hooks when user skips", async () => {
-      const { result, prompter } = await runSetupInternalHooks({
-        selected: ["__skip__"],
-      });
-
-      expect(result.hooks?.internal).toBeUndefined();
-      expect(prompter.note).toHaveBeenCalledTimes(1);
-    });
-
-    it("should handle no eligible hooks", async () => {
+    it("returns config unchanged when no eligible hooks", async () => {
       const { result, cfg, prompter } = await runSetupInternalHooks({
-        selected: [],
         eligible: false,
       });
 
       expect(result).toEqual(cfg);
-      expect(prompter.multiselect).not.toHaveBeenCalled();
-      expect(prompter.note).toHaveBeenCalledWith(
-        "No eligible hooks found. You can configure hooks later in your config.",
-        "No Hooks Available",
-      );
+      expect(prompter.note).not.toHaveBeenCalled();
     });
 
-    it("should preserve existing hooks config when enabled", async () => {
+    it("preserves existing hooks config", async () => {
       const cfg: KaijiBotConfig = {
         hooks: {
           enabled: true,
@@ -193,10 +160,7 @@ describe("onboard-hooks", () => {
           token: "existing-token",
         },
       };
-      const { result } = await runSetupInternalHooks({
-        selected: ["session-memory"],
-        cfg,
-      });
+      const { result } = await runSetupInternalHooks({ cfg });
 
       expect(result.hooks?.enabled).toBe(true);
       expect(result.hooks?.path).toBe("/webhook");
@@ -204,37 +168,24 @@ describe("onboard-hooks", () => {
       expect(result.hooks?.internal?.enabled).toBe(true);
       expect(result.hooks?.internal?.entries).toEqual({
         "session-memory": { enabled: true },
+        "command-logger": { enabled: true },
       });
     });
 
-    it("should preserve existing config when user skips", async () => {
-      const cfg: KaijiBotConfig = {
-        agents: { defaults: { workspace: "/workspace" } },
-      };
-      const { result } = await runSetupInternalHooks({
-        selected: ["__skip__"],
-        cfg,
-      });
+    it("does not prompt user for selection", async () => {
+      const { prompter } = await runSetupInternalHooks({});
 
-      expect(result).toEqual(cfg);
-      expect(result.agents?.defaults?.workspace).toBe("/workspace");
+      expect(prompter.multiselect).not.toHaveBeenCalled();
+      expect(prompter.confirm).not.toHaveBeenCalled();
     });
 
-    it("should show informative notes to user", async () => {
-      const { prompter } = await runSetupInternalHooks({
-        selected: ["session-memory"],
-      });
+    it("shows confirmation note with enabled hooks", async () => {
+      const { prompter } = await runSetupInternalHooks({});
 
       const noteCalls = (prompter.note as ReturnType<typeof vi.fn>).mock.calls;
-      expect(noteCalls).toHaveLength(2);
-
-      // First note should explain what hooks are
-      expect(noteCalls[0][0]).toContain("Hooks let you automate actions");
-      expect(noteCalls[0][0]).toContain("automate actions");
-
-      // Second note should confirm configuration
-      expect(noteCalls[1][0]).toContain("Enabled 1 hook: session-memory");
-      expect(noteCalls[1][0]).toMatch(/(?:kaijibot|kaijibot)( --profile isolated)? hooks list/);
+      expect(noteCalls).toHaveLength(1);
+      expect(noteCalls[0][0]).toContain("Enabled 2 hooks: session-memory, command-logger");
+      expect(noteCalls[0][0]).toMatch(/hooks list/);
     });
   });
 });
