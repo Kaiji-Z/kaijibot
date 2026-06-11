@@ -239,13 +239,31 @@ export function renderApp(state: AppViewState) {
   _pendingUpdate = requestHostUpdate;
 
   if (!state.connected) {
+    const hasToken = Boolean(state.settings?.token);
+    const error = state.lastError;
     return html`
       <div
         style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;"
       >
-        <div style="text-align:center;max-width:360px;">
+        <div style="text-align:center;max-width:420px;">
           <h3 style="margin:0 0 12px;">KaijiBot Control</h3>
-          <p style="color:var(--muted);">${state.lastError ?? "Connecting to gateway…"}</p>
+          ${hasToken
+            ? html`<p style="color:var(--muted);">${error ?? "Connecting to gateway\u2026"}</p>`
+            : error
+              ? html`<p style="color:var(--muted);">${error}</p>`
+              : html`
+                  <p style="color:var(--muted);margin:0 0 16px;">
+                    Gateway token is required to connect.
+                  </p>
+                  <p style="color:var(--muted);font-size:0.875rem;">
+                    Run
+                    <code
+                      style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:0.8rem;"
+                      >kaijibot dashboard</code
+                    >
+                    in your terminal to open the control UI with authentication.
+                  </p>
+                `}
         </div>
       </div>
     `;
