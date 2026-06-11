@@ -249,7 +249,7 @@ describe("tool-loop-detection", () => {
   });
 
   describe("detectToolCallLoop", () => {
-    it("is disabled by default", () => {
+    it("is enabled by default", () => {
       const state = createState();
 
       for (let i = 0; i < 20; i += 1) {
@@ -257,6 +257,17 @@ describe("tool-loop-detection", () => {
       }
 
       const loopResult = detectToolCallLoop(state, "read", { path: "/same.txt" });
+      expect(loopResult.stuck).toBe(true);
+    });
+
+    it("can be explicitly disabled", () => {
+      const state = createState();
+
+      for (let i = 0; i < 20; i += 1) {
+        recordToolCall(state, "read", { path: "/same.txt" }, `disabled-${i}`, { enabled: false });
+      }
+
+      const loopResult = detectToolCallLoop(state, "read", { path: "/same.txt" }, { enabled: false });
       expect(loopResult.stuck).toBe(false);
     });
 
