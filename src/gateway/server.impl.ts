@@ -57,6 +57,7 @@ import {
   resolveConfiguredDeferredChannelPluginIds,
   resolveGatewayStartupPluginIds,
 } from "../plugins/channel-plugin-ids.js";
+import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import { getGlobalHookRunner, runGlobalGatewayStopSafely } from "../plugins/hook-runner-global.js";
 import { createEmptyPluginRegistry } from "../plugins/registry.js";
 import { getActivePluginRegistry, setActivePluginRegistry } from "../plugins/runtime.js";
@@ -2017,7 +2018,15 @@ export async function startGatewayServer(
         return { assignments, diagnostics, inactiveRefPaths };
       },
     });
-    const authHandlers = createAuthHandlers({ agentDir: defaultWorkspaceDir });
+    const authHandlers = createAuthHandlers({
+      agentDir: defaultWorkspaceDir,
+      getProviderRegistrations: () => pluginRegistry.providers,
+      getManifestRegistry: () =>
+        loadPluginManifestRegistry({
+          config: gatewayPluginConfigAtStart,
+          workspaceDir: defaultWorkspaceDir,
+        }),
+    });
 
     const canvasHostServerPort = (canvasHostServer as CanvasHostServer | null)?.port;
 
