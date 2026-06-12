@@ -94,6 +94,7 @@ function createProps(overrides: Partial<AgentsProps> = {}): AgentsProps {
     runtimeSessionKey: "main",
     runtimeSessionMatchesSelectedAgent: false,
     modelCatalog: [],
+    configuredProviders: [],
     onRefresh: () => undefined,
     onSelectAgent: () => undefined,
     onSelectPanel: () => undefined,
@@ -111,6 +112,7 @@ function createProps(overrides: Partial<AgentsProps> = {}): AgentsProps {
     onCronRefresh: () => undefined,
     onCronRunNow: () => undefined,
     onSetDefault: () => undefined,
+    onRequestUpdate: () => undefined,
     ...overrides,
   };
 }
