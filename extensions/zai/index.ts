@@ -219,6 +219,7 @@ function buildZaiApiKeyMethod(params: {
     label: params.choiceLabel,
     hint: params.choiceHint,
     kind: "api_key",
+    ...(params.endpoint ? { endpoint: params.endpoint } : {}),
     wizard: {
       choiceId: params.choiceId,
       choiceLabel: params.choiceLabel,
