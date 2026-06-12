@@ -50,6 +50,10 @@ import {
   AuthListProviderStatusParamsSchema,
   type AuthListProviderStatusResult,
   AuthListProviderStatusResultSchema,
+  type AuthListProviderAuthOptionsParams,
+  AuthListProviderAuthOptionsParamsSchema,
+  type AuthListProviderAuthOptionsResult,
+  AuthListProviderAuthOptionsResultSchema,
   type ChannelsLogoutParams,
   ChannelsLogoutParamsSchema,
   type TalkConfigParams,
@@ -445,6 +449,10 @@ export const validateAuthListProviderStatusParams = ajv.compile<AuthListProvider
 export const validateAuthListProviderStatusResult = ajv.compile<AuthListProviderStatusResult>(
   AuthListProviderStatusResultSchema,
 );
+export const validateAuthListProviderAuthOptionsParams =
+  ajv.compile<AuthListProviderAuthOptionsParams>(AuthListProviderAuthOptionsParamsSchema);
+export const validateAuthListProviderAuthOptionsResult =
+  ajv.compile<AuthListProviderAuthOptionsResult>(AuthListProviderAuthOptionsResultSchema);
 export const validateSkillsStatusParams = ajv.compile<SkillsStatusParams>(SkillsStatusParamsSchema);
 export const validateToolsCatalogParams = ajv.compile<ToolsCatalogParams>(ToolsCatalogParamsSchema);
 export const validateToolsEffectiveParams = ajv.compile<ToolsEffectiveParams>(

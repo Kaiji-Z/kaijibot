@@ -284,6 +284,8 @@ export type ProviderAuthMethod = {
   label: string;
   hint?: string;
   kind: ProviderAuthKind;
+  /** Optional endpoint/region identifier (e.g. "coding-global", "cn"). */
+  endpoint?: string;
   /**
    * Optional wizard/onboarding metadata for this specific auth method.
    *

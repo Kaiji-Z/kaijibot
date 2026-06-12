@@ -16,6 +16,7 @@ type ProviderApiKeyAuthMethodOptions = {
   methodId: string;
   label: string;
   hint?: string;
+  endpoint?: string;
   wizard?: ProviderPluginWizardSetup;
   optionKey: string;
   flagName: `--${string}`;
@@ -86,6 +87,7 @@ export function createProviderApiKeyAuthMethod(
     id: params.methodId,
     label: params.label,
     hint: params.hint,
+    endpoint: params.endpoint,
     kind: "api_key",
     wizard: params.wizard,
     run: async (ctx) => {
