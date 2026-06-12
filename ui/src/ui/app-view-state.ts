@@ -18,6 +18,7 @@ import type {
   GatewaySessionRow,
   MemoryHealthStatus,
   ModelCatalogEntry,
+  ProviderAuthInfo,
   SessionsListResult,
   SkillStatusReport,
   ToolsCatalogResult,
@@ -64,6 +65,7 @@ export type AppViewState = {
   chatModelCatalog: ModelCatalogEntry[];
   fullModelCatalog: ModelCatalogEntry[];
   configuredProviders: string[];
+  providerAuthOptions: ProviderAuthInfo[];
   chatQueue: ChatQueueItem[];
   chatManualRefreshInFlight: boolean;
   chatNewMessagesBelow: boolean;

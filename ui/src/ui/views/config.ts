@@ -58,6 +58,7 @@ export type ConfigProps = {
   client?: import("../gateway.ts").GatewayBrowserClient;
   fullModelCatalog?: import("../types.ts").ModelCatalogEntry[];
   configuredProviders?: string[];
+  providerAuthOptions?: import("../types.ts").ProviderAuthInfo[];
 };
 
 type AccordionGroup = {

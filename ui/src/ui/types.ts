@@ -713,6 +713,21 @@ export type ModelCatalogEntry = {
   input?: Array<"text" | "image" | "document">;
 };
 
+export type ProviderAuthOption = {
+  id: string;
+  label: string;
+  hint?: string;
+  kind: string;
+  endpoint?: string;
+};
+
+export type ProviderAuthInfo = {
+  providerId: string;
+  providerLabel: string;
+  configured: boolean;
+  authOptions: ProviderAuthOption[];
+};
+
 export type ToolCatalogProfile =
   import("../../../src/gateway/protocol/schema/types.js").ToolCatalogProfile;
 export type ToolCatalogEntry =

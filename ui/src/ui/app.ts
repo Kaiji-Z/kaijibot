@@ -62,6 +62,7 @@ import type {
   MemoryHealthStatus,
   ModelCatalogEntry,
   ChannelsStatusSnapshot,
+  ProviderAuthInfo,
   SessionCompactionCheckpoint,
   SessionsListResult,
   SkillStatusReport,
@@ -144,6 +145,7 @@ export class KaijiBotApp extends LitElement {
   @state() chatModelCatalog: ModelCatalogEntry[] = [];
   @state() fullModelCatalog: ModelCatalogEntry[] = [];
   @state() configuredProviders: string[] = [];
+  @state() providerAuthOptions: ProviderAuthInfo[] = [];
   @state() chatQueue: ChatQueueItem[] = [];
   @state() chatAttachments: ChatAttachment[] = [];
   @state() chatManualRefreshInFlight = false;
