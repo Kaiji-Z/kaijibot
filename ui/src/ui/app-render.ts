@@ -695,7 +695,8 @@ export function renderApp(state: AppViewState) {
                 },
                 runtimeSessionKey: state.sessionKey,
                 runtimeSessionMatchesSelectedAgent: toolsPanelUsesActiveSession,
-                modelCatalog: state.chatModelCatalog ?? [],
+                modelCatalog: state.fullModelCatalog ?? [],
+                configuredProviders: state.configuredProviders ?? [],
                 sessionsResult: state.sessionsResult,
                 sessionDetails: state.sessionDetails,
                 onRefresh: async () => {
@@ -904,7 +905,7 @@ export function renderApp(state: AppViewState) {
                   void refreshVisibleToolsEffectiveForCurrentSession(state);
                 },
                 onModelFallbacksChange: (agentId, fallbacks) => {
-                  const normalized = fallbacks.map((name) => name.trim()).filter(Boolean);
+                  const normalized = fallbacks.map((name) => name.trim()).filter((s) => s.length > 0);
                   const currentConfig = getCurrentConfigValue();
                   const resolvedConfig = resolveAgentConfig(currentConfig, agentId);
                   const effectivePrimary =
@@ -965,6 +966,7 @@ export function renderApp(state: AppViewState) {
                   }
                   updateConfigFormValue(state, ["agents", "defaultId"], agentId);
                 },
+                onRequestUpdate: requestHostUpdate,
               }),
             )
           : nothing}
@@ -1357,6 +1359,7 @@ export function renderApp(state: AppViewState) {
               client: state.client ?? undefined,
               fullModelCatalog: state.fullModelCatalog ?? [],
               configuredProviders: state.configuredProviders ?? [],
+              providerAuthOptions: state.providerAuthOptions ?? [],
             })
           : nothing}
       </main>

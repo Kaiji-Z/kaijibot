@@ -1,6 +1,6 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { t } from "../../i18n/index.ts";
-import type { ModelCatalogEntry } from "../types.ts";
+import type { ModelCatalogEntry, ProviderAuthInfo } from "../types.ts";
 import type { ConfigProps } from "./config.js";
 
 export type QuickSettingCustomRender = (props: ConfigProps) => TemplateResult | typeof nothing;
@@ -16,6 +16,7 @@ export interface QuickSettingEntry {
 // --- Model selector state ---
 
 let selectedProvider = "";
+let selectedEndpoint = "";
 let apiKeyInput = "";
 let apiKeySaving = false;
 let apiKeySaved = false;
@@ -40,15 +41,21 @@ function formatContextWindow(ctx?: number): string {
 
 function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing {
   const catalog = props.fullModelCatalog ?? [];
-  const configured = new Set(props.configuredProviders ?? []);
   const client = props.client;
+  const providerAuthOptions = props.providerAuthOptions ?? [];
+  const configuredProviders = new Set(props.configuredProviders ?? []);
 
-  if (catalog.length === 0) {
+  if (catalog.length === 0 && providerAuthOptions.length === 0) {
     return html`<div class="config-model-selector__loading">${t("common.loading")}</div>`;
   }
 
   const byProvider = groupCatalogByProvider(catalog);
-  const providers = [...byProvider.keys()].sort();
+
+  const allProviderIds = new Set([
+    ...byProvider.keys(),
+    ...providerAuthOptions.map((p) => p.providerId),
+  ]);
+  const providers = [...allProviderIds].sort();
 
   const rawModel = props.formValue
     ? getValueAtPath(props.formValue, MODEL_ENTRY.path)
@@ -68,29 +75,70 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
     selectedProvider = providers[0];
   }
 
-  const providerModels = byProvider.get(selectedProvider) ?? [];
-  const needsApiKey = Boolean(selectedProvider && !configured.has(selectedProvider) && client);
+  const authInfo = providerAuthOptions.find((p) => p.providerId === selectedProvider);
+  const isConfigured = authInfo?.configured ?? configuredProviders.has(selectedProvider ?? "");
+
+  const endpointOptions = authInfo?.authOptions.filter((o) => o.kind === "api_key") ?? [];
+  const hasEndpoints = endpointOptions.length > 1;
+
+  const selectedAuthMethod = endpointOptions.find(
+    (o) => (o.endpoint || o.id) === selectedEndpoint,
+  ) ?? endpointOptions[0];
+  const effectiveEndpoint = selectedAuthMethod?.endpoint || selectedAuthMethod?.id || "";
+
+  const providerModels = byProvider.get(selectedProvider ?? "") ?? [];
+  const needsApiKey = Boolean(selectedProvider && !isConfigured && client);
 
   return html`
     <div class="config-model-selector">
       <div class="config-model-selector__row">
+        <!-- Provider select -->
         <select
           class="config-quick-settings__select"
           ?disabled=${props.loading}
           @change=${(e: Event) => {
             selectedProvider = (e.target as HTMLSelectElement).value;
+            selectedEndpoint = "";
             apiKeySaved = false;
             apiKeyError = false;
             props.onRequestUpdate?.();
           }}
         >
-          ${providers.map(
-            (p) =>
-              html`<option value=${p} ?selected=${p === selectedProvider}>
-                ${p}${configured.has(p) ? " ✓" : ""} (${byProvider.get(p)?.length ?? 0})
-              </option>`,
-          )}
+          ${providers.map((p) => {
+            const info = providerAuthOptions.find((i) => i.providerId === p);
+            const label = info?.providerLabel ?? p;
+            return html`<option value=${p} ?selected=${p === selectedProvider}>
+              ${label}${isConfiguredForProvider(providerAuthOptions, configuredProviders, p) ? " ✓" : ""} (${byProvider.get(p)?.length ?? 0})
+            </option>`;
+          })}
         </select>
+
+        <!-- Endpoint select (conditional) -->
+        ${hasEndpoints
+          ? html`
+              <select
+                class="config-quick-settings__select"
+                ?disabled=${props.loading}
+                @change=${(e: Event) => {
+                  selectedEndpoint = (e.target as HTMLSelectElement).value;
+                  apiKeySaved = false;
+                  apiKeyError = false;
+                  props.onRequestUpdate?.();
+                }}
+              >
+                ${endpointOptions.map(
+                  (opt) => {
+                    const optValue = opt.endpoint || opt.id;
+                    return html`<option value=${optValue} ?selected=${optValue === effectiveEndpoint}>
+                      ${opt.label}${opt.hint ? ` (${opt.hint})` : ""}
+                    </option>`;
+                  },
+                )}
+              </select>
+            `
+          : nothing}
+
+        <!-- Model select -->
         <select
           class="config-quick-settings__select"
           ?disabled=${props.loading || needsApiKey}
@@ -114,6 +162,8 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
           })}
         </select>
       </div>
+
+      <!-- API Key input (when provider not configured) -->
       ${needsApiKey
         ? html`
             <div class="config-model-selector__apikey">
@@ -142,6 +192,7 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
                     .request<{ ok: boolean }>("auth.storeApiKey", {
                       provider: selectedProvider,
                       apiKey: key,
+                      ...(effectiveEndpoint ? { endpoint: effectiveEndpoint } : {}),
                     })
                     .then(() => {
                       apiKeySaving = false;
@@ -168,6 +219,15 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
         : nothing}
     </div>
   `;
+}
+
+function isConfiguredForProvider(
+  authOptions: ProviderAuthInfo[],
+  configuredProviders: Set<string>,
+  providerId: string,
+): boolean {
+  const info = authOptions.find((p) => p.providerId === providerId);
+  return info?.configured ?? configuredProviders.has(providerId);
 }
 
 // --- Named entries ---
