@@ -142,6 +142,8 @@ export class KaijiBotApp extends LitElement {
   @state() chatModelOverrides: Record<string, ChatModelOverride | null> = {};
   @state() chatModelsLoading = false;
   @state() chatModelCatalog: ModelCatalogEntry[] = [];
+  @state() fullModelCatalog: ModelCatalogEntry[] = [];
+  @state() configuredProviders: string[] = [];
   @state() chatQueue: ChatQueueItem[] = [];
   @state() chatAttachments: ChatAttachment[] = [];
   @state() chatManualRefreshInFlight = false;

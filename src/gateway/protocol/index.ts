@@ -42,6 +42,14 @@ import {
   AgentsListResultSchema,
   type AgentWaitParams,
   AgentWaitParamsSchema,
+  type AuthStoreApiKeyParams,
+  AuthStoreApiKeyParamsSchema,
+  type AuthStoreApiKeyResult,
+  AuthStoreApiKeyResultSchema,
+  type AuthListProviderStatusParams,
+  AuthListProviderStatusParamsSchema,
+  type AuthListProviderStatusResult,
+  AuthListProviderStatusResultSchema,
   type ChannelsLogoutParams,
   ChannelsLogoutParamsSchema,
   type TalkConfigParams,
@@ -425,6 +433,18 @@ export const validateChannelsLogoutParams = ajv.compile<ChannelsLogoutParams>(
   ChannelsLogoutParamsSchema,
 );
 export const validateModelsListParams = ajv.compile<ModelsListParams>(ModelsListParamsSchema);
+export const validateAuthStoreApiKeyParams = ajv.compile<AuthStoreApiKeyParams>(
+  AuthStoreApiKeyParamsSchema,
+);
+export const validateAuthStoreApiKeyResult = ajv.compile<AuthStoreApiKeyResult>(
+  AuthStoreApiKeyResultSchema,
+);
+export const validateAuthListProviderStatusParams = ajv.compile<AuthListProviderStatusParams>(
+  AuthListProviderStatusParamsSchema,
+);
+export const validateAuthListProviderStatusResult = ajv.compile<AuthListProviderStatusResult>(
+  AuthListProviderStatusResultSchema,
+);
 export const validateSkillsStatusParams = ajv.compile<SkillsStatusParams>(SkillsStatusParamsSchema);
 export const validateToolsCatalogParams = ajv.compile<ToolsCatalogParams>(ToolsCatalogParamsSchema);
 export const validateToolsEffectiveParams = ajv.compile<ToolsEffectiveParams>(
@@ -625,6 +645,10 @@ export {
   AgentsListParamsSchema,
   AgentsListResultSchema,
   ModelsListParamsSchema,
+  AuthStoreApiKeyParamsSchema,
+  AuthStoreApiKeyResultSchema,
+  AuthListProviderStatusParamsSchema,
+  AuthListProviderStatusResultSchema,
   SkillsStatusParamsSchema,
   ToolsCatalogParamsSchema,
   ToolsEffectiveParamsSchema,

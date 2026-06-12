@@ -158,7 +158,7 @@ describe("setTabFromRoute", () => {
     expect(host.themeResolved).toBe("glaze");
   });
 
-  it("applies named system themes on OS preference changes", () => {
+  it("keeps theme name and resolves mode from OS preference changes", () => {
     const listeners: Array<(event: MediaQueryListEvent) => void> = [];
     const matchMedia = vi.fn().mockReturnValue({
       matches: false,
@@ -193,11 +193,27 @@ describe("setTabFromRoute", () => {
     vi.stubGlobal("document", { documentElement: root } as Document);
 
     const host = createHost("chat");
-    applyResolvedTheme(host, "glaze");
+    applyResolvedTheme(host, "glaze", "dark");
 
     expect(host.themeResolved).toBe("glaze");
     expect(root.dataset.theme).toBe("glaze");
     expect(root.style.colorScheme).toBe("dark");
+  });
+
+  it("resolves ink-jade light mode", () => {
+    const root = {
+      dataset: {} as DOMStringMap,
+      style: { colorScheme: "" } as CSSStyleDeclaration & { colorScheme: string },
+    };
+    vi.stubGlobal("document", { documentElement: root } as Document);
+
+    const host = createHost("chat");
+    applyResolvedTheme(host, "ink-jade", "light");
+
+    expect(host.themeResolved).toBe("ink-jade");
+    expect(root.dataset.theme).toBe("ink-jade");
+    expect(root.dataset.themeMode).toBe("light");
+    expect(root.style.colorScheme).toBe("light");
   });
 });
 

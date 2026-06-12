@@ -10,6 +10,12 @@ import {
   WakeParamsSchema,
 } from "./agent.js";
 import {
+  AuthListProviderStatusParamsSchema,
+  AuthListProviderStatusResultSchema,
+  AuthStoreApiKeyParamsSchema,
+  AuthStoreApiKeyResultSchema,
+} from "./auth.js";
+import {
   AgentSummarySchema,
   AgentsCreateParamsSchema,
   AgentsCreateResultSchema,
@@ -207,6 +213,10 @@ export const ProtocolSchemas = {
   AgentIdentityResult: AgentIdentityResultSchema,
   AgentWaitParams: AgentWaitParamsSchema,
   WakeParams: WakeParamsSchema,
+  AuthStoreApiKeyParams: AuthStoreApiKeyParamsSchema,
+  AuthStoreApiKeyResult: AuthStoreApiKeyResultSchema,
+  AuthListProviderStatusParams: AuthListProviderStatusParamsSchema,
+  AuthListProviderStatusResult: AuthListProviderStatusResultSchema,
   NodePairRequestParams: NodePairRequestParamsSchema,
   NodePairListParams: NodePairListParamsSchema,
   NodePairApproveParams: NodePairApproveParamsSchema,

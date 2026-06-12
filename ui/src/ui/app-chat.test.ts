@@ -42,6 +42,8 @@ function makeHost(overrides?: Partial<ChatHost>): ChatHost {
     chatModelOverrides: {},
     chatModelsLoading: false,
     chatModelCatalog: [],
+    fullModelCatalog: [],
+    configuredProviders: [],
     refreshSessionsAfterChat: new Set<string>(),
     updateComplete: Promise.resolve(),
     ...overrides,

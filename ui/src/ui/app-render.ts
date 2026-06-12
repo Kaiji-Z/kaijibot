@@ -1347,14 +1347,16 @@ export function renderApp(state: AppViewState) {
               version: state.hello?.server?.version ?? "",
               theme: state.theme,
               themeMode: state.themeMode,
+              themeOrder: state.themeOrder,
               setTheme: (t, ctx) => state.setTheme(t, ctx),
               setThemeMode: (m, ctx) => state.setThemeMode(m, ctx),
-              borderRadius: state.settings.borderRadius,
-              setBorderRadius: (v) => state.setBorderRadius(v),
               gatewayUrl: state.settings.gatewayUrl,
               assistantName: state.assistantName,
               configPath: state.configSnapshot?.path ?? null,
               rawAvailable: typeof state.configSnapshot?.raw === "string",
+              client: state.client ?? undefined,
+              fullModelCatalog: state.fullModelCatalog ?? [],
+              configuredProviders: state.configuredProviders ?? [],
             })
           : nothing}
       </main>

@@ -116,6 +116,7 @@ import { coreGatewayHandlers } from "./server-methods.js";
 import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
 import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import { createPluginApprovalHandlers } from "./server-methods/plugin-approval.js";
+import { createAuthHandlers } from "./server-methods/auth.js";
 import { createSecretsHandlers } from "./server-methods/secrets.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
 import { loadGatewayModelCatalog } from "./server-model-catalog.js";
@@ -2016,6 +2017,7 @@ export async function startGatewayServer(
         return { assignments, diagnostics, inactiveRefPaths };
       },
     });
+    const authHandlers = createAuthHandlers({ agentDir: defaultWorkspaceDir });
 
     const canvasHostServerPort = (canvasHostServer as CanvasHostServer | null)?.port;
 
@@ -2159,6 +2161,7 @@ export async function startGatewayServer(
         ...execApprovalHandlers,
         ...pluginApprovalHandlers,
         ...secretsHandlers,
+        ...authHandlers,
       },
       broadcast,
       context: gatewayRequestContext,

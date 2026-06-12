@@ -40,10 +40,9 @@ describe("config view", () => {
     version: "2026.3.11",
     theme: "ink-jade" as ThemeName,
     themeMode: "system" as ThemeMode,
+    themeOrder: ["ink-jade", "rice-paper", "glaze"] as ThemeName[],
     setTheme: vi.fn(),
     setThemeMode: vi.fn(),
-    borderRadius: 50,
-    setBorderRadius: vi.fn(),
     gatewayUrl: "",
     assistantName: "KaijiBot",
   });

@@ -175,7 +175,10 @@ export const AgentsFilesSetResultSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const ModelsListParamsSchema = Type.Object({}, { additionalProperties: false });
+export const ModelsListParamsSchema = Type.Object(
+  { fullCatalog: Type.Optional(Type.Boolean()) },
+  { additionalProperties: false },
+);
 
 export const ModelsListResultSchema = Type.Object(
   {

@@ -63,37 +63,34 @@ export function parseThemeSelection(
 
 /**
  * Resolve a theme name + mode to the final CSS data-theme value.
- * Since each theme is self-contained (ink-jade=dark, rice-paper=light, glaze=translucent),
- * the mode parameter is mostly ignored except for "system" mode.
+ * Each theme now supports both light and dark modes via CSS data-theme-mode.
+ * The returned value is always the theme name — mode is applied separately via data-theme-mode.
  *
- * For "system" mode: returns rice-paper if user prefers light, ink-jade for dark.
+ * For "system" mode: resolves to "light" or "dark" based on OS preference.
  */
 export function resolveTheme(
   name: ThemeName,
   mode: ThemeMode,
 ): ResolvedTheme {
-  if (mode === "system") {
-    const prefersLight = globalThis.matchMedia?.(
-      "(prefers-color-scheme: light)",
-    )?.matches;
-    if (prefersLight && name === "ink-jade") {return "rice-paper";}
-    if (!prefersLight && name === "rice-paper") {return "ink-jade";}
-    // glaze stays glaze regardless of system preference
-  }
+  // Theme name is always preserved — mode is handled by CSS data-theme-mode
   return name;
 }
 
 /**
- * Resolve theme mode to "light" or "dark" for color-scheme CSS property.
+ * Resolve theme + mode to the effective color scheme ("light" or "dark").
+ * Used to set data-theme-mode and color-scheme CSS property on <html>.
  */
-export function resolveColorScheme(theme: ThemeName): "light" | "dark" {
-  switch (theme) {
-    case "rice-paper":
-      return "light";
-    case "ink-jade":
-    case "glaze":
-      return "dark";
+export function resolveColorScheme(
+  theme: ThemeName,
+  mode: ThemeMode,
+): "light" | "dark" {
+  if (mode === "system") {
+    const prefersLight = globalThis.matchMedia?.(
+      "(prefers-color-scheme: light)",
+    )?.matches;
+    return prefersLight ? "light" : "dark";
   }
+  return mode;
 }
 
 /**

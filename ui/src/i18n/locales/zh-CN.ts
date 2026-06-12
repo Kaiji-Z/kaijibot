@@ -745,6 +745,14 @@ export const zh_CN: TranslationMap = {
     quickSettings: "快速设置",
     quickSettingsDesc: "常用配置项，快速调整",
     advancedSettings: "高级设置",
+    apiKeys: "API 密钥",
+    apiKeysDesc: "配置模型提供商的密钥",
+    apiKeysProvider: "提供商",
+    apiKeysValue: "密钥",
+    apiKeysSave: "保存",
+    apiKeysSaved: "已保存",
+    apiKeysError: "保存失败",
+    apiKeysHidden: "••••••••",
   },
   settings: {
     borderRadius: {
@@ -780,6 +788,10 @@ export const zh_CN: TranslationMap = {
       gateway: "网关",
       status: "状态",
       assistant: "助手",
+    },
+    appearance: {
+      theme: "主题",
+      mode: "色彩模式",
     },
     unsavedChange: "个未保存的更改",
     noChanges: "无更改",

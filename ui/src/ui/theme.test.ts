@@ -10,34 +10,40 @@ import {
 } from "./theme.ts";
 
 describe("resolveTheme", () => {
-  it("returns the theme name directly for explicit modes", () => {
+  it("returns the theme name directly for all modes", () => {
     expect(resolveTheme("ink-jade", "dark")).toBe("ink-jade");
+    expect(resolveTheme("ink-jade", "light")).toBe("ink-jade");
+    expect(resolveTheme("ink-jade", "system")).toBe("ink-jade");
     expect(resolveTheme("rice-paper", "light")).toBe("rice-paper");
+    expect(resolveTheme("rice-paper", "dark")).toBe("rice-paper");
     expect(resolveTheme("glaze", "dark")).toBe("glaze");
+    expect(resolveTheme("glaze", "light")).toBe("glaze");
+  });
+});
+
+describe("resolveColorScheme", () => {
+  it("returns explicit mode when not system", () => {
+    expect(resolveColorScheme("ink-jade", "dark")).toBe("dark");
+    expect(resolveColorScheme("ink-jade", "light")).toBe("light");
+    expect(resolveColorScheme("rice-paper", "light")).toBe("light");
+    expect(resolveColorScheme("rice-paper", "dark")).toBe("dark");
+    expect(resolveColorScheme("glaze", "dark")).toBe("dark");
+    expect(resolveColorScheme("glaze", "light")).toBe("light");
   });
 
-  it("swaps ink-jade ↔ rice-paper under system mode", () => {
+  it("resolves system mode from OS preference", () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn().mockReturnValue({ matches: true }),
     );
-    expect(resolveTheme("ink-jade", "system")).toBe("rice-paper");
+    expect(resolveColorScheme("ink-jade", "system")).toBe("light");
     vi.unstubAllGlobals();
 
     vi.stubGlobal(
       "matchMedia",
       vi.fn().mockReturnValue({ matches: false }),
     );
-    expect(resolveTheme("rice-paper", "system")).toBe("ink-jade");
-    vi.unstubAllGlobals();
-  });
-
-  it("keeps glaze unchanged under system mode", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: true }),
-    );
-    expect(resolveTheme("glaze", "system")).toBe("glaze");
+    expect(resolveColorScheme("ink-jade", "system")).toBe("dark");
     vi.unstubAllGlobals();
   });
 });
@@ -71,17 +77,6 @@ describe("parseThemeSelection", () => {
 
   it("returns default for unknown values", () => {
     expect(parseThemeSelection("unknown-theme")).toBe("ink-jade");
-  });
-});
-
-describe("resolveColorScheme", () => {
-  it("returns dark for ink-jade and glaze", () => {
-    expect(resolveColorScheme("ink-jade")).toBe("dark");
-    expect(resolveColorScheme("glaze")).toBe("dark");
-  });
-
-  it("returns light for rice-paper", () => {
-    expect(resolveColorScheme("rice-paper")).toBe("light");
   });
 });
 

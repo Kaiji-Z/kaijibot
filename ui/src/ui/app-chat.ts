@@ -5,7 +5,7 @@ import type { KaijiBotApp } from "./app.ts";
 import { executeSlashCommand } from "./chat/slash-command-executor.ts";
 import { parseSlashCommand } from "./chat/slash-commands.ts";
 import { abortChatRun, loadChatHistory, sendChatMessage } from "./controllers/chat.ts";
-import { loadModels } from "./controllers/models.ts";
+import { loadModels, loadProviderStatus } from "./controllers/models.ts";
 import { loadSessions } from "./controllers/sessions.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import { normalizeBasePath } from "./navigation.ts";
@@ -34,6 +34,8 @@ export type ChatHost = {
   chatModelOverrides: Record<string, ChatModelOverride | null>;
   chatModelsLoading: boolean;
   chatModelCatalog: ModelCatalogEntry[];
+  fullModelCatalog: ModelCatalogEntry[];
+  configuredProviders: string[];
   sessionsResult?: SessionsListResult | null;
   updateComplete?: Promise<unknown>;
   refreshSessionsAfterChat: Set<string>;
@@ -414,13 +416,31 @@ async function refreshChatModels(host: ChatHost) {
   if (!host.client || !host.connected) {
     host.chatModelsLoading = false;
     host.chatModelCatalog = [];
+    host.fullModelCatalog = [];
+    host.configuredProviders = [];
     return;
   }
   host.chatModelsLoading = true;
   try {
     host.chatModelCatalog = await loadModels(host.client);
+    void refreshFullCatalog(host);
   } finally {
     host.chatModelsLoading = false;
+  }
+}
+
+export async function refreshFullCatalog(host: ChatHost) {
+  if (!host.client) return;
+  try {
+    const [catalog, providers] = await Promise.all([
+      loadModels(host.client, { fullCatalog: true }),
+      loadProviderStatus(host.client),
+    ]);
+    host.fullModelCatalog = catalog;
+    host.configuredProviders = providers;
+  } catch {
+    host.fullModelCatalog = [];
+    host.configuredProviders = [];
   }
 }
 

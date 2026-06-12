@@ -62,6 +62,8 @@ export type AppViewState = {
   chatModelOverrides: Record<string, ChatModelOverride | null>;
   chatModelsLoading: boolean;
   chatModelCatalog: ModelCatalogEntry[];
+  fullModelCatalog: ModelCatalogEntry[];
+  configuredProviders: string[];
   chatQueue: ChatQueueItem[];
   chatManualRefreshInFlight: boolean;
   chatNewMessagesBelow: boolean;

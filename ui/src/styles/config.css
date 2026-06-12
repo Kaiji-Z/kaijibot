@@ -1908,11 +1908,68 @@
   margin-top: 4px;
 }
 
+.config-quick-settings__select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.config-quick-settings__select option {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.config-quick-settings__input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.config-model-selector {
+  margin-top: 4px;
+}
+
+.config-model-selector__row {
+  display: flex;
+  gap: 8px;
+}
+
+.config-model-selector__row > select {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-model-selector__loading {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.config-model-selector__apikey {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
 .config-scroll-area {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   scroll-behavior: smooth;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 /* Advanced Settings Divider */
@@ -1949,3 +2006,101 @@
     padding: 14px 16px 0;
   }
 }
+
+/* ── Appearance Section ─────────────────────────────── */
+
+.appearance-theme-swatches {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.appearance-theme-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.appearance-theme-swatch__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.appearance-theme-swatch__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.appearance-theme-swatch--active .appearance-theme-swatch__preview {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.appearance-theme-swatch__label {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.appearance-theme-swatch--active .appearance-theme-swatch__label {
+  color: var(--text);
+}
+
+.appearance-mode-toggle {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm, 6px);
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+
+.appearance-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.appearance-mode-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.appearance-mode-btn:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.appearance-mode-btn--active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.appearance-mode-btn--active:hover {
+  background: var(--accent-hover);
+  color: var(--accent-foreground);
+}
+
+

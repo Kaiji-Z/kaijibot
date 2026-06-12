@@ -1,7 +1,8 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { t } from "../../i18n/index.ts";
+import { icons } from "../icons.ts";
 import type { ThemeTransitionContext } from "../theme-transition.ts";
-import type { ThemeMode, ThemeName } from "../theme.ts";
+import { themeDisplayName, type ThemeMode, type ThemeName } from "../theme.ts";
 import type { ConfigUiHints } from "../types.ts";
 import { renderNode } from "./config-form.node.ts";
 import { humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
@@ -43,10 +44,9 @@ export type ConfigProps = {
   version: string;
   theme: ThemeName;
   themeMode: ThemeMode;
+  themeOrder: ThemeName[];
   setTheme: (theme: ThemeName, context?: ThemeTransitionContext) => void;
   setThemeMode: (mode: ThemeMode, context?: ThemeTransitionContext) => void;
-  borderRadius: number;
-  setBorderRadius: (value: number) => void;
   gatewayUrl: string;
   assistantName: string;
   configPath?: string | null;
@@ -55,6 +55,9 @@ export type ConfigProps = {
   excludeSections?: string[];
   includeVirtualSections?: boolean;
   onRequestUpdate?: () => void;
+  client?: import("../gateway.ts").GatewayBrowserClient;
+  fullModelCatalog?: import("../types.ts").ModelCatalogEntry[];
+  configuredProviders?: string[];
 };
 
 type AccordionGroup = {
@@ -248,6 +251,20 @@ function renderQuickSettings(props: ConfigProps) {
   const items: TemplateResult[] = [];
 
   for (const entry of QUICK_SETTINGS) {
+    // Custom renderer takes priority
+    if (entry.render) {
+      items.push(html`
+        <div class="config-quick-settings__item">
+          <div class="config-quick-settings__item-label">${entry.label}</div>
+          ${entry.description
+            ? html`<div class="config-quick-settings__item-desc">${entry.description}</div>`
+            : nothing}
+          <div class="config-quick-settings__item-control">${entry.render(props)}</div>
+        </div>
+      `);
+      continue;
+    }
+
     const nodeSchema = getSchemaNodeAtPath(rootSchema, entry.path);
     if (!nodeSchema) {
       continue;
@@ -318,6 +335,86 @@ function renderConnectionSection(props: ConfigProps) {
                 </div>
               `
             : nothing}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+const THEME_SWATCH_COLORS: Record<ThemeName, { bg: string; accent: string }> = {
+  "ink-jade": { bg: "#0e1219", accent: "#00d4aa" },
+  "rice-paper": { bg: "#f5f2ed", accent: "#00b893" },
+  glaze: { bg: "#0a0c16", accent: "#a78bfa" },
+};
+
+const MODE_OPTIONS: { id: ThemeMode; label: string }[] = [
+  { id: "system", label: "System" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
+
+function renderAppearanceSection(props: ConfigProps) {
+  const modeIcon = (mode: ThemeMode) => {
+    if (mode === "system") {return icons.monitor;}
+    if (mode === "light") {return icons.sun;}
+    return icons.moon;
+  };
+
+  return html`
+    <div class="settings-appearance">
+      <div class="settings-appearance__section">
+        <h3 class="settings-appearance__heading">${t("settings.appearance.theme")}</h3>
+        <div class="appearance-theme-swatches">
+          ${(props.themeOrder ?? ["ink-jade", "rice-paper", "glaze"]).map(
+            (name) => {
+              const swatch = THEME_SWATCH_COLORS[name];
+              return html`
+                <button
+                  type="button"
+                  class="appearance-theme-swatch ${name === props.theme
+                    ? "appearance-theme-swatch--active"
+                    : ""}"
+                  title=${themeDisplayName(name)}
+                  @click=${(e: Event) =>
+                    props.setTheme(name, { element: e.currentTarget as HTMLElement })}
+                >
+                  <span
+                    class="appearance-theme-swatch__preview"
+                    style="background:${swatch.bg};border-color:${swatch.accent}40"
+                  >
+                    <span
+                      class="appearance-theme-swatch__dot"
+                      style="background:${swatch.accent}"
+                    ></span>
+                  </span>
+                  <span class="appearance-theme-swatch__label">${themeDisplayName(name)}</span>
+                </button>
+              `;
+            },
+          )}
+        </div>
+      </div>
+      <div class="settings-appearance__section">
+        <h3 class="settings-appearance__heading">${t("settings.appearance.mode")}</h3>
+        <div class="appearance-mode-toggle" role="group" aria-label="Color mode">
+          ${MODE_OPTIONS.map(
+            (opt) => html`
+              <button
+                type="button"
+                class="appearance-mode-btn ${opt.id === props.themeMode
+                  ? "appearance-mode-btn--active"
+                  : ""}"
+                title=${opt.label}
+                aria-label="Color mode: ${opt.label}"
+                aria-pressed=${opt.id === props.themeMode}
+                @click=${(e: Event) =>
+                  props.setThemeMode(opt.id, { element: e.currentTarget as HTMLElement })}
+              >
+                ${modeIcon(opt.id)}
+                <span class="appearance-mode-btn__label">${opt.label}</span>
+              </button>
+            `,
+          )}
         </div>
       </div>
     </div>
@@ -467,10 +564,12 @@ export function renderConfig(props: ConfigProps) {
             `
           : nothing}
 
-        <!-- Appearance section (always shown at top) -->
-        ${includeVirtualSections ? renderConnectionSection(props) : nothing}
-
-        <div class="config-scroll-area">${renderQuickSettings(props)}</div>
+        <!-- Unified scroll area for all content -->
+        <div class="config-scroll-area">
+          ${includeVirtualSections ? renderConnectionSection(props) : nothing}
+          ${includeVirtualSections ? renderAppearanceSection(props) : nothing}
+          ${renderQuickSettings(props)}
+        </div>
 
         ${props.issues.length > 0
           ? html`<div class="callout danger" style="margin-top: 12px;">

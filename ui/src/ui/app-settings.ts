@@ -1,4 +1,4 @@
-import { refreshChat } from "./app-chat.ts";
+import { refreshChat, refreshFullCatalog } from "./app-chat.ts";
 import { scheduleChatScroll } from "./app-scroll.ts";
 import type { KaijiBotApp } from "./app.ts";
 import { loadAgentFiles } from "./controllers/agent-files.ts";
@@ -62,7 +62,7 @@ export function applySettings(host: SettingsHost, next: UiSettings) {
   if (next.theme !== host.theme || next.themeMode !== host.themeMode) {
     host.theme = next.theme;
     host.themeMode = next.themeMode;
-    applyResolvedTheme(host, resolveTheme(next.theme, next.themeMode));
+    applyResolvedTheme(host, resolveTheme(next.theme, next.themeMode), next.themeMode);
   }
   applyBorderRadius(next.borderRadius);
   host.applySessionKey = host.settings.lastActiveSessionKey;
@@ -265,6 +265,7 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "settings") {
     await loadConfigSchema(host as unknown as KaijiBotApp);
     await loadConfig(host as unknown as KaijiBotApp);
+    await refreshFullCatalog(host as unknown as Parameters<typeof refreshFullCatalog>[0]);
   }
   if (host.tab === "cognitive") {
     void import("./controllers/cognitive.ts").then((c) => {
@@ -346,7 +347,7 @@ export function inferBasePath() {
 export function syncThemeWithSettings(host: SettingsHost) {
   host.theme = host.settings.theme ?? "ink-jade";
   host.themeMode = host.settings.themeMode ?? "system";
-  applyResolvedTheme(host, resolveTheme(host.theme, host.themeMode));
+  applyResolvedTheme(host, resolveTheme(host.theme, host.themeMode), host.themeMode);
   applyBorderRadius(host.settings.borderRadius ?? 50);
   syncSystemThemeListener(host);
 }
@@ -376,13 +377,13 @@ export function applyBorderRadius(value: number) {
   root.style.setProperty("--radius", `${Math.round(BASE_RADII.default * scale)}px`);
 }
 
-export function applyResolvedTheme(host: SettingsHost, resolved: ResolvedTheme) {
+export function applyResolvedTheme(host: SettingsHost, resolved: ResolvedTheme, mode: ThemeMode) {
   host.themeResolved = resolved;
   if (typeof document === "undefined") {
     return;
   }
   const root = document.documentElement;
-  const colorScheme = resolveColorScheme(resolved);
+  const colorScheme = resolveColorScheme(resolved, mode);
   root.dataset.theme = resolved;
   root.dataset.themeMode = colorScheme;
   root.style.colorScheme = colorScheme;
@@ -410,7 +411,7 @@ function syncSystemThemeListener(host: SettingsHost) {
     if (host.themeMode !== "system") {
       return;
     }
-    applyResolvedTheme(host, resolveTheme(host.theme, "system"));
+    applyResolvedTheme(host, resolveTheme(host.theme, "system"), "system");
   };
   if (typeof mql.addEventListener === "function") {
     mql.addEventListener("change", onChange);

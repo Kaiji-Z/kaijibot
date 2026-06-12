@@ -750,6 +750,14 @@ export const en: TranslationMap = {
     quickSettings: "Quick Settings",
     quickSettingsDesc: "Common settings at your fingertips",
     advancedSettings: "Advanced Settings",
+    apiKeys: "API Keys",
+    apiKeysDesc: "Configure provider API keys",
+    apiKeysProvider: "Provider",
+    apiKeysValue: "API Key",
+    apiKeysSave: "Save",
+    apiKeysSaved: "Saved",
+    apiKeysError: "Save failed",
+    apiKeysHidden: "••••••••",
   },
   settings: {
     borderRadius: {
@@ -785,6 +793,10 @@ export const en: TranslationMap = {
       gateway: "Gateway",
       status: "Status",
       assistant: "Assistant",
+    },
+    appearance: {
+      theme: "Theme",
+      mode: "Color Mode",
     },
     unsavedChange: "unsaved change",
     noChanges: "No changes",
