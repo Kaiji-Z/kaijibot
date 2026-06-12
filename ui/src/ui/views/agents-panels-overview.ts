@@ -7,15 +7,20 @@ import type {
   ModelCatalogEntry,
 } from "../types.ts";
 import {
-  buildModelOptions,
+  buildGroupedModelOptions,
+  formatContextWindow,
+  groupCatalogByProvider,
   normalizeModelValue,
-  parseFallbackList,
   resolveAgentConfig,
   resolveModelFallbacks,
   resolveModelLabel,
   resolveModelPrimary,
+  sortLocaleStrings,
 } from "./agents-utils.ts";
 import type { AgentsPanel } from "./agents.ts";
+
+let selectedProvider = "";
+let pendingFallbackSlots = 0;
 
 export function renderAgentOverview(params: {
   agent: AgentsListResult["agents"][number];
@@ -30,11 +35,13 @@ export function renderAgentOverview(params: {
   configSaving: boolean;
   configDirty: boolean;
   modelCatalog: ModelCatalogEntry[];
+  configuredProviders: string[];
   onConfigReload: () => void;
   onConfigSave: () => void;
   onModelChange: (agentId: string, modelId: string | null) => void;
   onModelFallbacksChange: (agentId: string, fallbacks: string[]) => void;
   onSelectPanel: (panel: AgentsPanel) => void;
+  onRequestUpdate?: () => void;
 }) {
   const {
     agent,
@@ -81,21 +88,24 @@ export function renderAgentOverview(params: {
   const isDefault = Boolean(params.defaultId && agent.id === params.defaultId);
   const disabled = !configForm || configLoading || configSaving;
 
+  const configured = new Set(params.configuredProviders ?? []);
+  const configuredCatalog = params.modelCatalog.filter(
+    (m) => !m.provider || configured.has(m.provider),
+  );
+  const byProvider = groupCatalogByProvider(configuredCatalog);
+  const providers = sortLocaleStrings(byProvider.keys());
+  if (!selectedProvider && effectivePrimary) {
+    const slashIdx = effectivePrimary.indexOf("/");
+    selectedProvider = slashIdx > 0 ? effectivePrimary.slice(0, slashIdx) : effectivePrimary;
+  }
+  if (!selectedProvider && providers.length > 0) {
+    selectedProvider = providers[0];
+  }
+  const providerModels = byProvider.get(selectedProvider) ?? [];
+
   const removeChip = (index: number) => {
     const next = fallbackChips.filter((_, i) => i !== index);
     onModelFallbacksChange(agent.id, next);
-  };
-
-  const handleChipKeydown = (e: KeyboardEvent) => {
-    const input = e.target as HTMLInputElement;
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      const parsed = parseFallbackList(input.value);
-      if (parsed.length > 0) {
-        onModelFallbacksChange(agent.id, [...fallbackChips, ...parsed]);
-        input.value = "";
-      }
-    }
   };
 
   return html`
@@ -140,62 +150,119 @@ export function renderAgentOverview(params: {
         <div class="agent-model-fields">
           <label class="field">
             <span>Primary model${isDefault ? " (default)" : ""}</span>
-            <select
-              .value=${isDefault ? (effectivePrimary ?? "") : (entryPrimary ?? "")}
-              ?disabled=${disabled}
-              @change=${(e: Event) =>
-                onModelChange(agent.id, (e.target as HTMLSelectElement).value || null)}
-            >
-              ${isDefault
-                ? html` <option value="">Not set</option> `
-                : html`
-                    <option value="">
-                      ${defaultPrimary ? `Inherit default (${defaultPrimary})` : "Inherit default"}
-                    </option>
-                  `}
-              ${buildModelOptions(configForm, effectivePrimary ?? undefined, params.modelCatalog)}
-            </select>
+            <div class="config-model-selector">
+              <div class="config-model-selector__row">
+                <select
+                  class="config-quick-settings__select"
+                  ?disabled=${disabled}
+                  @change=${(e: Event) => {
+                    selectedProvider = (e.target as HTMLSelectElement).value;
+                  }}
+                >
+                  ${providers.map(
+                    (p) =>
+                      html`<option value=${p} ?selected=${p === selectedProvider}>
+                        ${p}${configured.has(p) ? " ✓" : ""} (${byProvider.get(p)?.length ?? 0})
+                      </option>`,
+                  )}
+                </select>
+                <select
+                  class="config-quick-settings__select"
+                  ?disabled=${disabled}
+                  @change=${(e: Event) => {
+                    const modelId = (e.target as HTMLSelectElement).value;
+                    onModelChange(agent.id, modelId || null);
+                  }}
+                >
+                  ${isDefault
+                    ? html` <option value="">Not set</option> `
+                    : html`
+                        <option value="">
+                          ${defaultPrimary ? `Inherit default (${defaultPrimary})` : "Inherit default"}
+                        </option>
+                      `}
+                  ${providerModels.map((m) => {
+                    const value = m.provider ? `${m.provider}/${m.id}` : m.id;
+                    const isSelected = value === effectivePrimary || m.id === effectivePrimary;
+                    const ctx = formatContextWindow(m.contextWindow);
+                    const hints: string[] = [];
+                    if (ctx) hints.push(ctx);
+                    if (m.reasoning) hints.push("reasoning");
+                    const suffix = hints.length ? ` — ${hints.join(", ")}` : "";
+                    return html`<option value=${value} ?selected=${isSelected}>${m.name || m.id}${suffix}</option>`;
+                  })}
+                </select>
+              </div>
+            </div>
           </label>
           <div class="field">
             <span>Fallbacks</span>
-            <div
-              class="agent-chip-input"
-              @click=${(e: Event) => {
-                const container = e.currentTarget as HTMLElement;
-                const input = container.querySelector("input");
-                if (input) {
-                  input.focus();
-                }
-              }}
-            >
+            <div class="agent-fallback-list">
               ${fallbackChips.map(
                 (chip, i) => html`
-                  <span class="chip">
-                    ${chip}
+                  <div class="agent-fallback-item">
+                    <select
+                      class="config-quick-settings__select"
+                      ?disabled=${disabled}
+                      @change=${(e: Event) => {
+                        const newFallbacks = [...fallbackChips];
+                        newFallbacks[i] = (e.target as HTMLSelectElement).value;
+                        onModelFallbacksChange(agent.id, newFallbacks);
+                      }}
+                    >
+                      ${buildGroupedModelOptions(chip, configuredCatalog)}
+                    </select>
                     <button
                       type="button"
-                      class="chip-remove"
+                      class="btn btn--sm"
                       ?disabled=${disabled}
                       @click=${() => removeChip(i)}
                     >
-                      &times;
+                      ×
                     </button>
-                  </span>
+                  </div>
                 `,
               )}
-              <input
+              ${Array.from({ length: pendingFallbackSlots }, (_, slotIdx) => html`
+                <div class="agent-fallback-item">
+                  <select
+                    class="config-quick-settings__select"
+                    ?disabled=${disabled}
+                    @change=${(e: Event) => {
+                      const modelId = (e.target as HTMLSelectElement).value;
+                      if (modelId) {
+                        pendingFallbackSlots = Math.max(0, pendingFallbackSlots - 1);
+                        onModelFallbacksChange(agent.id, [...fallbackChips, modelId]);
+                      }
+                    }}
+                  >
+                    <option value="" selected>Select fallback model...</option>
+                    ${buildGroupedModelOptions(null, configuredCatalog)}
+                  </select>
+                  <button
+                    type="button"
+                    class="btn btn--sm"
+                    ?disabled=${disabled}
+                    @click=${() => {
+                      pendingFallbackSlots = Math.max(0, pendingFallbackSlots - 1);
+                      params.onRequestUpdate?.();
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              `)}
+              <button
+                type="button"
+                class="btn btn--sm"
                 ?disabled=${disabled}
-                placeholder=${fallbackChips.length === 0 ? "provider/model" : ""}
-                @keydown=${handleChipKeydown}
-                @blur=${(e: Event) => {
-                  const input = e.target as HTMLInputElement;
-                  const parsed = parseFallbackList(input.value);
-                  if (parsed.length > 0) {
-                    onModelFallbacksChange(agent.id, [...fallbackChips, ...parsed]);
-                    input.value = "";
-                  }
+                @click=${() => {
+                  pendingFallbackSlots++;
+                  params.onRequestUpdate?.();
                 }}
-              />
+              >
+                + Add fallback
+              </button>
             </div>
           </div>
         </div>

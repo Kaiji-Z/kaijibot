@@ -1,4 +1,4 @@
-import { html, nothing } from "lit";
+import { html, nothing, type TemplateResult } from "lit";
 import {
   expandToolGroups,
   normalizeToolName,
@@ -581,6 +581,46 @@ function resolveConfiguredModels(
     options.push({ value: trimmed, label });
   }
   return options;
+}
+
+export function groupCatalogByProvider(catalog: ModelCatalogEntry[]): Map<string, ModelCatalogEntry[]> {
+  const map = new Map<string, ModelCatalogEntry[]>();
+  for (const entry of catalog) {
+    const provider = entry.provider || "unknown";
+    if (!map.has(provider)) map.set(provider, []);
+    map.get(provider)!.push(entry);
+  }
+  return map;
+}
+
+export function formatContextWindow(ctx?: number): string {
+  if (!ctx) return "";
+  if (ctx >= 1_000_000) return `${(ctx / 1_000_000).toFixed(ctx % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (ctx >= 1_000) return `${Math.round(ctx / 1_000)}K`;
+  return String(ctx);
+}
+
+export function buildGroupedModelOptions(
+  current: string | null | undefined,
+  catalog: ModelCatalogEntry[],
+): TemplateResult[] {
+  if (!catalog || catalog.length === 0) return [];
+  const byProvider = groupCatalogByProvider(catalog);
+  const providers = sortLocaleStrings(byProvider.keys());
+  const results: TemplateResult[] = [];
+  for (const provider of providers) {
+    const models = byProvider.get(provider) ?? [];
+    results.push(html`
+      <optgroup label=${provider}>
+        ${models.map((m) => {
+          const value = m.provider ? `${m.provider}/${m.id}` : m.id;
+          const selected = value === current || m.id === current;
+          return html`<option value=${value} ?selected=${selected}>${m.name || m.id}</option>`;
+        })}
+      </optgroup>
+    `);
+  }
+  return results;
 }
 
 export function buildModelOptions(

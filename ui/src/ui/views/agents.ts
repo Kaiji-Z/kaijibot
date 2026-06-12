@@ -102,6 +102,7 @@ export type AgentsProps = {
   runtimeSessionKey: string;
   runtimeSessionMatchesSelectedAgent: boolean;
   modelCatalog: ModelCatalogEntry[];
+  configuredProviders: string[];
   onRefresh: () => void;
   onSelectAgent: (agentId: string) => void;
   onSelectPanel: (panel: AgentsPanel) => void;
@@ -119,6 +120,7 @@ export type AgentsProps = {
   onCronRefresh: () => void;
   onCronRunNow: (jobId: string) => void;
   onSetDefault: (agentId: string) => void;
+  onRequestUpdate?: () => void;
   sessionsResult?: SessionsListResult | null;
   sessionDetails?: Record<string, SessionDetailState>;
 };
@@ -388,11 +390,13 @@ function renderAgentDetailContent(
                 configSaving: props.config.saving,
                 configDirty: props.config.dirty,
                 modelCatalog: props.modelCatalog,
+                configuredProviders: props.configuredProviders,
                 onConfigReload: props.onConfigReload,
                 onConfigSave: props.onConfigSave,
                 onModelChange: props.onModelChange,
                 onModelFallbacksChange: props.onModelFallbacksChange,
                 onSelectPanel: props.onSelectPanel,
+                onRequestUpdate: props.onRequestUpdate,
               })}
             </div>
           </div>`
