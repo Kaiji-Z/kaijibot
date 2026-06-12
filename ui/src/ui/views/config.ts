@@ -55,6 +55,7 @@ export type ConfigProps = {
   excludeSections?: string[];
   includeVirtualSections?: boolean;
   onRequestUpdate?: () => void;
+  onProvidersChanged?: () => void;
   client?: import("../gateway.ts").GatewayBrowserClient;
   fullModelCatalog?: import("../types.ts").ModelCatalogEntry[];
   configuredProviders?: string[];

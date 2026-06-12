@@ -176,6 +176,7 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
                   apiKeyInput = (e.target as HTMLInputElement).value;
                   apiKeySaved = false;
                   apiKeyError = false;
+                  props.onRequestUpdate?.();
                 }}
               />
               <button
@@ -194,10 +195,11 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
                       apiKey: key,
                       ...(effectiveEndpoint ? { endpoint: effectiveEndpoint } : {}),
                     })
-                    .then(() => {
+                    .then(async () => {
                       apiKeySaving = false;
                       apiKeySaved = true;
                       apiKeyInput = "";
+                      await props.onProvidersChanged?.();
                     })
                     .catch(() => {
                       apiKeySaving = false;

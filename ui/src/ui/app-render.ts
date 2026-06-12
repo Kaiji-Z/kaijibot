@@ -1360,6 +1360,22 @@ export function renderApp(state: AppViewState) {
               fullModelCatalog: state.fullModelCatalog ?? [],
               configuredProviders: state.configuredProviders ?? [],
               providerAuthOptions: state.providerAuthOptions ?? [],
+              onProvidersChanged: async () => {
+                if (!state.client) return;
+                const [
+                  { loadProviderStatus, loadProviderAuthOptions, loadModels },
+                ] = await Promise.all([
+                  import("./controllers/models.js"),
+                ]);
+                const [catalog, providers, authOptions] = await Promise.all([
+                  loadModels(state.client!, { fullCatalog: true }),
+                  loadProviderStatus(state.client!),
+                  loadProviderAuthOptions(state.client!),
+                ]);
+                state.fullModelCatalog = catalog;
+                state.configuredProviders = providers;
+                state.providerAuthOptions = authOptions;
+              },
             })
           : nothing}
       </main>
