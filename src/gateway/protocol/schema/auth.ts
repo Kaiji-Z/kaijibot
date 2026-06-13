@@ -9,6 +9,7 @@ export const AuthStoreApiKeyParamsSchema = Type.Object(
     apiKey: NonEmptyString,
     profileId: Type.Optional(NonEmptyString),
     endpoint: Type.Optional(NonEmptyString),
+    agentId: Type.Optional(NonEmptyString),
   },
   { additionalProperties: false },
 );

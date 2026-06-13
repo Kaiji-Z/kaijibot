@@ -1,5 +1,11 @@
 import { listProfilesForProvider, upsertAuthProfile } from "../../agents/auth-profiles/profiles.js";
+import { listAgentIds, resolveAgentDir } from "../../agents/agent-scope.js";
+import { invalidateModelCatalog } from "../../agents/model-catalog.js";
 import { loadAuthProfileStoreForSecretsRuntime } from "../../agents/auth-profiles/store.js";
+import { loadConfig } from "../../config/config.js";
+import type { KaijiBotConfig } from "../../config/config.js";
+import { writeConfigFile } from "../../config/io.js";
+import type { ModelApi } from "../../config/types.models.js";
 import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
 import type { ProviderPlugin } from "../../plugins/types.js";
 import {
@@ -18,9 +24,26 @@ type ProviderRegistrationEntry = {
 
 export function createAuthHandlers(deps: {
   agentDir?: string;
+  getConfig?: () => KaijiBotConfig;
   getProviderRegistrations?: () => ProviderRegistrationEntry[];
   getManifestRegistry?: () => PluginManifestRegistry;
 }): GatewayRequestHandlers {
+  /**
+   * Resolve the list of agent directories to write to.
+   * - If `agentId` is specified: write to that single agent's dir.
+   * - If `agentId` is omitted: broadcast to ALL configured agent dirs.
+   */
+  function resolveTargetAgentDirs(agentId?: string): string[] {
+    const cfg = deps.getConfig?.();
+    if (!cfg) {
+      return deps.agentDir ? [deps.agentDir] : [undefined as unknown as string];
+    }
+    if (agentId) {
+      return [resolveAgentDir(cfg, agentId)];
+    }
+    return listAgentIds(cfg).map((id) => resolveAgentDir(cfg, id));
+  }
+
   return {
     "auth.storeApiKey": async ({ params, respond }) => {
       if (!validateAuthStoreApiKeyParams(params)) {
@@ -35,7 +58,7 @@ export function createAuthHandlers(deps: {
         return;
       }
 
-      const { provider, apiKey, endpoint } = params;
+      const { provider, apiKey, endpoint, agentId } = params;
 
       if (!PROVIDER_ID_RE.test(provider)) {
         respond(
@@ -50,18 +73,23 @@ export function createAuthHandlers(deps: {
       }
 
       const profileId = (params.profileId as string | undefined) ?? `${provider}:default`;
+      const targetDirs = resolveTargetAgentDirs(agentId);
 
       try {
-        upsertAuthProfile({
-          profileId,
-          credential: {
-            type: "api_key",
-            provider,
-            key: apiKey,
-            ...(endpoint ? { metadata: { endpoint } } : {}),
-          },
-          agentDir: deps.agentDir,
-        });
+        for (const dir of targetDirs) {
+          upsertAuthProfile({
+            profileId,
+            credential: {
+              type: "api_key",
+              provider,
+              key: apiKey,
+              ...(endpoint ? { metadata: { endpoint } } : {}),
+            },
+            ...(dir ? { agentDir: dir } : {}),
+          });
+        }
+        seedProviderModelsFromManifest(provider, deps.getManifestRegistry);
+        invalidateModelCatalog();
         respond(true, { ok: true });
       } catch (err) {
         respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
@@ -148,4 +176,48 @@ export function createAuthHandlers(deps: {
       }
     },
   };
+}
+
+export function seedProviderModelsFromManifest(
+  providerId: string,
+  getManifestRegistry?: () => PluginManifestRegistry,
+): void {
+  if (!getManifestRegistry) return;
+  const registry = getManifestRegistry();
+  const plugin = registry.plugins.find((p) => p.providers.includes(providerId));
+  const manifestCatalog = plugin?.modelCatalog?.providers?.[providerId];
+  if (!manifestCatalog?.models?.length) return;
+
+  const cfg = loadConfig();
+  const existing = cfg.models?.providers?.[providerId];
+  if (existing?.models?.length) return;
+
+  const nextCfg = structuredClone(cfg);
+  if (!nextCfg.models) nextCfg.models = {};
+  if (!nextCfg.models.providers) nextCfg.models.providers = {};
+  nextCfg.models.providers[providerId] = {
+    baseUrl: manifestCatalog.baseUrl ?? "",
+    ...(manifestCatalog.api ? { api: manifestCatalog.api as ModelApi } : {}),
+    models: manifestCatalog.models.map((m) => ({
+      id: m.id,
+      name: m.name ?? m.id,
+      reasoning: m.reasoning ?? false,
+      input: (m.input ?? ["text"]) as ["text"],
+      contextWindow: m.contextWindow ?? 128000,
+      maxTokens: m.maxTokens ?? 8192,
+      cost: {
+        input: m.cost?.input ?? 0,
+        output: m.cost?.output ?? 0,
+        cacheRead: m.cost?.cacheRead ?? 0,
+        cacheWrite: m.cost?.cacheWrite ?? 0,
+      },
+      ...(m.compat ? { compat: { ...m.compat } } : {}),
+    })),
+  };
+
+  try {
+    void writeConfigFile(nextCfg);
+  } catch {
+    // Config seeding is best-effort; the API key was already saved.
+  }
 }

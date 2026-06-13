@@ -104,6 +104,7 @@ export type PluginManifestRecord = {
     blurb?: string;
     preferOver?: readonly string[];
   };
+  modelCatalog?: PluginManifest["modelCatalog"];
 };
 
 export type PluginManifestRegistry = {
@@ -337,6 +338,7 @@ function buildRecord(params: {
     contracts: params.manifest.contracts,
     configContracts: params.manifest.configContracts,
     channelConfigs,
+    modelCatalog: params.manifest.modelCatalog,
     ...(params.candidate.packageManifest?.channel?.id
       ? {
           channelCatalogMeta: {

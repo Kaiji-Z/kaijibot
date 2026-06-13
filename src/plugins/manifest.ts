@@ -132,6 +132,33 @@ export type PluginManifest = {
   /** Manifest-owned config behavior consumed by generic core helpers. */
   configContracts?: PluginManifestConfigContracts;
   channelConfigs?: Record<string, PluginManifestChannelConfig>;
+  /**
+   * Static model catalog metadata from the plugin manifest. Used by the gateway
+   * to seed model definitions into runtime config when a provider API key is
+   * saved via the control UI (matching onboard behavior).
+   */
+  modelCatalog?: PluginManifestModelCatalog;
+};
+
+export type PluginManifestModelCatalog = {
+  providers: Record<
+    string,
+    {
+      baseUrl?: string;
+      api?: string;
+      models: Array<{
+        id: string;
+        name?: string;
+        reasoning?: boolean;
+        input?: string[];
+        contextWindow?: number;
+        maxTokens?: number;
+        cost?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
+        compat?: Record<string, unknown>;
+      }>;
+    }
+  >;
+  discovery?: Record<string, string>;
 };
 
 export type PluginManifestContracts = {

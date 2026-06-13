@@ -2019,7 +2019,7 @@ export async function startGatewayServer(
       },
     });
     const authHandlers = createAuthHandlers({
-      agentDir: defaultWorkspaceDir,
+      getConfig: () => gatewayPluginConfigAtStart,
       getProviderRegistrations: () => pluginRegistry.providers,
       getManifestRegistry: () =>
         loadPluginManifestRegistry({

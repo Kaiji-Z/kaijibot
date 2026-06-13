@@ -64,6 +64,15 @@ export function resetModelCatalogCacheForTest() {
   importPiSdk = defaultImportPiSdk;
 }
 
+/**
+ * Invalidate the cached model catalog so the next call rebuilds it.
+ * Called after auth changes (e.g. storeApiKey, deleteApiKey) to ensure
+ * newly authenticated providers appear in the catalog without a restart.
+ */
+export function invalidateModelCatalog() {
+  modelCatalogPromise = null;
+}
+
 // Test-only escape hatch: allow mocking the dynamic import to simulate transient failures.
 export function __setModelCatalogImportForTest(loader?: () => Promise<PiSdkModule>) {
   importPiSdk = loader ?? defaultImportPiSdk;
