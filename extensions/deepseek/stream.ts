@@ -18,10 +18,12 @@ export function createDeepSeekV4ThinkingWrapper(
         if (payload && typeof payload === "object" && isDeepSeekV4ModelRef(model)) {
           const p = payload as Record<string, unknown>;
           if (enabled) {
-            p.thinking = { ...(p.thinking as object | undefined), enabled: true };
+            p.thinking = { type: "enabled" };
+          } else {
+            p.thinking = { type: "disabled" };
+            delete p.reasoning_effort;
+            delete p.reasoningEffort;
           }
-          delete p.reasoning_effort;
-          delete p.reasoningEffort;
         }
         return originalOnPayload?.(payload, model);
       },
