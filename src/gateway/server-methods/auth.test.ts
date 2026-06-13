@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createAuthHandlers, seedProviderModelsFromManifest } from "./auth.js";
+import { createAuthHandlers, seedProviderModelsFromManifest, seedProviderModels } from "./auth.js";
 import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
 
 const writeConfigFileMock = vi.fn().mockResolvedValue(undefined);
@@ -463,6 +463,151 @@ describe("createAuthHandlers", () => {
 
     it("does nothing when provider is not in manifest registry", () => {
       seedProviderModelsFromManifest("unknown-provider", () => makeRegistry(DEEPSEEK_CATALOG));
+      expect(writeConfigFileMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("seedProviderModels (applyConfig path)", () => {
+    beforeEach(() => {
+      writeConfigFileMock.mockClear();
+      loadConfigMock.mockClear();
+      loadConfigMock.mockReturnValue({ models: { providers: {} } });
+    });
+
+    it("uses provider applyConfig to seed models when available", () => {
+      const applyConfigMock = vi.fn((cfg: Record<string, unknown>) => ({
+        ...cfg,
+        models: {
+          providers: {
+            deepseek: {
+              baseUrl: "https://api.deepseek.com",
+              models: [
+                { id: "deepseek-chat", name: "DeepSeek Chat" },
+                { id: "deepseek-reasoner", name: "DeepSeek Reasoner" },
+              ],
+            },
+          },
+        },
+      }));
+
+      seedProviderModels("deepseek", {
+        getProviderRegistrations: () => [
+          {
+            provider: {
+              id: "deepseek",
+              auth: [
+                {
+                  id: "api-key",
+                  label: "DeepSeek API Key",
+                  kind: "api_key" as const,
+                  run: vi.fn(),
+                  applyConfig: applyConfigMock,
+                },
+              ],
+            },
+          },
+        ] as never,
+      });
+
+      expect(applyConfigMock).toHaveBeenCalledTimes(1);
+      expect(writeConfigFileMock).toHaveBeenCalledTimes(1);
+      const writtenCfg = writeConfigFileMock.mock.calls[0][0] as {
+        models: { providers: Record<string, { baseUrl: string; models: unknown[] }> };
+      };
+      const ds = writtenCfg.models.providers.deepseek;
+      expect(ds.baseUrl).toBe("https://api.deepseek.com");
+      expect(ds.models).toHaveLength(2);
+      expect((ds.models[0] as { id: string }).id).toBe("deepseek-chat");
+    });
+
+    it("falls back to manifest when provider has no applyConfig", () => {
+      const manifestReg: PluginManifestRegistry = {
+        plugins: [
+          {
+            id: "deepseek",
+            providers: ["deepseek"],
+            channels: [],
+            cliBackends: [],
+            skills: [],
+            hooks: [],
+            origin: "bundled",
+            rootDir: "/test",
+            source: "bundled",
+            manifestPath: "/test/kaijibot.plugin.json",
+            modelCatalog: {
+              providers: {
+                deepseek: {
+                  baseUrl: "https://api.deepseek.com",
+                  api: "openai-completions",
+                  models: [
+                    { id: "deepseek-chat", name: "DeepSeek Chat" },
+                    { id: "deepseek-reasoner", name: "DeepSeek Reasoner" },
+                  ],
+                },
+              },
+            } as never,
+          },
+        ],
+        diagnostics: [],
+      };
+
+      seedProviderModels("deepseek", {
+        getProviderRegistrations: () => [
+          {
+            provider: {
+              id: "deepseek",
+              auth: [
+                {
+                  id: "api-key",
+                  label: "DeepSeek API Key",
+                  kind: "api_key" as const,
+                  run: vi.fn(),
+                },
+              ],
+            },
+          },
+        ] as never,
+        getManifestRegistry: () => manifestReg,
+      });
+
+      expect(writeConfigFileMock).toHaveBeenCalledTimes(1);
+      const writtenCfg = writeConfigFileMock.mock.calls[0][0] as {
+        models: { providers: Record<string, { models: unknown[] }> };
+      };
+      expect(writtenCfg.models.providers.deepseek.models).toHaveLength(2);
+    });
+
+    it("skips seeding when config already has models for the provider", () => {
+      loadConfigMock.mockReturnValue({
+        models: {
+          providers: {
+            deepseek: { baseUrl: "existing", models: [{ id: "existing-model" }] },
+          },
+        },
+      });
+
+      const applyConfigMock = vi.fn();
+
+      seedProviderModels("deepseek", {
+        getProviderRegistrations: () => [
+          {
+            provider: {
+              id: "deepseek",
+              auth: [
+                {
+                  id: "api-key",
+                  label: "DeepSeek API Key",
+                  kind: "api_key" as const,
+                  run: vi.fn(),
+                  applyConfig: applyConfigMock,
+                },
+              ],
+            },
+          },
+        ] as never,
+      });
+
+      expect(applyConfigMock).not.toHaveBeenCalled();
       expect(writeConfigFileMock).not.toHaveBeenCalled();
     });
   });

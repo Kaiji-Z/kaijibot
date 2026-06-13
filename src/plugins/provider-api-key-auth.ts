@@ -90,6 +90,7 @@ export function createProviderApiKeyAuthMethod(
     endpoint: params.endpoint,
     kind: "api_key",
     wizard: params.wizard,
+    applyConfig: params.applyConfig,
     run: async (ctx) => {
       const opts = ctx.opts as Record<string, unknown> | undefined;
       const flagValue = resolveStringOption(opts, params.optionKey);

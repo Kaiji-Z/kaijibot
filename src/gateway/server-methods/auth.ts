@@ -8,6 +8,7 @@ import { writeConfigFile } from "../../config/io.js";
 import type { ModelApi } from "../../config/types.models.js";
 import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
 import type { ProviderPlugin } from "../../plugins/types.js";
+import { applyProviderAuthConfigPatch } from "../../plugins/provider-auth-choice-helpers.js";
 import { resolveBundledPluginsDir } from "../../plugins/bundled-dir.js";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join as joinPath } from "node:path";
@@ -91,7 +92,7 @@ export function createAuthHandlers(deps: {
             ...(dir ? { agentDir: dir } : {}),
           });
         }
-        seedProviderModelsFromManifest(provider, deps.getManifestRegistry);
+        seedProviderModels(provider, deps);
         invalidateModelCatalog();
         respond(true, { ok: true });
       } catch (err) {
@@ -233,6 +234,33 @@ function resolveProviderModelCatalog(
   }
 
   return undefined;
+}
+
+export function seedProviderModels(
+  providerId: string,
+  deps: {
+    getProviderRegistrations?: () => ProviderRegistrationEntry[];
+    getManifestRegistry?: () => PluginManifestRegistry;
+  },
+): void {
+  const registrations = deps.getProviderRegistrations?.() ?? [];
+  const reg = registrations.find((r) => r.provider.id === providerId);
+  const method = reg?.provider.auth.find((m) => m.kind === "api_key");
+
+  if (method?.applyConfig) {
+    const cfg = loadConfig();
+    const existing = cfg.models?.providers?.[providerId];
+    if (existing?.models?.length) return;
+    const patched = applyProviderAuthConfigPatch(cfg, method.applyConfig(cfg));
+    try {
+      void writeConfigFile(patched);
+    } catch {
+      // Config seeding is best-effort; the API key was already saved.
+    }
+    return;
+  }
+
+  seedProviderModelsFromManifest(providerId, deps.getManifestRegistry);
 }
 
 export function seedProviderModelsFromManifest(

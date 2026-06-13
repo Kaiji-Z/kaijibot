@@ -298,6 +298,7 @@ export type ProviderAuthMethod = {
   runNonInteractive?: (
     ctx: ProviderAuthMethodNonInteractiveContext,
   ) => Promise<KaijiBotConfig | null>;
+  applyConfig?: (cfg: KaijiBotConfig) => KaijiBotConfig;
 };
 
 export type ProviderCatalogOrder = "simple" | "profile" | "paired" | "late";
