@@ -233,5 +233,11 @@
   "plugin-config-runtime",
   "skills-runtime",
   "string-coerce-runtime",
-  "text-utility-runtime"
+  "text-utility-runtime",
+  "plugin-test-contracts",
+  "plugin-test-runtime",
+  "provider-http-test-mocks",
+  "provider-test-contracts",
+  "provider-transport-runtime",
+  "test-env"
 ]
