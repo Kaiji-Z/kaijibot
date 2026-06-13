@@ -32,6 +32,10 @@ vi.mock("../../config/config.js", () => ({
   loadConfig: () => loadConfigMock(),
 }));
 
+vi.mock("../../plugins/bundled-dir.js", () => ({
+  resolveBundledPluginsDir: () => undefined,
+}));
+
 const listAgentIdsMock = vi.fn((_cfg: unknown) => ["main"]);
 const resolveAgentDirMock = vi.fn((_cfg: unknown, agentId: string) => `/test/agents/${agentId}/agent`);
 

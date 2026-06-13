@@ -8,6 +8,9 @@ import { writeConfigFile } from "../../config/io.js";
 import type { ModelApi } from "../../config/types.models.js";
 import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
 import type { ProviderPlugin } from "../../plugins/types.js";
+import { resolveBundledPluginsDir } from "../../plugins/bundled-dir.js";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join as joinPath } from "node:path";
 import {
   ErrorCodes,
   errorShape,
@@ -178,14 +181,65 @@ export function createAuthHandlers(deps: {
   };
 }
 
+type ModelCatalogEntry = {
+  baseUrl?: string;
+  api?: string;
+  models: Array<{
+    id: string;
+    name?: string;
+    reasoning?: boolean;
+    input?: string[];
+    contextWindow?: number;
+    maxTokens?: number;
+    cost?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
+    compat?: Record<string, unknown>;
+  }>;
+};
+
+function resolveProviderModelCatalog(
+  providerId: string,
+  getManifestRegistry?: () => PluginManifestRegistry,
+): ModelCatalogEntry | undefined {
+  if (getManifestRegistry) {
+    try {
+      const registry = getManifestRegistry();
+      const plugin = registry.plugins.find((p) => p.providers.includes(providerId));
+      const catalog = plugin?.modelCatalog?.providers?.[providerId];
+      if (catalog?.models?.length) return catalog;
+    } catch {
+      // fall through to filesystem scan
+    }
+  }
+
+  try {
+    const bundledDir = resolveBundledPluginsDir();
+    if (!bundledDir) return undefined;
+    const entries = readdirSync(bundledDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const manifestPath = joinPath(bundledDir, entry.name, "kaijibot.plugin.json");
+      if (!existsSync(manifestPath)) continue;
+      const raw = readFileSync(manifestPath, "utf-8");
+      const manifest = JSON.parse(raw) as {
+        providers?: string[];
+        modelCatalog?: { providers?: Record<string, ModelCatalogEntry> };
+      };
+      if (!manifest.providers?.includes(providerId)) continue;
+      const catalog = manifest.modelCatalog?.providers?.[providerId];
+      if (catalog?.models?.length) return catalog;
+    }
+  } catch {
+    // best-effort
+  }
+
+  return undefined;
+}
+
 export function seedProviderModelsFromManifest(
   providerId: string,
   getManifestRegistry?: () => PluginManifestRegistry,
 ): void {
-  if (!getManifestRegistry) return;
-  const registry = getManifestRegistry();
-  const plugin = registry.plugins.find((p) => p.providers.includes(providerId));
-  const manifestCatalog = plugin?.modelCatalog?.providers?.[providerId];
+  const manifestCatalog = resolveProviderModelCatalog(providerId, getManifestRegistry);
   if (!manifestCatalog?.models?.length) return;
 
   const cfg = loadConfig();
