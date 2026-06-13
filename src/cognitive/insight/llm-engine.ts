@@ -6,6 +6,8 @@ import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
+import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { pickPromptVariant } from "../feedback/preference-learner.js";
 import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
@@ -263,19 +265,27 @@ export function createDefaultInsightDeps(): LlmInsightDeps {
     complete,
     prepareModel: async (cfg, modelRef) => {
       const extractionModel = cfg.cognitive?.persona?.extractionModel;
-      const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5-turbo";
-      const [provider, ...modelParts] = modelRefToUse.split("/");
-      const modelId = modelParts.join("/") || "glm-5-turbo";
-      return prepareSimpleCompletionModel({ cfg, provider, modelId });
+      const explicit = modelRef ?? extractionModel;
+      if (explicit) {
+        const [provider, ...modelParts] = explicit.split("/");
+        const modelId = modelParts.join("/") || DEFAULT_MODEL;
+        return prepareSimpleCompletionModel({ cfg, provider, modelId });
+      }
+      const resolved = resolveDefaultModelForAgent({ cfg });
+      return prepareSimpleCompletionModel({ cfg, provider: resolved.provider, modelId: resolved.model });
     },
     inferenceDeps: {
       complete,
       prepareModel: async (cfg, modelRef) => {
         const extractionModel = cfg.cognitive?.persona?.extractionModel;
-        const modelRefToUse = modelRef ?? extractionModel ?? "zai/glm-5-turbo";
-        const [provider, ...modelParts] = modelRefToUse.split("/");
-        const modelId = modelParts.join("/") || "glm-5-turbo";
-        return prepareSimpleCompletionModel({ cfg, provider, modelId });
+        const explicit = modelRef ?? extractionModel;
+        if (explicit) {
+          const [provider, ...modelParts] = explicit.split("/");
+          const modelId = modelParts.join("/") || DEFAULT_MODEL;
+          return prepareSimpleCompletionModel({ cfg, provider, modelId });
+        }
+        const resolved = resolveDefaultModelForAgent({ cfg });
+        return prepareSimpleCompletionModel({ cfg, provider: resolved.provider, modelId: resolved.model });
       },
     },
   };

@@ -1,6 +1,7 @@
 import { complete, type Api, type Model } from "@mariozechner/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
 import type { Fragment } from "./fragment-types.js";
@@ -26,11 +27,11 @@ export type InterestInferenceDeps = {
 // ---------------------------------------------------------------------------
 
 function resolveInferenceModel(config: KaijiBotConfig): string {
-  return (
-    config.cognitive?.insight?.inferenceModel ??
-    config.cognitive?.persona?.extractionModel ??
-    "zai/glm-5-turbo"
-  );
+  const explicit =
+    config.cognitive?.insight?.inferenceModel ?? config.cognitive?.persona?.extractionModel;
+  if (explicit) return explicit;
+  const resolved = resolveDefaultModelForAgent({ cfg: config });
+  return `${resolved.provider}/${resolved.model}`;
 }
 
 // ---------------------------------------------------------------------------
