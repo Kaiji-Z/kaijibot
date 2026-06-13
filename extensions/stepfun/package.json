@@ -1,6 +1,6 @@
 {
   "name": "@kaijibot/stepfun-provider",
-  "version": "2026.4.10",
+  "version": "2026.5.22",
   "private": true,
   "description": "KaijiBot StepFun provider plugin",
   "type": "module",

@@ -1,5 +1,1 @@
-export {
-  detectZaiEndpoint,
-  type ZaiDetectedEndpoint,
-  type ZaiEndpointId,
-} from "kaijibot/plugin-sdk/provider-zai-endpoint";
+export { detectZaiEndpoint, type ZaiDetectedEndpoint, type ZaiEndpointId } from "./detect.js";

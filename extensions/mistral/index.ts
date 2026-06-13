@@ -6,7 +6,7 @@ import { buildMistralProvider } from "./provider-catalog.js";
 import { contributeMistralResolvedModelCompat } from "./provider-compat.js";
 
 const PROVIDER_ID = "mistral";
-export function buildMistralReplayPolicy() {
+function buildMistralReplayPolicy() {
   return {
     sanitizeToolCallIds: true,
     toolCallIdMode: "strict9" as const,

@@ -1,10 +1,18 @@
 import type { ModelProviderConfig } from "kaijibot/plugin-sdk/provider-model-shared";
-import { buildMistralCatalogModels, MISTRAL_BASE_URL } from "./model-definitions.js";
+import manifest from "./kaijibot.plugin.json" with { type: "json" };
 
 export function buildMistralProvider(): ModelProviderConfig {
+  const catalog = manifest.modelCatalog.providers.mistral;
   return {
-    baseUrl: MISTRAL_BASE_URL,
-    api: "openai-completions",
-    models: buildMistralCatalogModels(),
+    baseUrl: catalog.baseUrl,
+    api: catalog.api as ModelProviderConfig["api"],
+    models: catalog.models.map(
+      (m) =>
+        ({
+          ...m,
+          reasoning: m.reasoning ?? false,
+          input: [...m.input] as ModelProviderConfig["models"][number]["input"],
+        }) as ModelProviderConfig["models"][number],
+    ),
   };
 }

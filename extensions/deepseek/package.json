@@ -1,6 +1,6 @@
 {
   "name": "@kaijibot/deepseek-provider",
-  "version": "2026.4.10",
+  "version": "2026.5.22",
   "private": true,
   "description": "KaijiBot DeepSeek provider plugin",
   "type": "module",

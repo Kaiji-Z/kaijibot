@@ -1,6 +1,6 @@
 {
   "name": "@kaijibot/groq-provider",
-  "version": "2026.4.10",
+  "version": "2026.5.22",
   "private": true,
   "description": "KaijiBot Groq media-understanding provider",
   "type": "module",

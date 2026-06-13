@@ -1,15 +1,20 @@
 import { defineSingleProviderPluginEntry } from "kaijibot/plugin-sdk/provider-entry";
 import { applyQwenNativeStreamingUsageCompat } from "./api.js";
 import { buildQwenMediaUnderstandingProvider } from "./media-understanding-provider.js";
-import { isQwenCodingPlanBaseUrl, QWEN_36_PLUS_MODEL_ID, QWEN_BASE_URL } from "./models.js";
+import {
+  isQwenCodingPlanBaseUrl,
+  QWEN_36_PLUS_MODEL_ID,
+  QWEN_BASE_URL,
+  QWEN_DEFAULT_MODEL_REF,
+} from "./models.js";
 import {
   applyQwenConfig,
   applyQwenConfigCn,
   applyQwenStandardConfig,
   applyQwenStandardConfigCn,
-  QWEN_DEFAULT_MODEL_REF,
 } from "./onboard.js";
 import { buildQwenProvider } from "./provider-catalog.js";
+import { wrapQwenProviderStream } from "./stream.js";
 import { buildQwenVideoGenerationProvider } from "./video-generation-provider.js";
 
 const PROVIDER_ID = "qwen";
@@ -39,13 +44,6 @@ function resolveConfiguredQwenBaseUrl(
   return undefined;
 }
 
-function isQwen36PlusUnsupportedForConfig(params: {
-  config: Parameters<typeof resolveConfiguredQwenBaseUrl>[0];
-  baseUrl?: string;
-}): boolean {
-  return isQwenCodingPlanBaseUrl(params.baseUrl ?? resolveConfiguredQwenBaseUrl(params.config));
-}
-
 export default defineSingleProviderPluginEntry({
   id: PROVIDER_ID,
   name: "Qwen Provider",
@@ -59,7 +57,6 @@ export default defineSingleProviderPluginEntry({
         methodId: "standard-api-key-cn",
         label: "Standard API Key for China (pay-as-you-go)",
         hint: "Endpoint: dashscope.aliyuncs.com",
-        endpoint: "standard-cn",
         optionKey: "modelstudioStandardApiKeyCn",
         flagName: "--modelstudio-standard-api-key-cn",
         envVar: "QWEN_API_KEY",
@@ -83,7 +80,6 @@ export default defineSingleProviderPluginEntry({
         methodId: "standard-api-key",
         label: "Standard API Key for Global/Intl (pay-as-you-go)",
         hint: "Endpoint: dashscope-intl.aliyuncs.com",
-        endpoint: "standard-intl",
         optionKey: "modelstudioStandardApiKey",
         flagName: "--modelstudio-standard-api-key",
         envVar: "QWEN_API_KEY",
@@ -107,7 +103,6 @@ export default defineSingleProviderPluginEntry({
         methodId: "api-key-cn",
         label: "Coding Plan API Key for China (subscription)",
         hint: "Endpoint: coding.dashscope.aliyuncs.com",
-        endpoint: "coding-cn",
         optionKey: "modelstudioApiKeyCn",
         flagName: "--modelstudio-api-key-cn",
         envVar: "QWEN_API_KEY",
@@ -131,7 +126,6 @@ export default defineSingleProviderPluginEntry({
         methodId: "api-key",
         label: "Coding Plan API Key for Global/Intl (subscription)",
         hint: "Endpoint: coding-intl.dashscope.aliyuncs.com",
-        endpoint: "coding-intl",
         optionKey: "modelstudioApiKey",
         flagName: "--modelstudio-api-key",
         envVar: "QWEN_API_KEY",
@@ -169,6 +163,7 @@ export default defineSingleProviderPluginEntry({
     },
     applyNativeStreamingUsageCompat: ({ providerConfig }) =>
       applyQwenNativeStreamingUsageCompat(providerConfig),
+    wrapStreamFn: wrapQwenProviderStream,
     normalizeConfig: ({ providerConfig }) => {
       if (!isQwenCodingPlanBaseUrl(providerConfig.baseUrl)) {
         return undefined;
@@ -177,21 +172,6 @@ export default defineSingleProviderPluginEntry({
       return models && models.length !== providerConfig.models?.length
         ? { ...providerConfig, models }
         : undefined;
-    },
-    suppressBuiltInModel: (ctx) => {
-      const provider = normalizeProviderId(ctx.provider);
-      if (
-        (provider !== PROVIDER_ID && provider !== LEGACY_PROVIDER_ID) ||
-        ctx.modelId !== QWEN_36_PLUS_MODEL_ID ||
-        !isQwen36PlusUnsupportedForConfig({ config: ctx.config, baseUrl: ctx.baseUrl })
-      ) {
-        return undefined;
-      }
-      return {
-        suppress: true,
-        errorMessage:
-          "Unknown model: qwen/qwen3.6-plus. qwen3.6-plus is not supported on the Qwen Coding Plan endpoint; use a Standard pay-as-you-go Qwen endpoint or choose qwen/qwen3.5-plus.",
-      };
     },
   },
   register(api) {

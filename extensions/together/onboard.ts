@@ -21,10 +21,6 @@ const togetherPresetAppliers = createModelCatalogPresetAppliers({
   }),
 });
 
-export function applyTogetherProviderConfig(cfg: KaijiBotConfig): KaijiBotConfig {
-  return togetherPresetAppliers.applyProviderConfig(cfg);
-}
-
 export function applyTogetherConfig(cfg: KaijiBotConfig): KaijiBotConfig {
   return togetherPresetAppliers.applyConfig(cfg);
 }

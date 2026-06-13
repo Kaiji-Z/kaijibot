@@ -4,7 +4,7 @@ import {
   type ProviderCatalogContext,
 } from "kaijibot/plugin-sdk/plugin-entry";
 import { createProviderApiKeyAuthMethod } from "kaijibot/plugin-sdk/provider-auth-api-key";
-import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
+import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/string-coerce-runtime";
 import {
   applyStepFunPlanConfig,
   applyStepFunPlanConfigCn,
@@ -125,7 +125,6 @@ function createStepFunApiKeyMethod(params: {
   methodId: string;
   label: string;
   hint: string;
-  endpoint: string;
   region: StepFunRegion;
   promptMessage: string;
   defaultModel: string;
@@ -139,7 +138,6 @@ function createStepFunApiKeyMethod(params: {
     methodId: params.methodId,
     label: params.label,
     hint: params.hint,
-    endpoint: params.endpoint,
     optionKey: "stepfunApiKey",
     flagName: "--stepfun-api-key",
     envVar: "STEPFUN_API_KEY",
@@ -176,7 +174,6 @@ export default definePluginEntry({
           methodId: "standard-api-key-cn",
           label: "StepFun Standard API key (China)",
           hint: "Endpoint: api.stepfun.com/v1",
-          endpoint: "standard-cn",
           region: "cn",
           promptMessage: "Enter StepFun API key for China endpoints",
           defaultModel: STEPFUN_DEFAULT_MODEL_REF,
@@ -190,7 +187,6 @@ export default definePluginEntry({
           methodId: "standard-api-key-intl",
           label: "StepFun Standard API key (Global/Intl)",
           hint: "Endpoint: api.stepfun.ai/v1",
-          endpoint: "standard-intl",
           region: "intl",
           promptMessage: "Enter StepFun API key for global endpoints",
           defaultModel: STEPFUN_DEFAULT_MODEL_REF,
@@ -221,7 +217,6 @@ export default definePluginEntry({
           methodId: "plan-api-key-cn",
           label: "StepFun Step Plan API key (China)",
           hint: "Endpoint: api.stepfun.com/step_plan/v1",
-          endpoint: "plan-cn",
           region: "cn",
           promptMessage: "Enter StepFun API key for China endpoints",
           defaultModel: STEPFUN_PLAN_DEFAULT_MODEL_REF,
@@ -235,7 +230,6 @@ export default definePluginEntry({
           methodId: "plan-api-key-intl",
           label: "StepFun Step Plan API key (Global/Intl)",
           hint: "Endpoint: api.stepfun.ai/step_plan/v1",
-          endpoint: "plan-intl",
           region: "intl",
           promptMessage: "Enter StepFun API key for global endpoints",
           defaultModel: STEPFUN_PLAN_DEFAULT_MODEL_REF,

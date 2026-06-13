@@ -5,6 +5,7 @@ import {
   type ProviderAuthMethodNonInteractiveContext,
   type ProviderResolveDynamicModelContext,
   type ProviderRuntimeModel,
+  type ProviderWrapStreamFnContext,
 } from "kaijibot/plugin-sdk/plugin-entry";
 import {
   applyAuthProfileConfig,
@@ -13,27 +14,37 @@ import {
   normalizeApiKeyInput,
   normalizeOptionalSecretInput,
   type SecretInput,
-  upsertAuthProfile,
   validateApiKeyInput,
 } from "kaijibot/plugin-sdk/provider-auth-api-key";
+import { upsertAuthProfileWithLock } from "kaijibot/plugin-sdk/provider-auth";
 import {
   buildProviderReplayFamilyHooks,
   normalizeModelCompat,
 } from "kaijibot/plugin-sdk/provider-model-shared";
+import {
+  createToolStreamWrapper,
+} from "kaijibot/plugin-sdk/provider-stream-shared";
+import type { StreamFn } from "@mariozechner/pi-agent-core";
 import { fetchZaiUsage, resolveLegacyPiAgentAccessToken } from "kaijibot/plugin-sdk/provider-usage";
-import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
+import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/string-coerce-runtime";
 import { detectZaiEndpoint, type ZaiEndpointId } from "./detect.js";
 import { zaiMediaUnderstandingProvider } from "./media-understanding-provider.js";
 import { buildZaiModelDefinition } from "./model-definitions.js";
 import { applyZaiConfig, applyZaiProviderConfig, ZAI_DEFAULT_MODEL_REF } from "./onboard.js";
-import { wrapZaiProviderStream } from "./stream.js";
 
 const PROVIDER_ID = "zai";
 const GLM5_TEMPLATE_MODEL_ID = "glm-4.7";
 const PROFILE_ID = "zai:default";
-const OPENAI_COMPATIBLE_REPLAY_HOOKS = buildProviderReplayFamilyHooks({
-  family: "openai-compatible",
-});
+type UpsertAuthProfileParams = Parameters<typeof upsertAuthProfileWithLock>[0];
+
+async function upsertAuthProfileWithLockOrThrow(params: UpsertAuthProfileParams): Promise<void> {
+  const updated = await upsertAuthProfileWithLock(params);
+  if (!updated) {
+    throw new Error(
+      "Failed to update auth profile store; the auth store lock may be busy. Wait a moment and retry.",
+    );
+  }
+}
 
 function resolveGlm5ForwardCompatModel(
   ctx: ProviderResolveDynamicModelContext,
@@ -72,6 +83,75 @@ function resolveGlm5ForwardCompatModel(
 
 function resolveZaiDefaultModel(modelIdOverride?: string): string {
   return modelIdOverride ? `zai/${modelIdOverride}` : ZAI_DEFAULT_MODEL_REF;
+}
+
+function isTrueParam(value: unknown): boolean {
+  return value === true;
+}
+
+function shouldPreserveZaiThinking(extraParams?: Record<string, unknown>): boolean {
+  return isTrueParam(extraParams?.preserveThinking) || isTrueParam(extraParams?.preserve_thinking);
+}
+
+function isDisabledThinkingLevel(thinkingLevel: ProviderWrapStreamFnContext["thinkingLevel"]) {
+  return thinkingLevel === "off";
+}
+
+function createZaiPayloadPatchStreamWrapper(
+  baseStreamFn: StreamFn | undefined,
+  patchFn: (params: { payload: Record<string, unknown>; model: Parameters<StreamFn>[0] }) => void,
+): StreamFn {
+  if (!baseStreamFn) {
+    throw new Error("zai stream: base stream fn not provided");
+  }
+  const wrapper: StreamFn = (model, context, options) => {
+    const originalOnPayload = options?.onPayload;
+    return baseStreamFn(model, context, {
+      ...options,
+      onPayload: (payload) => {
+        if (payload && typeof payload === "object") {
+          patchFn({ payload: payload as Record<string, unknown>, model });
+        }
+        return originalOnPayload?.(payload, model);
+      },
+    });
+  };
+  return wrapper;
+}
+
+function resolveZaiDefaultToolStreamExtraParams(
+  extraParams: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  return {
+    ...extraParams,
+    tool_stream: extraParams?.tool_stream !== false,
+  };
+}
+
+function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
+  let streamFn = createToolStreamWrapper(ctx.streamFn, ctx.extraParams?.tool_stream !== false);
+  const preserveThinking = shouldPreserveZaiThinking(ctx.extraParams);
+
+  if (!isDisabledThinkingLevel(ctx.thinkingLevel) && !preserveThinking) {
+    return streamFn;
+  }
+
+  streamFn = createZaiPayloadPatchStreamWrapper(streamFn, ({ payload, model }) => {
+    if (model.api !== "openai-completions" || model.provider !== PROVIDER_ID) {
+      return;
+    }
+
+    if (isDisabledThinkingLevel(ctx.thinkingLevel)) {
+      payload.thinking = { type: "disabled" };
+      return;
+    }
+
+    if (preserveThinking) {
+      payload.thinking = { type: "enabled", clear_thinking: false };
+    }
+  });
+
+  return streamFn;
 }
 
 async function promptForZaiEndpoint(ctx: ProviderAuthContext): Promise<ZaiEndpointId> {
@@ -189,7 +269,7 @@ async function runZaiApiKeyAuthNonInteractive(
     if (!credential) {
       return null;
     }
-    upsertAuthProfile({
+    await upsertAuthProfileWithLockOrThrow({
       profileId: PROFILE_ID,
       credential,
       agentDir: ctx.agentDir,
@@ -219,7 +299,6 @@ function buildZaiApiKeyMethod(params: {
     label: params.choiceLabel,
     hint: params.choiceHint,
     kind: "api_key",
-    ...(params.endpoint ? { endpoint: params.endpoint } : {}),
     wizard: {
       choiceId: params.choiceId,
       choiceLabel: params.choiceLabel,
@@ -280,18 +359,11 @@ export default definePluginEntry({
         }),
       ],
       resolveDynamicModel: (ctx) => resolveGlm5ForwardCompatModel(ctx),
-      ...OPENAI_COMPATIBLE_REPLAY_HOOKS,
-      prepareExtraParams: (ctx) => {
-        if (ctx.extraParams?.tool_stream !== undefined) {
-          return ctx.extraParams;
-        }
-        return {
-          ...ctx.extraParams,
-          tool_stream: true,
-        };
-      },
-      wrapStreamFn: wrapZaiProviderStream,
-      isBinaryThinking: () => true,
+      ...buildProviderReplayFamilyHooks({
+        family: "openai-compatible",
+      }),
+      prepareExtraParams: (ctx) => resolveZaiDefaultToolStreamExtraParams(ctx.extraParams),
+      wrapStreamFn: (ctx) => wrapZaiStreamFn(ctx),
       isModernModelRef: ({ modelId }) => {
         const lower = normalizeLowercaseStringOrEmpty(modelId);
         return (

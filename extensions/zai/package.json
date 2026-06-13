@@ -1,6 +1,6 @@
 {
   "name": "@kaijibot/zai-provider",
-  "version": "2026.4.10",
+  "version": "2026.5.22",
   "private": true,
   "description": "KaijiBot Z.AI provider plugin",
   "type": "module",

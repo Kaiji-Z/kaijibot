@@ -11,14 +11,6 @@ import {
 } from "./models.js";
 import { buildQwenProvider } from "./provider-catalog.js";
 
-export {
-  QWEN_CN_BASE_URL,
-  QWEN_DEFAULT_MODEL_REF,
-  QWEN_GLOBAL_BASE_URL,
-  QWEN_STANDARD_CN_BASE_URL,
-  QWEN_STANDARD_GLOBAL_BASE_URL,
-};
-
 const qwenPresetAppliers = createModelCatalogPresetAppliers<[string]>({
   primaryModelRef: QWEN_DEFAULT_MODEL_REF,
   resolveParams: (_cfg: KaijiBotConfig, baseUrl: string) => {
@@ -39,11 +31,11 @@ const qwenPresetAppliers = createModelCatalogPresetAppliers<[string]>({
   },
 });
 
-export function applyQwenProviderConfig(cfg: KaijiBotConfig): KaijiBotConfig {
+function applyQwenProviderConfig(cfg: KaijiBotConfig): KaijiBotConfig {
   return qwenPresetAppliers.applyProviderConfig(cfg, QWEN_GLOBAL_BASE_URL);
 }
 
-export function applyQwenProviderConfigCn(cfg: KaijiBotConfig): KaijiBotConfig {
+function applyQwenProviderConfigCn(cfg: KaijiBotConfig): KaijiBotConfig {
   return qwenPresetAppliers.applyProviderConfig(cfg, QWEN_CN_BASE_URL);
 }
 
@@ -55,11 +47,11 @@ export function applyQwenConfigCn(cfg: KaijiBotConfig): KaijiBotConfig {
   return qwenPresetAppliers.applyConfig(cfg, QWEN_CN_BASE_URL);
 }
 
-export function applyQwenStandardProviderConfig(cfg: KaijiBotConfig): KaijiBotConfig {
+function applyQwenStandardProviderConfig(cfg: KaijiBotConfig): KaijiBotConfig {
   return qwenPresetAppliers.applyProviderConfig(cfg, QWEN_STANDARD_GLOBAL_BASE_URL);
 }
 
-export function applyQwenStandardProviderConfigCn(cfg: KaijiBotConfig): KaijiBotConfig {
+function applyQwenStandardProviderConfigCn(cfg: KaijiBotConfig): KaijiBotConfig {
   return qwenPresetAppliers.applyProviderConfig(cfg, QWEN_STANDARD_CN_BASE_URL);
 }
 
