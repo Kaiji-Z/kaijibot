@@ -7,7 +7,7 @@ import type { ConfigUiHints } from "../types.ts";
 import { renderNode } from "./config-form.node.ts";
 import { humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
 import { analyzeConfigSchema, SECTION_META } from "./config-form.ts";
-import { QUICK_SETTINGS } from "./config-quick-fields.ts";
+import { MODEL_ENTRY, QUICK_SETTINGS } from "./config-quick-fields.ts";
 
 export type ConfigProps = {
   raw: string;
@@ -423,6 +423,21 @@ function renderAppearanceSection(props: ConfigProps) {
   `;
 }
 
+function renderModelSection(props: ConfigProps) {
+  if (!MODEL_ENTRY.render) return nothing;
+  return html`
+    <div class="settings-appearance">
+      <div class="settings-appearance__section">
+        <h3 class="settings-appearance__heading">${MODEL_ENTRY.label}</h3>
+        ${MODEL_ENTRY.description
+          ? html`<p class="settings-appearance__hint">${MODEL_ENTRY.description}</p>`
+          : nothing}
+        ${MODEL_ENTRY.render(props)}
+      </div>
+    </div>
+  `;
+}
+
 interface ConfigEphemeralState {
   rawRevealed: boolean;
   envRevealed: boolean;
@@ -570,6 +585,7 @@ export function renderConfig(props: ConfigProps) {
         <div class="config-scroll-area">
           ${includeVirtualSections ? renderConnectionSection(props) : nothing}
           ${includeVirtualSections ? renderAppearanceSection(props) : nothing}
+          ${includeVirtualSections ? renderModelSection(props) : nothing}
           ${renderQuickSettings(props)}
         </div>
 

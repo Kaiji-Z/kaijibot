@@ -1961,6 +1961,207 @@
   margin-top: 6px;
 }
 
+/* ===========================================
+   Favorite Models
+   =========================================== */
+
+.config-model-favorites {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-accent);
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+:root[data-theme-mode="light"] .config-model-favorites {
+  background: var(--card);
+}
+
+.config-model-favorites__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.config-model-favorites__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.config-model-favorites__count {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+}
+
+:root[data-theme-mode="light"] .config-model-favorites__count {
+  background: var(--panel-strong);
+}
+
+.config-model-favorites__actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.config-model-favorites__bulk-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.config-model-favorites__bulk-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-strong);
+  border-color: var(--border-strong);
+}
+
+.config-model-favorites__bulk-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.config-model-favorites__hint {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.config-model-favorites__grid {
+  display: grid;
+  gap: 12px;
+}
+
+.config-model-favorites__provider {
+  display: grid;
+  gap: 6px;
+}
+
+.config-model-favorites__provider-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  color: var(--text-strong);
+  font: inherit;
+}
+
+.config-model-favorites__provider-toggle:hover {
+  color: var(--accent);
+}
+
+.config-model-favorites__provider-arrow {
+  font-size: 11px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.config-model-favorites__provider-arrow--collapsed {
+  transform: rotate(0deg);
+}
+
+.config-model-favorites__provider-arrow:not(.config-model-favorites__provider-arrow--collapsed) {
+  transform: rotate(90deg);
+}
+
+.config-model-favorites__provider-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.config-model-favorites__provider-count {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.config-model-favorites__models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.config-model-favorites__model {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  color: var(--text-strong);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+:root[data-theme-mode="light"] .config-model-favorites__model {
+  background: var(--card);
+}
+
+.config-model-favorites__model:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.config-model-favorites__model:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.config-model-favorites__model--fav {
+  border-color: var(--accent-subtle);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.config-model-favorites__model--fav:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.config-model-favorites__star {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.config-model-favorites__model-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 600px) {
+  .config-model-favorites__model {
+    max-width: 160px;
+  }
+}
+
 .config-scroll-area {
   flex: 1;
   min-height: 0;

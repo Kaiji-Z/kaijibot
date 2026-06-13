@@ -39,6 +39,188 @@ function formatContextWindow(ctx?: number): string {
   return String(ctx);
 }
 
+// --- Favorite Models whitelist helpers ---
+
+const MODELS_WHITELIST_PATH = ["agents", "defaults", "models"];
+
+function getModelsWhitelist(formValue: Record<string, unknown> | null): Set<string> {
+  if (!formValue) return new Set();
+  const models = getValueAtPath(formValue, MODELS_WHITELIST_PATH);
+  if (!models || typeof models !== "object" || Array.isArray(models)) return new Set();
+  return new Set(Object.keys(models as Record<string, unknown>));
+}
+
+function toggleModelFavorite(
+  props: ConfigProps,
+  modelKey: string,
+  currentWhitelist: Set<string>,
+  favorited: boolean,
+): void {
+  if (!props.formValue) return;
+  const base = structuredClone(props.formValue);
+  if (!base.agents || typeof base.agents !== "object") {
+    base.agents = {};
+  }
+  const agents = base.agents as Record<string, unknown>;
+  if (!agents.defaults || typeof agents.defaults !== "object") {
+    agents.defaults = {};
+  }
+  const defaults = agents.defaults as Record<string, unknown>;
+  const existingModels = defaults.models;
+  const modelsObj: Record<string, unknown> =
+    existingModels && typeof existingModels === "object" && !Array.isArray(existingModels)
+      ? { ...(existingModels as Record<string, unknown>) }
+      : {};
+
+  if (favorited) {
+    modelsObj[modelKey] = {};
+  } else {
+    delete modelsObj[modelKey];
+  }
+  defaults.models = modelsObj;
+  props.onFormPatch(MODELS_WHITELIST_PATH, modelsObj);
+}
+
+function setAllFavorites(
+  props: ConfigProps,
+  allModelKeys: string[],
+  favorited: boolean,
+): void {
+  if (!props.formValue) return;
+  const modelsObj: Record<string, unknown> = {};
+  if (favorited) {
+    for (const key of allModelKeys) {
+      modelsObj[key] = {};
+    }
+  }
+  props.onFormPatch(MODELS_WHITELIST_PATH, modelsObj);
+}
+
+function getConfiguredModels(
+  catalog: ModelCatalogEntry[],
+  configuredProviders: Set<string>,
+): ModelCatalogEntry[] {
+  return catalog.filter((m) => configuredProviders.has(m.provider));
+}
+
+const collapsedProviders = new Set<string>();
+
+function renderFavoriteModels(
+  props: ConfigProps,
+  configuredProviderSet: Set<string>,
+): TemplateResult | typeof nothing {
+  const configuredModels = getConfiguredModels(props.fullModelCatalog ?? [], configuredProviderSet);
+  if (configuredModels.length === 0) return nothing;
+
+  const whitelist = getModelsWhitelist(props.formValue);
+  const favoritedCount = configuredModels.filter((m) => {
+    const key = m.provider ? `${m.provider}/${m.id}` : m.id;
+    return whitelist.has(key);
+  }).length;
+  const totalCount = configuredModels.length;
+  const allFavorited = favoritedCount === totalCount;
+
+  const byProvider = groupCatalogByProvider(configuredModels);
+  const sortedProviders = [...byProvider.keys()].sort();
+
+  return html`
+    <div class="config-model-favorites">
+      <div class="config-model-favorites__header">
+        <span class="config-model-favorites__title">收藏模型</span>
+        <span class="config-model-favorites__count">
+          ${allFavorited ? "全部已收藏" : `已收藏 ${favoritedCount}/${totalCount}`}
+        </span>
+        <div class="config-model-favorites__actions">
+          <button
+            class="config-model-favorites__bulk-btn"
+            ?disabled=${props.loading || allFavorited}
+            @click=${() => {
+              const allKeys = configuredModels.map((m) =>
+                m.provider ? `${m.provider}/${m.id}` : m.id,
+              );
+              setAllFavorites(props, allKeys, true);
+              props.onRequestUpdate?.();
+            }}
+          >
+            全选
+          </button>
+          <button
+            class="config-model-favorites__bulk-btn"
+            ?disabled=${props.loading || favoritedCount === 0}
+            @click=${() => {
+              setAllFavorites(props, [], false);
+              props.onRequestUpdate?.();
+            }}
+          >
+            清空
+          </button>
+        </div>
+      </div>
+      ${favoritedCount === 0
+        ? html`<div class="config-model-favorites__hint">收藏模型后可在聊天中快速切换</div>`
+        : nothing}
+      <div class="config-model-favorites__grid">
+        ${sortedProviders.map((provider) => {
+          const models = byProvider.get(provider) ?? [];
+          const authInfo = (props.providerAuthOptions ?? []).find(
+            (p) => p.providerId === provider,
+          );
+          const providerLabel = authInfo?.providerLabel ?? provider;
+          const providerFavCount = models.filter((m) =>
+            whitelist.has(m.provider ? `${m.provider}/${m.id}` : m.id),
+          ).length;
+          const collapsed = collapsedProviders.has(provider);
+          return html`
+            <div class="config-model-favorites__provider">
+              <button
+                class="config-model-favorites__provider-toggle"
+                @click=${() => {
+                  if (collapsedProviders.has(provider)) {
+                    collapsedProviders.delete(provider);
+                  } else {
+                    collapsedProviders.add(provider);
+                  }
+                  props.onRequestUpdate?.();
+                }}
+              >
+                <span class="config-model-favorites__provider-arrow ${collapsed
+                  ? "config-model-favorites__provider-arrow--collapsed"
+                  : ""}">▸</span>
+                <span class="config-model-favorites__provider-label">${providerLabel}</span>
+                <span class="config-model-favorites__provider-count">${providerFavCount}/${models.length}</span>
+              </button>
+              ${!collapsed
+                ? html`<div class="config-model-favorites__models">
+                    ${models.map((m) => {
+                      const key = m.provider ? `${m.provider}/${m.id}` : m.id;
+                      const isFav = whitelist.has(key);
+                      return html`
+                        <button
+                          class="config-model-favorites__model ${isFav
+                            ? "config-model-favorites__model--fav"
+                            : ""}"
+                          ?disabled=${props.loading}
+                          title=${isFav ? "取消收藏" : "收藏"}
+                          @click=${() => {
+                            toggleModelFavorite(props, key, whitelist, !isFav);
+                            props.onRequestUpdate?.();
+                          }}
+                        >
+                          <span class="config-model-favorites__star">${isFav ? "★" : "☆"}</span>
+                          <span class="config-model-favorites__model-name">${m.name || m.id}</span>
+                        </button>
+                      `;
+                    })}
+                  </div>`
+                : nothing}
+            </div>
+          `;
+        })}
+      </div>
+    </div>
+  `;
+}
+
 function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing {
   const catalog = props.fullModelCatalog ?? [];
   const client = props.client;
@@ -219,6 +401,9 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
             </div>
           `
         : nothing}
+
+      <!-- Favorite Models section -->
+      ${renderFavoriteModels(props, configuredProviders)}
     </div>
   `;
 }
@@ -234,7 +419,7 @@ function isConfiguredForProvider(
 
 // --- Named entries ---
 
-const MODEL_ENTRY: QuickSettingEntry = {
+export const MODEL_ENTRY: QuickSettingEntry = {
   path: ["agents", "defaults", "model"],
   label: "AI 模型",
   description: "对话使用的大语言模型",
@@ -335,7 +520,6 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     description: "基于错误学习自动建议新技能",
     section: "cognitive",
   },
-  MODEL_ENTRY,
   INTERVAL_ENTRY,
   {
     path: ["memory", "citations"],
