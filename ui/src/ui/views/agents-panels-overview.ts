@@ -157,6 +157,7 @@ export function renderAgentOverview(params: {
                   ?disabled=${disabled}
                   @change=${(e: Event) => {
                     selectedProvider = (e.target as HTMLSelectElement).value;
+                    params.onRequestUpdate?.();
                   }}
                 >
                   ${providers.map(
