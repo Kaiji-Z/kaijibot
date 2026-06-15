@@ -882,7 +882,7 @@ export async function compactEmbeddedPiSessionDirect(
             modelRegistry,
             model: effectiveModel,
             thinkingLevel: mapThinkingLevel(thinkLevel),
-            tools: builtInTools.map((tool) => tool.name),
+            tools: builtInTools.length > 0 ? builtInTools.map((tool) => tool.name) : undefined,
             customTools,
             sessionManager,
             settingsManager,

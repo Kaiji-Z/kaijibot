@@ -936,7 +936,7 @@ export async function runEmbeddedAttempt(
         modelRegistry: params.modelRegistry,
         model: params.model,
         thinkingLevel: mapThinkingLevel(params.thinkLevel),
-        tools: builtInTools.map((tool) => tool.name),
+        tools: builtInTools.length > 0 ? builtInTools.map((tool) => tool.name) : undefined,
         customTools: allCustomTools,
         sessionManager,
         settingsManager,
