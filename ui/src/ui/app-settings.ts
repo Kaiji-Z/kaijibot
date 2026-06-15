@@ -239,6 +239,7 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "agents") {
     await loadAgents(host as unknown as KaijiBotApp);
     await loadConfig(host as unknown as KaijiBotApp);
+    void refreshFullCatalog(host as unknown as Parameters<typeof refreshFullCatalog>[0]);
     const agentIds = host.agentsList?.agents?.map((entry) => entry.id) ?? [];
     if (agentIds.length > 0) {
       void loadAgentIdentities(host as unknown as KaijiBotApp, agentIds);
