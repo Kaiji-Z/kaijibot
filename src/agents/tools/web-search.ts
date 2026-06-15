@@ -44,7 +44,7 @@ export function createWebSearchTool(options?: {
         sandboxed: options?.sandboxed,
         runtimeWebSearch: options?.runtimeWebSearch,
         preferRuntimeProviders,
-        args,
+        args: args as Record<string, unknown>,
       });
       return jsonResult({
         ...result.result,

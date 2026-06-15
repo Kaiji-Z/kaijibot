@@ -26,6 +26,7 @@ import { resolveHeartbeatSummaryForAgent } from "../../infra/heartbeat-summary.j
 import { getMachineDisplayName } from "../../infra/machine-name.js";
 import { generateSecureToken } from "../../infra/secure-random.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
+import { extractModelCompat } from "../../plugins/provider-model-compat.js";
 import {
   prepareProviderRuntimeAuth,
   resolveProviderSystemPromptContribution,
@@ -570,7 +571,7 @@ export async function compactEmbeddedPiSessionDirect(
       abortSignal: runAbortController.signal,
       modelProvider: model.provider,
       modelId,
-      modelCompat: effectiveModel.compat,
+      modelCompat: extractModelCompat(effectiveModel),
       modelApi: model.api,
       modelContextWindowTokens: ctxInfo.tokens,
       modelAuthMode: resolveModelAuthMode(model.provider, params.config),
@@ -881,7 +882,7 @@ export async function compactEmbeddedPiSessionDirect(
             modelRegistry,
             model: effectiveModel,
             thinkingLevel: mapThinkingLevel(thinkLevel),
-            tools: builtInTools,
+            tools: builtInTools.map((tool) => tool.name),
             customTools,
             sessionManager,
             settingsManager,

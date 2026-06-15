@@ -204,7 +204,8 @@ export function createMemorySaveTool(options: {
       "Use 'type' to classify: user (personal info), feedback (about assistant), project (work), reference (facts). " +
       "Detects and resolves conflicts with existing entries (mem0-style self-editing). Importance=high fast-tracks long-term promotion.",
     parameters: MemorySaveSchema,
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, rawParams) => {
+      const params = rawParams as Record<string, unknown>;
       const content = readStringParam(params, "content", { required: true });
       const rawTopicName = readStringParam(params, "topic", { required: true });
       const topicName = sanitizeTopicName(rawTopicName);

@@ -133,7 +133,7 @@ function createPayloadCapturingStream(capture: PayloadCapture) {
     streamContext: Context,
     options?: { onPayload?: (payload: unknown, model: unknown) => unknown },
   ) => {
-    capture.payload = buildOpenAICompletionsParams(streamModel, streamContext, {
+    capture.payload = buildOpenAICompletionsParams(streamModel as never, streamContext, {
       reasoning: "high",
     } as never);
     options?.onPayload?.(capture.payload, streamModel);
@@ -195,20 +195,24 @@ describe("deepseek provider plugin", () => {
 
     expect(catalogProvider.api).toBe("openai-completions");
     expect(catalogProvider.baseUrl).toBe("https://api.deepseek.com");
-    expect(catalogProvider.models?.map((model) => model.id)).toEqual([
+    expect(catalogProvider.models?.map((model: OpenAICompletionsModel) => model.id)).toEqual([
       "deepseek-v4-flash",
       "deepseek-v4-pro",
       "deepseek-chat",
       "deepseek-reasoner",
     ]);
-    const flashModel = catalogProvider.models?.find((model) => model.id === "deepseek-v4-flash");
+    const flashModel = catalogProvider.models?.find(
+      (model: OpenAICompletionsModel) => model.id === "deepseek-v4-flash",
+    );
     expect(flashModel?.reasoning).toBe(true);
     expect(flashModel?.contextWindow).toBe(1_000_000);
     expect(flashModel?.maxTokens).toBe(384_000);
     expect(flashModel?.compat?.supportsReasoningEffort).toBe(true);
     expect(flashModel?.compat?.maxTokensField).toBe("max_tokens");
     expect(
-      catalogProvider.models?.find((model) => model.id === "deepseek-reasoner")?.reasoning,
+      catalogProvider.models?.find(
+        (model: OpenAICompletionsModel) => model.id === "deepseek-reasoner",
+      )?.reasoning,
     ).toBe(true);
   });
 
@@ -276,7 +280,7 @@ describe("deepseek provider plugin", () => {
       resolveThinkingProfile({
         provider: "deepseek",
         modelId: "deepseek-v4-pro",
-      } as never)?.levels.map((level) => level.id),
+      } as never)?.levels.map((level: { id: string }) => level.id),
     ).toEqual(expectedV4Levels);
     expect(
       resolveThinkingProfile({
@@ -288,7 +292,7 @@ describe("deepseek provider plugin", () => {
       resolveThinkingProfile({
         provider: "deepseek",
         modelId: "deepseek-v4-flash",
-      } as never)?.levels.map((level) => level.id),
+      } as never)?.levels.map((level: { id: string }) => level.id),
     ).toEqual(expectedV4Levels);
     expect(
       resolveThinkingProfile({ provider: "deepseek", modelId: "deepseek-chat" } as never),

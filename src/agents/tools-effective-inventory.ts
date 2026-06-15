@@ -1,4 +1,5 @@
 import type { KaijiBotConfig } from "../config/config.js";
+import { extractModelCompat } from "../plugins/provider-model-compat.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import {
   normalizeLowercaseStringOrEmpty,
@@ -140,7 +141,7 @@ function resolveEffectiveModelCompat(params: {
     return undefined;
   }
   try {
-    return resolveModel(provider, modelId, params.agentDir, params.cfg).model?.compat;
+    return extractModelCompat(resolveModel(provider, modelId, params.agentDir, params.cfg).model);
   } catch {
     return undefined;
   }

@@ -49,7 +49,7 @@ export function createTavilyWebSearchProvider(): WebSearchProviderPlugin {
     createTool: (ctx) => ({
       description:
         "Search the web using Tavily. Returns structured results with snippets. Use tavily_search for Tavily-specific options like search depth, topic filtering, or AI answers.",
-      parameters: GenericTavilySearchSchema,
+      parameters: GenericTavilySearchSchema as unknown as Record<string, unknown>,
       execute: async (args) =>
         await runTavilySearch({
           cfg: ctx.config,

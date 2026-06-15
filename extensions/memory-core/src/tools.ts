@@ -219,7 +219,8 @@ export function createMemorySearchTool(options: {
     parameters: MemorySearchSchema,
     execute:
       ({ cfg, agentId }) =>
-      async (_toolCallId, params) => {
+      async (_toolCallId, rawParams) => {
+        const params = rawParams as Record<string, unknown>;
         const query = readStringParam(params, "query", { required: true });
         const maxResults = readNumberParam(params, "maxResults");
         const minScore = readNumberParam(params, "minScore");
@@ -356,7 +357,8 @@ export function createMemoryGetTool(options: {
     parameters: MemoryGetSchema,
     execute:
       ({ cfg, agentId }) =>
-      async (_toolCallId, params) => {
+      async (_toolCallId, rawParams) => {
+        const params = rawParams as Record<string, unknown>;
         const relPath = readStringParam(params, "path", { required: true });
         const from = readNumberParam(params, "from", { integer: true });
         const lines = readNumberParam(params, "lines", { integer: true });

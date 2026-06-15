@@ -285,7 +285,7 @@ function createKimiToolDefinition(
   return {
     description:
       "Search the web using Kimi by Moonshot. Returns AI-synthesized answers with citations from native $web_search.",
-    parameters: createKimiSchema(),
+    parameters: createKimiSchema() as unknown as Record<string, unknown>,
     execute: async (args) => {
       const params = args;
       const unsupportedResponse = buildUnsupportedSearchFilterResponse(params, "kimi");

@@ -198,7 +198,7 @@ export default defineSingleProviderPluginEntry({
   register(api) {
     api.registerWebSearchProvider(createXaiWebSearchProvider());
     api.registerVideoGenerationProvider(buildXaiVideoGenerationProvider());
-    api.registerTool((ctx) => createLazyCodeExecutionTool(ctx), { name: "code_execution" });
-    api.registerTool((ctx) => createLazyXSearchTool(ctx), { name: "x_search" });
+    api.registerTool((ctx) => createLazyCodeExecutionTool(ctx) as never, { name: "code_execution" });
+    api.registerTool((ctx) => createLazyXSearchTool(ctx) as never, { name: "x_search" });
   },
 });

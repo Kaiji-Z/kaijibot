@@ -458,7 +458,7 @@ function createExaToolDefinition(
   return {
     description:
       "Search the web using Exa AI. Supports neural or keyword search, publication date filters, and optional highlights or text extraction.",
-    parameters: createExaSchema(),
+    parameters: createExaSchema() as unknown as Record<string, unknown>,
     execute: async (args) => {
       const params = args;
       const exaConfig = resolveExaConfig(searchConfig);

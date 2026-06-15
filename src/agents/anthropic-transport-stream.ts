@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { IsObject } from "typebox";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
   calculateCost,
@@ -363,15 +364,18 @@ function convertAnthropicTools(tools: Context["tools"], isOAuthToken: boolean) {
   if (!tools) {
     return [];
   }
-  return tools.map((tool) => ({
-    name: isOAuthToken ? toClaudeCodeName(tool.name) : tool.name,
-    description: tool.description,
-    input_schema: {
-      type: "object",
-      properties: tool.parameters.properties || {},
-      required: tool.parameters.required || [],
-    },
-  }));
+  return tools.map((tool) => {
+    const params = IsObject(tool.parameters) ? tool.parameters : undefined;
+    return {
+      name: isOAuthToken ? toClaudeCodeName(tool.name) : tool.name,
+      description: tool.description,
+      input_schema: {
+        type: "object",
+        properties: params?.properties ?? {},
+        required: params?.required ?? [],
+      },
+    };
+  });
 }
 
 function mapStopReason(reason: string | undefined): string {

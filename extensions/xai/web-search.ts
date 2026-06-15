@@ -221,7 +221,7 @@ export function createXaiWebSearchProvider(): WebSearchProviderPlugin {
               maximum: 10,
             }),
           ),
-        }),
+        }) as unknown as Record<string, unknown>, // typebox 1.x: TObject not directly assignable to Record
         execute: async (args: Record<string, unknown>) => {
           const apiKey = resolveXaiWebSearchCredential(searchConfig);
 

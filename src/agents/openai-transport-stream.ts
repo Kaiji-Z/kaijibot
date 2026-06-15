@@ -356,7 +356,7 @@ function convertResponsesTools(
     description: tool.description,
     parameters: normalizeOpenAIStrictToolParameters(tool.parameters, strict),
     strict,
-  }));
+  })) as unknown as FunctionTool[];
 }
 
 async function processResponsesStream(

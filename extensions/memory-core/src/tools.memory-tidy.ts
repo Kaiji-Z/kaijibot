@@ -1025,7 +1025,8 @@ export function createMemoryTidyTool(options: {
       "and inline cleanup operations. Use dryRun to preview changes. " +
       "Run automatically after consolidation, or call manually when memory feels cluttered.",
     parameters: MemoryTidySchema,
-    execute: async (_toolCallId, rawParams) => {
+    execute: async (_toolCallId, rawArgs) => {
+      const rawParams = rawArgs as Record<string, unknown>;
       const dryRun = typeof rawParams.dryRun === "boolean" ? rawParams.dryRun : false;
       const focus = readStringParam(rawParams, "focus");
 

@@ -204,7 +204,7 @@ function createMiniMaxToolDefinition(
   return {
     description:
       "Search the web using MiniMax Search API. Returns titles, URLs, snippets, and related search suggestions.",
-    parameters: MiniMaxSearchSchema,
+    parameters: MiniMaxSearchSchema as unknown as Record<string, unknown>,
     execute: async (args) => {
       const apiKey = resolveMiniMaxApiKey(searchConfig);
       if (!apiKey) {

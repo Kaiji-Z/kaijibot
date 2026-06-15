@@ -180,7 +180,7 @@ function createGeminiToolDefinition(
   return {
     description:
       "Search the web using Gemini with Google Search grounding. Returns AI-synthesized answers with citations from Google Search.",
-    parameters: createGeminiSchema(),
+    parameters: createGeminiSchema() as unknown as Record<string, unknown>,
     execute: async (args) => {
       const params = args;
       const unsupportedResponse = buildUnsupportedSearchFilterResponse(params, "gemini");

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { codingTools, createReadTool, readTool } from "@earendil-works/pi-coding-agent";
+import { createCodingTools, createReadTool } from "@earendil-works/pi-coding-agent";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ModelCompatConfig } from "../config/types.models.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
@@ -408,8 +408,8 @@ export function createKaijiBotCodingTools(options?: {
   }
   const imageSanitization = resolveImageSanitizationLimits(options?.config);
 
-  const base = (codingTools as unknown as AnyAgentTool[]).flatMap((tool) => {
-    if (tool.name === readTool.name) {
+  const base = (createCodingTools(workspaceRoot) as unknown as AnyAgentTool[]).flatMap((tool) => {
+    if (tool.name === "read") {
       if (sandboxRoot) {
         const sandboxed = createSandboxedReadTool({
           root: sandboxRoot,
@@ -425,7 +425,7 @@ export function createKaijiBotCodingTools(options?: {
             : sandboxed,
         ];
       }
-      const freshReadTool = createReadTool(workspaceRoot);
+      const freshReadTool = createReadTool(workspaceRoot) as unknown as AnyAgentTool;
       const wrapped = createKaijiBotReadTool(freshReadTool, {
         modelContextWindowTokens: options?.modelContextWindowTokens,
         imageSanitization,

@@ -7,7 +7,12 @@ import {
 } from "../../../secrets/ref-contract.js";
 import { INPUT_PROVENANCE_KIND_VALUES } from "../../../sessions/input-provenance.js";
 import { SESSION_LABEL_MAX_LENGTH } from "../../../sessions/session-label.js";
-import { GATEWAY_CLIENT_IDS, GATEWAY_CLIENT_MODES } from "../client-info.js";
+import {
+  GATEWAY_CLIENT_IDS,
+  GATEWAY_CLIENT_MODES,
+  type GatewayClientId,
+  type GatewayClientMode,
+} from "../client-info.js";
 
 export const NonEmptyString = Type.String({ minLength: 1 });
 export const CHAT_SEND_SESSION_KEY_MAX_LENGTH = 512;
@@ -30,12 +35,13 @@ export const InputProvenanceSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const GatewayClientIdSchema = Type.Union(
-  Object.values(GATEWAY_CLIENT_IDS).map((value) => Type.Literal(value)),
+// Type.Unsafe<...> restores Static inference lost when Type.Union receives a non-tuple array.
+export const GatewayClientIdSchema = Type.Unsafe<GatewayClientId>(
+  Type.Union(Object.values(GATEWAY_CLIENT_IDS).map((value) => Type.Literal(value))),
 );
 
-export const GatewayClientModeSchema = Type.Union(
-  Object.values(GATEWAY_CLIENT_MODES).map((value) => Type.Literal(value)),
+export const GatewayClientModeSchema = Type.Unsafe<GatewayClientMode>(
+  Type.Union(Object.values(GATEWAY_CLIENT_MODES).map((value) => Type.Literal(value))),
 );
 
 export const SecretRefSourceSchema = Type.Union([
