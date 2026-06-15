@@ -28,6 +28,7 @@ export type {
   UsageDisplayLevel,
   VerboseLevel,
 } from "./thinking.shared.js";
+import { getModel, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import {
   resolveProviderBinaryThinking,
   resolveProviderDefaultThinkingLevel,
@@ -59,12 +60,20 @@ export function isBinaryThinkingProvider(provider?: string | null, model?: strin
 }
 
 export function supportsXHighThinking(provider?: string | null, model?: string | null): boolean {
+  return getSupportedThinkingLevelsForModel(provider, model).includes("xhigh");
+}
+
+export function getSupportedThinkingLevelsForModel(
+  provider?: string | null,
+  model?: string | null,
+): Array<"off" | "minimal" | "low" | "medium" | "high" | "xhigh"> {
   const modelKey = normalizeOptionalLowercaseString(model);
   if (!modelKey) {
-    return false;
+    return ["off", "minimal", "low", "medium", "high"];
   }
   const providerRaw = normalizeOptionalString(provider);
   const providerKey = providerRaw ? normalizeProviderId(providerRaw) : "";
+
   if (providerKey) {
     const pluginDecision = resolveProviderXHighThinking({
       provider: providerKey,
@@ -74,10 +83,23 @@ export function supportsXHighThinking(provider?: string | null, model?: string |
       },
     });
     if (typeof pluginDecision === "boolean") {
-      return pluginDecision;
+      const base: Array<"off" | "minimal" | "low" | "medium" | "high" | "xhigh"> = [
+        "off", "minimal", "low", "medium", "high",
+      ];
+      return pluginDecision ? [...base, "xhigh"] : base;
     }
   }
-  return false;
+
+  try {
+    const piModel = getModel(providerKey as never, modelKey as never);
+    if (piModel) {
+      return getSupportedThinkingLevels(piModel);
+    }
+  } catch {
+    // Model not in pi-ai registry — use default
+  }
+
+  return ["off", "minimal", "low", "medium", "high"];
 }
 
 export function listThinkingLevels(provider?: string | null, model?: string | null): ThinkLevel[] {
