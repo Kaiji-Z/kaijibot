@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@mariozechner/pi-ai";
+import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { KaijiBotConfig } from "../../config/config.js";
 import {
   resolveAgentModelFallbackValues,

@@ -1,5 +1,5 @@
-import { type Context, complete } from "@mariozechner/pi-ai";
-import { Type } from "@sinclair/typebox";
+import { type Context, complete } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { extractPdfContent, type PdfExtractedContent } from "../../media/pdf-extract.js";
 import { loadWebMediaRaw } from "../../media/web-media.js";

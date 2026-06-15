@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { Static, Type } from "@sinclair/typebox";
+import { Static, Type } from "typebox";
 import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
 import type { AnyAgentTool, KaijiBotPluginApi, KaijiBotPluginToolContext } from "../api.js";

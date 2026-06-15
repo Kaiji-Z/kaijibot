@@ -4,8 +4,8 @@ import {
   createHtmlEntityToolCallArgumentDecodingWrapper,
   createToolStreamWrapper,
 } from "@kaijibot/plugin-sdk/provider-stream-shared";
-import type { StreamFn } from "@mariozechner/pi-agent-core";
-import { streamSimple } from "@mariozechner/pi-ai";
+import type { StreamFn } from "@earendil-works/pi-agent-core";
+import { streamSimple } from "@earendil-works/pi-ai";
 
 const XAI_FAST_MODEL_IDS = new Map<string, string>([
   ["grok-3", "grok-3-fast"],

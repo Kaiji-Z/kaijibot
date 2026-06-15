@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { KaijiBotConfig } from "../config/config.js";
 import { logDebug, logWarn } from "../logger.js";
 import { normalizeOptionalLowercaseString } from "../shared/string-coerce.js";

@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { optionalStringEnum, stringEnum } from "kaijibot/plugin-sdk/channel-actions";
 
 const BROWSER_ACT_KINDS = [

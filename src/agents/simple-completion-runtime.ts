@@ -1,4 +1,4 @@
-import { complete, type Api, type Model } from "@mariozechner/pi-ai";
+import { complete, type Api, type Model } from "@earendil-works/pi-ai";
 import type { KaijiBotConfig } from "../config/config.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { resolveAgentDir, resolveAgentEffectiveModelPrimary } from "./agent-scope.js";

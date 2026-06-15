@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import {
   buildSearchCacheKey,
   DEFAULT_SEARCH_COUNT,

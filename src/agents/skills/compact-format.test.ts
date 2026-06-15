@@ -1,5 +1,5 @@
 import os from "node:os";
-import { formatSkillsForPrompt as upstreamFormatSkillsForPrompt } from "@mariozechner/pi-coding-agent";
+import { formatSkillsForPrompt as upstreamFormatSkillsForPrompt } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createCanonicalFixtureSkill } from "../skills.test-helpers.js";

@@ -8,7 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import type * as LanceDB from "@lancedb/lancedb";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { ensureGlobalUndiciEnvProxyDispatcher } from "kaijibot/plugin-sdk/runtime-env";
 import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
 import OpenAI from "openai";

@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { loadConfig, type KaijiBotConfig } from "../../config/config.js";
 import { resolveAgentWorkspaceDir } from "../agent-scope.js";
 import type { AnyAgentTool } from "./common.js";

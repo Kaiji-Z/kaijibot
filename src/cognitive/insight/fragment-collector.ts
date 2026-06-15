@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { complete, type Api, type Model } from "@mariozechner/pi-ai";
+import { complete, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";

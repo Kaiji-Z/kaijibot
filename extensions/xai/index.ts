@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { defineSingleProviderPluginEntry } from "kaijibot/plugin-sdk/provider-entry";
 import { buildProviderReplayFamilyHooks } from "kaijibot/plugin-sdk/provider-model-shared";
 import { jsonResult, readProviderEnvValue } from "kaijibot/plugin-sdk/provider-web-search";

@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { SILENT_REPLY_TOKEN } from "../../auto-reply/tokens.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { loadConfig } from "../../config/config.js";

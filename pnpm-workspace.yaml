@@ -15,6 +15,7 @@ minimumReleaseAgeExclude:
   - "@cloudflare/workers-types"
   - "@hono/node-server"
   - "@mariozechner/*"
+  - "@earendil-works/*"
   - "@typescript/native-preview*"
   - "@oxlint/*"
   - "@oxfmt/*"

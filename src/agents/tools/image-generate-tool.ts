@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { loadConfig } from "../../config/config.js";
 import { parseImageGenerationModelRef } from "../../image-generation/model-ref.js";

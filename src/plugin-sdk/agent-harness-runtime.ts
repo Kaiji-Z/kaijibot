@@ -18,7 +18,7 @@ import { truncateUtf16Safe } from "../utils.js";
 
 export const TOOL_PROGRESS_OUTPUT_MAX_CHARS = 8_000;
 
-export type { AgentMessage } from "@mariozechner/pi-agent-core";
+export type { AgentMessage } from "@earendil-works/pi-agent-core";
 // -- Types from existing KaijiBot modules --
 
 export type {

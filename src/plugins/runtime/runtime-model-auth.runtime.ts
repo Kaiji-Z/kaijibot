@@ -1,4 +1,4 @@
-import type { Api, Model } from "@mariozechner/pi-ai";
+import type { Api, Model } from "@earendil-works/pi-ai";
 import { getApiKeyForModel, resolveApiKeyForProvider } from "../../agents/model-auth.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { prepareProviderRuntimeAuth } from "../provider-runtime.runtime.js";

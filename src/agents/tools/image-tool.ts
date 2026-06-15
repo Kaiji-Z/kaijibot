@@ -1,5 +1,5 @@
 import { resolve, isAbsolute } from "node:path";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
 import {
   resolveAutoMediaKeyProviders,

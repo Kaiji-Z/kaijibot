@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { codingTools, createReadTool, readTool } from "@mariozechner/pi-coding-agent";
+import { codingTools, createReadTool, readTool } from "@earendil-works/pi-coding-agent";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ModelCompatConfig } from "../config/types.models.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";

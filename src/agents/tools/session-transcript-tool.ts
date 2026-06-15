@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { preprocessSessionTranscript } from "../../hooks/bundled/session-memory/transcript.js";
 import {
   describeSessionTranscriptTool,

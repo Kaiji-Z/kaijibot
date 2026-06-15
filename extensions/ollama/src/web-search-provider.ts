@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/config-runtime";
 import {
   isNonSecretApiKeyMarker,

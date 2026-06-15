@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { SessionManager } from "@mariozechner/pi-coding-agent";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { KaijiBotConfig } from "../config/config.js";
 import { updateSessionStore } from "../config/sessions.js";
 import type {

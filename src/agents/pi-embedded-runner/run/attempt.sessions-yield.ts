@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { log } from "../logger.js";
 
 const SESSIONS_YIELD_INTERRUPT_CUSTOM_TYPE = "kaijibot.sessions_yield_interrupt";

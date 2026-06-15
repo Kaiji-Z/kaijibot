@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { SAFETY_MARGIN, estimateMessagesTokens } from "../../compaction.js";
 import { estimateMessageTokens } from "../../token-estimation.js";
 import { estimateToolResultReductionPotential } from "../tool-result-truncation.js";

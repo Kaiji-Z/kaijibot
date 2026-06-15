@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { isRestartEnabled } from "../../config/commands.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { parseConfigJson5, resolveConfigSnapshotHash } from "../../config/io.js";

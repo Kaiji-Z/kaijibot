@@ -1,4 +1,4 @@
-import type { StreamFn } from "@mariozechner/pi-agent-core";
+import type { StreamFn } from "@earendil-works/pi-agent-core";
 import { describe, expect, it, vi } from "vitest";
 import { isOpenRouterAnthropicModelRef } from "./anthropic-family-cache-semantics.js";
 import { applyExtraParamsToAgent } from "./extra-params.js";

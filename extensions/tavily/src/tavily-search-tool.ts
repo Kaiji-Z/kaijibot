@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { KaijiBotPluginApi } from "kaijibot/plugin-sdk/plugin-runtime";
 import {
   jsonResult,

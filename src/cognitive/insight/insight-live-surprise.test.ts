@@ -12,7 +12,7 @@ import {
   type Api,
   type AssistantMessage,
   type Model,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import { describe, it, expect } from "vitest";
 import type { PersonaTree } from "../types.js";
 import { inferSearchStrategy } from "./interest-inference.js";

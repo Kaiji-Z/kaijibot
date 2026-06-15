@@ -1,4 +1,4 @@
-import { Type, type Static } from "@sinclair/typebox";
+import { Type, type Static } from "typebox";
 
 export const FeishuTaskSchema = Type.Object({
   action: Type.Union([Type.Literal("create"), Type.Literal("list"), Type.Literal("update")], {

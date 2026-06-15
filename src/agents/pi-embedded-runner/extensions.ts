@@ -1,4 +1,4 @@
-import type { ExtensionFactory, SessionManager } from "@mariozechner/pi-coding-agent";
+import type { ExtensionFactory, SessionManager } from "@earendil-works/pi-coding-agent";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { ProviderRuntimeModel } from "../../plugins/types.js";
 import { resolveContextWindowInfo } from "../context-window-guard.js";

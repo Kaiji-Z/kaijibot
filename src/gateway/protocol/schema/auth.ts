@@ -1,4 +1,4 @@
-import { Type, type Static } from "@sinclair/typebox";
+import { Type, type Static } from "typebox";
 import { NonEmptyString } from "./primitives.js";
 
 const PROVIDER_ID_PATTERN = "^[a-z][a-z0-9_-]{0,63}$";

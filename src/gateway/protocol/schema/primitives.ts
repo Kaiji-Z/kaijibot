@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { ENV_SECRET_REF_ID_RE } from "../../../config/types.secrets.js";
 import {
   EXEC_SECRET_REF_ID_JSON_SCHEMA_PATTERN,

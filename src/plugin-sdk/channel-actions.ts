@@ -20,8 +20,8 @@ export { withNormalizedTimestamp } from "../agents/date-time.js";
 export { assertMediaNotDataUrl } from "../agents/sandbox-paths.js";
 export { resolvePollMaxSelections } from "../polls.js";
 export { optionalStringEnum, stringEnum } from "../agents/schema/typebox.js";
-import { Type } from "@sinclair/typebox";
-import type { TSchema } from "@sinclair/typebox";
+import { Type } from "typebox";
+import type { TSchema } from "typebox";
 import { stringEnum as createStringEnum } from "../agents/schema/typebox.js";
 
 /** Schema helper for channels that expose button rows on the shared `message` tool. */

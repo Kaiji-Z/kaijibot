@@ -96,7 +96,7 @@ Claude login on the host, onboarding/configure can reuse it directly.
 
 ## OAuth exchange (how login works)
 
-KaijiBot’s interactive login flows are implemented in `@mariozechner/pi-ai` and wired into the wizards/commands.
+KaijiBot’s interactive login flows are implemented in `@earendil-works/pi-ai` and wired into the wizards/commands.
 
 ### Anthropic setup-token
 

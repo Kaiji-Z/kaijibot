@@ -8,7 +8,7 @@
  */
 
 import fs from "node:fs/promises";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import {
   jsonResult,
   readStringParam,

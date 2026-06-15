@@ -1,7 +1,7 @@
 /**
  * CJK-aware token estimation.
  *
- * The upstream `estimateTokens` from `@mariozechner/pi-coding-agent` uses a
+ * The upstream `estimateTokens` from `@earendil-works/pi-coding-agent` uses a
  * simple `chars / 4` heuristic which works well for English / ASCII text but
  * drastically under-estimates Chinese, Japanese, and Korean text where each
  * character typically maps to 1–2 tokens (vs. ~0.25 for ASCII).
@@ -22,7 +22,7 @@
  *   Hangul Syllables:
  */
 
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 
 // ---------- Character classification ----------
 
@@ -106,7 +106,7 @@ export function estimateTextTokens(text: string): number {
  * Estimate token count for an `AgentMessage`, accounting for CJK text.
  *
  * This is a drop-in replacement for `estimateTokens` from
- * `@mariozechner/pi-coding-agent` that fixes the severe under-estimation for
+ * `@earendil-works/pi-coding-agent` that fixes the severe under-estimation for
  * Chinese / Japanese / Korean text.
  */
 export function estimateMessageTokens(message: AgentMessage): number {

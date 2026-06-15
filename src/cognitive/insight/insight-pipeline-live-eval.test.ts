@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { Api, AssistantMessage, Model } from "@mariozechner/pi-ai";
+import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { describe, it, expect } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveConfigDir } from "../../utils.js";

@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { basename } from "node:path";
 import type * as Lark from "@larksuiteoapi/node-sdk";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
 import type { KaijiBotPluginApi } from "../runtime-api.js";

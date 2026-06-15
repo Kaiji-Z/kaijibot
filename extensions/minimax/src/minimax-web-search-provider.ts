@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import {
   DEFAULT_SEARCH_COUNT,
   MAX_SEARCH_COUNT,

@@ -5,7 +5,7 @@
   "description": "KaijiBot JSON-only LLM task plugin",
   "type": "module",
   "dependencies": {
-    "@sinclair/typebox": "0.34.49",
+    "typebox": "^1.1",
     "ajv": "^8.18.0"
   },
   "devDependencies": {

@@ -122,12 +122,12 @@ export type PluginRuntimeCore = {
   modelAuth: {
     /** Resolve auth for a model. Only provider/model and optional cfg are used. */
     getApiKeyForModel: (params: {
-      model: import("@mariozechner/pi-ai").Model<import("@mariozechner/pi-ai").Api>;
+      model: import("@earendil-works/pi-ai").Model<import("@earendil-works/pi-ai").Api>;
       cfg?: import("../../config/config.js").KaijiBotConfig;
     }) => Promise<import("../../agents/model-auth.js").ResolvedProviderAuth>;
     /** Resolve request-ready auth for a model, including provider runtime exchanges. */
     getRuntimeAuthForModel: (params: {
-      model: import("@mariozechner/pi-ai").Model<import("@mariozechner/pi-ai").Api>;
+      model: import("@earendil-works/pi-ai").Model<import("@earendil-works/pi-ai").Api>;
       cfg?: import("../../config/config.js").KaijiBotConfig;
       workspaceDir?: string;
     }) => Promise<import("./model-auth-types.js").ResolvedProviderRuntimeAuth>;

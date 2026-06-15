@@ -24,7 +24,7 @@ import {
 import {
   createToolStreamWrapper,
 } from "kaijibot/plugin-sdk/provider-stream-shared";
-import type { StreamFn } from "@mariozechner/pi-agent-core";
+import type { StreamFn } from "@earendil-works/pi-agent-core";
 import { fetchZaiUsage, resolveLegacyPiAgentAccessToken } from "kaijibot/plugin-sdk/provider-usage";
 import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/string-coerce-runtime";
 import { detectZaiEndpoint, type ZaiEndpointId } from "./detect.js";

@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { getRuntimeConfigSnapshot } from "kaijibot/plugin-sdk/config-runtime";
 import { jsonResult, readStringParam } from "kaijibot/plugin-sdk/provider-web-search";
 import {
