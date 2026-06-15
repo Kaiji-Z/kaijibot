@@ -7,19 +7,43 @@ const GROQ_GPT_OSS_REASONING_IDS = new Set([
   "openai/gpt-oss-safeguard-20b",
 ]);
 
+const GROQ_QWEN3_REASONING_EFFORT_MAP: Record<string, string> = {
+  off: "none",
+  none: "none",
+  minimal: "default",
+  low: "default",
+  medium: "default",
+  high: "default",
+  xhigh: "default",
+  adaptive: "default",
+  max: "default",
+};
+
 function normalizeGroqModelId(modelId: string | undefined): string {
   return modelId?.trim().toLowerCase() ?? "";
 }
 
+type GroqReasoningCompatPatch = Pick<
+  ModelCompatConfig,
+  "supportsReasoningEffort" | "supportedReasoningEfforts" | "thinkingLevelMap"
+>;
+
 export function resolveGroqReasoningCompatPatch(
   modelId: string,
-): Pick<ModelCompatConfig, "supportsReasoningEffort"> | null {
+): GroqReasoningCompatPatch | null {
   const normalized = normalizeGroqModelId(modelId);
   if (normalized === GROQ_QWEN3_32B_ID) {
-    return { supportsReasoningEffort: true };
+    return {
+      supportsReasoningEffort: true,
+      supportedReasoningEfforts: ["none", "default"],
+      thinkingLevelMap: GROQ_QWEN3_REASONING_EFFORT_MAP,
+    };
   }
   if (GROQ_GPT_OSS_REASONING_IDS.has(normalized)) {
-    return { supportsReasoningEffort: true };
+    return {
+      supportsReasoningEffort: true,
+      supportedReasoningEfforts: ["low", "medium", "high"],
+    };
   }
   return null;
 }

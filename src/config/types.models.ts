@@ -47,6 +47,8 @@ export type ModelCompatConfig = SupportedOpenAICompatFields & {
   toolCallArgumentsEncoding?: string;
   requiresMistralToolIds?: boolean;
   requiresOpenAiAnthropicToolPayload?: boolean;
+  thinkingLevelMap?: Record<string, string>;
+  supportedReasoningEfforts?: string[];
 };
 
 export type ModelProviderAuthMode = "api-key" | "aws-sdk" | "oauth" | "token";

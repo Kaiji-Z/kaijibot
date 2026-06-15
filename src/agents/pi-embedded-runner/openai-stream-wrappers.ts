@@ -1,6 +1,7 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { SimpleStreamOptions } from "@earendil-works/pi-ai";
 import { streamSimple } from "@earendil-works/pi-ai";
+import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { normalizeOptionalLowercaseString, readStringValue } from "../../shared/string-coerce.js";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../openai-responses-payload-policy.js";
 import { resolveProviderRequestPolicyConfig } from "../provider-request-config.js";
 import { log } from "./logger.js";
+import { mapThinkingLevelToReasoningEffort } from "./reasoning-effort-utils.js";
 import { streamWithPayloadPatch } from "./stream-payload-utils.js";
 
 type OpenAIServiceTier = "auto" | "default" | "flex" | "priority";
@@ -242,6 +244,43 @@ export function createOpenAIStringContentWrapper(baseStreamFn: StreamFn | undefi
         return;
       }
       payloadObj.messages = flattenCompletionMessagesToStringContent(payloadObj.messages);
+    });
+  };
+}
+
+export function createOpenAIThinkingLevelWrapper(
+  baseStreamFn: StreamFn | undefined,
+  thinkingLevel?: ThinkLevel,
+): StreamFn {
+  const underlying = baseStreamFn ?? streamSimple;
+  if (!thinkingLevel) {
+    return underlying;
+  }
+  return (model, context, options) => {
+    if (!shouldApplyOpenAIReasoningCompatibility(model)) {
+      return underlying(model, context, options);
+    }
+    return streamWithPayloadPatch(underlying, model, context, options, (payloadObj) => {
+      const existingReasoning = payloadObj.reasoning;
+      if (thinkingLevel === "off") {
+        if (existingReasoning !== undefined) {
+          delete payloadObj.reasoning;
+        }
+        return;
+      }
+
+      if (existingReasoning === "none") {
+        payloadObj.reasoning = { effort: mapThinkingLevelToReasoningEffort(thinkingLevel) };
+        return;
+      }
+      if (
+        existingReasoning &&
+        typeof existingReasoning === "object" &&
+        !Array.isArray(existingReasoning)
+      ) {
+        (existingReasoning as Record<string, unknown>).effort =
+          mapThinkingLevelToReasoningEffort(thinkingLevel);
+      }
     });
   };
 }

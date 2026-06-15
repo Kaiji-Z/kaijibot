@@ -1,12 +1,11 @@
-import type { ErrorObject } from "ajv";
 import { describe, expect, it } from "vitest";
 import { TALK_TEST_PROVIDER_ID } from "../../test-utils/talk-test-provider.js";
 import { formatValidationErrors, validateTalkConfigResult } from "./index.js";
+import type { TypeBoxValidationError } from "./index.js";
 
-const makeError = (overrides: Partial<ErrorObject>): ErrorObject => ({
+const makeError = (overrides: Partial<TypeBoxValidationError>): TypeBoxValidationError => ({
   keyword: "type",
   instancePath: "",
-  schemaPath: "#/",
   params: {},
   message: "validation error",
   ...overrides,
@@ -25,7 +24,7 @@ describe("formatValidationErrors", () => {
   it("formats additionalProperties at root", () => {
     const err = makeError({
       keyword: "additionalProperties",
-      params: { additionalProperty: "token" },
+      params: { additionalProperties: ["token"] },
     });
 
     expect(formatValidationErrors([err])).toBe("at root: unexpected property 'token'");
@@ -35,7 +34,7 @@ describe("formatValidationErrors", () => {
     const err = makeError({
       keyword: "additionalProperties",
       instancePath: "/auth",
-      params: { additionalProperty: "token" },
+      params: { additionalProperties: ["token"] },
     });
 
     expect(formatValidationErrors([err])).toBe("at /auth: unexpected property 'token'");

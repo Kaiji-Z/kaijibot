@@ -8,7 +8,7 @@ describe("groq provider compat", () => {
     expect(resolveGroqReasoningCompatPatch("qwen/qwen3-32b")).toEqual({
       supportsReasoningEffort: true,
       supportedReasoningEfforts: ["none", "default"],
-      reasoningEffortMap: {
+      thinkingLevelMap: {
         adaptive: "default",
         high: "default",
         off: "none",
@@ -38,7 +38,7 @@ describe("groq provider compat", () => {
     ).toEqual({
       supportsReasoningEffort: true,
       supportedReasoningEfforts: ["none", "default"],
-      reasoningEffortMap: {
+      thinkingLevelMap: {
         adaptive: "default",
         high: "default",
         off: "none",

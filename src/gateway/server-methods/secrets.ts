@@ -1,4 +1,3 @@
-import type { ErrorObject } from "ajv";
 import { isKnownSecretTargetId } from "../../secrets/target-registry.js";
 import {
   ErrorCodes,
@@ -6,18 +5,26 @@ import {
   validateSecretsResolveParams,
   validateSecretsResolveResult,
 } from "../protocol/index.js";
+import type { TypeBoxValidationError } from "../protocol/index.js";
 import type { GatewayRequestHandlers } from "./types.js";
 
 function invalidSecretsResolveField(
-  errors: ErrorObject[] | null | undefined,
+  errors: TypeBoxValidationError[] | null | undefined,
 ): "commandName" | "targetIds" {
   for (const issue of errors ?? []) {
-    if (
-      issue.instancePath === "/commandName" ||
-      (issue.instancePath === "" &&
-        String((issue.params as { missingProperty?: unknown })?.missingProperty) === "commandName")
-    ) {
+    if (issue.instancePath === "/commandName") {
       return "commandName";
+    }
+    if (issue.instancePath === "") {
+      // TypeBox reports missing required properties as requiredProperties[] (vs
+      // AJV's singular missingProperty).  Check membership in the array.
+      const params = issue.params as { requiredProperties?: unknown };
+      if (
+        Array.isArray(params.requiredProperties) &&
+        params.requiredProperties.includes("commandName")
+      ) {
+        return "commandName";
+      }
     }
   }
   return "targetIds";

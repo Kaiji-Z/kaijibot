@@ -28,8 +28,8 @@ function maxTokensField(model: unknown): "max_completion_tokens" | "max_tokens" 
     ?.maxTokensField;
 }
 
-function reasoningEffortMap(model: unknown): Record<string, string> | undefined {
-  return readCompat<{ reasoningEffortMap?: Record<string, string> }>(model)?.reasoningEffortMap;
+function thinkingLevelMap(model: unknown): Record<string, string> | undefined {
+  return readCompat<{ thinkingLevelMap?: Record<string, string> }>(model)?.thinkingLevelMap;
 }
 
 const MISTRAL_REASONING_EFFORT_MAP = {
@@ -49,7 +49,7 @@ describe("resolveMistralCompatPatch", () => {
       supportsStore: false,
       supportsReasoningEffort: true,
       maxTokensField: "max_tokens",
-      reasoningEffortMap: MISTRAL_REASONING_EFFORT_MAP,
+      thinkingLevelMap: MISTRAL_REASONING_EFFORT_MAP,
     });
   });
 
@@ -58,7 +58,7 @@ describe("resolveMistralCompatPatch", () => {
       supportsStore: false,
       supportsReasoningEffort: true,
       maxTokensField: "max_tokens",
-      reasoningEffortMap: MISTRAL_REASONING_EFFORT_MAP,
+      thinkingLevelMap: MISTRAL_REASONING_EFFORT_MAP,
     });
   });
 
@@ -76,21 +76,21 @@ describe("applyMistralModelCompat", () => {
     expect(supportsStore(normalized)).toBe(false);
     expect(supportsReasoningEffort(normalized)).toBe(false);
     expect(maxTokensField(normalized)).toBe("max_tokens");
-    expect(reasoningEffortMap(normalized)).toBeUndefined();
+    expect(thinkingLevelMap(normalized)).toBeUndefined();
   });
 
   it("applies reasoning compat for mistral-small-latest", () => {
     const normalized = applyMistralModelCompat({ id: MISTRAL_SMALL_LATEST_ID });
     expect(supportsReasoningEffort(normalized)).toBe(true);
-    expect(reasoningEffortMap(normalized)?.high).toBe("high");
-    expect(reasoningEffortMap(normalized)?.off).toBe("none");
+    expect(thinkingLevelMap(normalized)?.high).toBe("high");
+    expect(thinkingLevelMap(normalized)?.off).toBe("none");
   });
 
   it("applies reasoning compat for mistral-medium-3-5", () => {
     const normalized = applyMistralModelCompat({ id: MISTRAL_MEDIUM_3_5_ID });
     expect(supportsReasoningEffort(normalized)).toBe(true);
-    expect(reasoningEffortMap(normalized)?.high).toBe("high");
-    expect(reasoningEffortMap(normalized)?.off).toBe("none");
+    expect(thinkingLevelMap(normalized)?.high).toBe("high");
+    expect(thinkingLevelMap(normalized)?.off).toBe("none");
   });
 
   it("overrides explicit compat values that would trigger 422s", () => {

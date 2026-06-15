@@ -38,14 +38,14 @@ export function resolveMistralCompatPatch(model: { id?: string }): {
   supportsStore: boolean;
   supportsReasoningEffort: boolean;
   maxTokensField: "max_tokens";
-  reasoningEffortMap?: Record<string, string>;
+  thinkingLevelMap?: Record<string, string>;
 } {
   const reasoningEnabled =
     model.id === MISTRAL_SMALL_LATEST_ID || model.id === MISTRAL_MEDIUM_3_5_ID;
   return {
     ...MISTRAL_MODEL_TRANSPORT_PATCH,
     supportsReasoningEffort: reasoningEnabled,
-    reasoningEffortMap: reasoningEnabled ? MISTRAL_SMALL_LATEST_REASONING_EFFORT_MAP : undefined,
+    thinkingLevelMap: reasoningEnabled ? MISTRAL_SMALL_LATEST_REASONING_EFFORT_MAP : undefined,
   };
 }
 
@@ -58,7 +58,7 @@ function compatMatchesResolved(
     compat?.supportsStore === expected.supportsStore &&
     compat?.supportsReasoningEffort === expected.supportsReasoningEffort &&
     compat?.maxTokensField === expected.maxTokensField &&
-    compat?.reasoningEffortMap === expected.reasoningEffortMap
+    compat?.thinkingLevelMap === expected.thinkingLevelMap
   );
 }
 

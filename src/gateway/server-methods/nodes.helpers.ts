@@ -1,11 +1,11 @@
-import type { ErrorObject } from "ajv";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
 import { ErrorCodes, errorShape, formatValidationErrors } from "../protocol/index.js";
+import type { TypeBoxValidationError } from "../protocol/index.js";
 import { formatForLog } from "../ws-log.js";
 import type { RespondFn } from "./types.js";
 
 type ValidatorFn = ((value: unknown) => boolean) & {
-  errors?: ErrorObject[] | null;
+  errors?: TypeBoxValidationError[] | null;
 };
 
 export function respondInvalidParams(params: {
