@@ -11,12 +11,45 @@ import {
   MAX_CORRECTIONS_PER_USER,
 } from "./types.js";
 import type { CorrectionRecord, CorrectionStoreData } from "./types.js";
+import type { PatternRegistry } from "./pattern-registry.js";
 
 const log = createSubsystemLogger("correction");
 const CORRECTIONS_DIR = "cognitive/corrections";
 
+const PROMOTE_AT_REINFORCEMENT_COUNT = 5;
+
+const TOKEN_STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "not",
+  "but",
+  "with",
+  "this",
+  "that",
+  "from",
+  "have",
+  "was",
+  "were",
+  "are",
+  "has",
+  "had",
+  "you",
+  "your",
+  "使用",
+  "应该",
+  "需要",
+  "没有",
+]);
+
 export class CorrectionStore {
+  private patternRegistry: PatternRegistry | null = null;
+
   constructor(private readonly configDir: string) {}
+
+  attachPatternRegistry(registry: PatternRegistry | null): void {
+    this.patternRegistry = registry;
+  }
 
   private correctionDir(agentId: string): string {
     return join(this.configDir, CORRECTIONS_DIR, agentId);
@@ -78,6 +111,42 @@ export class CorrectionStore {
       reinforcedCount: target.reinforcedCount,
       agentId,
       userId,
+    });
+
+    if (
+      target.reinforcedCount === PROMOTE_AT_REINFORCEMENT_COUNT &&
+      this.patternRegistry
+    ) {
+      try {
+        await this.maybePromoteToPattern(target);
+      } catch (err) {
+        log.debug("pattern promotion failed (non-fatal)", {
+          id,
+          error: String(err),
+        });
+      }
+    }
+  }
+
+  private async maybePromoteToPattern(
+    target: CorrectionRecord,
+  ): Promise<void> {
+    const tokens = extractDistinctiveTokens(
+      `${target.trigger} ${target.mistake}`,
+    );
+    if (tokens.length === 0) {
+      return;
+    }
+    const pattern = `(${tokens.join("|")})`;
+    await this.patternRegistry!.add({
+      pattern,
+      flags: "i",
+      source: "auto-promoted",
+    });
+    log.info("correction promoted to pattern", {
+      id: target.id,
+      domain: target.domain,
+      pattern,
     });
   }
 
@@ -168,4 +237,31 @@ export class CorrectionStore {
       return [];
     }
   }
+}
+
+const TOKEN_SPLIT_RE = /[\s,，。、；;：:！!？?（）()\[\]{}'"""''《》<>\/\\|`~@#$%^&*\-_=+]+/;
+const MAX_PROMOTED_TOKENS = 3;
+
+function extractDistinctiveTokens(text: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of text.split(TOKEN_SPLIT_RE)) {
+    const token = raw.trim();
+    if (token.length < 3) {
+      continue;
+    }
+    const lower = token.toLowerCase();
+    if (TOKEN_STOPWORDS.has(lower)) {
+      continue;
+    }
+    if (seen.has(lower)) {
+      continue;
+    }
+    seen.add(lower);
+    result.push(token);
+    if (result.length >= MAX_PROMOTED_TOKENS) {
+      break;
+    }
+  }
+  return result;
 }

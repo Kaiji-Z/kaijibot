@@ -67,11 +67,49 @@ const CORRECTION_SIGNAL_PATTERNS: RegExp[] = [
   /\bsorry\b/i,
 ];
 
+const RUNTIME_PATTERN_TTL_MS = 60_000;
+
+let runtimePatternResolver: (() => RegExp[]) | null = null;
+let runtimePatternCache: RegExp[] = [];
+let runtimePatternCacheAt = 0;
+
+export function setRuntimePatternResolver(
+  resolver: (() => RegExp[]) | null,
+): void {
+  runtimePatternResolver = resolver;
+  runtimePatternCacheAt = 0;
+}
+
+function getRuntimePatterns(): RegExp[] {
+  if (runtimePatternResolver === null) {
+    return [];
+  }
+  const now = Date.now();
+  if (now - runtimePatternCacheAt < RUNTIME_PATTERN_TTL_MS) {
+    return runtimePatternCache;
+  }
+  try {
+    runtimePatternCache = runtimePatternResolver();
+    runtimePatternCacheAt = now;
+  } catch {
+    runtimePatternCache = [];
+  }
+  return runtimePatternCache;
+}
+
+function mergedSignalPatterns(): RegExp[] {
+  const runtime = getRuntimePatterns();
+  if (runtime.length === 0) {
+    return CORRECTION_SIGNAL_PATTERNS;
+  }
+  return [...CORRECTION_SIGNAL_PATTERNS, ...runtime];
+}
+
 export function hasCorrectionSignals(transcript: string): boolean {
   if (!transcript || transcript.length === 0) {
     return false;
   }
-  for (const pattern of CORRECTION_SIGNAL_PATTERNS) {
+  for (const pattern of mergedSignalPatterns()) {
     if (pattern.test(transcript)) {
       return true;
     }

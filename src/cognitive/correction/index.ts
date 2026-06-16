@@ -7,4 +7,10 @@ export {
   MAX_CORRECTIONS_PER_USER,
 } from "./types.js";
 export { formatCorrectionsPrompt, MAX_INJECTED_CORRECTIONS } from "./injector.js";
-export { hasCorrectionSignals, extractCorrectionsFromTranscript } from "./extractor.js";
+export {
+  hasCorrectionSignals,
+  extractCorrectionsFromTranscript,
+  setRuntimePatternResolver,
+} from "./extractor.js";
+export { PatternRegistry } from "./pattern-registry.js";
+export type { PromotedPattern } from "./pattern-registry.js";

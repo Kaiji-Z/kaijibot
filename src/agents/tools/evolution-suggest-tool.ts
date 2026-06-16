@@ -115,10 +115,11 @@ export function createEvolutionSuggestTool(deps: {
           errorProfile,
         };
 
-        const draft = await engine.generate(candidate);
+        let draft = await engine.generate(candidate);
 
         let existingSkills: Array<{ name: string; description: string }> | undefined;
         let duplicateExisting: string | undefined;
+        let generateTextForDedup: ((prompt: string) => Promise<string>) | undefined;
         try {
           const { SkillPersistenceWriter: SW } =
             await import("../../cognitive/evolution/skill-writer.js");
@@ -135,7 +136,6 @@ export function createEvolutionSuggestTool(deps: {
           }
           if (skills.length > 0) {existingSkills = skills;}
 
-          let generateTextForDedup: ((prompt: string) => Promise<string>) | undefined;
           try {
             if (deps.config) {
               const { createStandaloneGenerateText } =
@@ -178,6 +178,55 @@ export function createEvolutionSuggestTool(deps: {
           });
         }
 
+        if (generateTextForDedup) {
+          const { evaluateSkillQuality, refineSkillDraft } =
+            await import("../../cognitive/evolution/skill-quality-gate.js");
+          const genText = generateTextForDedup;
+          let quality = await evaluateSkillQuality(draft, { generateText: genText });
+          let refinedDraft = draft;
+          let attempts = 0;
+          while (!quality.passed && attempts < 2) {
+            attempts++;
+            refinedDraft = await refineSkillDraft(
+              refinedDraft,
+              quality.critique,
+              quality.issues,
+              { generateText: genText },
+            );
+            quality = await evaluateSkillQuality(refinedDraft, { generateText: genText });
+          }
+          if (!quality.passed) {
+            const record = {
+              id: randomUUID(),
+              userId,
+              candidate,
+              draft,
+              timestamp: Date.now(),
+            };
+            await store.save(agentId, record);
+
+            try {
+              const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
+              const audit = new AuditLog(configDir);
+              await audit.append({
+                operation: "skill.quality_rejected",
+                actor: userId ?? "agent",
+                target: draft.name,
+                outcome: "skipped",
+              });
+            } catch { /* non-fatal */ }
+
+            return jsonResult({
+              status: "quality_rejected",
+              score: quality.score,
+              issues: quality.issues,
+              critique: quality.critique,
+              suggestionText: `技能质量不达标（${quality.score.toFixed(2)}），已跳过创建。`,
+            });
+          }
+          draft = refinedDraft;
+        }
+
         const { SkillPersistenceWriter: SW2 } =
           await import("../../cognitive/evolution/skill-writer.js");
         const saveWriter = new SW2(skillBaseDir);
@@ -198,6 +247,31 @@ export function createEvolutionSuggestTool(deps: {
           const audit = new AuditLog(configDir);
           await audit.append({ operation: "skill.create", actor: userId ?? "agent", target: draft.name, outcome: "success" });
         } catch { /* non-fatal */ }
+
+        if (generateTextForDedup) {
+          const draftForReview = draft;
+          const reviewGenerateText = generateTextForDedup;
+          void (async () => {
+            try {
+              const { reviewSkill } =
+                await import("../../cognitive/evolution/skill-reviewer.js");
+              const review = await reviewSkill(draftForReview, candidate.taskSummary, {
+                generateText: reviewGenerateText,
+              });
+              try {
+                const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
+                const audit = new AuditLog(configDir);
+                await audit.append({
+                  operation: "skill.review",
+                  actor: "reviewer",
+                  target: draftForReview.name,
+                  outcome: review.approved ? "success" : "failure",
+                  metadata: { confidence: review.confidence, notes: review.notes },
+                });
+              } catch { /* non-fatal */ }
+            } catch { /* non-blocking reviewer */ }
+          })();
+        }
 
         return jsonResult({
           status: "saved",
