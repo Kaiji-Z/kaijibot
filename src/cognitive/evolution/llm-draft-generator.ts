@@ -1,14 +1,38 @@
 import { SKILL_CREATOR_SPEC } from "./skill-creator-spec.js";
 import { generateSkillDraft, sanitizeSkillName } from "./skill-draft-generator.js";
 import type { EvolutionCandidate, SkillDraft } from "./types.js";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 export type LlmDraftDeps = {
   generateText: (prompt: string) => Promise<string>;
 };
 
+let cachedSpec: string | null = null;
+
+function getSkillCreatorSpec(): string {
+  if (cachedSpec !== null) {return cachedSpec;}
+  const candidates = [
+    join(process.cwd(), "skills", "skill-creator", "SKILL.md"),
+    join(process.env.HOME ?? "", ".kaijibot", "skills", "skill-creator", "SKILL.md"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      try {
+        const raw = readFileSync(p, "utf-8");
+        const bodyStart = raw.indexOf("---", 3);
+        cachedSpec = bodyStart > 0 ? raw.slice(bodyStart + 3).trim() : raw;
+        return cachedSpec;
+      } catch {}
+    }
+  }
+  cachedSpec = SKILL_CREATOR_SPEC;
+  return cachedSpec;
+}
+
 function buildPrompt(candidate: EvolutionCandidate): string {
   const sections: string[] = [
-    SKILL_CREATOR_SPEC,
+    getSkillCreatorSpec(),
     "",
     "---",
     "",
