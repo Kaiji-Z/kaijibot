@@ -1187,7 +1187,7 @@
     "chalk": "^5.6.2",
     "chokidar": "^5.0.0",
     "cli-highlight": "^2.1.11",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "croner": "^10.0.1",
     "dotenv": "^17.4.0",
     "express": "^5.2.1",
