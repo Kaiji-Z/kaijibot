@@ -1,129 +1,21 @@
-import { detectTrialAndError, evaluateComplexity } from "./complexity-evaluator.js";
-import type { EvolutionPreferenceAdapter } from "./preference-adapter.js";
 import { generateSkillDraft } from "./skill-draft-generator.js";
 import type { SkillLifecycleManager } from "./skill-lifecycle.js";
 import type { SkillPersistenceWriter } from "./skill-writer.js";
 import { EvolutionStore } from "./store.js";
 import type {
   EvolutionCandidate,
-  EvolutionConfig,
-  EvolutionDecision,
-  EvolutionRecord,
-  EvolutionUserResponse,
-  RecentSuggestionSummary,
   SkillDraft,
   SkillPatch,
   SkillPatchResult,
 } from "./types.js";
-import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
 
 export type DraftGeneratorFn = (candidate: EvolutionCandidate) => Promise<SkillDraft>;
 
 export class EvolutionEngine {
   constructor(
     private readonly store: EvolutionStore,
-    private readonly config?: Partial<EvolutionConfig>,
-    private readonly preferenceAdapter?: EvolutionPreferenceAdapter,
     private readonly draftGenerator?: DraftGeneratorFn,
   ) {}
-
-  private async effectiveConfig(agentId: string): Promise<EvolutionConfig> {
-    if (this.config) {return { ...DEFAULT_EVOLUTION_CONFIG, ...this.config };}
-    const stored = await this.store.loadConfig(agentId);
-    return { ...DEFAULT_EVOLUTION_CONFIG, ...stored };
-  }
-
-  async evaluate(
-    candidate: EvolutionCandidate,
-    agentId: string,
-    userId: string,
-  ): Promise<EvolutionDecision> {
-    const config = await this.effectiveConfig(agentId);
-
-    if (!config.enabled) {
-      return {
-        shouldSuggest: false,
-        confidence: 0,
-        complexityScore: 0,
-        reasoning: "Evolution engine is disabled",
-      };
-    }
-
-    const complexity = evaluateComplexity(candidate);
-    const trialError = detectTrialAndError(candidate);
-
-    const reasoningParts: string[] = [];
-
-    if (trialError.detected) {
-      reasoningParts.push(
-        `Trial-and-error detected: ${trialError.signals.length} signals, boost +${trialError.boost.toFixed(2)}`,
-      );
-    }
-
-    const hasErrors = (candidate.errorProfile?.errorCount ?? 0) > 0;
-    const uniqueSet = new Set(candidate.toolCalls);
-    const rawRetryCount = candidate.toolCalls.length - uniqueSet.size;
-    const retryCount = hasErrors ? rawRetryCount : 0;
-    const hasRetries = retryCount > 0;
-
-    const threshold =
-      hasErrors || hasRetries ? config.errorComplexityThreshold : config.minComplexity;
-
-    if (hasErrors) {
-      reasoningParts.push(
-        `Tool errors detected (${candidate.errorProfile!.errorCount} errors in: ${candidate.errorProfile!.failedToolNames.join(", ")}), using error threshold ${threshold}`,
-      );
-    }
-    if (hasRetries) {
-      reasoningParts.push(
-        `Tool retries detected (${retryCount} retries), using error threshold ${threshold}`,
-      );
-    }
-
-    // Fetch recent suggestions as context for the agent (not a gate)
-    const recentRecords = await this.store.getRecentSuggestions(agentId, userId, 48);
-    const recentSuggestions: RecentSuggestionSummary[] = recentRecords.map((r) => ({
-      skillName: r.draft?.name,
-      domain: r.candidate.domain,
-      hoursAgo: Math.round((Date.now() - r.timestamp) / 3_600_000),
-      userResponse: r.userResponse,
-    }));
-
-    if (complexity.score < threshold) {
-      return {
-        shouldSuggest: false,
-        confidence: 0,
-        complexityScore: complexity.score,
-        reasoning:
-          reasoningParts.length > 0
-            ? `${reasoningParts.join("; ")}; Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`
-            : `Complexity score ${complexity.score.toFixed(2)} below threshold ${threshold}`,
-        recentSuggestions,
-      };
-    }
-
-    let confidence = complexity.score;
-    if (this.preferenceAdapter) {
-      const domainRate = await this.preferenceAdapter.getDomainAcceptanceRate(
-        agentId,
-        userId,
-        candidate.domain,
-      );
-      confidence = confidence * domainRate;
-    }
-
-    reasoningParts.push(
-      `Task is complex enough (score ${complexity.score.toFixed(2)}) for skill suggestion`,
-    );
-
-    return {
-      shouldSuggest: true,
-      confidence,
-      complexityScore: complexity.score,
-      reasoning: reasoningParts.join("; "),
-      recentSuggestions,
-    };
-  }
 
   async generate(candidate: EvolutionCandidate): Promise<SkillDraft> {
     if (this.draftGenerator) {return this.draftGenerator(candidate);}
@@ -155,29 +47,6 @@ export class EvolutionEngine {
     }
 
     return { shouldCreate: true };
-  }
-
-  async recordResponse(
-    recordId: string,
-    agentId: string,
-    userId: string,
-    response: EvolutionUserResponse,
-    savedPath?: string,
-  ): Promise<EvolutionRecord> {
-    const records = await this.store.list(agentId, userId);
-    const record = records.find((r) => r.id === recordId);
-    if (!record) {
-      throw new Error(`Record ${recordId} not found for user ${userId}`);
-    }
-
-    const updated: EvolutionRecord = {
-      ...record,
-      userResponse: response,
-      savedSkillPath: savedPath,
-    };
-
-    await this.store.save(agentId, updated);
-    return updated;
   }
 
   async patchSkill(

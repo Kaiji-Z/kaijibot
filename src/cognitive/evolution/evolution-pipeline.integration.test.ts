@@ -4,17 +4,13 @@ import { join } from "node:path";
 /**
  * Integration test — self-evolution engine end-to-end pipeline.
  *
- * Exercises the full flow WITHOUT the gateway:
- *   evaluate → generate → dedup → write → read → patch → lifecycle → preference → audit
- *
- * All I/O goes to a temp directory; no real LLM or Feishu API calls.
+ * Exercises the remaining engine flow (generate → dedup → write → read → patch → lifecycle → audit)
+ * WITHOUT the gateway. All I/O goes to a temp directory; no real LLM or Feishu API calls.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { AuditLog } from "./audit-log.js";
-import { evaluateComplexity, detectTrialAndError } from "./complexity-evaluator.js";
 import { EvolutionEngine } from "./engine.js";
 import { generateSkillDraftLLM, buildPrompt, validateAndRepair } from "./llm-draft-generator.js";
-import { EvolutionPreferenceAdapter } from "./preference-adapter.js";
 import { generateSkillDraft } from "./skill-draft-generator.js";
 import { SkillLifecycleManager } from "./skill-lifecycle.js";
 import { SkillPersistenceWriter } from "./skill-writer.js";
@@ -35,7 +31,6 @@ let store: EvolutionStore;
 let engine: EvolutionEngine;
 let writer: SkillPersistenceWriter;
 let lifecycle: SkillLifecycleManager;
-let prefs: EvolutionPreferenceAdapter;
 let audit: AuditLog;
 const AGENT = "main";
 
@@ -57,33 +52,6 @@ function complexCandidate(overrides: Partial<EvolutionCandidate> = {}): Evolutio
     domain: "feishu-meeting",
     ...overrides,
   };
-}
-
-function simpleCandidate(): EvolutionCandidate {
-  return {
-    taskSummary: "查询天气",
-    toolCalls: ["weather_get"],
-    uniqueToolCount: 1,
-    reasoningTurns: 1,
-    durationMs: 2_000,
-    domain: "weather",
-  };
-}
-
-function trialErrorCandidate(): EvolutionCandidate {
-  return complexCandidate({
-    transcript: [
-      "用户: 不对，不是这个文档",
-      "Agent: 抱歉，我来重新查找",
-      "用户: 换一种方式试试",
-      "tool_call:feishu_doc_search",
-      "tool_call:feishu_doc_search",
-      "tool_call:feishu_doc_search",
-      "Agent: 搞错了，让我重新来",
-    ].join("\n"),
-    hasTrialAndError: true,
-    userCorrections: 2,
-  });
 }
 
 function wellFormedSkillMd(name: string, description: string): string {
@@ -116,7 +84,6 @@ beforeEach(() => {
   engine = new EvolutionEngine(store);
   writer = new SkillPersistenceWriter(tempDir);
   lifecycle = new SkillLifecycleManager(writer);
-  prefs = new EvolutionPreferenceAdapter(tempDir);
   audit = new AuditLog(tempDir);
 });
 
@@ -125,17 +92,9 @@ afterEach(() => {
 });
 
 // ===========================================================================
-// SCENARIO 1: Full happy-path — complex task → suggest → generate → save
+// SCENARIO 1: Generate a draft and write it to disk
 // ===========================================================================
-describe("Pipeline: happy path (complex task → skill saved)", () => {
-  it("evaluates a complex task as suggestible", async () => {
-    const candidate = complexCandidate();
-    const decision = await engine.evaluate(candidate, AGENT, "user-1");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.complexityScore).toBeGreaterThanOrEqual(0.6);
-    expect(decision.reasoning).toContain("complex enough");
-  });
-
+describe("Pipeline: draft generation and persistence", () => {
   it("generates a draft and writes it to disk", async () => {
     const candidate = complexCandidate();
     const draft = await engine.generate(candidate);
@@ -152,149 +111,10 @@ describe("Pipeline: happy path (complex task → skill saved)", () => {
     expect(readBack).not.toBeNull();
     expect(readBack!.name).toBe(draft.name);
   });
-
-  it("end-to-end: evaluate → generate → dedup check → write → record", async () => {
-    const candidate = complexCandidate();
-    const userId = "user-e2e";
-
-    // Step 1: Evaluate
-    const decision = await engine.evaluate(candidate, AGENT, userId);
-    expect(decision.shouldSuggest).toBe(true);
-
-    // Step 2: Check dedup (no existing skills → should create)
-    const dedupResult = await engine.checkBeforeGenerate(candidate, lifecycle);
-    expect(dedupResult.shouldCreate).toBe(true);
-
-    // Step 3: Generate draft
-    const draft = await engine.generate(candidate);
-
-    // Step 4: Write to disk
-    const savedPath = await writer.writeSkill(draft);
-    expect(existsSync(savedPath)).toBe(true);
-
-    // Step 5: Record the evolution
-    const record: EvolutionRecord = {
-      id: `rec-e2e-${Date.now()}`,
-      userId,
-      candidate,
-      decision,
-      draft,
-      timestamp: Date.now(),
-    };
-    await store.save(AGENT, record);
-
-    // Step 6: Simulate user acceptance
-    const updated = await engine.recordResponse(record.id, AGENT, userId, "accepted", savedPath);
-    expect(updated.userResponse).toBe("accepted");
-    expect(updated.savedSkillPath).toBe(savedPath);
-
-    // Step 7: Verify persistence
-    const records = await store.list(AGENT, userId);
-    const found = records.find((r) => r.id === record.id);
-    expect(found).toBeDefined();
-    expect(found!.userResponse).toBe("accepted");
-
-    // Step 8: Verify skill on disk has frontmatter
-    const onDisk = await writer.readRawSkill(draft.name);
-    expect(onDisk).not.toBeNull();
-    expect(onDisk!.startsWith("---")).toBe(true);
-  });
 });
 
 // ===========================================================================
-// SCENARIO 2: Trial-and-error boost
-// ===========================================================================
-describe("Pipeline: trial-and-error detection boosts complexity", () => {
-  it("detects Chinese correction signals in transcript", () => {
-    const candidate = trialErrorCandidate();
-    const result = detectTrialAndError(candidate);
-    expect(result.detected).toBe(true);
-    expect(result.signals.length).toBeGreaterThan(0);
-    expect(result.boost).toBeGreaterThan(0);
-  });
-
-  it("trial-error candidate gets higher complexity than same candidate without", () => {
-    const base = complexCandidate();
-    const withTrial = trialErrorCandidate();
-
-    const baseScore = evaluateComplexity(base).score;
-    const trialScore = evaluateComplexity(withTrial).score;
-
-    expect(trialScore).toBeGreaterThan(baseScore);
-  });
-
-  it("engine includes trial-error info in reasoning when suggesting", async () => {
-    const candidate = trialErrorCandidate();
-    const decision = await engine.evaluate(candidate, AGENT, "user-trial");
-    if (decision.shouldSuggest) {
-      expect(decision.reasoning).toContain("Trial-and-error");
-    }
-  });
-
-  it("transcript-only detection works (no hasTrialAndError flag)", () => {
-    const candidate = complexCandidate({
-      transcript: "用户: 不对，换一个\nAgent: 抱歉，让我重新来",
-    });
-    const result = detectTrialAndError(candidate);
-    expect(result.detected).toBe(true);
-  });
-
-  it("no transcript and no flags → not detected", () => {
-    const candidate = complexCandidate();
-    const result = detectTrialAndError(candidate);
-    expect(result.detected).toBe(false);
-    expect(result.boost).toBe(0);
-  });
-});
-
-// ===========================================================================
-// SCENARIO 3: Recent suggestions context (no longer blocks)
-// ===========================================================================
-describe("Pipeline: recent suggestions as context", () => {
-  it("provides recentSuggestions even after prior suggestions", async () => {
-    const userId = "user-recent-ctx";
-
-    const decision1 = await engine.evaluate(complexCandidate(), AGENT, userId);
-    expect(decision1.shouldSuggest).toBe(true);
-    expect(decision1.recentSuggestions).toEqual([]);
-
-    await store.save(AGENT, {
-      id: "rec-recent",
-      userId,
-      candidate: complexCandidate(),
-      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "test" },
-      draft: { name: "test-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
-      timestamp: Date.now() - 1000,
-    });
-
-    const decision2 = await engine.evaluate(complexCandidate(), AGENT, userId);
-    expect(decision2.shouldSuggest).toBe(true);
-    expect(decision2.recentSuggestions).toHaveLength(1);
-    expect(decision2.recentSuggestions![0].skillName).toBe("test-skill");
-  });
-
-  it("continues suggesting regardless of prior suggestion count", async () => {
-    const userId = "user-no-block";
-
-    for (let i = 0; i < 5; i++) {
-      await store.save(AGENT, {
-        id: `rec-many-${i}`,
-        userId,
-        candidate: complexCandidate(),
-        decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "fill" },
-        draft: { name: `skill-${i}`, description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
-        timestamp: Date.now() - 1000,
-      });
-    }
-
-    const decision = await engine.evaluate(complexCandidate(), AGENT, userId);
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.recentSuggestions).toHaveLength(5);
-  });
-});
-
-// ===========================================================================
-// SCENARIO 4: Dedup — similar skill exists → suggest patch instead
+// SCENARIO 2: Dedup — similar skill exists → suggest patch instead
 // ===========================================================================
 describe("Pipeline: dedup prevents duplicate skills", () => {
   it("blocks creation when similar skill exists", async () => {
@@ -335,7 +155,7 @@ describe("Pipeline: dedup prevents duplicate skills", () => {
 });
 
 // ===========================================================================
-// SCENARIO 5: Skill patch — text replacement and LLM paths
+// SCENARIO 3: Skill patch — text replacement and LLM paths
 // ===========================================================================
 describe("Pipeline: skill patching", () => {
   it("fast-path: direct text replacement without LLM", async () => {
@@ -463,7 +283,7 @@ describe("Pipeline: skill patching", () => {
 });
 
 // ===========================================================================
-// SCENARIO 6: Lifecycle — usage tracking, staleness, expiry
+// SCENARIO 4: Lifecycle — usage tracking, staleness, expiry
 // ===========================================================================
 describe("Pipeline: skill lifecycle management", () => {
   it("tracks usage via touchSkill", async () => {
@@ -567,90 +387,7 @@ describe("Pipeline: skill lifecycle management", () => {
 });
 
 // ===========================================================================
-// SCENARIO 7: Preference learning — Thompson Sampling
-// ===========================================================================
-describe("Pipeline: preference learning (Thompson Sampling)", () => {
-  it("starts with prior for unseen domain", async () => {
-    const rate = await prefs.getDomainAcceptanceRate(AGENT, "user-1", "unknown-domain");
-    // Prior alpha=2, beta=1 → expected ~0.667, but sampled so just check range
-    expect(rate).toBeGreaterThan(0);
-    expect(rate).toBeLessThanOrEqual(1);
-  });
-
-  it("increases acceptance rate after accepted responses", async () => {
-    const userId = "user-pref";
-    const domain = "feishu-meeting";
-
-    // Record several acceptances
-    for (let i = 0; i < 5; i++) {
-      await prefs.recordResponse(AGENT, userId, domain, "accepted");
-    }
-
-    const bandit = await prefs.getRawBandit(AGENT, userId, domain);
-    expect(bandit).toBeDefined();
-    expect(bandit!.alpha).toBeGreaterThan(2); // prior + accepts
-    expect(bandit!.beta).toBe(1); // prior unchanged
-
-    // Sample should tend high
-    const samples: number[] = [];
-    for (let i = 0; i < 100; i++) {
-      samples.push(await prefs.getDomainAcceptanceRate(AGENT, userId, domain));
-    }
-    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
-    expect(avg).toBeGreaterThan(0.7);
-  });
-
-  it("decreases acceptance rate after rejected responses", async () => {
-    const userId = "user-reject";
-    const domain = "weather";
-
-    for (let i = 0; i < 5; i++) {
-      await prefs.recordResponse(AGENT, userId, domain, "rejected");
-    }
-
-    const bandit = await prefs.getRawBandit(AGENT, userId, domain);
-    expect(bandit!.beta).toBeGreaterThan(1);
-
-    const samples: number[] = [];
-    for (let i = 0; i < 100; i++) {
-      samples.push(await prefs.getDomainAcceptanceRate(AGENT, userId, domain));
-    }
-    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
-    expect(avg).toBeLessThan(0.5);
-  });
-
-  it("modified response gives half-credit", async () => {
-    const userId = "user-mod";
-    const domain = "code-review";
-
-    await prefs.recordResponse(AGENT, userId, domain, "modified");
-
-    const bandit = await prefs.getRawBandit(AGENT, userId, domain);
-    expect(bandit!.alpha).toBe(2.5); // prior(2) + 0.5
-  });
-
-  it("engine uses preference adapter to adjust confidence", async () => {
-    const userId = "user-conf";
-    const domain = "feishu-meeting";
-
-    // Boost acceptance rate
-    for (let i = 0; i < 10; i++) {
-      await prefs.recordResponse(AGENT, userId, domain, "accepted");
-    }
-
-    const engineWithPrefs = new EvolutionEngine(store, undefined, prefs);
-    const candidate = complexCandidate({ domain });
-
-    const decision = await engineWithPrefs.evaluate(candidate, AGENT, userId);
-    expect(decision.shouldSuggest).toBe(true);
-    // Confidence should be adjusted by domain acceptance rate
-    // With many accepts, confidence should be close to complexityScore
-    expect(decision.confidence).toBeGreaterThan(0);
-  });
-});
-
-// ===========================================================================
-// SCENARIO 8: Audit log — records all operations
+// SCENARIO 5: Audit log — records all operations
 // ===========================================================================
 describe("Pipeline: audit logging", () => {
   it("appends entries and queries them back", async () => {
@@ -706,7 +443,7 @@ describe("Pipeline: audit logging", () => {
 });
 
 // ===========================================================================
-// SCENARIO 9: LLM draft generator — prompt construction and validation
+// SCENARIO 6: LLM draft generator — prompt construction and validation
 // ===========================================================================
 describe("Pipeline: LLM draft generation", () => {
   it("builds a prompt containing skill-creator spec and candidate info", () => {
@@ -785,7 +522,7 @@ describe("Pipeline: LLM draft generation", () => {
 });
 
 // ===========================================================================
-// SCENARIO 10: Writer edge cases — path safety, atomicity, list
+// SCENARIO 7: Writer edge cases — path safety, atomicity, list
 // ===========================================================================
 describe("Pipeline: skill writer edge cases", () => {
   it("rejects path traversal in skill name", async () => {
@@ -883,63 +620,24 @@ describe("Pipeline: skill writer edge cases", () => {
 });
 
 // ===========================================================================
-// SCENARIO 11: Config persistence
+// SCENARIO 8: Config persistence
 // ===========================================================================
 describe("Pipeline: config persistence", () => {
   it("saves and loads config", async () => {
-    await store.saveConfig(AGENT, { ...(await store.loadConfig(AGENT)), minComplexity: 0.8 });
+    await store.saveConfig(AGENT, { ...(await store.loadConfig(AGENT)), enabled: false });
 
     const loaded = await store.loadConfig(AGENT);
-    expect(loaded.minComplexity).toBe(0.8);
+    expect(loaded.enabled).toBe(false);
   });
 
   it("returns defaults when no config file exists", async () => {
     const config = await store.loadConfig(AGENT);
-    expect(config.minComplexity).toBe(0.4);
     expect(config.enabled).toBe(true);
   });
 });
 
 // ===========================================================================
-// SCENARIO 12: Multi-user isolation
-// ===========================================================================
-describe("Pipeline: multi-user isolation", () => {
-  it("different users have separate records and preferences", async () => {
-    const userA = "user-a";
-    const userB = "user-b";
-
-    // User A: accept feishu-meeting
-    await prefs.recordResponse(AGENT, userA, "feishu-meeting", "accepted");
-    // User B: reject feishu-meeting multiple times
-    await prefs.recordResponse(AGENT, userB, "feishu-meeting", "rejected");
-    await prefs.recordResponse(AGENT, userB, "feishu-meeting", "rejected");
-
-    const banditA = await prefs.getRawBandit(AGENT, userA, "feishu-meeting");
-    const banditB = await prefs.getRawBandit(AGENT, userB, "feishu-meeting");
-
-    expect(banditA!.alpha).toBeGreaterThan(banditA!.beta);
-    expect(banditB!.beta).toBeGreaterThan(banditB!.alpha);
-
-    // Different records
-    const recordA: EvolutionRecord = {
-      id: "rec-a",
-      userId: userA,
-      candidate: complexCandidate(),
-      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "test" },
-      timestamp: Date.now(),
-    };
-    await store.save(AGENT, recordA);
-
-    const aRecords = await store.list(AGENT, userA);
-    const bRecords = await store.list(AGENT, userB);
-
-    expect(aRecords.length).toBe(1);
-    expect(bRecords.length).toBe(0);
-  });
-});
-
-// ===========================================================================
-// SCENARIO 13: Store atomic writes (no partial data on crash)
+// SCENARIO 9: Store atomic writes (no partial data on crash)
 // ===========================================================================
 describe("Pipeline: store reliability", () => {
   it("save → list round-trips correctly", async () => {
@@ -947,11 +645,11 @@ describe("Pipeline: store reliability", () => {
       id: "rec-rt",
       userId: "user-rt",
       candidate: complexCandidate(),
-      decision: {
-        shouldSuggest: true,
-        confidence: 0.9,
-        complexityScore: 0.8,
-        reasoning: "round-trip",
+      draft: {
+        name: "round-trip-skill",
+        description: "d",
+        triggerPhrases: ["t"],
+        bodyMarkdown: "# RT",
       },
       timestamp: Date.now(),
     };
@@ -964,15 +662,15 @@ describe("Pipeline: store reliability", () => {
     expect(loaded[0].candidate.taskSummary).toBe(record.candidate.taskSummary);
   });
 
-  it("getRecentSuggestions filters by time and shouldSuggest", async () => {
+  it("getRecentSuggestions filters by time and presence of draft", async () => {
     const userId = "user-recent";
 
     // Old suggestion (25h ago)
     await store.save(AGENT, {
       id: "rec-old",
       userId,
-      candidate: simpleCandidate(),
-      decision: { shouldSuggest: true, confidence: 0.5, complexityScore: 0.5, reasoning: "old" },
+      candidate: complexCandidate(),
+      draft: { name: "old-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# O" },
       timestamp: Date.now() - 25 * 3600000,
     });
 
@@ -981,16 +679,15 @@ describe("Pipeline: store reliability", () => {
       id: "rec-new",
       userId,
       candidate: complexCandidate(),
-      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "new" },
+      draft: { name: "new-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# N" },
       timestamp: Date.now() - 3600000,
     });
 
-    // Non-suggestion (should not appear)
+    // Non-suggestion (no draft — should not appear)
     await store.save(AGENT, {
       id: "rec-nosuggest",
       userId,
       candidate: complexCandidate(),
-      decision: { shouldSuggest: false, confidence: 0, complexityScore: 0.3, reasoning: "no" },
       timestamp: Date.now() - 1000,
     });
 
@@ -1001,49 +698,7 @@ describe("Pipeline: store reliability", () => {
 });
 
 // ===========================================================================
-// SCENARIO 14: Full rejection flow — user rejects, preference adapts
-// ===========================================================================
-describe("Pipeline: rejection → preference adaptation", () => {
-  it("user rejects → preference adapts → future confidence drops", async () => {
-    const userId = "user-reject-flow";
-    const domain = "feishu-meeting";
-
-    // Engine with preference adapter
-    const engineWithPrefs = new EvolutionEngine(store, undefined, prefs);
-
-    // First: evaluate and suggest
-    const decision1 = await engineWithPrefs.evaluate(complexCandidate({ domain }), AGENT, userId);
-    expect(decision1.shouldSuggest).toBe(true);
-
-    // User rejects
-    await prefs.recordResponse(AGENT, userId, domain, "rejected");
-
-    // Now acceptance rate should be lower
-    // With 1 rejection: beta goes from 1→2, alpha stays 2
-    // Expected value = 2/(2+2) = 0.5, but it's sampled so just check it decreased on average
-    const samples: number[] = [];
-    for (let i = 0; i < 200; i++) {
-      samples.push(await prefs.getDomainAcceptanceRate(AGENT, userId, domain));
-    }
-    const avgRate = samples.reduce((a, b) => a + b, 0) / samples.length;
-    expect(avgRate).toBeLessThan(0.7); // Prior was ~0.667, should be lower now
-  });
-});
-
-// ===========================================================================
-// SCENARIO 15: Disabled engine
-// ===========================================================================
-describe("Pipeline: disabled engine", () => {
-  it("never suggests when disabled", async () => {
-    const disabledEngine = new EvolutionEngine(store, { enabled: false });
-    const decision = await disabledEngine.evaluate(complexCandidate(), AGENT, "user-disabled");
-    expect(decision.shouldSuggest).toBe(false);
-    expect(decision.reasoning).toContain("disabled");
-  });
-});
-
-// ===========================================================================
-// SCENARIO 16: Concurrent writes — two skills written simultaneously
+// SCENARIO 10: Concurrent writes — two skills written simultaneously
 // ===========================================================================
 describe("Pipeline: concurrent operations", () => {
   it("writes two skills concurrently without corruption", async () => {
@@ -1077,7 +732,7 @@ describe("Pipeline: concurrent operations", () => {
 });
 
 // ===========================================================================
-// SCENARIO 17: LLM draft generator full flow with custom draft generator
+// SCENARIO 11: Custom draft generator injection
 // ===========================================================================
 describe("Pipeline: custom draft generator injection", () => {
   it("engine uses injected draft generator over default", async () => {
@@ -1089,141 +744,10 @@ describe("Pipeline: custom draft generator injection", () => {
     };
 
     const customGenerator = async () => customDraft;
-    const engineWithCustom = new EvolutionEngine(store, undefined, undefined, customGenerator);
+    const engineWithCustom = new EvolutionEngine(store, customGenerator);
 
     const result = await engineWithCustom.generate(complexCandidate());
     expect(result.name).toBe("custom-skill");
     expect(result.bodyMarkdown).toContain("Custom");
-  });
-});
-
-// ===========================================================================
-// SCENARIO 18: Error-prone simple task triggers evolution (errorComplexityThreshold)
-// ===========================================================================
-describe("Pipeline: error-driven evolution for simple tasks", () => {
-  it("simple task with tool errors triggers suggestion", async () => {
-    const candidate = simpleCandidate();
-    candidate.errorProfile = {
-      errorCount: 2,
-      failedToolNames: ["weather_get"],
-      hasMutatingErrors: false,
-    };
-    const decision = await engine.evaluate(candidate, AGENT, "user-err-simple");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.reasoning).toContain("error threshold");
-  });
-
-  it("retries without errors do NOT trigger error threshold", async () => {
-    const candidate: EvolutionCandidate = {
-      taskSummary: "查询天气（重试了3次）",
-      toolCalls: ["weather_get", "weather_get", "weather_get", "weather_get"],
-      uniqueToolCount: 1,
-      reasoningTurns: 4,
-      durationMs: 15_000,
-      domain: "weather",
-    };
-    const decision = await engine.evaluate(candidate, AGENT, "user-retry-simple");
-    expect(decision.shouldSuggest).toBe(false);
-  });
-
-  it("simple task without errors does NOT trigger (backward compat)", async () => {
-    const candidate = simpleCandidate();
-    const decision = await engine.evaluate(candidate, AGENT, "user-clean-simple");
-    expect(decision.shouldSuggest).toBe(false);
-  });
-});
-
-// ===========================================================================
-// SCENARIO 19: Error-prone simple task gets higher priority than smooth complex task
-// ===========================================================================
-describe("Pipeline: error priority vs smooth complexity", () => {
-  it("error-based suggestion includes error info in reasoning", async () => {
-    const candidate: EvolutionCandidate = {
-      taskSummary: "创建飞书文档",
-      toolCalls: ["feishu_doc_create", "feishu_doc_create", "feishu_doc_create"],
-      uniqueToolCount: 1,
-      reasoningTurns: 3,
-      durationMs: 10_000,
-      domain: "feishu-doc",
-      errorProfile: {
-        errorCount: 2,
-        failedToolNames: ["feishu_doc_create"],
-        hasMutatingErrors: true,
-      },
-    };
-    const decision = await engine.evaluate(candidate, AGENT, "user-err-priority");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.reasoning).toContain("Tool errors detected");
-    expect(decision.reasoning).toContain("feishu_doc_create");
-  });
-
-  it("smooth complex task still uses minComplexity threshold", async () => {
-    const candidate = complexCandidate();
-    const decision = await engine.evaluate(candidate, AGENT, "user-smooth-complex");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.reasoning).not.toContain("error threshold");
-    expect(decision.reasoning).toContain("complex enough");
-  });
-});
-
-// ===========================================================================
-// SCENARIO 20: Error-driven trigger provides context
-// ===========================================================================
-describe("Pipeline: error-driven trigger provides recent context", () => {
-  it("error-based suggestion includes recentSuggestions context", async () => {
-    const userId = "user-err-ctx";
-
-    const recentRecord: EvolutionRecord = {
-      id: "rec-err-recent",
-      userId,
-      candidate: simpleCandidate(),
-      decision: { shouldSuggest: true, confidence: 0.5, complexityScore: 0.4, reasoning: "err" },
-      draft: { name: "prev-skill", description: "d", triggerPhrases: ["t"], bodyMarkdown: "# T" },
-      timestamp: Date.now() - 1000,
-    };
-    await store.save(AGENT, recentRecord);
-
-    const candidate = simpleCandidate();
-    candidate.errorProfile = {
-      errorCount: 3,
-      failedToolNames: ["weather_get"],
-      hasMutatingErrors: false,
-    };
-    const decision = await engine.evaluate(candidate, AGENT, userId);
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.recentSuggestions).toHaveLength(1);
-    expect(decision.recentSuggestions![0].skillName).toBe("prev-skill");
-  });
-});
-
-// ===========================================================================
-// SCENARIO 21: Backward compatibility — existing tests still pass
-// ===========================================================================
-describe("Pipeline: backward compatibility with error fields", () => {
-  it("complex candidate without errorProfile still works", async () => {
-    const candidate = complexCandidate();
-    expect(candidate.errorProfile).toBeUndefined();
-    const decision = await engine.evaluate(candidate, AGENT, "user-backward");
-    expect(decision.shouldSuggest).toBe(true);
-  });
-
-  it("complex candidate with empty errorProfile uses minComplexity", async () => {
-    const candidate = complexCandidate();
-    candidate.errorProfile = { errorCount: 0, failedToolNames: [], hasMutatingErrors: false };
-    const decision = await engine.evaluate(candidate, AGENT, "user-zero-err");
-    expect(decision.shouldSuggest).toBe(true);
-  });
-
-  it("trial-and-error + error profile both contribute", async () => {
-    const candidate = trialErrorCandidate();
-    candidate.errorProfile = {
-      errorCount: 1,
-      failedToolNames: ["feishu_doc_search"],
-      hasMutatingErrors: false,
-    };
-    const decision = await engine.evaluate(candidate, AGENT, "user-combined");
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.reasoning).toContain("Trial-and-error");
-    expect(decision.reasoning).toContain("Tool errors detected");
   });
 });

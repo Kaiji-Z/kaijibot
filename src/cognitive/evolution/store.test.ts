@@ -24,11 +24,11 @@ function makeRecord(overrides: Partial<EvolutionRecord> = {}): EvolutionRecord {
       durationMs: 5000,
       domain: "test",
     },
-    decision: {
-      shouldSuggest: true,
-      confidence: 0.8,
-      complexityScore: 0.7,
-      reasoning: "Complex enough",
+    draft: {
+      name: "test-skill",
+      description: "d",
+      triggerPhrases: ["test"],
+      bodyMarkdown: "# Test",
     },
     timestamp: Date.now(),
     ...overrides,
@@ -81,17 +81,16 @@ describe("EvolutionStore", () => {
     expect(suggestions[0].id).toBe("rec-recent");
   });
 
-  it("getRecentSuggestions only includes suggested records", async () => {
-    const suggested = makeRecord({
+  it("getRecentSuggestions only includes records with drafts", async () => {
+    const withDraft = makeRecord({
       id: "rec-yes",
-      decision: { shouldSuggest: true, confidence: 0.9, complexityScore: 0.8, reasoning: "yes" },
     });
-    const notSuggested = makeRecord({
+    const withoutDraft = makeRecord({
       id: "rec-no",
-      decision: { shouldSuggest: false, confidence: 0.3, complexityScore: 0.2, reasoning: "no" },
+      draft: undefined,
     });
-    await store.save(AGENT, suggested);
-    await store.save(AGENT, notSuggested);
+    await store.save(AGENT, withDraft);
+    await store.save(AGENT, withoutDraft);
 
     const suggestions = await store.getRecentSuggestions(AGENT, "user-1", 1);
     expect(suggestions).toHaveLength(1);
@@ -104,13 +103,11 @@ describe("EvolutionStore", () => {
   });
 
   it("saveConfig persists and loadConfig reads back", async () => {
-    const custom = { ...DEFAULT_EVOLUTION_CONFIG, minComplexity: 0.9, enabled: false };
+    const custom = { ...DEFAULT_EVOLUTION_CONFIG, enabled: false };
     await store.saveConfig(AGENT, custom);
 
     const loaded = await store.loadConfig(AGENT);
-    expect(loaded.minComplexity).toBe(0.9);
     expect(loaded.enabled).toBe(false);
-    expect(loaded.errorComplexityThreshold).toBe(DEFAULT_EVOLUTION_CONFIG.errorComplexityThreshold);
   });
 
   it("handles empty/missing user files gracefully", async () => {

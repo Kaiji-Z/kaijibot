@@ -55,7 +55,7 @@ export class EvolutionStore {
   ): Promise<EvolutionRecord[]> {
     const records = await this.loadRecords(agentId, userId);
     const cutoff = Date.now() - hours * 3_600_000;
-    return records.filter((r) => r.timestamp > cutoff && r.decision?.shouldSuggest === true);
+    return records.filter((r) => r.timestamp > cutoff && r.draft !== undefined);
   }
 
   async loadConfig(agentId: string): Promise<EvolutionConfig> {

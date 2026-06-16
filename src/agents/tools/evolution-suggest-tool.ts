@@ -84,7 +84,7 @@ export function createEvolutionSuggestTool(deps: {
               maxTokens: 4000,
               timeout: 60_000,
             });
-            engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+            engine = new EvolutionEngine(store, (c) =>
               generateSkillDraftLLM(c, { generateText }),
             );
           } else {

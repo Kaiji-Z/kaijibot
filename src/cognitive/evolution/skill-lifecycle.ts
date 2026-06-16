@@ -133,17 +133,6 @@ Consider two skills duplicates if they solve the same class of problems, even if
     }
   }
 
-  async markStale(name: string): Promise<void> {
-    const raw = await this.writer.readRawSkill(name);
-    if (!raw) {return;}
-
-    let content = raw;
-    if (/^lastUsedAt:\s*\d+/m.test(content)) {
-      content = content.replace(/^lastUsedAt:\s*\d+/m, "lastUsedAt: 0");
-    }
-    await this.writer.updateSkill(name, content);
-  }
-
   async removeStale(olderThanDays: number): Promise<number> {
     const allMeta = await this.listSkills();
     const threshold = Date.now() - olderThanDays * 86400000;

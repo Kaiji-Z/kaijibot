@@ -219,123 +219,7 @@ describe("Phase 1: hard-trigger signal generation via evaluateHardTrigger", () =
 });
 
 // ===========================================================================
-// PHASE 2: No-cooldown flow + recentSuggestions (no LLM needed)
-// ===========================================================================
-describe("Phase 2: no-cooldown — multiple suggestions all pass", () => {
-  it("allows 5 consecutive suggestions for same user", async () => {
-    const engine = new EvolutionEngine(store);
-    const candidate = makeCandidate({
-      toolCalls: Array.from({ length: 15 }, (_, i) => `tool_${i}`),
-      uniqueToolCount: 10,
-      reasoningTurns: 12,
-      durationMs: 400_000,
-      domain: "test",
-    });
-
-    for (let i = 0; i < 5; i++) {
-      const decision = await engine.evaluate(candidate, "main", "user-no-cooldown");
-      expect(decision.shouldSuggest).toBe(true);
-      expect(decision.recentSuggestions).toHaveLength(i);
-
-      await store.save("main", {
-        id: `rec-no-cooldown-${i}`,
-        userId: "user-no-cooldown",
-        candidate,
-        decision,
-        timestamp: Date.now(),
-      });
-    }
-  });
-
-  it("provides recentSuggestions with prior records", async () => {
-    const engine = new EvolutionEngine(store);
-
-    await store.save("main", {
-      id: "rec-1",
-      userId: "user-ctx",
-      candidate: makeCandidate({ domain: "feishu-wiki" }),
-      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "ok" },
-      draft: {
-        name: "wiki-skill",
-        description: "d",
-        triggerPhrases: ["wiki"],
-        bodyMarkdown: "# W",
-      },
-      timestamp: Date.now() - 7_200_000,
-    });
-
-    await store.save("main", {
-      id: "rec-2",
-      userId: "user-ctx",
-      candidate: makeCandidate({ domain: "data-analysis" }),
-      decision: { shouldSuggest: true, confidence: 0.7, complexityScore: 0.6, reasoning: "ok" },
-      draft: {
-        name: "data-skill",
-        description: "d",
-        triggerPhrases: ["data"],
-        bodyMarkdown: "# D",
-      },
-      timestamp: Date.now() - 1_800_000,
-    });
-
-    const candidate = makeCandidate({
-      toolCalls: Array.from({ length: 15 }, (_, i) => `tool_${i}`),
-      uniqueToolCount: 10,
-      reasoningTurns: 12,
-      durationMs: 400_000,
-      domain: "test",
-    });
-    const decision = await engine.evaluate(candidate, "main", "user-ctx");
-
-    expect(decision.shouldSuggest).toBe(true);
-    expect(decision.recentSuggestions).toHaveLength(2);
-    expect(decision.recentSuggestions![0]!.domain).toBe("feishu-wiki");
-    expect(decision.recentSuggestions![0]!.skillName).toBe("wiki-skill");
-    expect(decision.recentSuggestions![0]!.hoursAgo).toBeGreaterThanOrEqual(2);
-    expect(decision.recentSuggestions![1]!.domain).toBe("data-analysis");
-  });
-
-  it("recentSuggestions reflects userResponse", async () => {
-    const engine = new EvolutionEngine(store);
-
-    await store.save("main", {
-      id: "rec-accepted",
-      userId: "user-resp",
-      candidate: makeCandidate({ domain: "wiki" }),
-      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "ok" },
-      draft: { name: "w", description: "d", triggerPhrases: ["w"], bodyMarkdown: "# W" },
-      userResponse: "accepted",
-      timestamp: Date.now() - 1000,
-    });
-
-    await store.save("main", {
-      id: "rec-rejected",
-      userId: "user-resp",
-      candidate: makeCandidate({ domain: "data" }),
-      decision: { shouldSuggest: true, confidence: 0.8, complexityScore: 0.7, reasoning: "ok" },
-      draft: { name: "d", description: "d", triggerPhrases: ["d"], bodyMarkdown: "# D" },
-      userResponse: "rejected",
-      timestamp: Date.now() - 1000,
-    });
-
-    const candidate = makeCandidate({
-      toolCalls: Array.from({ length: 15 }, (_, i) => `tool_${i}`),
-      uniqueToolCount: 10,
-      reasoningTurns: 12,
-      durationMs: 400_000,
-    });
-    const decision = await engine.evaluate(candidate, "main", "user-resp");
-
-    expect(decision.recentSuggestions).toHaveLength(2);
-    const accepted = decision.recentSuggestions!.find((r) => r.domain === "wiki");
-    const rejected = decision.recentSuggestions!.find((r) => r.domain === "data");
-    expect(accepted!.userResponse).toBe("accepted");
-    expect(rejected!.userResponse).toBe("rejected");
-  });
-});
-
-// ===========================================================================
-// PHASE 3: Skill creation pipeline (no LLM needed — deterministic fallback)
+// PHASE 2: Skill creation pipeline (no LLM needed — deterministic fallback)
 // ===========================================================================
 describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
   it("generates skill via deterministic fallback, saves to disk, verifies file", async () => {
@@ -694,7 +578,7 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
 describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM", () => {
   it("complex task → LLM generates skill → saved to disk with correct format", async () => {
     const writer = new SkillPersistenceWriter(tempDir);
-    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+    const engine = new EvolutionEngine(store, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
 
@@ -746,7 +630,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
   it("second round: similar task → dedup detected against first skill", async () => {
     const writer = new SkillPersistenceWriter(tempDir);
     const lifecycle = new SkillLifecycleManager(writer);
-    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+    const engine = new EvolutionEngine(store, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
 
@@ -818,7 +702,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
 
   it("LLM failure → deterministic fallback generates valid skill", async () => {
     const writer = new SkillPersistenceWriter(tempDir);
-    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+    const engine = new EvolutionEngine(store, (c) =>
       generateSkillDraftLLM(c, {
         generateText: async () => {
           throw new Error("simulated API failure");
@@ -850,7 +734,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
 
   it("full lifecycle: create → use (touchSkill) → verify tracking", async () => {
     const writer = new SkillPersistenceWriter(tempDir);
-    const engine = new EvolutionEngine(store, undefined, undefined, (c) =>
+    const engine = new EvolutionEngine(store, (c) =>
       generateSkillDraftLLM(c, { generateText: callLLM }),
     );
 
