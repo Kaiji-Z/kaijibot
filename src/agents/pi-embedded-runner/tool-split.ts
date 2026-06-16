@@ -15,3 +15,7 @@ export function splitSdkTools(options: { tools: AnyAgentTool[]; sandboxEnabled: 
     customTools: toToolDefinitions(tools),
   };
 }
+
+export function resolveSessionToolsParam(builtInTools: AnyAgentTool[]): string[] | undefined {
+  return builtInTools.length > 0 ? builtInTools.map((t) => t.name) : undefined;
+}

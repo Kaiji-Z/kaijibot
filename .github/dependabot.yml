@@ -1,0 +1,18 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      runtime:
+        update-types: [minor, patch]
+      dev-tools:
+        update-types: [minor, patch]
+        exclude-patterns:
+          - vitest
+          - oxlint
+          - oxfmt
+      security-only:
+        update-types: [patch]

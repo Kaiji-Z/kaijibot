@@ -150,7 +150,7 @@ import {
   logProviderToolSchemaDiagnostics,
   normalizeProviderToolSchemas,
 } from "../tool-schema-runtime.js";
-import { splitSdkTools } from "../tool-split.js";
+import { splitSdkTools, resolveSessionToolsParam } from "../tool-split.js";
 import { mapThinkingLevel } from "../utils.js";
 import { flushPendingToolResultsAfterIdle } from "../wait-for-idle-before-flush.js";
 import {
@@ -936,7 +936,7 @@ export async function runEmbeddedAttempt(
         modelRegistry: params.modelRegistry,
         model: params.model,
         thinkingLevel: mapThinkingLevel(params.thinkLevel),
-        tools: builtInTools.length > 0 ? builtInTools.map((tool) => tool.name) : undefined,
+        tools: resolveSessionToolsParam(builtInTools),
         customTools: allCustomTools,
         sessionManager,
         settingsManager,

@@ -145,7 +145,7 @@ import {
   logProviderToolSchemaDiagnostics,
   normalizeProviderToolSchemas,
 } from "./tool-schema-runtime.js";
-import { splitSdkTools } from "./tool-split.js";
+import { splitSdkTools, resolveSessionToolsParam } from "./tool-split.js";
 import type { EmbeddedPiCompactResult } from "./types.js";
 import { mapThinkingLevel } from "./utils.js";
 import { flushPendingToolResultsAfterIdle } from "./wait-for-idle-before-flush.js";
@@ -882,7 +882,7 @@ export async function compactEmbeddedPiSessionDirect(
             modelRegistry,
             model: effectiveModel,
             thinkingLevel: mapThinkingLevel(thinkLevel),
-            tools: builtInTools.length > 0 ? builtInTools.map((tool) => tool.name) : undefined,
+            tools: resolveSessionToolsParam(builtInTools),
             customTools,
             sessionManager,
             settingsManager,
