@@ -190,7 +190,12 @@ Agent turn completes (≥3 tool calls)
 **Agent tools**:
 
 - `evaluate_skill_evolution` — always generates a skill draft when called; returns suggestionText + bodyMarkdown + recentSuggestions + complexityScore (as reference info, not a gate)
-- `patch_skill` — text replace or LLM-guided patch on existing skills (NOTE: not yet registered in `kaijibot-tools.ts`)
+- `patch_skill` — text replace or LLM-guided patch on existing skills
+- `delete_skill` — permanently delete a skill (requires confirm: true)
+- `manage_archived_skills` — list and recover archived skills
+- **Quality gate**: generated skills are evaluated by LLM-as-judge (4 dimensions, threshold 0.7) with up to 2 refine-retry loops before persistence
+- **Independent reviewer**: after save, fresh-context LLM review runs async and logs to AuditLog
+- **Effectiveness tracking**: post-skill-use tool count delta measured against domain baseline
 
 **Skill lifecycle**:
 
@@ -363,8 +368,7 @@ Correction (system prompt injection):
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
 - Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
-- Evolution config: `cognitive.evolution.enabled`, `cognitive.evolution.clawhubEnabled`, `cognitive.evolution.clawhubRegistry`
-- Note: `minComplexity` and `errorComplexityThreshold` exist in engine config but are no longer used by hard-trigger or suggest-tool for gating; they remain for engine unit tests only
+- Evolution config: `cognitive.evolution.enabled` (dead fields removed: minComplexity, errorComplexityThreshold, minTrustScore, clawhub*)
 - Correction config: enabled by default when `cognitive.enabled` is true; no separate config key
 - Consolidation config: `memory.consolidation.enabled` (default `true`), `memory.consolidation.cron` (default `0 3 * * *`), `memory.consolidation.concurrency` (default 2), `memory.consolidation.batchSize` (default 4000), `memory.consolidation.lookbackDays` (default 7), `memory.consolidation.timezone`
 - Correction data stored at `~/.kaijibot/cognitive/corrections/{userId}.json`. Schema: CorrectionStoreData with records array, each CorrectionRecord has id, domain, trigger, mistake, correction, provenance, reinforcedCount, createdAt, lastReinforced.
