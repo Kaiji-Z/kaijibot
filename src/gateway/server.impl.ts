@@ -1435,6 +1435,7 @@ export async function startGatewayServer(
             generateInsightCandidatesLLM,
             createDefaultInsightDeps,
             loadWorkspacePersonaContext,
+            loadSoulContentForInsight,
           } = await import("../cognitive/insight/llm-engine.js");
           const cognitiveStore = new PersonaStore(resolveConfigDir());
           await cognitiveStore.migrateFromFlatLayout();
@@ -1615,12 +1616,24 @@ export async function startGatewayServer(
               },
             },
             {
-              insightGenerator: async (persona, input, options) =>
-                generateInsightCandidatesLLM(persona, input, cfgAtStart, insightDeps, {
-                  maxCandidates: options?.maxCandidates,
-                  timeout: 20_000,
-                  systemContext: workspacePersonaContext || undefined,
-                }),
+              insightGenerator: async (persona, input, options) => {
+                const soulContent = await loadSoulContentForInsight({
+                  config: cfgAtStart,
+                  agentId: defaultAgentId,
+                  workspaceDir: defaultWorkspaceDir,
+                });
+                return generateInsightCandidatesLLM(
+                  persona,
+                  soulContent ? { ...input, soulContent } : input,
+                  cfgAtStart,
+                  insightDeps,
+                  {
+                    maxCandidates: options?.maxCandidates,
+                    timeout: 20_000,
+                    systemContext: workspacePersonaContext || undefined,
+                  },
+                );
+              },
               fragmentStore: sharedFragmentStore,
               llmDeps: insightDeps,
               botConfig: cfgAtStart,

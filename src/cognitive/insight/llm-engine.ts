@@ -4,6 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { complete, type Api, type Model } from "@earendil-works/pi-ai";
 import { DEFAULT_MODEL } from "../../agents/defaults.js";
+import { resolveAgentWorkspaceDir } from "../../agents/agent-scope.js";
+import { resolveSoulPreset } from "../../agents/bootstrap-files.js";
+import { loadSoulPresetContent } from "../../agents/soul-preset.js";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
@@ -535,6 +538,7 @@ export async function generateInsightCandidatesLLM(
           searchStrategy,
           outputLanguage,
           webSnippetByDomain,
+          input.soulContent,
         )
       : buildInsightPrompt(
           persona,
@@ -542,6 +546,7 @@ export async function generateInsightCandidatesLLM(
           webResults,
           input.recentInsightContents,
           webSnippetByDomain,
+          input.soulContent,
         );
 
   try {
@@ -867,6 +872,7 @@ export function buildSurpriseInsightPrompt(
   strategy: import("./types.js").SearchStrategy,
   outputLanguage: string = "zh",
   webSnippetByDomain?: Map<string, string[]>,
+  soulContent?: string,
 ): PromptBuildResult {
   void webSnippetByDomain;
 
@@ -926,7 +932,7 @@ export function buildSurpriseInsightPrompt(
   const indexedWebFindings = buildIndexedWebFindings(webResults);
 
   return {
-    prompt: `${buildVoiceSection(persona)}
+    prompt: `${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
@@ -1475,6 +1481,7 @@ export function buildInsightPrompt(
   webResults: WebSearchResult[] = [],
   recentInsightContents: string[] = [],
   webSnippetByDomain?: Map<string, string[]>,
+  soulContent?: string,
 ): PromptBuildResult {
   let resolvedWebSnippetByDomain: Map<string, string[]>;
   if (webSnippetByDomain) {
@@ -1622,7 +1629,7 @@ export function buildInsightPrompt(
   const fragmentSection = buildFragmentSection(fragments);
 
   return {
-    prompt: `${buildVoiceSection(persona)}
+    prompt: `${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
@@ -2001,6 +2008,49 @@ export async function loadWorkspacePersonaContext(workspaceDir?: string): Promis
     } catch {}
   }
   return parts.join("\n\n");
+}
+
+/**
+ * Resolve SOUL.md content to prepend to insight prompts. Resolution order:
+ *   1. Configured soul preset (e.g. `soul.preset: "intj"`) — honours per-agent,
+ *      then default, then top-level config.
+ *   2. Workspace SOUL.md at the agent's workspace dir.
+ *   3. `undefined` (prompt stays backward compatible).
+ */
+export async function loadSoulContentForInsight(params: {
+  config?: KaijiBotConfig;
+  agentId?: string;
+  workspaceDir?: string;
+}): Promise<string | undefined> {
+  const { config, agentId, workspaceDir } = params;
+
+  if (config) {
+    try {
+      const preset = resolveSoulPreset(config, agentId);
+      if (preset) {
+        return loadSoulPresetContent(preset);
+      }
+    } catch (err) {
+      log.warn("loadSoulContentForInsight: soul preset resolution failed", {
+        error: String(err),
+      });
+    }
+  }
+
+  const dir =
+    workspaceDir ??
+    (config && agentId ? resolveAgentWorkspaceDir(config, agentId) : undefined);
+  if (dir) {
+    try {
+      const content = await fs.readFile(path.join(dir, "SOUL.md"), "utf-8");
+      const trimmed = content.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    } catch {}
+  }
+
+  return undefined;
 }
 
 export function buildCritiquePrompt(candidate: InsightCandidate, persona: PersonaTree): string {
