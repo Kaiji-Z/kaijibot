@@ -198,6 +198,30 @@ export function extractImplicitSignals(
   return signals;
 }
 
+const INSIGHT_FEEDBACK_SENTIMENT = ["positive", "negative", "neutral", "engaged"] as const;
+export type InsightFeedbackSentiment = (typeof INSIGHT_FEEDBACK_SENTIMENT)[number];
+
+/**
+ * Map implicit signals extracted from a user reply into a coarse sentiment
+ * label that processInsightFeedback can consume. Heuristics (in priority order):
+ *   - long reply (>100 chars) or deep follow-up question → "engaged"
+ *   - very short reply (<20 chars) → "negative"
+ *   - otherwise → "neutral"
+ */
+export function classifySentimentFromSignals(
+  signals: ImplicitFeedbackSignal[],
+): InsightFeedbackSentiment {
+  const responseLength = signals.find((s) => s.type === "response_length")?.value;
+  const hasQuestionDepth = signals.some((s) => s.type === "question_depth");
+  if ((responseLength !== undefined && responseLength > 100) || hasQuestionDepth) {
+    return "engaged";
+  }
+  if (responseLength !== undefined && responseLength < 20) {
+    return "negative";
+  }
+  return "neutral";
+}
+
 /**
  * Process explicit feedback on a delivered insight and return updated PersonaTree.
  * Updates topic bandits, trust, and proactive frequency — does NOT mutate input.

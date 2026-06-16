@@ -120,6 +120,12 @@ export type FeedbackProfile = {
   consecutiveNoResponses?: number;
   /** Last 5 insight modes (knowledge/pattern/surprise/extend) for no-response tracking. */
   recentInsightModes?: string[];
+  /**
+   * Timestamp of the last proactive message that was penalized as no-response.
+   * Used to ensure processNoResponse fires at most once per delivered insight.
+   * Set to the lastProactiveAt value when the penalty was applied.
+   */
+  lastNoResponseAt?: number;
 };
 
 // Trust/rapport metrics
@@ -198,6 +204,8 @@ export type InsightRecord = {
   feedback?: "positive" | "negative" | "neutral" | "engaged";
   deliveredAt?: number;
   userResponse?: string;
+  /** Channel-native message id assigned to the delivered insight (for reply matching). */
+  deliveryMessageId?: string;
   promptVariant?: {
     fewShotSet: number;
     frameIndex: number;

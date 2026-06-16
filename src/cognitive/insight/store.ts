@@ -26,7 +26,9 @@ export class InsightStore {
 
   private async loadRecords(agentId: string, userId: string): Promise<InsightRecord[]> {
     const path = this.recordPath(agentId, userId);
-    if (!existsSync(path)) {return [];}
+    if (!existsSync(path)) {
+      return [];
+    }
     try {
       const raw = await readFile(path, "utf-8");
       const data = JSON.parse(raw) as InsightStoreData;
@@ -66,6 +68,25 @@ export class InsightStore {
     return records.find((r) => r.id === id);
   }
 
+  /**
+   * Find the most recent insight delivered as a specific channel message id.
+   * Only insights with a deliveryMessageId and within the default TTL window
+   * are considered, so stale reply-targets never match.
+   */
+  async findByDeliveryMessageId(
+    agentId: string,
+    userId: string,
+    messageId: string,
+  ): Promise<InsightRecord | undefined> {
+    const ttl = DEFAULT_INSIGHT_TTL_DAYS * 86_400_000;
+    const cutoff = Date.now() - ttl;
+    const records = await this.loadRecords(agentId, userId);
+    const candidates = records
+      .filter((r) => r.deliveryMessageId === messageId && r.generatedAt >= cutoff)
+      .toSorted((a, b) => b.generatedAt - a.generatedAt);
+    return candidates[0];
+  }
+
   async listRecent(agentId: string, userId: string, limit?: number): Promise<InsightRecord[]> {
     const records = await this.loadRecords(agentId, userId);
     return records.toSorted((a, b) => b.generatedAt - a.generatedAt).slice(0, limit ?? 20);
@@ -95,9 +116,13 @@ export class InsightStore {
   ): Promise<void> {
     const records = await this.loadRecords(agentId, userId);
     const record = records.find((r) => r.id === id);
-    if (!record) {return;}
+    if (!record) {
+      return;
+    }
     record.feedback = feedback;
-    if (userResponse !== undefined) {record.userResponse = userResponse;}
+    if (userResponse !== undefined) {
+      record.userResponse = userResponse;
+    }
     await this.writeRecords(agentId, userId, records);
   }
 
@@ -134,7 +159,9 @@ export class InsightStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) {result.push(name);}
+        if (s.isDirectory()) {
+          result.push(name);
+        }
       }
       return result.toSorted();
     } catch {

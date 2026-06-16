@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFile } from "node:fs/promises";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { InsightRecord } from "../types.js";
 import { InsightStore } from "./store.js";
@@ -141,7 +141,11 @@ describe("InsightStore", () => {
   it("listActive respects limit", async () => {
     const now = Date.now();
     for (let i = 0; i < 5; i++) {
-      await store.save(AGENT, "user-1", makeInsight({ id: `ins-${i}`, generatedAt: now - i * 1000 }));
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: `ins-${i}`, generatedAt: now - i * 1000 }),
+      );
     }
     const result = await store.listActive(AGENT, "user-1", 60, 3);
     expect(result).toHaveLength(3);
@@ -196,5 +200,75 @@ describe("InsightStore", () => {
     expect(Array.isArray(parsed.insights)).toBe(true);
     expect(parsed.insights).toHaveLength(1);
     expect(parsed.insights[0].id).toBe("fmt-test");
+  });
+
+  describe("findByDeliveryMessageId", () => {
+    it("finds insight by matching deliveryMessageId", async () => {
+      const insight = makeInsight({
+        id: "with-msg-id",
+        generatedAt: Date.now(),
+        deliveryMessageId: "om_abc123",
+      });
+      await store.save(AGENT, "user-1", insight);
+
+      const found = await store.findByDeliveryMessageId(AGENT, "user-1", "om_abc123");
+      expect(found?.id).toBe("with-msg-id");
+    });
+
+    it("returns undefined when no insight matches the messageId", async () => {
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: "no-match", generatedAt: Date.now(), deliveryMessageId: "om_xyz" }),
+      );
+      const found = await store.findByDeliveryMessageId(AGENT, "user-1", "om_different");
+      expect(found).toBeUndefined();
+    });
+
+    it("returns undefined when insight has no deliveryMessageId", async () => {
+      await store.save(AGENT, "user-1", makeInsight({ id: "no-delivery-id", generatedAt: Date.now() }));
+      const found = await store.findByDeliveryMessageId(AGENT, "user-1", "om_anything");
+      expect(found).toBeUndefined();
+    });
+
+    it("returns the most recent insight when multiple share the same messageId", async () => {
+      const now = Date.now();
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: "older", generatedAt: now - 2000, deliveryMessageId: "om_dup" }),
+      );
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: "newer", generatedAt: now, deliveryMessageId: "om_dup" }),
+      );
+
+      const found = await store.findByDeliveryMessageId(AGENT, "user-1", "om_dup");
+      expect(found?.id).toBe("newer");
+    });
+
+    it("excludes insights older than TTL", async () => {
+      const now = Date.now();
+      const DAY = 86_400_000;
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: "stale", generatedAt: now - 90 * DAY, deliveryMessageId: "om_old" }),
+      );
+
+      const found = await store.findByDeliveryMessageId(AGENT, "user-1", "om_old");
+      expect(found).toBeUndefined();
+    });
+
+    it("isolates by userId", async () => {
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: "u1-insight", generatedAt: Date.now(), deliveryMessageId: "om_shared" }),
+      );
+      const found = await store.findByDeliveryMessageId(AGENT, "user-2", "om_shared");
+      expect(found).toBeUndefined();
+    });
   });
 });

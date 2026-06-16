@@ -210,7 +210,9 @@ describe("ProactiveScheduler", () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async (_agentId, userId) => {
         processedUsers.push(userId);
-        if (processedUsers.length >= 3) {allProcessed!();}
+        if (processedUsers.length >= 3) {
+          allProcessed!();
+        }
         return personaWithDomains();
       },
       onInsightReady: async () => {},
@@ -233,7 +235,9 @@ describe("ProactiveScheduler", () => {
     });
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async (_agentId, userId) => {
-        if (userId === "bad-user") {throw new Error("load failed");}
+        if (userId === "bad-user") {
+          throw new Error("load failed");
+        }
         processedUsers.push(userId);
         goodProcessed!();
         return personaWithDomains();
@@ -2040,7 +2044,9 @@ describe("6-cycle integration test — all fixes together", () => {
     }
     const fatigued = new Set<string>();
     for (const [domain, count] of counts) {
-      if (count >= 2) {fatigued.add(domain);}
+      if (count >= 2) {
+        fatigued.add(domain);
+      }
     }
 
     expect(fatigued.has("AI/机器学习")).toBe(true);
@@ -2354,7 +2360,9 @@ describe("resolve — quality retry", () => {
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => {
         callCount++;
-        if (callCount === 1) {return [lowInsight];}
+        if (callCount === 1) {
+          return [lowInsight];
+        }
         return [highInsight];
       },
     });
@@ -2433,7 +2441,9 @@ describe("resolve — quality retry", () => {
     const scheduler = makeScheduler(config, persona, {
       insightGenerator: async () => {
         callCount++;
-        if (callCount <= 1) {return [mediumInsight];}
+        if (callCount <= 1) {
+          return [mediumInsight];
+        }
         return [bestInsight];
       },
     });
@@ -2517,8 +2527,12 @@ describe("processEvent per-user queue", () => {
       config,
       {
         loadPersona: async (_agentId, userId) => {
-          if (userId === "user-a") {return personaA;}
-          if (userId === "user-b") {return personaB;}
+          if (userId === "user-a") {
+            return personaA;
+          }
+          if (userId === "user-b") {
+            return personaB;
+          }
           return undefined;
         },
         onInsightReady: async () => {},
@@ -3123,7 +3137,12 @@ describe("resolve loop: all modes triggered (no starvation)", () => {
     p.rapport.trustScore = 1.0;
     p.feedbackProfile.optimalFrequencyHours = 0.5;
     p.feedbackProfile.lastProactiveAt = 0;
-    p.lifecycle = { ...p.lifecycle, stage: "active", lastActiveAt: Date.now(), totalActiveDays: 50 };
+    p.lifecycle = {
+      ...p.lifecycle,
+      stage: "active",
+      lastActiveAt: Date.now(),
+      totalActiveDays: 50,
+    };
     return p;
   }
 
@@ -3139,8 +3158,8 @@ describe("resolve loop: all modes triggered (no starvation)", () => {
       surpriseScore: 0.5,
       compositeScore: 0.65,
       sources: isPattern ? [] : [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
-      verificationStatus: isPattern ? "partial" as const : "unverified" as const,
-      source: isPattern ? "pattern" as const : undefined,
+      verificationStatus: isPattern ? ("partial" as const) : ("unverified" as const),
+      source: isPattern ? ("pattern" as const) : undefined,
     };
   }
 
@@ -3148,15 +3167,27 @@ describe("resolve loop: all modes triggered (no starvation)", () => {
     return {
       load: async () => [
         {
-          id: "f1", kind: "knowledge_gap" as const, content: "test", strength: 0.5,
-          userId: "stat-user", createdAt: Date.now(), updatedAt: Date.now(),
-          expiresAt: Date.now() + 14 * 86400000, evidence: "test", domains: ["test"], structuralTag: "test",
+          id: "f1",
+          kind: "knowledge_gap" as const,
+          content: "test",
+          strength: 0.5,
+          userId: "stat-user",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          expiresAt: Date.now() + 14 * 86400000,
+          evidence: "test",
+          domains: ["test"],
+          structuralTag: "test",
         },
       ],
       findClusters: async () => [
         {
-          id: "c1", fragmentIds: ["f1"], domains: ["test"], structuralPattern: "test",
-          averageStrength: 0.5, createdAt: Date.now(),
+          id: "c1",
+          fragmentIds: ["f1"],
+          domains: ["test"],
+          structuralPattern: "test",
+          averageStrength: 0.5,
+          createdAt: Date.now(),
         },
       ],
     } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never;
@@ -3177,7 +3208,11 @@ describe("resolve loop: all modes triggered (no starvation)", () => {
       let capturedMode = "";
       const scheduler = new ProactiveScheduler(
         { ...config, epsilonGreedy: 1.0 },
-        { loadPersona: async () => persona, onInsightReady: async () => {}, savePersona: async () => {} },
+        {
+          loadPersona: async () => persona,
+          onInsightReady: async () => {},
+          savePersona: async () => {},
+        },
         {
           insightGenerator: async (_p, _input, opts) => {
             capturedMode = opts?.mode ?? "unknown";
@@ -3198,7 +3233,9 @@ describe("resolve loop: all modes triggered (no starvation)", () => {
       });
 
       dateSpy.mockRestore();
-      if (capturedMode) {modeCounts[capturedMode] = (modeCounts[capturedMode] ?? 0) + 1;}
+      if (capturedMode) {
+        modeCounts[capturedMode] = (modeCounts[capturedMode] ?? 0) + 1;
+      }
     }
 
     expect(modeCounts.pattern, "pattern must be selected at least once").toBeGreaterThan(0);
@@ -3293,7 +3330,11 @@ describe("applyEpsilonGreedy", () => {
   });
 
   it("promotes exploration to front when epsilon is 1", () => {
-    const cands = [makeOpp("cross_domain", 0.8), makeOpp("domain_depth", 0.4), makeOpp("exploration", 0.5)];
+    const cands = [
+      makeOpp("cross_domain", 0.8),
+      makeOpp("domain_depth", 0.4),
+      makeOpp("exploration", 0.5),
+    ];
     const result = applyEpsilonGreedy(cands, 1.0, 12345);
     expect(result[0].type).toBe("exploration");
     expect(result).toHaveLength(3);
@@ -3343,5 +3384,161 @@ describe("applyEpsilonGreedy", () => {
     expect(result).toHaveLength(3);
     const remainingExplorations = result.slice(1).filter((c) => c.type === "exploration");
     expect(remainingExplorations).toHaveLength(1);
+  });
+});
+
+describe("ProactiveScheduler — time-based no-response penalty", () => {
+  const noResponseConfig: SchedulerConfig = {
+    minIntervalHours: 4,
+    minTrustScore: 0.3,
+  };
+
+  function personaWithStaleProactive(): PersonaTree {
+    const persona = personaWithDomains();
+    const now = Date.now();
+    persona.feedbackProfile.lastProactiveAt = now - 10 * 3600_000;
+    persona.lifecycle.lastActiveAt = now - 12 * 3600_000;
+    persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
+    persona.feedbackProfile.recentInsightModes = ["surprise"];
+    persona.feedbackProfile.consecutiveNoResponses = 0;
+    persona.feedbackProfile.lastNoResponseAt = undefined;
+    return persona;
+  }
+
+  it("applies no-response penalty when 2× interval elapsed without reply", async () => {
+    const persona = personaWithStaleProactive();
+    let savedPersona: PersonaTree | undefined;
+    const scheduler = new ProactiveScheduler(
+      { ...noResponseConfig, minTrustScore: 1.5 },
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_a, _u, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(savedPersona).toBeDefined();
+    expect(savedPersona!.feedbackProfile.consecutiveNoResponses).toBe(1);
+    expect(savedPersona!.feedbackProfile.lastNoResponseAt).toBe(
+      persona.feedbackProfile.lastProactiveAt,
+    );
+  });
+
+  it("does not re-apply penalty for the same lastProactiveAt", async () => {
+    const persona = personaWithStaleProactive();
+    persona.feedbackProfile.lastNoResponseAt = persona.feedbackProfile.lastProactiveAt;
+    let savedPersona: PersonaTree | undefined;
+    const scheduler = new ProactiveScheduler(
+      { ...noResponseConfig, minTrustScore: 1.5 },
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_a, _u, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    if (savedPersona) {
+      expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
+    }
+  });
+
+  it("does not fire when user was active after lastProactiveAt", async () => {
+    const persona = personaWithStaleProactive();
+    persona.lifecycle.lastActiveAt = Date.now() - 1 * 3600_000;
+    let savedPersona: PersonaTree | undefined;
+    const scheduler = new ProactiveScheduler(
+      { ...noResponseConfig, minTrustScore: 1.5 },
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_a, _u, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    if (savedPersona) {
+      expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
+    }
+  });
+
+  it("does not fire when less than 2× interval has elapsed", async () => {
+    const persona = personaWithStaleProactive();
+    persona.feedbackProfile.lastProactiveAt = Date.now() - 5 * 3600_000;
+    let savedPersona: PersonaTree | undefined;
+    const scheduler = new ProactiveScheduler(
+      { ...noResponseConfig, minTrustScore: 1.5 },
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_a, _u, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    if (savedPersona) {
+      expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
+    }
+  });
+
+  it("penalizes the previous insight's domains and mode", async () => {
+    const persona = personaWithStaleProactive();
+    const originalBeta = persona.feedbackProfile.topicBandits["AI/机器学习"]!.beta;
+    let savedPersona: PersonaTree | undefined;
+    const scheduler = new ProactiveScheduler(
+      { ...noResponseConfig, minTrustScore: 1.5 },
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async (_a, _u, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(savedPersona).toBeDefined();
+    const penalizedBeta = savedPersona!.feedbackProfile.topicBandits["AI/机器学习"]!.beta;
+    expect(penalizedBeta).toBeGreaterThan(originalBeta);
+    expect(savedPersona!.feedbackProfile.modeBandits?.surprise).toBeDefined();
   });
 });

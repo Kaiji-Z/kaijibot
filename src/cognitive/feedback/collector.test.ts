@@ -7,6 +7,7 @@ import {
   inferTopicFromContext,
   extractImplicitSignals,
   processImplicitFeedback,
+  classifySentimentFromSignals,
 } from "./collector.js";
 import type { NoResponseContext } from "./collector.js";
 
@@ -627,5 +628,39 @@ describe("processImplicitFeedback with response_length/question_depth bandit upd
 
     // topic_continuation: alpha +0.5, response_length >100: alpha +0.3 = total +0.8
     expect(result.feedbackProfile.topicBandits["AI/机器学习"]!.alpha).toBeCloseTo(3.8);
+  });
+});
+
+describe("classifySentimentFromSignals", () => {
+  it("returns 'engaged' for long responses (>100 chars)", () => {
+    const signals = extractImplicitSignals("x".repeat(150), undefined, "AI/机器学习");
+    expect(classifySentimentFromSignals(signals)).toBe("engaged");
+  });
+
+  it("returns 'engaged' when question_depth is present even with short response", () => {
+    const signals = extractImplicitSignals("为什么？", undefined, "AI/机器学习");
+    expect(classifySentimentFromSignals(signals)).toBe("engaged");
+  });
+
+  it("returns 'negative' for very short responses (<20 chars) without question_depth", () => {
+    const signals = extractImplicitSignals("ok", undefined, "AI/机器学习");
+    expect(classifySentimentFromSignals(signals)).toBe("negative");
+  });
+
+  it("returns 'neutral' for medium-length responses (20-100 chars) without question_depth", () => {
+    const signals = extractImplicitSignals("This is a medium length response with no deep question.", undefined, "AI/机器学习");
+    expect(classifySentimentFromSignals(signals)).toBe("neutral");
+  });
+
+  it("returns 'neutral' for empty signals array", () => {
+    expect(classifySentimentFromSignals([])).toBe("neutral");
+  });
+
+  it("prioritizes engaged over negative when both long-response and short-response somehow present", () => {
+    const signals = [
+      { type: "response_length" as const, topic: "test", value: 5, timestamp: Date.now() },
+      { type: "question_depth" as const, topic: "test", value: 1, timestamp: Date.now() },
+    ];
+    expect(classifySentimentFromSignals(signals)).toBe("engaged");
   });
 });

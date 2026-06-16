@@ -685,6 +685,39 @@ export class ProactiveScheduler {
       persona = resetNoResponseStreak(persona);
     }
 
+    // Time-based no-response: if the last proactive message went unanswered
+    // for more than 2× the configured interval, penalize the relevant
+    // domain/mode bandits. Fires at most once per lastProactiveAt value
+    // (deduped via lastNoResponseAt) so repeated ticks don't over-penalize.
+    const noResponseThresholdMs = 2 * this.config.minIntervalHours * 3600_000;
+    const lastProactiveAt = persona.feedbackProfile.lastProactiveAt;
+    if (
+      lastProactiveAt > 0 &&
+      event.timestamp - lastProactiveAt > noResponseThresholdMs &&
+      persona.lifecycle.lastActiveAt < lastProactiveAt &&
+      persona.feedbackProfile.lastNoResponseAt !== lastProactiveAt
+    ) {
+      const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+      const prevDomains =
+        recentDomains.length >= 1 ? (recentDomains[recentDomains.length - 1] ?? []) : [];
+      const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
+      const prevMode =
+        recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
+      persona = processNoResponse(persona, {
+        previousDomains: prevDomains,
+        previousMode: prevMode,
+      });
+      persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
+      log.info("time-based no-response penalty applied", {
+        userId,
+        lastProactiveAt,
+        consecutiveNoResponses: persona.feedbackProfile.consecutiveNoResponses,
+      });
+      // Persist immediately so the penalty survives even if the gate blocks
+      // (otherwise lastNoResponseAt dedup field is lost and every tick re-fires).
+      await this.callbacks.savePersona(agentId, userId, persona);
+    }
+
     const gateContext: GateContext = {
       persona,
       event,

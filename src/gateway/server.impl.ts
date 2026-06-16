@@ -1520,27 +1520,29 @@ export async function startGatewayServer(
                 personaChangeSource.checkPersonaUpdate(domainKeys.length, domainKeys);
               },
               async onInsightReady(agentId: string, userId: string, candidate) {
+                const record: import("../cognitive/types.js").InsightRecord = {
+                  id: candidate.id,
+                  generatedAt: Date.now(),
+                  triggerSource: "scheduled",
+                  targetDomains: candidate.targetDomains,
+                  sourceDomains: candidate.sourceDomains,
+                  content: candidate.content,
+                  rationale: candidate.rationale,
+                  sources: candidate.sources,
+                  deliveredAt: Date.now(),
+                  promptVariant: candidate.promptVariant,
+                };
+
                 try {
                   const { resolveConfigDir } = await import("../utils.js");
                   const { InsightStore } = await import("../cognitive/insight/store.js");
                   const insightStore = new InsightStore(resolveConfigDir());
-                  const record = {
-                    id: candidate.id,
-                    generatedAt: Date.now(),
-                    triggerSource: "scheduled" as const,
-                    targetDomains: candidate.targetDomains,
-                    sourceDomains: candidate.sourceDomains,
-                    content: candidate.content,
-                    rationale: candidate.rationale,
-                    sources: candidate.sources,
-                    deliveredAt: Date.now(),
-                    promptVariant: candidate.promptVariant,
-                  };
                   await insightStore.save(agentId, userId, record);
                 } catch (err) {
                   log.warn(`cognitive insight persistence failed: ${String(err)}`);
                 }
 
+                let deliveryMessageId: string | undefined;
                 try {
                   const { resolveCognitiveDeliveryTarget } =
                     await import("./cognitive-delivery.js");
@@ -1562,7 +1564,7 @@ export async function startGatewayServer(
                     sessionKey: target.sessionKey,
                   });
 
-                  await deliverOutboundPayloads({
+                  const results = await deliverOutboundPayloads({
                     cfg: cfgAtStart,
                     channel: target.channel,
                     to: target.to,
@@ -1577,9 +1579,38 @@ export async function startGatewayServer(
                     },
                     bestEffort: true,
                   });
-                  log.info(`cognitive insight delivered to ${userId} via ${target.channel}`);
+                  deliveryMessageId = results[0]?.messageId;
+                  log.info(`cognitive insight delivered to ${userId} via ${target.channel}`, {
+                    deliveryMessageId,
+                  });
                 } catch (err) {
                   log.warn(`cognitive insight delivery failed: ${String(err)}`);
+                }
+
+                // Persist the channel-native delivery id and record the delivery
+                // signal so the proactive scheduler and reply-detection can use it.
+                if (deliveryMessageId) {
+                  try {
+                    const { resolveConfigDir } = await import("../utils.js");
+                    const { InsightStore } = await import("../cognitive/insight/store.js");
+                    const { PersonaStore } = await import("../cognitive/persona/store.js");
+                    const { processInsightDeliverySignal } = await import(
+                      "../cognitive/feedback/collector.js"
+                    );
+
+                    record.deliveryMessageId = deliveryMessageId;
+                    const insightStore = new InsightStore(resolveConfigDir());
+                    await insightStore.save(agentId, userId, record);
+
+                    const personaStore = new PersonaStore(resolveConfigDir());
+                    const persona = await personaStore.load(agentId, userId);
+                    if (persona) {
+                      const updated = processInsightDeliverySignal(persona, record);
+                      await personaStore.save(agentId, userId, updated);
+                    }
+                  } catch (err) {
+                    log.warn(`cognitive insight delivery signal failed: ${String(err)}`);
+                  }
                 }
               },
             },
