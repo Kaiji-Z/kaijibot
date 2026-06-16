@@ -40,7 +40,9 @@ export function processImplicitFeedback(
   persona: PersonaTree,
   signals: ImplicitFeedbackSignal[],
 ): PersonaTree {
-  if (signals.length === 0) {return persona;}
+  if (signals.length === 0) {
+    return persona;
+  }
 
   const updatedRapport = updateTrustFromImplicit(persona.rapport, signals);
 
@@ -49,11 +51,19 @@ export function processImplicitFeedback(
   for (const signal of signals) {
     if (signal.topic && signal.type === "topic_continuation") {
       const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-      updatedBandits[signal.topic] = { alpha: bandit.alpha + 0.5, beta: bandit.beta, lastUpdated: now };
+      updatedBandits[signal.topic] = {
+        alpha: bandit.alpha + 0.5,
+        beta: bandit.beta,
+        lastUpdated: now,
+      };
     }
     if (signal.topic && signal.type === "topic_abandonment") {
       const bandit = updatedBandits[signal.topic] ?? { alpha: 2, beta: 1 };
-      updatedBandits[signal.topic] = { alpha: bandit.alpha, beta: bandit.beta + 0.3, lastUpdated: now };
+      updatedBandits[signal.topic] = {
+        alpha: bandit.alpha,
+        beta: bandit.beta + 0.3,
+        lastUpdated: now,
+      };
     }
   }
 
@@ -153,7 +163,7 @@ export function extractImplicitSignals(
   }
 
   // Question depth — check if user asks deep follow-up questions
-  const hasDeepQuestion = /[为什么|如何|怎样|what if|why|how come|深层|本质]/.test(userMessage);
+  const hasDeepQuestion = /(为什么|如何|怎样|what if|why|how come|深层|本质)/.test(userMessage);
   if (hasDeepQuestion) {
     signals.push({
       type: "question_depth",
@@ -362,7 +372,9 @@ export function processNoResponse(persona: PersonaTree, context?: NoResponseCont
 }
 
 export function resetNoResponseStreak(persona: PersonaTree): PersonaTree {
-  if ((persona.feedbackProfile.consecutiveNoResponses ?? 0) === 0) {return persona;}
+  if ((persona.feedbackProfile.consecutiveNoResponses ?? 0) === 0) {
+    return persona;
+  }
   log.info("no-response streak reset", { prev: persona.feedbackProfile.consecutiveNoResponses });
   return {
     ...persona,

@@ -540,6 +540,14 @@ describe("extractImplicitSignals with previousTopics", () => {
     expect(signals.some((s) => s.type === "question_depth")).toBe(true);
     expect(signals.some((s) => s.type === "topic_continuation")).toBe(true);
   });
+
+  it("regex fix: does NOT trigger question_depth for plain English (old char-class bug)", () => {
+    const signals = extractImplicitSignals("hello world thanks", undefined, "AI/机器学习", [
+      "AI/机器学习",
+    ]);
+
+    expect(signals.some((s) => s.type === "question_depth")).toBe(false);
+  });
 });
 
 describe("processImplicitFeedback with response_length/question_depth bandit updates", () => {

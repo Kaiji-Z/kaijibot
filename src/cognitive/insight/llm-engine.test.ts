@@ -362,7 +362,7 @@ describe("generateInsightCandidatesLLM", () => {
     expect(result).toEqual([]);
   });
 
-  it("enriches candidates with web search sources", async () => {
+  it("does not attach fake sources (Phase 0 fix: enrichWithWebSources returns candidates unchanged)", async () => {
     const depsWithSearch: LlmInsightDeps = {
       complete: async () => assistantMessage(validLLMResponse()),
       prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
@@ -383,8 +383,7 @@ describe("generateInsightCandidatesLLM", () => {
     );
 
     expect(result.length).toBeGreaterThanOrEqual(1);
-    expect(result[0]!.sources.length).toBe(1);
-    expect(result[0]!.sources[0]!.url).toBe("https://example.com/ts55");
+    expect(result[0]!.sources.length).toBe(0);
   });
 });
 
@@ -1312,7 +1311,9 @@ describe("buildSearchQuery — query diversification", () => {
     const usedSuffixes = new Set<string>();
     for (const q of queries) {
       for (const s of suffixes) {
-        if (q.includes(s)) {usedSuffixes.add(s);}
+        if (q.includes(s)) {
+          usedSuffixes.add(s);
+        }
       }
     }
     expect(usedSuffixes.size).toBeGreaterThanOrEqual(3);

@@ -215,8 +215,9 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
     const candidates = await generateInsightCandidatesLLM(persona, input, {} as any, deps);
 
     expect(candidates.length).toBeGreaterThan(0);
-    // The insight should have web sources attached
-    expect(candidates[0]!.sources.length).toBe(2);
+    // Phase 0: enrichWithWebSources no longer attaches fake sources.
+    // Phase 1 will implement proper citedSourceIndices tracking.
+    expect(candidates[0]!.sources.length).toBe(0);
     // The LLM response is a valid insight
     expect(candidates[0]!.content.length).toBeGreaterThan(10);
   });
@@ -390,7 +391,9 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
       {
         insightGenerator: async () => {
           // First call returns insight1, second returns insight2
-          if (savedPersonas.length === 0) {return [insight1];}
+          if (savedPersonas.length === 0) {
+            return [insight1];
+          }
           return [insight2];
         },
       },
@@ -506,12 +509,11 @@ describe("Improvement #3: Domain matching alias expansion", () => {
       ],
     });
 
-    // This should NOT throw and should produce candidates with sources
+    // This should NOT throw and should produce candidates
     const candidates = await generateInsightCandidatesLLM(persona, input, {} as any, deps);
 
     expect(candidates.length).toBeGreaterThan(0);
-    // Sources should be attached from web results
-    expect(candidates[0]!.sources.length).toBeGreaterThan(0);
+    expect(candidates[0]!.content.length).toBeGreaterThan(10);
   });
 });
 

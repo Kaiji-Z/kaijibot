@@ -30,14 +30,18 @@ import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "
 const log = createSubsystemLogger("cognitive/scheduler");
 
 function computeDomainOverlap(a: string[], b: string[]): number {
-  if (a.length === 0 || b.length === 0) {return 0;}
+  if (a.length === 0 || b.length === 0) {
+    return 0;
+  }
   const setB = new Set(b.map((d) => d.toLowerCase()));
   const overlap = a.filter((d) => setB.has(d.toLowerCase())).length;
   return overlap / Math.max(a.length, b.length);
 }
 
 function getFatiguedDomains(recentInsightDomains: string[][]): Set<string> {
-  if (recentInsightDomains.length === 0) {return new Set();}
+  if (recentInsightDomains.length === 0) {
+    return new Set();
+  }
   const last5 = recentInsightDomains.slice(-5);
   const counts = new Map<string, number>();
   for (const domains of last5) {
@@ -47,7 +51,9 @@ function getFatiguedDomains(recentInsightDomains: string[][]): Set<string> {
   }
   const fatigued = new Set<string>();
   for (const [domain, count] of counts) {
-    if (count >= 2) {fatigued.add(domain);}
+    if (count >= 2) {
+      fatigued.add(domain);
+    }
   }
   return fatigued;
 }
@@ -110,17 +116,24 @@ export function applyEpsilonGreedy(
   epsilon: number,
   seed: number,
 ): Opportunity[] {
-  if (epsilon <= 0 || candidates.length <= 1) {return candidates;}
+  if (epsilon <= 0 || candidates.length <= 1) {
+    return candidates;
+  }
   const rng = seededRandom(seed);
-  if (rng >= epsilon) {return candidates;}
+  if (rng >= epsilon) {
+    return candidates;
+  }
 
   const explorationIndices = candidates
     .map((c, i) => (c.type === "exploration" ? i : -1))
     .filter((i) => i >= 0);
 
-  if (explorationIndices.length === 0) {return candidates;}
+  if (explorationIndices.length === 0) {
+    return candidates;
+  }
 
-  const pickIdx = explorationIndices[Math.floor(rng * explorationIndices.length) % explorationIndices.length]!;
+  const pickIdx =
+    explorationIndices[Math.floor(rng * explorationIndices.length) % explorationIndices.length]!;
   const promoted = candidates[pickIdx]!;
   const rest = candidates.filter((_, i) => i !== pickIdx);
 
@@ -185,7 +198,9 @@ export class ProactiveScheduler {
   }
 
   identify(opportunities: Opportunity[], persona?: PersonaTree): Opportunity[] {
-    if (opportunities.length === 0) {return [];}
+    if (opportunities.length === 0) {
+      return [];
+    }
 
     const cfn = this.config.costFalseNegative ?? DEFAULT_C_FN;
     const cfa = this.config.costFalseAlarm ?? DEFAULT_C_FA;
@@ -219,9 +234,13 @@ export class ProactiveScheduler {
       recentInsightDomainsAll.length === 0
         ? penalized
         : penalized.map((opp) => {
-            if (opp.targetDomains.length === 0) {return opp;}
+            if (opp.targetDomains.length === 0) {
+              return opp;
+            }
             const starvedDomains = opp.targetDomains.filter((d) => !windowDomains.has(d));
-            if (starvedDomains.length === 0) {return opp;}
+            if (starvedDomains.length === 0) {
+              return opp;
+            }
             const starvedRatio = starvedDomains.length / opp.targetDomains.length;
             return { ...opp, pAct: opp.pAct * (1 + STARVATION_BONUS * starvedRatio) };
           });
@@ -264,7 +283,9 @@ export class ProactiveScheduler {
 
     if (mode === "pattern") {
       const userId = persona.identity?.userId;
-      if (!userId) {return null;}
+      if (!userId) {
+        return null;
+      }
 
       const [fragments, clusters] = await Promise.all([
         this.fragmentStore.load(agentId, userId),
@@ -453,7 +474,9 @@ export class ProactiveScheduler {
             this.botConfig,
             this.llmDeps,
           );
-          if (!critique) {break;}
+          if (!critique) {
+            break;
+          }
 
           const refined = await refineInsightWithLLM(
             "",
@@ -463,14 +486,18 @@ export class ProactiveScheduler {
             this.botConfig,
             this.llmDeps,
           );
-          if (!refined) {break;}
+          if (!refined) {
+            break;
+          }
 
           const refinedScore = scoreCandidate(refined);
           if (refinedScore > bestScore) {
             bestCandidate = refined;
             bestScore = refinedScore;
           }
-          if (bestScore >= QUALITY_EARLY_EXIT_THRESHOLD) {break;}
+          if (bestScore >= QUALITY_EARLY_EXIT_THRESHOLD) {
+            break;
+          }
         }
       }
 
@@ -507,7 +534,9 @@ export class ProactiveScheduler {
         }
       }
 
-      if (allCandidates.length === 0) {return null;}
+      if (allCandidates.length === 0) {
+        return null;
+      }
 
       const scored = allCandidates
         .map((c) => ({
@@ -550,7 +579,9 @@ export class ProactiveScheduler {
       let maxTrigramSimilarity = 0;
       for (const recent of recentInsightContents) {
         const sim = computeTrigramSimilarity(candidate.content, recent);
-        if (sim > maxTrigramSimilarity) {maxTrigramSimilarity = sim;}
+        if (sim > maxTrigramSimilarity) {
+          maxTrigramSimilarity = sim;
+        }
       }
 
       if (maxTrigramSimilarity < 0.3) {
@@ -639,7 +670,9 @@ export class ProactiveScheduler {
     event: SchedulerEvent,
   ): Promise<InsightCandidate | undefined> {
     let persona = await this.callbacks.loadPersona(agentId, userId);
-    if (!persona) {return undefined;}
+    if (!persona) {
+      return undefined;
+    }
 
     // Only reset no-response streak before gate — we always want to clear the
     // counter when the user has been active since the last proactive.
@@ -747,7 +780,9 @@ export class ProactiveScheduler {
       persona.feedbackProfile.recentInsightTypes = attemptedTypes;
 
       insight = await this.resolve(agentId, persona, selected);
-      if (insight) {break;}
+      if (insight) {
+        break;
+      }
       await this.callbacks.savePersona(agentId, userId, persona);
     }
 
@@ -877,7 +912,9 @@ export class ProactiveScheduler {
     _event: SchedulerEvent,
   ): Promise<Opportunity[]> {
     const userDomainKeys = Object.keys(persona.domains);
-    if (userDomainKeys.length === 0) {return [];}
+    if (userDomainKeys.length === 0) {
+      return [];
+    }
 
     const fatigued = getFatiguedDomains(persona.feedbackProfile.recentInsightDomains ?? []);
     const strategy = computeContentStrategy(persona);
@@ -961,7 +998,7 @@ export class ProactiveScheduler {
   }
 }
 
-const DEFAULT_C_FN = 4.0;
+const DEFAULT_C_FN = 5.0;
 const DEFAULT_C_FA = 1.0;
 
 const defaultInsightGenerator: InsightGeneratorFn = (persona, input, options) => {
@@ -982,7 +1019,9 @@ function seededShuffle<T>(arr: readonly T[], seed: number): T[] {
 
 function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
   const userDomains = Object.keys(persona.domains);
-  if (userDomains.length === 0) {return [];}
+  if (userDomains.length === 0) {
+    return [];
+  }
 
   const connections = findCrossDomainConnections(userDomains, undefined);
   const shuffled = seededShuffle(connections, event.timestamp);
@@ -1003,7 +1042,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
       metadata: { bridge: conn.bridge, distance: conn.distance },
       modeCandidates: ["surprise", "extend"],
     };
-   });
+  });
 
   // Fallback: intra-user cross-pollination when graph is fully covered by user domains
   if (results.length === 0 && userDomains.length >= 2) {
@@ -1012,10 +1051,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
 
     for (let i = 0; i < userDomains.length; i++) {
       for (let j = i + 1; j < userDomains.length; j++) {
-        const d = semanticDistance(
-          userDomains[i]!,
-          userDomains[j]!,
-        );
+        const d = semanticDistance(userDomains[i]!, userDomains[j]!);
         if (d > maxDist) {
           maxDist = d;
           weakestPair = { from: userDomains[i]!, to: userDomains[j]!, distance: d };
@@ -1061,7 +1097,9 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
   return entries
     .toSorted(([, a], [, b]) => {
       const recencyDelta = a.lastMentioned - b.lastMentioned;
-      if (Math.abs(recencyDelta) > 24 * 60 * 60 * 1000) {return -recencyDelta;}
+      if (Math.abs(recencyDelta) > 24 * 60 * 60 * 1000) {
+        return -recencyDelta;
+      }
       return b.depth - a.depth;
     })
     .slice(0, 2)
@@ -1121,7 +1159,9 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
 function scanInfoScan(persona: PersonaTree, event: SchedulerEvent): Opportunity[] {
   const pAccept = computeBaselinePAccept(persona);
   const domains = Object.keys(persona.domains);
-  if (domains.length === 0) {return [];}
+  if (domains.length === 0) {
+    return [];
+  }
 
   const startIdx = event.timestamp % domains.length;
   const rotated = [...domains.slice(startIdx), ...domains.slice(0, startIdx)];
@@ -1163,7 +1203,9 @@ export function filterBlacklistedOpportunities(
   opportunities: Opportunity[],
   domainBlacklist: string[] | undefined,
 ): Opportunity[] {
-  if (!domainBlacklist || domainBlacklist.length === 0) {return opportunities;}
+  if (!domainBlacklist || domainBlacklist.length === 0) {
+    return opportunities;
+  }
   const blacklistSet = new Set(domainBlacklist);
   return opportunities.filter((opp) => {
     const hasBlacklistedTarget = opp.targetDomains.some((d) => blacklistSet.has(d));

@@ -6,12 +6,12 @@ export const CognitiveProactiveSchema = z
     minIntervalHours: z.number().min(0.5).max(168).default(0.5),
     activeHours: z
       .object({
-        start: z.string().optional(),
-        end: z.string().optional(),
+        start: z.string().default("09:00"),
+        end: z.string().default("22:00"),
         timezone: z.string().optional(),
       })
       .strict()
-      .optional(),
+      .default({ start: "09:00", end: "22:00" }),
     digestMode: z.enum(["realtime", "daily", "weekly"]).optional(),
     costFalseNegative: z.number().min(0.1).max(100).optional(),
     costFalseAlarm: z.number().min(0.1).max(100).optional(),

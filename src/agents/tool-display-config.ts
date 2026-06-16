@@ -568,6 +568,11 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Evaluate Skill Evolution",
       detailKeys: ["taskSummary", "domain", "uniqueToolCount", "reasoningTurns"],
     },
+    delete_skill: {
+      emoji: "🗑️",
+      title: "Delete Skill",
+      detailKeys: ["name", "confirm"],
+    },
     manage_archived_skills: {
       emoji: "🗄️",
       title: "Manage Archived Skills",

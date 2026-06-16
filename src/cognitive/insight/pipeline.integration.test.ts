@@ -271,7 +271,9 @@ describe("insight pipeline integration", () => {
 
     expect(result).not.toBeNull();
     expect(result!.content).toBeTruthy();
-    expect(result!.sources.length).toBeGreaterThan(0);
+    // Phase 0: enrichWithWebSources returns candidates unchanged.
+    // Phase 1 will implement proper source tracking via citedSourceIndices.
+    expect(result!.sources.length).toBe(0);
   });
 
   it("surprise mode falls back to extend when inference fails", async () => {
@@ -411,8 +413,9 @@ describe("insight pipeline integration", () => {
     expect(capturedSearchQueries.length).toBeGreaterThanOrEqual(1);
     expect(capturedSearchQueries[0]).toBe(inferenceStrategyQuery);
 
-    expect(result!.sources.length).toBeGreaterThan(0);
-    expect(result!.sources.some((s) => s.url.includes("example.com"))).toBe(true);
+    // Phase 0: enrichWithWebSources returns candidates unchanged.
+    // Phase 1 will implement proper source tracking via citedSourceIndices.
+    expect(result!.sources.length).toBe(0);
   });
 
   it("processEvent: gate passes → search → identify → resolve delivers insight", async () => {

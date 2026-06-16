@@ -3,18 +3,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { complete, type Api, type Model } from "@earendil-works/pi-ai";
+import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
+import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
-import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
-import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { pickPromptVariant } from "../feedback/preference-learner.js";
 import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
-import {
-  isDuplicateBySemanticOverlap,
-  extractContentThemes,
-} from "./content-similarity.js";
+import { isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
 import type { Fragment } from "./fragment-types.js";
 import { inferSearchStrategy, type InterestInferenceDeps } from "./interest-inference.js";
 import type {
@@ -75,16 +72,28 @@ type RhetoricalMove = "事实开头" | "提问式" | "悖论式" | "推荐式" |
 
 function classifyRhetoricalMove(text: string): RhetoricalMove {
   const t = text.trim();
-  if (/(是否|难道|有没有|会不会)/.test(t.slice(0, 20))) {return "提问式";}
-  if (/(其实|但.*实际上|表面上.*实际上|看似.*实则)/.test(t.slice(0, 30))) {return "悖论式";}
-  if (/(建议|推荐|试试|用.*做|直接用)/.test(t.slice(0, 30))) {return "推荐式";}
-  if (/(就像|好比|类似于|跟.*一样|本质上.*就是)/.test(t.slice(0, 30))) {return "类比式";}
-  if (/^(你|你的)/.test(t)) {return "观察式";}
+  if (/(是否|难道|有没有|会不会)/.test(t.slice(0, 20))) {
+    return "提问式";
+  }
+  if (/(其实|但.*实际上|表面上.*实际上|看似.*实则)/.test(t.slice(0, 30))) {
+    return "悖论式";
+  }
+  if (/(建议|推荐|试试|用.*做|直接用)/.test(t.slice(0, 30))) {
+    return "推荐式";
+  }
+  if (/(就像|好比|类似于|跟.*一样|本质上.*就是)/.test(t.slice(0, 30))) {
+    return "类比式";
+  }
+  if (/^(你|你的)/.test(t)) {
+    return "观察式";
+  }
   return "事实开头";
 }
 
 function buildBannedOpeningsSection(recentInsightContents: string[]): string {
-  if (recentInsightContents.length === 0) {return "";}
+  if (recentInsightContents.length === 0) {
+    return "";
+  }
 
   const charBans = recentInsightContents
     .slice(-5)
@@ -101,7 +110,9 @@ function buildBannedOpeningsSection(recentInsightContents: string[]): string {
 
 function buildFragmentSection(fragments: Fragment[]): string {
   const relevant = fragments.filter((f) => FRAGMENT_KINDS_FOR_PROMPT.has(f.kind));
-  if (relevant.length === 0) {return "";}
+  if (relevant.length === 0) {
+    return "";
+  }
   return [...relevant]
     .toSorted((a, b) => b.strength - a.strength)
     .slice(0, 6)
@@ -117,20 +128,23 @@ export function buildVoiceSection(persona: PersonaTree): string {
     `You're writing to ${name}, a person you know well. This is a proactive message — like suddenly remembering something fascinating to tell a friend.`,
   );
   if (style) {
-    if (style.formality === "casual")
-      {parts.push("Tone: casual, like chatting with a close friend. Use 你 not 您.");}
-    else if (style.formality === "formal")
-      {parts.push("Tone: professional but warm. You can use 您 but keep it conversational.");}
-    else
-      {parts.push("Tone: natural and conversational. Match whatever feels right for the content.");}
-    if (style.technicalLevel === "expert")
-      {parts.push("Assume deep technical literacy. Use technical terms freely without explanation.");}
-    else if (style.technicalLevel === "beginner")
-      {parts.push("Explain technical concepts briefly when they appear. Avoid jargon.");}
-    if (style.verbosity === "concise")
-      {parts.push("Be brief: 1-2 sentences maximum. Every word earns its place.");}
-    else if (style.verbosity === "detailed")
-      {parts.push("You can use 2-3 sentences. Give enough context to be self-contained.");}
+    if (style.formality === "casual") {
+      parts.push("Tone: casual, like chatting with a close friend. Use 你 not 您.");
+    } else if (style.formality === "formal") {
+      parts.push("Tone: professional but warm. You can use 您 but keep it conversational.");
+    } else {
+      parts.push("Tone: natural and conversational. Match whatever feels right for the content.");
+    }
+    if (style.technicalLevel === "expert") {
+      parts.push("Assume deep technical literacy. Use technical terms freely without explanation.");
+    } else if (style.technicalLevel === "beginner") {
+      parts.push("Explain technical concepts briefly when they appear. Avoid jargon.");
+    }
+    if (style.verbosity === "concise") {
+      parts.push("Be brief: 1-2 sentences maximum. Every word earns its place.");
+    } else if (style.verbosity === "detailed") {
+      parts.push("You can use 2-3 sentences. Give enough context to be self-contained.");
+    }
   }
   return parts.join("\n");
 }
@@ -272,7 +286,11 @@ export function createDefaultInsightDeps(): LlmInsightDeps {
         return prepareSimpleCompletionModel({ cfg, provider, modelId });
       }
       const resolved = resolveDefaultModelForAgent({ cfg });
-      return prepareSimpleCompletionModel({ cfg, provider: resolved.provider, modelId: resolved.model });
+      return prepareSimpleCompletionModel({
+        cfg,
+        provider: resolved.provider,
+        modelId: resolved.model,
+      });
     },
     inferenceDeps: {
       complete,
@@ -285,7 +303,11 @@ export function createDefaultInsightDeps(): LlmInsightDeps {
           return prepareSimpleCompletionModel({ cfg, provider, modelId });
         }
         const resolved = resolveDefaultModelForAgent({ cfg });
-        return prepareSimpleCompletionModel({ cfg, provider: resolved.provider, modelId: resolved.model });
+        return prepareSimpleCompletionModel({
+          cfg,
+          provider: resolved.provider,
+          modelId: resolved.model,
+        });
       },
     },
   };
@@ -384,8 +406,9 @@ export async function generateInsightCandidatesLLM(
       return filtered.map((c) => {
         const inputDomains = input.targetDomains;
         const llmDomains = c.targetDomains;
-        const hasOverlap =
-          llmDomains.some((d) => inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()));
+        const hasOverlap = llmDomains.some((d) =>
+          inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()),
+        );
         if (!hasOverlap && inputDomains.length > 0) {
           log.info("force-aligned pattern-mode LLM output domains to input targetDomains", {
             llmDomains,
@@ -492,7 +515,9 @@ export async function generateInsightCandidatesLLM(
         keywords.add(td.toLowerCase());
         for (const part of td.split(/[/+]/)) {
           const trimmed = part.trim().toLowerCase();
-          if (trimmed.length >= 2) {keywords.add(trimmed);}
+          if (trimmed.length >= 2) {
+            keywords.add(trimmed);
+          }
         }
         keywordMap.set(td, keywords);
       }
@@ -588,8 +613,9 @@ export async function generateInsightCandidatesLLM(
       // with the input domains to prevent domain-overlap dedup from killing the insight.
       const inputDomains = input.targetDomains;
       const llmDomains = c.targetDomains;
-      const hasOverlap =
-        llmDomains.some((d) => inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()));
+      const hasOverlap = llmDomains.some((d) =>
+        inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()),
+      );
       if (!hasOverlap && inputDomains.length > 0) {
         log.info("force-aligned LLM output domains to input targetDomains", {
           llmDomains,
@@ -598,7 +624,9 @@ export async function generateInsightCandidatesLLM(
         c.targetDomains = [...inputDomains];
       }
       const enriched = enrichWithWebSources(c, webResults);
-      if (queryUsed) {enriched.searchQueryUsed = queryUsed;}
+      if (queryUsed) {
+        enriched.searchQueryUsed = queryUsed;
+      }
       enriched.promptVariant = variant;
       return enriched;
     });
@@ -629,8 +657,12 @@ async function generateExtendMode(
 function detectOutputLanguage(persona: PersonaTree): string {
   const lang =
     persona.identity?.primaryLanguage ?? persona.identity?.communicationStyle?.preferredLanguage;
-  if (lang === "en") {return "en";}
-  if (lang === "mixed") {return "zh";}
+  if (lang === "en") {
+    return "en";
+  }
+  if (lang === "mixed") {
+    return "zh";
+  }
   return "zh";
 }
 
@@ -653,12 +685,18 @@ export function extractKeyTerms(text: string): string[] {
     .replace(/(?:才能|的话|到底|这个|那个|一下|帮我|帮我去)/g, " ")
     .trim();
 
-  if (!cleaned) {return [];}
+  if (!cleaned) {
+    return [];
+  }
 
   const segments = cleaned.split(/[，,？?；;、—–]+|(?:的?时候|之前|之后|还是)/).flatMap((s) => {
     const trimmed = s.trim();
-    if (!trimmed) {return [];}
-    if (trimmed.length <= 30 && trimmed.length >= 2) {return [trimmed];}
+    if (!trimmed) {
+      return [];
+    }
+    if (trimmed.length <= 30 && trimmed.length >= 2) {
+      return [trimmed];
+    }
     if (trimmed.length > 30) {
       return trimmed.split(/\s+/).filter((w) => w.length >= 2 && w.length <= 30);
     }
@@ -687,13 +725,19 @@ function cachedWebSearch(
   if (searchCache.size >= MAX_CACHE_ENTRIES) {
     const staleKeys: string[] = [];
     for (const [k, v] of searchCache) {
-      if (now - v.fetchedAt >= SEARCH_CACHE_TTL_MS) {staleKeys.push(k);}
+      if (now - v.fetchedAt >= SEARCH_CACHE_TTL_MS) {
+        staleKeys.push(k);
+      }
     }
     if (staleKeys.length > 0) {
-      for (const k of staleKeys) {searchCache.delete(k);}
+      for (const k of staleKeys) {
+        searchCache.delete(k);
+      }
     } else {
       const firstKey = searchCache.keys().next().value;
-      if (firstKey !== undefined) {searchCache.delete(firstKey);}
+      if (firstKey !== undefined) {
+        searchCache.delete(firstKey);
+      }
     }
   }
   return webSearch(query).then((results) => {
@@ -717,7 +761,9 @@ export function buildSearchQuery(input: InsightEngineInput): string {
       historyTerms.add(term.toLowerCase());
     }
     for (const word of query.split(/\s+/)) {
-      if (word.length >= 2) {historyTerms.add(word.toLowerCase());}
+      if (word.length >= 2) {
+        historyTerms.add(word.toLowerCase());
+      }
     }
   }
 
@@ -725,7 +771,9 @@ export function buildSearchQuery(input: InsightEngineInput): string {
     const terms = domain.split(/[/+\-\s]+/).filter((p) => p.length > 0);
     const domainMatchesHistory =
       terms.length > 0 && terms.every((t) => historyTerms.has(t.toLowerCase()));
-    if (domainMatchesHistory && input.targetDomains.length > 1) {continue;}
+    if (domainMatchesHistory && input.targetDomains.length > 1) {
+      continue;
+    }
 
     for (const term of terms) {
       const lower = term.toLowerCase();
@@ -734,7 +782,9 @@ export function buildSearchQuery(input: InsightEngineInput): string {
         seen.add(lower);
       }
     }
-    if (parts.length >= 3) {break;}
+    if (parts.length >= 3) {
+      break;
+    }
   }
 
   if (parts.length < 4 && input.recentFocus.length > 0) {
@@ -746,12 +796,16 @@ export function buildSearchQuery(input: InsightEngineInput): string {
           parts.push(term);
           seen.add(lower);
         }
-        if (parts.length >= 4) {break;}
+        if (parts.length >= 4) {
+          break;
+        }
       }
     }
   }
 
-  if (parts.length === 0) {return "";}
+  if (parts.length === 0) {
+    return "";
+  }
 
   const suffixIndex = parts.length <= 2 ? history.length % SUFFIXES.length : -1;
   const suffix = suffixIndex >= 0 ? SUFFIXES[suffixIndex]! : "";
@@ -765,17 +819,12 @@ export function buildSearchQuery(input: InsightEngineInput): string {
 
 function enrichWithWebSources(
   candidate: InsightCandidate,
-  webResults: WebSearchResult[],
+  _webResults: WebSearchResult[],
 ): InsightCandidate {
-  if (webResults.length === 0) {return candidate;}
-  return {
-    ...candidate,
-    sources: webResults.map((r) => ({
-      url: r.url,
-      title: r.title,
-      credibility: 0.5,
-    })),
-  };
+  // Phase 1 will implement citedSourceIndices for proper source tracking.
+  // For now, do NOT attach fake sources — they destroy credibility when
+  // the insight content doesn't actually reference them.
+  return candidate;
 }
 
 export function buildSurpriseInsightPrompt(
@@ -886,7 +935,7 @@ ${
 }
 
 TASK:
-Share a specific, surprising insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory. The insight should feel like a genuine discovery, not a recommendation or tutorial.
+Share a specific insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory. It can be a discovery, a suggestion, or an observation — as long as it could change one of the user's decisions or understanding.
 
 Constraints:
 - 1-3 sentences, ${langInstruction}
@@ -1025,9 +1074,15 @@ const STRUCTURE_SEEDS = [
 
 function getTimeTag(lastMentioned: number): string {
   const hoursAgo = (Date.now() - lastMentioned) / (60 * 60 * 1000);
-  if (hoursAgo < 24) {return "active-today";}
-  if (hoursAgo < 72) {return "recent";}
-  if (hoursAgo < 168) {return "this-week";}
+  if (hoursAgo < 24) {
+    return "active-today";
+  }
+  if (hoursAgo < 72) {
+    return "recent";
+  }
+  if (hoursAgo < 168) {
+    return "this-week";
+  }
   return "inactive";
 }
 
@@ -1051,13 +1106,17 @@ function buildDomainKeywordMap(
     // Split compound names: "AI/机器学习" → "ai", "机器学习"
     for (const part of name.split(/[/+]/)) {
       const trimmed = part.trim().toLowerCase();
-      if (trimmed.length >= 2) {keywords.add(trimmed);}
+      if (trimmed.length >= 2) {
+        keywords.add(trimmed);
+      }
     }
     for (const insight of getFilteredInsights(domain).slice(0, 3)) {
       const lower = insight.toLowerCase();
       keywords.add(lower);
       for (const word of lower.split(/\s+/)) {
-        if (word.length >= 3) {keywords.add(word);}
+        if (word.length >= 3) {
+          keywords.add(word);
+        }
       }
     }
     map.set(name, keywords);
@@ -1084,7 +1143,9 @@ function matchWebResultsToDomains(
     const snippetLower = r.snippet.toLowerCase();
     for (const [domainName, keywords] of keywordMap) {
       const matched = [...keywords].some((kw) => {
-        if (titleLower.includes(kw) || snippetLower.includes(kw)) {return true;}
+        if (titleLower.includes(kw) || snippetLower.includes(kw)) {
+          return true;
+        }
         // Bigram similarity for fuzzy matching
         if (kw.length >= 4) {
           const kwBigrams = extractBigrams(kw);
@@ -1120,7 +1181,9 @@ export async function matchWebResultsToDomainsLLM(
   deps: LlmInsightDeps,
   extraTargetDomains: string[] = [],
 ): Promise<Map<string, string[]>> {
-  if (webResults.length === 0) {return new Map();}
+  if (webResults.length === 0) {
+    return new Map();
+  }
 
   const domainEntries: Array<{ name: string; hints: string[] }> = [];
   const seen = new Set<string>();
@@ -1201,10 +1264,14 @@ If a result doesn't match any domain, skip it. Respond with ONLY the JSON object
     const domainMap = new Map<string, string[]>();
     for (const [idxStr, domains] of Object.entries(parsed)) {
       const idx = Number(idxStr) - 1;
-      if (idx < 0 || idx >= webResults.length || !Array.isArray(domains)) {continue;}
+      if (idx < 0 || idx >= webResults.length || !Array.isArray(domains)) {
+        continue;
+      }
       const snippet = webResults[idx]!.snippet;
       for (const domain of domains) {
-        if (typeof domain !== "string") {continue;}
+        if (typeof domain !== "string") {
+          continue;
+        }
         const list = domainMap.get(domain) ?? [];
         list.push(snippet);
         domainMap.set(domain, list);
@@ -1223,7 +1290,9 @@ If a result doesn't match any domain, skip it. Respond with ONLY the JSON object
         keywords.add(td.toLowerCase());
         for (const part of td.split(/[/+]/)) {
           const trimmed = part.trim().toLowerCase();
-          if (trimmed.length >= 2) {keywords.add(trimmed);}
+          if (trimmed.length >= 2) {
+            keywords.add(trimmed);
+          }
         }
         keywordMap.set(td, keywords);
       }
@@ -1379,7 +1448,9 @@ export function buildInsightPrompt(
         keywords.add(td.toLowerCase());
         for (const part of td.split(/[/+]/)) {
           const trimmed = part.trim().toLowerCase();
-          if (trimmed.length >= 2) {keywords.add(trimmed);}
+          if (trimmed.length >= 2) {
+            keywords.add(trimmed);
+          }
         }
         keywordMap.set(td, keywords);
       }
@@ -1662,7 +1733,9 @@ function parseLLMInsights(text: string, maxCandidates: number): InsightCandidate
 function extractJsonArray(text: string): string | null {
   const start = text.indexOf("[");
   const end = text.lastIndexOf("]");
-  if (start === -1 || end === -1 || end <= start) {return null;}
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
   return text.slice(start, end + 1);
 }
 
@@ -1719,11 +1792,18 @@ function repairJsonArray(raw: string): string {
       inString = !inString;
       continue;
     }
-    if (inString) {continue;}
-    if (ch === "[") {openBrackets++;}
-    else if (ch === "]") {openBrackets--;}
-    else if (ch === "{") {openBraces++;}
-    else if (ch === "}") {openBraces--;}
+    if (inString) {
+      continue;
+    }
+    if (ch === "[") {
+      openBrackets++;
+    } else if (ch === "]") {
+      openBrackets--;
+    } else if (ch === "{") {
+      openBraces++;
+    } else if (ch === "}") {
+      openBraces--;
+    }
   }
   while (openBraces > 0) {
     s += "}";
@@ -1806,7 +1886,9 @@ function isStructuralQuote(raw: string, pos: number): boolean {
   // Look ahead past the quote
   for (let j = pos + 1; j < raw.length; j++) {
     const next = raw[j]!;
-    if (next === " " || next === "\t" || next === "\n" || next === "\r") {continue;}
+    if (next === " " || next === "\t" || next === "\n" || next === "\r") {
+      continue;
+    }
     // Structural patterns: `,` `}` `]` or `:` (key separator)
     return next === "," || next === "}" || next === "]" || next === ":";
   }
@@ -1840,9 +1922,13 @@ export const GENERIC_INSIGHT_PATTERNS: ReadonlyArray<RegExp> = [
 
 export function isSubstantiveContent(content: string): boolean {
   const trimmed = content.trim();
-  if (trimmed.length < 10) {return false;}
+  if (trimmed.length < 10) {
+    return false;
+  }
   for (const pattern of GENERIC_INSIGHT_PATTERNS) {
-    if (pattern.test(trimmed)) {return false;}
+    if (pattern.test(trimmed)) {
+      return false;
+    }
   }
   return true;
 }
@@ -2008,11 +2094,15 @@ export async function critiqueInsightWithLLM(
       .join("")
       .trim();
 
-    if (!text) {return null;}
+    if (!text) {
+      return null;
+    }
 
     const objStart = text.indexOf("{");
     const objEnd = text.lastIndexOf("}");
-    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {return null;}
+    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {
+      return null;
+    }
 
     const parsed: Record<string, unknown> = JSON.parse(text.slice(objStart, objEnd + 1));
 
@@ -2027,11 +2117,15 @@ export async function critiqueInsightWithLLM(
       "improvementSuggestions",
     ];
     for (const field of requiredFields) {
-      if (!(field in parsed)) {return null;}
+      if (!(field in parsed)) {
+        return null;
+      }
     }
 
     const improvementSuggestions = parsed.improvementSuggestions;
-    if (!Array.isArray(improvementSuggestions)) {return null;}
+    if (!Array.isArray(improvementSuggestions)) {
+      return null;
+    }
 
     return {
       specificity: clamp01(Number(parsed.specificity) || 0),
@@ -2085,10 +2179,14 @@ export async function refineInsightWithLLM(
       .join("")
       .trim();
 
-    if (!text) {return null;}
+    if (!text) {
+      return null;
+    }
 
     const candidates = parseLLMInsights(text, 1);
-    if (candidates.length === 0) {return null;}
+    if (candidates.length === 0) {
+      return null;
+    }
 
     const refined = candidates[0]!;
     return {
@@ -2208,11 +2306,15 @@ export async function verifyInsightWithLLM(
       .join("")
       .trim();
 
-    if (!text) {return unverified;}
+    if (!text) {
+      return unverified;
+    }
 
     const objStart = text.indexOf("{");
     const objEnd = text.lastIndexOf("}");
-    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {return unverified;}
+    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {
+      return unverified;
+    }
 
     const parsed: Record<string, unknown> = JSON.parse(text.slice(objStart, objEnd + 1));
 
@@ -2318,7 +2420,9 @@ export async function checkSemanticNoveltyWithLLM(
       .join("")
       .trim();
 
-    if (!text) {return { isNovel: true, reason: "LLM freshness check unavailable" };}
+    if (!text) {
+      return { isNovel: true, reason: "LLM freshness check unavailable" };
+    }
 
     const objStart = text.indexOf("{");
     const objEnd = text.lastIndexOf("}");

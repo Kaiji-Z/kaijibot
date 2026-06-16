@@ -394,6 +394,39 @@ describe("computeGradedGate", () => {
     expect(result.pAct).toBe(0);
   });
 
+  it("cross-day active hours: overnight range 22:00-07:00 allows late night", () => {
+    const ctx = makeGateContext({
+      event: { type: "timer", timestamp: new Date("2026-04-11T23:00:00Z").getTime() },
+      config: {
+        ...baseConfig,
+        activeHoursStart: "22:00",
+        activeHoursEnd: "07:00",
+        timezone: "UTC",
+      },
+    });
+    const result = computeGradedGate(ctx);
+    expect(result.reasons).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("Outside active hours")]),
+    );
+  });
+
+  it("cross-day active hours: overnight range 22:00-07:00 blocks midday", () => {
+    const ctx = makeGateContext({
+      event: { type: "timer", timestamp: new Date("2026-04-11T12:00:00Z").getTime() },
+      config: {
+        ...baseConfig,
+        activeHoursStart: "22:00",
+        activeHoursEnd: "07:00",
+        timezone: "UTC",
+      },
+    });
+    const result = computeGradedGate(ctx);
+    expect(result.decision).toBe(false);
+    expect(result.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("Outside active hours")]),
+    );
+  });
+
   it("active hours check does NOT veto non-timer events", () => {
     const eventTime = new Date("2026-04-11T23:00:00Z").getTime();
     const persona = createDefaultPersona();
@@ -554,7 +587,9 @@ describe("computeEngagementFactor", () => {
     persona.lifecycle.lastActiveAt = overrides?.lastActiveAt ?? Date.now();
     persona.lifecycle.totalActiveDays = overrides?.totalActiveDays ?? 10;
     persona.rapport.totalExchanges = 20;
-    if (overrides?.domains) {persona.domains = overrides.domains;}
+    if (overrides?.domains) {
+      persona.domains = overrides.domains;
+    }
     return persona;
   }
 

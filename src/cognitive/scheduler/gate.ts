@@ -1,6 +1,6 @@
+import { jaccardSimilarity } from "../../infra/text-similarity.js";
 import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
 import { getProactiveFrequencyFactor, shouldReEngage } from "../persona/lifecycle.js";
-import { jaccardSimilarity } from "../../infra/text-similarity.js";
 import type { PersonaTree } from "../types.js";
 import type {
   GateDecision,
@@ -190,15 +190,25 @@ export function computeEngagementFactor(persona: PersonaTree, now: number): numb
   const silenceDays = lifecycle.lastActiveAt > 0 ? (now - lifecycle.lastActiveAt) / DAY_MS : 999;
 
   let recencyFactor: number;
-  if (lifecycle.stage === "new") {recencyFactor = 0.3;}
-  else if (silenceDays <= 1) {recencyFactor = 1.0;}
-  else if (silenceDays <= 3) {recencyFactor = 0.9;}
-  else if (silenceDays <= 7) {recencyFactor = 0.95;}
-  else if (silenceDays <= 14) {recencyFactor = 1.0;}
-  else if (silenceDays <= 45) {recencyFactor = 0.75;}
-  else if (silenceDays <= 90) {recencyFactor = 0.5;}
-  else if (silenceDays <= 180) {recencyFactor = 0.3;}
-  else {recencyFactor = 0.15;}
+  if (lifecycle.stage === "new") {
+    recencyFactor = 0.3;
+  } else if (silenceDays <= 1) {
+    recencyFactor = 1.0;
+  } else if (silenceDays <= 3) {
+    recencyFactor = 0.9;
+  } else if (silenceDays <= 7) {
+    recencyFactor = 0.95;
+  } else if (silenceDays <= 14) {
+    recencyFactor = 1.0;
+  } else if (silenceDays <= 45) {
+    recencyFactor = 0.75;
+  } else if (silenceDays <= 90) {
+    recencyFactor = 0.5;
+  } else if (silenceDays <= 180) {
+    recencyFactor = 0.3;
+  } else {
+    recencyFactor = 0.15;
+  }
 
   const investmentFactor = Math.log2(1 + lifecycle.totalActiveDays) / 7;
 
@@ -346,7 +356,9 @@ function computePAccept(persona: PersonaTree): number {
  */
 export function computeRepetitionDecay(persona: PersonaTree): number {
   const recentDomains = persona.feedbackProfile.recentInsightDomains;
-  if (!recentDomains || recentDomains.length < 2) {return 1;}
+  if (!recentDomains || recentDomains.length < 2) {
+    return 1;
+  }
 
   // Compute pairwise Jaccard similarity between recent insight domain sets.
   // This measures whether recent insights are about the same topics,
@@ -361,10 +373,14 @@ export function computeRepetitionDecay(persona: PersonaTree): number {
       pairCount++;
     }
   }
-  if (pairCount === 0) {return 1;}
+  if (pairCount === 0) {
+    return 1;
+  }
 
   const avgSimilarity = totalSimilarity / pairCount;
-  if (avgSimilarity < 0.3) {return 1;}
+  if (avgSimilarity < 0.3) {
+    return 1;
+  }
 
   return Math.max(0.25, 1 - avgSimilarity);
 }
@@ -376,7 +392,9 @@ function clamp01(x: number): number {
 }
 
 function isOutsideActiveHours(nowMs: number, config: SchedulerConfig): boolean {
-  if (!config.activeHoursStart || !config.activeHoursEnd) {return false;}
+  if (!config.activeHoursStart || !config.activeHoursEnd) {
+    return false;
+  }
 
   const nowDate = new Date(nowMs);
   const tz = config.timezone ?? "Asia/Shanghai";
@@ -398,6 +416,9 @@ function isOutsideActiveHours(nowMs: number, config: SchedulerConfig): boolean {
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
 
+    if (startMinutes > endMinutes) {
+      return currentMinutes >= endMinutes && currentMinutes < startMinutes;
+    }
     return currentMinutes < startMinutes || currentMinutes > endMinutes;
   } catch {
     return false;
