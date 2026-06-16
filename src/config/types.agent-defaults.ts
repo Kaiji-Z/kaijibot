@@ -338,6 +338,14 @@ export type AgentDefaultsConfig = {
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: AgentSandboxConfig;
   soul?: SoulConfig;
+  /**
+   * Opt-in: route background LLM pipelines (memory consolidation, correction
+   * extraction, session summary) through the provider's Batch API for a ~50%
+   * cost discount. Only affects non-latency-sensitive single-turn calls made
+   * via the background generateText dispatcher; the synchronous path and the
+   * agent loop are untouched. Default: false.
+   */
+  backgroundBatch?: boolean;
 };
 
 export type AgentCompactionMode = "default" | "safeguard";

@@ -1638,7 +1638,7 @@ export async function startGatewayServer(
           const { resolveConfigDir } = await import("../utils.js");
           const { resolveConsolidationWorkspaces } = await import("../memory-host-sdk/consolidation.js");
           const { resolveUserIdForSessionFile } = await import("../memory-host-sdk/consolidation-userid.js");
-          const { createStandaloneGenerateText } = await import("../cognitive/evolution/standalone-generate.js");
+          const { createBackgroundGenerateText } = await import("../cognitive/evolution/standalone-generate.js");
 
           type TypedInsight = import("../cognitive/types.js").TypedInsight;
           type InsightCategory = import("../cognitive/types.js").InsightCategory;
@@ -1651,7 +1651,7 @@ export async function startGatewayServer(
           const personaStore = new PersonaStore(configDir);
           const correctionStore = new CorrectionStore(configDir);
           const fragmentStore = new FragmentStore(configDir);
-          const generateFn = await createStandaloneGenerateText(cfgAtStart);
+          const generateFn = await createBackgroundGenerateText(cfgAtStart);
 
           const deps: ConsolidationDeps = {
             listSessionFiles: async (_agentId: string, _lookbackDays: number) => {

@@ -367,7 +367,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
         if (hasCorrectionSignals(sessionContent)) {
           const userId = resolveCorrectionUserId(event.sessionKey);
           if (userId) {
-            const { createStandaloneGenerateText } =
+            const { createBackgroundGenerateText } =
               await import("../../../cognitive/evolution/standalone-generate.js");
             const { CorrectionStore } = await import("../../../cognitive/correction/store.js");
             const { resolveConfigDir } = await import("../../../utils.js");
@@ -375,7 +375,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
             const parsed = parseAgentSessionKey(event.sessionKey);
             const agentId = parsed?.agentId ?? "main";
 
-            const generateText = await createStandaloneGenerateText(cfg, { maxTokens: 2000 });
+            const generateText = await createBackgroundGenerateText(cfg, { maxTokens: 2000 });
             const corrections = await extractCorrectionsFromTranscript(
               sessionContent,
               generateText,

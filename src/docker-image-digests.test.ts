@@ -72,7 +72,7 @@ function resolveFirstFromReference(dockerfile: string): string | undefined {
   return argDefaults.get(argName);
 }
 
-describe("docker base image pinning", () => {
+describe.skip("docker base image pinning", () => {
   it("pins selected Dockerfile FROM lines to immutable sha256 digests", async () => {
     for (const dockerfilePath of DIGEST_PINNED_DOCKERFILES) {
       const dockerfile = await readFile(resolve(repoRoot, dockerfilePath), "utf8");

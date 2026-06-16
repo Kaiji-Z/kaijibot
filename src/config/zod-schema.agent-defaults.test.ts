@@ -44,4 +44,21 @@ describe("agent defaults schema", () => {
   it("rejects invalid contextInjection values", () => {
     expect(() => AgentDefaultsSchema.parse({ contextInjection: "never" })).toThrow();
   });
+
+  it("accepts backgroundBatch boolean", () => {
+    expect(() => AgentDefaultsSchema.parse({ backgroundBatch: true })).not.toThrow();
+    const enabled = AgentDefaultsSchema.parse({ backgroundBatch: true })!;
+    expect(enabled.backgroundBatch).toBe(true);
+    const disabled = AgentDefaultsSchema.parse({ backgroundBatch: false })!;
+    expect(disabled.backgroundBatch).toBe(false);
+  });
+
+  it("treats backgroundBatch as optional (default undefined)", () => {
+    const result = AgentDefaultsSchema.parse({})!;
+    expect(result.backgroundBatch).toBeUndefined();
+  });
+
+  it("rejects non-boolean backgroundBatch", () => {
+    expect(() => AgentDefaultsSchema.parse({ backgroundBatch: "yes" })).toThrow();
+  });
 });

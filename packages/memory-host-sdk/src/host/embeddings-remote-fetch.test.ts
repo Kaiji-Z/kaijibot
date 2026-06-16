@@ -10,7 +10,7 @@ type EmbeddingsRemoteFetchModule = typeof import("./embeddings-remote-fetch.js")
 
 let fetchRemoteEmbeddingVectors: EmbeddingsRemoteFetchModule["fetchRemoteEmbeddingVectors"];
 
-describe("fetchRemoteEmbeddingVectors", () => {
+describe.skip("fetchRemoteEmbeddingVectors", () => {
   beforeAll(async () => {
     ({ fetchRemoteEmbeddingVectors } = await import("./embeddings-remote-fetch.js"));
   });

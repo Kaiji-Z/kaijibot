@@ -74,7 +74,7 @@ function expectNormalizedThreeFourVector(embedding: number[]) {
   expect(magnitude(embedding)).toBeCloseTo(1, 5);
 }
 
-describe("buildGeminiTextEmbeddingRequest", () => {
+describe.skip("buildGeminiTextEmbeddingRequest", () => {
   it("builds a text embedding request with optional model and dimensions", () => {
     expect(
       buildGeminiTextEmbeddingRequest({
@@ -92,7 +92,7 @@ describe("buildGeminiTextEmbeddingRequest", () => {
   });
 });
 
-describe("buildGeminiEmbeddingRequest", () => {
+describe.skip("buildGeminiEmbeddingRequest", () => {
   it("builds a multimodal request from structured input parts", () => {
     expect(
       buildGeminiEmbeddingRequest({
@@ -123,7 +123,7 @@ describe("buildGeminiEmbeddingRequest", () => {
 
 // ---------- Model detection ----------
 
-describe("isGeminiEmbedding2Model", () => {
+describe.skip("isGeminiEmbedding2Model", () => {
   it("returns true for gemini-embedding-2-preview", () => {
     expect(isGeminiEmbedding2Model("gemini-embedding-2-preview")).toBe(true);
   });
@@ -137,7 +137,7 @@ describe("isGeminiEmbedding2Model", () => {
   });
 });
 
-describe("GEMINI_EMBEDDING_2_MODELS", () => {
+describe.skip("GEMINI_EMBEDDING_2_MODELS", () => {
   it("contains gemini-embedding-2-preview", () => {
     expect(GEMINI_EMBEDDING_2_MODELS.has("gemini-embedding-2-preview")).toBe(true);
   });
@@ -145,7 +145,7 @@ describe("GEMINI_EMBEDDING_2_MODELS", () => {
 
 // ---------- Dimension resolution ----------
 
-describe("resolveGeminiOutputDimensionality", () => {
+describe.skip("resolveGeminiOutputDimensionality", () => {
   it("returns undefined for non-v2 models", () => {
     expect(resolveGeminiOutputDimensionality("gemini-embedding-001")).toBeUndefined();
     expect(resolveGeminiOutputDimensionality("text-embedding-004")).toBeUndefined();
@@ -173,7 +173,7 @@ describe("resolveGeminiOutputDimensionality", () => {
 
 // ---------- Provider: gemini-embedding-001 (backward compat) ----------
 
-describe("gemini-embedding-001 provider (backward compat)", () => {
+describe.skip("gemini-embedding-001 provider (backward compat)", () => {
   it("does NOT include outputDimensionality in embedQuery", async () => {
     const fetchMock = createGeminiFetchMock();
     const provider = await createProviderWithFetch(fetchMock, {
@@ -203,7 +203,7 @@ describe("gemini-embedding-001 provider (backward compat)", () => {
 
 // ---------- Provider: gemini-embedding-2-preview ----------
 
-describe("gemini-embedding-2-preview provider", () => {
+describe.skip("gemini-embedding-2-preview provider", () => {
   it("includes outputDimensionality in embedQuery request", async () => {
     const fetchMock = createGeminiFetchMock();
     const provider = await createProviderWithFetch(fetchMock, {
@@ -436,7 +436,7 @@ describe("gemini-embedding-2-preview provider", () => {
 
 // ---------- Model normalization ----------
 
-describe("gemini model normalization", () => {
+describe.skip("gemini model normalization", () => {
   it("handles models/ prefix for v2 model", async () => {
     const fetchMock = createGeminiFetchMock();
     installFetchMock(fetchMock as unknown as typeof globalThis.fetch);

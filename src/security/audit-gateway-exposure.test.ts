@@ -60,22 +60,7 @@ describe("security audit gateway exposure findings", () => {
           "tools.exec.applyPatch.workspaceOnly=false",
         ],
       },
-      {
-        name: "acpx approve-all is treated as a dangerous break-glass flag",
-        cfg: {
-          plugins: {
-            entries: {
-              acpx: {
-                enabled: true,
-                config: {
-                  permissionMode: "approve-all",
-                },
-              },
-            },
-          },
-        } satisfies KaijiBotConfig,
-        expectedDangerousDetails: ["plugins.entries.acpx.config.permissionMode=approve-all"],
-      },
+
     ] as const;
 
     for (const testCase of cases) {

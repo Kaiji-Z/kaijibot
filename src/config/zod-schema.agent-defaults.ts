@@ -226,6 +226,7 @@ export const AgentDefaultsSchema = z
       })
       .strict()
       .optional(),
+    backgroundBatch: z.boolean().optional(),
   })
   .strict()
   .optional();

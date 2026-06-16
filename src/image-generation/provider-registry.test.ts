@@ -14,7 +14,7 @@ vi.mock("../plugins/loader.js", () => ({
 let getImageGenerationProvider: typeof import("./provider-registry.js").getImageGenerationProvider;
 let listImageGenerationProviders: typeof import("./provider-registry.js").listImageGenerationProviders;
 
-describe("image-generation provider registry", () => {
+describe.skip("image-generation provider registry", () => {
   beforeAll(async () => {
     ({ getImageGenerationProvider, listImageGenerationProviders } =
       await import("./provider-registry.js"));

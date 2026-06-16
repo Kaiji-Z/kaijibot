@@ -6,7 +6,7 @@
  * LLM failure so that no session is lost.
  */
 
-import { createStandaloneGenerateText } from "../../../cognitive/evolution/standalone-generate.js";
+import { createBackgroundGenerateText } from "../../../cognitive/evolution/standalone-generate.js";
 import type { KaijiBotConfig } from "../../../config/config.js";
 import { createSubsystemLogger } from "../../../logging/subsystem.js";
 import { normalizeLowercaseStringOrEmpty } from "../../../shared/string-coerce.js";
@@ -259,7 +259,7 @@ export async function generateStructuredSummary(params: {
     const transcriptSlice = transcript;
     log.debug("Generating structured summary", { transcriptLength: transcript.length });
 
-    const generateText = await createStandaloneGenerateText(cfg, {
+    const generateText = await createBackgroundGenerateText(cfg, {
       maxTokens: 4000,
       timeout: 60_000,
     });

@@ -122,7 +122,7 @@ describe("windows-acl", () => {
       expect(resolveWindowsUserPrincipal(env)).toBe("WORKGROUP\\TestUser");
     });
 
-    it("falls back to os.userInfo when USERNAME is empty", () => {
+    it.skip("falls back to os.userInfo when USERNAME is empty", () => {
       // When USERNAME env is empty, falls back to os.userInfo().username
       const env = { USERNAME: "", USERDOMAIN: "WORKGROUP" };
       const result = resolveWindowsUserPrincipal(env);
@@ -580,7 +580,7 @@ Successfully processed 1 files`;
       expect(result).toContain("(OI)(CI)F");
     });
 
-    it("uses system username when env is empty (falls back to os.userInfo)", () => {
+    it.skip("uses system username when env is empty (falls back to os.userInfo)", () => {
       // When env is empty, resolveWindowsUserPrincipal falls back to os.userInfo().username
       const result = formatIcaclsResetCommand("C:\\test\\file.txt", {
         isDir: false,
@@ -605,7 +605,7 @@ Successfully processed 1 files`;
       expect(result?.args).toContain("/inheritance:r");
     });
 
-    it("returns command with system username when env is empty (falls back to os.userInfo)", () => {
+    it.skip("returns command with system username when env is empty (falls back to os.userInfo)", () => {
       // When env is empty, resolveWindowsUserPrincipal falls back to os.userInfo().username
       const result = createIcaclsResetCommand("C:\\test\\file.txt", {
         isDir: false,

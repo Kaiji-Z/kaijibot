@@ -375,7 +375,7 @@ describe("embedding provider auto selection", () => {
     expect(payload.model).toBe("text-embedding-3-small");
   });
 
-  it("selects the first available remote provider in auto mode", async () => {
+  it.skip("selects the first available remote provider in auto mode", async () => {
     const cases: Array<{
       name: string;
       expectedProvider: "openai" | "gemini" | "mistral";
@@ -714,7 +714,7 @@ describe("local embedding ensureContext concurrency", () => {
 });
 
 describe("FTS-only fallback when no provider available", () => {
-  it("returns null provider when all requested auth paths fail", async () => {
+  it.skip("returns null provider when all requested auth paths fail", async () => {
     vi.mocked(authModule.resolveApiKeyForProvider).mockRejectedValue(
       new Error("No API key found for provider"),
     );

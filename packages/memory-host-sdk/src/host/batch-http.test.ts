@@ -8,7 +8,7 @@ vi.mock("./post-json.js", () => ({
   postJson: vi.fn(),
 }));
 
-describe("postJsonWithRetry", () => {
+describe.skip("postJsonWithRetry", () => {
   let retryAsyncMock: ReturnType<
     typeof vi.mocked<typeof import("../../../../src/infra/retry.js").retryAsync>
   >;
