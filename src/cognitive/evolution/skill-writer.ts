@@ -259,6 +259,11 @@ export class SkillPersistenceWriter {
     }
     const targetPath = join(dir, SKILL_FILE);
 
+    const existing = await this.readRawSkill(name);
+    if (existing !== null) {
+      await writeTextAtomic(join(dir, `${SKILL_FILE}.bak`), existing);
+    }
+
     await writeTextAtomic(targetPath, content);
 
     return targetPath;

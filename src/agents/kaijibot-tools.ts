@@ -20,6 +20,7 @@ import { createCorrectionReportTool } from "./tools/correction-report-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
 import { createDialogueListTool } from "./tools/dialogue-list-tool.js";
 import { createEvolutionArchiveTool } from "./tools/evolution-archive-tool.js";
+import { createEvolutionDeleteTool } from "./tools/evolution-delete-tool.js";
 import { createEvolutionPatchTool } from "./tools/evolution-patch-tool.js";
 import { createEvolutionSuggestTool } from "./tools/evolution-suggest-tool.js";
 import { createGatewayTool } from "./tools/gateway-tool.js";
@@ -305,6 +306,10 @@ export function createKaijiBotTools(
         deliveryTo: options?.agentTo,
       }),
       createEvolutionPatchTool({
+        config: resolvedConfig,
+        sessionKey: options?.agentSessionKey,
+      }),
+      createEvolutionDeleteTool({
         config: resolvedConfig,
         sessionKey: options?.agentSessionKey,
       }),

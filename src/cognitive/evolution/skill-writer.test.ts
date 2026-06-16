@@ -1,5 +1,5 @@
 import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
@@ -271,6 +271,53 @@ describe("SkillPersistenceWriter", () => {
 
   it("updateSkill() throws for missing skill", async () => {
     await expect(writer.updateSkill("nonexistent", "content")).rejects.toThrow("Skill not found");
+  });
+
+  it("updateSkill() writes .bak backup before overwriting", async () => {
+    const draft = makeDraft({
+      name: "backup-test",
+      bodyMarkdown: "v1 original body content",
+    });
+    await writer.writeSkill(draft);
+
+    await writer.updateSkill(
+      "backup-test",
+      "---\nname: backup-test\n---\nv2 content after patch",
+    );
+
+    const bakPath = join(tempDir, "skills", "agent", "backup-test", "SKILL.md.bak");
+    const bak = await readFile(bakPath, "utf-8");
+    expect(bak).toContain("v1 original body content");
+
+    const active = await readFile(
+      join(tempDir, "skills", "agent", "backup-test", "SKILL.md"),
+      "utf-8",
+    );
+    expect(active).toContain("v2 content after patch");
+    expect(active).not.toContain("v1 original body content");
+  });
+
+  it("writeSkill() (first creation) does NOT create .bak", async () => {
+    await writer.writeSkill(makeDraft({ name: "fresh-skill" }));
+
+    const bakPath = join(tempDir, "skills", "agent", "fresh-skill", "SKILL.md.bak");
+    await expect(access(bakPath)).rejects.toThrow();
+  });
+
+  it("updateSkill() overwrites a previous .bak on subsequent updates", async () => {
+    const draft = makeDraft({
+      name: "multi-backup",
+      bodyMarkdown: "first version body",
+    });
+    await writer.writeSkill(draft);
+
+    await writer.updateSkill("multi-backup", "---\nname: multi-backup\n---\nsecond");
+    await writer.updateSkill("multi-backup", "---\nname: multi-backup\n---\nthird");
+
+    const bakPath = join(tempDir, "skills", "agent", "multi-backup", "SKILL.md.bak");
+    const bak = await readFile(bakPath, "utf-8");
+    expect(bak).toContain("second");
+    expect(bak).not.toContain("first version body");
   });
 
   it("writeSkill creates scripts/ dir + files when draft.scripts provided", async () => {
