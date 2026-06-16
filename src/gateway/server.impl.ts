@@ -1935,6 +1935,29 @@ export async function startGatewayServer(
       })();
     }
 
+    // Evolution skill lifecycle: remove stale skills daily at 4 AM
+    if (!minimalTestGateway && cfgAtStart.cognitive?.enabled !== false && cfgAtStart.cognitive?.evolution?.enabled !== false) {
+      void (async () => {
+        try {
+          const { resolveConfigDir } = await import("../utils.js");
+          const configDir = resolveConfigDir();
+          const { SkillPersistenceWriter } = await import("../cognitive/evolution/skill-writer.js");
+          const { SkillLifecycleManager } = await import("../cognitive/evolution/skill-lifecycle.js");
+          const writer = new SkillPersistenceWriter(configDir);
+          const lifecycle = new SkillLifecycleManager(writer);
+          const { Cron } = await import("croner");
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const job = new Cron("0 4 * * *", { timezone: tz }, async () => {
+            try {
+              const archived = await lifecycle.removeStale(30);
+              if (archived > 0) { log.info(`evolution: archived ${archived} stale skills`); }
+            } catch (err) { log.warn(`evolution removeStale failed: ${String(err)}`); }
+          });
+          log.info(`evolution removeStale scheduled (cron=0 4 * * *, next=${job.nextRun()?.toISOString() ?? "unknown"})`);
+        } catch (err) { log.warn(`evolution removeStale bootstrap skipped: ${String(err)}`); }
+      })();
+    }
+
     const healthCheckMinutes = cfgAtStart.gateway?.channelHealthCheckMinutes;
     const healthCheckDisabled = healthCheckMinutes === 0;
     const staleEventThresholdMinutes = cfgAtStart.gateway?.channelStaleEventThresholdMinutes;

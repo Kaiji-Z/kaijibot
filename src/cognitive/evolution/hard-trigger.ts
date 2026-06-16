@@ -1,4 +1,5 @@
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { resolveCorrectionUserId } from "../correction/userid.js";
 
 const log = createSubsystemLogger("cognitive/evolution/hard-trigger");
 
@@ -24,7 +25,7 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
     return;
   }
 
-  const userId = resolveUserIdFromSession(params.sessionKey, params.senderId);
+  const userId = resolveCorrectionUserId(params.sessionKey, params.senderId ?? undefined);
   if (!userId) {
     log.debug("skipped: no userId resolved", {
       sessionKey: params.sessionKey,
@@ -98,13 +99,6 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
   } catch (err) {
     log.debug("failed to enqueue evolution signal", { error: String(err) });
   }
-}
-
-function resolveUserIdFromSession(sessionKey: string, senderId?: string | null): string | null {
-  if (senderId) {return senderId;}
-  const tail = sessionKey.split(":").pop();
-  if (!tail || tail === "main") {return null;}
-  return tail;
 }
 
 function buildEvolutionSignal(params: {

@@ -85,6 +85,12 @@ export function createEvolutionPatchTool(deps: {
           return jsonResult({ status: "error", error: result.error });
         }
 
+        try {
+          const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
+          const audit = new AuditLog(configDir);
+          await audit.append({ operation: "skill.patch", actor: deps.sessionKey ?? "agent", target: params.name, outcome: "success" });
+        } catch { /* non-fatal */ }
+
         return jsonResult({
           status: "patched",
           skillName: params.name,

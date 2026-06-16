@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
 
@@ -94,7 +95,7 @@ export function createEvolutionSuggestTool(deps: {
           engine = new EvolutionEngine(store);
         }
 
-        const userId = resolveUserId(deps.sessionKey, deps.deliveryTo);
+        const userId = resolveCorrectionUserId(deps.sessionKey, deps.deliveryTo);
         if (!userId) {
           return textResult("No user session; skill creation skipped.", { status: "no_session" });
         }
@@ -192,6 +193,12 @@ export function createEvolutionSuggestTool(deps: {
         };
         await store.save(agentId, record);
 
+        try {
+          const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
+          const audit = new AuditLog(configDir);
+          await audit.append({ operation: "skill.create", actor: userId ?? "agent", target: draft.name, outcome: "success" });
+        } catch { /* non-fatal */ }
+
         return jsonResult({
           status: "saved",
           skillName: draft.name,
@@ -205,15 +212,4 @@ export function createEvolutionSuggestTool(deps: {
       }
     },
   };
-}
-
-function resolveUserId(sessionKey?: string, deliveryTo?: string): string | null {
-  if (deliveryTo) {
-    const stripped = deliveryTo.replace(/^(user:|feishu:)/, "");
-    if (stripped && stripped !== "main") {return stripped;}
-  }
-  if (!sessionKey) {return null;}
-  const tail = sessionKey.split(":").pop();
-  if (!tail || tail === "main") {return null;}
-  return tail;
 }
