@@ -3,7 +3,7 @@
  *
  * Tests the full pipeline flow with mock LLM and mock web search,
  * verifying the three recent improvements work end-to-end:
- *   1. EXTERNAL_FACTS anchor injection
+ *   1. Web findings anchor injection
  *   2. Semantic dedup via domain overlap
  *   3. Domain matching alias expansion
  *
@@ -156,11 +156,11 @@ function makeMockDeps(options?: {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// TEST SUITE 1: EXTERNAL_FACTS Anchor Injection
+// TEST SUITE 1: Web findings anchor injection
 // ═════════════════════════════════════════════════════════════════════════
 
-describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
-  it("web search snippets appear in EXTERNAL_FACTS block, not inline", () => {
+describe("Improvement #1: web findings anchor injection", () => {
+  it("web search snippets appear in RECENT WEB FINDINGS block, not inline", () => {
     const persona = makeTestPersona();
     const input = makeInput(["TypeScript"]);
     const webResults: WebSearchResult[] = [
@@ -173,22 +173,20 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
-    // Should have EXTERNAL_FACTS block
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    // Should have RECENT WEB FINDINGS block
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("Stage 3 decorator proposal is now stable");
-    // Should have prioritization instruction
-    expect(prompt).toContain("Use external facts as supporting evidence");
     // Should NOT have inline news:
     expect(prompt).not.toMatch(/news:.*decorator/);
   });
 
-  it("no EXTERNAL_FACTS block when no web results", () => {
+  it("no RECENT WEB FINDINGS block when no web results", () => {
     const persona = makeTestPersona();
     const input = makeInput(["TypeScript"]);
 
     const { prompt } = buildInsightPrompt(persona, input, [], []);
 
-    expect(prompt).not.toContain("EXTERNAL_FACTS");
+    expect(prompt).not.toContain("RECENT WEB FINDINGS");
     // SPECIFIC FACTS should still be present
     expect(prompt).toContain("SPECIFIC FACTS");
   });
@@ -233,7 +231,7 @@ describe("Improvement #1: EXTERNAL_FACTS anchor injection", () => {
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("TS type predicates");
     expect(prompt).toContain("New borrow checker rules");
   });
@@ -431,7 +429,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
     // Should match via "model context protocol" alias from keyInsight
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("MCP spec has been updated");
   });
 
@@ -451,15 +449,17 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("Decorator metadata reflection");
   });
 
-  it("does NOT match unrelated web results", () => {
+  it("includes unrelated web results in indexed format (matching now index-based, not domain-based)", () => {
     const persona = makeTestPersona();
     const input = makeInput(["Rust"]);
 
     // Web result about cooking (no overlap with Rust/borrow checker/zero-cost)
+    // With the new buildIndexedWebFindings format, all web results appear
+    // regardless of domain matching — they are indexed by position, not domain.
     const webResults: WebSearchResult[] = [
       {
         title: "Best restaurants in San Francisco",
@@ -470,8 +470,9 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
-    // Should NOT match (no keyword overlap)
-    expect(prompt).not.toContain("EXTERNAL_FACTS");
+    // All results are now included (index-based, not domain-filtered)
+    expect(prompt).toContain("RECENT WEB FINDINGS");
+    expect(prompt).toContain("Top 10 places to eat");
     // But the prompt itself should still be valid
     expect(prompt).toContain("SPECIFIC FACTS");
   });
@@ -491,7 +492,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 
     const { prompt } = buildInsightPrompt(persona, input, webResults, []);
 
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("next Rust edition");
   });
 
@@ -583,11 +584,9 @@ describe("Combined: full pipeline with all 3 improvements", () => {
     );
 
     // Alias: "Model Context Protocol" from keyInsight should match the first result
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     // Domain name "Rust" should match the second result
     expect(prompt).toContain("New NLL rules");
-    // Prioritization instruction present
-    expect(prompt).toContain("Use external facts as supporting evidence");
 
     // Step 2: Run full pipeline
     const insight1: InsightCandidate = {

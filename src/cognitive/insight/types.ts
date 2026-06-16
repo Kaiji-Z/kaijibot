@@ -26,6 +26,12 @@ export type SearchStrategy = {
   avoidTopics: string[];
   /** Estimated surprise value 0-1. */
   estimatedSurprise: number;
+  /** A specific concrete noun from the user's persona for grounding search. */
+  personaAnchor?: string;
+  /** Two candidate queries from different angles (event-driven, comparison, case study). */
+  candidateQueries?: string[];
+  /** Recency filter in days for time-aware search (default 90). */
+  recencyDays?: number;
 };
 
 export type InferenceResult = { ok: true; strategy: SearchStrategy } | { ok: false; error: string };
@@ -72,6 +78,8 @@ export type InsightCandidate = {
   resolvedMode?: InsightMode;
   searchQueryUsed?: string;
   promptVariant?: InsightRecord["promptVariant"];
+  citedSourceIndices?: number[];
+  webGroundedness?: number;
 };
 
 /** Result of LLM-based critique of an insight candidate. */
@@ -92,4 +100,8 @@ export type VerificationResult = {
   sources: Array<{ url: string; title: string; credibility: number }>;
   confidence: number;
   notes?: string;
+  sourceGroundingScore?: number;
+  personalizationScore?: number;
+  sourceRelevanceScore?: number;
+  isNewsSummary?: boolean;
 };

@@ -35,11 +35,22 @@ import {
 } from "../infra/control-ui-assets.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { isTruthyEnvValue, logAcceptedEnvOption } from "../infra/env.js";
-import { buildLarkCliEnv, isLarkCliAvailable, healthCheck, registerLarkCliProfiles, buildAccountCredentialsList, resolveLarkCliBinDir } from "../infra/lark-cli/index.js";
-import { shouldDisableNativeTools, buildDisabledToolsConfig, buildDisabledSkillEntries } from "../infra/lark-cli/auto-disable.ts";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
 import { startHeartbeatRunner, type HeartbeatRunner } from "../infra/heartbeat-runner.js";
+import {
+  shouldDisableNativeTools,
+  buildDisabledToolsConfig,
+  buildDisabledSkillEntries,
+} from "../infra/lark-cli/auto-disable.ts";
+import {
+  buildLarkCliEnv,
+  isLarkCliAvailable,
+  healthCheck,
+  registerLarkCliProfiles,
+  buildAccountCredentialsList,
+  resolveLarkCliBinDir,
+} from "../infra/lark-cli/index.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { ensureKaijiBotCliOnPath } from "../infra/path-env.js";
 import { applyPathPrepend } from "../infra/path-prepend.js";
@@ -57,8 +68,8 @@ import {
   resolveConfiguredDeferredChannelPluginIds,
   resolveGatewayStartupPluginIds,
 } from "../plugins/channel-plugin-ids.js";
-import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import { getGlobalHookRunner, runGlobalGatewayStopSafely } from "../plugins/hook-runner-global.js";
+import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import { createEmptyPluginRegistry } from "../plugins/registry.js";
 import { getActivePluginRegistry, setActivePluginRegistry } from "../plugins/runtime.js";
 import { createPluginRuntime } from "../plugins/runtime/index.js";
@@ -114,10 +125,10 @@ import { applyGatewayLaneConcurrency } from "./server-lanes.js";
 import { startGatewayMaintenanceTimers } from "./server-maintenance.js";
 import { GATEWAY_EVENTS, listGatewayMethods } from "./server-methods-list.js";
 import { coreGatewayHandlers } from "./server-methods.js";
+import { createAuthHandlers } from "./server-methods/auth.js";
 import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
 import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import { createPluginApprovalHandlers } from "./server-methods/plugin-approval.js";
-import { createAuthHandlers } from "./server-methods/auth.js";
 import { createSecretsHandlers } from "./server-methods/secrets.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
 import { loadGatewayModelCatalog } from "./server-model-catalog.js";
@@ -427,7 +438,11 @@ export async function startGatewayServer(
   process.env.KAIJIBOT_GATEWAY_PORT = String(port);
 
   {
-    const { readGatewayRestartHandoffSync, clearGatewayRestartHandoffSync, formatGatewayRestartHandoffDiagnostic } = await import("../infra/restart-handoff.js");
+    const {
+      readGatewayRestartHandoffSync,
+      clearGatewayRestartHandoffSync,
+      formatGatewayRestartHandoffDiagnostic,
+    } = await import("../infra/restart-handoff.js");
     const restartHandoff = readGatewayRestartHandoffSync();
     if (restartHandoff) {
       log.info(formatGatewayRestartHandoffDiagnostic(restartHandoff));
@@ -617,7 +632,9 @@ export async function startGatewayServer(
     // Do not set LARKSUITE_CLI_APP_ID/SECRET — they override --profile credentials.
     const larkEnv = buildLarkCliEnv({ domain });
     for (const [key, value] of Object.entries(larkEnv)) {
-      if (value) {process.env[key] = value;}
+      if (value) {
+        process.env[key] = value;
+      }
     }
 
     const larkBinDir = resolveLarkCliBinDir();
@@ -655,7 +672,9 @@ export async function startGatewayServer(
     if (shouldDisableNativeTools(userToolsCfg)) {
       const hc = await healthCheck();
       if (!hc.ok) {
-        log.warn(`lark-cli: binary found but health check failed (${hc.error}), keeping native feishu tools`);
+        log.warn(
+          `lark-cli: binary found but health check failed (${hc.error}), keeping native feishu tools`,
+        );
       } else {
         if (!feishuChannelCfg.tools) {
           feishuChannelCfg.tools = {};
@@ -672,20 +691,28 @@ export async function startGatewayServer(
           | undefined;
         if (accountsMap) {
           for (const [acctId, acctCfg] of Object.entries(accountsMap)) {
-            if (!acctCfg.tools) { acctCfg.tools = {}; }
+            if (!acctCfg.tools) {
+              acctCfg.tools = {};
+            }
             const acctTools = acctCfg.tools as Record<string, unknown>;
             for (const [key, value] of Object.entries(disabledTools)) {
               acctTools[key] = value;
             }
           }
-          log.info(`lark-cli: injected disabled tools into ${Object.keys(accountsMap).length} accounts`);
+          log.info(
+            `lark-cli: injected disabled tools into ${Object.keys(accountsMap).length} accounts`,
+          );
         }
         log.info(`lark-cli: native feishu tools auto-disabled (lark-cli v${hc.version} healthy)`);
 
         // Auto-disable feishu skills
         const disabledSkills = buildDisabledSkillEntries();
-        if (!cfgAtStart.skills) {cfgAtStart.skills = {};}
-        if (!cfgAtStart.skills.entries) {cfgAtStart.skills.entries = {};}
+        if (!cfgAtStart.skills) {
+          cfgAtStart.skills = {};
+        }
+        if (!cfgAtStart.skills.entries) {
+          cfgAtStart.skills.entries = {};
+        }
         for (const [id, cfg] of Object.entries(disabledSkills)) {
           if (!cfgAtStart.skills.entries[id]) {
             cfgAtStart.skills.entries[id] = cfg;
@@ -1490,14 +1517,12 @@ export async function startGatewayServer(
               savePersona: async (agentId, userId, persona) => {
                 await cognitiveStore.save(agentId, userId, persona);
                 const domainKeys = Object.keys(persona.domains);
-                personaChangeSource.checkPersonaUpdate(domainKeys.length, []);
+                personaChangeSource.checkPersonaUpdate(domainKeys.length, domainKeys);
               },
               async onInsightReady(agentId: string, userId: string, candidate) {
                 try {
                   const { resolveConfigDir } = await import("../utils.js");
-                  const { InsightStore } = await import(
-                    "../cognitive/insight/store.js"
-                  );
+                  const { InsightStore } = await import("../cognitive/insight/store.js");
                   const insightStore = new InsightStore(resolveConfigDir());
                   const record = {
                     id: candidate.id,
@@ -1622,30 +1647,41 @@ export async function startGatewayServer(
     if (!minimalTestGateway && cfgAtStart.cognitive?.enabled !== false) {
       void (async () => {
         try {
-          const { resolveConsolidationConfig } = await import("../memory-host-sdk/consolidation.js");
+          const { resolveConsolidationConfig } =
+            await import("../memory-host-sdk/consolidation.js");
           const consolidationConfig = resolveConsolidationConfig({
             pluginConfig: {},
             cfg: cfgAtStart,
           });
-          if (!consolidationConfig.enabled) {return;}
+          if (!consolidationConfig.enabled) {
+            return;
+          }
 
-          const { runConsolidationAllAgents } = await import("../../extensions/memory-core/index.js");
-          type ConsolidationDeps = import("../../extensions/memory-core/index.js").ConsolidationDeps;
+          const { runConsolidationAllAgents } =
+            await import("../../extensions/memory-core/index.js");
+          type ConsolidationDeps =
+            import("../../extensions/memory-core/index.js").ConsolidationDeps;
           const { PersonaStore } = await import("../cognitive/persona/store.js");
           const { FragmentStore } = await import("../cognitive/insight/fragment-store.js");
           const { CorrectionStore } = await import("../cognitive/correction/store.js");
-          const { listSessionFilesForAgent } = await import("../memory-host-sdk/host/session-files.js");
+          const { listSessionFilesForAgent } =
+            await import("../memory-host-sdk/host/session-files.js");
           const { resolveConfigDir } = await import("../utils.js");
-          const { resolveConsolidationWorkspaces } = await import("../memory-host-sdk/consolidation.js");
-          const { resolveUserIdForSessionFile } = await import("../memory-host-sdk/consolidation-userid.js");
-          const { createBackgroundGenerateText } = await import("../cognitive/evolution/standalone-generate.js");
+          const { resolveConsolidationWorkspaces } =
+            await import("../memory-host-sdk/consolidation.js");
+          const { resolveUserIdForSessionFile } =
+            await import("../memory-host-sdk/consolidation-userid.js");
+          const { createBackgroundGenerateText } =
+            await import("../cognitive/evolution/standalone-generate.js");
 
           type TypedInsight = import("../cognitive/types.js").TypedInsight;
           type InsightCategory = import("../cognitive/types.js").InsightCategory;
           type Fragment = import("../cognitive/insight/fragment-types.js").Fragment;
           type CorrectionRecord = import("../cognitive/correction/types.js").CorrectionRecord;
-          type ExtractedItem = import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
-          const { mergeTypedInsights, HALF_LIFE_BY_CATEGORY } = await import("../cognitive/persona/curator.js");
+          type ExtractedItem =
+            import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
+          const { mergeTypedInsights, HALF_LIFE_BY_CATEGORY } =
+            await import("../cognitive/persona/curator.js");
 
           const configDir = resolveConfigDir();
           const personaStore = new PersonaStore(configDir);
@@ -1659,9 +1695,8 @@ export async function startGatewayServer(
             },
             readSessionFile: async (filePath: string) => {
               const fs = await import("node:fs/promises");
-              const { preprocessSessionTranscript } = await import(
-                "../hooks/bundled/session-memory/transcript.js"
-              );
+              const { preprocessSessionTranscript } =
+                await import("../hooks/bundled/session-memory/transcript.js");
               const raw = await fs.readFile(filePath, "utf-8");
               return preprocessSessionTranscript(raw) ?? "";
             },
@@ -1723,7 +1758,13 @@ export async function startGatewayServer(
               addOrReinforceCorrection: async (
                 agentId: string,
                 userId: string,
-                record: { domain: string; trigger: string; mistake: string; correction: string; provenance: string },
+                record: {
+                  domain: string;
+                  trigger: string;
+                  mistake: string;
+                  correction: string;
+                  provenance: string;
+                },
               ): Promise<string> => {
                 const now = Date.now();
                 const fullRecord: CorrectionRecord = {
@@ -1772,7 +1813,8 @@ export async function startGatewayServer(
                 items: ExtractedItem[];
                 date: string;
               }): Promise<void> => {
-                const { MemoryIndexManager } = await import("../../extensions/memory-core/index.js");
+                const { MemoryIndexManager } =
+                  await import("../../extensions/memory-core/index.js");
                 const nodeFs = await import("node:fs/promises");
                 const fsAdapter = {
                   readFile: (p: string) => nodeFs.readFile(p, "utf-8"),
@@ -1799,7 +1841,9 @@ export async function startGatewayServer(
 
                 for (const item of params.items) {
                   const section = CATEGORY_TO_SECTION[item.category];
-                  if (!section) {continue;}
+                  if (!section) {
+                    continue;
+                  }
 
                   const contentText = item.content.slice(0, 120).replace(/\n/g, " ").trim();
                   const line = `- ${params.date}: ${contentText}`;
@@ -1822,86 +1866,84 @@ export async function startGatewayServer(
                 await indexManager.writeIndex(index);
                 await indexManager.rebalanceIndex();
               },
-          },
-
-          // Memory repair — structural repair step after consolidation routing
-          repairDeps: {
-            repairMemoryStructure: async (workspaceDir: string) => {
-              const { repairMemoryStructure } = await import(
-                "../../extensions/memory-core/src/memory-repair.js"
-              );
-              const nodeFs = await import("node:fs/promises");
-              const path = await import("node:path");
-              const { parseMemoryIndex, serializeIndex } = await import(
-                "../../extensions/memory-core/src/memory-index.js"
-              );
-
-              return repairMemoryStructure(workspaceDir, {
-                readRawMemoryIndex: async (wsDir: string) => {
-                  try {
-                    return await nodeFs.readFile(path.join(wsDir, "MEMORY.md"), "utf-8");
-                  } catch {
-                    return "";
-                  }
-                },
-                writeRawMemoryIndex: async (wsDir: string, content: string) => {
-                  const tmpName = `MEMORY.md.repair.${process.pid}.${Date.now()}.tmp`;
-                  const tmpPath = path.join(wsDir, tmpName);
-                  await nodeFs.writeFile(tmpPath, content, "utf-8");
-                  await nodeFs.rename(tmpPath, path.join(wsDir, "MEMORY.md"));
-                },
-                parseMemoryIndex,
-                serializeIndex,
-                readTopicFile: async (topicPath: string) => {
-                  try {
-                    return await nodeFs.readFile(topicPath, "utf-8");
-                  } catch {
-                    return null;
-                  }
-                },
-                appendToTopicFile: async (topicPath: string, content: string) => {
-                  const dir = path.dirname(topicPath);
-                  await nodeFs.mkdir(dir, { recursive: true });
-                  await nodeFs.appendFile(topicPath, content, "utf-8");
-                },
-                topicFileExists: async (wsDir: string, relativePath: string) => {
-                  try {
-                    await nodeFs.access(path.join(wsDir, relativePath));
-                    return true;
-                  } catch {
-                    return false;
-                  }
-                },
-                listTopicFiles: async (wsDir: string) => {
-                  try {
-                    return await nodeFs.readdir(path.join(wsDir, "memory", "topics"));
-                  } catch {
-                    return [];
-                  }
-                },
-                generateText: generateFn,
-                backupFile: async (filePath: string) => {
-                  const ts = new Date().toISOString().replace(/[:.]/g, "-");
-                  const backupPath = `${filePath}.bak.${ts}`;
-                  await nodeFs.copyFile(filePath, backupPath);
-                  // Rotate: keep last 7 backups
-                  const dir = path.dirname(filePath);
-                  const base = path.basename(filePath);
-                  const backups = (await nodeFs.readdir(dir))
-                    .filter((f: string) => f.startsWith(base) && f.includes(".bak."))
-                    .sort();
-                  for (let i = 0; i < backups.length - 7; i++) {
-                    await nodeFs.unlink(path.join(dir, backups[i]!)).catch(() => {});
-                  }
-                  return backupPath;
-                },
-                log: (message: string) => {
-                  log.info(`memory-repair: ${message}`);
-                },
-              });
             },
-          },
-        };
+
+            // Memory repair — structural repair step after consolidation routing
+            repairDeps: {
+              repairMemoryStructure: async (workspaceDir: string) => {
+                const { repairMemoryStructure } =
+                  await import("../../extensions/memory-core/src/memory-repair.js");
+                const nodeFs = await import("node:fs/promises");
+                const path = await import("node:path");
+                const { parseMemoryIndex, serializeIndex } =
+                  await import("../../extensions/memory-core/src/memory-index.js");
+
+                return repairMemoryStructure(workspaceDir, {
+                  readRawMemoryIndex: async (wsDir: string) => {
+                    try {
+                      return await nodeFs.readFile(path.join(wsDir, "MEMORY.md"), "utf-8");
+                    } catch {
+                      return "";
+                    }
+                  },
+                  writeRawMemoryIndex: async (wsDir: string, content: string) => {
+                    const tmpName = `MEMORY.md.repair.${process.pid}.${Date.now()}.tmp`;
+                    const tmpPath = path.join(wsDir, tmpName);
+                    await nodeFs.writeFile(tmpPath, content, "utf-8");
+                    await nodeFs.rename(tmpPath, path.join(wsDir, "MEMORY.md"));
+                  },
+                  parseMemoryIndex,
+                  serializeIndex,
+                  readTopicFile: async (topicPath: string) => {
+                    try {
+                      return await nodeFs.readFile(topicPath, "utf-8");
+                    } catch {
+                      return null;
+                    }
+                  },
+                  appendToTopicFile: async (topicPath: string, content: string) => {
+                    const dir = path.dirname(topicPath);
+                    await nodeFs.mkdir(dir, { recursive: true });
+                    await nodeFs.appendFile(topicPath, content, "utf-8");
+                  },
+                  topicFileExists: async (wsDir: string, relativePath: string) => {
+                    try {
+                      await nodeFs.access(path.join(wsDir, relativePath));
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  },
+                  listTopicFiles: async (wsDir: string) => {
+                    try {
+                      return await nodeFs.readdir(path.join(wsDir, "memory", "topics"));
+                    } catch {
+                      return [];
+                    }
+                  },
+                  generateText: generateFn,
+                  backupFile: async (filePath: string) => {
+                    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+                    const backupPath = `${filePath}.bak.${ts}`;
+                    await nodeFs.copyFile(filePath, backupPath);
+                    // Rotate: keep last 7 backups
+                    const dir = path.dirname(filePath);
+                    const base = path.basename(filePath);
+                    const backups = (await nodeFs.readdir(dir))
+                      .filter((f: string) => f.startsWith(base) && f.includes(".bak."))
+                      .sort();
+                    for (let i = 0; i < backups.length - 7; i++) {
+                      await nodeFs.unlink(path.join(dir, backups[i]!)).catch(() => {});
+                    }
+                    return backupPath;
+                  },
+                  log: (message: string) => {
+                    log.info(`memory-repair: ${message}`);
+                  },
+                });
+              },
+            },
+          };
 
           const runConsolidation = async () => {
             try {
@@ -1921,7 +1963,8 @@ export async function startGatewayServer(
           };
 
           const { Cron } = await import("croner");
-          const timezone = consolidationConfig.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const timezone =
+            consolidationConfig.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
           const cronJob = new Cron(consolidationConfig.cron, { timezone }, () => {
             void runConsolidation();
           });
@@ -1936,13 +1979,18 @@ export async function startGatewayServer(
     }
 
     // Evolution skill lifecycle: remove stale skills daily at 4 AM
-    if (!minimalTestGateway && cfgAtStart.cognitive?.enabled !== false && cfgAtStart.cognitive?.evolution?.enabled !== false) {
+    if (
+      !minimalTestGateway &&
+      cfgAtStart.cognitive?.enabled !== false &&
+      cfgAtStart.cognitive?.evolution?.enabled !== false
+    ) {
       void (async () => {
         try {
           const { resolveConfigDir } = await import("../utils.js");
           const configDir = resolveConfigDir();
           const { SkillPersistenceWriter } = await import("../cognitive/evolution/skill-writer.js");
-          const { SkillLifecycleManager } = await import("../cognitive/evolution/skill-lifecycle.js");
+          const { SkillLifecycleManager } =
+            await import("../cognitive/evolution/skill-lifecycle.js");
           const writer = new SkillPersistenceWriter(configDir);
           const lifecycle = new SkillLifecycleManager(writer);
           const { Cron } = await import("croner");
@@ -1950,11 +1998,19 @@ export async function startGatewayServer(
           const job = new Cron("0 4 * * *", { timezone: tz }, async () => {
             try {
               const archived = await lifecycle.removeStale(30);
-              if (archived > 0) { log.info(`evolution: archived ${archived} stale skills`); }
-            } catch (err) { log.warn(`evolution removeStale failed: ${String(err)}`); }
+              if (archived > 0) {
+                log.info(`evolution: archived ${archived} stale skills`);
+              }
+            } catch (err) {
+              log.warn(`evolution removeStale failed: ${String(err)}`);
+            }
           });
-          log.info(`evolution removeStale scheduled (cron=0 4 * * *, next=${job.nextRun()?.toISOString() ?? "unknown"})`);
-        } catch (err) { log.warn(`evolution removeStale bootstrap skipped: ${String(err)}`); }
+          log.info(
+            `evolution removeStale scheduled (cron=0 4 * * *, next=${job.nextRun()?.toISOString() ?? "unknown"})`,
+          );
+        } catch (err) {
+          log.warn(`evolution removeStale bootstrap skipped: ${String(err)}`);
+        }
       })();
     }
 

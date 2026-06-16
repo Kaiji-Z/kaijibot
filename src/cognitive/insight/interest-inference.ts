@@ -1,7 +1,7 @@
 import { complete, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
-import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
+import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
 import type { Fragment } from "./fragment-types.js";
@@ -69,6 +69,11 @@ function parseSearchStrategyResponse(raw: string): InferenceResult {
     bridgeReasoning: parsed.bridgeReasoning,
     avoidTopics: parsed.avoidTopics.map(String),
     estimatedSurprise,
+    personaAnchor: typeof parsed.personaAnchor === "string" ? parsed.personaAnchor : undefined,
+    candidateQueries: Array.isArray(parsed.candidateQueries)
+      ? parsed.candidateQueries.map(String).filter((q) => q.length > 0)
+      : undefined,
+    recencyDays: 90,
   };
 
   return { ok: true, strategy };
@@ -89,7 +94,9 @@ export function buildInterestInferencePrompt(
   fragments?: Fragment[],
 ): string {
   // Section 1: Known knowledge
-  const domainEntries = Object.entries(persona.domains).toSorted(([, a], [, b]) => b.depth - a.depth);
+  const domainEntries = Object.entries(persona.domains).toSorted(
+    ([, a], [, b]) => b.depth - a.depth,
+  );
 
   const knownKnowledge =
     domainEntries.length > 0
@@ -217,7 +224,12 @@ Respond with ONLY a JSON object (no markdown, no code fences):
   "searchQuery": "2-6 English keywords for web search",
   "bridgeReasoning": "Why this connects to the user's latent interests and what they already know",
   "avoidTopics": ["domain1", "domain2", "domain3"],
-  "estimatedSurprise": 0.8
+  "estimatedSurprise": 0.8,
+  "personaAnchor": "A specific concrete noun from the user's persona (a tool, project, technique, or concept they mentioned)",
+  "candidateQueries": [
+    "event-driven query: {personaAnchor} 新进展 OR 突破 OR 发布",
+    "comparison query: {personaAnchor} vs {alternative} benchmark"
+  ]
 }`;
 }
 

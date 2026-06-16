@@ -350,7 +350,7 @@ describe("Pipeline: LLM prompt construction", () => {
     ];
 
     const { prompt } = buildInsightPrompt(persona, input, webResults);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("注意力机制突破");
   });
 
@@ -613,7 +613,9 @@ describe("Pipeline: store edge cases", () => {
   });
 
   it("updateFeedback is a no-op for nonexistent record", async () => {
-    await expect(store.updateFeedback(AGENT, "user-1", "ghost", "positive")).resolves.toBeUndefined();
+    await expect(
+      store.updateFeedback(AGENT, "user-1", "ghost", "positive"),
+    ).resolves.toBeUndefined();
   });
 });
 

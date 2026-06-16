@@ -387,7 +387,7 @@ describe("generateInsightCandidatesLLM", () => {
   });
 });
 
-describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
+describe("buildInsightPrompt — web findings", () => {
   it("places web snippets in EXTERNAL_FACTS block when web results exist", () => {
     const persona = makePersona({
       domains: {
@@ -405,10 +405,8 @@ describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
     const { prompt } = buildInsightPrompt(persona, input, [
       { title: "TypeScript 5.5", url: "https://example.com", snippet: "New type predicates" },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("New type predicates");
-    // Should NOT have inline news: in domain descriptions
-    expect(prompt).not.toMatch(/news:.*New type predicates/);
   });
 
   it("does not include EXTERNAL_FACTS block when no web results", () => {
@@ -426,27 +424,7 @@ describe("buildInsightPrompt — EXTERNAL_FACTS", () => {
     });
     const input = makeInput({ targetDomains: ["Rust"] });
     const { prompt } = buildInsightPrompt(persona, input, []);
-    expect(prompt).not.toContain("EXTERNAL_FACTS");
-  });
-
-  it("includes prioritization instruction when EXTERNAL_FACTS present", () => {
-    const persona = makePersona({
-      domains: {
-        Rust: {
-          depth: 3,
-          recurrence: 5,
-          lastMentioned: Date.now(),
-          keyInsights: [],
-          activeQuestions: [],
-          negationSignals: 0,
-        },
-      },
-    });
-    const input = makeInput({ targetDomains: ["Rust"] });
-    const { prompt } = buildInsightPrompt(persona, input, [
-      { title: "Rust async", url: "https://example.com", snippet: "Tokio runtime update" },
-    ] as WebSearchResult[]);
-    expect(prompt).toContain("Use external facts as supporting evidence");
+    expect(prompt).not.toContain("RECENT WEB FINDINGS");
   });
 });
 
@@ -472,7 +450,7 @@ describe("buildInsightPrompt — domain alias matching", () => {
         snippet: "Stage 3 decorator proposal",
       },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("Stage 3 decorator proposal");
   });
 
@@ -497,7 +475,7 @@ describe("buildInsightPrompt — domain alias matching", () => {
         snippet: "New type predicates",
       },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("New type predicates");
   });
 
@@ -522,7 +500,7 @@ describe("buildInsightPrompt — domain alias matching", () => {
         snippet: "MCP spec updated",
       },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
   });
 });
 
@@ -804,7 +782,7 @@ describe("buildSurpriseInsightPrompt", () => {
       TEST_STRATEGY,
     );
 
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("Rust-based eBPF distributed tracing");
   });
 
@@ -1082,7 +1060,7 @@ describe("buildInsightPrompt — compound domain keyword splitting", () => {
     const { prompt } = buildInsightPrompt(persona, input, [
       { title: "机器学习最新突破", url: "https://example.com", snippet: "深度学习模型优化" },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("深度学习模型优化");
   });
 });
@@ -1109,7 +1087,7 @@ describe("buildInsightPrompt — bigram similarity matching", () => {
         snippet: "AI research advances",
       },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
   });
 });
 
@@ -1542,7 +1520,7 @@ describe("buildInsightPrompt — targetDomains in keyword map", () => {
     const { prompt } = buildInsightPrompt(persona, input, [
       { title: "网络安全最新漏洞", url: "https://example.com", snippet: "零日漏洞防护方案" },
     ] as WebSearchResult[]);
-    expect(prompt).toContain("EXTERNAL_FACTS");
+    expect(prompt).toContain("RECENT WEB FINDINGS");
     expect(prompt).toContain("零日漏洞防护方案");
   });
 });

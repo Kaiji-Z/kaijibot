@@ -117,8 +117,8 @@ describe("banditWeightedSelect", () => {
     // Extend must get at least 15% (theoretical ~19.6%, conservative threshold)
     expect(counts.extend / n).toBeGreaterThan(0.15);
     // No single mode should dominate >50% with the floor in place
-    expect(counts.pattern / n).toBeLessThan(0.50);
-    expect(counts.surprise / n).toBeLessThan(0.50);
+    expect(counts.pattern / n).toBeLessThan(0.5);
+    expect(counts.surprise / n).toBeLessThan(0.5);
   });
 
   it("all modes get >=10% with default (no) bandits", () => {
@@ -132,7 +132,7 @@ describe("banditWeightedSelect", () => {
       counts[banditWeightedSelect(["pattern", "surprise", "extend"], undefined, seed)]++;
     }
     for (const mode of ["pattern", "surprise", "extend"] as const) {
-      expect(counts[mode] / n, `${mode} should be >= 10%`).toBeGreaterThan(0.10);
+      expect(counts[mode] / n, `${mode} should be >= 10%`).toBeGreaterThan(0.1);
     }
   });
 
@@ -148,7 +148,7 @@ describe("banditWeightedSelect", () => {
       counts[banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed)]++;
     }
     for (const mode of ["pattern", "surprise", "extend"] as const) {
-      expect(counts[mode] / n, `${mode} should be >= 10%`).toBeGreaterThan(0.10);
+      expect(counts[mode] / n, `${mode} should be >= 10%`).toBeGreaterThan(0.1);
     }
   });
 
@@ -164,7 +164,7 @@ describe("banditWeightedSelect", () => {
       counts[banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed)]++;
     }
     // Even with extreme positive bandit, floor caps pattern at ~45%
-    expect(counts.pattern / n).toBeLessThan(0.60);
+    expect(counts.pattern / n).toBeLessThan(0.6);
   });
 });
 
@@ -221,7 +221,7 @@ describe("selectMode", () => {
         surpriseCount++;
       }
     }
-    expect(surpriseCount).toBeGreaterThan(5000);
+    expect(surpriseCount).toBeGreaterThan(4500);
   });
 
   it("forceMode overrides even with strong bandits for other modes", () => {

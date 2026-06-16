@@ -623,7 +623,7 @@ export async function generateInsightCandidatesLLM(
         });
         c.targetDomains = [...inputDomains];
       }
-      const enriched = enrichWithWebSources(c, webResults);
+      const enriched = resolveCitedSources(c, webResults);
       if (queryUsed) {
         enriched.searchQueryUsed = queryUsed;
       }
@@ -817,14 +817,46 @@ export function buildSearchQuery(input: InsightEngineInput): string {
   return queryWithYear.slice(0, 120);
 }
 
-function enrichWithWebSources(
+function resolveCitedSources(
   candidate: InsightCandidate,
-  _webResults: WebSearchResult[],
+  webResults: WebSearchResult[],
 ): InsightCandidate {
-  // Phase 1 will implement citedSourceIndices for proper source tracking.
-  // For now, do NOT attach fake sources — they destroy credibility when
-  // the insight content doesn't actually reference them.
-  return candidate;
+  const indices = candidate.citedSourceIndices ?? [];
+  if (webResults.length === 0 || indices.length === 0) {
+    return candidate;
+  }
+  const validIndices = indices.filter((i) => i >= 0 && i < webResults.length);
+  if (validIndices.length === 0) {
+    return candidate;
+  }
+  const citedSources = validIndices.map((i) => ({
+    url: webResults[i]!.url,
+    title: webResults[i]!.title,
+    credibility: computeSourceCredibility(candidate.content, webResults[i]!.snippet),
+  }));
+  return { ...candidate, sources: citedSources };
+}
+
+function computeSourceCredibility(insightContent: string, snippet: string): number {
+  const tokens = insightContent
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+  const snippetTokens = new Set(
+    snippet
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 2),
+  );
+  if (tokens.length === 0 || snippetTokens.size === 0) {
+    return 0.3;
+  }
+  const overlap = tokens.filter((t) => snippetTokens.has(t)).length;
+  const jaccard = overlap / (tokens.length + snippetTokens.size - overlap);
+  if (jaccard < 0.15) {
+    return 0.3;
+  }
+  return Math.min(0.5 + jaccard, 0.9);
 }
 
 export function buildSurpriseInsightPrompt(
@@ -836,12 +868,7 @@ export function buildSurpriseInsightPrompt(
   outputLanguage: string = "zh",
   webSnippetByDomain?: Map<string, string[]>,
 ): PromptBuildResult {
-  const resolvedWebSnippetByDomain =
-    webSnippetByDomain ??
-    (() => {
-      const keywordMap = buildDomainKeywordMap(persona.domains);
-      return matchWebResultsToDomains(webResults, keywordMap);
-    })();
+  void webSnippetByDomain;
 
   const sortedDomainEntries = Object.entries(persona.domains).toSorted(
     ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
@@ -858,10 +885,6 @@ export function buildSurpriseInsightPrompt(
     anchorFacts.length > 0
       ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
       : "  (not yet established)";
-
-  const externalFacts = buildExternalFactsEntries(resolvedWebSnippetByDomain);
-  const externalFactsBlock =
-    externalFacts.length > 0 ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n") : "";
 
   const userName = persona.identity?.displayName || "";
   const identityBlock = persona.identity
@@ -900,6 +923,8 @@ export function buildSurpriseInsightPrompt(
     (e) => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`,
   ).join("\n\n");
 
+  const indexedWebFindings = buildIndexedWebFindings(webResults);
+
   return {
     prompt: `${buildVoiceSection(persona)}
 
@@ -910,7 +935,14 @@ ${DIVERSITY_INSTRUCTION}
 
 CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
 
-You are the AI assistant speaking in your own voice and personality. You are proactively reaching out to share something genuinely SURPRISING — something the user hasn't encountered but would find fascinating.
+You are the AI assistant speaking in your own voice and personality. You are proactively reaching out because you found something that connects to THIS user's specific interests.
+
+${
+  indexedWebFindings
+    ? `RECENT WEB FINDINGS (PRIMARY material — pick ONE and connect it to THIS user):
+${indexedWebFindings}`
+    : ""
+}
 
 ${identityBlock ? `USER:\n${identityBlock}` : ""}
 
@@ -921,7 +953,6 @@ INFERRED LATENT INTEREST:
 
 SPECIFIC FACTS YOU KNOW ABOUT THIS USER:
 ${anchorBlock}
- ${externalFactsBlock ? `\nEXTERNAL_FACTS (fresh web findings):\n${externalFactsBlock}` : ""}
 
 ${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts even for different domains):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
@@ -935,7 +966,9 @@ ${
 }
 
 TASK:
-Share a specific insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory. It can be a discovery, a suggestion, or an observation — as long as it could change one of the user's decisions or understanding.
+${indexedWebFindings ? `Pick ONE web finding above [0-N]. Connect it to THIS user's specific knowledge, interests, or current work. The insight must be grounded in the finding but personalized — NOT a news summary.` : `Share a specific insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory.`} It can be a discovery, a suggestion, or an observation — as long as it could change one of the user's decisions or understanding.
+
+PERSONALIZATION TEST: The insight MUST reference at least one specific fact from the "SPECIFIC FACTS YOU KNOW ABOUT THIS USER" section above. Generic insights that could apply to anyone will be rejected.
 
 Constraints:
 - 1-3 sentences, ${langInstruction}
@@ -945,7 +978,7 @@ Constraints:
 - Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
 - ${bannedSection}
 - Content must be a specific judgment, observation, or discovery — not vague feelings
-${webResults.length > 0 ? "- Weave external information naturally, do NOT say 'saw', 'read', 'reportedly'" : ""}
+${webResults.length > 0 ? `- You MAY naturally reference the source (e.g., "according to [0]", "看到[2]提到")` : ""}
 
 Good surprise insight traits (hit at least one):
 - Frontier bridge: connects user's existing knowledge to a genuinely new development
@@ -956,12 +989,14 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 IMPORTANT: In the "content" field, escape any inner quotes as \\" or use Chinese curly quotes (""). Do NOT use unescaped ASCII quotes inside string values.
 [
   {
-    "content": "Your surprising insight in your own voice",
-    "rationale": "Why this is surprising and relevant to this user SPECIFICALLY",
+    "content": "Your insight in your own voice",
+    "rationale": "Why this is relevant to this user SPECIFICALLY",
     "targetDomains": ["inferred-domain"],
     "sourceDomains": ["user-known-domain"],
     "relevanceScore": 0.8,
-    "surpriseScore": 0.7
+    "surpriseScore": 0.7,
+    "sourceIndices": [0],
+    "webGroundedness": 0.7
   }
 ]`,
     variant: { fewShotSet: fewShotIdx, frameIndex: 0 },
@@ -1090,10 +1125,14 @@ function truncate(s: string, maxLen: number): string {
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
 }
 
-function buildExternalFactsEntries(webSnippetByDomain: Map<string, string[]>): string[] {
-  return [...webSnippetByDomain.entries()]
-    .flatMap(([domain, snippets]) => snippets.map((s) => `[${domain}] ${truncate(s, 120)}`))
-    .slice(0, 6);
+function buildIndexedWebFindings(webResults: WebSearchResult[]): string {
+  if (webResults.length === 0) {
+    return "";
+  }
+  return webResults
+    .slice(0, 6)
+    .map((r, i) => `[${i}] ${r.title} | ${r.url} | ${truncate(r.snippet, 150)}`)
+    .join("\n");
 }
 
 function buildDomainKeywordMap(
@@ -1510,9 +1549,7 @@ export function buildInsightPrompt(
       ? anchorFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")
       : "  (not yet established)";
 
-  const externalFacts = buildExternalFactsEntries(resolvedWebSnippetByDomain);
-  const externalFactsBlock =
-    externalFacts.length > 0 ? externalFacts.map((f, i) => `${i + 1}. ${f}`).join("\n") : "";
+  const indexedWebFindings = buildIndexedWebFindings(webResults);
 
   const recentFocus = persona.recentFocus.slice(0, 5).join(", ");
   const recentInsightIds = input.recentInsightIds.slice(0, 5).join(", ");
@@ -1596,6 +1633,13 @@ CRITICAL: Output in your own voice — the same personality the user knows from 
 
 You are the AI assistant speaking in your own voice and personality. You are proactively reaching out to share something that crossed your mind — genuinely useful or surprising for THIS specific user.
 
+${
+  indexedWebFindings
+    ? `RECENT WEB FINDINGS (PRIMARY material — pick ONE and connect it to THIS user):
+${indexedWebFindings}`
+    : ""
+}
+
 ${identityBlock ? `USER:\n${identityBlock}` : ""}
 
 USER'S DOMAINS (sorted by recency — most active first):
@@ -1604,7 +1648,6 @@ ${userDomains || "Not yet established"}
 
 SPECIFIC FACTS YOU KNOW ABOUT THIS USER (your insight MUST reference at least one):
 ${anchorBlock}
-${externalFactsBlock ? `\nEXTERNAL_FACTS (recent web findings relevant to user's domains):\n${externalFactsBlock}\n\nIMPORTANT: Use external facts as supporting evidence, not the primary focus. The insight should still be grounded in the user's specific knowledge and interests. External facts complement, not replace, persona-based reasoning.` : ""}
 ${fragmentSection ? `\nUSER CONVERSATION FRAGMENTS (what the user has been discussing recently):\n${fragmentSection}` : ""}
 
  Recent focus: ${recentFocus || "None"}
@@ -1641,7 +1684,7 @@ ${structureSeed}
   · "有趣的是"、"值得注意的是"
 ${bannedSection ? `  · ${bannedSection}` : ""}
 - 内容必须是一个具体的判断、观察或建议，不是泛泛的感受
-${webResults.length > 0 ? "- 外部信息自然融入内容里，不要说'看到'、'读到'、'据说'" : ""}
+${webResults.length > 0 ? "- 可以自然引用来源（如「根据[0]」、「看到[2]提到」）" : ""}
 
  好的洞察（满足至少一条）：
  - 跨域连接：把用户不同兴趣领域的具体知识关联起来
@@ -1657,7 +1700,9 @@ Respond with ONLY a JSON array (no markdown, no code fences):
     "targetDomains": ["${input.targetDomains[0] ?? "domain1"}"],
     "sourceDomains": ["domain2"],
     "relevanceScore": 0.8,
-    "surpriseScore": 0.6
+    "surpriseScore": 0.6,
+    "sourceIndices": [0],
+    "webGroundedness": 0.7
   }
 ]
 CRITICAL: targetDomains MUST include at least one of: ${input.targetDomains.join(", ")}. Do NOT substitute other domains.
@@ -1722,6 +1767,10 @@ function parseLLMInsights(text: string, maxCandidates: number): InsightCandidate
         sources: [],
         verificationStatus: "unverified" as const,
         source: "knowledge" as const,
+        citedSourceIndices: Array.isArray(item.sourceIndices)
+          ? (item.sourceIndices as unknown[]).map((n) => Number(n)).filter((n) => !isNaN(n))
+          : [],
+        webGroundedness: clamp01(Number(item.webGroundedness ?? 0)),
       }))
       .filter((c: InsightCandidate) => c.content.length > 0 && isSubstantiveContent(c.content));
   } catch (err) {
@@ -2250,10 +2299,19 @@ ${sourceBlock}
 
 Evaluate: Is this insight worth delivering to the user?
 
+Score each dimension 0.0-1.0:
+- sourceGroundingScore: How well does the insight content actually reflect what the sources say? (0 if no sources claimed, 1 if perfectly grounded)
+- personalizationScore: Does the insight reference THIS user's specific facts, interests, or knowledge? (0 = generic, 1 = deeply personalized)
+- sourceRelevanceScore: Are the cited sources actually relevant to the insight's claim? (0 = irrelevant, 1 = directly supports)
+
+CRITICAL CHECKS:
+- isNewsSummary: Is this insight just summarizing a news article WITHOUT connecting it to the user? If true → REJECT immediately.
+- The insight must connect external information to the USER's specific context, not just report facts.
+
 Criteria for each status:
-- "verified": High quality — specific, relevant to THIS user, actionable, consistent with sources
+- "verified": High quality — specific, relevant to THIS user, sources are relevant and grounded, NOT a news summary
 - "partial": Decent quality but missing some elements — still acceptable for delivery
-- "unverified": Generic, vague, or not relevant enough to this specific user
+- "unverified": Generic, vague, not relevant enough to this specific user, OR just a news summary without personalization
 - "contradicted": Contains factual errors or contradicts known information about the user
 
 Respond with ONLY a JSON object (no markdown, no code fences):
@@ -2261,6 +2319,10 @@ Respond with ONLY a JSON object (no markdown, no code fences):
   "approved": true/false,
   "confidence": 0.0-1.0,
   "status": "verified" | "partial" | "unverified" | "contradicted",
+  "sourceGroundingScore": 0.0-1.0,
+  "personalizationScore": 0.0-1.0,
+  "sourceRelevanceScore": 0.0-1.0,
+  "isNewsSummary": true/false,
   "notes": "Brief explanation of the verdict"
 }`;
 }
@@ -2320,9 +2382,12 @@ export async function verifyInsightWithLLM(
 
     const confidence = clamp01(Number(parsed.confidence) || 0);
     const llmStatus = String(parsed.status ?? "");
+    const isNewsSummary = Boolean(parsed.isNewsSummary);
 
     let status: VerificationResult["status"];
-    if (llmStatus === "contradicted") {
+    if (isNewsSummary) {
+      status = "unverified";
+    } else if (llmStatus === "contradicted") {
       status = "contradicted";
     } else if (confidence >= 0.7) {
       status = "verified";
@@ -2337,6 +2402,10 @@ export async function verifyInsightWithLLM(
       sources: candidate.sources,
       confidence,
       notes: String(parsed.notes ?? ""),
+      sourceGroundingScore: clamp01(Number(parsed.sourceGroundingScore) || 0),
+      personalizationScore: clamp01(Number(parsed.personalizationScore) || 0),
+      sourceRelevanceScore: clamp01(Number(parsed.sourceRelevanceScore) || 0),
+      isNewsSummary,
     };
   } catch (err) {
     log.warn("verifyInsightWithLLM: failed", { error: String(err) });

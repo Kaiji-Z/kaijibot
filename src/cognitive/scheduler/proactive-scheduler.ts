@@ -467,7 +467,7 @@ export class ProactiveScheduler {
           sources: bestCandidate.sources.length,
         });
       } else if (bestScore < QUALITY_EARLY_EXIT_THRESHOLD) {
-        for (let refine = 0; refine < MAX_QUALITY_RETRIES - 1; refine++) {
+        for (let refine = 0; refine < MAX_QUALITY_RETRIES; refine++) {
           const critique = await critiqueInsightWithLLM(
             bestCandidate,
             persona,
@@ -521,7 +521,7 @@ export class ProactiveScheduler {
             candidatesSoFar: allCandidates.length,
           });
         }
-        if (allCandidates.length > 0 && attempt < MAX_QUALITY_RETRIES - 1) {
+        if (allCandidates.length > 0 && attempt < MAX_QUALITY_RETRIES) {
           const bestSoFar = Math.max(...allCandidates.map(scoreCandidate));
           if (bestSoFar >= QUALITY_EARLY_EXIT_THRESHOLD) {
             log.info("resolve: early exit — quality threshold met", {
