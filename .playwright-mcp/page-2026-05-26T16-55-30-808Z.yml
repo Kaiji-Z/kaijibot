@@ -1,91 +1,91 @@
 - generic [ref=e3]:
-  - navigation "Main navigation" [ref=e4]:
-    - generic [ref=e5]:
-      - generic [ref=e6]: KaijiBot
-      - button "Collapse sidebar" [ref=e7] [cursor=pointer]:
-        - img [ref=e8]
-    - generic [ref=e10]:
-      - generic [ref=e11]: Sessions
-      - button "main" [disabled] [ref=e12]:
-        - generic [ref=e14]: main
-    - generic [ref=e15]:
-      - link "Chat" [ref=e16] [cursor=pointer]:
-        - /url: /chat
-        - img [ref=e18]
-        - generic [ref=e20]: Chat
-      - link "Agents" [ref=e21] [cursor=pointer]:
-        - /url: /agents
-        - img [ref=e23]
-        - generic [ref=e33]: Agents
-      - link "Cron Jobs" [ref=e34] [cursor=pointer]:
-        - /url: /cron
-        - img [ref=e36]
-        - generic [ref=e39]: Cron Jobs
-      - link "Settings" [ref=e40] [cursor=pointer]:
-        - /url: /settings
-        - img [ref=e42]
-        - generic [ref=e45]: Settings
-    - generic [ref=e46]:
-      - generic [ref=e47]: System
-      - generic [ref=e48]:
-        - generic [ref=e49]: Agents
-        - generic [ref=e50]: "0"
-      - generic [ref=e52]:
-        - generic [ref=e53]: Channels
-        - generic [ref=e54]: 0/0
-      - generic [ref=e56]:
-        - generic [ref=e57]: Cron
-        - generic [ref=e58]: Disabled
-    - generic [ref=e63]: Cognitive Active
-  - main [ref=e66]:
-    - generic [ref=e67]:
-      - generic [ref=e69]: KaijiBot（凯机bot）
-      - generic [ref=e71]: "unauthorized: gateway token missing (open the dashboard URL and paste the token in Control UI settings)"
-    - generic [ref=e72]:
-      - generic [ref=e73]: "unauthorized: gateway token missing (open the dashboard URL and paste the token in Control UI settings)"
-      - log [ref=e76]:
-        - generic [ref=e78]:
-          - img "KaijiBot" [ref=e80]
-          - heading "KaijiBot（凯机bot）" [level=2] [ref=e81]
-          - generic [ref=e83]: Ready to chat
-          - paragraph [ref=e84]:
-            - text: Type a message below ·
-            - generic [ref=e85]: /
-            - text: for commands
-          - generic [ref=e86]:
-            - button "What can you do?" [ref=e87] [cursor=pointer]
-            - button "Summarize my recent sessions" [ref=e88] [cursor=pointer]
-            - button "Help me configure a channel" [ref=e89] [cursor=pointer]
-            - button "Check system health" [ref=e90] [cursor=pointer]
-      - generic [ref=e91]:
-        - generic [ref=e92]:
-          - generic "Default model" [ref=e93] [cursor=pointer]:
-            - combobox "Default model ▾" [ref=e94]:
-              - option "Default model" [selected]
-            - generic: Default model ▾
-          - generic "Default (off)" [ref=e95] [cursor=pointer]:
-            - combobox "Auto ▾" [ref=e96]:
-              - option "Default (off)" [selected]
-              - option "Off"
-              - option "Minimal"
-              - option "Low"
-              - option "Medium"
-              - option "High"
-              - option "Adaptive"
-            - generic: Auto ▾
-        - textbox "Message KaijiBot（凯机bot） (Enter to send)" [ref=e97]
-        - generic [ref=e98]:
-          - generic [ref=e99]:
-            - button "Attach file" [ref=e100] [cursor=pointer]:
-              - img [ref=e101]
-            - button "Voice input" [ref=e103] [cursor=pointer]:
-              - img [ref=e104]
-            - button "Chat settings" [ref=e108] [cursor=pointer]:
-              - img [ref=e109]
-          - generic [ref=e112]:
-            - button "New session" [ref=e113] [cursor=pointer]:
-              - img [ref=e114]
-            - button "Export chat" [disabled] [ref=e115]:
-              - img [ref=e116]
-            - button "Send message" [ref=e119] [cursor=pointer]:
-              - img [ref=e120]
+    - navigation "Main navigation" [ref=e4]:
+        - generic [ref=e5]:
+            - generic [ref=e6]: KaijiBot
+            - button "Collapse sidebar" [ref=e7] [cursor=pointer]:
+                - img [ref=e8]
+        - generic [ref=e10]:
+            - generic [ref=e11]: Sessions
+            - button "main" [disabled] [ref=e12]:
+                - generic [ref=e14]: main
+        - generic [ref=e15]:
+            - link "Chat" [ref=e16] [cursor=pointer]:
+                - /url: /chat
+                - img [ref=e18]
+                - generic [ref=e20]: Chat
+            - link "Agents" [ref=e21] [cursor=pointer]:
+                - /url: /agents
+                - img [ref=e23]
+                - generic [ref=e33]: Agents
+            - link "Cron Jobs" [ref=e34] [cursor=pointer]:
+                - /url: /cron
+                - img [ref=e36]
+                - generic [ref=e39]: Cron Jobs
+            - link "Settings" [ref=e40] [cursor=pointer]:
+                - /url: /settings
+                - img [ref=e42]
+                - generic [ref=e45]: Settings
+        - generic [ref=e46]:
+            - generic [ref=e47]: System
+            - generic [ref=e48]:
+                - generic [ref=e49]: Agents
+                - generic [ref=e50]: "0"
+            - generic [ref=e52]:
+                - generic [ref=e53]: Channels
+                - generic [ref=e54]: 0/0
+            - generic [ref=e56]:
+                - generic [ref=e57]: Cron
+                - generic [ref=e58]: Disabled
+        - generic [ref=e63]: Cognitive Active
+    - main [ref=e66]:
+        - generic [ref=e67]:
+            - generic [ref=e69]: KaijiBot（凯机bot）
+            - generic [ref=e71]: "unauthorized: gateway token missing (open the dashboard URL and paste the token in Control UI settings)"
+        - generic [ref=e72]:
+            - generic [ref=e73]: "unauthorized: gateway token missing (open the dashboard URL and paste the token in Control UI settings)"
+            - log [ref=e76]:
+                - generic [ref=e78]:
+                    - img "KaijiBot" [ref=e80]
+                    - heading "KaijiBot（凯机bot）" [level=2] [ref=e81]
+                    - generic [ref=e83]: Ready to chat
+                    - paragraph [ref=e84]:
+                        - text: Type a message below ·
+                        - generic [ref=e85]: /
+                        - text: for commands
+                    - generic [ref=e86]:
+                        - button "What can you do?" [ref=e87] [cursor=pointer]
+                        - button "Summarize my recent sessions" [ref=e88] [cursor=pointer]
+                        - button "Help me configure a channel" [ref=e89] [cursor=pointer]
+                        - button "Check system health" [ref=e90] [cursor=pointer]
+            - generic [ref=e91]:
+                - generic [ref=e92]:
+                    - generic "Default model" [ref=e93] [cursor=pointer]:
+                        - combobox "Default model ▾" [ref=e94]:
+                            - option "Default model" [selected]
+                        - generic: Default model ▾
+                    - generic "Default (off)" [ref=e95] [cursor=pointer]:
+                        - combobox "Auto ▾" [ref=e96]:
+                            - option "Default (off)" [selected]
+                            - option "Off"
+                            - option "Minimal"
+                            - option "Low"
+                            - option "Medium"
+                            - option "High"
+                            - option "Adaptive"
+                        - generic: Auto ▾
+                - textbox "Message KaijiBot（凯机bot） (Enter to send)" [ref=e97]
+                - generic [ref=e98]:
+                    - generic [ref=e99]:
+                        - button "Attach file" [ref=e100] [cursor=pointer]:
+                            - img [ref=e101]
+                        - button "Voice input" [ref=e103] [cursor=pointer]:
+                            - img [ref=e104]
+                        - button "Chat settings" [ref=e108] [cursor=pointer]:
+                            - img [ref=e109]
+                    - generic [ref=e112]:
+                        - button "New session" [ref=e113] [cursor=pointer]:
+                            - img [ref=e114]
+                        - button "Export chat" [disabled] [ref=e115]:
+                            - img [ref=e116]
+                        - button "Send message" [ref=e119] [cursor=pointer]:
+                            - img [ref=e120]

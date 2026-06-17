@@ -10,6 +10,7 @@
 用户倾向 Method C（批量延迟分析）而非实时检测方案（Layer 1 代码检测 + Layer 2 LLM 判断）。
 
 用户偏好：
+
 - 充分利用 LLM 进行判断，而非硬编码正则
 - 把正确的调用记录为 skill，以此作为进化的方式
 
@@ -23,11 +24,13 @@
 - 生成 correction skill
 
 优点：
+
 - 不增加 turn-by-turn 延迟
 - 有完整对话上下文，判断更准确
 - 可以复用 session memory 的 LLM 调用
 
 缺点：
+
 - 不是实时的，要等对话结束/压缩时才分析
 - 错过纠错后的第一时间学习机会
 
@@ -38,6 +41,7 @@
 Session .jsonl 包含完整的工具错误数据，每行一个 JSON 对象。
 
 **Assistant 工具调用：**
+
 ```json
 {
   "type": "message",
@@ -48,7 +52,7 @@ Session .jsonl 包含完整的工具错误数据，每行一个 JSON 对象。
     "role": "assistant",
     "content": [
       {
-        "type": "toolCall",  // 或 "toolUse" / "functionCall"
+        "type": "toolCall", // 或 "toolUse" / "functionCall"
         "id": "call_abc123",
         "name": "read",
         "arguments": { "path": "/wrong.ts" }
@@ -61,6 +65,7 @@ Session .jsonl 包含完整的工具错误数据，每行一个 JSON 对象。
 ```
 
 **工具错误结果：**
+
 ```json
 {
   "type": "message",
@@ -76,6 +81,7 @@ Session .jsonl 包含完整的工具错误数据，每行一个 JSON 对象。
 ```
 
 **工具成功结果：**
+
 ```json
 {
   "type": "message",
@@ -92,14 +98,14 @@ Session .jsonl 包含完整的工具错误数据，每行一个 JSON 对象。
 
 **关键字段表：**
 
-| 字段 | 位置 | 用途 |
-|------|------|------|
-| `toolCallId` | toolResult 和 toolCall block 的 `id` | 关联工具调用与结果 |
-| `toolName` | toolResult 和 toolCall block 的 `name` | 识别哪个工具 |
-| `isError` | toolResult 上的布尔值 | **错误标记** — `true` 表示工具抛错 |
-| `content[].text` | toolResult | 错误消息或成功结果文本 |
-| `details.status` | toolResult | 额外错误信号: `"error"`, `"timeout"` |
-| `arguments` / `input` | toolCall block | **工具参数**（Agent 传了什么） |
+| 字段                  | 位置                                   | 用途                                 |
+| --------------------- | -------------------------------------- | ------------------------------------ |
+| `toolCallId`          | toolResult 和 toolCall block 的 `id`   | 关联工具调用与结果                   |
+| `toolName`            | toolResult 和 toolCall block 的 `name` | 识别哪个工具                         |
+| `isError`             | toolResult 上的布尔值                  | **错误标记** — `true` 表示工具抛错   |
+| `content[].text`      | toolResult                             | 错误消息或成功结果文本               |
+| `details.status`      | toolResult                             | 额外错误信号: `"error"`, `"timeout"` |
+| `arguments` / `input` | toolCall block                         | **工具参数**（Agent 传了什么）       |
 
 **结论：可以从 .jsonl 检测 "工具 X 失败后用不同参数成功" 的模式。**
 
@@ -107,13 +113,14 @@ Session .jsonl 包含完整的工具错误数据，每行一个 JSON 对象。
 
 Compaction 有一个**三级销毁链**：
 
-| 阶段 | 操作 | 影响 |
-|------|------|------|
-| 预处理 | `erroredAssistantResultPolicy: "drop"` | 删除 stopReason=error 的 assistant 消息及其 tool results |
-| LLM 摘要 | `stripToolResultDetails()` | 删除 toolResult 的 `details` 字段 |
-| 文件截断 | `truncateAfterCompaction`（可选） | 从 .jsonl 中**物理删除**已摘要的消息 |
+| 阶段     | 操作                                   | 影响                                                     |
+| -------- | -------------------------------------- | -------------------------------------------------------- |
+| 预处理   | `erroredAssistantResultPolicy: "drop"` | 删除 stopReason=error 的 assistant 消息及其 tool results |
+| LLM 摘要 | `stripToolResultDetails()`             | 删除 toolResult 的 `details` 字段                        |
+| 文件截断 | `truncateAfterCompaction`（可选）      | 从 .jsonl 中**物理删除**已摘要的消息                     |
 
 关键代码位置：
+
 - `src/agents/pi-embedded-runner/compact.ts:946-956` — 预处理
 - `src/agents/compaction.ts:312` — stripToolResultDetails
 - `src/agents/pi-embedded-runner/session-truncation.ts` — 文件截断
@@ -129,7 +136,7 @@ Compaction 有一个**三级销毁链**：
 ```typescript
 // line 43-48
 if ((role === "user" || role === "assistant") && "content" in msg && msg.content) {
-  const text = extractTextMessageContent(msg.content);  // 只看 type: "text"
+  const text = extractTextMessageContent(msg.content); // 只看 type: "text"
   if (text && !text.startsWith("/")) {
     allMessages.push(`${role}: ${text}`);
   }
@@ -141,6 +148,7 @@ if ((role === "user" || role === "assistant") && "content" in msg && msg.content
 ### 3.4 `command:new` / `command:reset` 是最佳触发时机
 
 这两个事件发生时：
+
 - 旧 session 文件**完整保存**，所有工具错误数据都在
 - handler 已经拿到了 `sessionFile` 路径
 - 可以直接解析 .jsonl 提取纠错模式
@@ -167,6 +175,7 @@ if (shouldCreate) {
 ```
 
 关键组件：
+
 - `SkillPersistenceWriter` — 写技能到 `~/.kaijibot/skills/{name}/SKILL.md`
 - `SkillLifecycleManager` — 去重（Levenshtein+Jaccard）、30天过期清理
 - `generateSkillDraftLLM` — LLM 生成丰富技能草稿
@@ -180,6 +189,7 @@ if (shouldCreate) {
 ### 3.7 Compaction 对记忆文件的影响
 
 两种场景（直接 /new vs 先 compaction 再 /new）对记忆文件**几乎没有区别**，因为：
+
 - `getRecentSessionContent()` 读取所有 `type: "message"` 条目（包括 compaction 前的旧条目）
 - 它只提取文本，不看 compaction 标记
 - 默认不截断 → 旧条目仍在文件中
@@ -214,15 +224,15 @@ if (shouldCreate) {
 
 ### 4.3 关键设计决策
 
-| 决策 | 选择 | 理由 |
-|------|------|------|
-| 触发时机 | 仅 `/new` `/reset` | compaction 会销毁数据 |
-| 检测方式 | 代码解析 .jsonl | 基于 `isError` 布尔值，可靠非正则 |
-| 判断方式 | LLM | 用户偏好，灵活，有完整上下文 |
-| 技能创建 | 程序化 | 不需要 Agent turn/heartbeat |
-| Skill 格式 | body 中加 Anti-patterns 段落 | 不改 frontmatter |
-| 去重 | 复用 SkillLifecycleManager | Levenshtein+Jaccard 已有 |
-| 过期 | 复用现有 30 天过期 + usageCount 追踪 | 一致性 |
+| 决策       | 选择                                 | 理由                              |
+| ---------- | ------------------------------------ | --------------------------------- |
+| 触发时机   | 仅 `/new` `/reset`                   | compaction 会销毁数据             |
+| 检测方式   | 代码解析 .jsonl                      | 基于 `isError` 布尔值，可靠非正则 |
+| 判断方式   | LLM                                  | 用户偏好，灵活，有完整上下文      |
+| 技能创建   | 程序化                               | 不需要 Agent turn/heartbeat       |
+| Skill 格式 | body 中加 Anti-patterns 段落         | 不改 frontmatter                  |
+| 去重       | 复用 SkillLifecycleManager           | Levenshtein+Jaccard 已有          |
+| 过期       | 复用现有 30 天过期 + usageCount 追踪 | 一致性                            |
 
 ### 4.4 需要新建的文件
 
@@ -253,15 +263,15 @@ if (shouldCreate) {
 
 ### 4.6 可复用的现有基础设施
 
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| `SkillPersistenceWriter` | `skill-writer.ts` | 写 SKILL.md 到磁盘 |
-| `SkillLifecycleManager` | `skill-lifecycle.ts` | 去重检查 |
-| `generateSkillDraftLLM` | `llm-draft-generator.ts` | LLM 生成技能草稿 |
-| `createStandaloneGenerateText` | `standalone-generate.ts` | 创建独立 LLM 调用 |
-| `EvolutionStore` | `store.ts` | 记录进化历史 |
-| `extractToolCallsFromAssistant` | `tool-call-id.ts` | 从 assistant 消息提取 toolCall |
-| `extractToolResultId` | `tool-call-id.ts` | 从 toolResult 提取 ID |
+| 组件                            | 文件                     | 用途                           |
+| ------------------------------- | ------------------------ | ------------------------------ |
+| `SkillPersistenceWriter`        | `skill-writer.ts`        | 写 SKILL.md 到磁盘             |
+| `SkillLifecycleManager`         | `skill-lifecycle.ts`     | 去重检查                       |
+| `generateSkillDraftLLM`         | `llm-draft-generator.ts` | LLM 生成技能草稿               |
+| `createStandaloneGenerateText`  | `standalone-generate.ts` | 创建独立 LLM 调用              |
+| `EvolutionStore`                | `store.ts`               | 记录进化历史                   |
+| `extractToolCallsFromAssistant` | `tool-call-id.ts`        | 从 assistant 消息提取 toolCall |
+| `extractToolResultId`           | `tool-call-id.ts`        | 从 toolResult 提取 ID          |
 
 ### 4.7 CorrectionPattern 数据结构（草案）
 
@@ -287,9 +297,11 @@ type CorrectionPattern = {
 ## Anti-patterns
 
 ### ❌ 不要这样做
+
 - 使用 `read` 时传入绝对路径（会触发 ENOENT）
 
 ### ✅ 正确做法
+
 - 使用相对于 workspace 的路径
 - 先用 `glob` 确认文件存在再读取
 ```
@@ -298,13 +310,13 @@ type CorrectionPattern = {
 
 Method C 的纠错自进化和现有的复杂度触发自进化（3+ 工具调用）是**互补关系**：
 
-| 维度 | 现有进化（hard-trigger） | 纠错进化（Method C） |
-|------|------------------------|---------------------|
-| 触发条件 | 3+ 工具调用 | 工具 error→success 模式 |
-| 触发时机 | 实时（turn 结束后） | 延迟（session 结束时） |
-| 判断者 | Agent（通过 heartbeat turn） | LLM（独立调用，无 Agent） |
-| Skill 内容 | 工作流自动化 | 纠错 + 正确用法 |
-| 通知用户 | Agent 决定是否通知 | 可静默创建，后续自然提及 |
+| 维度       | 现有进化（hard-trigger）     | 纠错进化（Method C）      |
+| ---------- | ---------------------------- | ------------------------- |
+| 触发条件   | 3+ 工具调用                  | 工具 error→success 模式   |
+| 触发时机   | 实时（turn 结束后）          | 延迟（session 结束时）    |
+| 判断者     | Agent（通过 heartbeat turn） | LLM（独立调用，无 Agent） |
+| Skill 内容 | 工作流自动化                 | 纠错 + 正确用法           |
+| 通知用户   | Agent 决定是否通知           | 可静默创建，后续自然提及  |
 
 ## 6. 风险和注意事项
 
@@ -317,6 +329,7 @@ Method C 的纠错自进化和现有的复杂度触发自进化（3+ 工具调�
 ## 7. 关键代码位置索引
 
 ### Session .jsonl 相关
+
 - `node_modules/@mariozechner/pi-coding-agent/dist/core/session-manager.js:576` — appendMessage
 - `node_modules/@mariozechner/pi-agent-core/dist/agent-loop.js:383` — emitToolCallOutcome
 - `src/agents/session-tool-result-guard.ts` — 消息写入拦截
@@ -324,6 +337,7 @@ Method C 的纠错自进化和现有的复杂度触发自进化（3+ 工具调�
 - `src/hooks/bundled/session-memory/transcript.ts` — 现有文本提取（只读文本）
 
 ### Compaction 相关
+
 - `src/agents/pi-embedded-runner/compact.ts` — compaction 编排
 - `src/agents/compaction.ts` — 核心摘要逻辑
 - `src/agents/session-transcript-repair.ts` — stripToolResultDetails, repairToolUseResultPairing
@@ -331,6 +345,7 @@ Method C 的纠错自进化和现有的复杂度触发自进化（3+ 工具调�
 - `src/agents/pi-embedded-runner/compaction-hooks.ts` — hook dispatch
 
 ### 进化系统相关
+
 - `src/cognitive/evolution/engine.ts` — EvolutionEngine
 - `src/cognitive/evolution/skill-writer.ts` — SkillPersistenceWriter
 - `src/cognitive/evolution/skill-lifecycle.ts` — SkillLifecycleManager（去重+过期）
@@ -343,11 +358,13 @@ Method C 的纠错自进化和现有的复杂度触发自进化（3+ 工具调�
 - `src/agents/tools/evolution-suggest-tool.ts` — evaluate_skill_evolution Agent 工具
 
 ### Session Memory 相关
+
 - `src/hooks/bundled/session-memory/handler.ts` — hook handler（集成点）
 - `src/hooks/bundled/session-memory/summary.ts` — generateStructuredSummary
 - `src/hooks/bundled/session-memory/transcript.ts` — getRecentSessionContent
 
 ### 工具错误追踪
+
 - `src/agents/tool-error-summary.ts` — 错误累加器（single-consume）
 - `src/agents/pi-embedded-subscribe.handlers.tools.ts:769-801` — lastToolError 设置/清除
 - `src/cognitive/evolution/complexity-evaluator.ts` — detectTrialAndError（现有正则检测）

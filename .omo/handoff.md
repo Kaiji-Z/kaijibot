@@ -9,18 +9,19 @@
 
 ## Current State (as of commit 82706b4e2e)
 
-| Check | Status |
-|-------|--------|
-| Branch | `simplify` |
-| Commits | 17 (on top of upstream) |
-| `pnpm tsgo` | 0 errors |
-| `pnpm build` | success |
-| `pnpm test src/cognitive/` | 112/112 passing |
-| Remote push | Not pushed (all local) |
+| Check                      | Status                  |
+| -------------------------- | ----------------------- |
+| Branch                     | `simplify`              |
+| Commits                    | 17 (on top of upstream) |
+| `pnpm tsgo`                | 0 errors                |
+| `pnpm build`               | success                 |
+| `pnpm test src/cognitive/` | 112/112 passing         |
+| Remote push                | Not pushed (all local)  |
 
 ## What Was Done (3 Phases)
 
 ### Phase 1: Simplification (9 commits)
+
 - Removed ~85 unused channels/providers (discord, slack, telegram, whatsapp, signal, imessage, matrix, zalo, ollama, fal, google, minimax, etc.)
 - Removed iOS/macOS/Android native apps, upstream CI, Docker sandbox
 - Removed ~136 dead scripts, ~91 dead npm scripts, ~14 dead dependencies
@@ -28,6 +29,7 @@
 - Commit range: `1f9b51755f`..`b94f7d9d9d`
 
 ### Phase 2: Cognitive Layer (6 commits)
+
 - 38 new files in `src/cognitive/`
 - 112 tests across 14 test files
 - Full pipeline integration (persona loading, mode classification, system prompt injection, extraction, compaction protection)
@@ -35,11 +37,13 @@
 - Commit range: `9caebe934d`..`f528637048`
 
 ### Phase 3: Rename (1 commit)
+
 - OpenClaw → KaijiBot: 3916 files, ~31000 lines
 - Package name = `kaijibot@2026.4.10`
 - Commit: `0195c17ce1`
 
 ### Phase 4: TS Error Cleanup (1 commit)
+
 - Restored `test/helpers/` directory (113 files)
 - Restored `ui/tool-display.json`
 - Fixed 150 TS errors: renames, deleted extension refs, type annotations
@@ -60,6 +64,7 @@
 ```
 
 ### Key Design Decisions
+
 - **改核心**（非插件）— 认知层直接插入核心代码
 - **平台无关** — 飞书/微信/Web 都是即插即用的通道适配器
 - **桥接现有记忆插件** — 不重写，加协调层
@@ -69,34 +74,40 @@
 ## Key Files
 
 ### Cognitive Layer Core
+
 - `src/cognitive/types.ts` — 核心类型定义
 - `src/cognitive/mode-router.ts` — 模式分类器
 - `src/cognitive/context-writer.ts` — 管道注入
 - `src/cognitive/index.ts` — barrel exports
 
 ### Persona Module
+
 - `src/cognitive/persona/store.ts` — JSON 持久化
 - `src/cognitive/persona/extractor.ts` — 规则提取（域检测、自我披露、问题识别）
 - `src/cognitive/persona/curator.ts` — 合并（加权置信度）+ 修剪
 - `src/cognitive/persona/context-builder.ts` — PersonaTree → system prompt
 
 ### Feedback Module
+
 - `src/cognitive/feedback/collector.ts` — 显式 + 隐式反馈
 - `src/cognitive/feedback/preference-learner.ts` — Thompson Sampling
 - `src/cognitive/feedback/trust-calculator.ts` — SARA 框架
 
 ### Insight Module
+
 - `src/cognitive/insight/engine.ts` — 3 策略：跨领域 / 待答问题 / 深度领域
 - `src/cognitive/insight/cross-domain-mapper.ts` — 8 域邻接图
 - `src/cognitive/insight/serendipity-scorer.ts` — 相关性 × 意外度 × 新颖度
 - `src/cognitive/insight/verification/pipeline.ts` — basic/strict/paranoid 验证
 
 ### Scheduler Module
+
 - `src/cognitive/scheduler/proactive-scheduler.ts` — 主调度器
 - `src/cognitive/scheduler/gate.ts` — 5 重门控
 - `src/cognitive/scheduler/event-sources/` — timer, persona-change, info-scan
 
 ### Pipeline Integration Points (modified existing files)
+
 - `src/auto-reply/reply/get-reply-run.ts` — 每条消息加载 persona + 分类模式
 - `src/agents/pi-embedded-runner/run/attempt.ts` — 每次对话后提取 persona
 - `src/agents/compaction.ts` — 压缩摘要保留认知信息
@@ -104,6 +115,7 @@
 - `src/gateway/server.impl.ts` — Gateway 启动时启动 ProactiveScheduler
 
 ### Config
+
 - `src/config/types.kaijibot.ts` — KaijiBotConfig (含 cognitive 字段)
 - `src/config/types.cognitive.ts` — CognitiveConfig
 - `src/config/zod-schema.cognitive.ts` — CognitiveSchema
@@ -112,9 +124,11 @@
 - `src/config/materialize.ts` — wired applyCognitiveDefaults
 
 ### Planning Docs
+
 - `.sisyphus/plans/cognitive-layer-plan.md` — 完整架构计划（568 行）
 
 ### Tests (14 files)
+
 - `src/cognitive/mode-router.test.ts`
 - `src/cognitive/persona/store.test.ts`
 - `src/cognitive/persona/curator.test.ts`
@@ -153,4 +167,5 @@ git remote add upstream https://gitee.com/kaiji1126/kaijibot
 git fetch upstream
 git merge upstream/main
 ```
+
 Core code (`src/`) fully compatible; merge conflicts rare.

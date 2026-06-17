@@ -9,14 +9,14 @@
 
 KaijiBot 是一个主动式认知 AI 助手，采用可插拔的 provider/channel 架构。支持任意 LLM provider（35+ 内置），可扩展的消息频道。从 OpenClaw fork 后独立开发，拥有自己的认知层、架构和方向。
 
-| 维度 | 规模 |
-|---|---|
-| src/ 文件数 | ~6,400 |
-| extensions/ | 66 个扩展 |
-| scripts/ | ~100+ |
-| skills/ | 22 |
-| 主要语言 | TypeScript (ESM) |
-| 运行时 | Node 22+ / Bun |
+| 维度        | 规模             |
+| ----------- | ---------------- |
+| src/ 文件数 | ~6,400           |
+| extensions/ | 66 个扩展        |
+| scripts/    | ~100+            |
+| skills/     | 22               |
+| 主要语言    | TypeScript (ESM) |
+| 运行时      | Node 22+ / Bun   |
 
 ---
 
@@ -56,94 +56,95 @@ KaijiBot 是一个主动式认知 AI 助手，采用可插拔的 provider/channe
 
 ### 3.1 src/gateway/ — 网关层 (356 文件)
 
-| 文件 | 行数 | 职责 |
-|---|---|---|
-| `server.impl.ts` | 2423 | **主入口**: 加载配置、认证、插件、频道、心跳、cron、UI |
-| `server-methods/chat.ts` | 2027 | chat.send/history/abort/inject RPC 处理 |
-| `server-ws-runtime.ts` | — | WebSocket handler 挂载 |
-| `server/ws-connection.ts` | — | WS 认证、升级、消息分发 |
-| `server-chat.ts` | — | agent 生命周期事件 → WS 广播 |
-| `cognitive-delivery.ts` | — | 认知层 → userId → session key 路由 |
-| `auth.ts` | — | 网关认证 |
-| `server-session-key.ts` | — | routing ↔ gateway session key 桥接 |
+| 文件                      | 行数 | 职责                                                   |
+| ------------------------- | ---- | ------------------------------------------------------ |
+| `server.impl.ts`          | 2423 | **主入口**: 加载配置、认证、插件、频道、心跳、cron、UI |
+| `server-methods/chat.ts`  | 2027 | chat.send/history/abort/inject RPC 处理                |
+| `server-ws-runtime.ts`    | —    | WebSocket handler 挂载                                 |
+| `server/ws-connection.ts` | —    | WS 认证、升级、消息分发                                |
+| `server-chat.ts`          | —    | agent 生命周期事件 → WS 广播                           |
+| `cognitive-delivery.ts`   | —    | 认知层 → userId → session key 路由                     |
+| `auth.ts`                 | —    | 网关认证                                               |
+| `server-session-key.ts`   | —    | routing ↔ gateway session key 桥接                     |
 
 **关键流程**: `startGatewayServer()` 启动 → 注册 RPC methods → attach WS → 启动 cron/heartbeat → 等待连接
 
 ### 3.2 src/auto-reply/ — 回复管线 (76 文件)
 
-| 文件 | 行数 | 职责 |
-|---|---|---|
-| `dispatch.ts:35` | — | 入口: `dispatchInboundMessage()` |
-| `reply/get-reply.ts:144` | 641 | **主编排**: 解析 agent/model/workspace/session/directives/hooks |
-| `reply/get-reply-run.ts:164` | 757 | **运行准备**: 系统提示词构建 + 认知注入 + queue policy |
-| `reply/agent-runner.runtime.ts` | — | 桥接到 `runEmbeddedPiAgent()` |
-| `types.ts:32` | — | `GetReplyOptions` (149行回调钩子) |
-| `types.ts:151` | — | `ReplyPayload` (text, mediaUrl, interactive...) |
-| `command-detection.ts` | — | 斜杠命令检测 |
-| `commands-registry.ts` | — | 命令注册 |
+| 文件                            | 行数 | 职责                                                            |
+| ------------------------------- | ---- | --------------------------------------------------------------- |
+| `dispatch.ts:35`                | —    | 入口: `dispatchInboundMessage()`                                |
+| `reply/get-reply.ts:144`        | 641  | **主编排**: 解析 agent/model/workspace/session/directives/hooks |
+| `reply/get-reply-run.ts:164`    | 757  | **运行准备**: 系统提示词构建 + 认知注入 + queue policy          |
+| `reply/agent-runner.runtime.ts` | —    | 桥接到 `runEmbeddedPiAgent()`                                   |
+| `types.ts:32`                   | —    | `GetReplyOptions` (149行回调钩子)                               |
+| `types.ts:151`                  | —    | `ReplyPayload` (text, mediaUrl, interactive...)                 |
+| `command-detection.ts`          | —    | 斜杠命令检测                                                    |
+| `commands-registry.ts`          | —    | 命令注册                                                        |
 
 ### 3.3 src/agents/ — Agent 系统 (766 文件)
 
 **核心 LLM 循环** (`pi-embedded-runner/`):
 
-| 文件 | 职责 |
-|---|---|
-| `run.ts:151` | **runEmbeddedPiAgent()** — 1698行主循环 |
-| `run/attempt.ts` | 单次 LLM API 调用 |
-| `run/auth-controller.ts` | 认证 profile 轮换 |
-| `run/failover-policy.ts` | 重试/故障转移决策 |
-| `run/payloads.ts` | 组装 LLM 请求 payload |
-| `run/setup.ts` | `resolveEffectiveRuntimeModel()` |
+| 文件                     | 职责                                    |
+| ------------------------ | --------------------------------------- |
+| `run.ts:151`             | **runEmbeddedPiAgent()** — 1698行主循环 |
+| `run/attempt.ts`         | 单次 LLM API 调用                       |
+| `run/auth-controller.ts` | 认证 profile 轮换                       |
+| `run/failover-policy.ts` | 重试/故障转移决策                       |
+| `run/payloads.ts`        | 组装 LLM 请求 payload                   |
+| `run/setup.ts`           | `resolveEffectiveRuntimeModel()`        |
 
 **工具系统**:
 
-| 文件 | 职责 |
-|---|---|
-| `kaijibot-tools.ts:58` | **createKaijiBotTools()** — 25+ 工具注册 |
-| `pi-tools.ts:233` | **createKaijiBotCodingTools()** — 工具策略+schema 适配 |
-| `tool-policy.ts` | per-session 工具 allow/deny |
-| `tools/*.ts` | 各工具实现 (sessions, cron, gateway, cognitive, etc.) |
+| 文件                   | 职责                                                   |
+| ---------------------- | ------------------------------------------------------ |
+| `kaijibot-tools.ts:58` | **createKaijiBotTools()** — 25+ 工具注册               |
+| `pi-tools.ts:233`      | **createKaijiBotCodingTools()** — 工具策略+schema 适配 |
+| `tool-policy.ts`       | per-session 工具 allow/deny                            |
+| `tools/*.ts`           | 各工具实现 (sessions, cron, gateway, cognitive, etc.)  |
 
 **模型系统**:
 
-| 文件 | 职责 |
-|---|---|
-| `model-selection.ts` | provider/model 解析 |
-| `model-catalog.ts` | 模型目录 + provider 支持矩阵 |
-| `model-fallback.ts` | fallback 链 |
-| `auth-profiles.ts` | 认证 profile store (round-robin, cooldown) |
-| `defaults.ts` | `DEFAULT_PROVIDER`, `DEFAULT_MODEL` |
+| 文件                 | 职责                                       |
+| -------------------- | ------------------------------------------ |
+| `model-selection.ts` | provider/model 解析                        |
+| `model-catalog.ts`   | 模型目录 + provider 支持矩阵               |
+| `model-fallback.ts`  | fallback 链                                |
+| `auth-profiles.ts`   | 认证 profile store (round-robin, cooldown) |
+| `defaults.ts`        | `DEFAULT_PROVIDER`, `DEFAULT_MODEL`        |
 
 **其他**:
 
-| 文件 | 职责 |
-|---|---|
-| `agent-scope.ts` | `resolveSessionAgentId()`, workspace 解析 |
-| `system-prompt.ts` | 系统提示词组装 |
-| `compaction.ts` | 上下文窗口压缩 |
-| `subagent-registry.ts` | 子 agent 生命周期管理 |
+| 文件                   | 职责                                      |
+| ---------------------- | ----------------------------------------- |
+| `agent-scope.ts`       | `resolveSessionAgentId()`, workspace 解析 |
+| `system-prompt.ts`     | 系统提示词组装                            |
+| `compaction.ts`        | 上下文窗口压缩                            |
+| `subagent-registry.ts` | 子 agent 生命周期管理                     |
 
 ### 3.4 src/config/ — 配置系统 (243 文件)
 
-| 文件 | 职责 |
-|---|---|
-| `io.ts` | `loadConfig()`, `readConfigFileSnapshot()`, `writeConfigFile()` |
-| `types.kaijibot.ts:34` | **KaijiBotConfig** (178行): auth, env, secrets, agents, bindings, session, channels, models, plugins, tools, cognitive, memory, hooks, cron, mcp, skills, soul, gateway, browser, cli, logging, diagnostics |
-| `sessions/types.ts:106` | **SessionEntry** (346行, 60+字段) |
-| `defaults.ts` | 默认值 |
-| `schema.ts` / `validation.ts` | 校验 |
+| 文件                          | 职责                                                                                                                                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `io.ts`                       | `loadConfig()`, `readConfigFileSnapshot()`, `writeConfigFile()`                                                                                                                                             |
+| `types.kaijibot.ts:34`        | **KaijiBotConfig** (178行): auth, env, secrets, agents, bindings, session, channels, models, plugins, tools, cognitive, memory, hooks, cron, mcp, skills, soul, gateway, browser, cli, logging, diagnostics |
+| `sessions/types.ts:106`       | **SessionEntry** (346行, 60+字段)                                                                                                                                                                           |
+| `defaults.ts`                 | 默认值                                                                                                                                                                                                      |
+| `schema.ts` / `validation.ts` | 校验                                                                                                                                                                                                        |
 
 **配置加载管线**: 读取 JSON5 → `$include` 解析 → `${ENV}` 替换 → validate → 运行时默认值
 
 ### 3.5 src/routing/ — 路由系统 (11 文件)
 
-| 文件 | 行数 | 职责 |
-|---|---|---|
-| `session-key.ts:120` | — | `buildAgentMainSessionKey()` — `agent:<agentId>:main` |
-| `session-key.ts:129` | — | `buildAgentPeerSessionKey()` — DM scope 路由 |
-| `resolve-route.ts:632` | 836 | **主路由函数**: peer → parent → wildcard → guild → team → account → channel → default |
+| 文件                   | 行数 | 职责                                                                                  |
+| ---------------------- | ---- | ------------------------------------------------------------------------------------- |
+| `session-key.ts:120`   | —    | `buildAgentMainSessionKey()` — `agent:<agentId>:main`                                 |
+| `session-key.ts:129`   | —    | `buildAgentPeerSessionKey()` — DM scope 路由                                          |
+| `resolve-route.ts:632` | 836  | **主路由函数**: peer → parent → wildcard → guild → team → account → channel → default |
 
 **Session Key 格式**:
+
 ```
 agent:<agentId>:<scope>
 例: agent:main:main
@@ -155,11 +156,11 @@ agent:<agentId>:<scope>
 
 ### 3.6 src/sessions/ — 会话管理 (18 文件)
 
-| 文件 | 职责 |
-|---|---|
+| 文件                      | 职责                                      |
+| ------------------------- | ----------------------------------------- |
 | `session-key-utils.ts:28` | `parseAgentSessionKey()` — 解析 agent key |
-| `input-provenance.ts` | 输入来源追踪 |
-| `send-policy.ts` | 发送策略 (allow/deny) |
+| `input-provenance.ts`     | 输入来源追踪                              |
+| `send-policy.ts`          | 发送策略 (allow/deny)                     |
 
 ---
 
@@ -210,16 +211,16 @@ agent:<agentId>:<scope>
 
 **关键子系统**:
 
-| 子系统 | 路径 | 核心功能 |
-|---|---|---|
-| **Persona** | `src/cognitive/persona/` | TypedInsight 存储, LLM 提取器, 动态领域发现, 兴趣生命周期 |
-| **Insight** | `src/cognitive/insight/` | 知识/模式双模式, 对比去重, 自精炼循环, LLM-as-judge 验证 |
-| **Evolution** | `src/cognitive/evolution/` | 硬触发检测, agent 决策, LLM 技能草稿, 生命周期管理, ClawHub 发布 |
-| **Correction** | `src/cognitive/correction/` | 双路检测, CorrectionStore (Jaccard 去重), 系统提示词注入 (top 15) |
-| **Scheduler** | `src/cognitive/scheduler/` | PRISM 成本敏感门, SIRI 循环, 5 类事件源 |
-| **Feedback** | `src/cognitive/feedback/` | Thompson Sampling 偏好学习, 信任/亲和力计算 |
-| **Mode Router** | `src/cognitive/mode-router.ts` | 轮次分类: task/insight/hybrid/proactive |
-| **Context Writer** | `src/cognitive/context-writer.ts` | 系统提示词注入: 认知模式 + 修正列表 + 演化提示 |
+| 子系统             | 路径                              | 核心功能                                                          |
+| ------------------ | --------------------------------- | ----------------------------------------------------------------- |
+| **Persona**        | `src/cognitive/persona/`          | TypedInsight 存储, LLM 提取器, 动态领域发现, 兴趣生命周期         |
+| **Insight**        | `src/cognitive/insight/`          | 知识/模式双模式, 对比去重, 自精炼循环, LLM-as-judge 验证          |
+| **Evolution**      | `src/cognitive/evolution/`        | 硬触发检测, agent 决策, LLM 技能草稿, 生命周期管理, ClawHub 发布  |
+| **Correction**     | `src/cognitive/correction/`       | 双路检测, CorrectionStore (Jaccard 去重), 系统提示词注入 (top 15) |
+| **Scheduler**      | `src/cognitive/scheduler/`        | PRISM 成本敏感门, SIRI 循环, 5 类事件源                           |
+| **Feedback**       | `src/cognitive/feedback/`         | Thompson Sampling 偏好学习, 信任/亲和力计算                       |
+| **Mode Router**    | `src/cognitive/mode-router.ts`    | 轮次分类: task/insight/hybrid/proactive                           |
+| **Context Writer** | `src/cognitive/context-writer.ts` | 系统提示词注入: 认知模式 + 修正列表 + 演化提示                    |
 
 ---
 
@@ -228,6 +229,7 @@ agent:<agentId>:<scope>
 ### 5.1 按类型分类
 
 **频道 (1)**:
+
 - `feishu` — 唯一消息频道, 102 src .ts 文件, 最大扩展
 
 **LLM Provider (~35)**:
@@ -243,11 +245,13 @@ agent:<agentId>:<scope>
 | **其他** | `arcee`, `chutes`, `venice`, `vydra`, `microsoft-foundry`, `runway` |
 
 **内存 (3)**:
+
 - `memory-core` — 核心内存引擎, 71 src .ts, 记忆整合, embedding, QMD
 - `memory-lancedb` — LanceDB 向量内存
 - `memory-wiki` — Obsidian/wiki 内存
 
 **搜索/浏览器 (3)**:
+
 - `exa` — web search
 - `tavily` — web search + extract
 - `browser` — Playwright 浏览器自动化, 161 src .ts (最大扩展)
@@ -262,6 +266,7 @@ agent:<agentId>:<scope>
 **子路径**: 237 个 SDK 入口 (`scripts/lib/plugin-sdk-entry-points.json`)
 
 **注册 API** (`KaijiBotPluginApi` — 25+ 方法):
+
 - 工具: `registerTool()`, `registerToolFactory()`
 - LLM: `registerProvider()`
 - 频道: `registerChannel()`
@@ -273,6 +278,7 @@ agent:<agentId>:<scope>
 - CLI: `registerCli()`, `registerCommand()`
 
 **扩展内部模式**:
+
 - `api.ts` — 轻量导出
 - `runtime-api.ts` — 懒加载运行时
 - `index.ts` — 调用 `definePluginEntry()` 或 `defineSingleProviderPluginEntry()`
@@ -294,13 +300,13 @@ agent:<agentId>:<scope>
 
 ### 5.4 Contract 生态
 
-| Contract | Providers |
-|---|---|
-| webSearch | exa, google, minimax, moonshot, ollama, perplexity, tavily, xai |
+| Contract           | Providers                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| webSearch          | exa, google, minimax, moonshot, ollama, perplexity, tavily, xai                    |
 | mediaUnderstanding | anthropic, google, groq, minimax, mistral, moonshot, openai, openrouter, qwen, zai |
-| imageGeneration | google, minimax, openai, vydra |
-| videoGeneration | alibaba, byteplus, google, minimax, openai, qwen, runway, together, venice, xai |
-| speech | microsoft, minimax, openai, vydra |
+| imageGeneration    | google, minimax, openai, vydra                                                     |
+| videoGeneration    | alibaba, byteplus, google, minimax, openai, qwen, runway, together, venice, xai    |
+| speech             | microsoft, minimax, openai, vydra                                                  |
 
 ---
 
@@ -308,17 +314,18 @@ agent:<agentId>:<scope>
 
 ### 6.1 构建系统
 
-| 命令 | 用途 |
-|---|---|
-| `pnpm build` | tsdown 构建 |
-| `pnpm tsgo` | TypeScript 类型检查 |
-| `pnpm check` | tsgo + oxlint + boundary |
-| `pnpm test` | vitest (70% 覆盖率阈值) |
+| 命令             | 用途                                |
+| ---------------- | ----------------------------------- |
+| `pnpm build`     | tsdown 构建                         |
+| `pnpm tsgo`      | TypeScript 类型检查                 |
+| `pnpm check`     | tsgo + oxlint + boundary            |
+| `pnpm test`      | vitest (70% 覆盖率阈值)             |
 | `pnpm gw:deploy` | 构建 + 重启网关 (tmux session `gw`) |
 
 ### 6.2 CLI 命令
 
 通过 `kaijibot` 命令访问:
+
 - `gateway` — 启动网关
 - `tui` — TUI 界面 (10K LOC)
 - `config` — 配置管理
@@ -327,9 +334,9 @@ agent:<agentId>:<scope>
 
 ### 6.3 Docker
 
-| 端口 | 用途 |
-|---|---|
-| 18789 | 网关 |
+| 端口  | 用途   |
+| ----- | ------ |
+| 18789 | 网关   |
 | 18790 | Bridge |
 
 ### 6.4 Session Key 路由
@@ -353,10 +360,10 @@ peer → parent → wildcard → guild+roles → guild → team → account → 
 
 ## 七、三层记忆架构
 
-| 层级 | 触发 | 机制 | 读取方式 |
-|---|---|---|---|
-| **Layer 1** | `/new` `/reset` | session-memory hook → LLM 摘要 → 路由到 topic | `preprocessSessionTranscript()` ✅ |
-| **Layer 2** | 每日 03:00 | consolidation cron → LLM 提取 → Jaccard 去重 → 路由到认知存储 | `preprocessSessionTranscript()` (via deps.readSessionFile) ✅ |
+| 层级        | 触发             | 机制                                                                 | 读取方式                                                              |
+| ----------- | ---------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Layer 1** | `/new` `/reset`  | session-memory hook → LLM 摘要 → 路由到 topic                        | `preprocessSessionTranscript()` ✅                                    |
+| **Layer 2** | 每日 03:00       | consolidation cron → LLM 提取 → Jaccard 去重 → 路由到认知存储        | `preprocessSessionTranscript()` (via deps.readSessionFile) ✅         |
 | **Layer 3** | 用户说"整理记忆" | memory-organize skill → `read_session_transcript` 工具 → memory_tidy | `preprocessSessionTranscript()` (via read_session_transcript 工具) ✅ |
 
 ---

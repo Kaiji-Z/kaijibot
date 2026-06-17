@@ -5,6 +5,7 @@
 将 KaijiBot 从被动式 AI 助手改造为拥有意图感知能力的长期记忆主动式智能体（启发性思考伙伴）。
 
 核心特点：
+
 - **启发性**：主动了解用户，基于用户认知模型提供跨领域灵感
 - **意图感知**：从对话中提取深层认知意图（不是任务意图，是理解用户"是什么样的人"）
 - **长期记忆**：构建用户认知模型（PersonaTree），跨会话持续积累
@@ -55,56 +56,56 @@
 interface PersonaTree {
   // L1: 身份记忆 — 极少变化，始终在上下文中
   identity: {
-    coreTraits: Map<string, ConfidenceValue>;   // "技术决策者": 0.9
-    communicationStyle: CommunicationStyle;      // 语言风格
+    coreTraits: Map<string, ConfidenceValue>; // "技术决策者": 0.9
+    communicationStyle: CommunicationStyle; // 语言风格
     timezone: string;
     primaryLanguage: string;
-    expertDomains: string[];                     // 精通领域
-    interestDomains: string[];                   // 感兴趣领域
-    curiosityDomains: string[];                  // 好奇但还不了解的领域
+    expertDomains: string[]; // 精通领域
+    interestDomains: string[]; // 感兴趣领域
+    curiosityDomains: string[]; // 好奇但还不了解的领域
   };
 
   // L2: 领域记忆 — 演化更新，按领域组织
-  domains: Map<string, DomainNode>;              // "AI架构" → {insights, projects, questions}
+  domains: Map<string, DomainNode>; // "AI架构" → {insights, projects, questions}
 
   // L3: 会话记忆 — 短期衰减
-  recentFocus: string[];                         // 最近关注的话题
-  activeProjects: string[];                      // 活跃项目
-  pendingQuestions: string[];                    // 悬而未决的问题
+  recentFocus: string[]; // 最近关注的话题
+  activeProjects: string[]; // 活跃项目
+  pendingQuestions: string[]; // 悬而未决的问题
 
   // 反馈模型
   feedbackProfile: {
-    topicBandits: Map<string, { alpha: number; beta: number }>;  // Thompson Sampling
+    topicBandits: Map<string, { alpha: number; beta: number }>; // Thompson Sampling
     preferredStyle: "question" | "observation" | "connection";
-    optimalFrequency: number;                     // 最优推送频率（小时）
-    lastProactiveAt: number;                      // 上次主动推送时间戳
-    suppressUntil?: number;                       // 抑制到某个时间
+    optimalFrequency: number; // 最优推送频率（小时）
+    lastProactiveAt: number; // 上次主动推送时间戳
+    suppressUntil?: number; // 抑制到某个时间
   };
 
   // 关系指标
   rapport: {
-    trustScore: number;         // 0-1，基于互动深度和反馈
+    trustScore: number; // 0-1，基于互动深度和反馈
     totalExchanges: number;
-    avgResponseLength: number;  // 用户平均回复长度（参与度指标）
+    avgResponseLength: number; // 用户平均回复长度（参与度指标）
     selfDisclosureLevel: number; // 用户自我暴露程度
   };
 }
 
 interface ConfidenceValue {
   value: string;
-  confidence: number;      // 0-1
-  evidenceCount: number;   // 支撑证据数
-  lastUpdated: number;     // 时间戳
+  confidence: number; // 0-1
+  evidenceCount: number; // 支撑证据数
+  lastUpdated: number; // 时间戳
   source: "explicit" | "inferred" | "observed";
 }
 
 interface DomainNode {
-  depth: number;            // 参与深度 (0-10)
-  recurrence: number;       // 话题复现次数
-  lastMentioned: number;    // 时间戳
-  keyInsights: string[];    // 用户在此领域的关键洞见
+  depth: number; // 参与深度 (0-10)
+  recurrence: number; // 话题复现次数
+  lastMentioned: number; // 时间戳
+  keyInsights: string[]; // 用户在此领域的关键洞见
   activeQuestions: string[]; // 用户在此领域的开放问题
-  connections: string[];     // 与其他领域的关联
+  connections: string[]; // 与其他领域的关联
 }
 
 interface CommunicationStyle {
@@ -124,14 +125,14 @@ interface InsightRecord {
   id: string;
   generatedAt: number;
   triggerSource: "scheduled" | "event" | "conversational";
-  targetDomains: string[];        // 涉及的用户领域
-  sourceDomains: string[];        // 信息来源领域（跨领域）
-  content: string;                // 启发内容
-  rationale: string;              // 为什么认为用户会感兴趣
-  sources: VerifiedSource[];      // 信息来源（带验证）
+  targetDomains: string[]; // 涉及的用户领域
+  sourceDomains: string[]; // 信息来源领域（跨领域）
+  content: string; // 启发内容
+  rationale: string; // 为什么认为用户会感兴趣
+  sources: VerifiedSource[]; // 信息来源（带验证）
   feedback?: "positive" | "negative" | "neutral" | "engaged";
   deliveredAt?: number;
-  userResponse?: string;          // 用户反应（展开了讨论？无视了？）
+  userResponse?: string; // 用户反应（展开了讨论？无视了？）
 }
 ```
 
@@ -214,6 +215,7 @@ getReplyFromConfig() 流程:
 ```
 
 **实现方式**:
+
 - 在 `get-reply.ts` 的 `getReplyFromConfig()` 中增加认知层调用
 - 不用 hook，直接在代码中插入，因为需要确定性控制
 - 调用轻量模型（或规则引擎）做快速分类（<200ms）
@@ -231,6 +233,7 @@ getReplyFromConfig() 流程:
    - 注入用户认知模型片段到 context files
 
 **存储**: `~/.kaijibot/cognitive/persona/<userId>.json`
+
 - 独立于 session JSONL，有自己的生命周期
 - 压缩（compaction）不会影响它
 
@@ -239,6 +242,7 @@ getReplyFromConfig() 流程:
 **插入位置**: `src/agents/system-prompt.ts` 的 `buildAgentSystemPrompt()`
 
 在 context files 加载阶段（第 36-44 行的 `CONTEXT_FILE_ORDER`），增加认知层上下文文件：
+
 - `cognitive-persona.md` — 用户认知模型摘要（从 PersonaTree 动态生成）
 - `cognitive-mode.md` — 当前模式指令（task/insight/hybrid 的行为规则）
 
@@ -249,6 +253,7 @@ getReplyFromConfig() 流程:
 **插入位置**: 替代现有 heartbeat 机制的增强版
 
 基于 `src/infra/heartbeat-runner.ts` 改造：
+
 - 保留 heartbeat 的框架（定时触发、session lane、delivery）
 - 增加新的事件源：
   - 信息扫描定时器（web search for user topics）
@@ -264,6 +269,7 @@ getReplyFromConfig() 流程:
 **插入位置**: 注册为 plugin tool
 
 通过 `api.registerTool()` 注册 `cognitive_feedback` 工具：
+
 - Agent 可以在启发推送后主动询问反馈
 - 反馈结果写入 `feedbackProfile.topicBandits`
 - 同时注册 `before_agent_reply` hook 检测隐式反馈信号
@@ -273,6 +279,7 @@ getReplyFromConfig() 流程:
 **插入位置**: `src/agents/compaction.ts`
 
 在 compaction 的 `MERGE_SUMMARIES_INSTRUCTIONS`（第 24-37 行）中增加：
+
 ```
 "- User's core interests and ongoing concerns (from cognitive persona)"
 "- Active exploration topics and cross-domain connections"
@@ -383,6 +390,7 @@ src/cognitive/config/zod-schema.test.ts
 **目标**: 最小可运行的认知层，能区分 task/insight 模式
 
 **步骤**:
+
 1. 创建 `src/cognitive/types.ts` — 所有核心类型
 2. 创建 `src/config/types.cognitive.ts` + zod schema — 配置
 3. 修改 `get-reply.ts` — 在 `before_agent_reply` 之后插入 ModeRouter
@@ -401,6 +409,7 @@ src/cognitive/config/zod-schema.test.ts
 **目标**: 能从对话中自动提取并积累用户画像
 
 **步骤**:
+
 1. 实现 `src/cognitive/persona/store.ts` — JSON 读写
 2. 实现 `src/cognitive/persona/extractor.ts`:
    - 对话结束后，异步调用轻量 LLM 提取结构化属性
@@ -422,6 +431,7 @@ src/cognitive/config/zod-schema.test.ts
 **目标**: 能定时主动推送个性化启发
 
 **步骤**:
+
 1. 实现 `src/cognitive/scheduler/proactive-scheduler.ts`:
    - 基于 heartbeat-runner 改造
    - 增加门控：trustScore 阈值、频率限制、suppressUntil
@@ -447,6 +457,7 @@ src/cognitive/config/zod-schema.test.ts
 **目标**: 启发质量显著提升，能发现跨领域关联
 
 **步骤**:
+
 1. 实现 `src/cognitive/insight/cross-domain-mapper.ts`:
    - 语义距离计算
    - 结构映射（Structure-Mapping Theory 简化版）
@@ -468,6 +479,7 @@ src/cognitive/config/zod-schema.test.ts
 ### Phase 5: 完善 + 集成测试（1 周）
 
 **步骤**:
+
 1. 端到端集成测试
 2. 性能优化（轻量分类 <200ms，提取不阻塞主流程）
 3. 配置 CLI 支持（`kaijibot config set cognitive.proactive.enabled true`）
@@ -479,6 +491,7 @@ src/cognitive/config/zod-schema.test.ts
 ### 7.1 不破坏助手功能
 
 认知层是叠加在现有功能之上的：
+
 - 模式路由器的默认返回是 `task`（现有行为不变）
 - 认知层出错时降级为纯助手模式
 - 用户可以通过配置完全关闭认知层
@@ -487,6 +500,7 @@ src/cognitive/config/zod-schema.test.ts
 ### 7.2 渐进式信任建立
 
 遵循 SARA 框架（IJCAI 2017）:
+
 ```
 Turn 1-3:   展示能力 + 积极倾听（ASN + ACK）
 Turn 4-8:   Agent 自我分享 + 引用用户之前发言（SD + RSE）
@@ -530,38 +544,43 @@ KaijiBot 核心                → 最小修改（5 个文件，精确插入）
 
 ## 9. 风险与缓解
 
-| 风险 | 影响 | 缓解 |
-|------|------|------|
-| 模式分类错误 | 用户在 task 模式收到不需要的启发 | 默认 task，只在明确信号时切 insight；"直接做"逃生机制 |
-| 用户画像提取不准确 | 推送不相关的启发 | 低置信度不写入 L1；多条证据才确认；用户可修正 |
-| 主动推送太频繁 | 用户反感 | 门控逻辑 + Thompson Sampling 频率自适应 + suppressUntil |
-| LLM 幻觉启发内容 | 推送错误信息 | 多源验证 + 来源引用 + 三态输出（确信/带保留/拒绝） |
-| 认知层性能开销 | 回复变慢 | 提取异步执行不阻塞主流程；模式分类用规则优先 |
-| 认知层崩溃 | 全系统不可用 | 完全隔离的错误边界；catch 所有异常降级为纯助手 |
+| 风险               | 影响                             | 缓解                                                    |
+| ------------------ | -------------------------------- | ------------------------------------------------------- |
+| 模式分类错误       | 用户在 task 模式收到不需要的启发 | 默认 task，只在明确信号时切 insight；"直接做"逃生机制   |
+| 用户画像提取不准确 | 推送不相关的启发                 | 低置信度不写入 L1；多条证据才确认；用户可修正           |
+| 主动推送太频繁     | 用户反感                         | 门控逻辑 + Thompson Sampling 频率自适应 + suppressUntil |
+| LLM 幻觉启发内容   | 推送错误信息                     | 多源验证 + 来源引用 + 三态输出（确信/带保留/拒绝）      |
+| 认知层性能开销     | 回复变慢                         | 提取异步执行不阻塞主流程；模式分类用规则优先            |
+| 认知层崩溃         | 全系统不可用                     | 完全隔离的错误边界；catch 所有异常降级为纯助手          |
 
 ## 10. 成功指标
 
 Phase 1 完成标准:
+
 - [ ] 模式分类器对 20 个测试用例准确率 > 85%
 - [ ] 分类延迟 < 200ms
 - [ ] 不影响现有 task 执行
 
 Phase 2 完成标准:
+
 - [ ] 10 轮对话后提取出 > 5 个用户属性
 - [ ] 提取过程不增加回复延迟
 - [ ] PersonaTree 持久化并可恢复
 
 Phase 3 完成标准:
+
 - [ ] 能按时推送个性化启发
 - [ ] 👍👎 反馈正确记录并影响后续推送
 - [ ] 启发内容通过 2 源验证
 
 Phase 4 完成标准:
+
 - [ ] 跨领域启发占推送的 > 30%
 - [ ] 用户正面反馈率 > 60%
 - [ ] 信任分数随互动增加单调上升
 
 Phase 5 完成标准:
+
 - [ ] 全量测试通过
 - [ ] `pnpm build` 成功
 - [ ] `pnpm check` 无新增错误
