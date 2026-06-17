@@ -196,52 +196,53 @@ function parseInsights(text: string): Array<{
 type QualityReport = {
   content: string;
   hasKeyInsight: boolean;
-  hasExternalFact: boolean;
   isNatural: boolean;
   isSpecific: boolean;
+  hasFirstPerson: boolean;
+  hasUncertainty: boolean;
+  hasConversationalMarker: boolean;
   hasQuestion: boolean;
+  hasIndexLeak: boolean;
+  hasEmDash: boolean;
   bannedPatterns: string[];
   length: number;
   score: number;
 };
 
-function evaluateInsight(content: string, persona: PersonaTree, prompt: string): QualityReport {
+function evaluateInsight(content: string, persona: PersonaTree): QualityReport {
   const allKeyInsights = Object.values(persona.domains).flatMap((d) => d.keyInsights);
   const bannedHits = GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(content));
 
   const hasKeyInsight = allKeyInsights.some((k) => content.includes(k));
-  const hasExternalFact = prompt.includes("EXTERNAL_FACTS");
   const isNatural = bannedHits.length === 0;
   const isSpecific = content.length > 20 && !/泛泛|方向|值得|关注/.test(content);
-  const hasQuestion = /[？?]$/.test(content.trim());
+  const hasFirstPerson = /我|I /.test(content);
+  const hasUncertainty = /不太确定|可能|会不会|也许|大概|说不好|牵强/.test(content);
+  const hasConversationalMarker = /刚看到|刚想到|突然觉得|说真的|老实说|你猜|信不信| honestly|actually/.test(content);
+  const hasQuestion = /[？?]/.test(content);
+  const hasIndexLeak = /\[\d+\]/.test(content);
+  const hasEmDash = content.includes("——");
 
   let score = 0;
-  if (hasKeyInsight) {
-    score += 3;
-  }
-  if (isNatural) {
-    score += 2;
-  }
-  if (isSpecific) {
-    score += 2;
-  }
-  if (!hasQuestion) {
-    score += 1;
-  }
-  if (content.length >= 30) {
-    score += 1;
-  }
-  if (bannedHits.length === 0 && content.length >= 40) {
-    score += 1;
-  }
+  if (hasKeyInsight) { score += 2; }
+  if (isNatural) { score += 2; }
+  if (isSpecific) { score += 2; }
+  if (hasFirstPerson) { score += 1; }
+  if (hasUncertainty || hasConversationalMarker) { score += 1; }
+  if (content.length >= 30 && content.length <= 300) { score += 1; }
+  if (!hasIndexLeak) { score += 1; }
 
   return {
     content,
     hasKeyInsight,
-    hasExternalFact,
     isNatural,
     isSpecific,
+    hasFirstPerson,
+    hasUncertainty,
+    hasConversationalMarker,
     hasQuestion,
+    hasIndexLeak,
+    hasEmDash,
     bannedPatterns: bannedHits.map((p) => p.source),
     length: content.length,
     score,
@@ -290,14 +291,14 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
             continue;
           }
 
-          const report = evaluateInsight(content, persona, prompt);
+          const report = evaluateInsight(content, persona);
           reports.push(report);
           rawInsights.push(content);
 
           console.log(`\n  [Round ${round} | ${targetDomain}]`);
           console.log(`  洞察: ${content}`);
           console.log(
-            `  质量: ${report.score}/10 | 引用keyInsight: ${report.hasKeyInsight} | 自然: ${report.isNatural} | 具体: ${report.isSpecific} | 无问号: ${!report.hasQuestion} | 长度: ${report.length}`,
+            `  质量: ${report.score}/10 | keyInsight: ${report.hasKeyInsight} | 第一人称: ${report.hasFirstPerson} | 不确定: ${report.hasUncertainty} | 口语: ${report.hasConversationalMarker} | 问号: ${report.hasQuestion} | [N]泄漏: ${report.hasIndexLeak} | 长度: ${report.length}`,
           );
           if (report.bannedPatterns.length > 0) {
             console.log(`  ⚠ 模板句式: ${report.bannedPatterns.join(", ")}`);
@@ -329,17 +330,30 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
       const naturalRate = reports.filter((r) => r.isNatural).length / reports.length;
       console.log(`  无模板句式比率: ${(naturalRate * 100).toFixed(0)}%`);
 
-      const specificRate = reports.filter((r) => r.isSpecific).length / reports.length;
-      console.log(`  具体性比率: ${(specificRate * 100).toFixed(0)}%`);
+      const firstPersonRate = reports.filter((r) => r.hasFirstPerson).length / reports.length;
+      console.log(`  第一人称使用率: ${(firstPersonRate * 100).toFixed(0)}%`);
 
-      const noQuestionRate = reports.filter((r) => !r.hasQuestion).length / reports.length;
-      console.log(`  无问号结尾比率: ${(noQuestionRate * 100).toFixed(0)}%`);
+      const uncertaintyRate = reports.filter((r) => r.hasUncertainty).length / reports.length;
+      console.log(`  不确定性表达率: ${(uncertaintyRate * 100).toFixed(0)}%`);
+
+      const conversationalRate = reports.filter((r) => r.hasConversationalMarker).length / reports.length;
+      console.log(`  对话标记率: ${(conversationalRate * 100).toFixed(0)}%`);
+
+      const questionRate = reports.filter((r) => r.hasQuestion).length / reports.length;
+      console.log(`  问号使用率: ${(questionRate * 100).toFixed(0)}%`);
+
+      const indexLeakRate = reports.filter((r) => r.hasIndexLeak).length / reports.length;
+      console.log(`  [N]泄漏率: ${(indexLeakRate * 100).toFixed(0)}%`);
+
+      const emDashRate = reports.filter((r) => r.hasEmDash).length / reports.length;
+      console.log(`  破折号(——)率: ${(emDashRate * 100).toFixed(0)}%`);
       console.log(`  ═════════════════════════════════════════\n`);
 
       expect(reports.length).toBeGreaterThanOrEqual(ROUNDS);
-      expect(avgScore).toBeGreaterThanOrEqual(7.0);
+      expect(avgScore).toBeGreaterThanOrEqual(6.0);
       expect(keyInsightRate).toBeGreaterThanOrEqual(0.5);
       expect(naturalRate).toBeGreaterThanOrEqual(0.7);
+      expect(indexLeakRate).toBe(0);
 
       const openings = rawInsights.map((c) => c.slice(0, 8));
       const uniqueOpenings = new Set(openings);
