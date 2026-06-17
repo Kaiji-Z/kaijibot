@@ -2167,9 +2167,9 @@ Rationale: ${candidate.rationale}
 
 Evaluate this insight on 5 dimensions (each 0.0-1.0):
 
-1. SPECIFICITY: Does the insight contain concrete, verifiable claims? Or is it vague platitudes?
+1. SPECIFICITY: Does the insight reference concrete, real details about THIS user's work/interests? Casual language is fine — what matters is whether it's grounded in specifics, not whether it sounds formal.
 2. PERSONA RELEVANCE: Does it reference known facts about THIS user? Or generic advice anyone could receive?
-3. ACTIONABILITY: Can the user act on this? Or is it an abstract observation with no next step?
+3. ACTIONABILITY: Does the insight give the user something worth thinking about or acting on? This includes questions, provocations, and observations — not just direct action items.
 4. SURPRISE: Is this genuinely new information the user likely doesn't know? Or obvious/common knowledge?
 5. VOICE MATCH: Does it sound like it comes from a specific personality with a point of view? Or is it stiff/formal/generic-system-notification-like? Diverse tones (provocative, questioning, playful, contemplative) should score HIGH if they match the agent's personality, not low.
 
@@ -2257,7 +2257,7 @@ export async function critiqueInsightWithLLM(
       { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: options?.maxTokens ?? 500,
+        maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.3,
         signal: AbortSignal.timeout(options?.timeout ?? 8_000),
       },
@@ -2342,7 +2342,7 @@ export async function refineInsightWithLLM(
       { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: options?.maxTokens ?? 500,
+        maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.85,
         signal: AbortSignal.timeout(options?.timeout ?? 8_000),
       },
@@ -2482,7 +2482,7 @@ export async function verifyInsightWithLLM(
       { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: options?.maxTokens ?? 300,
+        maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.2,
         signal: AbortSignal.timeout(options?.timeout ?? 8_000),
       },
@@ -2603,7 +2603,7 @@ export async function checkSemanticNoveltyWithLLM(
       { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
       {
         apiKey: prepared.auth.apiKey,
-        maxTokens: options?.maxTokens ?? 200,
+        maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.2,
         signal: AbortSignal.timeout(options?.timeout ?? 6_000),
       },
