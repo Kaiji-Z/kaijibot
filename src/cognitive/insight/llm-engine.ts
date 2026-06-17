@@ -1348,13 +1348,13 @@ If a result doesn't match any domain, skip it. Respond with ONLY the JSON object
 
 const PATTERN_PROMPT_FRAMES = [
   (_topic: string, _extra: PromptFrameExtra) =>
-    "You notice a recurring thinking pattern across the user's conversations — describe what it is, when it helps, and when it becomes a limitation.",
+    "Ask the user a direct, provocative question about a recurring pattern you've noticed. The question should make them reflect, not defend.",
   (_topic: string, _extra: PromptFrameExtra) =>
-    "The user has an implicit priority or value ranking visible across their decisions — name it and explain what it costs them.",
+    "Point to one specific instance where the user's default approach produced a measurable outcome. State the outcome, let them draw the conclusion.",
   (_topic: string, _extra: PromptFrameExtra) =>
-    "There's a contradiction between what the user says they want and what they actually do — point it out directly.",
+    "What would change if the user broke this pattern just once? Describe the counterfactual scenario concretely.",
   (_topic: string, _extra: PromptFrameExtra) =>
-    "There's a perspective or approach the user never considers — name it and explain why they're missing it.",
+    "This same thinking pattern shows up in a completely different domain. Name the domain and describe the parallel.",
 ] as const;
 
 export function buildPatternInsightPrompt(
