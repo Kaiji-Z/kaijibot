@@ -1436,6 +1436,7 @@ export async function startGatewayServer(
             createDefaultInsightDeps,
             loadWorkspacePersonaContext,
             loadSoulContentForInsight,
+            loadIdentityContextForInsight,
           } = await import("../cognitive/insight/llm-engine.js");
           const cognitiveStore = new PersonaStore(resolveConfigDir());
           await cognitiveStore.migrateFromFlatLayout();
@@ -1621,9 +1622,15 @@ export async function startGatewayServer(
                   agentId: defaultAgentId,
                   workspaceDir: defaultWorkspaceDir,
                 });
+                const identityContext = await loadIdentityContextForInsight(defaultWorkspaceDir);
+                const enrichedInput = {
+                  ...input,
+                  ...(soulContent ? { soulContent } : {}),
+                  ...(identityContext ? { identityContext } : {}),
+                };
                 return generateInsightCandidatesLLM(
                   persona,
-                  soulContent ? { ...input, soulContent } : input,
+                  enrichedInput,
                   cfgAtStart,
                   insightDeps,
                   {

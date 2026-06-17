@@ -157,7 +157,8 @@ const DIVERSE_FEW_SHOT_SETS = [
     name: "挑衅提问 (Provocative question)",
     examples: [
       {
-        context: "User built Thompson Sampling into insight system but never A/B tested with real users.",
+        context:
+          "User built Thompson Sampling into insight system but never A/B tested with real users.",
         chinese:
           "你给洞察系统接了 Thompson Sampling 来学用户偏好，但你拿真人验证过这些优化到底是不是真的更好吗？bandit 收敛了不代表用户满意了，只代表系统停止了探索。",
         english:
@@ -232,6 +233,27 @@ const DIVERSE_FEW_SHOT_SETS = [
 ] as const;
 
 const DIVERSITY_INSTRUCTION = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user. 禁止使用"你做X时用的正是Y哲学概念"或"X本质上就是Y"这类类比框架作为主要结构。当哲学确实是最佳角度时直接说哲学内容，不要用"你用的正是"句式包装。`;
+
+const EMOTIONAL_STANCES = [
+  "你刚发现一个东西，迫不及待想跟{name}分享。直接说，像发消息一样。",
+  "你对某个观点有疑虑，想直接跟{name}提出来。诚实但不攻击。",
+  "你注意到一个有趣的模式，安静地跟{name}说出来。不要分析，只说观察到的。",
+  "你看到一个意想不到的连接，兴奋但不太确定。带着不确定感说。",
+  "你想挑战{name}的一个假设。直接但尊重。",
+  "你刚想到一件可能对{name}有帮助的事。像朋友给建议，不像系统推送。",
+];
+
+function selectEmotionalStance(seed: number, recent?: number[]): { index: number; text: string } {
+  const used = new Set(recent ?? []);
+  for (let offset = 0; offset < EMOTIONAL_STANCES.length; offset++) {
+    const idx = (seed + offset) % EMOTIONAL_STANCES.length;
+    if (!used.has(idx)) {
+      return { index: idx, text: EMOTIONAL_STANCES[idx]! };
+    }
+  }
+  const idx = seed % EMOTIONAL_STANCES.length;
+  return { index: idx, text: EMOTIONAL_STANCES[idx]! };
+}
 
 export const CONTRASTIVE_INSTRUCTION = `CONTRASTIVE FRAMEWORK — your insight MUST be genuinely NEW relative to past insights:
 - COUNTER-EXAMPLE: If a past insight said "X is good", find a case where X fails or the opposite holds.
@@ -341,6 +363,8 @@ export async function generateInsightCandidatesLLM(
       persona,
       input,
       input.recentInsightContents,
+      input.soulContent,
+      input.identityContext,
     );
     try {
       const modelRef = options?.modelRef ?? config.cognitive?.persona?.extractionModel;
@@ -539,6 +563,7 @@ export async function generateInsightCandidatesLLM(
           outputLanguage,
           webSnippetByDomain,
           input.soulContent,
+          input.identityContext,
         )
       : buildInsightPrompt(
           persona,
@@ -547,6 +572,7 @@ export async function generateInsightCandidatesLLM(
           input.recentInsightContents,
           webSnippetByDomain,
           input.soulContent,
+          input.identityContext,
         );
 
   try {
@@ -873,6 +899,7 @@ export function buildSurpriseInsightPrompt(
   outputLanguage: string = "zh",
   webSnippetByDomain?: Map<string, string[]>,
   soulContent?: string,
+  identityContext?: string,
 ): PromptBuildResult {
   void webSnippetByDomain;
 
@@ -929,10 +956,13 @@ export function buildSurpriseInsightPrompt(
     (e) => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`,
   ).join("\n\n");
 
+  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances);
+  const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
+
   const indexedWebFindings = buildIndexedWebFindings(webResults);
 
   return {
-    prompt: `${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
+    prompt: `${identityContext ? `${identityContext}\n` : ""}${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
@@ -971,8 +1001,10 @@ ${
     : ""
 }
 
+YOUR MOOD RIGHT NOW: ${stanceText}
+
 TASK:
-${indexedWebFindings ? `Pick ONE web finding above [0-N]. Connect it to THIS user's specific knowledge, interests, or current work. The insight must be grounded in the finding but personalized — NOT a news summary.` : `Share a specific insight about "${strategy.inferredInterest}". Bridge from what the user already knows (${strategy.avoidTopics.join(", ")}) to this new territory.`} It can be a discovery, a suggestion, or an observation — as long as it could change one of the user's decisions or understanding.
+You just noticed something and thought of ${userName}. What would you actually say to them? Speak in first person if natural. This isn't an analytical report — it's something that crossed your mind.
 
 PERSONALIZATION TEST: The insight MUST reference at least one specific fact from the "SPECIFIC FACTS YOU KNOW ABOUT THIS USER" section above. Generic insights that could apply to anyone will be rejected.
 
@@ -983,7 +1015,7 @@ Constraints:
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
 - ${bannedSection}
-- Content must be a specific judgment, observation, or discovery — not vague feelings
+- Speak naturally, like you're messaging a friend — not writing an analytical report
 ${webResults.length > 0 ? `- You MAY naturally reference the source (e.g., "according to [0]", "看到[2]提到")` : ""}
 
 Good surprise insight traits (hit at least one):
@@ -1005,7 +1037,7 @@ IMPORTANT: In the "content" field, escape any inner quotes as \\" or use Chinese
     "webGroundedness": 0.7
   }
 ]`,
-    variant: { fewShotSet: fewShotIdx, frameIndex: 0 },
+    variant: { fewShotSet: fewShotIdx, frameIndex: 0, emotionalStance: stance.index },
   };
 }
 
@@ -1361,6 +1393,8 @@ export function buildPatternInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   recentInsightContents: string[],
+  soulContent?: string,
+  identityContext?: string,
 ): PromptBuildResult {
   const fewShotIdx = input.feedbackProfile
     ? pickPromptVariant(
@@ -1410,6 +1444,10 @@ export function buildPatternInsightPrompt(
 
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
+  const patternUserName = persona.identity?.displayName || "";
+  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances);
+  const stanceText = stance.text.replace(/\{name\}/g, patternUserName || "the user");
+
   const patternFrameIdx = input.feedbackProfile
     ? pickPromptVariant(
         input.feedbackProfile,
@@ -1421,11 +1459,11 @@ export function buildPatternInsightPrompt(
     domains: input.targetDomains,
     keyInsights: anchorFacts,
     recentFocus: input.recentFocus,
-    userName: persona.identity?.displayName ?? "",
+    userName: patternUserName,
   });
 
   return {
-    prompt: `${buildVoiceSection(persona)}
+    prompt: `${identityContext ? `${identityContext}\n` : ""}${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
 
 EXAMPLES of ideal behavioral observations (match this quality, specificity, and depth):
 ${fewShotBlock}
@@ -1444,8 +1482,12 @@ ${anchorBlock}
  ${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
 
+YOUR MOOD RIGHT NOW: ${stanceText}
+
 TASK:
 ${taskInstruction}
+
+You're saying this to ${patternUserName}, someone you know well. Speak naturally, first person if it feels right.
 
 Constraints:
 - 1-3 sentences, Chinese
@@ -1471,7 +1513,12 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 ]
 
 Keep insights concise (1-3 sentences). Quality over quantity.`,
-    variant: { fewShotSet: fewShotIdx, frameIndex: patternFrameIdx, patternFrame: patternFrameIdx },
+    variant: {
+      fewShotSet: fewShotIdx,
+      frameIndex: patternFrameIdx,
+      patternFrame: patternFrameIdx,
+      emotionalStance: stance.index,
+    },
   };
 }
 
@@ -1482,6 +1529,7 @@ export function buildInsightPrompt(
   recentInsightContents: string[] = [],
   webSnippetByDomain?: Map<string, string[]>,
   soulContent?: string,
+  identityContext?: string,
 ): PromptBuildResult {
   let resolvedWebSnippetByDomain: Map<string, string[]>;
   if (webSnippetByDomain) {
@@ -1628,8 +1676,11 @@ export function buildInsightPrompt(
   const fragments = input.fragments ?? [];
   const fragmentSection = buildFragmentSection(fragments);
 
+  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances);
+  const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
+
   return {
-    prompt: `${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
+    prompt: `${identityContext ? `${identityContext}\n` : ""}${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
 
 EXAMPLES of ideal insights (match this quality, specificity, and tone):
 ${fewShotBlock}
@@ -1674,8 +1725,12 @@ ${
   TARGET DOMAINS (insight MUST be about these domains):
 ${input.targetDomains.join(", ")}
 
+YOUR MOOD RIGHT NOW: ${stanceText}
+
  TASK:
 ${promptFrame}
+
+You're saying this to ${userName}, someone you know well. Speak naturally, first person if it feels right.
 
  STRUCTURE CONSTRAINT:
 ${structureSeed}
@@ -1690,7 +1745,7 @@ ${structureSeed}
   · "你有没有想过"、"最近在关注"
   · "有趣的是"、"值得注意的是"
 ${bannedSection ? `  · ${bannedSection}` : ""}
-- 内容必须是一个具体的判断、观察或建议，不是泛泛的感受
+- 像跟朋友说话一样自然，可以用第一人称
 ${webResults.length > 0 ? "- 可以自然引用来源（如「根据[0]」、「看到[2]提到」）" : ""}
 
  好的洞察（满足至少一条）：
@@ -1715,7 +1770,12 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 CRITICAL: targetDomains MUST include at least one of: ${input.targetDomains.join(", ")}. Do NOT substitute other domains.
 
 Keep insights concise (1-3 sentences). Quality over quantity.`,
-    variant: { fewShotSet: fewShotIdx, frameIndex, structureSeed: structureSeedIdx },
+    variant: {
+      fewShotSet: fewShotIdx,
+      frameIndex,
+      structureSeed: structureSeedIdx,
+      emotionalStance: stance.index,
+    },
   };
 }
 
@@ -2050,6 +2110,23 @@ export async function loadSoulContentForInsight(params: {
   }
 
   return undefined;
+}
+
+export async function loadIdentityContextForInsight(
+  workspaceDir?: string,
+): Promise<string | undefined> {
+  const dir = workspaceDir ?? path.join(os.homedir(), ".kaijibot", "workspace");
+  const parts: string[] = [];
+  for (const filename of ["IDENTITY.md", "USER.md"] as const) {
+    try {
+      const content = await fs.readFile(path.join(dir, filename), "utf-8");
+      const trimmed = content.trim();
+      if (trimmed) {
+        parts.push(`## ${filename.replace(".md", "")}\n${trimmed}`);
+      }
+    } catch {}
+  }
+  return parts.length > 0 ? parts.join("\n\n") : undefined;
 }
 
 export function buildCritiquePrompt(candidate: InsightCandidate, persona: PersonaTree): string {
