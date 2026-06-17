@@ -89,7 +89,9 @@ describe("AuditLog", () => {
     );
 
     const results = await Promise.all(promises);
-    for (const r of results) {ids.add(r.id);}
+    for (const r of results) {
+      ids.add(r.id);
+    }
     expect(ids.size).toBe(count);
 
     const all = await log.query({});

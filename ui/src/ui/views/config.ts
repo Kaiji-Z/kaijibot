@@ -357,8 +357,12 @@ const MODE_OPTIONS: { id: ThemeMode; label: string }[] = [
 
 function renderAppearanceSection(props: ConfigProps) {
   const modeIcon = (mode: ThemeMode) => {
-    if (mode === "system") {return icons.monitor;}
-    if (mode === "light") {return icons.sun;}
+    if (mode === "system") {
+      return icons.monitor;
+    }
+    if (mode === "light") {
+      return icons.sun;
+    }
     return icons.moon;
   };
 
@@ -367,33 +371,31 @@ function renderAppearanceSection(props: ConfigProps) {
       <div class="settings-appearance__section">
         <h3 class="settings-appearance__heading">${t("settings.appearance.theme")}</h3>
         <div class="appearance-theme-swatches">
-          ${(props.themeOrder ?? ["ink-jade", "rice-paper", "glaze"]).map(
-            (name) => {
-              const swatch = THEME_SWATCH_COLORS[name];
-              return html`
-                <button
-                  type="button"
-                  class="appearance-theme-swatch ${name === props.theme
-                    ? "appearance-theme-swatch--active"
-                    : ""}"
-                  title=${themeDisplayName(name)}
-                  @click=${(e: Event) =>
-                    props.setTheme(name, { element: e.currentTarget as HTMLElement })}
+          ${(props.themeOrder ?? ["ink-jade", "rice-paper", "glaze"]).map((name) => {
+            const swatch = THEME_SWATCH_COLORS[name];
+            return html`
+              <button
+                type="button"
+                class="appearance-theme-swatch ${name === props.theme
+                  ? "appearance-theme-swatch--active"
+                  : ""}"
+                title=${themeDisplayName(name)}
+                @click=${(e: Event) =>
+                  props.setTheme(name, { element: e.currentTarget as HTMLElement })}
+              >
+                <span
+                  class="appearance-theme-swatch__preview"
+                  style="background:${swatch.bg};border-color:${swatch.accent}40"
                 >
                   <span
-                    class="appearance-theme-swatch__preview"
-                    style="background:${swatch.bg};border-color:${swatch.accent}40"
-                  >
-                    <span
-                      class="appearance-theme-swatch__dot"
-                      style="background:${swatch.accent}"
-                    ></span>
-                  </span>
-                  <span class="appearance-theme-swatch__label">${themeDisplayName(name)}</span>
-                </button>
-              `;
-            },
-          )}
+                    class="appearance-theme-swatch__dot"
+                    style="background:${swatch.accent}"
+                  ></span>
+                </span>
+                <span class="appearance-theme-swatch__label">${themeDisplayName(name)}</span>
+              </button>
+            `;
+          })}
         </div>
       </div>
       <div class="settings-appearance__section">
@@ -424,7 +426,9 @@ function renderAppearanceSection(props: ConfigProps) {
 }
 
 function renderModelSection(props: ConfigProps) {
-  if (!MODEL_ENTRY.render) return nothing;
+  if (!MODEL_ENTRY.render) {
+    return nothing;
+  }
   return html`
     <div class="settings-appearance">
       <div class="settings-appearance__section">

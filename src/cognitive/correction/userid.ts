@@ -11,10 +11,7 @@
  *  2. sessionKey tail — must be a valid ou_xxx open_id
  *  3. sessionKey parts[1] fallback
  */
-export function resolveCorrectionUserId(
-  sessionKey?: string,
-  deliveryTo?: string,
-): string | null {
+export function resolveCorrectionUserId(sessionKey?: string, deliveryTo?: string): string | null {
   // 1. Try deliveryTo with prefix stripping
   if (deliveryTo) {
     const stripped = deliveryTo.replace(/^(user:|feishu:)/, "");
@@ -23,7 +20,9 @@ export function resolveCorrectionUserId(
     }
   }
 
-  if (!sessionKey) {return null;}
+  if (!sessionKey) {
+    return null;
+  }
 
   const parts = sessionKey.split(":");
 
@@ -34,12 +33,7 @@ export function resolveCorrectionUserId(
   }
 
   // 3. Fallback: parts[1] for agent:ou_xxx:rest format
-  if (
-    parts.length >= 3 &&
-    parts[1] &&
-    parts[1] !== "main" &&
-    parts[1]!.startsWith("ou_")
-  ) {
+  if (parts.length >= 3 && parts[1] && parts[1] !== "main" && parts[1]!.startsWith("ou_")) {
     return parts[1];
   }
 

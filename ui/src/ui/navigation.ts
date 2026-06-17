@@ -2,7 +2,19 @@ import { t } from "../i18n/index.ts";
 import type { IconName } from "./icons.js";
 import { normalizeLowercaseStringOrEmpty } from "./string-coerce.ts";
 
-export const TABS = ["chat", "agents", "cognitive", "insights", "evolution", "corrections", "skills", "usage", "history", "cron", "settings"] as const;
+export const TABS = [
+  "chat",
+  "agents",
+  "cognitive",
+  "insights",
+  "evolution",
+  "corrections",
+  "skills",
+  "usage",
+  "history",
+  "cron",
+  "settings",
+] as const;
 
 export type Tab = (typeof TABS)[number];
 

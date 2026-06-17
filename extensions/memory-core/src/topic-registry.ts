@@ -88,7 +88,9 @@ function parseFrontmatter(raw: string): {
   entries: number;
 } | null {
   const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!fmMatch) { return null; }
+  if (!fmMatch) {
+    return null;
+  }
 
   const yaml = fmMatch[1]!;
   let subject = "";
@@ -98,16 +100,25 @@ function parseFrontmatter(raw: string): {
 
   for (const line of yaml.split(/\r?\n/)) {
     const colonIdx = line.indexOf(":");
-    if (colonIdx < 0) { continue; }
+    if (colonIdx < 0) {
+      continue;
+    }
     const key = line.slice(0, colonIdx).trim();
     const value = line.slice(colonIdx + 1).trim();
-    if (key === "subject") { subject = value; }
-    else if (key === "created") { created = value; }
-    else if (key === "updated") { updated = value; }
-    else if (key === "entries") { entries = Number(value) || 0; }
+    if (key === "subject") {
+      subject = value;
+    } else if (key === "created") {
+      created = value;
+    } else if (key === "updated") {
+      updated = value;
+    } else if (key === "entries") {
+      entries = Number(value) || 0;
+    }
   }
 
-  if (!subject) { return null; }
+  if (!subject) {
+    return null;
+  }
   return { subject, created, updated, entries };
 }
 
@@ -213,7 +224,9 @@ export class TopicRegistry {
     for (const file of mdFiles) {
       const name = file.replace(/\.md$/, "");
       // Skip if already in registry
-      if (data.topics[name]) { continue; }
+      if (data.topics[name]) {
+        continue;
+      }
 
       const filePath = path.join(topicsDir, file);
       let raw: string;
@@ -224,7 +237,9 @@ export class TopicRegistry {
       }
 
       const parsed = parseFrontmatter(raw);
-      if (!parsed) { continue; }
+      if (!parsed) {
+        continue;
+      }
 
       data.topics[name] = {
         name,

@@ -39,8 +39,26 @@ export interface SemanticMergeResult {
 // --- Constants ---
 
 const STOP_WORDS = new Set([
-  "the", "and", "of", "a", "in", "to", "for", "with", "on", "at",
-  "is", "it", "by", "an", "be", "this", "that", "are", "was", "or",
+  "the",
+  "and",
+  "of",
+  "a",
+  "in",
+  "to",
+  "for",
+  "with",
+  "on",
+  "at",
+  "is",
+  "it",
+  "by",
+  "an",
+  "be",
+  "this",
+  "that",
+  "are",
+  "was",
+  "or",
 ]);
 
 const DEFAULT_LLM_THRESHOLD = 0.7;
@@ -114,7 +132,9 @@ function findConnectedComponents(
   }
 
   for (const indices of index.values()) {
-    if (indices.size < 2) continue;
+    if (indices.size < 2) {
+      continue;
+    }
     const arr = [...indices];
     for (let i = 1; i < arr.length; i++) {
       union(arr[0]!, arr[i]!);
@@ -177,7 +197,9 @@ function parseGroupMergeResponse(raw: string): GroupMergeDecision[] {
   }
   try {
     const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
     const results: GroupMergeDecision[] = [];
     for (const item of parsed) {
       if (
@@ -229,7 +251,9 @@ export async function semanticTopicMerge(
   const nameMap = new Map(topics.map((t) => [t.name, t]));
 
   for (const component of components) {
-    if (component.length < 2) continue;
+    if (component.length < 2) {
+      continue;
+    }
     groupsAnalyzed++;
     llmCalls++;
 
@@ -248,16 +272,24 @@ export async function semanticTopicMerge(
       const fromTopics: TopicForMerge[] = [];
       for (const name of decision.from) {
         const t = nameMap.get(name);
-        if (t) fromTopics.push(t);
+        if (t) {
+          fromTopics.push(t);
+        }
       }
-      if (fromTopics.length < 2) continue;
+      if (fromTopics.length < 2) {
+        continue;
+      }
 
       const intoTopic = nameMap.get(decision.into);
-      if (!intoTopic || !fromTopics.includes(intoTopic)) continue;
+      if (!intoTopic || !fromTopics.includes(intoTopic)) {
+        continue;
+      }
 
       // Each non-target topic merges INTO the target
       for (const topic of fromTopics) {
-        if (topic === intoTopic) continue;
+        if (topic === intoTopic) {
+          continue;
+        }
         merges.push({
           from: topic.name,
           into: intoTopic.name,
@@ -273,10 +305,7 @@ export async function semanticTopicMerge(
 
 // --- Jaccard fallback (no LLM) ---
 
-function jaccardFallback(
-  topics: TopicForMerge[],
-  threshold: number,
-): SemanticMergeResult {
+function jaccardFallback(topics: TopicForMerge[], threshold: number): SemanticMergeResult {
   const merges: MergeCandidate[] = [];
 
   for (let i = 0; i < topics.length; i++) {

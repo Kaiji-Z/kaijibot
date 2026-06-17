@@ -8,13 +8,13 @@ import type { startGatewayServer } from "../../gateway/server.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { acquireGatewayLock } from "../../infra/gateway-lock.js";
 import { restartGatewayProcessWithFreshPid } from "../../infra/process-respawn.js";
+import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import {
   consumeGatewaySigusr1RestartAuthorization,
   isGatewaySigusr1RestartExternallyAllowed,
   markGatewaySigusr1RestartHandled,
   scheduleGatewaySigusr1Restart,
 } from "../../infra/restart.js";
-import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { detectRespawnSupervisor } from "../../infra/supervisor-markers.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {

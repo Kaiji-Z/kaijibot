@@ -5,7 +5,9 @@ import type { PersonaTree, UserLifecycleStage } from "../types.js";
  * This is NOT the full persona — just what the agent needs to know right now.
  */
 export function buildPersonaContext(persona: PersonaTree | undefined): string {
-  if (!persona) {return "";}
+  if (!persona) {
+    return "";
+  }
 
   const lines: string[] = ["## User Cognitive Profile"];
 
@@ -23,8 +25,12 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   const interestDomains = persona.identity.interestDomains;
   if (expertDomains.length > 0 || interestDomains.length > 0) {
     lines.push("### Domain Profile");
-    if (expertDomains.length > 0) {lines.push(`Expert: ${expertDomains.join(", ")}`);}
-    if (interestDomains.length > 0) {lines.push(`Interested: ${interestDomains.join(", ")}`);}
+    if (expertDomains.length > 0) {
+      lines.push(`Expert: ${expertDomains.join(", ")}`);
+    }
+    if (interestDomains.length > 0) {
+      lines.push(`Interested: ${interestDomains.join(", ")}`);
+    }
   }
 
   // Active domains (recently mentioned)
@@ -58,7 +64,9 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
   // User Goals and Aspirations
   const goalInsights: Array<{ domain: string; insight: import("../types.js").TypedInsight }> = [];
   for (const [domainName, d] of Object.entries(persona.domains)) {
-    if (!d.insights) {continue;}
+    if (!d.insights) {
+      continue;
+    }
     for (const ins of d.insights) {
       if (ins.category === "goal_or_aspiration") {
         goalInsights.push({ domain: domainName, insight: ins });

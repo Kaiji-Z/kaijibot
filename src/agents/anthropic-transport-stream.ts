@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { IsObject } from "typebox";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
   calculateCost,
@@ -11,13 +10,14 @@ import {
   type SimpleStreamOptions,
   type ThinkingLevel,
 } from "@earendil-works/pi-ai";
+import { IsObject } from "typebox";
 import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
-import { parseJsonObjectPreservingUnsafeIntegers } from "./json-unsafe-integers.js";
 import {
   applyAnthropicPayloadPolicyToParams,
   resolveAnthropicPayloadPolicy,
 } from "./anthropic-payload-policy.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./copilot-dynamic-headers.js";
+import { parseJsonObjectPreservingUnsafeIntegers } from "./json-unsafe-integers.js";
 import { buildGuardedModelFetch } from "./provider-transport-fetch.js";
 import { transformTransportMessages } from "./transport-message-transform.js";
 import {

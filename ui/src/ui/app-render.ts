@@ -54,13 +54,7 @@ import {
 } from "./controllers/cron.ts";
 import "./components/dashboard-header.ts";
 import { icons } from "./icons.ts";
-import {
-  iconForTab,
-  pathForTab,
-  TABS,
-  subtitleForTab,
-  titleForTab,
-} from "./navigation.ts";
+import { iconForTab, pathForTab, TABS, subtitleForTab, titleForTab } from "./navigation.ts";
 import {
   buildAgentMainSessionKey,
   parseAgentSessionKey,
@@ -905,7 +899,9 @@ export function renderApp(state: AppViewState) {
                   void refreshVisibleToolsEffectiveForCurrentSession(state);
                 },
                 onModelFallbacksChange: (agentId, fallbacks) => {
-                  const normalized = fallbacks.map((name) => name.trim()).filter((s) => s.length > 0);
+                  const normalized = fallbacks
+                    .map((name) => name.trim())
+                    .filter((s) => s.length > 0);
                   const currentConfig = getCurrentConfigValue();
                   const resolvedConfig = resolveAgentConfig(currentConfig, agentId);
                   const effectivePrimary =
@@ -1179,7 +1175,9 @@ export function renderApp(state: AppViewState) {
                   });
                 },
                 onDeleteSession: (key: string) => {
-                  if (!confirm(`Delete session "${key}"? This cannot be undone.`)) {return;}
+                  if (!confirm(`Delete session "${key}"? This cannot be undone.`)) {
+                    return;
+                  }
                   import("./controllers/history.ts").then((c) => {
                     void c.deleteHistorySession(
                       state as Parameters<typeof c.deleteHistorySession>[0],
@@ -1361,12 +1359,11 @@ export function renderApp(state: AppViewState) {
               configuredProviders: state.configuredProviders ?? [],
               providerAuthOptions: state.providerAuthOptions ?? [],
               onProvidersChanged: async () => {
-                if (!state.client) return;
-                const [
-                  { loadProviderStatus, loadProviderAuthOptions, loadModels },
-                ] = await Promise.all([
-                  import("./controllers/models.js"),
-                ]);
+                if (!state.client) {
+                  return;
+                }
+                const { loadProviderStatus, loadProviderAuthOptions, loadModels } =
+                  await import("./controllers/models.js");
                 const [catalog, providers, authOptions] = await Promise.all([
                   loadModels(state.client!, { fullCatalog: true }),
                   loadProviderStatus(state.client!),

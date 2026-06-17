@@ -223,9 +223,7 @@ export function loadSettings(): UiSettings {
       theme,
       themeMode:
         typeof (parsed as { themeMode?: unknown }).themeMode === "string" &&
-        ["system", "light", "dark"].includes(
-          (parsed as { themeMode?: string }).themeMode as string,
-        )
+        ["system", "light", "dark"].includes((parsed as { themeMode?: string }).themeMode as string)
           ? ((parsed as { themeMode?: string }).themeMode as ThemeMode)
           : defaults.themeMode,
       chatFocusMode:

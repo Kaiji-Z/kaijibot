@@ -29,7 +29,9 @@ export function generateInsightCandidates(
 
   for (const conn of crossConnections.slice(0, 2)) {
     const candidate = buildCrossDomainCandidate(conn, persona);
-    if (candidate) {candidates.push(candidate);}
+    if (candidate) {
+      candidates.push(candidate);
+    }
   }
 
   // Strategy 2: Domain depth insights (connect user's deep domains with current events)
@@ -39,7 +41,9 @@ export function generateInsightCandidates(
 
   for (const [domainName] of deepDomains.slice(0, 1)) {
     const candidate = buildDomainDepthInsight(domainName);
-    if (candidate) {candidates.push(candidate);}
+    if (candidate) {
+      candidates.push(candidate);
+    }
   }
 
   // Strategy 4: Exploration — target domains outside user's known graph
@@ -47,7 +51,9 @@ export function generateInsightCandidates(
   if (userDomains.length > 0 && unknownTargets.length > 0) {
     for (const targetDomain of unknownTargets.slice(0, 1)) {
       const candidate = buildExplorationInsight(targetDomain);
-      if (candidate) {candidates.push(candidate);}
+      if (candidate) {
+        candidates.push(candidate);
+      }
     }
   }
 
@@ -91,7 +97,9 @@ function buildCrossDomainCandidate(
   persona: PersonaTree,
 ): InsightCandidate | undefined {
   const fromDomain = persona.domains[conn.from];
-  if (!fromDomain) {return undefined;}
+  if (!fromDomain) {
+    return undefined;
+  }
 
   const bridgeStr = conn.bridge.length > 0 ? ` (通过 ${conn.bridge.join("、")})` : "";
   const insights = fromDomain.keyInsights.slice(0, 2).join("；");
@@ -122,7 +130,9 @@ export function isCandidateBlacklisted(
   candidate: InsightCandidate,
   domainBlacklist: string[] | undefined,
 ): boolean {
-  if (!domainBlacklist || domainBlacklist.length === 0) {return false;}
+  if (!domainBlacklist || domainBlacklist.length === 0) {
+    return false;
+  }
   const blacklistSet = new Set(domainBlacklist);
   return (
     candidate.targetDomains.some((d) => blacklistSet.has(d)) ||

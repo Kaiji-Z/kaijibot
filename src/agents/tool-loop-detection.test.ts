@@ -267,7 +267,12 @@ describe("tool-loop-detection", () => {
         recordToolCall(state, "read", { path: "/same.txt" }, `disabled-${i}`, { enabled: false });
       }
 
-      const loopResult = detectToolCallLoop(state, "read", { path: "/same.txt" }, { enabled: false });
+      const loopResult = detectToolCallLoop(
+        state,
+        "read",
+        { path: "/same.txt" },
+        { enabled: false },
+      );
       expect(loopResult.stuck).toBe(false);
     });
 

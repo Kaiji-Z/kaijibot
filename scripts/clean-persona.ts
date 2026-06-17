@@ -53,7 +53,9 @@ async function classifyInsights(
   model: Model<Api>,
   apiKey: string,
 ): Promise<Array<{ text: string; category: InsightCategory; shouldKeep: boolean }>> {
-  if (insights.length === 0) {return [];}
+  if (insights.length === 0) {
+    return [];
+  }
 
   const insightList = insights.map((t, i) => `${i + 1}. ${t}`).join("\n");
 
@@ -102,7 +104,9 @@ Rules:
 
   try {
     const parsed = JSON.parse(cleaned);
-    if (!Array.isArray(parsed)) {return [];}
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
     return parsed.map((item: Record<string, unknown>) => ({
       text:
         typeof item.rewritten === "string"
@@ -242,7 +246,9 @@ async function main() {
     const d = domain as { activeQuestions: string[] };
     const before = d.activeQuestions.length;
     d.activeQuestions = d.activeQuestions.filter((q) => {
-      if (q.length < 5 || q.length > 80) {return false;}
+      if (q.length < 5 || q.length > 80) {
+        return false;
+      }
       return true;
     });
     if (d.activeQuestions.length < before) {
@@ -255,7 +261,9 @@ async function main() {
   const before = persona.recentFocus.length;
   persona.recentFocus = persona.recentFocus.filter((f: string) => {
     for (const p of noisePatterns) {
-      if (p.test(f)) {return false;}
+      if (p.test(f)) {
+        return false;
+      }
     }
     return f.length >= 3 && f.length <= 20;
   });

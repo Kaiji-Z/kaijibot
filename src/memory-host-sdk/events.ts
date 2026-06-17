@@ -31,9 +31,7 @@ export type MemoryHostPromotionAppliedEvent = {
   }>;
 };
 
-export type MemoryHostEvent =
-  | MemoryHostRecallRecordedEvent
-  | MemoryHostPromotionAppliedEvent;
+export type MemoryHostEvent = MemoryHostRecallRecordedEvent | MemoryHostPromotionAppliedEvent;
 
 export function resolveMemoryHostEventLogPath(workspaceDir: string): string {
   return path.join(workspaceDir, MEMORY_HOST_EVENT_LOG_RELATIVE_PATH);

@@ -543,11 +543,7 @@
   min-height: 320px;
   min-width: 0;
   overflow: auto;
-  background: linear-gradient(
-    180deg,
-    var(--bg) 0%,
-    var(--bg-elevated) 100%
-  );
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
 }
 
 /* Ambient shimmer across the diary surface */
@@ -685,11 +681,7 @@
   width: 2px;
   height: calc(100% - 8px);
   border-radius: 2px;
-  background: linear-gradient(
-    180deg,
-    var(--accent-muted) 0%,
-    var(--accent-subtle) 100%
-  );
+  background: linear-gradient(180deg, var(--accent-muted) 0%, var(--accent-subtle) 100%);
   animation: diary-glow-pulse 6s ease-in-out infinite alternate;
 }
 
@@ -849,11 +841,7 @@
   padding: 18px 18px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: linear-gradient(
-    180deg,
-    var(--bg-elevated) 0%,
-    var(--bg) 100%
-  );
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
   box-shadow:
     0 12px 30px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);

@@ -26,11 +26,16 @@ const FEISHU_SKILL_IDS = ["feishu-doc", "feishu-wiki", "feishu-drive", "feishu-p
  */
 export function areLarkSkillsInstalled(): boolean {
   const skillsDir = join(homedir(), ".agents", "skills");
-  if (!existsSync(skillsDir)) {return false;}
+  if (!existsSync(skillsDir)) {
+    return false;
+  }
   try {
     const entries = readdirSync(skillsDir, { withFileTypes: true });
     return entries.some(
-      (e) => e.isDirectory() && e.name.startsWith("lark-") && existsSync(join(skillsDir, e.name, "SKILL.md")),
+      (e) =>
+        e.isDirectory() &&
+        e.name.startsWith("lark-") &&
+        existsSync(join(skillsDir, e.name, "SKILL.md")),
     );
   } catch {
     return false;
@@ -47,10 +52,16 @@ export function areLarkSkillsInstalled(): boolean {
 export function shouldDisableNativeTools(
   userToolsConfig: Record<string, unknown> | undefined,
 ): boolean {
-  if (!isLarkCliAvailable()) {return false;}
-  if (!areLarkSkillsInstalled()) {return false;}
+  if (!isLarkCliAvailable()) {
+    return false;
+  }
+  if (!areLarkSkillsInstalled()) {
+    return false;
+  }
   // If user has set any tool key explicitly, don't auto-disable
-  if (userToolsConfig && Object.keys(userToolsConfig).length > 0) {return false;}
+  if (userToolsConfig && Object.keys(userToolsConfig).length > 0) {
+    return false;
+  }
   return true;
 }
 

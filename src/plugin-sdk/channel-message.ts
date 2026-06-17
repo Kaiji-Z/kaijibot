@@ -6,9 +6,7 @@
  * compatibility; runtime calls to unported functions will throw.
  */
 
-import type {
-  ChannelReplyPipeline,
-} from "./channel-reply-pipeline.js";
+import type { ChannelReplyPipeline } from "./channel-reply-pipeline.js";
 import {
   createChannelReplyPipeline,
   createReplyPrefixContext,
@@ -25,9 +23,7 @@ export {
   createTypingCallbacks,
 } from "./channel-reply-pipeline.js";
 
-export type {
-  ChannelReplyPipeline as CreateChannelReplyPipelineParams,
-} from "./channel-reply-pipeline.js";
+export type { ChannelReplyPipeline as CreateChannelReplyPipelineParams } from "./channel-reply-pipeline.js";
 
 // -- Types for message adapter surface --
 // These types mirror the upstream interface so that extensions can compile
@@ -108,7 +104,9 @@ export type ChannelMessageAdapterShape = {
   outboundBridge?: unknown;
 };
 
-export type ChannelMessageAdapter<T extends ChannelMessageAdapterShape = ChannelMessageAdapterShape> = T & {
+export type ChannelMessageAdapter<
+  T extends ChannelMessageAdapterShape = ChannelMessageAdapterShape,
+> = T & {
   receive?: unknown;
 };
 
@@ -203,7 +201,9 @@ export function createPreviewMessageReceipt(_params: unknown): MessageReceipt {
   throwNotPorted("createPreviewMessageReceipt");
 }
 
-export function defineFinalizableLivePreviewAdapter(_params: unknown): FinalizableLivePreviewAdapter {
+export function defineFinalizableLivePreviewAdapter(
+  _params: unknown,
+): FinalizableLivePreviewAdapter {
   throwNotPorted("defineFinalizableLivePreviewAdapter");
 }
 
@@ -211,11 +211,15 @@ export function deriveDurableFinalDeliveryRequirements(_params: unknown): unknow
   throwNotPorted("deriveDurableFinalDeliveryRequirements");
 }
 
-export function deliverFinalizableLivePreview(_params: unknown): Promise<LivePreviewFinalizerResult> {
+export function deliverFinalizableLivePreview(
+  _params: unknown,
+): Promise<LivePreviewFinalizerResult> {
   throwNotPorted("deliverFinalizableLivePreview");
 }
 
-export function deliverWithFinalizableLivePreviewAdapter(_params: unknown): Promise<LivePreviewFinalizerResult> {
+export function deliverWithFinalizableLivePreviewAdapter(
+  _params: unknown,
+): Promise<LivePreviewFinalizerResult> {
   throwNotPorted("deliverWithFinalizableLivePreviewAdapter");
 }
 
@@ -247,11 +251,17 @@ export function markLiveMessageCancelled(_state: LiveMessageState): LiveMessageS
   throwNotPorted("markLiveMessageCancelled");
 }
 
-export function markLiveMessageFinalized(_state: LiveMessageState, _params: unknown): LiveMessageState {
+export function markLiveMessageFinalized(
+  _state: LiveMessageState,
+  _params: unknown,
+): LiveMessageState {
   throwNotPorted("markLiveMessageFinalized");
 }
 
-export function markLiveMessagePreviewUpdated(_state: LiveMessageState, _params: unknown): LiveMessageState {
+export function markLiveMessagePreviewUpdated(
+  _state: LiveMessageState,
+  _params: unknown,
+): LiveMessageState {
   throwNotPorted("markLiveMessagePreviewUpdated");
 }
 
@@ -301,10 +311,17 @@ export function classifyDurableSendRecoveryState(_params: unknown): unknown {
 
 export const hasFinalChannelTurnDispatch = (_result: unknown): boolean => false;
 export const hasVisibleChannelTurnDispatch = (_result: unknown): boolean => false;
-export const resolveChannelTurnDispatchCounts = (_result: unknown): { final: number; visible: number } => ({ final: 0, visible: 0 });
+export const resolveChannelTurnDispatchCounts = (
+  _result: unknown,
+): { final: number; visible: number } => ({ final: 0, visible: 0 });
 
 /** @deprecated Use `createChannelMessageReplyPipeline(...)` for compatibility dispatchers. */
-export function createChannelTurnReplyPipeline(params: { cfg: unknown; agentId: string; channel?: string; accountId?: string }): ChannelReplyPipeline {
+export function createChannelTurnReplyPipeline(params: {
+  cfg: unknown;
+  agentId: string;
+  channel?: string;
+  accountId?: string;
+}): ChannelReplyPipeline {
   return createChannelReplyPipeline(params as Parameters<typeof createChannelReplyPipeline>[0]);
 }
 
@@ -330,7 +347,9 @@ export async function recordChannelMessageReplyDispatch(..._args: unknown[]): Pr
   throwNotPorted("recordChannelMessageReplyDispatch");
 }
 
-export async function deliverInboundReplyWithMessageSendContext(..._args: unknown[]): Promise<unknown> {
+export async function deliverInboundReplyWithMessageSendContext(
+  ..._args: unknown[]
+): Promise<unknown> {
   throwNotPorted("deliverInboundReplyWithMessageSendContext");
 }
 
@@ -341,7 +360,10 @@ export async function sendDurableMessageBatch(_params: unknown): Promise<unknown
   throwNotPorted("sendDurableMessageBatch");
 }
 
-export async function withDurableMessageSendContext<T>(_params: unknown, _run: (ctx: unknown) => Promise<T>): Promise<T> {
+export async function withDurableMessageSendContext<T>(
+  _params: unknown,
+  _run: (ctx: unknown) => Promise<T>,
+): Promise<T> {
   throwNotPorted("withDurableMessageSendContext");
 }
 

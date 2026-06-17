@@ -25,10 +25,7 @@ export const AuthStoreApiKeyResultSchema = Type.Object(
 
 export type AuthStoreApiKeyResult = Static<typeof AuthStoreApiKeyResultSchema>;
 
-export const AuthListProviderStatusParamsSchema = Type.Object(
-  {},
-  { additionalProperties: false },
-);
+export const AuthListProviderStatusParamsSchema = Type.Object({}, { additionalProperties: false });
 
 export type AuthListProviderStatusParams = Static<typeof AuthListProviderStatusParamsSchema>;
 

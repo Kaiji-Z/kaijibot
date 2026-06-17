@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
+import { describe, it, expect } from "vitest";
 import { splitSdkTools, resolveSessionToolsParam } from "./tool-split.js";
 
 // Minimal fake tool that satisfies the AgentTool contract without `as any`.

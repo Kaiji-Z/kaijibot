@@ -1,3 +1,4 @@
+import { validateAndRepair } from "./llm-draft-generator.js";
 /**
  * Skill quality gate (LLM-as-judge) and draft refiner.
  *
@@ -10,7 +11,6 @@
  * `validateAndRepair` parser so it stays consistent with normal skill generation.
  */
 import { generateSkillDraft } from "./skill-draft-generator.js";
-import { validateAndRepair } from "./llm-draft-generator.js";
 import type { EvolutionCandidate, SkillDraft } from "./types.js";
 
 /** Mean-score cutoff below which a draft is rejected. */

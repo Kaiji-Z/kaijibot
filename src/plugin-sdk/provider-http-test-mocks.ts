@@ -17,7 +17,7 @@ const providerHttpMocks = vi.hoisted(() => ({
   fetchWithTimeoutMock: vi.fn(),
   fetchWithTimeoutGuardedMock: vi.fn(),
   assertOkOrThrowHttpErrorMock: vi.fn(async (_response: Response, _label: string) => {}),
-  resolveProviderHttpRequestConfigMock: vi.fn((...args: unknown[]) => ({
+  resolveProviderHttpRequestConfigMock: vi.fn(() => ({
     baseUrl: "",
     allowPrivateNetwork: false,
     headers: new Headers(),

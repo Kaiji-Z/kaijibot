@@ -183,9 +183,13 @@ async function callLLM(prompt: string): Promise<string> {
       message: { content: string; reasoning_content?: string };
     }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   const choice = data.choices?.[0];
-  if (!choice) {return "";}
+  if (!choice) {
+    return "";
+  }
   // Prefer final content; fall back to reasoning_content for reasoning models
   return choice.message.content || choice.message.reasoning_content || "";
 }
@@ -274,7 +278,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live surprise insig
       console.log(`  ❌ 推理失败: ${inferenceResult.error}`);
     }
     expect(inferenceResult.ok).toBe(true);
-    if (!inferenceResult.ok) {return;}
+    if (!inferenceResult.ok) {
+      return;
+    }
 
     const strategy = inferenceResult.strategy;
     console.log(`  潜在兴趣: ${strategy.inferredInterest}`);
@@ -290,7 +296,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live surprise insig
     console.log("\nStep 2: Web 搜索");
     const webResults = await tavilySearch(strategy.searchQuery);
     console.log(`  "${strategy.searchQuery}" → ${webResults.length} 条结果`);
-    if (webResults[0]) {console.log(`  样例: ${webResults[0].title}`);}
+    if (webResults[0]) {
+      console.log(`  样例: ${webResults[0].title}`);
+    }
 
     // Step 3: Generate surprise insight
     console.log("\nStep 3: 生成惊喜洞察");
@@ -357,7 +365,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live surprise insig
       );
     }
     expect(r1.ok).toBe(true);
-    if (!r1.ok) {return;}
+    if (!r1.ok) {
+      return;
+    }
 
     input.recentInsightContents = [...input.recentInsightContents, r1.strategy.inferredInterest];
 
@@ -366,7 +376,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live surprise insig
       console.log(`  Round 2 inference failed: ${r2.error}`);
     }
     expect(r2.ok).toBe(true);
-    if (!r2.ok) {return;}
+    if (!r2.ok) {
+      return;
+    }
 
     console.log(`  Round 1 interest: ${r1.strategy.inferredInterest}`);
     console.log(`  Round 2 interest: ${r2.strategy.inferredInterest}`);

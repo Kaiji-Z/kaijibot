@@ -100,10 +100,14 @@ function renderSessionCard(
   return html`
     <div
       class="card ${isSelected ? "selected" : ""}"
-      style="cursor:pointer; padding:var(--space-sm); border-left:3px solid ${isSelected ? "var(--accent)" : "transparent"};"
+      style="cursor:pointer; padding:var(--space-sm); border-left:3px solid ${isSelected
+        ? "var(--accent)"
+        : "transparent"};"
       @click=${onSelect}
     >
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-xs);">
+      <div
+        style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-xs);"
+      >
         <span class="text-mono" style="font-size:0.8em; word-break:break-all;">${session.key}</span>
         <div style="display:flex; align-items:center; gap:6px;">
           ${updated
@@ -115,14 +119,17 @@ function renderSessionCard(
             class="btn-icon danger"
             title="Delete session"
             style="font-size:14px;"
-            @click=${(e: Event) => { e.stopPropagation(); onDelete(session.key); }}
-          >${icons.trash}</button>
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              onDelete(session.key);
+            }}
+          >
+            ${icons.trash}
+          </button>
         </div>
       </div>
       ${label
-        ? html`<div class="text-muted" style="font-size:0.85em; margin-top:2px;">
-            ${label}
-          </div>`
+        ? html`<div class="text-muted" style="font-size:0.85em; margin-top:2px;">${label}</div>`
         : nothing}
     </div>
   `;
@@ -140,7 +147,8 @@ function renderMessage(msg: TranscriptMessage) {
         ${ts ? html`<span class="text-muted" style="font-size:0.75em;">${ts}</span>` : nothing}
       </div>
       <div style="white-space:pre-wrap; word-break:break-word; font-size:0.9em; line-height:1.5;">
-${text}</div>
+        ${text}
+      </div>
     </div>
   `;
 }
@@ -166,7 +174,9 @@ export function renderHistory(props: HistoryProps) {
         </button>
       </div>
 
-      <div style="display:grid; grid-template-columns:40% 60%; gap:var(--space-md); min-height:60vh;">
+      <div
+        style="display:grid; grid-template-columns:40% 60%; gap:var(--space-md); min-height:60vh;"
+      >
         <!-- Left panel: session list -->
         <div class="stack" style="gap:var(--space-sm); overflow-y:auto; max-height:75vh;">
           <input
@@ -181,21 +191,21 @@ export function renderHistory(props: HistoryProps) {
           />
 
           ${filteredSessions.length === 0
-            ? html`<div class="callout">${props.searchQuery ? "No matching sessions." : "No sessions found."}</div>`
-            : filteredSessions.map(
-                (s) =>
-                  renderSessionCard(s, s.key === props.selectedKey, () =>
-                    props.onSelectSession(s.key),
+            ? html`<div class="callout">
+                ${props.searchQuery ? "No matching sessions." : "No sessions found."}
+              </div>`
+            : filteredSessions.map((s) =>
+                renderSessionCard(
+                  s,
+                  s.key === props.selectedKey,
+                  () => props.onSelectSession(s.key),
                   props.onDeleteSession,
-                  ),
+                ),
               )}
         </div>
 
         <!-- Right panel: transcript viewer -->
-        <div
-          class="card"
-          style="overflow-y:auto; max-height:75vh; padding:var(--space-md);"
-        >
+        <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
           ${props.selectedKey == null
             ? html`<div class="callout">Select a session to view its transcript.</div>`
             : props.messages.length === 0

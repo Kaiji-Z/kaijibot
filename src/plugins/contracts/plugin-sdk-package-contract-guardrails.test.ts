@@ -132,8 +132,6 @@ function collectExtensionCoreImportLeaks(): Array<{ file: string; specifier: str
 }
 
 describe("plugin-sdk package contract guardrails", () => {
-
-
   it("keeps package.json exports aligned with built plugin-sdk entrypoints", () => {
     expect(collectPluginSdkPackageExports()).toEqual([...pluginSdkEntrypoints].toSorted());
   });

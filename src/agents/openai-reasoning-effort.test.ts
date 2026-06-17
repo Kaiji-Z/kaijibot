@@ -66,15 +66,11 @@ describe("resolveOpenAISupportedReasoningEfforts", () => {
 
 describe("supportsOpenAIReasoningEffort", () => {
   it("returns true for an effort in the supported set", () => {
-    expect(
-      supportsOpenAIReasoningEffort({ provider: "openai", id: "gpt-5" }, "high"),
-    ).toBe(true);
+    expect(supportsOpenAIReasoningEffort({ provider: "openai", id: "gpt-5" }, "high")).toBe(true);
   });
 
   it("returns false for an effort outside the supported set", () => {
-    expect(
-      supportsOpenAIReasoningEffort({ provider: "openai", id: "gpt-5" }, "xhigh"),
-    ).toBe(false);
+    expect(supportsOpenAIReasoningEffort({ provider: "openai", id: "gpt-5" }, "xhigh")).toBe(false);
   });
 });
 

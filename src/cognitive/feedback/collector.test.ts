@@ -648,7 +648,11 @@ describe("classifySentimentFromSignals", () => {
   });
 
   it("returns 'neutral' for medium-length responses (20-100 chars) without question_depth", () => {
-    const signals = extractImplicitSignals("This is a medium length response with no deep question.", undefined, "AI/机器学习");
+    const signals = extractImplicitSignals(
+      "This is a medium length response with no deep question.",
+      undefined,
+      "AI/机器学习",
+    );
     expect(classifySentimentFromSignals(signals)).toBe("neutral");
   });
 

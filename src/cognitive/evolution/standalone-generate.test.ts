@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { describe, expect, it, vi } from "vitest";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import {
   createStandaloneGenerateTextBatchWithDeps,
   runBatchGenerate,
   type BackgroundGenerateDeps,
   type BatchHttpDeps,
 } from "./standalone-generate.js";
-import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 
 function makeModel(overrides: Partial<Model<Api>> = {}): Model<Api> {
   return {
@@ -95,7 +95,9 @@ describe("runBatchGenerate", () => {
     expect(text).toBe("Hello batch world");
     const postSubmit = calls.filter((c) => c.method === "POST" && c.url.endsWith("/batch"));
     expect(postSubmit.length).toBe(1);
-    expect(calls.some((c) => c.method === "GET" && c.url.includes(`/batches/${batchId}`))).toBe(true);
+    expect(calls.some((c) => c.method === "GET" && c.url.includes(`/batches/${batchId}`))).toBe(
+      true,
+    );
     expect(calls.some((c) => c.url.includes("/files/file_out/content"))).toBe(true);
   });
 
@@ -276,7 +278,10 @@ describe("createStandaloneGenerateTextBatchWithDeps (config gate)", () => {
 
   it("builds a function that delegates to the injected batch runner", async () => {
     const run = vi.fn(async () => "batch result");
-    const factory = createStandaloneGenerateTextBatchWithDeps(makeBatchDeps({ run, http: { fetchFn: vi.fn() as unknown as typeof fetch } }), {});
+    const factory = createStandaloneGenerateTextBatchWithDeps(
+      makeBatchDeps({ run, http: { fetchFn: vi.fn() as unknown as typeof fetch } }),
+      {},
+    );
     const fn = await factory({} as KaijiBotConfig);
     const out = await fn("prompt");
     expect(out).toBe("batch result");

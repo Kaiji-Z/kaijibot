@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   preprocessSessionTranscript,
   getCleanDialogueContent,
@@ -112,11 +112,7 @@ describe("preprocessSessionTranscript", () => {
 
   // 3. Basic user + assistant messages → formatted with role prefixes
   it("formats basic user and assistant messages with role prefixes", () => {
-    const jsonl = buildJsonl(
-      sessionHeader(),
-      userMsg("Hello"),
-      assistantMsg("Hi there"),
-    );
+    const jsonl = buildJsonl(sessionHeader(), userMsg("Hello"), assistantMsg("Hi there"));
     const result = preprocessSessionTranscript(jsonl);
     expect(result).toBe("user: Hello\nassistant: Hi there");
   });
@@ -125,9 +121,7 @@ describe("preprocessSessionTranscript", () => {
   it("filters out toolResult messages", () => {
     const jsonl = buildJsonl(
       userMsg("Search for X"),
-      assistantToolMsg("Searching", [
-        { id: "c1", name: "web_search", arguments: { query: "X" } },
-      ]),
+      assistantToolMsg("Searching", [{ id: "c1", name: "web_search", arguments: { query: "X" } }]),
       toolResultMsg('{"results":[]}'),
       assistantMsg("Here are the results"),
     );
@@ -160,7 +154,7 @@ describe("preprocessSessionTranscript", () => {
   // 6. Strips [message_id:...] line from user messages with Conversation info
   it("strips message_id line from user messages containing Conversation info", () => {
     const rawText =
-      "[message_id: msg_abc123]\nConversation info (untrusted metadata): {\"chat_id\":\"oc_xxx\"}\nActual message content";
+      '[message_id: msg_abc123]\nConversation info (untrusted metadata): {"chat_id":"oc_xxx"}\nActual message content';
     const jsonl = buildJsonl(userMsg(rawText));
     const result = preprocessSessionTranscript(jsonl);
     // stripMessageMetadata removes [message_id:...] line and ou_ prefix, but keeps Conversation info line
@@ -171,7 +165,7 @@ describe("preprocessSessionTranscript", () => {
   // 7. Strips ou_ prefix when Conversation info triggers metadata processing
   it("strips ou_ sender prefix when Conversation info is present", () => {
     const rawText =
-      "Conversation info (untrusted metadata): {\"chat_id\":\"oc_xxx\"}\nou_abc123: My real message";
+      'Conversation info (untrusted metadata): {"chat_id":"oc_xxx"}\nou_abc123: My real message';
     const jsonl = buildJsonl(userMsg(rawText));
     const result = preprocessSessionTranscript(jsonl);
     expect(result).toContain("ou_abc123:");
@@ -316,10 +310,7 @@ describe("preprocessSessionTranscript", () => {
   // Additional edge cases
 
   it("returns null when all messages are filtered out", () => {
-    const jsonl = buildJsonl(
-      userMsg("/new"),
-      userMsg("/reset"),
-    );
+    const jsonl = buildJsonl(userMsg("/new"), userMsg("/reset"));
     expect(preprocessSessionTranscript(jsonl)).toBeNull();
   });
 
@@ -344,9 +335,7 @@ describe("preprocessSessionTranscript", () => {
         timestamp: "2026-01-01T00:00:02Z",
         message: {
           role: "assistant",
-          content: [
-            { type: "toolCall", id: "c1", name: "run_code", arguments: { code: "1+1" } },
-          ],
+          content: [{ type: "toolCall", id: "c1", name: "run_code", arguments: { code: "1+1" } }],
         },
       }),
     );
@@ -392,9 +381,7 @@ describe("preprocessSessionTranscript", () => {
   it("defaults to including tool annotations (backward compatible)", () => {
     const jsonl = buildJsonl(
       userMsg("Search"),
-      assistantToolMsg("Found it", [
-        { id: "c1", name: "web_search", arguments: { query: "x" } },
-      ]),
+      assistantToolMsg("Found it", [{ id: "c1", name: "web_search", arguments: { query: "x" } }]),
     );
     const result = preprocessSessionTranscript(jsonl);
     expect(result).toContain("[tool: web_search]");
@@ -408,8 +395,7 @@ describe("stripMessageMetadata", () => {
   });
 
   it("strips message_id line when Conversation info is present", () => {
-    const text =
-      "[message_id: msg_123]\nConversation info (untrusted metadata): {}";
+    const text = "[message_id: msg_123]\nConversation info (untrusted metadata): {}";
     const result = stripMessageMetadata(text);
     expect(result).not.toContain("[message_id:");
     expect(result).toContain("Conversation info");
@@ -417,8 +403,7 @@ describe("stripMessageMetadata", () => {
 
   it("strips ou_ prefix when it appears at start after message_id removal", () => {
     // After removing [message_id: ...]\n, text starts with ou_abc: → regex matches
-    const text =
-      "[message_id: msg_123]\nou_abc: Hello";
+    const text = "[message_id: msg_123]\nou_abc: Hello";
     // But no "Conversation info" → early return, nothing stripped
     expect(stripMessageMetadata(text)).toBe(text);
   });
@@ -496,18 +481,38 @@ describe("mergeJsonlContents", () => {
   });
 
   it("appends all incoming when no overlap", () => {
-    const existing = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "A" } });
-    const incoming = JSON.stringify({ type: "message", id: "2", message: { role: "assistant", content: "B" } });
+    const existing = JSON.stringify({
+      type: "message",
+      id: "1",
+      message: { role: "user", content: "A" },
+    });
+    const incoming = JSON.stringify({
+      type: "message",
+      id: "2",
+      message: { role: "assistant", content: "B" },
+    });
     const result = mergeJsonlContents(existing, incoming);
     expect(result).toContain('"id":"1"');
     expect(result).toContain('"id":"2"');
   });
 
   it("deduplicates entries with the same id", () => {
-    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "A" } });
-    const entry2 = JSON.stringify({ type: "message", id: "2", message: { role: "assistant", content: "B" } });
+    const entry1 = JSON.stringify({
+      type: "message",
+      id: "1",
+      message: { role: "user", content: "A" },
+    });
+    const entry2 = JSON.stringify({
+      type: "message",
+      id: "2",
+      message: { role: "assistant", content: "B" },
+    });
     const existing = buildJsonl(entry1, entry2);
-    const entry3 = JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "C" } });
+    const entry3 = JSON.stringify({
+      type: "message",
+      id: "3",
+      message: { role: "user", content: "C" },
+    });
     const incoming = buildJsonl(entry2, entry3);
     const result = mergeJsonlContents(existing, incoming);
     expect(result.match(/"id":"1"/g)).toHaveLength(1);
@@ -525,9 +530,21 @@ describe("mergeJsonlContents", () => {
   });
 
   it("preserves order: existing first, then new incoming", () => {
-    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "First" } });
-    const entry2 = JSON.stringify({ type: "message", id: "2", message: { role: "user", content: "Second" } });
-    const entry3 = JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "Third" } });
+    const entry1 = JSON.stringify({
+      type: "message",
+      id: "1",
+      message: { role: "user", content: "First" },
+    });
+    const entry2 = JSON.stringify({
+      type: "message",
+      id: "2",
+      message: { role: "user", content: "Second" },
+    });
+    const entry3 = JSON.stringify({
+      type: "message",
+      id: "3",
+      message: { role: "user", content: "Third" },
+    });
     const existing = buildJsonl(entry1, entry2);
     const incoming = buildJsonl(entry2, entry3);
     const result = mergeJsonlContents(existing, incoming);
@@ -577,7 +594,11 @@ describe("updateDialogueStaging", () => {
   });
 
   it("does not duplicate entries already in staging", async () => {
-    const entry = JSON.stringify({ type: "message", id: "msg-1", message: { role: "user", content: "A" } });
+    const entry = JSON.stringify({
+      type: "message",
+      id: "msg-1",
+      message: { role: "user", content: "A" },
+    });
     const jsonl1 = buildJsonl(entry);
     await fs.writeFile(sessionPath, jsonl1);
     await updateDialogueStaging(stagingPath, sessionPath);
@@ -613,10 +634,26 @@ describe("getDialogueWithStaging", () => {
   });
 
   it("merges staging with current JSONL producing full dialogue", async () => {
-    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "Old" } });
-    const entry2 = JSON.stringify({ type: "message", id: "2", message: { role: "assistant", content: "Reply" } });
-    const entry3 = JSON.stringify({ type: "message", id: "3", message: { role: "user", content: "New" } });
-    const entry4 = JSON.stringify({ type: "message", id: "4", message: { role: "assistant", content: "NewReply" } });
+    const entry1 = JSON.stringify({
+      type: "message",
+      id: "1",
+      message: { role: "user", content: "Old" },
+    });
+    const entry2 = JSON.stringify({
+      type: "message",
+      id: "2",
+      message: { role: "assistant", content: "Reply" },
+    });
+    const entry3 = JSON.stringify({
+      type: "message",
+      id: "3",
+      message: { role: "user", content: "New" },
+    });
+    const entry4 = JSON.stringify({
+      type: "message",
+      id: "4",
+      message: { role: "assistant", content: "NewReply" },
+    });
 
     await fs.mkdir(path.dirname(stagingPath), { recursive: true });
     await fs.writeFile(stagingPath, buildJsonl(entry1, entry2, entry3));
@@ -632,7 +669,11 @@ describe("getDialogueWithStaging", () => {
   });
 
   it("excludes tool annotations from merged dialogue", async () => {
-    const entry1 = JSON.stringify({ type: "message", id: "1", message: { role: "user", content: "Search" } });
+    const entry1 = JSON.stringify({
+      type: "message",
+      id: "1",
+      message: { role: "user", content: "Search" },
+    });
     const entry2tool = JSON.stringify({
       type: "message",
       id: "2",

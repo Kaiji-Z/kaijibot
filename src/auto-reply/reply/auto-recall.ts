@@ -50,7 +50,9 @@ function formatSnippet(result: MemorySearchResult): string {
  * Format search results for a single topic.
  */
 function formatTopicResults(topic: string, results: MemorySearchResult[]): string {
-  if (results.length === 0) {return "";}
+  if (results.length === 0) {
+    return "";
+  }
   const snippets = results.map((r) => formatSnippet(r)).join("\n\n");
   return `### ${topic}\n${snippets}`;
 }
@@ -75,10 +77,14 @@ export async function buildAutoRecallContext(
 
   const persona = deps?.loadPersona ? await deps.loadPersona() : opts.persona;
 
-  if (!persona?.recentFocus?.length) {return "";}
+  if (!persona?.recentFocus?.length) {
+    return "";
+  }
 
   const topics = persona.recentFocus.slice(0, maxTopics);
-  if (topics.length === 0) {return "";}
+  if (topics.length === 0) {
+    return "";
+  }
 
   // Resolve the search function — either injected for testing or loaded lazily.
   let searchFn: AutoRecallSearchFn;
@@ -91,7 +97,9 @@ export async function buildAutoRecallContext(
         cfg: opts.cfg,
         agentId: opts.agentId,
       });
-      if (!manager) {return "";}
+      if (!manager) {
+        return "";
+      }
       searchFn = (query, searchOpts) =>
         manager.search(query, {
           maxResults: searchOpts.maxResults,
@@ -118,7 +126,9 @@ export async function buildAutoRecallContext(
     }
   }
 
-  if (topicBlocks.length === 0) {return "";}
+  if (topicBlocks.length === 0) {
+    return "";
+  }
 
   const header = "## Recalled Context";
   let body = topicBlocks.join("\n\n");

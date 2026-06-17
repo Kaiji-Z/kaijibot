@@ -73,9 +73,7 @@ let runtimePatternResolver: (() => RegExp[]) | null = null;
 let runtimePatternCache: RegExp[] = [];
 let runtimePatternCacheAt = 0;
 
-export function setRuntimePatternResolver(
-  resolver: (() => RegExp[]) | null,
-): void {
+export function setRuntimePatternResolver(resolver: (() => RegExp[]) | null): void {
   runtimePatternResolver = resolver;
   runtimePatternCacheAt = 0;
 }

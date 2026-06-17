@@ -49,11 +49,19 @@ export type InsightsProps = {
 // --- Helpers ---
 
 function formatRelativeTime(ts: number | null): string {
-  if (!ts) {return "-";}
+  if (!ts) {
+    return "-";
+  }
   const seconds = Math.floor((Date.now() - ts) / 1000);
-  if (seconds < 60) {return "刚刚";}
-  if (seconds < 3600) {return `${Math.floor(seconds / 60)}分钟前`;}
-  if (seconds < 86400) {return `${Math.floor(seconds / 3600)}小时前`;}
+  if (seconds < 60) {
+    return "刚刚";
+  }
+  if (seconds < 3600) {
+    return `${Math.floor(seconds / 60)}分钟前`;
+  }
+  if (seconds < 86400) {
+    return `${Math.floor(seconds / 3600)}小时前`;
+  }
   return `${Math.floor(seconds / 86400)}天前`;
 }
 
@@ -101,7 +109,9 @@ function feedbackLabel(fb: string | undefined): string {
 }
 
 function inferMode(record: InsightRecord): string {
-  if (record.promptVariant?.patternFrame != null) {return "pattern";}
+  if (record.promptVariant?.patternFrame != null) {
+    return "pattern";
+  }
   return "knowledge";
 }
 

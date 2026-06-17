@@ -12,8 +12,8 @@ import {
   resolveAgentIdByWorkspacePath,
   resolveAgentWorkspaceDir,
 } from "../../../agents/agent-scope.js";
-import type { KaijiBotConfig } from "../../../config/config.js";
 import { resolveCorrectionUserId } from "../../../cognitive/correction/userid.js";
+import type { KaijiBotConfig } from "../../../config/config.js";
 import { resolveStateDir } from "../../../config/paths.js";
 import { appendFileWithinRoot } from "../../../infra/fs-safe.js";
 import { writeTextAtomic } from "../../../infra/json-files.js";
@@ -24,6 +24,7 @@ import {
   toAgentStoreSessionKey,
 } from "../../../routing/session-key.js";
 import { isHeartbeatSessionKey } from "../../../sessions/session-key-utils.js";
+import { localDateStr, localTimeStr, localDateTimeStr } from "../../../shared/local-date.js";
 import { resolveHookConfig } from "../../config.js";
 import type { HookHandler } from "../../hooks.js";
 import {
@@ -34,12 +35,10 @@ import {
 import type { StructuredSummary } from "./summary.js";
 import {
   findPreviousSessionFile,
-  getCleanDialogueContent,
   getDialogueWithStaging,
   getRecentSessionContentWithResetFallback,
   updateDialogueStaging,
 } from "./transcript.js";
-import { localDateStr, localTimeStr, localDateTimeStr } from "../../../shared/local-date.js";
 // Inline type — memory-core types are loaded dynamically to respect the extension boundary.
 interface TopicEntry {
   title: string;
@@ -219,13 +218,16 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
     if (sessionContent && cfg && allowLlm) {
       try {
-        const { createTopicRegistry } =
-          await import("../../../../extensions/memory-core/index.js");
+        const { createTopicRegistry } = await import("../../../../extensions/memory-core/index.js");
         const nodeFs = createNodeFsAdapter();
         const registry = createTopicRegistry({ workspaceDir, fs: nodeFs });
         await registry.syncFromDisk();
         const existingTopics = await registry.getDescriptionList();
-        summary = await generateStructuredSummary({ transcript: sessionContent, cfg, existingTopics });
+        summary = await generateStructuredSummary({
+          transcript: sessionContent,
+          cfg,
+          existingTopics,
+        });
       } catch {
         summary = await generateStructuredSummary({ transcript: sessionContent, cfg });
       }
@@ -297,8 +299,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
         await topicManager.appendEntry(topicFileName, topicEntry);
         log.debug("Topic file updated", { topic: topicFileName });
 
-        const { createTopicRegistry } =
-          await import("../../../../extensions/memory-core/index.js");
+        const { createTopicRegistry } = await import("../../../../extensions/memory-core/index.js");
         const registry = createTopicRegistry({ workspaceDir, fs: nodeFs });
         const updatedTopic = await topicManager.getTopic(topicFileName);
         await registry.upsertTopic({
@@ -428,7 +429,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
             "---",
             `date: ${localDateTimeStr(now)}`,
             `participants:`,
-            ...((summary.participants ?? ["user"]).map((p) => `  - ${p}`)),
+            ...(summary.participants ?? ["user"]).map((p) => `  - ${p}`),
             `messageCount: ${cleanDialogue.split("\n").length}`,
             "---",
             "",

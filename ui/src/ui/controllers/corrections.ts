@@ -13,7 +13,9 @@ export type CorrectionsState = {
 };
 
 export async function loadCorrectionUsers(state: CorrectionsState) {
-  if (!state.client || !state.connected || !state.correctionsAgentId) {return;}
+  if (!state.client || !state.connected || !state.correctionsAgentId) {
+    return;
+  }
   state.correctionsLoading = true;
   state.requestUpdate?.();
   try {
@@ -31,7 +33,9 @@ export async function loadCorrectionUsers(state: CorrectionsState) {
 }
 
 export async function loadCorrections(state: CorrectionsState) {
-  if (!state.client || !state.connected || !state.correctionsAgentId || !state.correctionsUserId) {return;}
+  if (!state.client || !state.connected || !state.correctionsAgentId || !state.correctionsUserId) {
+    return;
+  }
   state.correctionsLoading = true;
   state.requestUpdate?.();
   try {

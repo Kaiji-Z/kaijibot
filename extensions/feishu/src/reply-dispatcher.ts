@@ -5,12 +5,13 @@ import {
   resolveTextChunksWithFallback,
   sendMediaWithLeadingCaption,
 } from "kaijibot/plugin-sdk/reply-payload";
-import { sanitizeTextForCard } from "./card-error.js";
 import { resolveFeishuRuntimeAccount } from "./accounts.js";
+import { sanitizeTextForCard } from "./card-error.js";
 import { createFeishuClient } from "./client.js";
 import { sendMediaFeishu } from "./media.js";
 import type { MentionTarget } from "./mention.js";
 import { buildMentionedCardContent } from "./mention.js";
+import { UnavailableGuard } from "./message-unavailable.js";
 import {
   createReplyPrefixContext,
   type ClawdbotConfig,
@@ -23,7 +24,6 @@ import { sendMessageFeishu, sendStructuredCardFeishu, type CardHeaderConfig } fr
 import { FeishuStreamingSession, mergeStreamingText } from "./streaming-card.js";
 import { resolveReceiveIdType } from "./targets.js";
 import { addTypingIndicator, removeTypingIndicator, type TypingIndicatorState } from "./typing.js";
-import { UnavailableGuard } from "./message-unavailable.js";
 
 /** Detect if text contains markdown elements that benefit from card rendering */
 function shouldUseCard(text: string): boolean {
@@ -240,7 +240,9 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
   const flushStreamingCardUpdate = (combined: string) => {
     partialUpdateQueue = partialUpdateQueue.then(async () => {
-      if (guard.shouldSkip("flushUpdate")) return;
+      if (guard.shouldSkip("flushUpdate")) {
+        return;
+      }
       if (streamingStartPromise) {
         await streamingStartPromise;
       }
@@ -281,7 +283,9 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   };
 
   const startStreaming = () => {
-    if (guard.shouldSkip("startStreaming")) return;
+    if (guard.shouldSkip("startStreaming")) {
+      return;
+    }
     if (!streamingEnabled || streamingStartPromise || streaming) {
       return;
     }
@@ -316,7 +320,9 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   };
 
   const closeStreaming = async () => {
-    if (guard.shouldSkip("closeStreaming")) return;
+    if (guard.shouldSkip("closeStreaming")) {
+      return;
+    }
     if (streamingStartPromise) {
       await streamingStartPromise;
     }

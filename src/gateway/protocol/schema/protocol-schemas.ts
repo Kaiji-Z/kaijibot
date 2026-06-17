@@ -10,12 +10,6 @@ import {
   WakeParamsSchema,
 } from "./agent.js";
 import {
-  AuthListProviderStatusParamsSchema,
-  AuthListProviderStatusResultSchema,
-  AuthStoreApiKeyParamsSchema,
-  AuthStoreApiKeyResultSchema,
-} from "./auth.js";
-import {
   AgentSummarySchema,
   AgentsCreateParamsSchema,
   AgentsCreateResultSchema,
@@ -54,6 +48,12 @@ import {
   ToolsEffectiveParamsSchema,
   ToolsEffectiveResultSchema,
 } from "./agents-models-skills.js";
+import {
+  AuthListProviderStatusParamsSchema,
+  AuthListProviderStatusResultSchema,
+  AuthStoreApiKeyParamsSchema,
+  AuthStoreApiKeyResultSchema,
+} from "./auth.js";
 import {
   ChannelsLogoutParamsSchema,
   TalkConfigParamsSchema,

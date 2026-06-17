@@ -280,10 +280,7 @@ describe("SkillPersistenceWriter", () => {
     });
     await writer.writeSkill(draft);
 
-    await writer.updateSkill(
-      "backup-test",
-      "---\nname: backup-test\n---\nv2 content after patch",
-    );
+    await writer.updateSkill("backup-test", "---\nname: backup-test\n---\nv2 content after patch");
 
     const bakPath = join(tempDir, "skills", "agent", "backup-test", "SKILL.md.bak");
     const bak = await readFile(bakPath, "utf-8");

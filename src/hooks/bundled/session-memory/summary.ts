@@ -111,7 +111,9 @@ function extractJsonObject(text: string): string | null {
 
 function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
   const jsonStr = extractJsonObject(raw);
-  if (!jsonStr) {return null;}
+  if (!jsonStr) {
+    return null;
+  }
 
   let parsed: Record<string, unknown>;
   try {
@@ -121,7 +123,9 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
   }
 
   const summary = typeof parsed.summary === "string" ? parsed.summary : "";
-  if (!summary) {return null;}
+  if (!summary) {
+    return null;
+  }
 
   const primaryRequest =
     typeof parsed.primaryRequest === "string" && parsed.primaryRequest.trim()
@@ -180,7 +184,14 @@ function parseStructuredSummaryResponse(raw: string): StructuredSummary | null {
           .replace(/-+/g, "-")
           .slice(0, 30) ?? "session");
 
-  const VALID_MEMORY_TYPES: readonly string[] = ["core", "active", "user", "feedback", "project", "reference"];
+  const VALID_MEMORY_TYPES: readonly string[] = [
+    "core",
+    "active",
+    "user",
+    "feedback",
+    "project",
+    "reference",
+  ];
   const rawMemoryType = typeof parsed.memoryType === "string" ? parsed.memoryType : "";
   const memoryType = VALID_MEMORY_TYPES.includes(rawMemoryType)
     ? (rawMemoryType as "core" | "active" | "user" | "feedback" | "project" | "reference")
@@ -267,12 +278,11 @@ export async function generateStructuredSummary(params: {
     let prompt = `${SUMMARY_SYSTEM_PROMPT}\n\nConversation transcript:\n${transcriptSlice}`;
 
     if (existingTopics && existingTopics.length > 0) {
-      const topicList = existingTopics
-        .map((t) => `- "${t.name}": ${t.description}`)
-        .join("\n");
+      const topicList = existingTopics.map((t) => `- "${t.name}": ${t.description}`).join("\n");
       prompt += `\n\n## Existing Topics\nThe following topics already exist. Route to one of these if the content fits:\n\n${topicList}\n\nChoose the topicSlug from the list above if the conversation fits. Only create a new slug if the content genuinely doesn't fit any existing topic.`;
       if (existingTopics.length >= 30) {
-        prompt += "\n\nNote: There are many existing topics. Strongly prefer routing to an existing topic.";
+        prompt +=
+          "\n\nNote: There are many existing topics. Strongly prefer routing to an existing topic.";
       }
     }
 

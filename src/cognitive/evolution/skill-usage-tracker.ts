@@ -16,7 +16,9 @@ export async function trackSkillUsage(params: SkillUsageTrackParams): Promise<vo
     (m) => m.toolName === "read" && typeof m.meta === "string" && m.meta.includes("SKILL.md"),
   );
 
-  if (skillReads.length === 0) {return;}
+  if (skillReads.length === 0) {
+    return;
+  }
 
   const { SkillPersistenceWriter } = await import("./skill-writer.js");
   const writer = new SkillPersistenceWriter(params.configDir);
@@ -26,8 +28,12 @@ export async function trackSkillUsage(params: SkillUsageTrackParams): Promise<vo
     const meta = entry.meta!;
     // Extract skill name: the directory name immediately before SKILL.md
     const match = meta.match(/(?:^|[/\\])([^/\\]+)[/\\]SKILL\.md$/);
-    if (!match || seen.has(match[1])) {continue;}
-    if (match[1] === "skills" || match[1] === "agent") {continue;}
+    if (!match || seen.has(match[1])) {
+      continue;
+    }
+    if (match[1] === "skills" || match[1] === "agent") {
+      continue;
+    }
     seen.add(match[1]);
 
     try {

@@ -46,14 +46,20 @@ export function updateTrustFromImplicit(
     switch (signal.type) {
       case "response_length":
         // Longer responses = more engagement
-        if (signal.value > 100) {trustDelta += 0.02;}
-        else if (signal.value < 20) {trustDelta -= 0.01;}
+        if (signal.value > 100) {
+          trustDelta += 0.02;
+        } else if (signal.value < 20) {
+          trustDelta -= 0.01;
+        }
         totalResponseLength += signal.value;
         break;
       case "response_latency":
         // Quick response = engaged, very slow = disinterested
-        if (signal.value < 60_000) {trustDelta += 0.01;}
-        else if (signal.value > 3600_000) {trustDelta -= 0.01;}
+        if (signal.value < 60_000) {
+          trustDelta += 0.01;
+        } else if (signal.value > 3600_000) {
+          trustDelta -= 0.01;
+        }
         break;
       case "topic_continuation":
         trustDelta += 0.03;
@@ -105,9 +111,15 @@ export function calculateTrustScore(rapport: RapportMetrics): number {
 export function getInteractionPhase(
   trustScore: number,
 ): "orientation" | "exploration" | "rapport" | "partnership" {
-  if (trustScore < 0.3) {return "orientation";}
-  if (trustScore < 0.5) {return "exploration";}
-  if (trustScore < 0.7) {return "rapport";}
+  if (trustScore < 0.3) {
+    return "orientation";
+  }
+  if (trustScore < 0.5) {
+    return "exploration";
+  }
+  if (trustScore < 0.7) {
+    return "rapport";
+  }
   return "partnership";
 }
 

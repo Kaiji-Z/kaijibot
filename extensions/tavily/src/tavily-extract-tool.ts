@@ -1,10 +1,10 @@
-import { Type } from "typebox";
 import type { KaijiBotPluginApi } from "kaijibot/plugin-sdk/plugin-runtime";
 import {
   jsonResult,
   readNumberParam,
   readStringParam,
 } from "kaijibot/plugin-sdk/provider-web-search";
+import { Type } from "typebox";
 import { runTavilyExtract } from "./tavily-client.js";
 
 function optionalStringEnum<const T extends readonly string[]>(

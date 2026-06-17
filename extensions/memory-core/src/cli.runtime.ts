@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { buildAgentSessionKey } from "kaijibot/plugin-sdk/routing";
+import { asNullableRecord as asRecord } from "kaijibot/plugin-sdk/text-runtime";
 import {
   colorize,
   defaultRuntime,
@@ -31,7 +32,6 @@ import type {
   MemoryPromoteExplainOptions,
   MemorySearchCommandOptions,
 } from "./cli.types.js";
-import { asNullableRecord as asRecord } from "kaijibot/plugin-sdk/text-runtime";
 import {
   applyShortTermPromotions,
   auditShortTermPromotionArtifacts,
@@ -560,15 +560,7 @@ export async function runMemoryStatus(opts: MemoryCommandOptions) {
   const label = (text: string) => muted(`${text}:`);
 
   for (const result of allResults) {
-    const {
-      agentId,
-      status,
-      embeddingProbe,
-      indexError,
-      scan,
-      audit,
-      repair,
-    } = result;
+    const { agentId, status, embeddingProbe, indexError, scan, audit, repair } = result;
     const filesIndexed = status.files ?? 0;
     const chunksIndexed = status.chunks ?? 0;
     const totalFiles = scan?.totalFiles ?? null;

@@ -1,9 +1,9 @@
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
-import OpenAI from "openai";
 import {
   registerProviderPlugin,
   requireRegisteredProvider,
 } from "kaijibot/plugin-sdk/plugin-test-runtime";
+import OpenAI from "openai";
 import { describe, expect, it } from "vitest";
 import plugin from "./index.js";
 

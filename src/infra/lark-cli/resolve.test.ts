@@ -53,8 +53,8 @@ describe("buildLarkCliEnv", () => {
   it("never sets credential env vars", () => {
     const env = buildLarkCliEnv({ domain: "feishu.cn" });
 
-    expect(
-      Object.keys(env).some((k) => k.includes("APP_ID") || k.includes("APP_SECRET")),
-    ).toBe(false);
+    expect(Object.keys(env).some((k) => k.includes("APP_ID") || k.includes("APP_SECRET"))).toBe(
+      false,
+    );
   });
 });

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { hasInterSessionUserProvenance } from "../../../sessions/input-provenance.js";
 import { writeTextAtomic } from "../../../infra/json-files.js";
+import { hasInterSessionUserProvenance } from "../../../sessions/input-provenance.js";
 
 function extractTextMessageContent(content: unknown): string | undefined {
   if (typeof content === "string") {
@@ -118,9 +118,7 @@ export function preprocessSessionTranscript(
   return allMessages.slice(-maxMessages).join("\n");
 }
 
-export async function getCleanDialogueContent(
-  sessionFilePath: string,
-): Promise<string | null> {
+export async function getCleanDialogueContent(sessionFilePath: string): Promise<string | null> {
   try {
     const content = await fs.readFile(sessionFilePath, "utf-8");
     return preprocessSessionTranscript(content, {
@@ -137,20 +135,30 @@ export function mergeJsonlContents(existing: string, incoming: string): string {
   const keptLines: string[] = [];
 
   for (const line of existing.trim().split("\n")) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
     try {
       const entry = JSON.parse(line) as { id?: string };
-      if (entry.id) seenIds.add(entry.id);
+      if (entry.id) {
+        seenIds.add(entry.id);
+      }
     } catch {}
     keptLines.push(line);
   }
 
   for (const line of incoming.trim().split("\n")) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
     try {
       const entry = JSON.parse(line) as { id?: string };
-      if (entry.id && seenIds.has(entry.id)) continue;
-      if (entry.id) seenIds.add(entry.id);
+      if (entry.id && seenIds.has(entry.id)) {
+        continue;
+      }
+      if (entry.id) {
+        seenIds.add(entry.id);
+      }
     } catch {}
     keptLines.push(line);
   }

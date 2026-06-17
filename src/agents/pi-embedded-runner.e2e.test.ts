@@ -24,7 +24,8 @@ const loggerWarnMock = vi.fn();
 let refreshRuntimeAuthOnFirstPromptError = false;
 
 vi.mock("@earendil-works/pi-ai", async () => {
-  const actual = await vi.importActual<typeof import("@earendil-works/pi-ai")>("@earendil-works/pi-ai");
+  const actual =
+    await vi.importActual<typeof import("@earendil-works/pi-ai")>("@earendil-works/pi-ai");
 
   const buildAssistantMessage = (model: { api: string; provider: string; id: string }) => ({
     role: "assistant" as const,

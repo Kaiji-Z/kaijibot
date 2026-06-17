@@ -431,7 +431,9 @@ async function refreshChatModels(host: ChatHost) {
 }
 
 export async function refreshFullCatalog(host: ChatHost) {
-  if (!host.client) return;
+  if (!host.client) {
+    return;
+  }
   try {
     const [catalog, providers, authOptions] = await Promise.all([
       loadModels(host.client, { fullCatalog: true }),

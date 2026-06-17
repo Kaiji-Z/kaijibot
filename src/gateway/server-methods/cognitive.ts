@@ -10,7 +10,8 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
       const { PersonaStore } = await import("../../cognitive/persona/store.js");
       const { InsightStore } = await import("../../cognitive/insight/store.js");
       const { CorrectionStore } = await import("../../cognitive/correction/store.js");
-      const { SkillLifecycleManager } = await import("../../cognitive/evolution/skill-lifecycle.js");
+      const { SkillLifecycleManager } =
+        await import("../../cognitive/evolution/skill-lifecycle.js");
       const { SkillPersistenceWriter } = await import("../../cognitive/evolution/skill-writer.js");
       const { readConfigFileSnapshot } = await import("../../config/io.js");
 
@@ -69,10 +70,11 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
       let enabled = true;
       try {
         const snapshot = await readConfigFileSnapshot();
-        enabled = (snapshot.parsed as Record<string, unknown>)?.cognitive !== undefined
-          ? ((snapshot.parsed as Record<string, unknown>).cognitive as Record<string, unknown>)
-              ?.enabled !== false
-          : true;
+        enabled =
+          (snapshot.parsed as Record<string, unknown>)?.cognitive !== undefined
+            ? ((snapshot.parsed as Record<string, unknown>).cognitive as Record<string, unknown>)
+                ?.enabled !== false
+            : true;
       } catch {
         // Config may not exist yet
       }
@@ -194,7 +196,13 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
       const feedback = params.feedback as string;
       const userResponse = params.userResponse as string | undefined;
       const store = new InsightStore(configDir);
-      await store.updateFeedback(agentId, userId, id, feedback as "positive" | "negative" | "neutral" | "engaged", userResponse);
+      await store.updateFeedback(
+        agentId,
+        userId,
+        id,
+        feedback as "positive" | "negative" | "neutral" | "engaged",
+        userResponse,
+      );
 
       respond(true, { ok: true });
     } catch (err) {

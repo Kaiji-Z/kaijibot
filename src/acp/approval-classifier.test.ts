@@ -83,7 +83,6 @@ describe("classifyAcpToolApproval", () => {
       expectedToolName: "nodes",
       expectedClass: "exec_capable",
     },
-
   ] as const)(
     "classifies shared owner-only ACP backstops for $expectedToolName",
     ({ title, rawInput, expectedToolName, expectedClass }) => {

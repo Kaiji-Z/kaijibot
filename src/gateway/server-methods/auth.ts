@@ -1,17 +1,17 @@
-import { listProfilesForProvider, upsertAuthProfile } from "../../agents/auth-profiles/profiles.js";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join as joinPath } from "node:path";
 import { listAgentIds, resolveAgentDir } from "../../agents/agent-scope.js";
-import { invalidateModelCatalog } from "../../agents/model-catalog.js";
+import { upsertAuthProfile } from "../../agents/auth-profiles/profiles.js";
 import { loadAuthProfileStoreForSecretsRuntime } from "../../agents/auth-profiles/store.js";
+import { invalidateModelCatalog } from "../../agents/model-catalog.js";
 import { loadConfig } from "../../config/config.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { writeConfigFile } from "../../config/io.js";
 import type { ModelApi } from "../../config/types.models.js";
-import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
-import type { ProviderPlugin } from "../../plugins/types.js";
-import { applyProviderAuthConfigPatch } from "../../plugins/provider-auth-choice-helpers.js";
 import { resolveBundledPluginsDir } from "../../plugins/bundled-dir.js";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join as joinPath } from "node:path";
+import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
+import { applyProviderAuthConfigPatch } from "../../plugins/provider-auth-choice-helpers.js";
+import type { ProviderPlugin } from "../../plugins/types.js";
 import {
   ErrorCodes,
   errorShape,
@@ -109,7 +109,7 @@ export function createAuthHandlers(deps: {
             configuredProviders.add(cred.provider);
           }
         }
-        respond(true, { providers: [...configuredProviders].sort() });
+        respond(true, { providers: [...configuredProviders].toSorted() });
       } catch (err) {
         respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
       }
@@ -148,12 +148,18 @@ export function createAuthHandlers(deps: {
           const seenProviderIds = new Set(runtimeProviderIds);
           for (const plugin of manifestReg.plugins) {
             const choices = plugin.providerAuthChoices;
-            if (!choices || choices.length === 0) continue;
+            if (!choices || choices.length === 0) {
+              continue;
+            }
             for (const providerId of plugin.providers) {
-              if (seenProviderIds.has(providerId)) continue;
+              if (seenProviderIds.has(providerId)) {
+                continue;
+              }
               seenProviderIds.add(providerId);
               const providerChoices = choices.filter((c) => c.provider === providerId);
-              if (providerChoices.length === 0) continue;
+              if (providerChoices.length === 0) {
+                continue;
+              }
               manifestProviders.push({
                 providerId,
                 providerLabel: providerId,
@@ -170,7 +176,7 @@ export function createAuthHandlers(deps: {
           }
         }
 
-        const providers = [...runtimeProviders, ...manifestProviders].sort((a, b) =>
+        const providers = [...runtimeProviders, ...manifestProviders].toSorted((a, b) =>
           a.providerId.localeCompare(b.providerId),
         );
 
@@ -206,7 +212,9 @@ function resolveProviderModelCatalog(
       const registry = getManifestRegistry();
       const plugin = registry.plugins.find((p) => p.providers.includes(providerId));
       const catalog = plugin?.modelCatalog?.providers?.[providerId];
-      if (catalog?.models?.length) return catalog;
+      if (catalog?.models?.length) {
+        return catalog;
+      }
     } catch {
       // fall through to filesystem scan
     }
@@ -214,20 +222,30 @@ function resolveProviderModelCatalog(
 
   try {
     const bundledDir = resolveBundledPluginsDir();
-    if (!bundledDir) return undefined;
+    if (!bundledDir) {
+      return undefined;
+    }
     const entries = readdirSync(bundledDir, { withFileTypes: true });
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory()) {
+        continue;
+      }
       const manifestPath = joinPath(bundledDir, entry.name, "kaijibot.plugin.json");
-      if (!existsSync(manifestPath)) continue;
+      if (!existsSync(manifestPath)) {
+        continue;
+      }
       const raw = readFileSync(manifestPath, "utf-8");
       const manifest = JSON.parse(raw) as {
         providers?: string[];
         modelCatalog?: { providers?: Record<string, ModelCatalogEntry> };
       };
-      if (!manifest.providers?.includes(providerId)) continue;
+      if (!manifest.providers?.includes(providerId)) {
+        continue;
+      }
       const catalog = manifest.modelCatalog?.providers?.[providerId];
-      if (catalog?.models?.length) return catalog;
+      if (catalog?.models?.length) {
+        return catalog;
+      }
     }
   } catch {
     // best-effort
@@ -250,7 +268,9 @@ export function seedProviderModels(
   if (method?.applyConfig) {
     const cfg = loadConfig();
     const existing = cfg.models?.providers?.[providerId];
-    if (existing?.models?.length) return;
+    if (existing?.models?.length) {
+      return;
+    }
     const patched = applyProviderAuthConfigPatch(cfg, method.applyConfig(cfg));
     try {
       void writeConfigFile(patched);
@@ -268,15 +288,23 @@ export function seedProviderModelsFromManifest(
   getManifestRegistry?: () => PluginManifestRegistry,
 ): void {
   const manifestCatalog = resolveProviderModelCatalog(providerId, getManifestRegistry);
-  if (!manifestCatalog?.models?.length) return;
+  if (!manifestCatalog?.models?.length) {
+    return;
+  }
 
   const cfg = loadConfig();
   const existing = cfg.models?.providers?.[providerId];
-  if (existing?.models?.length) return;
+  if (existing?.models?.length) {
+    return;
+  }
 
   const nextCfg = structuredClone(cfg);
-  if (!nextCfg.models) nextCfg.models = {};
-  if (!nextCfg.models.providers) nextCfg.models.providers = {};
+  if (!nextCfg.models) {
+    nextCfg.models = {};
+  }
+  if (!nextCfg.models.providers) {
+    nextCfg.models.providers = {};
+  }
   nextCfg.models.providers[providerId] = {
     baseUrl: manifestCatalog.baseUrl ?? "",
     ...(manifestCatalog.api ? { api: manifestCatalog.api as ModelApi } : {}),

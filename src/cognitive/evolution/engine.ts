@@ -2,12 +2,7 @@ import { generateSkillDraft } from "./skill-draft-generator.js";
 import type { SkillLifecycleManager } from "./skill-lifecycle.js";
 import type { SkillPersistenceWriter } from "./skill-writer.js";
 import { EvolutionStore } from "./store.js";
-import type {
-  EvolutionCandidate,
-  SkillDraft,
-  SkillPatch,
-  SkillPatchResult,
-} from "./types.js";
+import type { EvolutionCandidate, SkillDraft, SkillPatch, SkillPatchResult } from "./types.js";
 
 export type DraftGeneratorFn = (candidate: EvolutionCandidate) => Promise<SkillDraft>;
 
@@ -18,7 +13,9 @@ export class EvolutionEngine {
   ) {}
 
   async generate(candidate: EvolutionCandidate): Promise<SkillDraft> {
-    if (this.draftGenerator) {return this.draftGenerator(candidate);}
+    if (this.draftGenerator) {
+      return this.draftGenerator(candidate);
+    }
     return generateSkillDraft(candidate);
   }
 

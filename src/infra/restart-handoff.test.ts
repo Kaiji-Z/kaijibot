@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { captureEnv } from "../test-utils/env.js";
 import { withTempDirSync } from "../test-helpers/temp-dir.js";
+import { captureEnv } from "../test-utils/env.js";
 import {
   type GatewayRestartHandoff,
   clearGatewayRestartHandoffSync,

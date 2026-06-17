@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
+import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
-import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("correction-tool");
 
@@ -47,7 +47,11 @@ export function createCorrectionReportTool(deps: {
           return textResult("No user session; correction not recorded.", { status: "no_session" });
         }
 
-        log.info("correction recorded", { userId, domain: params.domain, agentId: deps.agentId ?? "main" });
+        log.info("correction recorded", {
+          userId,
+          domain: params.domain,
+          agentId: deps.agentId ?? "main",
+        });
 
         const { CorrectionStore } = await import("../../cognitive/correction/store.js");
         const { resolveConfigDir } = await import("../../utils.js");

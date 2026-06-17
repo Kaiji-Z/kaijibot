@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { isValidNonNegativeByteSizeString } from "./byte-size.js";
+import { SOUL_PRESETS } from "./types.soul.js";
 import {
   HeartbeatSchema,
   AgentSandboxSchema,
   AgentModelSchema,
   MemorySearchSchema,
 } from "./zod-schema.agent-runtime.js";
-import { SOUL_PRESETS } from "./types.soul.js";
 import {
   BlockStreamingChunkSchema,
   BlockStreamingCoalesceSchema,

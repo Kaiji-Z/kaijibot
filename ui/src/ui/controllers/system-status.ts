@@ -9,7 +9,9 @@ export interface SystemStatusState {
 }
 
 export async function loadMemoryHealth(state: SystemStatusState): Promise<void> {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   try {
     const res = await state.client.request<{
       agentId: string;
@@ -27,7 +29,9 @@ export async function loadMemoryHealth(state: SystemStatusState): Promise<void> 
 }
 
 export async function loadUsageStatus(state: SystemStatusState): Promise<void> {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   try {
     const res = await state.client.request<UsageStatusResult>("usage.status", {});
     state.usageStatus = res;
@@ -37,7 +41,9 @@ export async function loadUsageStatus(state: SystemStatusState): Promise<void> {
 }
 
 export async function loadCognitiveStatus(state: SystemStatusState): Promise<void> {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   try {
     const res = await state.client.request<CognitiveStatusResult>("cognitive.status", {});
     state.cognitiveStatus = res;

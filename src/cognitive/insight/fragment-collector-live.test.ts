@@ -7,10 +7,7 @@
 import { describe, it, expect } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
-import {
-  collectFragments,
-  createDefaultFragmentCollectorDeps,
-} from "./fragment-collector.js";
+import { collectFragments, createDefaultFragmentCollectorDeps } from "./fragment-collector.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;

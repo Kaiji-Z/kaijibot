@@ -28,9 +28,7 @@ type GroqReasoningCompatPatch = Pick<
   "supportsReasoningEffort" | "supportedReasoningEfforts" | "thinkingLevelMap"
 >;
 
-export function resolveGroqReasoningCompatPatch(
-  modelId: string,
-): GroqReasoningCompatPatch | null {
+export function resolveGroqReasoningCompatPatch(modelId: string): GroqReasoningCompatPatch | null {
   const normalized = normalizeGroqModelId(modelId);
   if (normalized === GROQ_QWEN3_32B_ID) {
     return {

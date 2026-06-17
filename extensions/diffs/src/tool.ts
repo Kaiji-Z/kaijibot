@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
-import { Static, Type } from "typebox";
 import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
+import { Static, Type } from "typebox";
 import type { AnyAgentTool, KaijiBotPluginApi, KaijiBotPluginToolContext } from "../api.js";
 import { PlaywrightDiffScreenshotter, type DiffScreenshotter } from "./browser.js";
 import { resolveDiffImageRenderOptions } from "./config.js";

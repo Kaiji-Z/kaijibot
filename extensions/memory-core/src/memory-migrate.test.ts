@@ -14,14 +14,18 @@ import {
 // In-memory FsAdapter
 // ---------------------------------------------------------------------------
 
-function createMemoryFs(): { files: Map<string, string>; fs: FsAdapter & { unlink: (p: string) => Promise<void> } } {
+function createMemoryFs(): {
+  files: Map<string, string>;
+  fs: FsAdapter & { unlink: (p: string) => Promise<void> };
+} {
   const files = new Map<string, string>();
 
   const fs: FsAdapter & { unlink: (p: string) => Promise<void> } = {
     readFile: async (p: string) => {
       const content = files.get(p);
-      if (content === undefined)
-        {throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });}
+      if (content === undefined) {
+        throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
+      }
       return content;
     },
     writeFile: async (p: string, data: string) => {
@@ -42,14 +46,16 @@ function createMemoryFs(): { files: Map<string, string>; fs: FsAdapter & { unlin
     },
     stat: async (p: string) => {
       const content = files.get(p);
-      if (content === undefined)
-        {throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });}
+      if (content === undefined) {
+        throw Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" });
+      }
       return { mtimeMs: Date.now(), size: content.length };
     },
     rename: async (oldPath: string, newPath: string) => {
       const content = files.get(oldPath);
-      if (content === undefined)
-        {throw Object.assign(new Error(`ENOENT: ${oldPath}`), { code: "ENOENT" });}
+      if (content === undefined) {
+        throw Object.assign(new Error(`ENOENT: ${oldPath}`), { code: "ENOENT" });
+      }
       files.delete(oldPath);
       files.set(newPath, content);
     },

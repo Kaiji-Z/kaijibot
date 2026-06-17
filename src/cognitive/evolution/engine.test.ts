@@ -11,7 +11,7 @@ import type { EvolutionCandidate } from "./types.js";
 let tempDir: string;
 let store: EvolutionStore;
 let engine: EvolutionEngine;
-const AGENT = "main";
+const _AGENT = "main";
 
 function makeCandidate(overrides: Partial<EvolutionCandidate> = {}): EvolutionCandidate {
   return {

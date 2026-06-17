@@ -14,19 +14,19 @@ import { normalizeProviderId } from "./model-selection.js";
  * actual fetch flow.
  */
 export function createHeaderCapturingFetch(
-	provider: string,
-	baseFetch: typeof globalThis.fetch = globalThis.fetch,
+  provider: string,
+  baseFetch: typeof globalThis.fetch = globalThis.fetch,
 ): typeof globalThis.fetch {
-	const normalizedProvider = normalizeProviderId(provider);
-	return async (input, init) => {
-		const response = await baseFetch(input, init);
-		try {
-			captureHeadersFromResponse(normalizedProvider, response.headers);
-		} catch {
-			// Header capture must never break the actual fetch flow.
-		}
-		return response;
-	};
+  const normalizedProvider = normalizeProviderId(provider);
+  return async (input, init) => {
+    const response = await baseFetch(input, init);
+    try {
+      captureHeadersFromResponse(normalizedProvider, response.headers);
+    } catch {
+      // Header capture must never break the actual fetch flow.
+    }
+    return response;
+  };
 }
 
 /**
@@ -37,9 +37,11 @@ export function createHeaderCapturingFetch(
  * guard.
  */
 export function maybeCreateHeaderCapturingFetch(
-	provider: string | undefined,
-	baseFetch: typeof globalThis.fetch = globalThis.fetch,
+  provider: string | undefined,
+  baseFetch: typeof globalThis.fetch = globalThis.fetch,
 ): typeof globalThis.fetch {
-	if (!provider) return baseFetch;
-	return createHeaderCapturingFetch(provider, baseFetch);
+  if (!provider) {
+    return baseFetch;
+  }
+  return createHeaderCapturingFetch(provider, baseFetch);
 }

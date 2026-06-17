@@ -15,12 +15,17 @@ function resolveWorkspaces(cfg: KaijiBotConfig): WorkspaceEntry[] {
   for (const entry of agentList) {
     const workspaceDir = (entry as Record<string, unknown>).workspace as string | undefined;
     const agentId = entry.id as string | undefined;
-    if (!workspaceDir || !agentId) {continue;}
+    if (!workspaceDir || !agentId) {
+      continue;
+    }
     const existing = workspaceMap.get(workspaceDir) ?? [];
     existing.push(agentId);
     workspaceMap.set(workspaceDir, existing);
   }
-  return [...workspaceMap.entries()].map(([workspaceDir, agentIds]) => ({ workspaceDir, agentIds }));
+  return [...workspaceMap.entries()].map(([workspaceDir, agentIds]) => ({
+    workspaceDir,
+    agentIds,
+  }));
 }
 
 async function pathExists(inputPath: string): Promise<boolean> {

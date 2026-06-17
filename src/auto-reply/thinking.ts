@@ -84,7 +84,11 @@ export function getSupportedThinkingLevelsForModel(
     });
     if (typeof pluginDecision === "boolean") {
       const base: Array<"off" | "minimal" | "low" | "medium" | "high" | "xhigh"> = [
-        "off", "minimal", "low", "medium", "high",
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
       ];
       return pluginDecision ? [...base, "xhigh"] : base;
     }

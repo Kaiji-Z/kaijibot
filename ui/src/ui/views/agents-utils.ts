@@ -583,20 +583,30 @@ function resolveConfiguredModels(
   return options;
 }
 
-export function groupCatalogByProvider(catalog: ModelCatalogEntry[]): Map<string, ModelCatalogEntry[]> {
+export function groupCatalogByProvider(
+  catalog: ModelCatalogEntry[],
+): Map<string, ModelCatalogEntry[]> {
   const map = new Map<string, ModelCatalogEntry[]>();
   for (const entry of catalog) {
     const provider = entry.provider || "unknown";
-    if (!map.has(provider)) map.set(provider, []);
+    if (!map.has(provider)) {
+      map.set(provider, []);
+    }
     map.get(provider)!.push(entry);
   }
   return map;
 }
 
 export function formatContextWindow(ctx?: number): string {
-  if (!ctx) return "";
-  if (ctx >= 1_000_000) return `${(ctx / 1_000_000).toFixed(ctx % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (ctx >= 1_000) return `${Math.round(ctx / 1_000)}K`;
+  if (!ctx) {
+    return "";
+  }
+  if (ctx >= 1_000_000) {
+    return `${(ctx / 1_000_000).toFixed(ctx % 1_000_000 === 0 ? 0 : 1)}M`;
+  }
+  if (ctx >= 1_000) {
+    return `${Math.round(ctx / 1_000)}K`;
+  }
   return String(ctx);
 }
 
@@ -604,7 +614,9 @@ export function buildGroupedModelOptions(
   current: string | null | undefined,
   catalog: ModelCatalogEntry[],
 ): TemplateResult[] {
-  if (!catalog || catalog.length === 0) return [];
+  if (!catalog || catalog.length === 0) {
+    return [];
+  }
   const byProvider = groupCatalogByProvider(catalog);
   const providers = sortLocaleStrings(byProvider.keys());
   const results: TemplateResult[] = [];
@@ -985,16 +997,28 @@ export function deriveAgentStatusFromSessions(
 }
 
 export function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) {return `${(tokens / 1_000_000).toFixed(1)}M`;}
-  if (tokens >= 1_000) {return `${(tokens / 1_000).toFixed(1)}K`;}
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(1)}M`;
+  }
+  if (tokens >= 1_000) {
+    return `${(tokens / 1_000).toFixed(1)}K`;
+  }
   return String(tokens);
 }
 
 export function formatRelativeTime(ts: number | null): string {
-  if (!ts) {return "-";}
+  if (!ts) {
+    return "-";
+  }
   const seconds = Math.floor((Date.now() - ts) / 1000);
-  if (seconds < 60) {return "刚刚";}
-  if (seconds < 3600) {return `${Math.floor(seconds / 60)}分钟前`;}
-  if (seconds < 86400) {return `${Math.floor(seconds / 3600)}小时前`;}
+  if (seconds < 60) {
+    return "刚刚";
+  }
+  if (seconds < 3600) {
+    return `${Math.floor(seconds / 60)}分钟前`;
+  }
+  if (seconds < 86400) {
+    return `${Math.floor(seconds / 3600)}小时前`;
+  }
   return `${Math.floor(seconds / 86400)}天前`;
 }

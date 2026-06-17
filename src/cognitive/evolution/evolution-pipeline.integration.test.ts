@@ -15,12 +15,7 @@ import { generateSkillDraft } from "./skill-draft-generator.js";
 import { SkillLifecycleManager } from "./skill-lifecycle.js";
 import { SkillPersistenceWriter } from "./skill-writer.js";
 import { EvolutionStore } from "./store.js";
-import type {
-  EvolutionCandidate,
-  EvolutionRecord,
-  SkillDraft,
-  SkillPatch,
-} from "./types.js";
+import type { EvolutionCandidate, EvolutionRecord, SkillDraft, SkillPatch } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -5,8 +5,8 @@ import {
   normalizeLowercaseStringOrEmpty,
   normalizeOptionalString,
 } from "../shared/string-coerce.js";
-import { AgentModelSchema } from "./zod-schema.agent-model.js";
 import { SOUL_PRESETS } from "./types.soul.js";
+import { AgentModelSchema } from "./zod-schema.agent-model.js";
 import {
   GroupChatSchema,
   HumanDelaySchema,

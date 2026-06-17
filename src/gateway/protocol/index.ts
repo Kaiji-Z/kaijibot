@@ -312,12 +312,17 @@ export const validatePollParams = compileTypeBoxValidator<PollParams>(PollParams
 export const validateAgentParams = compileTypeBoxValidator(AgentParamsSchema);
 export const validateAgentIdentityParams =
   compileTypeBoxValidator<AgentIdentityParams>(AgentIdentityParamsSchema);
-export const validateAgentWaitParams = compileTypeBoxValidator<AgentWaitParams>(AgentWaitParamsSchema);
+export const validateAgentWaitParams =
+  compileTypeBoxValidator<AgentWaitParams>(AgentWaitParamsSchema);
 export const validateWakeParams = compileTypeBoxValidator<WakeParams>(WakeParamsSchema);
-export const validateAgentsListParams = compileTypeBoxValidator<AgentsListParams>(AgentsListParamsSchema);
-export const validateAgentsCreateParams = compileTypeBoxValidator<AgentsCreateParams>(AgentsCreateParamsSchema);
-export const validateAgentsUpdateParams = compileTypeBoxValidator<AgentsUpdateParams>(AgentsUpdateParamsSchema);
-export const validateAgentsDeleteParams = compileTypeBoxValidator<AgentsDeleteParams>(AgentsDeleteParamsSchema);
+export const validateAgentsListParams =
+  compileTypeBoxValidator<AgentsListParams>(AgentsListParamsSchema);
+export const validateAgentsCreateParams =
+  compileTypeBoxValidator<AgentsCreateParams>(AgentsCreateParamsSchema);
+export const validateAgentsUpdateParams =
+  compileTypeBoxValidator<AgentsUpdateParams>(AgentsUpdateParamsSchema);
+export const validateAgentsDeleteParams =
+  compileTypeBoxValidator<AgentsDeleteParams>(AgentsDeleteParamsSchema);
 export const validateAgentsFilesListParams = compileTypeBoxValidator<AgentsFilesListParams>(
   AgentsFilesListParamsSchema,
 );
@@ -330,7 +335,8 @@ export const validateAgentsFilesSetParams = compileTypeBoxValidator<AgentsFilesS
 export const validateNodePairRequestParams = compileTypeBoxValidator<NodePairRequestParams>(
   NodePairRequestParamsSchema,
 );
-export const validateNodePairListParams = compileTypeBoxValidator<NodePairListParams>(NodePairListParamsSchema);
+export const validateNodePairListParams =
+  compileTypeBoxValidator<NodePairListParams>(NodePairListParamsSchema);
 export const validateNodePairApproveParams = compileTypeBoxValidator<NodePairApproveParams>(
   NodePairApproveParamsSchema,
 );
@@ -340,17 +346,21 @@ export const validateNodePairRejectParams = compileTypeBoxValidator<NodePairReje
 export const validateNodePairVerifyParams = compileTypeBoxValidator<NodePairVerifyParams>(
   NodePairVerifyParamsSchema,
 );
-export const validateNodeRenameParams = compileTypeBoxValidator<NodeRenameParams>(NodeRenameParamsSchema);
+export const validateNodeRenameParams =
+  compileTypeBoxValidator<NodeRenameParams>(NodeRenameParamsSchema);
 export const validateNodeListParams = compileTypeBoxValidator<NodeListParams>(NodeListParamsSchema);
 export const validateNodePendingAckParams = compileTypeBoxValidator<NodePendingAckParams>(
   NodePendingAckParamsSchema,
 );
-export const validateNodeDescribeParams = compileTypeBoxValidator<NodeDescribeParams>(NodeDescribeParamsSchema);
-export const validateNodeInvokeParams = compileTypeBoxValidator<NodeInvokeParams>(NodeInvokeParamsSchema);
+export const validateNodeDescribeParams =
+  compileTypeBoxValidator<NodeDescribeParams>(NodeDescribeParamsSchema);
+export const validateNodeInvokeParams =
+  compileTypeBoxValidator<NodeInvokeParams>(NodeInvokeParamsSchema);
 export const validateNodeInvokeResultParams = compileTypeBoxValidator<NodeInvokeResultParams>(
   NodeInvokeResultParamsSchema,
 );
-export const validateNodeEventParams = compileTypeBoxValidator<NodeEventParams>(NodeEventParamsSchema);
+export const validateNodeEventParams =
+  compileTypeBoxValidator<NodeEventParams>(NodeEventParamsSchema);
 export const validateNodePendingDrainParams = compileTypeBoxValidator<NodePendingDrainParams>(
   NodePendingDrainParamsSchema,
 );
@@ -364,7 +374,8 @@ export const validateSecretsResolveParams = compileTypeBoxValidator<SecretsResol
 export const validateSecretsResolveResult = compileTypeBoxValidator<SecretsResolveResult>(
   SecretsResolveResultSchema,
 );
-export const validateSessionsListParams = compileTypeBoxValidator<SessionsListParams>(SessionsListParamsSchema);
+export const validateSessionsListParams =
+  compileTypeBoxValidator<SessionsListParams>(SessionsListParamsSchema);
 export const validateSessionsPreviewParams = compileTypeBoxValidator<SessionsPreviewParams>(
   SessionsPreviewParamsSchema,
 );
@@ -374,12 +385,14 @@ export const validateSessionsResolveParams = compileTypeBoxValidator<SessionsRes
 export const validateSessionsCreateParams = compileTypeBoxValidator<SessionsCreateParams>(
   SessionsCreateParamsSchema,
 );
-export const validateSessionsSendParams = compileTypeBoxValidator<SessionsSendParams>(SessionsSendParamsSchema);
-export const validateSessionsMessagesSubscribeParams = compileTypeBoxValidator<SessionsMessagesSubscribeParams>(
-  SessionsMessagesSubscribeParamsSchema,
-);
+export const validateSessionsSendParams =
+  compileTypeBoxValidator<SessionsSendParams>(SessionsSendParamsSchema);
+export const validateSessionsMessagesSubscribeParams =
+  compileTypeBoxValidator<SessionsMessagesSubscribeParams>(SessionsMessagesSubscribeParamsSchema);
 export const validateSessionsMessagesUnsubscribeParams =
-  compileTypeBoxValidator<SessionsMessagesUnsubscribeParams>(SessionsMessagesUnsubscribeParamsSchema);
+  compileTypeBoxValidator<SessionsMessagesUnsubscribeParams>(
+    SessionsMessagesUnsubscribeParamsSchema,
+  );
 export const validateSessionsAbortParams =
   compileTypeBoxValidator<SessionsAbortParams>(SessionsAbortParamsSchema);
 export const validateSessionsPatchParams =
@@ -392,79 +405,100 @@ export const validateSessionsDeleteParams = compileTypeBoxValidator<SessionsDele
 export const validateSessionsCompactParams = compileTypeBoxValidator<SessionsCompactParams>(
   SessionsCompactParamsSchema,
 );
-export const validateSessionsCompactionListParams = compileTypeBoxValidator<SessionsCompactionListParams>(
-  SessionsCompactionListParamsSchema,
-);
-export const validateSessionsCompactionGetParams = compileTypeBoxValidator<SessionsCompactionGetParams>(
-  SessionsCompactionGetParamsSchema,
-);
-export const validateSessionsCompactionBranchParams = compileTypeBoxValidator<SessionsCompactionBranchParams>(
-  SessionsCompactionBranchParamsSchema,
-);
-export const validateSessionsCompactionRestoreParams = compileTypeBoxValidator<SessionsCompactionRestoreParams>(
-  SessionsCompactionRestoreParamsSchema,
-);
+export const validateSessionsCompactionListParams =
+  compileTypeBoxValidator<SessionsCompactionListParams>(SessionsCompactionListParamsSchema);
+export const validateSessionsCompactionGetParams =
+  compileTypeBoxValidator<SessionsCompactionGetParams>(SessionsCompactionGetParamsSchema);
+export const validateSessionsCompactionBranchParams =
+  compileTypeBoxValidator<SessionsCompactionBranchParams>(SessionsCompactionBranchParamsSchema);
+export const validateSessionsCompactionRestoreParams =
+  compileTypeBoxValidator<SessionsCompactionRestoreParams>(SessionsCompactionRestoreParamsSchema);
 export const validateSessionsUsageParams =
   compileTypeBoxValidator<SessionsUsageParams>(SessionsUsageParamsSchema);
-export const validateConfigGetParams = compileTypeBoxValidator<ConfigGetParams>(ConfigGetParamsSchema);
-export const validateConfigSetParams = compileTypeBoxValidator<ConfigSetParams>(ConfigSetParamsSchema);
-export const validateConfigApplyParams = compileTypeBoxValidator<ConfigApplyParams>(ConfigApplyParamsSchema);
-export const validateConfigPatchParams = compileTypeBoxValidator<ConfigPatchParams>(ConfigPatchParamsSchema);
-export const validateConfigSchemaParams = compileTypeBoxValidator<ConfigSchemaParams>(ConfigSchemaParamsSchema);
+export const validateConfigGetParams =
+  compileTypeBoxValidator<ConfigGetParams>(ConfigGetParamsSchema);
+export const validateConfigSetParams =
+  compileTypeBoxValidator<ConfigSetParams>(ConfigSetParamsSchema);
+export const validateConfigApplyParams =
+  compileTypeBoxValidator<ConfigApplyParams>(ConfigApplyParamsSchema);
+export const validateConfigPatchParams =
+  compileTypeBoxValidator<ConfigPatchParams>(ConfigPatchParamsSchema);
+export const validateConfigSchemaParams =
+  compileTypeBoxValidator<ConfigSchemaParams>(ConfigSchemaParamsSchema);
 export const validateConfigSchemaLookupParams = compileTypeBoxValidator<ConfigSchemaLookupParams>(
   ConfigSchemaLookupParamsSchema,
 );
 export const validateConfigSchemaLookupResult = compileTypeBoxValidator<ConfigSchemaLookupResult>(
   ConfigSchemaLookupResultSchema,
 );
-export const validateWizardStartParams = compileTypeBoxValidator<WizardStartParams>(WizardStartParamsSchema);
-export const validateWizardNextParams = compileTypeBoxValidator<WizardNextParams>(WizardNextParamsSchema);
-export const validateWizardCancelParams = compileTypeBoxValidator<WizardCancelParams>(WizardCancelParamsSchema);
-export const validateWizardStatusParams = compileTypeBoxValidator<WizardStatusParams>(WizardStatusParamsSchema);
+export const validateWizardStartParams =
+  compileTypeBoxValidator<WizardStartParams>(WizardStartParamsSchema);
+export const validateWizardNextParams =
+  compileTypeBoxValidator<WizardNextParams>(WizardNextParamsSchema);
+export const validateWizardCancelParams =
+  compileTypeBoxValidator<WizardCancelParams>(WizardCancelParamsSchema);
+export const validateWizardStatusParams =
+  compileTypeBoxValidator<WizardStatusParams>(WizardStatusParamsSchema);
 export const validateTalkModeParams = compileTypeBoxValidator<TalkModeParams>(TalkModeParamsSchema);
-export const validateTalkConfigParams = compileTypeBoxValidator<TalkConfigParams>(TalkConfigParamsSchema);
-export const validateTalkConfigResult = compileTypeBoxValidator<TalkConfigResult>(TalkConfigResultSchema);
-export const validateTalkSpeakParams = compileTypeBoxValidator<TalkSpeakParams>(TalkSpeakParamsSchema);
-export const validateTalkSpeakResult = compileTypeBoxValidator<TalkSpeakResult>(TalkSpeakResultSchema);
+export const validateTalkConfigParams =
+  compileTypeBoxValidator<TalkConfigParams>(TalkConfigParamsSchema);
+export const validateTalkConfigResult =
+  compileTypeBoxValidator<TalkConfigResult>(TalkConfigResultSchema);
+export const validateTalkSpeakParams =
+  compileTypeBoxValidator<TalkSpeakParams>(TalkSpeakParamsSchema);
+export const validateTalkSpeakResult =
+  compileTypeBoxValidator<TalkSpeakResult>(TalkSpeakResultSchema);
 export const validateChannelsStatusParams = compileTypeBoxValidator<ChannelsStatusParams>(
   ChannelsStatusParamsSchema,
 );
 export const validateChannelsLogoutParams = compileTypeBoxValidator<ChannelsLogoutParams>(
   ChannelsLogoutParamsSchema,
 );
-export const validateModelsListParams = compileTypeBoxValidator<ModelsListParams>(ModelsListParamsSchema);
+export const validateModelsListParams =
+  compileTypeBoxValidator<ModelsListParams>(ModelsListParamsSchema);
 export const validateAuthStoreApiKeyParams = compileTypeBoxValidator<AuthStoreApiKeyParams>(
   AuthStoreApiKeyParamsSchema,
 );
 export const validateAuthStoreApiKeyResult = compileTypeBoxValidator<AuthStoreApiKeyResult>(
   AuthStoreApiKeyResultSchema,
 );
-export const validateAuthListProviderStatusParams = compileTypeBoxValidator<AuthListProviderStatusParams>(
-  AuthListProviderStatusParamsSchema,
-);
-export const validateAuthListProviderStatusResult = compileTypeBoxValidator<AuthListProviderStatusResult>(
-  AuthListProviderStatusResultSchema,
-);
+export const validateAuthListProviderStatusParams =
+  compileTypeBoxValidator<AuthListProviderStatusParams>(AuthListProviderStatusParamsSchema);
+export const validateAuthListProviderStatusResult =
+  compileTypeBoxValidator<AuthListProviderStatusResult>(AuthListProviderStatusResultSchema);
 export const validateAuthListProviderAuthOptionsParams =
-  compileTypeBoxValidator<AuthListProviderAuthOptionsParams>(AuthListProviderAuthOptionsParamsSchema);
+  compileTypeBoxValidator<AuthListProviderAuthOptionsParams>(
+    AuthListProviderAuthOptionsParamsSchema,
+  );
 export const validateAuthListProviderAuthOptionsResult =
-  compileTypeBoxValidator<AuthListProviderAuthOptionsResult>(AuthListProviderAuthOptionsResultSchema);
-export const validateSkillsStatusParams = compileTypeBoxValidator<SkillsStatusParams>(SkillsStatusParamsSchema);
-export const validateToolsCatalogParams = compileTypeBoxValidator<ToolsCatalogParams>(ToolsCatalogParamsSchema);
+  compileTypeBoxValidator<AuthListProviderAuthOptionsResult>(
+    AuthListProviderAuthOptionsResultSchema,
+  );
+export const validateSkillsStatusParams =
+  compileTypeBoxValidator<SkillsStatusParams>(SkillsStatusParamsSchema);
+export const validateToolsCatalogParams =
+  compileTypeBoxValidator<ToolsCatalogParams>(ToolsCatalogParamsSchema);
 export const validateToolsEffectiveParams = compileTypeBoxValidator<ToolsEffectiveParams>(
   ToolsEffectiveParamsSchema,
 );
-export const validateSkillsBinsParams = compileTypeBoxValidator<SkillsBinsParams>(SkillsBinsParamsSchema);
+export const validateSkillsBinsParams =
+  compileTypeBoxValidator<SkillsBinsParams>(SkillsBinsParamsSchema);
 export const validateSkillsInstallParams =
   compileTypeBoxValidator<SkillsInstallParams>(SkillsInstallParamsSchema);
-export const validateSkillsUpdateParams = compileTypeBoxValidator<SkillsUpdateParams>(SkillsUpdateParamsSchema);
-export const validateSkillsSearchParams = compileTypeBoxValidator<SkillsSearchParams>(SkillsSearchParamsSchema);
-export const validateSkillsDetailParams = compileTypeBoxValidator<SkillsDetailParams>(SkillsDetailParamsSchema);
+export const validateSkillsUpdateParams =
+  compileTypeBoxValidator<SkillsUpdateParams>(SkillsUpdateParamsSchema);
+export const validateSkillsSearchParams =
+  compileTypeBoxValidator<SkillsSearchParams>(SkillsSearchParamsSchema);
+export const validateSkillsDetailParams =
+  compileTypeBoxValidator<SkillsDetailParams>(SkillsDetailParamsSchema);
 export const validateCronListParams = compileTypeBoxValidator<CronListParams>(CronListParamsSchema);
-export const validateCronStatusParams = compileTypeBoxValidator<CronStatusParams>(CronStatusParamsSchema);
+export const validateCronStatusParams =
+  compileTypeBoxValidator<CronStatusParams>(CronStatusParamsSchema);
 export const validateCronAddParams = compileTypeBoxValidator<CronAddParams>(CronAddParamsSchema);
-export const validateCronUpdateParams = compileTypeBoxValidator<CronUpdateParams>(CronUpdateParamsSchema);
-export const validateCronRemoveParams = compileTypeBoxValidator<CronRemoveParams>(CronRemoveParamsSchema);
+export const validateCronUpdateParams =
+  compileTypeBoxValidator<CronUpdateParams>(CronUpdateParamsSchema);
+export const validateCronRemoveParams =
+  compileTypeBoxValidator<CronRemoveParams>(CronRemoveParamsSchema);
 export const validateCronRunParams = compileTypeBoxValidator<CronRunParams>(CronRunParamsSchema);
 export const validateCronRunsParams = compileTypeBoxValidator<CronRunsParams>(CronRunsParamsSchema);
 export const validateDevicePairListParams = compileTypeBoxValidator<DevicePairListParams>(
@@ -500,28 +534,28 @@ export const validateExecApprovalRequestParams = compileTypeBoxValidator<ExecApp
 export const validateExecApprovalResolveParams = compileTypeBoxValidator<ExecApprovalResolveParams>(
   ExecApprovalResolveParamsSchema,
 );
-export const validatePluginApprovalRequestParams = compileTypeBoxValidator<PluginApprovalRequestParams>(
-  PluginApprovalRequestParamsSchema,
-);
-export const validatePluginApprovalResolveParams = compileTypeBoxValidator<PluginApprovalResolveParams>(
-  PluginApprovalResolveParamsSchema,
-);
-export const validateExecApprovalsNodeGetParams = compileTypeBoxValidator<ExecApprovalsNodeGetParams>(
-  ExecApprovalsNodeGetParamsSchema,
-);
-export const validateExecApprovalsNodeSetParams = compileTypeBoxValidator<ExecApprovalsNodeSetParams>(
-  ExecApprovalsNodeSetParamsSchema,
-);
+export const validatePluginApprovalRequestParams =
+  compileTypeBoxValidator<PluginApprovalRequestParams>(PluginApprovalRequestParamsSchema);
+export const validatePluginApprovalResolveParams =
+  compileTypeBoxValidator<PluginApprovalResolveParams>(PluginApprovalResolveParamsSchema);
+export const validateExecApprovalsNodeGetParams =
+  compileTypeBoxValidator<ExecApprovalsNodeGetParams>(ExecApprovalsNodeGetParamsSchema);
+export const validateExecApprovalsNodeSetParams =
+  compileTypeBoxValidator<ExecApprovalsNodeSetParams>(ExecApprovalsNodeSetParamsSchema);
 export const validateLogsTailParams = compileTypeBoxValidator<LogsTailParams>(LogsTailParamsSchema);
 export const validateChatHistoryParams = compileTypeBoxValidator(ChatHistoryParamsSchema);
 export const validateChatSendParams = compileTypeBoxValidator(ChatSendParamsSchema);
-export const validateChatAbortParams = compileTypeBoxValidator<ChatAbortParams>(ChatAbortParamsSchema);
-export const validateChatInjectParams = compileTypeBoxValidator<ChatInjectParams>(ChatInjectParamsSchema);
+export const validateChatAbortParams =
+  compileTypeBoxValidator<ChatAbortParams>(ChatAbortParamsSchema);
+export const validateChatInjectParams =
+  compileTypeBoxValidator<ChatInjectParams>(ChatInjectParamsSchema);
 export const validateChatEvent = compileTypeBoxValidator(ChatEventSchema);
-export const validateUpdateRunParams = compileTypeBoxValidator<UpdateRunParams>(UpdateRunParamsSchema);
+export const validateUpdateRunParams =
+  compileTypeBoxValidator<UpdateRunParams>(UpdateRunParamsSchema);
 export const validateWebLoginStartParams =
   compileTypeBoxValidator<WebLoginStartParams>(WebLoginStartParamsSchema);
-export const validateWebLoginWaitParams = compileTypeBoxValidator<WebLoginWaitParams>(WebLoginWaitParamsSchema);
+export const validateWebLoginWaitParams =
+  compileTypeBoxValidator<WebLoginWaitParams>(WebLoginWaitParamsSchema);
 
 export function formatValidationErrors(errors: TypeBoxValidationError[] | null | undefined) {
   if (!errors?.length) {

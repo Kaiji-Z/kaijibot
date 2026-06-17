@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import {
   enablePluginInConfig,
   getScopedCredentialValue,
@@ -7,6 +6,7 @@ import {
   setProviderWebSearchPluginConfigValue,
   type WebSearchProviderPlugin,
 } from "kaijibot/plugin-sdk/provider-web-search";
+import { Type } from "typebox";
 import { runTavilySearch } from "./tavily-client.js";
 
 const GenericTavilySearchSchema = Type.Object(

@@ -29,7 +29,9 @@ export type InterestInferenceDeps = {
 function resolveInferenceModel(config: KaijiBotConfig): string {
   const explicit =
     config.cognitive?.insight?.inferenceModel ?? config.cognitive?.persona?.extractionModel;
-  if (explicit) return explicit;
+  if (explicit) {
+    return explicit;
+  }
   const resolved = resolveDefaultModelForAgent({ cfg: config });
   return `${resolved.provider}/${resolved.model}`;
 }

@@ -701,8 +701,7 @@ export class ProactiveScheduler {
       const prevDomains =
         recentDomains.length >= 1 ? (recentDomains[recentDomains.length - 1] ?? []) : [];
       const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
-      const prevMode =
-        recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
+      const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
       persona = processNoResponse(persona, {
         previousDomains: prevDomains,
         previousMode: prevMode,

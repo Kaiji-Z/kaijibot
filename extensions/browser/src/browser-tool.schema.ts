@@ -1,5 +1,5 @@
-import { Type } from "typebox";
 import { optionalStringEnum, stringEnum } from "kaijibot/plugin-sdk/channel-actions";
+import { Type } from "typebox";
 
 const BROWSER_ACT_KINDS = [
   "click",

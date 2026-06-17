@@ -550,13 +550,14 @@ const MAX_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
  * Resolves cooldown using priority chain: retryAfterMs > quotaProbeMs > rateLimitResetMs > fixedBackoffMs.
  * Falls back to fixedBackoffMs when no override signal is available or all are undefined.
  */
-function resolveCooldownWithOverride(
-  fixedBackoffMs: number,
-  override?: CooldownOverride,
-): number {
-  if (!override) return fixedBackoffMs;
+function resolveCooldownWithOverride(fixedBackoffMs: number, override?: CooldownOverride): number {
+  if (!override) {
+    return fixedBackoffMs;
+  }
   const overrideMs = override.retryAfterMs ?? override.quotaProbeMs ?? override.rateLimitResetMs;
-  if (overrideMs === undefined) return fixedBackoffMs;
+  if (overrideMs === undefined) {
+    return fixedBackoffMs;
+  }
   return Math.min(Math.max(0, overrideMs), MAX_COOLDOWN_MS);
 }
 

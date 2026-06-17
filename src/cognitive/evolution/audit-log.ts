@@ -42,7 +42,9 @@ export class AuditLog {
     since?: number;
   }): Promise<AuditEntry[]> {
     const path = this.filePath();
-    if (!existsSync(path)) {return [];}
+    if (!existsSync(path)) {
+      return [];
+    }
 
     try {
       const raw = await readFile(path, "utf-8");
@@ -52,9 +54,15 @@ export class AuditLog {
       for (const line of lines) {
         try {
           const entry = JSON.parse(line) as AuditEntry;
-          if (filter.actor && entry.actor !== filter.actor) {continue;}
-          if (filter.operation && entry.operation !== filter.operation) {continue;}
-          if (filter.since && entry.timestamp < filter.since) {continue;}
+          if (filter.actor && entry.actor !== filter.actor) {
+            continue;
+          }
+          if (filter.operation && entry.operation !== filter.operation) {
+            continue;
+          }
+          if (filter.since && entry.timestamp < filter.since) {
+            continue;
+          }
           entries.push(entry);
         } catch {
           // Skip malformed lines

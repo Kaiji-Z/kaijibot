@@ -24,22 +24,24 @@ export type TerminalMessageApiCode = 230011 | 231003;
 
 /** Strip whitespace; return undefined when empty. */
 export function normalizeMessageId(id: string | undefined): string | undefined {
-  if (id == null) return undefined;
+  if (id == null) {
+    return undefined;
+  }
   const trimmed = id.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
 // Re-export extractLarkApiCode from card-error.ts (handles all 3 error shapes
 // including Axios-style response.data.code). Avoid duplicating the implementation.
-export { extractLarkApiCode } from './card-error.js';
-import { extractLarkApiCode } from './card-error.js';
+export { extractLarkApiCode } from "./card-error.js";
+import { extractLarkApiCode } from "./card-error.js";
 
 // ---------------------------------------------------------------------------
 // Type guard
 // ---------------------------------------------------------------------------
 
 export function isTerminalMessageApiCode(code: unknown): code is TerminalMessageApiCode {
-  return typeof code === 'number' && MESSAGE_TERMINAL_CODES.has(code);
+  return typeof code === "number" && MESSAGE_TERMINAL_CODES.has(code);
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +82,9 @@ export function markMessageUnavailable(params: {
   operation?: string;
 }): void {
   const normalizedId = normalizeMessageId(params.messageId);
-  if (!normalizedId) return;
+  if (!normalizedId) {
+    return;
+  }
 
   if (unavailableMessageCache.size >= MAX_CACHE_SIZE_BEFORE_PRUNE) {
     pruneExpired();
@@ -97,10 +101,14 @@ export function getMessageUnavailableState(
   messageId: string | undefined,
 ): MessageUnavailableState | undefined {
   const normalizedId = normalizeMessageId(messageId);
-  if (!normalizedId) return undefined;
+  if (!normalizedId) {
+    return undefined;
+  }
 
   const state = unavailableMessageCache.get(normalizedId);
-  if (!state) return undefined;
+  if (!state) {
+    return undefined;
+  }
 
   if (Date.now() - state.markedAtMs > UNAVAILABLE_CACHE_TTL_MS) {
     unavailableMessageCache.delete(normalizedId);
@@ -120,10 +128,14 @@ export function markMessageUnavailableFromError(params: {
   operation?: string;
 }): TerminalMessageApiCode | undefined {
   const normalizedId = normalizeMessageId(params.messageId);
-  if (!normalizedId) return undefined;
+  if (!normalizedId) {
+    return undefined;
+  }
 
   const code = extractLarkApiCode(params.error);
-  if (!isTerminalMessageApiCode(code)) return undefined;
+  if (!isTerminalMessageApiCode(code)) {
+    return undefined;
+  }
 
   markMessageUnavailable({
     messageId: normalizedId,
@@ -143,11 +155,11 @@ export class MessageUnavailableError extends Error {
   readonly operation?: string;
 
   constructor(params: { messageId: string; apiCode: TerminalMessageApiCode; operation?: string }) {
-    const operationText = params.operation ? `, op=${params.operation}` : '';
+    const operationText = params.operation ? `, op=${params.operation}` : "";
     super(
       `[feishu-message-unavailable] message ${params.messageId} unavailable (code=${params.apiCode}${operationText})`,
     );
-    this.name = 'MessageUnavailableError';
+    this.name = "MessageUnavailableError";
     this.messageId = params.messageId;
     this.apiCode = params.apiCode;
     this.operation = params.operation;
@@ -157,9 +169,9 @@ export class MessageUnavailableError extends Error {
 export function isMessageUnavailableError(error: unknown): error is MessageUnavailableError {
   return (
     error instanceof MessageUnavailableError ||
-    (typeof error === 'object' &&
+    (typeof error === "object" &&
       error != null &&
-      (error as { name?: string }).name === 'MessageUnavailableError')
+      (error as { name?: string }).name === "MessageUnavailableError")
   );
 }
 
@@ -169,10 +181,14 @@ export function isMessageUnavailableError(error: unknown): error is MessageUnava
 
 export function assertMessageAvailable(messageId: string | undefined, operation?: string): void {
   const normalizedId = normalizeMessageId(messageId);
-  if (!normalizedId) return;
+  if (!normalizedId) {
+    return;
+  }
 
   const state = getMessageUnavailableState(normalizedId);
-  if (!state) return;
+  if (!state) {
+    return;
+  }
 
   throw new MessageUnavailableError({
     messageId: normalizedId,
@@ -254,9 +270,15 @@ export class UnavailableGuard {
    * Returns `true` if the message is already known to be unavailable.
    */
   shouldSkip(source: string): boolean {
-    if (this.terminated) return true;
-    if (!this.replyToMessageId) return false;
-    if (!isMessageUnavailable(this.replyToMessageId)) return false;
+    if (this.terminated) {
+      return true;
+    }
+    if (!this.replyToMessageId) {
+      return false;
+    }
+    if (!isMessageUnavailable(this.replyToMessageId)) {
+      return false;
+    }
     return this.terminate(source);
   }
 
@@ -268,7 +290,9 @@ export class UnavailableGuard {
    * @returns `true` if the pipeline was (or already had been) terminated.
    */
   terminate(source: string, err?: unknown): boolean {
-    if (this.terminated) return true;
+    if (this.terminated) {
+      return true;
+    }
 
     const fromError = isMessageUnavailableError(err) ? err : undefined;
     const cardMessageId = this.getCardMessageId();
@@ -291,7 +315,9 @@ export class UnavailableGuard {
         apiCode = detectedCode;
       }
     }
-    if (!apiCode) return false;
+    if (!apiCode) {
+      return false;
+    }
 
     this.terminated = true;
     this.onTerminate();

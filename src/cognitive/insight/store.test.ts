@@ -226,7 +226,11 @@ describe("InsightStore", () => {
     });
 
     it("returns undefined when insight has no deliveryMessageId", async () => {
-      await store.save(AGENT, "user-1", makeInsight({ id: "no-delivery-id", generatedAt: Date.now() }));
+      await store.save(
+        AGENT,
+        "user-1",
+        makeInsight({ id: "no-delivery-id", generatedAt: Date.now() }),
+      );
       const found = await store.findByDeliveryMessageId(AGENT, "user-1", "om_anything");
       expect(found).toBeUndefined();
     });

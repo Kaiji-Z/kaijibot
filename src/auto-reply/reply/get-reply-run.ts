@@ -305,8 +305,8 @@ export async function runPreparedReply(
       const snapshot = await readConfigFileSnapshot();
       const hasSoulPreset = Boolean(
         snapshot.resolved?.soul?.preset ||
-          snapshot.resolved?.agents?.defaults?.soul?.preset ||
-          snapshot.resolved?.agents?.list?.some((a) => a.soul?.preset),
+        snapshot.resolved?.agents?.defaults?.soul?.preset ||
+        snapshot.resolved?.agents?.list?.some((a) => a.soul?.preset),
       );
       if (!hasSoulPreset) {
         extraSystemPromptParts.push(

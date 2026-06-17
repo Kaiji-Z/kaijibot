@@ -1039,7 +1039,9 @@ export async function compactEmbeddedPiSessionDirect(
                   }
                   const keptEntries: SessionEntry[] = [];
                   for (const entry of allEntries) {
-                    if (removedIds.has(entry.id)) {continue;}
+                    if (removedIds.has(entry.id)) {
+                      continue;
+                    }
                     let newParentId = entry.parentId;
                     while (newParentId !== null && removedIds.has(newParentId)) {
                       const parent = entryById.get(newParentId);

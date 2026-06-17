@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/config-runtime";
 import {
   isNonSecretApiKeyMarker,
@@ -18,6 +17,7 @@ import {
 } from "kaijibot/plugin-sdk/provider-web-search";
 import { fetchWithSsrFGuard } from "kaijibot/plugin-sdk/ssrf-runtime";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
+import { Type } from "typebox";
 import { OLLAMA_DEFAULT_BASE_URL } from "./defaults.js";
 import {
   buildOllamaBaseUrlSsrFPolicy,

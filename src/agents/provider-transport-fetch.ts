@@ -1,11 +1,11 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { fetchWithSsrFGuard } from "../infra/net/fetch-guard.js";
+import { maybeCreateHeaderCapturingFetch } from "./provider-fetch-wrapper.js";
 import {
   buildProviderRequestDispatcherPolicy,
   getModelProviderRequestTransport,
   resolveProviderRequestPolicyConfig,
 } from "./provider-request-config.js";
-import { maybeCreateHeaderCapturingFetch } from "./provider-fetch-wrapper.js";
 
 function buildManagedResponse(response: Response, release: () => Promise<void>): Response {
   if (!response.body) {

@@ -3,8 +3,8 @@ import { completeSimple, type Api, type Model, type TextContent } from "@earendi
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("cognitive/evolution/standalone-generate");
 
@@ -111,12 +111,7 @@ export function createStandaloneGenerateTextWithDeps(
 // polls until terminal, and returns the assistant text.
 // ---------------------------------------------------------------------------
 
-const TERMINAL_BATCH_STATUSES = new Set([
-  "completed",
-  "failed",
-  "expired",
-  "cancelled",
-]);
+const TERMINAL_BATCH_STATUSES = new Set(["completed", "failed", "expired", "cancelled"]);
 
 export type BatchHttpDeps = {
   fetchFn: typeof fetch;
@@ -154,7 +149,10 @@ function extractBatchText(body: unknown): string {
   }
   if (Array.isArray(content)) {
     return content
-      .filter((b): b is { type: string; text: string } => typeof b === "object" && b !== null && (b as { type?: string }).type === "text")
+      .filter(
+        (b): b is { type: string; text: string } =>
+          typeof b === "object" && b !== null && (b as { type?: string }).type === "text",
+      )
       .map((b) => b.text ?? "")
       .join("")
       .trim();
@@ -167,18 +165,16 @@ function extractBatchText(body: unknown): string {
  * until it completes, returning the assistant text. Throws on any error,
  * non-completed terminal status, or timeout.
  */
-export async function runBatchGenerate(
-  params: {
-    model: Model<Api>;
-    auth: ResolvedProviderAuth;
-    prompt: string;
-    maxTokens: number;
-    requestTimeoutMs: number;
-    pollIntervalMs: number;
-    batchTimeoutMs: number;
-    deps: BatchHttpDeps;
-  },
-): Promise<string> {
+export async function runBatchGenerate(params: {
+  model: Model<Api>;
+  auth: ResolvedProviderAuth;
+  prompt: string;
+  maxTokens: number;
+  requestTimeoutMs: number;
+  pollIntervalMs: number;
+  batchTimeoutMs: number;
+  deps: BatchHttpDeps;
+}): Promise<string> {
   const { model, auth, prompt, maxTokens, requestTimeoutMs, pollIntervalMs, batchTimeoutMs, deps } =
     params;
 
@@ -300,9 +296,7 @@ export async function runBatchGenerate(
       throw new Error(`Batch request error for ${customId}: ${msg}`);
     }
     if (entry.response?.status_code && entry.response.status_code >= 400) {
-      throw new Error(
-        `Batch request ${customId} failed upstream (${entry.response.status_code})`,
-      );
+      throw new Error(`Batch request ${customId} failed upstream (${entry.response.status_code})`);
     }
     return extractBatchText(entry.response?.body);
   }

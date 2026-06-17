@@ -51,13 +51,17 @@ export const DEFAULT_THEME: ThemeName = "ink-jade";
  * Parse a stored theme selection, handling legacy values.
  * Returns a valid ThemeName, defaulting to ink-jade.
  */
-export function parseThemeSelection(
-  raw: string | null | undefined,
-): ThemeName {
-  if (!raw) {return DEFAULT_THEME;}
-  if (VALID_THEME_NAMES.has(raw)) {return raw as ThemeName;}
+export function parseThemeSelection(raw: string | null | undefined): ThemeName {
+  if (!raw) {
+    return DEFAULT_THEME;
+  }
+  if (VALID_THEME_NAMES.has(raw)) {
+    return raw as ThemeName;
+  }
   const mapped = LEGACY_MAP[raw];
-  if (mapped) {return mapped;}
+  if (mapped) {
+    return mapped;
+  }
   return DEFAULT_THEME;
 }
 
@@ -68,10 +72,7 @@ export function parseThemeSelection(
  *
  * For "system" mode: resolves to "light" or "dark" based on OS preference.
  */
-export function resolveTheme(
-  name: ThemeName,
-  mode: ThemeMode,
-): ResolvedTheme {
+export function resolveTheme(name: ThemeName, _mode: ThemeMode): ResolvedTheme {
   // Theme name is always preserved — mode is handled by CSS data-theme-mode
   return name;
 }
@@ -80,14 +81,9 @@ export function resolveTheme(
  * Resolve theme + mode to the effective color scheme ("light" or "dark").
  * Used to set data-theme-mode and color-scheme CSS property on <html>.
  */
-export function resolveColorScheme(
-  theme: ThemeName,
-  mode: ThemeMode,
-): "light" | "dark" {
+export function resolveColorScheme(theme: ThemeName, mode: ThemeMode): "light" | "dark" {
   if (mode === "system") {
-    const prefersLight = globalThis.matchMedia?.(
-      "(prefers-color-scheme: light)",
-    )?.matches;
+    const prefersLight = globalThis.matchMedia?.("(prefers-color-scheme: light)")?.matches;
     return prefersLight ? "light" : "dark";
   }
   return mode;

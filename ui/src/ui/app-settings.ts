@@ -224,11 +224,18 @@ async function ensurePersonaAndAutoSelect(
     );
   }
   const raw = app.cognitivePersonaList;
-  if (!raw || typeof raw !== "object") return null;
-  const agents = (raw as { agents?: Array<{ agentId: string; users: Array<{ userId: string }> }> }).agents;
-  if (!agents?.length) return null;
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const agents = (raw as { agents?: Array<{ agentId: string; users: Array<{ userId: string }> }> })
+    .agents;
+  if (!agents?.length) {
+    return null;
+  }
   const first = agents[0];
-  if (!first.users?.length) return null;
+  if (!first.users?.length) {
+    return null;
+  }
   return { agentId: first.agentId, userId: first.users[0].userId };
 }
 

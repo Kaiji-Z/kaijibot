@@ -14,8 +14,12 @@ export function createEvolutionDeleteTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) {return null;}
-  if (deps.config?.cognitive?.evolution?.enabled === false) {return null;}
+  if (deps.config?.cognitive?.enabled === false) {
+    return null;
+  }
+  if (deps.config?.cognitive?.evolution?.enabled === false) {
+    return null;
+  }
 
   return {
     name: "delete_skill",
@@ -42,8 +46,7 @@ export function createEvolutionDeleteTool(deps: {
 
         let skillBaseDir = configDir;
         if (deps.config) {
-          const { resolveAgentIdFromSessionKey } =
-            await import("../../routing/session-key.js");
+          const { resolveAgentIdFromSessionKey } = await import("../../routing/session-key.js");
           const { resolveAgentWorkspaceDir } = await import("../agent-scope.js");
           const agentId = resolveAgentIdFromSessionKey(deps.sessionKey);
           skillBaseDir = resolveAgentWorkspaceDir(deps.config, agentId);
@@ -61,7 +64,9 @@ export function createEvolutionDeleteTool(deps: {
             target: params.name,
             outcome: "success",
           });
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
 
         return jsonResult({
           status: "deleted",

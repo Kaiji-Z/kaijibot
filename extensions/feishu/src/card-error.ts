@@ -45,7 +45,7 @@ export class CardKitApiError extends Error {
   constructor(params: { api: string; code: number; msg: string; context: string }) {
     const { api, code, msg, context } = params;
     super(`cardkit ${api} FAILED: code=${code}, msg=${msg}, ${context}`);
-    this.name = 'CardKitApiError';
+    this.name = "CardKitApiError";
     this.code = code;
     this.msg = msg;
   }
@@ -64,7 +64,9 @@ export class CardKitApiError extends Error {
  *   3. `{ response: { data: { code: number } } }` — Axios 风格
  */
 export function extractLarkApiCode(err: unknown): number | undefined {
-  if (!err || typeof err !== 'object') return undefined;
+  if (!err || typeof err !== "object") {
+    return undefined;
+  }
 
   const e = err as {
     code?: unknown;
@@ -73,13 +75,19 @@ export function extractLarkApiCode(err: unknown): number | undefined {
   };
 
   // Shape 1: direct top-level code
-  if (typeof e.code === 'number') return e.code;
+  if (typeof e.code === "number") {
+    return e.code;
+  }
 
   // Shape 2: nested data.code
-  if (typeof e.data?.code === 'number') return e.data.code;
+  if (typeof e.data?.code === "number") {
+    return e.data.code;
+  }
 
   // Shape 3: Axios-style response.data.code
-  if (typeof e.response?.data?.code === 'number') return e.response.data.code;
+  if (typeof e.response?.data?.code === "number") {
+    return e.response.data.code;
+  }
 
   return undefined;
 }
@@ -96,7 +104,9 @@ export function extractLarkApiCode(err: unknown): number | undefined {
  */
 export function extractSubCode(msg: string): number | null {
   const match = /ErrCode:\s*(\d+)/.exec(msg);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const code = Number(match[1]);
   return Number.isFinite(code) ? code : null;
 }
@@ -116,22 +126,24 @@ export function parseCardApiError(err: unknown): {
   errMsg: string;
 } | null {
   const code = extractLarkApiCode(err);
-  if (code === undefined) return null;
+  if (code === undefined) {
+    return null;
+  }
 
   // 按优先级提取 msg 文本
-  let errMsg = '';
-  if (err && typeof err === 'object') {
+  let errMsg = "";
+  if (err && typeof err === "object") {
     const e = err as {
       msg?: unknown;
       message?: unknown;
       response?: { data?: { msg?: unknown } };
     };
-    if (typeof e.msg === 'string') {
+    if (typeof e.msg === "string") {
       errMsg = e.msg;
-    } else if (typeof e.response?.data?.msg === 'string') {
+    } else if (typeof e.response?.data?.msg === "string") {
       // Axios errors: response.data.msg carries the Feishu detail with ErrCode
       errMsg = e.response.data.msg;
-    } else if (typeof e.message === 'string') {
+    } else if (typeof e.message === "string") {
       // Fallback to generic Error.message (e.g. CardKitApiError)
       errMsg = e.message;
     }
@@ -157,7 +169,9 @@ export function parseCardApiError(err: unknown): {
  */
 export function isCardTableLimitError(err: unknown): boolean {
   const parsed = parseCardApiError(err);
-  if (!parsed) return false;
+  if (!parsed) {
+    return false;
+  }
   return (
     parsed.code === CARD_ERROR.CARD_CONTENT_FAILED &&
     parsed.subCode === CARD_CONTENT_SUB_ERROR.ELEMENT_LIMIT &&
@@ -168,7 +182,9 @@ export function isCardTableLimitError(err: unknown): boolean {
 /** 判断错误是否为卡片发送频率限制（230020）。 */
 export function isCardRateLimitError(err: unknown): boolean {
   const parsed = parseCardApiError(err);
-  if (!parsed) return false;
+  if (!parsed) {
+    return false;
+  }
   return parsed.code === CARD_ERROR.RATE_LIMITED;
 }
 
@@ -258,7 +274,9 @@ function wrapTablesBeyondLimit(
   matches: readonly MarkdownTableMatch[],
   keepCount: number,
 ): string {
-  if (matches.length <= keepCount) return text;
+  if (matches.length <= keepCount) {
+    return text;
+  }
 
   // Back-to-front replacement keeps the original indices stable.
   let result = text;

@@ -31,7 +31,7 @@ export type GatewayMethodDispatchOptions = {
 export async function dispatchGatewayMethod(
   method: string,
   params?: unknown,
-  options?: GatewayMethodDispatchOptions,
+  _options?: GatewayMethodDispatchOptions,
 ): Promise<GatewayMethodDispatchResponse> {
   const scope = getPluginRuntimeGatewayRequestScope();
   if (!scope?.context) {
@@ -40,7 +40,9 @@ export async function dispatchGatewayMethod(
       `Gateway method dispatch requires a plugin gateway request scope with context${pluginLabel}.`,
     );
   }
-  let result: { ok: boolean; payload?: unknown; error?: { code: string; message: string } } | undefined;
+  let result:
+    | { ok: boolean; payload?: unknown; error?: { code: string; message: string } }
+    | undefined;
   await handleGatewayRequest({
     req: {
       type: "req",
@@ -58,7 +60,13 @@ export async function dispatchGatewayMethod(
     context: scope.context!,
   });
   if (!result) {
-    return { ok: false, error: { code: "no_response", message: `Gateway method "${method}" completed without a response.` } };
+    return {
+      ok: false,
+      error: {
+        code: "no_response",
+        message: `Gateway method "${method}" completed without a response.`,
+      },
+    };
   }
   return {
     ok: result.ok,

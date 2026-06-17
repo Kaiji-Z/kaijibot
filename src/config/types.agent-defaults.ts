@@ -1,12 +1,12 @@
 import type { ChannelId } from "../channels/plugins/types.js";
 import type { AgentModelConfig, AgentSandboxConfig } from "./types.agents-shared.js";
-import type { SoulConfig } from "./types.soul.js";
 import type {
   BlockStreamingChunkConfig,
   BlockStreamingCoalesceConfig,
   HumanDelayConfig,
   TypingMode,
 } from "./types.base.js";
+import type { SoulConfig } from "./types.soul.js";
 import type { MemorySearchConfig } from "./types.tools.js";
 
 export type AgentContextInjection = "always" | "continuation-skip";

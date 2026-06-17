@@ -1,10 +1,18 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
+import {
+  renderInputSettingsPopover,
+  renderModelChip,
+  renderSessionChip,
+  renderThinkingChip,
+  renderTokenRing,
+} from "../app-render.helpers.ts";
 import type {
   CompactionStatus as CompactionIndicatorStatus,
   FallbackStatus as FallbackIndicatorStatus,
 } from "../app-tool-stream.ts";
+import type { AppViewState } from "../app-view-state.ts";
 import {
   CHAT_ATTACHMENT_ACCEPT,
   isSupportedChatAttachmentMimeType,
@@ -37,14 +45,6 @@ import type { GatewaySessionRow, SessionsListResult } from "../types.ts";
 import type { ChatItem, MessageGroup } from "../types/chat-types.ts";
 import type { ChatAttachment, ChatQueueItem } from "../ui-types.ts";
 import { agentLogoUrl, resolveAgentAvatarUrl } from "./agents-utils.ts";
-import {
-  renderInputSettingsPopover,
-  renderModelChip,
-  renderSessionChip,
-  renderThinkingChip,
-  renderTokenRing,
-} from "../app-render.helpers.ts";
-import type { AppViewState } from "../app-view-state.ts";
 import { renderMarkdownSidebar } from "./markdown-sidebar.ts";
 import "../components/resizable-divider.ts";
 
@@ -1280,25 +1280,27 @@ export function renderChat(props: ChatProps) {
         ${vs.sttRecording && vs.sttInterimText
           ? html`<div class="agent-chat__stt-interim">${vs.sttInterimText}</div>`
           : nothing}
-
         ${(() => {
           const appState = props.appState as AppViewState | undefined;
-          if (!appState) {return nothing;}
-          const chipToggle = (key: "sessionChipOpen" | "modelChipOpen" | "thinkingChipOpen") => () => {
-            vs.sessionChipOpen = false;
-            vs.modelChipOpen = false;
-            vs.thinkingChipOpen = false;
-            vs[key] = true;
-            requestUpdate();
-            const close = () => {
+          if (!appState) {
+            return nothing;
+          }
+          const chipToggle =
+            (key: "sessionChipOpen" | "modelChipOpen" | "thinkingChipOpen") => () => {
               vs.sessionChipOpen = false;
               vs.modelChipOpen = false;
               vs.thinkingChipOpen = false;
-              document.removeEventListener("click", close);
+              vs[key] = true;
               requestUpdate();
+              const close = () => {
+                vs.sessionChipOpen = false;
+                vs.modelChipOpen = false;
+                vs.thinkingChipOpen = false;
+                document.removeEventListener("click", close);
+                requestUpdate();
+              };
+              setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
             };
-            setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
-          };
           return html`
             <div class="chat-input-top-bar">
               ${renderSessionChip(appState, vs.sessionChipOpen, chipToggle("sessionChipOpen"))}
@@ -1389,23 +1391,21 @@ export function renderChat(props: ChatProps) {
               : nothing}
             ${(() => {
               const appState = props.appState as AppViewState | undefined;
-              if (!appState) {return nothing;}
-              return renderInputSettingsPopover(
-                appState,
-                vs.inputSettingsOpen,
-                () => {
-                  vs.inputSettingsOpen = !vs.inputSettingsOpen;
-                  requestUpdate();
-                  if (vs.inputSettingsOpen) {
-                    const close = () => {
-                      vs.inputSettingsOpen = false;
-                      document.removeEventListener("click", close);
-                      requestUpdate();
-                    };
-                    setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
-                  }
-                },
-              );
+              if (!appState) {
+                return nothing;
+              }
+              return renderInputSettingsPopover(appState, vs.inputSettingsOpen, () => {
+                vs.inputSettingsOpen = !vs.inputSettingsOpen;
+                requestUpdate();
+                if (vs.inputSettingsOpen) {
+                  const close = () => {
+                    vs.inputSettingsOpen = false;
+                    document.removeEventListener("click", close);
+                    requestUpdate();
+                  };
+                  setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
+                }
+              });
             })()}
             ${tokens ? html`<span class="agent-chat__token-count">${tokens}</span>` : nothing}
           </div>
@@ -1441,15 +1441,12 @@ export function renderChat(props: ChatProps) {
               );
               const used = activeSession?.totalTokens ?? 0;
               const total =
-                activeSession?.contextTokens ??
-                props.sessions?.defaults?.contextTokens ??
-                0;
+                activeSession?.contextTokens ?? props.sessions?.defaults?.contextTokens ?? 0;
               if (appState && used && total) {
                 return renderTokenRing(used, total);
               }
               return nothing;
             })()}
-
             ${canAbort && (isBusy || props.sending)
               ? html`
                   <button

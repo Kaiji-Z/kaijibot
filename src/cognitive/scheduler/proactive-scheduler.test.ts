@@ -3420,11 +3420,7 @@ describe("ProactiveScheduler — time-based no-response penalty", () => {
       { insightGenerator: async () => [] },
     );
 
-    await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: Date.now() },
-      "main",
-    );
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
 
     expect(savedPersona).toBeDefined();
     expect(savedPersona!.feedbackProfile.consecutiveNoResponses).toBe(1);
@@ -3449,11 +3445,7 @@ describe("ProactiveScheduler — time-based no-response penalty", () => {
       { insightGenerator: async () => [] },
     );
 
-    await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: Date.now() },
-      "main",
-    );
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
 
     if (savedPersona) {
       expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
@@ -3476,11 +3468,7 @@ describe("ProactiveScheduler — time-based no-response penalty", () => {
       { insightGenerator: async () => [] },
     );
 
-    await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: Date.now() },
-      "main",
-    );
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
 
     if (savedPersona) {
       expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
@@ -3503,11 +3491,7 @@ describe("ProactiveScheduler — time-based no-response penalty", () => {
       { insightGenerator: async () => [] },
     );
 
-    await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: Date.now() },
-      "main",
-    );
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
 
     if (savedPersona) {
       expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
@@ -3530,11 +3514,7 @@ describe("ProactiveScheduler — time-based no-response penalty", () => {
       { insightGenerator: async () => [] },
     );
 
-    await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: Date.now() },
-      "main",
-    );
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
 
     expect(savedPersona).toBeDefined();
     const penalizedBeta = savedPersona!.feedbackProfile.topicBandits["AI/机器学习"]!.beta;

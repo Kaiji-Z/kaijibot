@@ -1,8 +1,8 @@
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { SKILL_CREATOR_SPEC } from "./skill-creator-spec.js";
 import { generateSkillDraft, sanitizeSkillName } from "./skill-draft-generator.js";
 import type { EvolutionCandidate, SkillDraft } from "./types.js";
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 
 export type LlmDraftDeps = {
   generateText: (prompt: string) => Promise<string>;
@@ -11,7 +11,9 @@ export type LlmDraftDeps = {
 let cachedSpec: string | null = null;
 
 function getSkillCreatorSpec(): string {
-  if (cachedSpec !== null) {return cachedSpec;}
+  if (cachedSpec !== null) {
+    return cachedSpec;
+  }
   const candidates = [
     join(process.cwd(), "skills", "skill-creator", "SKILL.md"),
     join(process.env.HOME ?? "", ".kaijibot", "skills", "skill-creator", "SKILL.md"),
@@ -94,20 +96,28 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
   }
 
   const firstDash = text.indexOf("---");
-  if (firstDash === -1) {return generateSkillDraft(candidate);}
+  if (firstDash === -1) {
+    return generateSkillDraft(candidate);
+  }
 
   const afterFirst = text.indexOf("---", firstDash + 3);
-  if (afterFirst === -1) {return generateSkillDraft(candidate);}
+  if (afterFirst === -1) {
+    return generateSkillDraft(candidate);
+  }
 
   const frontmatter = text.slice(firstDash + 3, afterFirst).trim();
   const body = text.slice(afterFirst + 3).trim();
 
-  if (!body) {return generateSkillDraft(candidate);}
+  if (!body) {
+    return generateSkillDraft(candidate);
+  }
 
   const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
   const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
 
-  if (!nameMatch || !descMatch) {return generateSkillDraft(candidate);}
+  if (!nameMatch || !descMatch) {
+    return generateSkillDraft(candidate);
+  }
 
   const name = sanitizeSkillName(nameMatch[1].trim());
   const rawDesc = descMatch[1].trim();
@@ -117,17 +127,23 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
     const lines = afterMarker.split("\n");
     const folded: string[] = [];
     for (const line of lines.slice(1)) {
-      if (!line.startsWith(" ") && !line.startsWith("\t") && line.trim() !== "") {break;}
+      if (!line.startsWith(" ") && !line.startsWith("\t") && line.trim() !== "") {
+        break;
+      }
       folded.push(line.trim());
     }
     description = folded.filter(Boolean).join(" ");
   } else {
     description = rawDesc.replace(/^["']|["']$/g, "");
   }
-  if (!description) {return generateSkillDraft(candidate);}
+  if (!description) {
+    return generateSkillDraft(candidate);
+  }
 
   const { phrases: triggerPhrases, stripped: bodyNoTriggers } = extractAndStripTriggers(body);
-  if (triggerPhrases.length === 0) {return generateSkillDraft(candidate);}
+  if (triggerPhrases.length === 0) {
+    return generateSkillDraft(candidate);
+  }
 
   const { body: cleanBody, scripts, references, assets } = extractTaggedBlocks(bodyNoTriggers);
 
@@ -144,7 +160,9 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
 
 function extractAndStripTriggers(body: string): { phrases: string[]; stripped: string } {
   const triggerHeading = body.match(/^##\s+Triggers\s*$/m);
-  if (!triggerHeading || triggerHeading.index === undefined) {return { phrases: [], stripped: body };}
+  if (!triggerHeading || triggerHeading.index === undefined) {
+    return { phrases: [], stripped: body };
+  }
 
   const afterHeading = body.slice(triggerHeading.index + triggerHeading[0].length);
   const nextHeading = afterHeading.match(/^##\s/m);

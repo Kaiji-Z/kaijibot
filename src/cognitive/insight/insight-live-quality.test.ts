@@ -169,7 +169,9 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -214,12 +216,24 @@ function evaluateInsight(content: string, persona: PersonaTree, prompt: string):
   const hasQuestion = /[？?]$/.test(content.trim());
 
   let score = 0;
-  if (hasKeyInsight) {score += 3;}
-  if (isNatural) {score += 2;}
-  if (isSpecific) {score += 2;}
-  if (!hasQuestion) {score += 1;}
-  if (content.length >= 30) {score += 1;}
-  if (bannedHits.length === 0 && content.length >= 40) {score += 1;}
+  if (hasKeyInsight) {
+    score += 3;
+  }
+  if (isNatural) {
+    score += 2;
+  }
+  if (isSpecific) {
+    score += 2;
+  }
+  if (!hasQuestion) {
+    score += 1;
+  }
+  if (content.length >= 30) {
+    score += 1;
+  }
+  if (bannedHits.length === 0 && content.length >= 40) {
+    score += 1;
+  }
 
   return {
     content,
@@ -272,7 +286,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
 
         for (const insight of insights) {
           const content = insight.content ?? "";
-          if (content.length < 10) {continue;}
+          if (content.length < 10) {
+            continue;
+          }
 
           const report = evaluateInsight(content, persona, prompt);
           reports.push(report);

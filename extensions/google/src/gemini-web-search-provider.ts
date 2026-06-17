@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import {
   buildSearchCacheKey,
   buildUnsupportedSearchFilterResponse,
@@ -26,6 +25,7 @@ import {
   writeCachedSearchPayload,
 } from "kaijibot/plugin-sdk/provider-web-search";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
+import { Type } from "typebox";
 import { DEFAULT_GOOGLE_API_BASE_URL } from "../api.js";
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";

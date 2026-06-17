@@ -1,20 +1,21 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { ChildProcess } from "node:child_process";
 import { join } from "node:path";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 const FAKE_HOME = "/fake/home";
 const CONFIG_PATH = join(FAKE_HOME, ".lark-cli", "config.json");
 
 const { mockResolveLarkCliPath, mockExecFileFn, mockFs } = vi.hoisted(() => ({
   mockResolveLarkCliPath: vi.fn<() => string | undefined>(),
-  mockExecFileFn: vi.fn<
-    (
-      file: string,
-      args: readonly string[] | null | undefined,
-      options: unknown,
-      callback: unknown,
-    ) => ChildProcess
-  >(),
+  mockExecFileFn:
+    vi.fn<
+      (
+        file: string,
+        args: readonly string[] | null | undefined,
+        options: unknown,
+        callback: unknown,
+      ) => ChildProcess
+    >(),
   mockFs: {
     existsSync: vi.fn(),
     readFileSync: vi.fn(),
@@ -40,10 +41,7 @@ vi.mock("node:os", () => ({
   homedir: () => FAKE_HOME,
 }));
 
-import {
-  registerLarkCliProfiles,
-  buildAccountCredentialsList,
-} from "./profiles.ts";
+import { registerLarkCliProfiles, buildAccountCredentialsList } from "./profiles.ts";
 
 function makeMockChild(stdinWrite?: ReturnType<typeof vi.fn>) {
   const write = stdinWrite ?? vi.fn();
@@ -56,21 +54,6 @@ function setupSuccessMock() {
   mockExecFileFn.mockImplementation((_file, _args, _opts, cb) => {
     const child = makeMockChild();
     process.nextTick(() => (cb as () => void)());
-    return child;
-  });
-}
-
-function setupErrorMock(errorMessage: string) {
-  mockExecFileFn.mockImplementation((_file, _args, _opts, cb) => {
-    const child = makeMockChild();
-    process.nextTick(
-      () =>
-        (cb as (err: Error, stdout: string, stderr: string) => void)(
-          new Error(errorMessage),
-          "",
-          errorMessage,
-        ),
-    );
     return child;
   });
 }
@@ -293,13 +276,12 @@ describe("registerLarkCliProfiles", () => {
       const name = resolved[nameIdx + 1];
       const child = makeMockChild();
       if (name === "cli_existing") {
-        process.nextTick(
-          () =>
-            (cb as (err: Error, stdout: string, stderr: string) => void)(
-              new Error("exit 1"),
-              "",
-              "Error: profile already exists",
-            ),
+        process.nextTick(() =>
+          (cb as (err: Error, stdout: string, stderr: string) => void)(
+            new Error("exit 1"),
+            "",
+            "Error: profile already exists",
+          ),
         );
       } else {
         process.nextTick(() => (cb as () => void)());
@@ -323,13 +305,12 @@ describe("registerLarkCliProfiles", () => {
       const name = resolved[nameIdx + 1];
       const child = makeMockChild();
       if (name === "cli_bad") {
-        process.nextTick(
-          () =>
-            (cb as (err: Error, stdout: string, stderr: string) => void)(
-              new Error("duplicate"),
-              "",
-              "duplicate profile",
-            ),
+        process.nextTick(() =>
+          (cb as (err: Error, stdout: string, stderr: string) => void)(
+            new Error("duplicate"),
+            "",
+            "duplicate profile",
+          ),
         );
       } else {
         process.nextTick(() => (cb as () => void)());
@@ -373,11 +354,7 @@ describe("registerLarkCliProfiles", () => {
 
     expect(result.registered).toEqual(["default"]);
     // Should have written config with the user profile restored
-    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-      CONFIG_PATH,
-      expect.any(String),
-      "utf-8",
-    );
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(CONFIG_PATH, expect.any(String), "utf-8");
     const written = JSON.parse(mockFs.writeFileSync.mock.calls[0][1] as string);
     expect(written.apps).toHaveLength(1);
     expect(written.apps[0].appId).toBe("cli_user_manual");
@@ -397,19 +374,17 @@ describe("registerLarkCliProfiles", () => {
 
     mockFs.existsSync.mockReturnValue(true);
     // After profile add, the "default" profile is updated with new appId
-    mockFs.readFileSync
-      .mockReturnValueOnce(JSON.stringify(beforeConfig))
-      .mockReturnValueOnce(
-        JSON.stringify({
-          apps: [
-            {
-              name: "default",
-              appId: "cli_new_default",
-              brand: "feishu",
-            },
-          ],
-        }),
-      );
+    mockFs.readFileSync.mockReturnValueOnce(JSON.stringify(beforeConfig)).mockReturnValueOnce(
+      JSON.stringify({
+        apps: [
+          {
+            name: "default",
+            appId: "cli_new_default",
+            brand: "feishu",
+          },
+        ],
+      }),
+    );
 
     setupSuccessMock();
 
@@ -424,9 +399,7 @@ describe("registerLarkCliProfiles", () => {
 
   it("handles corrupt config.json gracefully", async () => {
     mockFs.existsSync.mockReturnValue(true);
-    mockFs.readFileSync
-      .mockReturnValueOnce("not json at all")
-      .mockReturnValueOnce("also not json");
+    mockFs.readFileSync.mockReturnValueOnce("not json at all").mockReturnValueOnce("also not json");
 
     setupSuccessMock();
 

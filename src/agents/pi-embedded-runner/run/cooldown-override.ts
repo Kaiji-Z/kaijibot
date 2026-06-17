@@ -1,7 +1,13 @@
-import { probeQuotaForCooldown, shouldProbeQuotaForFailure } from "../../auth-profiles/quota-probe.js";
-import type { CooldownOverride } from "../../auth-profiles/usage.js";
+import {
+  consumeRateLimitResetMs,
+  consumeRetryAfterMs,
+} from "../../../infra/retry-after-capture.js";
+import {
+  probeQuotaForCooldown,
+  shouldProbeQuotaForFailure,
+} from "../../auth-profiles/quota-probe.js";
 import type { AuthProfileFailureReason, AuthProfileStore } from "../../auth-profiles/types.js";
-import { consumeRateLimitResetMs, consumeRetryAfterMs } from "../../../infra/retry-after-capture.js";
+import type { CooldownOverride } from "../../auth-profiles/usage.js";
 
 export type BuildCooldownOverrideParams = {
   profileId: string;

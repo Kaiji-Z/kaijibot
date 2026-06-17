@@ -1,7 +1,7 @@
-import { Type } from "typebox";
 import { defineSingleProviderPluginEntry } from "kaijibot/plugin-sdk/provider-entry";
 import { buildProviderReplayFamilyHooks } from "kaijibot/plugin-sdk/provider-model-shared";
 import { jsonResult, readProviderEnvValue } from "kaijibot/plugin-sdk/provider-web-search";
+import { Type } from "typebox";
 import {
   applyXaiModelCompat,
   normalizeXaiModelId,
@@ -198,7 +198,9 @@ export default defineSingleProviderPluginEntry({
   register(api) {
     api.registerWebSearchProvider(createXaiWebSearchProvider());
     api.registerVideoGenerationProvider(buildXaiVideoGenerationProvider());
-    api.registerTool((ctx) => createLazyCodeExecutionTool(ctx) as never, { name: "code_execution" });
+    api.registerTool((ctx) => createLazyCodeExecutionTool(ctx) as never, {
+      name: "code_execution",
+    });
     api.registerTool((ctx) => createLazyXSearchTool(ctx) as never, { name: "x_search" });
   },
 });

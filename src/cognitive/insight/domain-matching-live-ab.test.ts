@@ -16,10 +16,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { PersonaTree } from "../types.js";
-import {
-  buildInsightPrompt,
-  matchWebResultsToDomainsLLM,
-} from "./llm-engine.js";
+import { buildInsightPrompt, matchWebResultsToDomainsLLM } from "./llm-engine.js";
 import type { WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
 
@@ -85,9 +82,7 @@ function makePersona(): PersonaTree {
       optimalFrequencyHours: 2,
       lastProactiveAt: 0,
       recentInsightIds: [],
-      recentInsightContents: [
-        "Python的GIL被人骂了这么多年，但换个角度看它其实做对了一件事...",
-      ],
+      recentInsightContents: ["Python的GIL被人骂了这么多年，但换个角度看它其实做对了一件事..."],
       recentInsightDomains: [],
       recentInsightTypes: [],
     },
@@ -115,9 +110,7 @@ function makeInput(targetDomains: string[]): InsightEngineInput {
     recentFocus: ["可观测性升级", "Rust学习"],
     trustScore: 0.85,
     recentInsightIds: [],
-    recentInsightContents: [
-      "Python的GIL被人骂了这么多年，但换个角度看它其实做对了一件事...",
-    ],
+    recentInsightContents: ["Python的GIL被人骂了这么多年，但换个角度看它其实做对了一件事..."],
   };
 }
 
@@ -159,7 +152,9 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -186,14 +181,18 @@ function buildDomainKeywordMap(
     keywords.add(name.toLowerCase());
     for (const part of name.split(/[/+]/)) {
       const trimmed = part.trim().toLowerCase();
-      if (trimmed.length >= 2) {keywords.add(trimmed);}
+      if (trimmed.length >= 2) {
+        keywords.add(trimmed);
+      }
     }
     // Add keyInsights as keywords (simulating getFilteredInsights)
     for (const insight of (domain.keyInsights ?? []).slice(0, 3)) {
       const lower = insight.toLowerCase();
       keywords.add(lower);
       for (const word of lower.split(/\s+/)) {
-        if (word.length >= 3) {keywords.add(word);}
+        if (word.length >= 3) {
+          keywords.add(word);
+        }
       }
     }
     map.set(name, keywords);
@@ -220,7 +219,9 @@ function matchWebResultsToDomainsKeyword(
     const snippetLower = r.snippet.toLowerCase();
     for (const [domainName, keywords] of keywordMap) {
       const matched = [...keywords].some((kw) => {
-        if (titleLower.includes(kw) || snippetLower.includes(kw)) {return true;}
+        if (titleLower.includes(kw) || snippetLower.includes(kw)) {
+          return true;
+        }
         if (kw.length >= 4) {
           const kwBigrams = extractBigrams(kw);
           const textBigrams = extractBigrams(titleLower + " " + snippetLower);
@@ -241,7 +242,6 @@ function matchWebResultsToDomainsKeyword(
 }
 
 // LLM matching using the actual exported function
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeLlmDeps(): any {
   return {
     prepareModel: async (config: any, modelRef?: string) => {
@@ -252,8 +252,7 @@ function makeLlmDeps(): any {
       };
     },
     complete: async (_model: any, messages: any, opts: any) => {
-      const content =
-        messages.messages[0]?.content ?? "";
+      const content = messages.messages[0]?.content ?? "";
       const text = typeof content === "string" ? content : JSON.stringify(content);
       const res = await fetch(ZAI_URL, {
         method: "POST",
@@ -273,7 +272,9 @@ function makeLlmDeps(): any {
         error?: { message: string };
         choices?: Array<{ message: { content: string } }>;
       };
-      if (data.error) {throw new Error(data.error.message);}
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
       const responseText = data.choices?.[0]?.message?.content ?? "";
       return {
         content: [{ type: "text" as const, text: responseText }],
@@ -286,7 +287,9 @@ function makeLlmDeps(): any {
 
 function countExternalFacts(prompt: string): number {
   const match = prompt.match(/EXTERNAL_FACTS[\s\S]*?(\n\n|\nTASK)/);
-  if (!match) {return 0;}
+  if (!match) {
+    return 0;
+  }
   const block = match[1] ?? match[0];
   return (block.match(/^\d+\./gm) || []).length;
 }
@@ -302,7 +305,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
     it(`compares keyword vs LLM domain matching across ${ROUNDS} domains`, async () => {
       const persona = makePersona();
       const llmDeps = makeLlmDeps();
-      const config = {} as any; // eslint-disable-line
+      const config = {} as any;
 
       console.log("\n  ══════════════════════════════════════════════════");
       console.log("  Domain Matching A/B Test");
@@ -341,7 +344,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
           keywords.add(domain.toLowerCase());
           for (const part of domain.split(/[/+]/)) {
             const trimmed = part.trim().toLowerCase();
-            if (trimmed.length >= 2) {keywords.add(trimmed);}
+            if (trimmed.length >= 2) {
+              keywords.add(trimmed);
+            }
           }
           keywordMap.set(domain, keywords);
         }
@@ -353,13 +358,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
         }
 
         // 3. LLM matching (Group B)
-        const llmMatched = await matchWebResultsToDomainsLLM(
-          webResults,
-          persona,
-          config,
-          llmDeps,
-          [domain],
-        );
+        const llmMatched = await matchWebResultsToDomainsLLM(webResults, persona, config, llmDeps, [
+          domain,
+        ]);
 
         console.log(`  [B] LLM matched: ${llmMatched.size} domains`);
         for (const [d, snippets] of llmMatched) {
@@ -367,12 +368,8 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
         }
 
         // 4. Compare coverage
-        const keywordOnlyDomains = [...llmMatched.keys()].filter(
-          (d) => !keywordMatched.has(d),
-        );
-        const llmOnlyDomains = [...keywordMatched.keys()].filter(
-          (d) => !llmMatched.has(d),
-        );
+        const keywordOnlyDomains = [...llmMatched.keys()].filter((d) => !keywordMatched.has(d));
+        const llmOnlyDomains = [...keywordMatched.keys()].filter((d) => !llmMatched.has(d));
         if (keywordOnlyDomains.length > 0) {
           console.log(`  ⚡ LLM found but keyword missed: ${keywordOnlyDomains.join(", ")}`);
         }
@@ -424,15 +421,27 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
         // 7. Simple quality scoring
         const scoreQuality = (text: string): number => {
           let score = 0;
-          if (text.length >= 30) {score += 2;}
-          if (text.length >= 50) {score += 1;}
-          if (/具体|实际|发现|现象|案例/.test(text)) {score += 2;} // specific/concrete
-          if (!/[？?]$/.test(text.trim())) {score += 1;} // no question mark ending
-          if (!/值得关注|挺有意思|不得不说/.test(text)) {score += 1;} // no banned patterns
+          if (text.length >= 30) {
+            score += 2;
+          }
+          if (text.length >= 50) {
+            score += 1;
+          }
+          if (/具体|实际|发现|现象|案例/.test(text)) {
+            score += 2;
+          } // specific/concrete
+          if (!/[？?]$/.test(text.trim())) {
+            score += 1;
+          } // no question mark ending
+          if (!/值得关注|挺有意思|不得不说/.test(text)) {
+            score += 1;
+          } // no banned patterns
           // Check if insight references web information
           const allSnippets = webResults.map((r) => r.snippet).join(" ");
           const overlap = [...text].filter((c) => allSnippets.includes(c)).length / text.length;
-          if (overlap > 0.3) {score += 3;} // incorporates external facts
+          if (overlap > 0.3) {
+            score += 3;
+          } // incorporates external facts
           return score;
         };
 
@@ -466,25 +475,35 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
       const avgKeywordDomains =
         abResults.reduce((s, r) => s + r.keywordDomains, 0) / abResults.length;
       const avgLlmDomains = abResults.reduce((s, r) => s + r.llmDomains, 0) / abResults.length;
-      console.log(`  Avg domains matched:  [A] Keyword: ${avgKeywordDomains.toFixed(1)} | [B] LLM: ${avgLlmDomains.toFixed(1)}`);
+      console.log(
+        `  Avg domains matched:  [A] Keyword: ${avgKeywordDomains.toFixed(1)} | [B] LLM: ${avgLlmDomains.toFixed(1)}`,
+      );
 
       const avgKeywordSnippets =
         abResults.reduce((s, r) => s + r.keywordSnippets, 0) / abResults.length;
       const avgLlmSnippets = abResults.reduce((s, r) => s + r.llmSnippets, 0) / abResults.length;
-      console.log(`  Avg snippets matched: [A] Keyword: ${avgKeywordSnippets.toFixed(1)} | [B] LLM: ${avgLlmSnippets.toFixed(1)}`);
+      console.log(
+        `  Avg snippets matched: [A] Keyword: ${avgKeywordSnippets.toFixed(1)} | [B] LLM: ${avgLlmSnippets.toFixed(1)}`,
+      );
 
       const avgKeywordFacts =
         abResults.reduce((s, r) => s + r.keywordExternalFacts, 0) / abResults.length;
       const avgLlmFacts = abResults.reduce((s, r) => s + r.llmExternalFacts, 0) / abResults.length;
-      console.log(`  Avg EXTERNAL_FACTS:   [A] Keyword: ${avgKeywordFacts.toFixed(1)} | [B] LLM: ${avgLlmFacts.toFixed(1)}`);
+      console.log(
+        `  Avg EXTERNAL_FACTS:   [A] Keyword: ${avgKeywordFacts.toFixed(1)} | [B] LLM: ${avgLlmFacts.toFixed(1)}`,
+      );
 
       const avgKeywordQuality =
         abResults.reduce((s, r) => s + r.keywordQuality, 0) / abResults.length;
       const avgLlmQuality = abResults.reduce((s, r) => s + r.llmQuality, 0) / abResults.length;
-      console.log(`  Avg insight quality:  [A] Keyword: ${avgKeywordQuality.toFixed(1)}/10 | [B] LLM: ${avgLlmQuality.toFixed(1)}/10`);
+      console.log(
+        `  Avg insight quality:  [A] Keyword: ${avgKeywordQuality.toFixed(1)}/10 | [B] LLM: ${avgLlmQuality.toFixed(1)}/10`,
+      );
 
       const qualityDelta = avgKeywordQuality - avgLlmQuality;
-      console.log(`\n  Quality delta (keyword - LLM): ${qualityDelta > 0 ? "+" : ""}${qualityDelta.toFixed(1)}`);
+      console.log(
+        `\n  Quality delta (keyword - LLM): ${qualityDelta > 0 ? "+" : ""}${qualityDelta.toFixed(1)}`,
+      );
       if (Math.abs(qualityDelta) <= 1.0) {
         console.log("  ✅ Within noise margin — keyword matching is acceptable");
       } else if (qualityDelta > 1.0) {

@@ -187,8 +187,6 @@ export function renderChatSessionSelect(state: AppViewState) {
   `;
 }
 
-
-
 export function switchChatSession(state: AppViewState, nextSessionKey: string) {
   resetChatStateForSessionSwitch(state, nextSessionKey);
   void state.loadAssistantIdentity();
@@ -778,13 +776,19 @@ const THEME_MODE_OPTIONS: ThemeModeOption[] = [
  */
 export function renderThemeModeSelect(state: AppViewState) {
   const modeIcon = (mode: ThemeMode) => {
-    if (mode === "system") {return icons.monitor;}
-    if (mode === "light") {return icons.sun;}
+    if (mode === "system") {
+      return icons.monitor;
+    }
+    if (mode === "light") {
+      return icons.sun;
+    }
     return icons.moon;
   };
 
   const applyMode = (mode: ThemeMode, e: Event) => {
-    if (mode === state.themeMode) {return;}
+    if (mode === state.themeMode) {
+      return;
+    }
     state.setThemeMode(mode, { element: e.currentTarget as HTMLElement });
   };
 
@@ -836,11 +840,7 @@ export const renderSidebarConnectionStatus = renderConnectionStatusDot;
 
 /* ── Input area controls (model chip, thinking chip, token ring, settings popover) ── */
 
-export function renderModelChip(
-  state: AppViewState,
-  open: boolean,
-  onToggle: () => void,
-) {
+export function renderModelChip(state: AppViewState, open: boolean, onToggle: () => void) {
   const { currentOverride, defaultLabel, options } = resolveChatModelSelectState(state);
   const busy =
     state.chatLoading || state.chatSending || Boolean(state.chatRunId) || state.chatStream !== null;
@@ -857,22 +857,44 @@ export function renderModelChip(
         class="model-chip__trigger"
         type="button"
         ?disabled=${disabled}
-        @click=${(e: Event) => { e.stopPropagation(); onToggle(); }}
-      >${display} ▾</button>
+        @click=${(e: Event) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      >
+        ${display} ▾
+      </button>
       ${open
-        ? html`<div class="chip-dropdown chip-dropdown--up" @click=${(e: Event) => e.stopPropagation()}>
+        ? html`<div
+            class="chip-dropdown chip-dropdown--up"
+            @click=${(e: Event) => e.stopPropagation()}
+          >
             <button
-              class="chip-dropdown__item ${currentOverride === "" ? "chip-dropdown__item--active" : ""}"
-              @click=${async () => { await switchChatModel(state, ""); onToggle(); }}
-            >${defaultLabel}</button>
+              class="chip-dropdown__item ${currentOverride === ""
+                ? "chip-dropdown__item--active"
+                : ""}"
+              @click=${async () => {
+                await switchChatModel(state, "");
+                onToggle();
+              }}
+            >
+              ${defaultLabel}
+            </button>
             ${repeat(
               options,
               (entry) => entry.value,
               (entry) => html`
                 <button
-                  class="chip-dropdown__item ${entry.value === currentOverride ? "chip-dropdown__item--active" : ""}"
-                  @click=${async () => { await switchChatModel(state, entry.value); onToggle(); }}
-                >${entry.label}</button>
+                  class="chip-dropdown__item ${entry.value === currentOverride
+                    ? "chip-dropdown__item--active"
+                    : ""}"
+                  @click=${async () => {
+                    await switchChatModel(state, entry.value);
+                    onToggle();
+                  }}
+                >
+                  ${entry.label}
+                </button>
               `,
             )}
           </div>`
@@ -881,47 +903,79 @@ export function renderModelChip(
   `;
 }
 
-export function renderThinkingChip(
-  state: AppViewState,
-  open: boolean,
-  onToggle: () => void,
-) {
+export function renderThinkingChip(state: AppViewState, open: boolean, onToggle: () => void) {
   const { currentOverride, defaultLabel, options } = resolveChatThinkingSelectState(state);
   const busy =
     state.chatLoading || state.chatSending || Boolean(state.chatRunId) || state.chatStream !== null;
   const disabled = !state.connected || busy || !state.client;
   const levelDots = (val: string): string => {
     const n = normalizeLowercaseStringOrEmpty(val);
-    if (n === "off") {return "○";}
-    if (n === "low") {return "●";}
-    if (n === "medium") {return "●●";}
-    if (n === "high") {return "●●●";}
-    if (n === "default") {return "Auto";}
+    if (n === "off") {
+      return "○";
+    }
+    if (n === "low") {
+      return "●";
+    }
+    if (n === "medium") {
+      return "●●";
+    }
+    if (n === "high") {
+      return "●●●";
+    }
+    if (n === "default") {
+      return "Auto";
+    }
     return val.slice(0, 3);
   };
   const display = currentOverride === "" ? "Auto" : levelDots(currentOverride);
   return html`
-    <label class="thinking-chip" title=${currentOverride === "" ? defaultLabel : currentOverride} style="position:relative;display:inline-flex;">
+    <label
+      class="thinking-chip"
+      title=${currentOverride === "" ? defaultLabel : currentOverride}
+      style="position:relative;display:inline-flex;"
+    >
       <button
         class="thinking-chip__trigger"
         type="button"
         ?disabled=${disabled}
-        @click=${(e: Event) => { e.stopPropagation(); onToggle(); }}
-      >${display} ▾</button>
+        @click=${(e: Event) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      >
+        ${display} ▾
+      </button>
       ${open
-        ? html`<div class="chip-dropdown chip-dropdown--up" @click=${(e: Event) => e.stopPropagation()}>
+        ? html`<div
+            class="chip-dropdown chip-dropdown--up"
+            @click=${(e: Event) => e.stopPropagation()}
+          >
             <button
-              class="chip-dropdown__item ${currentOverride === "" ? "chip-dropdown__item--active" : ""}"
-              @click=${async () => { await switchChatThinkingLevel(state, ""); onToggle(); }}
-            >${defaultLabel}</button>
+              class="chip-dropdown__item ${currentOverride === ""
+                ? "chip-dropdown__item--active"
+                : ""}"
+              @click=${async () => {
+                await switchChatThinkingLevel(state, "");
+                onToggle();
+              }}
+            >
+              ${defaultLabel}
+            </button>
             ${repeat(
               options,
               (entry) => entry.value,
               (entry) => html`
                 <button
-                  class="chip-dropdown__item ${entry.value === currentOverride ? "chip-dropdown__item--active" : ""}"
-                  @click=${async () => { await switchChatThinkingLevel(state, entry.value); onToggle(); }}
-                >${entry.label}</button>
+                  class="chip-dropdown__item ${entry.value === currentOverride
+                    ? "chip-dropdown__item--active"
+                    : ""}"
+                  @click=${async () => {
+                    await switchChatThinkingLevel(state, entry.value);
+                    onToggle();
+                  }}
+                >
+                  ${entry.label}
+                </button>
               `,
             )}
           </div>`
@@ -930,11 +984,7 @@ export function renderThinkingChip(
   `;
 }
 
-export function renderSessionChip(
-  state: AppViewState,
-  open: boolean,
-  onToggle: () => void,
-) {
+export function renderSessionChip(state: AppViewState, open: boolean, onToggle: () => void) {
   const groups = resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult);
   if (groups.length === 0) {
     return nothing;
@@ -949,10 +999,18 @@ export function renderSessionChip(
         class="session-chip__trigger"
         type="button"
         ?disabled=${!state.connected}
-        @click=${(e: Event) => { e.stopPropagation(); onToggle(); }}
-      >${displayLabel} ▾</button>
+        @click=${(e: Event) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      >
+        ${displayLabel} ▾
+      </button>
       ${open
-        ? html`<div class="chip-dropdown chip-dropdown--up" @click=${(e: Event) => e.stopPropagation()}>
+        ? html`<div
+            class="chip-dropdown chip-dropdown--up"
+            @click=${(e: Event) => e.stopPropagation()}
+          >
             ${groups.map(
               (group) => html`
                 <div class="chip-dropdown__group">
@@ -962,14 +1020,18 @@ export function renderSessionChip(
                   ${group.options.map(
                     (opt) => html`
                       <button
-                        class="chip-dropdown__item ${opt.key === state.sessionKey ? "chip-dropdown__item--active" : ""}"
+                        class="chip-dropdown__item ${opt.key === state.sessionKey
+                          ? "chip-dropdown__item--active"
+                          : ""}"
                         @click=${() => {
                           if (opt.key !== state.sessionKey) {
                             switchChatSession(state, opt.key);
                           }
                           onToggle();
                         }}
-                      >${opt.label}</button>
+                      >
+                        ${opt.label}
+                      </button>
                     `,
                   )}
                 </div>
@@ -982,18 +1044,29 @@ export function renderSessionChip(
 }
 
 export function renderTokenRing(used: number, total: number) {
-  if (!used || !total) {return nothing;}
+  if (!used || !total) {
+    return nothing;
+  }
   const ratio = Math.min(used / total, 1);
   const pct = Math.round(ratio * 100);
   const r = 9;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - ratio);
-  const color =
-    ratio < 0.5 ? "var(--ok)" : ratio < 0.8 ? "var(--warn)" : "var(--danger)";
+  const color = ratio < 0.5 ? "var(--ok)" : ratio < 0.8 ? "var(--warn)" : "var(--danger)";
   return html`
-    <span class="token-ring" title="${used.toLocaleString()} / ${total.toLocaleString()} tokens (${pct}%)">
+    <span
+      class="token-ring"
+      title="${used.toLocaleString()} / ${total.toLocaleString()} tokens (${pct}%)"
+    >
       <svg class="token-ring__svg" width="32" height="32" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r=${r} fill="none" stroke="var(--border-strong)" stroke-width="2.5" />
+        <circle
+          cx="12"
+          cy="12"
+          r=${r}
+          fill="none"
+          stroke="var(--border-strong)"
+          stroke-width="2.5"
+        />
         <circle
           cx="12"
           cy="12"
@@ -1020,12 +1093,7 @@ export function renderInputSettingsPopover(
   const showToolCalls = state.onboarding ? true : state.settings.chatShowToolCalls;
   const focusActive = state.onboarding ? true : state.settings.chatFocusMode;
   const hideCron = state.sessionsHideCron ?? true;
-  const toggleRow = (
-    icon: unknown,
-    label: string,
-    checked: boolean,
-    onChange: () => void,
-  ) => html`
+  const toggleRow = (icon: unknown, label: string, checked: boolean, onChange: () => void) => html`
     <label class="input-settings-popover__toggle-row">
       <span class="input-settings-popover__toggle-icon">${icon}</span>
       <span class="input-settings-popover__toggle-label">${label}</span>
@@ -1056,41 +1124,27 @@ export function renderInputSettingsPopover(
       ${open
         ? html`
             <div class="input-settings-popover" @click=${(e: Event) => e.stopPropagation()}>
-              ${toggleRow(
-                icons.brain,
-                "Show thinking",
-                showThinking,
-                () =>
-                  state.applySettings({
-                    ...state.settings,
-                    chatShowThinking: !state.settings.chatShowThinking,
-                  }),
+              ${toggleRow(icons.brain, "Show thinking", showThinking, () =>
+                state.applySettings({
+                  ...state.settings,
+                  chatShowThinking: !state.settings.chatShowThinking,
+                }),
               )}
-              ${toggleRow(
-                icons.settings,
-                "Show tool calls",
-                showToolCalls,
-                () =>
-                  state.applySettings({
-                    ...state.settings,
-                    chatShowToolCalls: !state.settings.chatShowToolCalls,
-                  }),
+              ${toggleRow(icons.settings, "Show tool calls", showToolCalls, () =>
+                state.applySettings({
+                  ...state.settings,
+                  chatShowToolCalls: !state.settings.chatShowToolCalls,
+                }),
               )}
-              ${toggleRow(
-                icons.eye,
-                "Focus mode",
-                focusActive,
-                () =>
-                  state.applySettings({
-                    ...state.settings,
-                    chatFocusMode: !state.settings.chatFocusMode,
-                  }),
+              ${toggleRow(icons.eye, "Focus mode", focusActive, () =>
+                state.applySettings({
+                  ...state.settings,
+                  chatFocusMode: !state.settings.chatFocusMode,
+                }),
               )}
               ${toggleRow(
                 renderCronFilterIcon(
-                  hideCron
-                    ? countHiddenCronSessions(state.sessionKey, state.sessionsResult)
-                    : 0,
+                  hideCron ? countHiddenCronSessions(state.sessionKey, state.sessionsResult) : 0,
                 ),
                 "Hide cron",
                 hideCron,
@@ -1107,20 +1161,30 @@ export function renderInputSettingsPopover(
 
 const ACTIVE_FINE_STATUSES = new Set(["thinking", "tool_call", "streaming"]);
 
-function countActiveSessions(sessionDetails: Record<string, import("./views/agents-utils.js").SessionDetailState>): number {
+function countActiveSessions(
+  sessionDetails: Record<string, import("./views/agents-utils.js").SessionDetailState>,
+): number {
   let count = 0;
   for (const detail of Object.values(sessionDetails)) {
-    if (ACTIVE_FINE_STATUSES.has(detail.fineStatus)) {count++;}
+    if (ACTIVE_FINE_STATUSES.has(detail.fineStatus)) {
+      count++;
+    }
   }
   return count;
 }
 
 function formatRelativeTime(ms: number | null | undefined): string {
-  if (!ms) {return "";}
+  if (!ms) {
+    return "";
+  }
   const diff = ms - Date.now();
-  if (diff <= 0) {return "now";}
+  if (diff <= 0) {
+    return "now";
+  }
   const mins = Math.round(diff / 60000);
-  if (mins < 60) {return `${mins}m`;}
+  if (mins < 60) {
+    return `${mins}m`;
+  }
   const hours = Math.floor(mins / 60);
   const remainMins = mins % 60;
   return remainMins ? `${hours}h ${remainMins}m` : `${hours}h`;
@@ -1166,13 +1230,19 @@ export function renderSidebarSessionList(state: AppViewState) {
 }
 
 function formatUptime(ms: number | null | undefined): string {
-  if (!ms) {return "—";}
+  if (!ms) {
+    return "—";
+  }
   const totalSec = Math.floor(ms / 1000);
   const days = Math.floor(totalSec / 86400);
   const hours = Math.floor((totalSec % 86400) / 3600);
   const mins = Math.floor((totalSec % 3600) / 60);
-  if (days > 0) {return `${days}d ${hours}h`;}
-  if (hours > 0) {return `${hours}h ${mins}m`;}
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${mins}m`;
+  }
   return `${mins}m`;
 }
 
@@ -1180,7 +1250,8 @@ export function renderSidebarStatusSection(state: AppViewState) {
   const agents = state.agentsList?.agents ?? [];
   const agentCount = agents.length;
   const activeCount = countActiveSessions(state.sessionDetails ?? {});
-  const agentDotClass = activeCount > 0 ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
+  const agentDotClass =
+    activeCount > 0 ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
 
   const cronEnabled = state.cronStatus?.enabled ?? false;
   const cronJobs = state.cronStatus?.jobs ?? 0;
@@ -1198,7 +1269,12 @@ export function renderSidebarStatusSection(state: AppViewState) {
       0,
     );
     usageLabel = `${Math.round(peak)}%`;
-    usageDotClass = peak >= 90 ? "shell-nav__status-dot--warn" : peak > 0 ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle";
+    usageDotClass =
+      peak >= 90
+        ? "shell-nav__status-dot--warn"
+        : peak > 0
+          ? "shell-nav__status-dot--ok"
+          : "shell-nav__status-dot--idle";
   }
 
   const cog = state.cognitiveStatus;
@@ -1225,10 +1301,16 @@ export function renderSidebarStatusSection(state: AppViewState) {
           <span class="shell-nav__status-dot ${agentDotClass}"></span>
         </span>
       </div>
-      <div class="shell-nav__status-row" style="cursor:pointer" @click=${() => state.setTab("cron")}>
+      <div
+        class="shell-nav__status-row"
+        style="cursor:pointer"
+        @click=${() => state.setTab("cron")}
+      >
         <span class="shell-nav__status-label">Cron</span>
         <span class="shell-nav__status-value">
-          ${cronEnabled ? html`${cronJobs} jobs${nextWake ? html` · ${nextWake}` : ""}` : "Disabled"}
+          ${cronEnabled
+            ? html`${cronJobs} jobs${nextWake ? html` · ${nextWake}` : ""}`
+            : "Disabled"}
           <span class="shell-nav__status-dot ${cronDotClass}"></span>
         </span>
       </div>
@@ -1236,7 +1318,11 @@ export function renderSidebarStatusSection(state: AppViewState) {
         <span class="shell-nav__status-label">Uptime</span>
         <span class="shell-nav__status-value">
           ${uptime}
-          <span class="shell-nav__status-dot ${state.gatewayUptimeMs ? "shell-nav__status-dot--ok" : "shell-nav__status-dot--idle"}"></span>
+          <span
+            class="shell-nav__status-dot ${state.gatewayUptimeMs
+              ? "shell-nav__status-dot--ok"
+              : "shell-nav__status-dot--idle"}"
+          ></span>
         </span>
       </div>
       <div class="shell-nav__status-row">

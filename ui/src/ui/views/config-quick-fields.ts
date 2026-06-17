@@ -26,16 +26,24 @@ function groupCatalogByProvider(catalog: ModelCatalogEntry[]): Map<string, Model
   const map = new Map<string, ModelCatalogEntry[]>();
   for (const entry of catalog) {
     const provider = entry.provider || "unknown";
-    if (!map.has(provider)) map.set(provider, []);
+    if (!map.has(provider)) {
+      map.set(provider, []);
+    }
     map.get(provider)!.push(entry);
   }
   return map;
 }
 
 function formatContextWindow(ctx?: number): string {
-  if (!ctx) return "";
-  if (ctx >= 1_000_000) return `${(ctx / 1_000_000).toFixed(ctx % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (ctx >= 1_000) return `${Math.round(ctx / 1_000)}K`;
+  if (!ctx) {
+    return "";
+  }
+  if (ctx >= 1_000_000) {
+    return `${(ctx / 1_000_000).toFixed(ctx % 1_000_000 === 0 ? 0 : 1)}M`;
+  }
+  if (ctx >= 1_000) {
+    return `${Math.round(ctx / 1_000)}K`;
+  }
   return String(ctx);
 }
 
@@ -44,9 +52,13 @@ function formatContextWindow(ctx?: number): string {
 const MODELS_WHITELIST_PATH = ["agents", "defaults", "models"];
 
 function getModelsWhitelist(formValue: Record<string, unknown> | null): Set<string> {
-  if (!formValue) return new Set();
+  if (!formValue) {
+    return new Set();
+  }
   const models = getValueAtPath(formValue, MODELS_WHITELIST_PATH);
-  if (!models || typeof models !== "object" || Array.isArray(models)) return new Set();
+  if (!models || typeof models !== "object" || Array.isArray(models)) {
+    return new Set();
+  }
   return new Set(Object.keys(models as Record<string, unknown>));
 }
 
@@ -56,7 +68,9 @@ function toggleModelFavorite(
   currentWhitelist: Set<string>,
   favorited: boolean,
 ): void {
-  if (!props.formValue) return;
+  if (!props.formValue) {
+    return;
+  }
   const base = structuredClone(props.formValue);
   if (!base.agents || typeof base.agents !== "object") {
     base.agents = {};
@@ -81,12 +95,10 @@ function toggleModelFavorite(
   props.onFormPatch(MODELS_WHITELIST_PATH, modelsObj);
 }
 
-function setAllFavorites(
-  props: ConfigProps,
-  allModelKeys: string[],
-  favorited: boolean,
-): void {
-  if (!props.formValue) return;
+function setAllFavorites(props: ConfigProps, allModelKeys: string[], favorited: boolean): void {
+  if (!props.formValue) {
+    return;
+  }
   const modelsObj: Record<string, unknown> = {};
   if (favorited) {
     for (const key of allModelKeys) {
@@ -110,7 +122,9 @@ function renderFavoriteModels(
   configuredProviderSet: Set<string>,
 ): TemplateResult | typeof nothing {
   const configuredModels = getConfiguredModels(props.fullModelCatalog ?? [], configuredProviderSet);
-  if (configuredModels.length === 0) return nothing;
+  if (configuredModels.length === 0) {
+    return nothing;
+  }
 
   const whitelist = getModelsWhitelist(props.formValue);
   const favoritedCount = configuredModels.filter((m) => {
@@ -121,7 +135,7 @@ function renderFavoriteModels(
   const allFavorited = favoritedCount === totalCount;
 
   const byProvider = groupCatalogByProvider(configuredModels);
-  const sortedProviders = [...byProvider.keys()].sort();
+  const sortedProviders = [...byProvider.keys()].toSorted();
 
   return html`
     <div class="config-model-favorites">
@@ -162,9 +176,7 @@ function renderFavoriteModels(
       <div class="config-model-favorites__grid">
         ${sortedProviders.map((provider) => {
           const models = byProvider.get(provider) ?? [];
-          const authInfo = (props.providerAuthOptions ?? []).find(
-            (p) => p.providerId === provider,
-          );
+          const authInfo = (props.providerAuthOptions ?? []).find((p) => p.providerId === provider);
           const providerLabel = authInfo?.providerLabel ?? provider;
           const providerFavCount = models.filter((m) =>
             whitelist.has(m.provider ? `${m.provider}/${m.id}` : m.id),
@@ -183,11 +195,16 @@ function renderFavoriteModels(
                   props.onRequestUpdate?.();
                 }}
               >
-                <span class="config-model-favorites__provider-arrow ${collapsed
-                  ? "config-model-favorites__provider-arrow--collapsed"
-                  : ""}">▸</span>
+                <span
+                  class="config-model-favorites__provider-arrow ${collapsed
+                    ? "config-model-favorites__provider-arrow--collapsed"
+                    : ""}"
+                  >▸</span
+                >
                 <span class="config-model-favorites__provider-label">${providerLabel}</span>
-                <span class="config-model-favorites__provider-count">${providerFavCount}/${models.length}</span>
+                <span class="config-model-favorites__provider-count"
+                  >${providerFavCount}/${models.length}</span
+                >
               </button>
               ${!collapsed
                 ? html`<div class="config-model-favorites__models">
@@ -237,11 +254,9 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
     ...byProvider.keys(),
     ...providerAuthOptions.map((p) => p.providerId),
   ]);
-  const providers = [...allProviderIds].sort();
+  const providers = [...allProviderIds].toSorted();
 
-  const rawModel = props.formValue
-    ? getValueAtPath(props.formValue, MODEL_ENTRY.path)
-    : undefined;
+  const rawModel = props.formValue ? getValueAtPath(props.formValue, MODEL_ENTRY.path) : undefined;
   const currentModel =
     typeof rawModel === "string"
       ? rawModel
@@ -263,9 +278,8 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
   const endpointOptions = authInfo?.authOptions.filter((o) => o.kind === "api_key") ?? [];
   const hasEndpoints = endpointOptions.length > 1;
 
-  const selectedAuthMethod = endpointOptions.find(
-    (o) => (o.endpoint || o.id) === selectedEndpoint,
-  ) ?? endpointOptions[0];
+  const selectedAuthMethod =
+    endpointOptions.find((o) => (o.endpoint || o.id) === selectedEndpoint) ?? endpointOptions[0];
   const effectiveEndpoint = selectedAuthMethod?.endpoint || selectedAuthMethod?.id || "";
 
   const providerModels = byProvider.get(selectedProvider ?? "") ?? [];
@@ -290,7 +304,10 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
             const info = providerAuthOptions.find((i) => i.providerId === p);
             const label = info?.providerLabel ?? p;
             return html`<option value=${p} ?selected=${p === selectedProvider}>
-              ${label}${isConfiguredForProvider(providerAuthOptions, configuredProviders, p) ? " ✓" : ""} (${byProvider.get(p)?.length ?? 0})
+              ${label}${isConfiguredForProvider(providerAuthOptions, configuredProviders, p)
+                ? " ✓"
+                : ""}
+              (${byProvider.get(p)?.length ?? 0})
             </option>`;
           })}
         </select>
@@ -308,14 +325,12 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
                   props.onRequestUpdate?.();
                 }}
               >
-                ${endpointOptions.map(
-                  (opt) => {
-                    const optValue = opt.endpoint || opt.id;
-                    return html`<option value=${optValue} ?selected=${optValue === effectiveEndpoint}>
-                      ${opt.label}${opt.hint ? ` (${opt.hint})` : ""}
-                    </option>`;
-                  },
-                )}
+                ${endpointOptions.map((opt) => {
+                  const optValue = opt.endpoint || opt.id;
+                  return html`<option value=${optValue} ?selected=${optValue === effectiveEndpoint}>
+                    ${opt.label}${opt.hint ? ` (${opt.hint})` : ""}
+                  </option>`;
+                })}
               </select>
             `
           : nothing}
@@ -337,10 +352,16 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
             const isSelected = value === currentModel || m.id === currentModel;
             const ctx = formatContextWindow(m.contextWindow);
             const hints: string[] = [];
-            if (ctx) hints.push(ctx);
-            if (m.reasoning) hints.push("reasoning");
+            if (ctx) {
+              hints.push(ctx);
+            }
+            if (m.reasoning) {
+              hints.push("reasoning");
+            }
             const suffix = hints.length ? ` — ${hints.join(", ")}` : "";
-            return html`<option value=${value} ?selected=${isSelected}>${m.name || m.id}${suffix}</option>`;
+            return html`<option value=${value} ?selected=${isSelected}>
+              ${m.name || m.id}${suffix}
+            </option>`;
           })}
         </select>
       </div>
@@ -366,7 +387,9 @@ function renderModelSelect(props: ConfigProps): TemplateResult | typeof nothing 
                 ?disabled=${apiKeySaving || !apiKeyInput.trim()}
                 @click=${() => {
                   const key = apiKeyInput.trim();
-                  if (!key || !client) return;
+                  if (!key || !client) {
+                    return;
+                  }
                   apiKeySaving = true;
                   apiKeySaved = false;
                   apiKeyError = false;
@@ -454,7 +477,8 @@ const INTERVAL_ENTRY: QuickSettingEntry = {
         }}
       >
         ${INTERVAL_PRESETS.map(
-          (p) => html`<option value=${p.value} ?selected=${p.value === current}>${p.label}</option>`,
+          (p) =>
+            html`<option value=${p.value} ?selected=${p.value === current}>${p.label}</option>`,
         )}
       </select>
     `;
@@ -486,7 +510,8 @@ const LANGUAGE_ENTRY: QuickSettingEntry = {
         }}
       >
         ${LANGUAGE_PRESETS.map(
-          (p) => html`<option value=${p.value} ?selected=${p.value === current}>${p.label}</option>`,
+          (p) =>
+            html`<option value=${p.value} ?selected=${p.value === current}>${p.label}</option>`,
         )}
       </select>
     `;

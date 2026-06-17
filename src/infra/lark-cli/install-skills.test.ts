@@ -25,11 +25,14 @@ describe("installLarkCliSkills", () => {
   });
 
   it("calls npx with -y flag", async () => {
-    mockedExecFile.mockImplementationOnce(
-      ((_file: string, _args: string[], _opts: unknown, cb: (err: null, stdout: string, stderr: string) => void) => {
-        cb(null, "28 skills installed", "");
-      }) as typeof execFile,
-    );
+    mockedExecFile.mockImplementationOnce(((
+      _file: string,
+      _args: string[],
+      _opts: unknown,
+      cb: (err: null, stdout: string, stderr: string) => void,
+    ) => {
+      cb(null, "28 skills installed", "");
+    }) as typeof execFile);
 
     const result = await installLarkCliSkills();
     expect(result.ok).toBe(true);
@@ -43,11 +46,14 @@ describe("installLarkCliSkills", () => {
   });
 
   it("parses installed count from output", async () => {
-    mockedExecFile.mockImplementationOnce(
-      ((_file: string, _args: string[], _opts: unknown, cb: (err: null, stdout: string, stderr: string) => void) => {
-        cb(null, "28 skills installed successfully", "");
-      }) as typeof execFile,
-    );
+    mockedExecFile.mockImplementationOnce(((
+      _file: string,
+      _args: string[],
+      _opts: unknown,
+      cb: (err: null, stdout: string, stderr: string) => void,
+    ) => {
+      cb(null, "28 skills installed successfully", "");
+    }) as typeof execFile);
 
     const result = await installLarkCliSkills();
     expect(result.ok).toBe(true);
@@ -55,11 +61,14 @@ describe("installLarkCliSkills", () => {
   });
 
   it("returns error on npx failure", async () => {
-    mockedExecFile.mockImplementationOnce(
-      ((_file: string, _args: string[], _opts: unknown, cb: (err: Error) => void) => {
-        cb(new Error("Command failed with exit code 1"));
-      }) as typeof execFile,
-    );
+    mockedExecFile.mockImplementationOnce(((
+      _file: string,
+      _args: string[],
+      _opts: unknown,
+      cb: (err: Error) => void,
+    ) => {
+      cb(new Error("Command failed with exit code 1"));
+    }) as typeof execFile);
 
     const result = await installLarkCliSkills();
     expect(result.ok).toBe(false);
@@ -70,27 +79,33 @@ describe("installLarkCliSkills", () => {
     const originalPlatform = process.platform;
     // We can't easily mock process.platform, but we can verify the options
     // by checking the execFile call
-    mockedExecFile.mockImplementationOnce(
-      ((_file: string, _args: string[], _opts: Record<string, unknown>, cb: (err: null, stdout: string, stderr: string) => void) => {
-        // On win32, opts should have shell: true
-        if (originalPlatform === "win32") {
-          expect(_opts.shell).toBe(true);
-        }
-        cb(null, "done", "");
-      }) as typeof execFile,
-    );
+    mockedExecFile.mockImplementationOnce(((
+      _file: string,
+      _args: string[],
+      _opts: Record<string, unknown>,
+      cb: (err: null, stdout: string, stderr: string) => void,
+    ) => {
+      // On win32, opts should have shell: true
+      if (originalPlatform === "win32") {
+        expect(_opts.shell).toBe(true);
+      }
+      cb(null, "done", "");
+    }) as typeof execFile);
 
     await installLarkCliSkills();
     expect(mockedExecFile).toHaveBeenCalled();
   });
 
   it("sets timeout to 120s", async () => {
-    mockedExecFile.mockImplementationOnce(
-      ((_file: string, _args: string[], opts: Record<string, unknown>, cb: (err: null, stdout: string, stderr: string) => void) => {
-        expect(opts.timeout).toBe(120_000);
-        cb(null, "done", "");
-      }) as typeof execFile,
-    );
+    mockedExecFile.mockImplementationOnce(((
+      _file: string,
+      _args: string[],
+      opts: Record<string, unknown>,
+      cb: (err: null, stdout: string, stderr: string) => void,
+    ) => {
+      expect(opts.timeout).toBe(120_000);
+      cb(null, "done", "");
+    }) as typeof execFile);
 
     await installLarkCliSkills();
   });

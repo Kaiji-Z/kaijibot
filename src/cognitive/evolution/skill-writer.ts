@@ -45,11 +45,15 @@ export class SkillPersistenceWriter {
       { subdir: "assets", files: draft.assets },
     ];
     for (const { subdir, files } of bundles) {
-      if (!files || Object.keys(files).length === 0) {continue;}
+      if (!files || Object.keys(files).length === 0) {
+        continue;
+      }
       const subDir = join(dir, subdir);
       await mkdir(subDir, { recursive: true });
       for (const [filename, content] of Object.entries(files)) {
-        if (filename.includes("..") || filename.startsWith("/")) {continue;}
+        if (filename.includes("..") || filename.startsWith("/")) {
+          continue;
+        }
         const filePath = join(subDir, filename);
         await writeTextAtomic(filePath, content);
       }
@@ -107,7 +111,9 @@ export class SkillPersistenceWriter {
   }
 
   async readArchivedSkillMeta(name: string): Promise<SkillMeta | null> {
-    if (name.includes("..") || name.startsWith("/")) {return null;}
+    if (name.includes("..") || name.startsWith("/")) {
+      return null;
+    }
     const subdir = this.options.agentSkills !== false ? AGENT_SKILLS_DIR : SKILLS_DIR;
     const filePath = join(this.skillBaseDir, subdir, ARCHIVE_DIR, name, SKILL_FILE);
     let content: string;
@@ -117,14 +123,20 @@ export class SkillPersistenceWriter {
       return null;
     }
 
-    if (!content.startsWith("---")) {return null;}
+    if (!content.startsWith("---")) {
+      return null;
+    }
     const secondDash = content.indexOf("---", 3);
-    if (secondDash === -1) {return null;}
+    if (secondDash === -1) {
+      return null;
+    }
     const frontmatter = content.slice(3, secondDash).trim();
 
     const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
     const descMatch = frontmatter.match(/^description:\s*"(.*)"/m);
-    if (!nameMatch || !descMatch) {return null;}
+    if (!nameMatch || !descMatch) {
+      return null;
+    }
 
     const createdAt = Number(frontmatter.match(/^createdAt:\s*(\d+)/m)?.[1] ?? 0);
     const lastUsedAt = Number(frontmatter.match(/^lastUsedAt:\s*(\d+)/m)?.[1] ?? 0);
@@ -162,7 +174,9 @@ export class SkillPersistenceWriter {
       await access(join(activePath, SKILL_FILE));
       throw new Error(`Active skill already exists: ${name}`);
     } catch (err) {
-      if (err instanceof Error && err.message.startsWith("Active skill already exists")) {throw err;}
+      if (err instanceof Error && err.message.startsWith("Active skill already exists")) {
+        throw err;
+      }
     }
 
     await rename(archivePath, activePath);
@@ -185,7 +199,9 @@ export class SkillPersistenceWriter {
 
   async readSkill(name: string): Promise<SkillDraft | null> {
     const raw = await this.readRawSkill(name);
-    if (raw === null) {return null;}
+    if (raw === null) {
+      return null;
+    }
 
     // Parse YAML frontmatter
     if (!raw.startsWith("---")) {
@@ -239,7 +255,9 @@ export class SkillPersistenceWriter {
 
   async readRawSkill(name: string): Promise<string | null> {
     const dir = await this.findSkillDir(name);
-    if (!dir) {return null;}
+    if (!dir) {
+      return null;
+    }
     const filePath = join(dir, SKILL_FILE);
     try {
       return await readFile(filePath, "utf-8");
@@ -280,7 +298,9 @@ export class SkillPersistenceWriter {
     }
     const names: string[] = [];
     for (const entry of entries) {
-      if (entry === ARCHIVE_DIR) {continue;}
+      if (entry === ARCHIVE_DIR) {
+        continue;
+      }
       const skillPath = join(skillsDir, entry, SKILL_FILE);
       try {
         await access(skillPath);
@@ -292,7 +312,9 @@ export class SkillPersistenceWriter {
 
   async readSkillMeta(name: string): Promise<SkillMeta | null> {
     const dir = await this.findSkillDir(name);
-    if (!dir) {return null;}
+    if (!dir) {
+      return null;
+    }
     const filePath = join(dir, SKILL_FILE);
     let content: string;
     try {
@@ -334,7 +356,9 @@ export class SkillPersistenceWriter {
 
   async touchSkill(name: string): Promise<void> {
     const dir = await this.findSkillDir(name);
-    if (!dir) {return;}
+    if (!dir) {
+      return;
+    }
     const filePath = join(dir, SKILL_FILE);
     let content: string;
     try {

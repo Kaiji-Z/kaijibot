@@ -24,11 +24,7 @@ export type CorrectionRecord = {
 
 /** Dependencies injected from the orchestrator — no direct imports from core. */
 export type ConsolidationRouteDeps = {
-  mergeTypedInsights: (
-    agentId: string,
-    userId: string,
-    items: ExtractedItem[],
-  ) => Promise<number>;
+  mergeTypedInsights: (agentId: string, userId: string, items: ExtractedItem[]) => Promise<number>;
   addOrReinforceCorrection: (
     agentId: string,
     userId: string,
@@ -95,7 +91,10 @@ export async function routeToStores(params: {
   }
 
   // Group by (agentId, userId) for batch persona writes
-  const personaGroups = new Map<string, { agentId: string; userId: string; items: ExtractedItem[] }>();
+  const personaGroups = new Map<
+    string,
+    { agentId: string; userId: string; items: ExtractedItem[] }
+  >();
   const memorySummaryLines: string[] = [];
 
   for (const routeItem of items) {
@@ -160,8 +159,12 @@ export async function routeToStores(params: {
 
   // Write high-confidence items to MEMORY.md inline sections
   const highConfidenceItems = items.filter((ri) => {
-    if (ri.item.confidence < 0.7) {return false;}
-    if (ri.item.category === "behavioral_pattern" && ri.item.confidence < 0.8) {return false;}
+    if (ri.item.confidence < 0.7) {
+      return false;
+    }
+    if (ri.item.category === "behavioral_pattern" && ri.item.confidence < 0.8) {
+      return false;
+    }
     return ri.item.category in CATEGORY_TO_SECTION;
   });
   if (highConfidenceItems.length > 0) {

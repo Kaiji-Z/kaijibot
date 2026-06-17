@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createAuthHandlers, seedProviderModelsFromManifest, seedProviderModels } from "./auth.js";
 import type { PluginManifestRegistry } from "../../plugins/manifest-registry.js";
+import { createAuthHandlers, seedProviderModelsFromManifest, seedProviderModels } from "./auth.js";
 
 const writeConfigFileMock = vi.fn().mockResolvedValue(undefined);
 const loadConfigMock = vi.fn(() => ({ models: { providers: {} } }));
@@ -37,7 +37,9 @@ vi.mock("../../plugins/bundled-dir.js", () => ({
 }));
 
 const listAgentIdsMock = vi.fn((_cfg: unknown) => ["main"]);
-const resolveAgentDirMock = vi.fn((_cfg: unknown, agentId: string) => `/test/agents/${agentId}/agent`);
+const resolveAgentDirMock = vi.fn(
+  (_cfg: unknown, agentId: string) => `/test/agents/${agentId}/agent`,
+);
 
 vi.mock("../../agents/agent-scope.js", () => ({
   listAgentIds: (cfg: unknown) => listAgentIdsMock(cfg),
@@ -128,7 +130,15 @@ describe("createAuthHandlers", () => {
 
       const result = getResult();
       expect(result.ok).toBe(true);
-      const providers = (result.payload as { providers: Array<{ providerId: string; configured: boolean; authOptions: Array<{ id: string; label: string; hint?: string; kind: string }> }> }).providers;
+      const providers = (
+        result.payload as {
+          providers: Array<{
+            providerId: string;
+            configured: boolean;
+            authOptions: Array<{ id: string; label: string; hint?: string; kind: string }>;
+          }>;
+        }
+      ).providers;
 
       const providerIds = providers.map((p) => p.providerId);
       expect(providerIds).toContain("qwen");
@@ -220,7 +230,11 @@ describe("createAuthHandlers", () => {
 
       const result = getResult();
       expect(result.ok).toBe(true);
-      const providers = (result.payload as { providers: Array<{ providerId: string; configured: boolean; providerLabel: string }> }).providers;
+      const providers = (
+        result.payload as {
+          providers: Array<{ providerId: string; configured: boolean; providerLabel: string }>;
+        }
+      ).providers;
 
       const providerIds = providers.map((p) => p.providerId);
       expect(providerIds).toContain("zai");
@@ -304,7 +318,9 @@ describe("createAuthHandlers", () => {
 
     it("broadcasts to all agent dirs when agentId is omitted", async () => {
       listAgentIdsMock.mockReturnValue(["main", "research"]);
-      resolveAgentDirMock.mockImplementation((_cfg: unknown, id: string) => `/test/agents/${id}/agent`);
+      resolveAgentDirMock.mockImplementation(
+        (_cfg: unknown, id: string) => `/test/agents/${id}/agent`,
+      );
 
       const handlers = createAuthHandlers({
         getConfig: () => ({ agents: { list: [{ id: "main" }, { id: "research" }] } }),
@@ -330,7 +346,9 @@ describe("createAuthHandlers", () => {
 
     it("writes to a single agent dir when agentId is specified", async () => {
       listAgentIdsMock.mockReturnValue(["main", "research"]);
-      resolveAgentDirMock.mockImplementation((_cfg: unknown, id: string) => `/test/agents/${id}/agent`);
+      resolveAgentDirMock.mockImplementation(
+        (_cfg: unknown, id: string) => `/test/agents/${id}/agent`,
+      );
 
       const handlers = createAuthHandlers({
         getConfig: () => ({ agents: { list: [{ id: "main" }, { id: "research" }] } }),
@@ -372,9 +390,7 @@ describe("createAuthHandlers", () => {
       loadConfigMock.mockReturnValue({ models: { providers: {} } });
     });
 
-    function makeRegistry(
-      modelCatalog?: Record<string, unknown>,
-    ): PluginManifestRegistry {
+    function makeRegistry(modelCatalog?: Record<string, unknown>): PluginManifestRegistry {
       return {
         plugins: [
           {
@@ -491,22 +507,23 @@ describe("createAuthHandlers", () => {
       }));
 
       seedProviderModels("deepseek", {
-        getProviderRegistrations: () => [
-          {
-            provider: {
-              id: "deepseek",
-              auth: [
-                {
-                  id: "api-key",
-                  label: "DeepSeek API Key",
-                  kind: "api_key" as const,
-                  run: vi.fn(),
-                  applyConfig: applyConfigMock,
-                },
-              ],
+        getProviderRegistrations: () =>
+          [
+            {
+              provider: {
+                id: "deepseek",
+                auth: [
+                  {
+                    id: "api-key",
+                    label: "DeepSeek API Key",
+                    kind: "api_key" as const,
+                    run: vi.fn(),
+                    applyConfig: applyConfigMock,
+                  },
+                ],
+              },
             },
-          },
-        ] as never,
+          ] as never,
       });
 
       expect(applyConfigMock).toHaveBeenCalledTimes(1);
@@ -552,21 +569,22 @@ describe("createAuthHandlers", () => {
       };
 
       seedProviderModels("deepseek", {
-        getProviderRegistrations: () => [
-          {
-            provider: {
-              id: "deepseek",
-              auth: [
-                {
-                  id: "api-key",
-                  label: "DeepSeek API Key",
-                  kind: "api_key" as const,
-                  run: vi.fn(),
-                },
-              ],
+        getProviderRegistrations: () =>
+          [
+            {
+              provider: {
+                id: "deepseek",
+                auth: [
+                  {
+                    id: "api-key",
+                    label: "DeepSeek API Key",
+                    kind: "api_key" as const,
+                    run: vi.fn(),
+                  },
+                ],
+              },
             },
-          },
-        ] as never,
+          ] as never,
         getManifestRegistry: () => manifestReg,
       });
 
@@ -589,22 +607,23 @@ describe("createAuthHandlers", () => {
       const applyConfigMock = vi.fn();
 
       seedProviderModels("deepseek", {
-        getProviderRegistrations: () => [
-          {
-            provider: {
-              id: "deepseek",
-              auth: [
-                {
-                  id: "api-key",
-                  label: "DeepSeek API Key",
-                  kind: "api_key" as const,
-                  run: vi.fn(),
-                  applyConfig: applyConfigMock,
-                },
-              ],
+        getProviderRegistrations: () =>
+          [
+            {
+              provider: {
+                id: "deepseek",
+                auth: [
+                  {
+                    id: "api-key",
+                    label: "DeepSeek API Key",
+                    kind: "api_key" as const,
+                    run: vi.fn(),
+                    applyConfig: applyConfigMock,
+                  },
+                ],
+              },
             },
-          },
-        ] as never,
+          ] as never,
       });
 
       expect(applyConfigMock).not.toHaveBeenCalled();

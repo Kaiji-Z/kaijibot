@@ -105,7 +105,9 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -145,14 +147,30 @@ function evaluateDraft(
   const referencesRealTools = toolNamesInBody.length > 0;
 
   let score = 0;
-  if (hasValidName) {score += 2;}
-  if (hasDescription) {score += 1;}
-  if (hasTriggers) {score += 2;}
-  if (hasChineseTriggers) {score += 1;}
-  if (hasEnglishTriggers) {score += 1;}
-  if (under200Lines) {score += 1;}
-  if (hasWorkflowSection) {score += 1;}
-  if (referencesRealTools) {score += 1;}
+  if (hasValidName) {
+    score += 2;
+  }
+  if (hasDescription) {
+    score += 1;
+  }
+  if (hasTriggers) {
+    score += 2;
+  }
+  if (hasChineseTriggers) {
+    score += 1;
+  }
+  if (hasEnglishTriggers) {
+    score += 1;
+  }
+  if (under200Lines) {
+    score += 1;
+  }
+  if (hasWorkflowSection) {
+    score += 1;
+  }
+  if (referencesRealTools) {
+    score += 1;
+  }
 
   return {
     name: draft.name,

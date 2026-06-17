@@ -624,8 +624,6 @@
   display: none;
 }
 
-
-
 /* Chat loading skeleton */
 .chat-loading-skeleton {
   padding: 4px 0;
@@ -1013,7 +1011,9 @@
   transition: transform var(--duration-fast) var(--ease-out);
 }
 
-.input-settings-popover__checkbox:checked ~ .input-settings-popover__switch .input-settings-popover__switch-thumb {
+.input-settings-popover__checkbox:checked
+  ~ .input-settings-popover__switch
+  .input-settings-popover__switch-thumb {
   transform: translateX(12px);
 }
 
@@ -1088,7 +1088,9 @@
     height: 16px;
   }
 
-  .input-settings-popover__checkbox:checked ~ .input-settings-popover__switch .input-settings-popover__switch-thumb {
+  .input-settings-popover__checkbox:checked
+    ~ .input-settings-popover__switch
+    .input-settings-popover__switch-thumb {
     transform: translateX(16px);
   }
 }

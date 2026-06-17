@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockIsLarkCliAvailable } = vi.hoisted(() => ({
@@ -22,7 +22,10 @@ import { areLarkSkillsInstalled, shouldDisableNativeTools } from "./auto-disable
 const mockHomedir = vi.mocked(homedir);
 
 function makeTempSkillsDir(): string {
-  const dir = join(tmpdir(), `kaijibot-test-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = join(
+    tmpdir(),
+    `kaijibot-test-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -106,7 +109,11 @@ describe("areLarkSkillsInstalled", () => {
     } catch {
       // chmod may fail on some systems (e.g. running as root); skip gracefully
     } finally {
-      try { chmodSync(skillsDir, 0o755); } catch { /* noop */ }
+      try {
+        chmodSync(skillsDir, 0o755);
+      } catch {
+        /* noop */
+      }
     }
   });
 

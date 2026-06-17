@@ -110,7 +110,9 @@ describe("CronToolSchema", () => {
   });
 
   it("job.payload includes fallbacks", () => {
-    expect(keysAt(CronToolSchema as unknown as Record<string, unknown>, "job.payload")).toContain("fallbacks");
+    expect(keysAt(CronToolSchema as unknown as Record<string, unknown>, "job.payload")).toContain(
+      "fallbacks",
+    );
   });
 
   it("patch.payload exposes agentTurn fallback overrides", () => {
@@ -131,9 +133,9 @@ describe("CronToolSchema", () => {
   });
 
   it("job.failureAlert exposes after, channel, to, cooldownMs, mode, accountId", () => {
-    expect(keysAt(CronToolSchema as unknown as Record<string, unknown>, "job.failureAlert")).toEqual(
-      ["accountId", "after", "channel", "cooldownMs", "mode", "to"].toSorted(),
-    );
+    expect(
+      keysAt(CronToolSchema as unknown as Record<string, unknown>, "job.failureAlert"),
+    ).toEqual(["accountId", "after", "channel", "cooldownMs", "mode", "to"].toSorted());
   });
 
   it("job.failureAlert uses plain object type for OpenAPI 3.0 compat", () => {

@@ -70,7 +70,9 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -277,7 +279,9 @@ describe("Phase 3: skill creation pipeline — generate + dedup + save", () => {
 
     const existingSkills: Array<{ name: string; description: string }> = [];
     const meta1 = await writer.readSkillMeta(draft1.name);
-    if (meta1) {existingSkills.push({ name: meta1.name, description: meta1.description });}
+    if (meta1) {
+      existingSkills.push({ name: meta1.name, description: meta1.description });
+    }
 
     const candidate2 = makeCandidate({
       taskSummary: "导出飞书多维表格到 Excel 文件",
@@ -441,12 +445,17 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
   });
 
   function extractToolResult(result: unknown): { status: string; [key: string]: unknown } {
-    if (typeof result === "string") {return { status: result };}
+    if (typeof result === "string") {
+      return { status: result };
+    }
     const r = result as { content?: Array<{ type: string; text: string }>; details?: unknown };
-    if (r.details && typeof r.details === "object")
-      {return r.details as { status: string; [key: string]: unknown };}
+    if (r.details && typeof r.details === "object") {
+      return r.details as { status: string; [key: string]: unknown };
+    }
     const text = r.content?.[0]?.text;
-    if (text) {return JSON.parse(text);}
+    if (text) {
+      return JSON.parse(text);
+    }
     throw new Error(`unexpected tool result: ${JSON.stringify(result)}`);
   }
 
@@ -660,7 +669,9 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 4: full pipeline with real LLM",
 
     const existingSkills: Array<{ name: string; description: string }> = [];
     const meta1 = await writer.readSkillMeta(draft1.name);
-    if (meta1) {existingSkills.push({ name: meta1.name, description: meta1.description });}
+    if (meta1) {
+      existingSkills.push({ name: meta1.name, description: meta1.description });
+    }
 
     const candidate2 = makeCandidate({
       taskSummary: "搜索竞品分析报告并整理到知识库",

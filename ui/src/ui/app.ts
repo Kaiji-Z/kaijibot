@@ -290,7 +290,9 @@ export class KaijiBotApp extends LitElement {
   @state() skillsManagerError: string | null = null;
   @state() skillsManagerInstalled: import("./types.js").SkillStatusReport | null = null;
   @state() skillsManagerSearchQuery = "";
-  @state() skillsManagerSearchResults: import("../../../src/infra/clawhub.js").ClawHubSkillSearchResult[] = [];
+  @state()
+  skillsManagerSearchResults: import("../../../src/infra/clawhub.js").ClawHubSkillSearchResult[] =
+    [];
   @state() skillsManagerDetail: unknown = null;
   @state() skillsManagerInstalling = false;
   @state() skillsManagerUpdating = false;

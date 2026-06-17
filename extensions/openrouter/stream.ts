@@ -2,11 +2,7 @@ import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { ProviderWrapStreamFnContext } from "kaijibot/plugin-sdk/plugin-entry";
 import { createSubsystemLogger } from "kaijibot/plugin-sdk/runtime-env";
 import { isOpenRouterDeepSeekV4ModelId } from "./models.js";
-import {
-  isOpenRouterProxyReasoningUnsupportedModel,
-  normalizeOpenRouterBaseUrl,
-  OPENROUTER_BASE_URL,
-} from "./provider-catalog.js";
+import { normalizeOpenRouterBaseUrl, OPENROUTER_BASE_URL } from "./provider-catalog.js";
 
 type DeepSeekV4ThinkingLevel = ProviderWrapStreamFnContext["thinkingLevel"];
 type DeepSeekV4ReasoningEffort = "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -15,10 +11,7 @@ const log = createSubsystemLogger("openrouter-stream");
 
 function createOpenRouterPayloadPatchStreamWrapper(
   baseStreamFn: StreamFn | undefined,
-  patchFn: (params: {
-    payload: Record<string, unknown>;
-    model: Parameters<StreamFn>[0];
-  }) => void,
+  patchFn: (params: { payload: Record<string, unknown>; model: Parameters<StreamFn>[0] }) => void,
   opts?: {
     shouldPatch?: (params: {
       model: Parameters<StreamFn>[0];
@@ -32,7 +25,9 @@ function createOpenRouterPayloadPatchStreamWrapper(
   }
   const wrapper: StreamFn = (model, context, options) => {
     const shouldPatch = opts?.shouldPatch?.({ model, context, options }) ?? true;
-    if (!shouldPatch) return baseStreamFn(model, context, options);
+    if (!shouldPatch) {
+      return baseStreamFn(model, context, options);
+    }
     const originalOnPayload = options?.onPayload;
     return baseStreamFn(model, context, {
       ...options,
@@ -235,7 +230,9 @@ function createOpenRouterDeepSeekV4ThinkingWrapper(
   baseStreamFn: StreamFn | undefined,
   thinkingLevel: ProviderWrapStreamFnContext["thinkingLevel"],
 ): StreamFn | undefined {
-  if (!baseStreamFn) return undefined;
+  if (!baseStreamFn) {
+    return undefined;
+  }
   const wrapper: StreamFn = (model, context, options) => {
     if (!shouldPatchDeepSeekV4OpenRouterPayload(model)) {
       return baseStreamFn(model, context, options);

@@ -14,7 +14,10 @@ const MAX_GRACE_MS = 60_000;
  * This gives child processes a chance to clean up (close connections, remove
  * temp files, terminate their own children) before being hard-killed.
  */
-export function killProcessTree(pid: number, opts?: { graceMs?: number; detached?: boolean }): void {
+export function killProcessTree(
+  pid: number,
+  opts?: { graceMs?: number; detached?: boolean },
+): void {
   if (!Number.isFinite(pid) || pid <= 0) {
     return;
   }

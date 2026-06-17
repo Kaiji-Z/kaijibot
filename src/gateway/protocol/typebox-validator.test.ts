@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { Type } from "typebox";
+import { describe, expect, it } from "vitest";
 import { SessionsListParamsSchema, SessionsSendParamsSchema } from "./schema/sessions.js";
 import {
   compileTypeBoxValidator,

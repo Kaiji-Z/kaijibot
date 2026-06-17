@@ -309,7 +309,9 @@ describe("pickPromptVariant", () => {
     };
     let wins = 0;
     for (let i = 0; i < 1000; i++) {
-      if (pickPromptVariant(profile, arms) === 0) {wins++;}
+      if (pickPromptVariant(profile, arms) === 0) {
+        wins++;
+      }
     }
     expect(wins).toBeGreaterThan(700);
   });
@@ -322,7 +324,9 @@ describe("pickPromptVariant", () => {
     };
     let formalWins = 0;
     for (let i = 0; i < 1000; i++) {
-      if (pickPromptVariant(profile, ["casual", "formal"]) === 1) {formalWins++;}
+      if (pickPromptVariant(profile, ["casual", "formal"]) === 1) {
+        formalWins++;
+      }
     }
     expect(formalWins).toBeGreaterThan(50);
   });

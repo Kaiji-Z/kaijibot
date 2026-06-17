@@ -1,18 +1,21 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { MemorySearchResult } from "kaijibot/plugin-sdk/memory-core-host-runtime-files";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/memory-core";
+import type { MemorySearchResult } from "kaijibot/plugin-sdk/memory-core-host-runtime-files";
 import { appendMemoryHostEvent } from "kaijibot/plugin-sdk/memory-host-events";
-import { asNullableRecord as asRecord, normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/text-runtime";
+import {
+  asNullableRecord as asRecord,
+  normalizeLowercaseStringOrEmpty,
+} from "kaijibot/plugin-sdk/text-runtime";
 import {
   deriveConceptTags,
   MAX_CONCEPT_TAGS,
   summarizeConceptTagScriptCoverage,
   type ConceptTagScriptCoverage,
 } from "./concept-vocabulary.js";
-import { isExcludedMemoryContent } from "./memory-types.js";
 import { localDateStr } from "./local-date.js";
+import { isExcludedMemoryContent } from "./memory-types.js";
 import { deduplicateBySimilarity, type DedupableItem } from "./memory/semantic-dedup.js";
 
 function formatLocalIsoDay(epochMs: number): string {

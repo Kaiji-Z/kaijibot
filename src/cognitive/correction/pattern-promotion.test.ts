@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { CorrectionStore } from "./store.js";
 import { PatternRegistry } from "./pattern-registry.js";
+import { CorrectionStore } from "./store.js";
 import type { CorrectionRecord } from "./types.js";
 
 let tempDir: string;

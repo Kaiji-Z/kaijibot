@@ -6,7 +6,7 @@
  * business logic — the actual flush work is provided via a callback.
  */
 
-import { THROTTLE_CONSTANTS } from './card-types.js';
+import { THROTTLE_CONSTANTS } from "./card-types.js";
 
 // ---------------------------------------------------------------------------
 // FlushController
@@ -37,7 +37,9 @@ export class FlushController {
 
   /** Wait for any in-progress flush to finish. */
   waitForFlush(): Promise<void> {
-    if (!this.flushInProgress) return Promise.resolve();
+    if (!this.flushInProgress) {
+      return Promise.resolve();
+    }
     return new Promise<void>((resolve) => this.flushResolvers.push(resolve));
   }
 
@@ -49,7 +51,9 @@ export class FlushController {
    */
   async flush(): Promise<void> {
     if (!this.cardMessageReady() || this.flushInProgress || this.isCompleted) {
-      if (this.flushInProgress && !this.isCompleted) this.needsReflush = true;
+      if (this.flushInProgress && !this.isCompleted) {
+        this.needsReflush = true;
+      }
       return;
     }
     this.flushInProgress = true;
@@ -64,7 +68,9 @@ export class FlushController {
       this.flushInProgress = false;
       const resolvers = this.flushResolvers;
       this.flushResolvers = [];
-      for (const resolve of resolvers) resolve();
+      for (const resolve of resolvers) {
+        resolve();
+      }
 
       // If events arrived while the API call was in flight,
       // schedule an immediate follow-up flush.
@@ -86,7 +92,9 @@ export class FlushController {
    *   controller remains business-logic-free.
    */
   async throttledUpdate(throttleMs: number): Promise<void> {
-    if (!this.cardMessageReady()) return;
+    if (!this.cardMessageReady()) {
+      return;
+    }
 
     const now = Date.now();
     const elapsed = now - this.lastUpdateTime;

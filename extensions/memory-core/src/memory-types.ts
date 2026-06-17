@@ -41,27 +41,41 @@ export function isExcludedMemoryContent(content: string): boolean {
   const lower = content.toLowerCase();
 
   // Check diagnostic metadata first (high-confidence exclusion)
-  if (DIAGNOSTIC_PATTERNS.some((p) => lower.includes(p.toLowerCase()))) {return true;}
+  if (DIAGNOSTIC_PATTERNS.some((p) => lower.includes(p.toLowerCase()))) {
+    return true;
+  }
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.length === 0) {continue;}
+    if (trimmed.length === 0) {
+      continue;
+    }
 
     // Code line patterns
-    if (CODE_LINE_PATTERNS.some((re) => re.test(trimmed))) {return true;}
+    if (CODE_LINE_PATTERNS.some((re) => re.test(trimmed))) {
+      return true;
+    }
 
     // File path patterns
-    if (FILE_PATH_PATTERNS.some((p) => trimmed.includes(p))) {return true;}
+    if (FILE_PATH_PATTERNS.some((p) => trimmed.includes(p))) {
+      return true;
+    }
 
     // Git info
     const lineLower = trimmed.toLowerCase();
-    if (GIT_PATTERNS.some((p) => lineLower.includes(p.toLowerCase()))) {return true;}
+    if (GIT_PATTERNS.some((p) => lineLower.includes(p.toLowerCase()))) {
+      return true;
+    }
 
     // Derivable info
-    if (DERIVABLE_PATTERNS.some((p) => lineLower.includes(p.toLowerCase()))) {return true;}
+    if (DERIVABLE_PATTERNS.some((p) => lineLower.includes(p.toLowerCase()))) {
+      return true;
+    }
 
     // Ephemeral state
-    if (EPHEMERAL_PATTERNS.some((p) => lineLower.includes(p.toLowerCase()))) {return true;}
+    if (EPHEMERAL_PATTERNS.some((p) => lineLower.includes(p.toLowerCase()))) {
+      return true;
+    }
   }
 
   return false;

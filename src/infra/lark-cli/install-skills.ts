@@ -51,19 +51,24 @@ export async function installLarkCliSkills(): Promise<InstallSkillsResult> {
       env: process.env,
       ...(useShell ? { shell: true } : {}),
     };
-    execFile(file, ["-y", "skills", "add", "larksuite/cli", "-g", "--all"], options, (error, stdout, stderr) => {
-      if (error) {
-        const detail = (typeof stderr === "string" ? stderr : "")?.trim() || error.message;
-        resolve({ ok: false, error: detail });
-        return;
-      }
+    execFile(
+      file,
+      ["-y", "skills", "add", "larksuite/cli", "-g", "--all"],
+      options,
+      (error, stdout, stderr) => {
+        if (error) {
+          const detail = (typeof stderr === "string" ? stderr : "")?.trim() || error.message;
+          resolve({ ok: false, error: detail });
+          return;
+        }
 
-      const out = typeof stdout === "string" ? stdout : "";
-      const match = out.match(/(\d+)\s+skill/i);
-      resolve({
-        ok: true,
-        installed: match ? parseInt(match[1], 10) : undefined,
-      });
-    });
+        const out = typeof stdout === "string" ? stdout : "";
+        const match = out.match(/(\d+)\s+skill/i);
+        resolve({
+          ok: true,
+          installed: match ? parseInt(match[1], 10) : undefined,
+        });
+      },
+    );
   });
 }

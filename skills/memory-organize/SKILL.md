@@ -12,11 +12,11 @@ metadata: { "kaijibot": { "emoji": "🗃️", "requires": { "bins": [] }, "insta
 
 记忆系统由三层自动/手动维护：
 
-| 层级 | 触发方式 | 做什么 | 涉及的 LLM 调用 |
-|------|---------|--------|----------------|
-| **Layer 1: 生成+存储** | 会话结束（`/new` `/reset`） | LLM 结构化摘要 → 路由到已有 topic（优先）或创建新 topic → 写摘要（非原始对话）→ 更新 registry.json → 更新 MEMORY.md topic pointer | 1 次（摘要生成，含 topic 路由） |
-| **Layer 2: 自动整合** | 每日凌晨 3 点（consolidation cron） | 扫描会话 → LLM 提取结构化知识 → Jaccard 去重 → 路由到认知存储 → 写 MEMORY.md inline sections → rebalance 8KB 预算 | 批量（按用户分组） |
-| **Layer 3: 手动整理** | 用户说"整理记忆"时（本 skill） | MEMORY.md 垃圾回收 → 深度扫描全量会话 → `memory_tidy`（LLM 全权驱动：自动决定去重/合并/重命名/归档/inline 清理）→ 维护 registry.json | 深度扫描 + LLM 驱动的全量整理 |
+| 层级                   | 触发方式                            | 做什么                                                                                                                               | 涉及的 LLM 调用                 |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| **Layer 1: 生成+存储** | 会话结束（`/new` `/reset`）         | LLM 结构化摘要 → 路由到已有 topic（优先）或创建新 topic → 写摘要（非原始对话）→ 更新 registry.json → 更新 MEMORY.md topic pointer    | 1 次（摘要生成，含 topic 路由） |
+| **Layer 2: 自动整合**  | 每日凌晨 3 点（consolidation cron） | 扫描会话 → LLM 提取结构化知识 → Jaccard 去重 → 路由到认知存储 → 写 MEMORY.md inline sections → rebalance 8KB 预算                    | 批量（按用户分组）              |
+| **Layer 3: 手动整理**  | 用户说"整理记忆"时（本 skill）      | MEMORY.md 垃圾回收 → 深度扫描全量会话 → `memory_tidy`（LLM 全权驱动：自动决定去重/合并/重命名/归档/inline 清理）→ 维护 registry.json | 深度扫描 + LLM 驱动的全量整理   |
 
 **本 skill 覆盖 Layer 3**。Layer 1 和 Layer 2 是自动运行的，不需要手动触发。
 
@@ -222,6 +222,7 @@ LLM 会自动执行以下操作（根据实际数据决定哪些需要做）：
 所有操作经过代码验证后才执行。操作完成后自动调用 `rebalanceIndex()`（8KB 预算）和 `registry.syncFromDisk()` 维护一致性。
 
 **可选参数**：
+
 - `dryRun: true` — 预览所有操作但不写入文件
 - `focus: "topic-name"` — 只分析指定的主题
 

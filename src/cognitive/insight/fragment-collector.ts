@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { complete, type Api, type Model } from "@earendil-works/pi-ai";
+import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
+import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/config.js";
-import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
-import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
 import type { Fragment, FragmentKind } from "./fragment-types.js";
@@ -43,7 +43,11 @@ export function createDefaultFragmentCollectorDeps(): FragmentCollectorDeps {
         return prepareSimpleCompletionModel({ cfg, provider, modelId });
       }
       const resolved = resolveDefaultModelForAgent({ cfg });
-      return prepareSimpleCompletionModel({ cfg, provider: resolved.provider, modelId: resolved.model });
+      return prepareSimpleCompletionModel({
+        cfg,
+        provider: resolved.provider,
+        modelId: resolved.model,
+      });
     },
   };
 }
@@ -52,14 +56,19 @@ export function createDefaultFragmentCollectorDeps(): FragmentCollectorDeps {
 
 export function shouldSkipTurn(userText: string): boolean {
   const trimmed = userText.trim();
-  if (trimmed.length < 20) {return true;}
+  if (trimmed.length < 20) {
+    return true;
+  }
   if (
     /^(好的|嗯|哦|收到|了解|谢谢|感谢|明白|知道|可以|行|对|是|不错|没问题)[！!。.？?]*$/.test(
       trimmed,
     )
-  )
-    {return true;}
-  if (/^[\p{P}\p{S}\s]+$/u.test(trimmed)) {return true;}
+  ) {
+    return true;
+  }
+  if (/^[\p{P}\p{S}\s]+$/u.test(trimmed)) {
+    return true;
+  }
   return false;
 }
 

@@ -1,9 +1,10 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { writeTextAtomic } from "../../infra/json-files.js";
 import { textSimilarity } from "../../infra/text-similarity.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+import type { PatternRegistry } from "./pattern-registry.js";
 import {
   CORRECTION_STORE_VERSION,
   DEFAULT_CORRECTION_TTL_DAYS,
@@ -11,7 +12,6 @@ import {
   MAX_CORRECTIONS_PER_USER,
 } from "./types.js";
 import type { CorrectionRecord, CorrectionStoreData } from "./types.js";
-import type { PatternRegistry } from "./pattern-registry.js";
 
 const log = createSubsystemLogger("correction");
 const CORRECTIONS_DIR = "cognitive/corrections";
@@ -113,10 +113,7 @@ export class CorrectionStore {
       userId,
     });
 
-    if (
-      target.reinforcedCount === PROMOTE_AT_REINFORCEMENT_COUNT &&
-      this.patternRegistry
-    ) {
+    if (target.reinforcedCount === PROMOTE_AT_REINFORCEMENT_COUNT && this.patternRegistry) {
       try {
         await this.maybePromoteToPattern(target);
       } catch (err) {
@@ -128,12 +125,8 @@ export class CorrectionStore {
     }
   }
 
-  private async maybePromoteToPattern(
-    target: CorrectionRecord,
-  ): Promise<void> {
-    const tokens = extractDistinctiveTokens(
-      `${target.trigger} ${target.mistake}`,
-    );
+  private async maybePromoteToPattern(target: CorrectionRecord): Promise<void> {
+    const tokens = extractDistinctiveTokens(`${target.trigger} ${target.mistake}`);
     if (tokens.length === 0) {
       return;
     }
@@ -230,7 +223,9 @@ export class CorrectionStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) {result.push(name);}
+        if (s.isDirectory()) {
+          result.push(name);
+        }
       }
       return result.toSorted();
     } catch {
@@ -239,7 +234,7 @@ export class CorrectionStore {
   }
 }
 
-const TOKEN_SPLIT_RE = /[\s,，。、；;：:！!？?（）()\[\]{}'"""''《》<>\/\\|`~@#$%^&*\-_=+]+/;
+const TOKEN_SPLIT_RE = /[\s,，。、；;：:！!？?（）()[\]{}'"""''《》<>/\\|`~@#$%^&*\-_=+]+/;
 const MAX_PROMOTED_TOKENS = 3;
 
 function extractDistinctiveTokens(text: string): string[] {

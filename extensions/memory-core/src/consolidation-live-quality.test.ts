@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { TranscriptBatch } from "./consolidation-types.js";
 import { extractFromBatch } from "./consolidation-extract.js";
+import type { TranscriptBatch } from "./consolidation-types.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
@@ -31,7 +31,9 @@ async function callLLM(prompt: string): Promise<string> {
     error?: { message: string };
     choices?: Array<{ message: { content: string } }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -93,161 +95,174 @@ const FACT_BASED_TRANSCRIPT = [
 // Tests
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!isLive || !ZAI_API_KEY)(
-  "live consolidation quality — real LLM extraction",
-  () => {
-    it("extracts valid structured items from Chinese conversation transcript", async () => {
-      const batch = makeBatch([{ path: "memory/2025-05-25.md", content: CHINESE_TECHNICAL_TRANSCRIPT }]);
-      const items = await extractFromBatch(batch, callLLM);
+describe.skipIf(!isLive || !ZAI_API_KEY)("live consolidation quality — real LLM extraction", () => {
+  it("extracts valid structured items from Chinese conversation transcript", async () => {
+    const batch = makeBatch([
+      { path: "memory/2025-05-25.md", content: CHINESE_TECHNICAL_TRANSCRIPT },
+    ]);
+    const items = await extractFromBatch(batch, callLLM);
 
-      console.log(`\n  ═══ Chinese Technical Transcript ═══`);
-      console.log(`  Extracted ${items.length} items`);
-      for (const item of items) {
-        console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
-        console.log(`    evidence: "${item.evidence}"`);
+    console.log(`\n  ═══ Chinese Technical Transcript ═══`);
+    console.log(`  Extracted ${items.length} items`);
+    for (const item of items) {
+      console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
+      console.log(`    evidence: "${item.evidence}"`);
+    }
+    console.log(`  ═══════════════════\n`);
+
+    expect(items.length).toBeGreaterThan(0);
+
+    for (const item of items) {
+      expect(VALID_CATEGORIES.has(item.category)).toBe(true);
+      expect(item.confidence).toBeGreaterThanOrEqual(0.5);
+      expect(item.confidence).toBeLessThanOrEqual(1);
+      expect(item.content.length).toBeGreaterThan(0);
+      expect(item.evidence.length).toBeGreaterThan(0);
+      expect(item.source).toBe("transcript");
+    }
+  }, 60_000);
+
+  it("extracts valid structured items from English conversation transcript", async () => {
+    const batch = makeBatch([{ path: "memory/2025-05-25.md", content: ENGLISH_CODING_TRANSCRIPT }]);
+    const items = await extractFromBatch(batch, callLLM);
+
+    console.log(`\n  ═══ English Coding Transcript ═══`);
+    console.log(`  Extracted ${items.length} items`);
+    for (const item of items) {
+      console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
+      console.log(`    evidence: "${item.evidence}"`);
+    }
+    console.log(`  ═══════════════════\n`);
+
+    expect(items.length).toBeGreaterThan(0);
+
+    for (const item of items) {
+      expect(VALID_CATEGORIES.has(item.category)).toBe(true);
+      expect(item.confidence).toBeGreaterThanOrEqual(0.5);
+      expect(item.confidence).toBeLessThanOrEqual(1);
+      expect(item.content.length).toBeGreaterThan(0);
+      expect(item.evidence.length).toBeGreaterThan(0);
+      expect(item.source).toBe("transcript");
+    }
+  }, 60_000);
+
+  it("extracts diverse categories from multi-topic conversation", async () => {
+    const batch = makeBatch([{ path: "memory/2025-05-25.md", content: MULTI_TOPIC_TRANSCRIPT }]);
+    const items = await extractFromBatch(batch, callLLM);
+
+    console.log(`\n  ═══ Multi-Topic Transcript ═══`);
+    console.log(`  Extracted ${items.length} items`);
+    const categories = new Set(items.map((i) => i.category));
+    console.log(`  Categories: ${[...categories].join(", ")}`);
+    for (const item of items) {
+      console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
+    }
+    console.log(`  ═══════════════════\n`);
+
+    expect(items.length).toBeGreaterThan(0);
+
+    const categoriesFound = new Set(items.map((i) => i.category));
+    expect(categoriesFound.size).toBeGreaterThanOrEqual(2);
+
+    for (const item of items) {
+      expect(VALID_CATEGORIES.has(item.category)).toBe(true);
+      expect(item.source).toBe("transcript");
+    }
+  }, 60_000);
+
+  it("handles edge case: very short transcript", async () => {
+    const batch = makeBatch([{ path: "memory/2025-05-25.md", content: SHORT_TRANSCRIPT }]);
+    const items = await extractFromBatch(batch, callLLM);
+
+    console.log(`\n  ═══ Short Transcript ═══`);
+    console.log(`  Extracted ${items.length} items`);
+    for (const item of items) {
+      console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
+    }
+    console.log(`  ═══════════════════\n`);
+
+    // Should return an array (possibly empty or with few items) without errors
+    expect(Array.isArray(items)).toBe(true);
+
+    for (const item of items) {
+      expect(VALID_CATEGORIES.has(item.category)).toBe(true);
+      expect(item.confidence).toBeGreaterThanOrEqual(0.5);
+      expect(item.confidence).toBeLessThanOrEqual(1);
+    }
+  }, 60_000);
+
+  it("handles edge case: non-sensical/random text", async () => {
+    const batch = makeBatch([{ path: "memory/2025-05-25.md", content: GIBBERISH_TRANSCRIPT }]);
+    const items = await extractFromBatch(batch, callLLM);
+
+    console.log(`\n  ═══ Gibberish Transcript ═══`);
+    console.log(`  Extracted ${items.length} items from gibberish`);
+    for (const item of items) {
+      console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
+    }
+    console.log(`  ═══════════════════\n`);
+
+    // Should return empty array or items — the parsing handles both gracefully
+    expect(Array.isArray(items)).toBe(true);
+
+    // If items are returned despite gibberish, they should still pass validation
+    for (const item of items) {
+      expect(VALID_CATEGORIES.has(item.category)).toBe(true);
+      expect(item.confidence).toBeGreaterThanOrEqual(0.5);
+      expect(item.confidence).toBeLessThanOrEqual(1);
+    }
+  }, 60_000);
+
+  it("quality check: evidence relates to transcript content", async () => {
+    const batch = makeBatch([{ path: "memory/2025-05-25.md", content: FACT_BASED_TRANSCRIPT }]);
+    const items = await extractFromBatch(batch, callLLM);
+
+    console.log(`\n  ═══ Evidence Quality Check ═══`);
+    console.log(`  Extracted ${items.length} items from fact-based transcript`);
+    for (const item of items) {
+      console.log(`  [${item.category}] "${item.content}"`);
+      console.log(`    evidence: "${item.evidence}"`);
+    }
+    console.log(`  ═══════════════════\n`);
+
+    expect(items.length).toBeGreaterThan(0);
+
+    // Check that at least some evidence strings contain keywords from the transcript
+    const transcriptLower = FACT_BASED_TRANSCRIPT.toLowerCase();
+    const keywords = [
+      "kubernetes",
+      "k8s",
+      "集群",
+      "阿里云",
+      "terway",
+      "istio",
+      "cce",
+      "北京",
+      "上海",
+      "深圳",
+    ];
+
+    let evidenceWithKeywordCount = 0;
+    for (const item of items) {
+      expect(item.evidence.length).toBeGreaterThan(0);
+      // Evidence should contain at least some recognizable words, not pure hallucination
+      const evidenceLower = item.evidence.toLowerCase();
+      const hasKeyword = keywords.some(
+        (kw) =>
+          transcriptLower.includes(kw.toLowerCase()) && evidenceLower.includes(kw.toLowerCase()),
+      );
+      if (hasKeyword) {
+        evidenceWithKeywordCount++;
       }
-      console.log(`  ═══════════════════\n`);
+    }
 
-      expect(items.length).toBeGreaterThan(0);
+    // At least half the items should have evidence that relates to the transcript
+    expect(evidenceWithKeywordCount).toBeGreaterThanOrEqual(
+      Math.max(1, Math.floor(items.length / 2)),
+    );
 
-      for (const item of items) {
-        expect(VALID_CATEGORIES.has(item.category)).toBe(true);
-        expect(item.confidence).toBeGreaterThanOrEqual(0.5);
-        expect(item.confidence).toBeLessThanOrEqual(1);
-        expect(item.content.length).toBeGreaterThan(0);
-        expect(item.evidence.length).toBeGreaterThan(0);
-        expect(item.source).toBe("transcript");
-      }
-    }, 60_000);
-
-    it("extracts valid structured items from English conversation transcript", async () => {
-      const batch = makeBatch([{ path: "memory/2025-05-25.md", content: ENGLISH_CODING_TRANSCRIPT }]);
-      const items = await extractFromBatch(batch, callLLM);
-
-      console.log(`\n  ═══ English Coding Transcript ═══`);
-      console.log(`  Extracted ${items.length} items`);
-      for (const item of items) {
-        console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
-        console.log(`    evidence: "${item.evidence}"`);
-      }
-      console.log(`  ═══════════════════\n`);
-
-      expect(items.length).toBeGreaterThan(0);
-
-      for (const item of items) {
-        expect(VALID_CATEGORIES.has(item.category)).toBe(true);
-        expect(item.confidence).toBeGreaterThanOrEqual(0.5);
-        expect(item.confidence).toBeLessThanOrEqual(1);
-        expect(item.content.length).toBeGreaterThan(0);
-        expect(item.evidence.length).toBeGreaterThan(0);
-        expect(item.source).toBe("transcript");
-      }
-    }, 60_000);
-
-    it("extracts diverse categories from multi-topic conversation", async () => {
-      const batch = makeBatch([{ path: "memory/2025-05-25.md", content: MULTI_TOPIC_TRANSCRIPT }]);
-      const items = await extractFromBatch(batch, callLLM);
-
-      console.log(`\n  ═══ Multi-Topic Transcript ═══`);
-      console.log(`  Extracted ${items.length} items`);
-      const categories = new Set(items.map((i) => i.category));
-      console.log(`  Categories: ${[...categories].join(", ")}`);
-      for (const item of items) {
-        console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
-      }
-      console.log(`  ═══════════════════\n`);
-
-      expect(items.length).toBeGreaterThan(0);
-
-      const categoriesFound = new Set(items.map((i) => i.category));
-      expect(categoriesFound.size).toBeGreaterThanOrEqual(2);
-
-      for (const item of items) {
-        expect(VALID_CATEGORIES.has(item.category)).toBe(true);
-        expect(item.source).toBe("transcript");
-      }
-    }, 60_000);
-
-    it("handles edge case: very short transcript", async () => {
-      const batch = makeBatch([{ path: "memory/2025-05-25.md", content: SHORT_TRANSCRIPT }]);
-      const items = await extractFromBatch(batch, callLLM);
-
-      console.log(`\n  ═══ Short Transcript ═══`);
-      console.log(`  Extracted ${items.length} items`);
-      for (const item of items) {
-        console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
-      }
-      console.log(`  ═══════════════════\n`);
-
-      // Should return an array (possibly empty or with few items) without errors
-      expect(Array.isArray(items)).toBe(true);
-
-      for (const item of items) {
-        expect(VALID_CATEGORIES.has(item.category)).toBe(true);
-        expect(item.confidence).toBeGreaterThanOrEqual(0.5);
-        expect(item.confidence).toBeLessThanOrEqual(1);
-      }
-    }, 60_000);
-
-    it("handles edge case: non-sensical/random text", async () => {
-      const batch = makeBatch([{ path: "memory/2025-05-25.md", content: GIBBERISH_TRANSCRIPT }]);
-      const items = await extractFromBatch(batch, callLLM);
-
-      console.log(`\n  ═══ Gibberish Transcript ═══`);
-      console.log(`  Extracted ${items.length} items from gibberish`);
-      for (const item of items) {
-        console.log(`  [${item.category}] conf=${item.confidence} "${item.content}"`);
-      }
-      console.log(`  ═══════════════════\n`);
-
-      // Should return empty array or items — the parsing handles both gracefully
-      expect(Array.isArray(items)).toBe(true);
-
-      // If items are returned despite gibberish, they should still pass validation
-      for (const item of items) {
-        expect(VALID_CATEGORIES.has(item.category)).toBe(true);
-        expect(item.confidence).toBeGreaterThanOrEqual(0.5);
-        expect(item.confidence).toBeLessThanOrEqual(1);
-      }
-    }, 60_000);
-
-    it("quality check: evidence relates to transcript content", async () => {
-      const batch = makeBatch([{ path: "memory/2025-05-25.md", content: FACT_BASED_TRANSCRIPT }]);
-      const items = await extractFromBatch(batch, callLLM);
-
-      console.log(`\n  ═══ Evidence Quality Check ═══`);
-      console.log(`  Extracted ${items.length} items from fact-based transcript`);
-      for (const item of items) {
-        console.log(`  [${item.category}] "${item.content}"`);
-        console.log(`    evidence: "${item.evidence}"`);
-      }
-      console.log(`  ═══════════════════\n`);
-
-      expect(items.length).toBeGreaterThan(0);
-
-      // Check that at least some evidence strings contain keywords from the transcript
-      const transcriptLower = FACT_BASED_TRANSCRIPT.toLowerCase();
-      const keywords = ["kubernetes", "k8s", "集群", "阿里云", "terway", "istio", "cce", "北京", "上海", "深圳"];
-
-      let evidenceWithKeywordCount = 0;
-      for (const item of items) {
-        expect(item.evidence.length).toBeGreaterThan(0);
-        // Evidence should contain at least some recognizable words, not pure hallucination
-        const evidenceLower = item.evidence.toLowerCase();
-        const hasKeyword = keywords.some(
-          (kw) => transcriptLower.includes(kw.toLowerCase()) && evidenceLower.includes(kw.toLowerCase()),
-        );
-        if (hasKeyword) {
-          evidenceWithKeywordCount++;
-        }
-      }
-
-      // At least half the items should have evidence that relates to the transcript
-      expect(evidenceWithKeywordCount).toBeGreaterThanOrEqual(Math.max(1, Math.floor(items.length / 2)));
-
-      for (const item of items) {
-        expect(item.source).toBe("transcript");
-      }
-    }, 60_000);
-  },
-);
+    for (const item of items) {
+      expect(item.source).toBe("transcript");
+    }
+  }, 60_000);
+});

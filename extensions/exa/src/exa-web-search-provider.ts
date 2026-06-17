@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import {
   buildSearchCacheKey,
   DEFAULT_SEARCH_COUNT,
@@ -28,6 +27,7 @@ import {
   normalizeOptionalLowercaseString,
   normalizeOptionalString,
 } from "kaijibot/plugin-sdk/text-runtime";
+import { Type } from "typebox";
 
 const EXA_SEARCH_ENDPOINT = "https://api.exa.ai/search";
 const EXA_SEARCH_TYPES = ["auto", "neural", "fast", "deep", "deep-reasoning", "instant"] as const;

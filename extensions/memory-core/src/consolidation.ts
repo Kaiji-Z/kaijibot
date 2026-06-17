@@ -8,9 +8,16 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ConsolidationConfig, ConsolidationWorkspace } from "kaijibot/plugin-sdk/memory-core-host-status";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/memory-core";
-import { extractFromBatch, mergeAndDedupBatches, resolveConflicts } from "./consolidation-extract.js";
+import type {
+  ConsolidationConfig,
+  ConsolidationWorkspace,
+} from "kaijibot/plugin-sdk/memory-core-host-status";
+import {
+  extractFromBatch,
+  mergeAndDedupBatches,
+  resolveConflicts,
+} from "./consolidation-extract.js";
 import { routeToStores, type ConsolidationRouteDeps } from "./consolidation-route.js";
 import type {
   ConsolidationCheckpoint,
@@ -355,7 +362,9 @@ export async function runConsolidationAllAgents(params: {
 
       if (params.deps.repairDeps) {
         try {
-          const repairResult = await params.deps.repairDeps.repairMemoryStructure(workspace.workspaceDir);
+          const repairResult = await params.deps.repairDeps.repairMemoryStructure(
+            workspace.workspaceDir,
+          );
           if (results.length > 0 && repairResult) {
             results[results.length - 1]!.repairResult = repairResult;
           }

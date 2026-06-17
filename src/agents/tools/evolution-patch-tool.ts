@@ -21,8 +21,12 @@ export function createEvolutionPatchTool(deps: {
   config?: KaijiBotConfig;
   sessionKey?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) {return null;}
-  if (deps.config?.cognitive?.evolution?.enabled === false) {return null;}
+  if (deps.config?.cognitive?.enabled === false) {
+    return null;
+  }
+  if (deps.config?.cognitive?.evolution?.enabled === false) {
+    return null;
+  }
 
   return {
     name: "patch_skill",
@@ -88,8 +92,15 @@ export function createEvolutionPatchTool(deps: {
         try {
           const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
           const audit = new AuditLog(configDir);
-          await audit.append({ operation: "skill.patch", actor: deps.sessionKey ?? "agent", target: params.name, outcome: "success" });
-        } catch { /* non-fatal */ }
+          await audit.append({
+            operation: "skill.patch",
+            actor: deps.sessionKey ?? "agent",
+            target: params.name,
+            outcome: "success",
+          });
+        } catch {
+          /* non-fatal */
+        }
 
         return jsonResult({
           status: "patched",

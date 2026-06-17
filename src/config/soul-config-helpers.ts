@@ -19,11 +19,9 @@ export function setSoulInConfig(
   if (!Array.isArray(sourceConfig.agents.list)) {
     sourceConfig.agents.list = [];
   }
-  const entry = sourceConfig.agents.list.find(
-    (e) => e.id.toLowerCase() === agentId.toLowerCase(),
-  );
+  const entry = sourceConfig.agents.list.find((e) => e.id.toLowerCase() === agentId.toLowerCase());
   if (entry) {
-    entry.soul = { ...(entry.soul ?? {}), preset };
+    entry.soul = { ...entry.soul, preset };
   } else {
     sourceConfig.agents.list.push({ id: agentId, soul: { preset } });
   }

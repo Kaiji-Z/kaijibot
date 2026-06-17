@@ -114,10 +114,16 @@ const NOISE_PATTERNS: ReadonlyArray<RegExp> = [
 
 function isNoisePhrase(s: string): boolean {
   for (const pat of NOISE_PATTERNS) {
-    if (pat.test(s)) {return true;}
+    if (pat.test(s)) {
+      return true;
+    }
   }
-  if (/^[\s\p{P}\p{S}\p{C}]+$/u.test(s)) {return true;}
-  if (/^[\d\s,.\-+/\\#@$%^&*(){}[\]|~`]+$/.test(s)) {return true;}
+  if (/^[\s\p{P}\p{S}\p{C}]+$/u.test(s)) {
+    return true;
+  }
+  if (/^[\d\s,.\-+/\\#@$%^&*(){}[\]|~`]+$/.test(s)) {
+    return true;
+  }
   return false;
 }
 

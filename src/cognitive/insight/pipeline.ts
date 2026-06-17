@@ -5,7 +5,6 @@ import {
 import { FragmentStore } from "./fragment-store.js";
 import type { Fragment, FragmentCluster } from "./fragment-types.js";
 
-
 // ─── Aggregated deps ───
 
 export type PipelineDeps = {

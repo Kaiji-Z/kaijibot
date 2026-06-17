@@ -11,9 +11,7 @@ export const ZAI_DEFAULT_MODEL_REF = `zai/${ZAI_DEFAULT_MODEL_ID}`;
 const ZAI_MANIFEST_CATALOG = manifest.modelCatalog.providers.zai;
 
 const ZAI_MODEL_CATALOG = new Map(
-  ZAI_MANIFEST_CATALOG.models.map(
-    (model) => [model.id, model as ModelDefinitionConfig] as const,
-  ),
+  ZAI_MANIFEST_CATALOG.models.map((model) => [model.id, model as ModelDefinitionConfig] as const),
 );
 
 export const ZAI_DEFAULT_COST =

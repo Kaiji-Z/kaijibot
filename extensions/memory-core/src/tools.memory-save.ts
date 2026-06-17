@@ -8,15 +8,15 @@
  */
 
 import fs from "node:fs/promises";
-import { Type } from "typebox";
 import {
   jsonResult,
   readStringParam,
   type AnyAgentTool,
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
-import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
+import { Type } from "typebox";
 import { localDateStr } from "./local-date.js";
+import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { incrementGroundedCount } from "./short-term-promotion.js";
 import { getMemoryManagerContextWithPurpose, resolveMemoryToolContext } from "./tools.shared.js";
@@ -319,7 +319,9 @@ export function createMemorySaveTool(options: {
             if (existingSection) {
               const isDup = existingSection.lines.some((l) => {
                 const clean = l.replace(/^- \d{4}-\d{2}-\d{2}: /, "").replace(/^- /, "");
-                return jaccardSimilarity(tokenize(inlineText), tokenize(clean)) >= SIMILARITY_THRESHOLD;
+                return (
+                  jaccardSimilarity(tokenize(inlineText), tokenize(clean)) >= SIMILARITY_THRESHOLD
+                );
               });
               if (!isDup) {
                 existingSection.lines.push(inlineLine);

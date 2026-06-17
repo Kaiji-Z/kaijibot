@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FlushController } from './flush-controller.js';
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { FlushController } from "./flush-controller.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,19 +17,24 @@ function createController() {
     }
   });
   const controller = new FlushController(doFlush);
-  return { controller, doFlush, flushCalls, setFlushDuration: (ms: number) => (flushDurationMs = ms) };
+  return {
+    controller,
+    doFlush,
+    flushCalls,
+    setFlushDuration: (ms: number) => (flushDurationMs = ms),
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Basic construction
 // ---------------------------------------------------------------------------
 
-describe('FlushController', () => {
+describe("FlushController", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('starts with cardMessageReady = false', () => {
+  it("starts with cardMessageReady = false", () => {
     const { controller } = createController();
     expect(controller.cardMessageReady()).toBe(false);
   });
@@ -38,14 +43,14 @@ describe('FlushController', () => {
   // setCardMessageReady / cardMessageReady
   // ---------------------------------------------------------------------------
 
-  describe('cardMessageReady', () => {
-    it('can be set to true and read back', () => {
+  describe("cardMessageReady", () => {
+    it("can be set to true and read back", () => {
       const { controller } = createController();
       controller.setCardMessageReady(true);
       expect(controller.cardMessageReady()).toBe(true);
     });
 
-    it('can be toggled back to false', () => {
+    it("can be toggled back to false", () => {
       const { controller } = createController();
       controller.setCardMessageReady(true);
       controller.setCardMessageReady(false);
@@ -57,21 +62,21 @@ describe('FlushController', () => {
   // flush
   // ---------------------------------------------------------------------------
 
-  describe('flush', () => {
-    it('does nothing when cardMessageReady is false', async () => {
+  describe("flush", () => {
+    it("does nothing when cardMessageReady is false", async () => {
       const { controller, doFlush } = createController();
       await controller.flush();
       expect(doFlush).not.toHaveBeenCalled();
     });
 
-    it('calls doFlush when cardMessageReady is true', async () => {
+    it("calls doFlush when cardMessageReady is true", async () => {
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
       await controller.flush();
       expect(doFlush).toHaveBeenCalledTimes(1);
     });
 
-    it('does not call doFlush after complete()', async () => {
+    it("does not call doFlush after complete()", async () => {
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
       controller.complete();
@@ -79,16 +84,14 @@ describe('FlushController', () => {
       expect(doFlush).not.toHaveBeenCalled();
     });
 
-    it('mutex-guards: concurrent flushes do not overlap', async () => {
+    it("mutex-guards: concurrent flushes do not overlap", async () => {
       vi.useFakeTimers();
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
 
       // Make the first flush take a while
       let resolveFirst: () => void;
-      doFlush.mockImplementationOnce(
-        () => new Promise<void>((r) => (resolveFirst = r)),
-      );
+      doFlush.mockImplementationOnce(() => new Promise<void>((r) => (resolveFirst = r)));
 
       const first = controller.flush();
       const second = controller.flush();
@@ -104,15 +107,13 @@ describe('FlushController', () => {
       expect(doFlush).toHaveBeenCalledTimes(1);
     });
 
-    it('schedules a reflush when needsReflush was set during in-progress flush', async () => {
+    it("schedules a reflush when needsReflush was set during in-progress flush", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
 
       let resolveFirst: () => void;
-      doFlush.mockImplementationOnce(
-        () => new Promise<void>((r) => (resolveFirst = r)),
-      );
+      doFlush.mockImplementationOnce(() => new Promise<void>((r) => (resolveFirst = r)));
 
       const first = controller.flush();
       // This sets needsReflush = true (flushInProgress && !isCompleted)
@@ -128,15 +129,13 @@ describe('FlushController', () => {
       expect(doFlush).toHaveBeenCalledTimes(2);
     });
 
-    it('does not reflush after complete()', async () => {
+    it("does not reflush after complete()", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
 
       let resolveFirst: () => void;
-      doFlush.mockImplementationOnce(
-        () => new Promise<void>((r) => (resolveFirst = r)),
-      );
+      doFlush.mockImplementationOnce(() => new Promise<void>((r) => (resolveFirst = r)));
 
       const first = controller.flush();
       controller.complete();
@@ -155,21 +154,19 @@ describe('FlushController', () => {
   // waitForFlush
   // ---------------------------------------------------------------------------
 
-  describe('waitForFlush', () => {
-    it('resolves immediately when no flush is in progress', async () => {
+  describe("waitForFlush", () => {
+    it("resolves immediately when no flush is in progress", async () => {
       const { controller } = createController();
       await expect(controller.waitForFlush()).resolves.toBeUndefined();
     });
 
-    it('waits for an in-progress flush to complete', async () => {
+    it("waits for an in-progress flush to complete", async () => {
       vi.useFakeTimers();
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
 
       let resolveFlush: () => void;
-      doFlush.mockImplementationOnce(
-        () => new Promise<void>((r) => (resolveFlush = r)),
-      );
+      doFlush.mockImplementationOnce(() => new Promise<void>((r) => (resolveFlush = r)));
 
       const flushPromise = controller.flush();
       const waitPromise = controller.waitForFlush();
@@ -191,8 +188,8 @@ describe('FlushController', () => {
   // cancelPendingFlush
   // ---------------------------------------------------------------------------
 
-  describe('cancelPendingFlush', () => {
-    it('clears the pending timer', async () => {
+  describe("cancelPendingFlush", () => {
+    it("clears the pending timer", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
@@ -213,8 +210,8 @@ describe('FlushController', () => {
   // complete
   // ---------------------------------------------------------------------------
 
-  describe('complete', () => {
-    it('prevents future flush calls', async () => {
+  describe("complete", () => {
+    it("prevents future flush calls", async () => {
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
       controller.complete();
@@ -227,14 +224,14 @@ describe('FlushController', () => {
   // throttledUpdate
   // ---------------------------------------------------------------------------
 
-  describe('throttledUpdate', () => {
-    it('does nothing when cardMessageReady is false', async () => {
+  describe("throttledUpdate", () => {
+    it("does nothing when cardMessageReady is false", async () => {
       const { controller, doFlush } = createController();
       await controller.throttledUpdate(100);
       expect(doFlush).not.toHaveBeenCalled();
     });
 
-    it('flushes immediately when throttle interval has elapsed', async () => {
+    it("flushes immediately when throttle interval has elapsed", async () => {
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
       // lastUpdateTime was just set by setCardMessageReady
@@ -242,7 +239,7 @@ describe('FlushController', () => {
       expect(doFlush).toHaveBeenCalledTimes(1);
     });
 
-    it('schedules a deferred flush when inside throttle window', async () => {
+    it("schedules a deferred flush when inside throttle window", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
@@ -260,7 +257,7 @@ describe('FlushController', () => {
       expect(doFlush).toHaveBeenCalledTimes(2);
     });
 
-    it('does not schedule another timer if one is already pending', async () => {
+    it("does not schedule another timer if one is already pending", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);
@@ -277,7 +274,7 @@ describe('FlushController', () => {
       expect(doFlush).toHaveBeenCalledTimes(2);
     });
 
-    it('batches after a long gap (LONG_GAP_THRESHOLD_MS)', async () => {
+    it("batches after a long gap (LONG_GAP_THRESHOLD_MS)", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
 
@@ -295,7 +292,7 @@ describe('FlushController', () => {
       expect(doFlush).toHaveBeenCalledTimes(1);
     });
 
-    it('flushes immediately when throttle elapsed but not a long gap', async () => {
+    it("flushes immediately when throttle elapsed but not a long gap", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const { controller, doFlush } = createController();
       controller.setCardMessageReady(true);

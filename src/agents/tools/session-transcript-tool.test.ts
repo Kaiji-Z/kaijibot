@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createSessionTranscriptTool } from "./session-transcript-tool.js";
 
@@ -24,10 +24,7 @@ function assistantMsg(text: string): string {
   });
 }
 
-function assistantToolMsg(
-  text: string,
-  tools: Array<{ name: string }>,
-): string {
+function assistantToolMsg(text: string, tools: Array<{ name: string }>): string {
   return JSON.stringify({
     type: "message",
     timestamp: "2026-01-01T00:00:02Z",

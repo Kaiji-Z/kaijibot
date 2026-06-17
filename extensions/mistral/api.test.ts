@@ -23,7 +23,6 @@ type MistralTestProvider = ProviderPlugin & {
   }) => ThinkingProfile | undefined;
 };
 
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Test helper lets assertions ascribe provider compat shape.
 function readCompat<T>(model: unknown): T | undefined {
   return (model as { compat?: T }).compat;
 }

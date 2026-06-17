@@ -1,13 +1,9 @@
 import { join } from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import { MemoryIndexManager, type MemoryIndexDeps } from "./memory-index.js";
-import { TopicRegistry, type TopicRegistryDeps } from "./topic-registry.js";
-import {
-  runMemoryTidy,
-  isTidyEnabled,
-  type MemoryTidyDeps,
-} from "./tools.memory-tidy.js";
+import { runMemoryTidy, isTidyEnabled, type MemoryTidyDeps } from "./tools.memory-tidy.js";
 import { TopicManager, type TopicManagerDeps } from "./topic-manager.js";
+import { TopicRegistry, type TopicRegistryDeps } from "./topic-registry.js";
 
 // ---------------------------------------------------------------------------
 // In-memory FS
@@ -21,7 +17,9 @@ function createMemoryFs() {
     fs: {
       readFile: async (p: string) => {
         const c = files.get(p);
-        if (c === undefined) { throw new Error(`ENOENT: ${p}`); }
+        if (c === undefined) {
+          throw new Error(`ENOENT: ${p}`);
+        }
         return c;
       },
       writeFile: async (p: string, data: string) => {
@@ -42,12 +40,16 @@ function createMemoryFs() {
       },
       stat: async (p: string) => {
         const c = files.get(p);
-        if (c === undefined) { throw new Error(`ENOENT: ${p}`); }
+        if (c === undefined) {
+          throw new Error(`ENOENT: ${p}`);
+        }
         return { mtimeMs: Date.now(), size: c.length };
       },
       rename: async (oldPath: string, newPath: string) => {
         const c = files.get(oldPath);
-        if (c === undefined) { throw new Error(`ENOENT: ${oldPath}`); }
+        if (c === undefined) {
+          throw new Error(`ENOENT: ${oldPath}`);
+        }
         files.delete(oldPath);
         files.set(newPath, c);
       },
@@ -129,9 +131,11 @@ describe("memory_tidy (unified)", () => {
   describe("LLM-driven flow", () => {
     it("LLM suggests merge_topics → executes correctly", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "merge_topics", from: "topic-a", into: "topic-b", reason: "same domain" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          { op: "merge_topics", from: "topic-a", into: "topic-b", reason: "same domain" },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -139,11 +143,18 @@ describe("memory_tidy (unified)", () => {
         { title: "Entry A1", date: "2025-01-01", content: "Some content about feishu API calls" },
       ]);
       const contentB = makeTopic("topic-b", "user", [
-        { title: "Entry B1", date: "2025-01-02", content: "Some content about feishu configuration" },
+        {
+          title: "Entry B1",
+          date: "2025-01-02",
+          content: "Some content about feishu configuration",
+        },
       ]);
       memFs.files.set(join(TOPICS_DIR, "topic-a.md"), contentA);
       memFs.files.set(join(TOPICS_DIR, "topic-b.md"), contentB);
-      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Topic Pointers\n- topic-a → memory/topics/topic-a.md\n- topic-b → memory/topics/topic-b.md\n\n");
+      writeMemoryMd(
+        memFs,
+        "# Long-Term Memory Index\n\n## Topic Pointers\n- topic-a → memory/topics/topic-a.md\n- topic-b → memory/topics/topic-b.md\n\n",
+      );
 
       const result = await runMemoryTidy(tidyDeps, {});
 
@@ -156,9 +167,11 @@ describe("memory_tidy (unified)", () => {
 
     it("LLM suggests rename_topic → executes correctly", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "rename_topic", from: "old-name", to: "new-name", reason: "better description" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          { op: "rename_topic", from: "old-name", to: "new-name", reason: "better description" },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -166,7 +179,10 @@ describe("memory_tidy (unified)", () => {
         { title: "Entry 1", date: "2025-01-01", content: "Some content" },
       ]);
       memFs.files.set(join(TOPICS_DIR, "old-name.md"), content);
-      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Topic Pointers\n- old-name → memory/topics/old-name.md\n\n");
+      writeMemoryMd(
+        memFs,
+        "# Long-Term Memory Index\n\n## Topic Pointers\n- old-name → memory/topics/old-name.md\n\n",
+      );
 
       const result = await runMemoryTidy(tidyDeps, {});
 
@@ -177,9 +193,17 @@ describe("memory_tidy (unified)", () => {
 
     it("LLM suggests dedup_entries → executes correctly", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "dedup_entries", topic: "cooking", keepIndex: 0, absorbIndices: [1], reason: "duplicate recipes" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          {
+            op: "dedup_entries",
+            topic: "cooking",
+            keepIndex: 0,
+            absorbIndices: [1],
+            reason: "duplicate recipes",
+          },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -198,9 +222,9 @@ describe("memory_tidy (unified)", () => {
 
     it("LLM suggests archive_topic → executes correctly", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "archive_topic", topic: "old-stuff", reason: "no longer relevant" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([{ op: "archive_topic", topic: "old-stuff", reason: "no longer relevant" }]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -208,7 +232,10 @@ describe("memory_tidy (unified)", () => {
         { title: "Old entry", date: "2025-01-01", content: "Old content" },
       ]);
       memFs.files.set(join(TOPICS_DIR, "old-stuff.md"), content);
-      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Topic Pointers\n- old-stuff → memory/topics/old-stuff.md\n\n");
+      writeMemoryMd(
+        memFs,
+        "# Long-Term Memory Index\n\n## Topic Pointers\n- old-stuff → memory/topics/old-stuff.md\n\n",
+      );
 
       const result = await runMemoryTidy(tidyDeps, {});
 
@@ -219,9 +246,16 @@ describe("memory_tidy (unified)", () => {
 
     it("LLM suggests clean_inline → executes correctly", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "clean_inline", section: "⚡ Core Memory", removeLineIndices: [1], reason: "duplicate line" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          {
+            op: "clean_inline",
+            section: "⚡ Core Memory",
+            removeLineIndices: [1],
+            reason: "duplicate line",
+          },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -242,7 +276,9 @@ describe("memory_tidy (unified)", () => {
 
       expect(result.llmUsed).toBe(true);
       expect(result.entriesAffected).toBeGreaterThan(0);
-      expect(result.changes.some((c) => c.includes("clean_inline") || c.includes("inline"))).toBe(true);
+      expect(result.changes.some((c) => c.includes("clean_inline") || c.includes("inline"))).toBe(
+        true,
+      );
     });
 
     it("LLM returns invalid JSON → graceful empty result", async () => {
@@ -261,9 +297,11 @@ describe("memory_tidy (unified)", () => {
 
     it("LLM returns invalid operation (non-existent topic) → validation rejects", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "merge_topics", from: "nonexistent-a", into: "nonexistent-b", reason: "will fail" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          { op: "merge_topics", from: "nonexistent-a", into: "nonexistent-b", reason: "will fail" },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
       writeMemoryMd(memFs, "# Long-Term Memory Index\n\n");
@@ -276,10 +314,12 @@ describe("memory_tidy (unified)", () => {
 
     it("Multiple operations in one call → all executed in correct order", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "dedup_entries", topic: "multi", keepIndex: 0, absorbIndices: [1], reason: "dup" },
-        { op: "archive_topic", topic: "to-archive", reason: "old" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          { op: "dedup_entries", topic: "multi", keepIndex: 0, absorbIndices: [1], reason: "dup" },
+          { op: "archive_topic", topic: "to-archive", reason: "old" },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -292,7 +332,10 @@ describe("memory_tidy (unified)", () => {
       ]);
       memFs.files.set(join(TOPICS_DIR, "multi.md"), multiContent);
       memFs.files.set(join(TOPICS_DIR, "to-archive.md"), archiveContent);
-      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Topic Pointers\n- multi → memory/topics/multi.md\n- to-archive → memory/topics/to-archive.md\n\n");
+      writeMemoryMd(
+        memFs,
+        "# Long-Term Memory Index\n\n## Topic Pointers\n- multi → memory/topics/multi.md\n- to-archive → memory/topics/to-archive.md\n\n",
+      );
 
       const result = await runMemoryTidy(tidyDeps, {});
 
@@ -303,9 +346,9 @@ describe("memory_tidy (unified)", () => {
 
     it("dryRun=true → no files modified, changes reported", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "archive_topic", topic: "dry-topic", reason: "testing dry run" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([{ op: "archive_topic", topic: "dry-topic", reason: "testing dry run" }]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -313,7 +356,10 @@ describe("memory_tidy (unified)", () => {
         { title: "Entry", date: "2025-01-01", content: "Test content" },
       ]);
       memFs.files.set(join(TOPICS_DIR, "dry-topic.md"), content);
-      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Topic Pointers\n- dry-topic → memory/topics/dry-topic.md\n\n");
+      writeMemoryMd(
+        memFs,
+        "# Long-Term Memory Index\n\n## Topic Pointers\n- dry-topic → memory/topics/dry-topic.md\n\n",
+      );
 
       const before = memFs.files.get(join(TOPICS_DIR, "dry-topic.md"));
       const result = await runMemoryTidy(tidyDeps, { dryRun: true });
@@ -327,9 +373,17 @@ describe("memory_tidy (unified)", () => {
 
     it("focus parameter → only specified topic analyzed", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "dedup_entries", topic: "focus-me", keepIndex: 0, absorbIndices: [1], reason: "dup" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          {
+            op: "dedup_entries",
+            topic: "focus-me",
+            keepIndex: 0,
+            absorbIndices: [1],
+            reason: "dup",
+          },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -343,10 +397,10 @@ describe("memory_tidy (unified)", () => {
       memFs.files.set(join(TOPICS_DIR, "focus-me.md"), focusContent);
       memFs.files.set(join(TOPICS_DIR, "other.md"), otherContent);
 
-      const result = await runMemoryTidy(tidyDeps, { focus: "focus-me" });
+      await runMemoryTidy(tidyDeps, { focus: "focus-me" });
 
       // The prompt should mention focus-me but NOT the "other" topic
-      const promptArg = mockLLM.mock.calls[0]![0] as string;
+      const promptArg = mockLLM.mock.calls[0]![0];
       expect(promptArg).toContain("focus-me");
       // "other" as a topic heading — check for the topic header pattern, not substring
       // (the word "other" appears in prose like "absorbs the others")
@@ -377,9 +431,21 @@ describe("memory_tidy (unified)", () => {
       const { tidyDeps, memFs } = createTidyDeps(); // no generateText
 
       const content = makeTopic("dedup-test", "user", [
-        { title: "Likes Python", date: "2025-01-01", content: "User prefers Python programming language for data analysis" },
-        { title: "Likes Python v2", date: "2025-01-02", content: "User prefers Python programming language for data analysis tasks" },
-        { title: "Likes Rust", date: "2025-01-03", content: "User also enjoys Rust for systems programming" },
+        {
+          title: "Likes Python",
+          date: "2025-01-01",
+          content: "User prefers Python programming language for data analysis",
+        },
+        {
+          title: "Likes Python v2",
+          date: "2025-01-02",
+          content: "User prefers Python programming language for data analysis tasks",
+        },
+        {
+          title: "Likes Rust",
+          date: "2025-01-03",
+          content: "User also enjoys Rust for systems programming",
+        },
       ]);
       memFs.files.set(join(TOPICS_DIR, "dedup-test.md"), content);
 
@@ -411,7 +477,9 @@ describe("memory_tidy (unified)", () => {
 
       expect(result.llmUsed).toBe(false);
       expect(result.entriesAffected).toBeGreaterThan(0);
-      expect(result.changes.some((c) => c.includes("dedup") && c.includes("⚡ Core Memory"))).toBe(true);
+      expect(result.changes.some((c) => c.includes("dedup") && c.includes("⚡ Core Memory"))).toBe(
+        true,
+      );
     });
 
     it("Archive: topics >90 days old archived", async () => {
@@ -456,7 +524,9 @@ describe("memory_tidy (unified)", () => {
         ].join("\n"),
       );
 
-      const beforeBytes = new TextEncoder().encode(memFs.files.get(join(WS, "MEMORY.md")) ?? "").length;
+      const beforeBytes = new TextEncoder().encode(
+        memFs.files.get(join(WS, "MEMORY.md")) ?? "",
+      ).length;
       expect(beforeBytes).toBeGreaterThan(8192);
 
       const result = await runMemoryTidy(tidyDeps, {});
@@ -476,7 +546,10 @@ describe("memory_tidy (unified)", () => {
         { title: "B", date: "2025-01-02", content: "Duplicate content for testing dry run" },
       ]);
       memFs.files.set(join(TOPICS_DIR, "dry-jaccard.md"), dupContent);
-      writeMemoryMd(memFs, "# Long-Term Memory Index\n\n## Test\n→ memory/topics/dry-jaccard.md\n\n");
+      writeMemoryMd(
+        memFs,
+        "# Long-Term Memory Index\n\n## Test\n→ memory/topics/dry-jaccard.md\n\n",
+      );
 
       const before = memFs.files.get(join(TOPICS_DIR, "dry-jaccard.md"));
       const result = await runMemoryTidy(tidyDeps, { dryRun: true });
@@ -550,13 +623,9 @@ describe("memory_tidy (unified)", () => {
       const { tidyDeps, memFs } = createTidyDeps();
       writeMemoryMd(
         memFs,
-        [
-          "# Long-Term Memory",
-          "",
-          "## Topic Pointers",
-          "- Test → memory/topics/test.md",
-          "",
-        ].join("\n"),
+        ["# Long-Term Memory", "", "## Topic Pointers", "- Test → memory/topics/test.md", ""].join(
+          "\n",
+        ),
       );
 
       const result = await runMemoryTidy(tidyDeps, {});
@@ -594,9 +663,16 @@ describe("memory_tidy (unified)", () => {
 
     it("clean_inline with out-of-range indices → rejected", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "clean_inline", section: "⚡ Core Memory", removeLineIndices: [99], reason: "invalid" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          {
+            op: "clean_inline",
+            section: "⚡ Core Memory",
+            removeLineIndices: [99],
+            reason: "invalid",
+          },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -621,9 +697,11 @@ describe("memory_tidy (unified)", () => {
 
     it("rename_topic with invalid name → rejected", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "rename_topic", from: "my-topic", to: "INVALID NAME!", reason: "bad name" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          { op: "rename_topic", from: "my-topic", to: "INVALID NAME!", reason: "bad name" },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -640,9 +718,17 @@ describe("memory_tidy (unified)", () => {
 
     it("dedup_entries with out-of-range indices → rejected", async () => {
       const mockLLM = vi.fn<(prompt: string) => Promise<string>>();
-      mockLLM.mockResolvedValue(JSON.stringify([
-        { op: "dedup_entries", topic: "t", keepIndex: 5, absorbIndices: [10], reason: "out of range" },
-      ]));
+      mockLLM.mockResolvedValue(
+        JSON.stringify([
+          {
+            op: "dedup_entries",
+            topic: "t",
+            keepIndex: 5,
+            absorbIndices: [10],
+            reason: "out of range",
+          },
+        ]),
+      );
 
       const { tidyDeps, memFs } = createTidyDeps({ generateText: mockLLM });
 
@@ -702,7 +788,9 @@ describe("memory_tidy (unified)", () => {
       });
 
       // Write MEMORY.md WITHOUT a pointer for orphan-topic
-      writeMemoryMd(memFs, `# Long-Term Memory
+      writeMemoryMd(
+        memFs,
+        `# Long-Term Memory
 
 ## ⚡ Core Memory
 
@@ -710,7 +798,8 @@ describe("memory_tidy (unified)", () => {
 
 ## Topic Pointers
 - other-topic → memory/topics/other-topic.md
-`);
+`,
+      );
 
       const result = await runMemoryTidy(deps, {});
 
@@ -740,7 +829,9 @@ describe("memory_tidy (unified)", () => {
         createdAt: "2026-05-01",
       });
 
-      writeMemoryMd(memFs, `# Long-Term Memory
+      writeMemoryMd(
+        memFs,
+        `# Long-Term Memory
 
 ## ⚡ Core Memory
 
@@ -748,13 +839,12 @@ describe("memory_tidy (unified)", () => {
 
 ## Topic Pointers
 - existing-topic → memory/topics/existing-topic.md
-`);
+`,
+      );
 
       const result = await runMemoryTidy(deps, {});
 
-      expect(result.changes).not.toContain(
-        expect.stringContaining("synced"),
-      );
+      expect(result.changes).not.toContain(expect.stringContaining("synced"));
     });
   });
 });

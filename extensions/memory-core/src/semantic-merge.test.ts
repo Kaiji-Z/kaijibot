@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import {
-  semanticTopicMerge,
-  computeTopicJaccard,
-  type TopicForMerge,
-} from "./semantic-merge.js";
+import { semanticTopicMerge, computeTopicJaccard, type TopicForMerge } from "./semantic-merge.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -90,7 +86,11 @@ describe("semanticTopicMerge", () => {
     // feishu-api and feishu-bot share "feishu" token → grouped together → LLM decides merge
     const generateText = vi.fn().mockResolvedValue(
       mergeResponse([
-        { from: ["feishu-api", "feishu-bot"], into: "feishu-api", reason: "Both topics cover feishu platform development" },
+        {
+          from: ["feishu-api", "feishu-bot"],
+          into: "feishu-api",
+          reason: "Both topics cover feishu platform development",
+        },
       ]),
     );
 
@@ -222,8 +222,16 @@ describe("semanticTopicMerge", () => {
 
     const generateText = vi.fn().mockResolvedValue(
       mergeResponse([
-        { from: ["feishu-api", "feishu-bot"], into: "feishu-api", reason: "Both feishu platform topics" },
-        { from: ["feishu-api", "feishu-sdk"], into: "feishu-api", reason: "SDK is part of API ecosystem" },
+        {
+          from: ["feishu-api", "feishu-bot"],
+          into: "feishu-api",
+          reason: "Both feishu platform topics",
+        },
+        {
+          from: ["feishu-api", "feishu-sdk"],
+          into: "feishu-api",
+          reason: "SDK is part of API ecosystem",
+        },
       ]),
     );
 
@@ -254,11 +262,13 @@ describe("semanticTopicMerge", () => {
       entryCount: 3,
     });
 
-    const generateText = vi.fn().mockResolvedValue(
-      mergeResponse([
-        { from: ["large-topic", "small-topic"], into: "large-topic", reason: "Same domain" },
-      ]),
-    );
+    const generateText = vi
+      .fn()
+      .mockResolvedValue(
+        mergeResponse([
+          { from: ["large-topic", "small-topic"], into: "large-topic", reason: "Same domain" },
+        ]),
+      );
 
     const result = await semanticTopicMerge({
       topics: [large, small],
@@ -339,9 +349,11 @@ describe("semanticTopicMerge", () => {
 
   // 11. LLM returns markdown-wrapped JSON
   it("parses LLM response with markdown fences", async () => {
-    const generateText = vi.fn().mockResolvedValue(
-      '```json\n[{"from": ["topic-a", "topic-b"], "into": "topic-a", "reason": "Same topic"}]\n```',
-    );
+    const generateText = vi
+      .fn()
+      .mockResolvedValue(
+        '```json\n[{"from": ["topic-a", "topic-b"], "into": "topic-a", "reason": "Same topic"}]\n```',
+      );
 
     const topicA = makeTopic({
       name: "topic-a",
@@ -367,9 +379,9 @@ describe("semanticTopicMerge", () => {
 
   // 12. LLM returns JSON with missing fields
   it("skips decisions with missing fields", async () => {
-    const generateText = vi.fn().mockResolvedValue(
-      JSON.stringify([{ from: ["topic-a", "topic-b"] }]),
-    );
+    const generateText = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify([{ from: ["topic-a", "topic-b"] }]));
 
     const topicA = makeTopic({
       name: "topic-a",
@@ -420,11 +432,13 @@ describe("semanticTopicMerge", () => {
 
   // 14. into topic not in from array → skipped
   it("skips decision where into topic is not in from array", async () => {
-    const generateText = vi.fn().mockResolvedValue(
-      mergeResponse([
-        { from: ["topic-a", "topic-b"], into: "topic-c", reason: "Merge into non-member" },
-      ]),
-    );
+    const generateText = vi
+      .fn()
+      .mockResolvedValue(
+        mergeResponse([
+          { from: ["topic-a", "topic-b"], into: "topic-c", reason: "Merge into non-member" },
+        ]),
+      );
 
     const topicA = makeTopic({
       name: "topic-a",
@@ -449,11 +463,13 @@ describe("semanticTopicMerge", () => {
 
   // 15. Unknown topic name in from array → partial merge
   it("handles unknown topic names in from array gracefully", async () => {
-    const generateText = vi.fn().mockResolvedValue(
-      mergeResponse([
-        { from: ["topic-a", "nonexistent", "topic-b"], into: "topic-a", reason: "Group merge" },
-      ]),
-    );
+    const generateText = vi
+      .fn()
+      .mockResolvedValue(
+        mergeResponse([
+          { from: ["topic-a", "nonexistent", "topic-b"], into: "topic-a", reason: "Group merge" },
+        ]),
+      );
 
     const topicA = makeTopic({
       name: "topic-a",

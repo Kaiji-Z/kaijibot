@@ -1,13 +1,13 @@
 import { isRestartEnabled } from "../../config/commands.js";
 import { readBestEffortConfig, resolveGatewayPort } from "../../config/config.js";
 import { resolveGatewayService } from "../../daemon/service.js";
-import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { probeGateway } from "../../gateway/probe.js";
 import {
   findVerifiedGatewayListenerPidsOnPortSync,
   formatGatewayPidList,
   signalVerifiedGatewayPidSync,
 } from "../../infra/gateway-processes.js";
+import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { defaultRuntime } from "../../runtime.js";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
 import { theme } from "../../terminal/theme.js";

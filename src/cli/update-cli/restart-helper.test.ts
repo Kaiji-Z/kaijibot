@@ -143,9 +143,7 @@ describe("restart-helper", () => {
         },
         customPort,
       );
-      expect(content).toContain(
-        `Get-KaijiBotListenerPids -Port ${customPort}`,
-      );
+      expect(content).toContain(`Get-KaijiBotListenerPids -Port ${customPort}`);
       expectWindowsRestartWaitOrdering(content, customPort);
       await cleanupScript(scriptPath);
     });

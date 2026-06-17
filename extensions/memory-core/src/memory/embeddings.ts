@@ -1,3 +1,4 @@
+import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   DEFAULT_LOCAL_MODEL,
@@ -12,7 +13,6 @@ import {
   type MemoryEmbeddingProviderCreateOptions,
   type MemoryEmbeddingProviderRuntime,
 } from "kaijibot/plugin-sdk/memory-core-host-engine-embeddings";
-import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import { canAutoSelectLocal } from "./provider-adapters.js";
 
 export {

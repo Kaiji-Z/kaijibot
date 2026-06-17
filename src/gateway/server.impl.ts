@@ -690,7 +690,7 @@ export async function startGatewayServer(
           | Record<string, Record<string, unknown>>
           | undefined;
         if (accountsMap) {
-          for (const [acctId, acctCfg] of Object.entries(accountsMap)) {
+          for (const [, acctCfg] of Object.entries(accountsMap)) {
             if (!acctCfg.tools) {
               acctCfg.tools = {};
             }
@@ -1595,9 +1595,8 @@ export async function startGatewayServer(
                     const { resolveConfigDir } = await import("../utils.js");
                     const { InsightStore } = await import("../cognitive/insight/store.js");
                     const { PersonaStore } = await import("../cognitive/persona/store.js");
-                    const { processInsightDeliverySignal } = await import(
-                      "../cognitive/feedback/collector.js"
-                    );
+                    const { processInsightDeliverySignal } =
+                      await import("../cognitive/feedback/collector.js");
 
                     record.deliveryMessageId = deliveryMessageId;
                     const insightStore = new InsightStore(resolveConfigDir());
@@ -1975,7 +1974,7 @@ export async function startGatewayServer(
                     const base = path.basename(filePath);
                     const backups = (await nodeFs.readdir(dir))
                       .filter((f: string) => f.startsWith(base) && f.includes(".bak."))
-                      .sort();
+                      .toSorted();
                     for (let i = 0; i < backups.length - 7; i++) {
                       await nodeFs.unlink(path.join(dir, backups[i]!)).catch(() => {});
                     }

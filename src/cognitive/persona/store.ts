@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { writeTextAtomic } from "../../infra/json-files.js";
 import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
 import { safeParsePersona } from "./persona-schema.js";
-import { writeTextAtomic } from "../../infra/json-files.js";
 
 const COGNITIVE_DIR = "cognitive";
 const PERSONA_DIR = "persona";
@@ -44,7 +44,9 @@ function inferPhase(domain: DomainNode): { phase: InterestPhase; phaseEnteredAt:
 
 export function migrateToTypedInsights(persona: PersonaTree): PersonaTree {
   for (const domain of Object.values(persona.domains)) {
-    if (domain.insights && domain.insights.length > 0) {continue;}
+    if (domain.insights && domain.insights.length > 0) {
+      continue;
+    }
 
     domain.insights = domain.keyInsights.map((text) => ({
       text,
@@ -67,9 +69,15 @@ export function migrateToTypedInsights(persona: PersonaTree): PersonaTree {
 }
 
 function shouldMigrateFlatFile(userId: string, persona: PersonaTree | null): boolean {
-  if (MIGRATION_SKIP_USER_IDS.has(userId)) {return false;}
-  if (!persona) {return false;}
-  if (userId.startsWith("ou_")) {return true;}
+  if (MIGRATION_SKIP_USER_IDS.has(userId)) {
+    return false;
+  }
+  if (!persona) {
+    return false;
+  }
+  if (userId.startsWith("ou_")) {
+    return true;
+  }
   return Object.keys(persona.domains).length > 0 || persona.rapport.totalExchanges > 0;
 }
 
@@ -83,11 +91,15 @@ export class PersonaStore {
    */
   async migrateFromFlatLayout(): Promise<{ migrated: string[]; skipped: string[] }> {
     const personaDir = join(this.configDir, COGNITIVE_DIR, PERSONA_DIR);
-    if (!existsSync(personaDir)) {return { migrated: [], skipped: [] };}
+    if (!existsSync(personaDir)) {
+      return { migrated: [], skipped: [] };
+    }
 
     const entries = await readdir(personaDir);
     const jsonFiles = entries.filter((name) => name.endsWith(".json"));
-    if (jsonFiles.length === 0) {return { migrated: [], skipped: [] };}
+    if (jsonFiles.length === 0) {
+      return { migrated: [], skipped: [] };
+    }
 
     const migrated: string[] = [];
     const skipped: string[] = [];
@@ -136,7 +148,9 @@ export class PersonaStore {
 
   async load(agentId: string, userId: string): Promise<PersonaTree | undefined> {
     const path = this.personaPath(agentId, userId);
-    if (!existsSync(path)) {return undefined;}
+    if (!existsSync(path)) {
+      return undefined;
+    }
     const raw = await readFile(path, "utf-8");
     let parsed: unknown;
     try {
@@ -165,7 +179,9 @@ export class PersonaStore {
 
   async loadOrCreate(agentId: string, userId: string): Promise<PersonaTree> {
     const existing = await this.load(agentId, userId);
-    if (existing) {return existing;}
+    if (existing) {
+      return existing;
+    }
     const persona = migrateToTypedInsights(createDefaultPersona());
     persona.identity.userId = userId;
     return persona;
@@ -179,8 +195,12 @@ export class PersonaStore {
         .filter((name) => name.endsWith(".json") && !name.endsWith(".bak"))
         .map((name) => name.slice(0, -5))
         .filter((userId) => {
-          if (userId === agentId) {return false;}
-          if (userId.includes("-control-ui")) {return false;}
+          if (userId === agentId) {
+            return false;
+          }
+          if (userId.includes("-control-ui")) {
+            return false;
+          }
           return true;
         })
         .toSorted();
@@ -197,7 +217,9 @@ export class PersonaStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) {result.push(name);}
+        if (s.isDirectory()) {
+          result.push(name);
+        }
       }
       return result.toSorted();
     } catch {

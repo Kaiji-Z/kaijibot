@@ -30,12 +30,7 @@ type SupportedOpenAICompatFields = Pick<
 >;
 
 /** Constrained to match the Zod schema; pi-ai auto-detects other formats at runtime. */
-type SupportedThinkingFormat =
-  | "openai"
-  | "openrouter"
-  | "zai"
-  | "qwen"
-  | "qwen-chat-template";
+type SupportedThinkingFormat = "openai" | "openrouter" | "zai" | "qwen" | "qwen-chat-template";
 
 export type ModelCompatConfig = SupportedOpenAICompatFields & {
   thinkingFormat?: SupportedThinkingFormat;

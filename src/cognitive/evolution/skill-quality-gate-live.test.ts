@@ -7,8 +7,8 @@
 
 import { describe, it, expect } from "vitest";
 import { loadConfig } from "../../config/config.js";
-import { createStandaloneGenerateText } from "./standalone-generate.js";
 import { evaluateSkillQuality, refineSkillDraft } from "./skill-quality-gate.js";
+import { createStandaloneGenerateText } from "./standalone-generate.js";
 import type { SkillDraft } from "./types.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
@@ -36,59 +36,58 @@ const badDraft: SkillDraft = {
 Just do it. Use tools to accomplish the task. Make sure it's done correctly.`,
 };
 
-describe.skipIf(!isLive || !ZAI_API_KEY)(
-  "quality gate — real LLM evaluation",
-  () => {
-    it("evaluates a high-quality draft as passing", async () => {
-      const generateText = await createStandaloneGenerateText(
-        loadConfig() as never,
-        { maxTokens: 1000, timeout: 60_000 },
-      );
+describe.skipIf(!isLive || !ZAI_API_KEY)("quality gate — real LLM evaluation", () => {
+  it("evaluates a high-quality draft as passing", async () => {
+    const generateText = await createStandaloneGenerateText(loadConfig() as never, {
+      maxTokens: 1000,
+      timeout: 60_000,
+    });
 
-      const result = await evaluateSkillQuality(goodDraft, { generateText });
+    const result = await evaluateSkillQuality(goodDraft, { generateText });
 
-      console.log(`  Quality: ${result.score.toFixed(2)}/1.0`);
-      console.log(`  Critique: ${result.critique}`);
-      console.log(`  Issues: ${JSON.stringify(result.issues)}`);
+    console.log(`  Quality: ${result.score.toFixed(2)}/1.0`);
+    console.log(`  Critique: ${result.critique}`);
+    console.log(`  Issues: ${JSON.stringify(result.issues)}`);
 
-      expect(result.score).toBeGreaterThan(0);
-      expect(result.passed).toBeDefined();
-    }, 90_000);
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.passed).toBeDefined();
+  }, 90_000);
 
-    it("evaluates a low-quality draft as failing", async () => {
-      const generateText = await createStandaloneGenerateText(
-        loadConfig() as never,
-        { maxTokens: 1000, timeout: 60_000 },
-      );
+  it("evaluates a low-quality draft as failing", async () => {
+    const generateText = await createStandaloneGenerateText(loadConfig() as never, {
+      maxTokens: 1000,
+      timeout: 60_000,
+    });
 
-      const result = await evaluateSkillQuality(badDraft, { generateText });
+    const result = await evaluateSkillQuality(badDraft, { generateText });
 
-      console.log(`  Quality: ${result.score.toFixed(2)}/1.0`);
-      console.log(`  Critique: ${result.critique}`);
-      console.log(`  Issues: ${JSON.stringify(result.issues)}`);
+    console.log(`  Quality: ${result.score.toFixed(2)}/1.0`);
+    console.log(`  Critique: ${result.critique}`);
+    console.log(`  Issues: ${JSON.stringify(result.issues)}`);
 
-      expect(result.passed).toBe(false);
-      expect(result.issues.length).toBeGreaterThan(0);
-    }, 90_000);
+    expect(result.passed).toBe(false);
+    expect(result.issues.length).toBeGreaterThan(0);
+  }, 90_000);
 
-    it("refine loop improves a bad draft", async () => {
-      const generateText = await createStandaloneGenerateText(
-        loadConfig() as never,
-        { maxTokens: 4000, timeout: 60_000 },
-      );
+  it("refine loop improves a bad draft", async () => {
+    const generateText = await createStandaloneGenerateText(loadConfig() as never, {
+      maxTokens: 4000,
+      timeout: 60_000,
+    });
 
-      const initial = await evaluateSkillQuality(badDraft, { generateText });
-      console.log(`  Initial: ${initial.score.toFixed(2)} — ${initial.critique}`);
+    const initial = await evaluateSkillQuality(badDraft, { generateText });
+    console.log(`  Initial: ${initial.score.toFixed(2)} — ${initial.critique}`);
 
-      if (!initial.passed) {
-        const refined = await refineSkillDraft(badDraft, initial.critique, initial.issues, { generateText });
-        const after = await evaluateSkillQuality(refined, { generateText });
-        console.log(`  Refined name: ${refined.name}`);
-        console.log(`  After: ${after.score.toFixed(2)} — ${after.critique}`);
-        console.log(`  Improvement: +${(after.score - initial.score).toFixed(2)}`);
-        expect(refined.name).toBeDefined();
-        expect(refined.name.length).toBeGreaterThan(0);
-      }
-    }, 120_000);
-  },
-);
+    if (!initial.passed) {
+      const refined = await refineSkillDraft(badDraft, initial.critique, initial.issues, {
+        generateText,
+      });
+      const after = await evaluateSkillQuality(refined, { generateText });
+      console.log(`  Refined name: ${refined.name}`);
+      console.log(`  After: ${after.score.toFixed(2)} — ${after.critique}`);
+      console.log(`  Improvement: +${(after.score - initial.score).toFixed(2)}`);
+      expect(refined.name).toBeDefined();
+      expect(refined.name.length).toBeGreaterThan(0);
+    }
+  }, 120_000);
+});

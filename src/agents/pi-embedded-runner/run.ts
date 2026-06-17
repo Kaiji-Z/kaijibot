@@ -67,7 +67,6 @@ import { ensureRuntimePluginsLoaded } from "../runtime-plugins.js";
 import { derivePromptTokens, normalizeUsage, type UsageLike } from "../usage.js";
 import { redactRunIdentifier, resolveRunWorkspaceDir } from "../workspace-run.js";
 import { runPostCompactionSideEffects } from "./compact.js";
-import { buildCooldownOverride } from "./run/cooldown-override.js";
 import { buildEmbeddedCompactionRuntimeContext } from "./compaction-runtime-context.js";
 import { runContextEngineMaintenance } from "./context-engine-maintenance.js";
 import { resolveGlobalLane, resolveSessionLane } from "./lanes.js";
@@ -76,6 +75,7 @@ import { resolveModelAsync } from "./model.js";
 import { handleAssistantFailover } from "./run/assistant-failover.js";
 import { runEmbeddedAttempt } from "./run/attempt.js";
 import { createEmbeddedRunAuthController } from "./run/auth-controller.js";
+import { buildCooldownOverride } from "./run/cooldown-override.js";
 import { createFailoverDecisionLogger } from "./run/failover-observation.js";
 import { mergeRetryFailoverReason, resolveRunFailoverDecision } from "./run/failover-policy.js";
 import {

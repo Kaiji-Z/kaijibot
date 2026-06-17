@@ -116,10 +116,7 @@ describe("onboard-hooks", () => {
     ],
   });
 
-  async function runSetupInternalHooks(params: {
-    cfg?: KaijiBotConfig;
-    eligible?: boolean;
-  }) {
+  async function runSetupInternalHooks(params: { cfg?: KaijiBotConfig; eligible?: boolean }) {
     const { buildWorkspaceHookStatus } = await import("../hooks/hooks-status.js");
     vi.mocked(buildWorkspaceHookStatus).mockReturnValue(
       createMockHookReport(params.eligible ?? true),

@@ -1,3 +1,4 @@
+import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
   definePluginEntry,
   type ProviderAuthContext,
@@ -7,6 +8,7 @@ import {
   type ProviderRuntimeModel,
   type ProviderWrapStreamFnContext,
 } from "kaijibot/plugin-sdk/plugin-entry";
+import { upsertAuthProfileWithLock } from "kaijibot/plugin-sdk/provider-auth";
 import {
   applyAuthProfileConfig,
   buildApiKeyCredential,
@@ -16,15 +18,11 @@ import {
   type SecretInput,
   validateApiKeyInput,
 } from "kaijibot/plugin-sdk/provider-auth-api-key";
-import { upsertAuthProfileWithLock } from "kaijibot/plugin-sdk/provider-auth";
 import {
   buildProviderReplayFamilyHooks,
   normalizeModelCompat,
 } from "kaijibot/plugin-sdk/provider-model-shared";
-import {
-  createToolStreamWrapper,
-} from "kaijibot/plugin-sdk/provider-stream-shared";
-import type { StreamFn } from "@earendil-works/pi-agent-core";
+import { createToolStreamWrapper } from "kaijibot/plugin-sdk/provider-stream-shared";
 import { fetchZaiUsage, resolveLegacyPiAgentAccessToken } from "kaijibot/plugin-sdk/provider-usage";
 import { normalizeLowercaseStringOrEmpty } from "kaijibot/plugin-sdk/string-coerce-runtime";
 import { detectZaiEndpoint, type ZaiEndpointId } from "./detect.js";

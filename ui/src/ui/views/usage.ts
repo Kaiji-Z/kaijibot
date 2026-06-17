@@ -73,7 +73,10 @@ function renderSummaryCards(cost: CostUsageSummary, sessions: SessionsUsageResul
       <div class="usage-summary-card stat">
         <div class="usage-summary-title">Messages</div>
         <div class="usage-summary-value">${formatCount(messages)}</div>
-        <div class="usage-summary-sub">${formatCount(aggregates.messages.user)} user / ${formatCount(aggregates.messages.assistant)} assistant</div>
+        <div class="usage-summary-sub">
+          ${formatCount(aggregates.messages.user)} user /
+          ${formatCount(aggregates.messages.assistant)} assistant
+        </div>
       </div>
       <div class="usage-summary-card stat">
         <div class="usage-summary-title">Tool Calls</div>
@@ -154,9 +157,15 @@ function renderModelBreakdown(sessions: SessionsUsageResult) {
               <tr>
                 <td title="${modelDisplay}">${modelDisplay}</td>
                 <td>${providerDisplay}</td>
-                <td style="text-align:right; font-variant-numeric: tabular-nums">${formatCount(m.count)}</td>
-                <td style="text-align:right; font-variant-numeric: tabular-nums">${formatTokens(m.totals.totalTokens)}</td>
-                <td style="text-align:right; font-variant-numeric: tabular-nums">${formatCost(m.totals.totalCost)}</td>
+                <td style="text-align:right; font-variant-numeric: tabular-nums">
+                  ${formatCount(m.count)}
+                </td>
+                <td style="text-align:right; font-variant-numeric: tabular-nums">
+                  ${formatTokens(m.totals.totalTokens)}
+                </td>
+                <td style="text-align:right; font-variant-numeric: tabular-nums">
+                  ${formatCost(m.totals.totalCost)}
+                </td>
               </tr>
             `;
           })}
@@ -216,7 +225,9 @@ function renderProviderStatus(status: UsageStatusResult) {
 
 export function renderUsageDashboard(props: UsageDashboardProps) {
   if (props.loading) {
-    return html`<div class="page-loader"><span class="usage-loading-spinner"></span> Loading usage data…</div>`;
+    return html`<div class="page-loader">
+      <span class="usage-loading-spinner"></span> Loading usage data…
+    </div>`;
   }
   if (props.error) {
     return html`
@@ -236,27 +247,65 @@ export function renderUsageDashboard(props: UsageDashboardProps) {
       <section class="stack">
         <div class="card">
           <h3>Usage</h3>
-          <p style="color: var(--muted)">No usage data available yet. Data will appear once the gateway processes requests.</p>
+          <p style="color: var(--muted)">
+            No usage data available yet. Data will appear once the gateway processes requests.
+          </p>
         </div>
       </section>
     `;
   }
 
-  const safeCost = cost ?? {
-    updatedAt: 0,
-    days: 30,
-    daily: [],
-    totals: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, totalCost: 0, inputCost: 0, outputCost: 0, cacheReadCost: 0, cacheWriteCost: 0, missingCostEntries: 0 },
-  } satisfies CostUsageSummary;
+  const safeCost =
+    cost ??
+    ({
+      updatedAt: 0,
+      days: 30,
+      daily: [],
+      totals: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        inputCost: 0,
+        outputCost: 0,
+        cacheReadCost: 0,
+        cacheWriteCost: 0,
+        missingCostEntries: 0,
+      },
+    } satisfies CostUsageSummary);
 
-  const safeSessions = sessions ?? {
-    updatedAt: 0,
-    startDate: "",
-    endDate: "",
-    sessions: [],
-    totals: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, totalCost: 0, inputCost: 0, outputCost: 0, cacheReadCost: 0, cacheWriteCost: 0, missingCostEntries: 0 },
-    aggregates: { messages: { total: 0, user: 0, assistant: 0, toolCalls: 0, toolResults: 0, errors: 0 }, tools: { totalCalls: 0, uniqueTools: 0, tools: [] }, byModel: [], byProvider: [], byAgent: [], byChannel: [], daily: [] },
-  } satisfies SessionsUsageResult;
+  const safeSessions =
+    sessions ??
+    ({
+      updatedAt: 0,
+      startDate: "",
+      endDate: "",
+      sessions: [],
+      totals: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        inputCost: 0,
+        outputCost: 0,
+        cacheReadCost: 0,
+        cacheWriteCost: 0,
+        missingCostEntries: 0,
+      },
+      aggregates: {
+        messages: { total: 0, user: 0, assistant: 0, toolCalls: 0, toolResults: 0, errors: 0 },
+        tools: { totalCalls: 0, uniqueTools: 0, tools: [] },
+        byModel: [],
+        byProvider: [],
+        byAgent: [],
+        byChannel: [],
+        daily: [],
+      },
+    } satisfies SessionsUsageResult);
 
   return html`
     <section class="usage-page">
@@ -267,7 +316,9 @@ export function renderUsageDashboard(props: UsageDashboardProps) {
           </div>
           <div class="usage-header-metrics">
             ${safeCost.updatedAt
-              ? html`<span class="usage-metric-badge">Updated ${new Date(safeCost.updatedAt).toLocaleTimeString()}</span>`
+              ? html`<span class="usage-metric-badge"
+                  >Updated ${new Date(safeCost.updatedAt).toLocaleTimeString()}</span
+                >`
               : nothing}
           </div>
         </div>
@@ -277,23 +328,17 @@ export function renderUsageDashboard(props: UsageDashboardProps) {
 
       <div class="usage-overview-layout">
         <div class="usage-left-card">
-          <div class="card usage-overview-card">
-            ${renderDailyTrend(safeCost)}
-          </div>
+          <div class="card usage-overview-card">${renderDailyTrend(safeCost)}</div>
         </div>
 
         <div class="usage-left-card">
-          <div class="card usage-overview-card">
-            ${renderModelBreakdown(safeSessions)}
-          </div>
+          <div class="card usage-overview-card">${renderModelBreakdown(safeSessions)}</div>
         </div>
       </div>
 
       ${providerStatus
         ? html`
-            <div class="card usage-overview-card">
-              ${renderProviderStatus(providerStatus)}
-            </div>
+            <div class="card usage-overview-card">${renderProviderStatus(providerStatus)}</div>
           `
         : nothing}
     </section>

@@ -25,9 +25,7 @@ export type {
   EmbeddedRunAttemptParams,
   EmbeddedRunAttemptResult,
 } from "../agents/pi-embedded-runner/run/types.js";
-export type {
-  ContextEngine as HarnessContextEngine,
-} from "../context-engine/types.js";
+export type { ContextEngine as HarnessContextEngine } from "../context-engine/types.js";
 export type { CompactEmbeddedPiSessionParams } from "../agents/pi-embedded-runner/compact.js";
 export type { EmbeddedPiCompactResult } from "../agents/pi-embedded-runner/types.js";
 export type { AnyAgentTool } from "../agents/tools/common.js";
@@ -111,10 +109,7 @@ export {
   filterToolResultMediaUrls,
 } from "../agents/pi-embedded-subscribe.tools.js";
 export { normalizeUsage } from "../agents/usage.js";
-export {
-  resolveAgentDir,
-  resolveSessionAgentIds,
-} from "../agents/agent-scope.js";
+export { resolveAgentDir, resolveSessionAgentIds } from "../agents/agent-scope.js";
 export { resolveModelAuthMode } from "../agents/model-auth.js";
 export { supportsModelTools } from "../agents/model-tool-support.js";
 export { resolveAttemptSpawnWorkspaceDir } from "../agents/pi-embedded-runner/run/attempt.thread-helpers.js";
@@ -126,10 +121,7 @@ export {
   setActiveEmbeddedRun,
 };
 
-export function queueAgentHarnessMessage(
-  sessionId: string,
-  text: string,
-): boolean {
+export function queueAgentHarnessMessage(sessionId: string, _text: string): boolean {
   return abortEmbeddedPiRun(sessionId) && false;
 }
 
@@ -150,16 +142,15 @@ export {
   runBeforeToolCallHook,
   wrapToolWithBeforeToolCallHook,
 } from "../agents/pi-tools.before-tool-call.js";
-export {
-  resolveCompactionTimeoutMs,
-} from "../agents/pi-embedded-runner/compaction-safety-timeout.js";
+export { resolveCompactionTimeoutMs } from "../agents/pi-embedded-runner/compaction-safety-timeout.js";
 export {
   PREEMPTIVE_OVERFLOW_ERROR_TEXT,
   shouldPreemptivelyCompactBeforePrompt,
 } from "../agents/pi-embedded-runner/run/preemptive-compaction.js";
 export type { PreemptiveCompactionRoute } from "../agents/pi-embedded-runner/run/preemptive-compaction.js";
 /** @deprecated Use `PreemptiveCompactionRoute`. */
-export type PreemptiveCompactionDecision = import("../agents/pi-embedded-runner/run/preemptive-compaction.js").PreemptiveCompactionRoute;
+export type PreemptiveCompactionDecision =
+  import("../agents/pi-embedded-runner/run/preemptive-compaction.js").PreemptiveCompactionRoute;
 
 /**
  * Derive the same compact user-facing tool detail that Pi uses for progress logs.

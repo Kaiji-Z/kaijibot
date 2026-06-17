@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import type { MemoryIndex } from "./memory-index.js";
 import {
   diagnoseStructure,
   planRepair,
@@ -10,7 +11,6 @@ import {
   type RepairDiagnostic,
   type MemoryRepairDeps,
 } from "./memory-repair.js";
-import type { MemoryIndex } from "./memory-index.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -289,9 +289,7 @@ Another orphan line.
 
   it("detects large promoted content", () => {
     const result = diagnoseStructure(memoryWithLargePromotedContent());
-    const promotedIssues = result.issues.filter(
-      (i) => i.type === "large_promoted_content",
-    );
+    const promotedIssues = result.issues.filter((i) => i.type === "large_promoted_content");
     expect(promotedIssues.length).toBeGreaterThan(0);
   });
 
@@ -316,10 +314,7 @@ Another orphan line.
 - test → memory/topics/test.md
 `;
     const result = await diagnoseStructure(content, {
-      listTopicFiles: async () => [
-        "memory/topics/test.md",
-        "memory/topics/orphan.md",
-      ],
+      listTopicFiles: async () => ["memory/topics/test.md", "memory/topics/orphan.md"],
     });
     const orphanIssues = result.issues.filter((i) => i.type === "orphan_topic_file");
     expect(orphanIssues.length).toBeGreaterThan(0);
@@ -354,9 +349,7 @@ describe("planRepair", () => {
     const diagnostic: RepairDiagnostic = {
       severity: "minor",
       score: 2,
-      issues: [
-        { type: "missing_heading", weight: 2, details: "missing ⚡ Core Memory" },
-      ],
+      issues: [{ type: "missing_heading", weight: 2, details: "missing ⚡ Core Memory" }],
       unknownContentBlocks: [],
     };
     const plan = planRepair(diagnostic);
@@ -378,9 +371,7 @@ describe("planRepair", () => {
     const plan = planRepair(diagnostic);
     expect(plan.requiresLLM).toBe(true);
     expect(plan.requiresBackup).toBe(true);
-    const classifyAction = plan.actions.find(
-      (a) => a.type === "classify_and_relocate",
-    );
+    const classifyAction = plan.actions.find((a) => a.type === "classify_and_relocate");
     expect(classifyAction).toBeDefined();
   });
 
@@ -412,16 +403,12 @@ describe("planRepair", () => {
 
 describe("classifyHeuristic", () => {
   it("routes legacy heading '👤 User' to ⚡ Core Memory", () => {
-    const results = classifyHeuristic([
-      { heading: "👤 User", lines: ["user data"] },
-    ]);
+    const results = classifyHeuristic([{ heading: "👤 User", lines: ["user data"] }]);
     expect(results[0]!.target).toBe("⚡ Core Memory");
   });
 
   it("routes legacy heading '🎯 Active Focus' to 🔥 Active Context", () => {
-    const results = classifyHeuristic([
-      { heading: "🎯 Active Focus", lines: ["active data"] },
-    ]);
+    const results = classifyHeuristic([{ heading: "🎯 Active Focus", lines: ["active data"] }]);
     expect(results[0]!.target).toBe("🔥 Active Context");
   });
 
@@ -520,9 +507,7 @@ describe("classifyWithLLM", () => {
 
   it("falls back to topic:uncategorized on garbage response", async () => {
     const mockGenerate = vi.fn().mockResolvedValue("this is not JSON at all!!");
-    const blocks = [
-      { heading: "Mystery", lines: ["unknown content"] },
-    ];
+    const blocks = [{ heading: "Mystery", lines: ["unknown content"] }];
     const results = await classifyWithLLM(blocks, mockGenerate);
     expect(results).toHaveLength(1);
     expect(results[0]!.target).toBe("topic:uncategorized");
@@ -530,18 +515,16 @@ describe("classifyWithLLM", () => {
 
   it("falls back to topic:uncategorized on LLM error", async () => {
     const mockGenerate = vi.fn().mockRejectedValue(new Error("LLM unavailable"));
-    const blocks = [
-      { heading: "Mystery", lines: ["unknown content"] },
-    ];
+    const blocks = [{ heading: "Mystery", lines: ["unknown content"] }];
     const results = await classifyWithLLM(blocks, mockGenerate);
     expect(results).toHaveLength(1);
     expect(results[0]!.target).toBe("topic:uncategorized");
   });
 
   it("handles partial JSON with missing indices", async () => {
-    const mockGenerate = vi.fn().mockResolvedValue(
-      JSON.stringify([{ block_index: 0, target: "core" }]),
-    );
+    const mockGenerate = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify([{ block_index: 0, target: "core" }]));
     const blocks = [
       { heading: "A", lines: ["a"] },
       { heading: "B", lines: ["b"] },
@@ -691,9 +674,9 @@ describe("repairMemoryStructure", () => {
 
   it("full pipeline: diagnoses, plans, classifies, executes, verifies", async () => {
     let writtenContent = "";
-    const generateFn = vi.fn().mockResolvedValue(
-      JSON.stringify([{ block_index: 0, target: "core" }]),
-    );
+    const generateFn = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify([{ block_index: 0, target: "core" }]));
     const deps = createMockDeps({
       readRawMemoryIndex: async () => memoryWithUnknownHeading(),
       writeRawMemoryIndex: async (_dir: string, content: string) => {
@@ -703,7 +686,12 @@ describe("repairMemoryStructure", () => {
       parseMemoryIndex: (content: string): MemoryIndex => {
         // Simple mock parse
         const lines = content.split("\n");
-        const sections: Array<{ subject: string; title: string; topicFile: string; summary: string }> = [];
+        const sections: Array<{
+          subject: string;
+          title: string;
+          topicFile: string;
+          summary: string;
+        }> = [];
         for (const line of lines) {
           const m = line.match(/^- (.+?) → (.+)$/);
           if (m) {
@@ -823,37 +811,24 @@ describe("orphan detection: bare filename normalization (Bug 2)", () => {
     const result = await diagnoseStructure(memoryWithTopicPointers, {
       listTopicFiles: async () => ["test.md", "feishu.md"],
     });
-    const orphanIssues = result.issues.filter(
-      (i) => i.type === "orphan_topic_file",
-    );
+    const orphanIssues = result.issues.filter((i) => i.type === "orphan_topic_file");
     expect(orphanIssues).toHaveLength(0);
   });
 
   it("flags ONLY truly orphan files when listTopicFiles returns bare filenames", async () => {
     const result = await diagnoseStructure(memoryWithTopicPointers, {
-      listTopicFiles: async () => [
-        "test.md",
-        "feishu.md",
-        "unreferenced.md",
-      ],
+      listTopicFiles: async () => ["test.md", "feishu.md", "unreferenced.md"],
     });
-    const orphanIssues = result.issues.filter(
-      (i) => i.type === "orphan_topic_file",
-    );
+    const orphanIssues = result.issues.filter((i) => i.type === "orphan_topic_file");
     expect(orphanIssues).toHaveLength(1);
     expect(orphanIssues[0]!.filePath).toBe("memory/topics/unreferenced.md");
   });
 
   it("handles full-path returns from listTopicFiles without double-prefixing", async () => {
     const result = await diagnoseStructure(memoryWithTopicPointers, {
-      listTopicFiles: async () => [
-        "memory/topics/test.md",
-        "memory/topics/orphan.md",
-      ],
+      listTopicFiles: async () => ["memory/topics/test.md", "memory/topics/orphan.md"],
     });
-    const orphanIssues = result.issues.filter(
-      (i) => i.type === "orphan_topic_file",
-    );
+    const orphanIssues = result.issues.filter((i) => i.type === "orphan_topic_file");
     expect(orphanIssues).toHaveLength(1);
     expect(orphanIssues[0]!.filePath).toBe("memory/topics/orphan.md");
   });
@@ -939,9 +914,7 @@ describe("orphan repair: filePath used instead of diagnostic details (Bug 1)", (
     expect(written).not.toContain("Orphan topic file not referenced");
     // Must contain a proper pointer line for the orphan file
     if (written.length > 0) {
-      const pointerLine = written
-        .split("\n")
-        .find((l) => l.includes("orphan.md"));
+      const pointerLine = written.split("\n").find((l) => l.includes("orphan.md"));
       expect(pointerLine).toBeDefined();
       expect(pointerLine).toContain("memory/topics/orphan.md");
       expect(pointerLine).toMatch(/^- orphan → memory\/topics\/orphan\.md$/);
@@ -1002,9 +975,7 @@ describe("orphan repair: filePath used instead of diagnostic details (Bug 1)", (
     await repairMemoryStructure("/ws", deps);
 
     // Since orphan.md is already referenced, should NOT add a duplicate
-    const orphanLines = written
-      .split("\n")
-      .filter((l) => l.includes("orphan.md"));
+    const orphanLines = written.split("\n").filter((l) => l.includes("orphan.md"));
     expect(orphanLines.length).toBeLessThanOrEqual(1);
   });
 });

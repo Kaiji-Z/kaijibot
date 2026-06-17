@@ -60,7 +60,6 @@ describe("security audit gateway exposure findings", () => {
           "tools.exec.applyPatch.workspaceOnly=false",
         ],
       },
-
     ] as const;
 
     for (const testCase of cases) {

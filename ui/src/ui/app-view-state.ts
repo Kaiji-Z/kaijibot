@@ -1,5 +1,6 @@
 import type { CompactionStatus, FallbackStatus } from "./app-tool-stream.ts";
 import type { CronModelSuggestionsState, CronState } from "./controllers/cron.ts";
+import type { TranscriptMessage } from "./controllers/history.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
 import type { UiSettings } from "./storage.ts";
@@ -24,7 +25,6 @@ import type {
   ToolsCatalogResult,
   UsageStatusResult,
 } from "./types.ts";
-import type { TranscriptMessage } from "./controllers/history.ts";
 import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
 import type { SessionDetailState } from "./views/agents-utils.ts";
 

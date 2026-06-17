@@ -16,23 +16,19 @@ const DialogueListToolSchema = Type.Object({
   ),
   dateFrom: Type.Optional(
     Type.String({
-      description:
-        "ISO date YYYY-MM-DD — only return dialogues on or after this date",
+      description: "ISO date YYYY-MM-DD — only return dialogues on or after this date",
     }),
   ),
   dateTo: Type.Optional(
     Type.String({
-      description:
-        "ISO date YYYY-MM-DD — only return dialogues on or before this date",
+      description: "ISO date YYYY-MM-DD — only return dialogues on or before this date",
     }),
   ),
 });
 
 const FILENAME_RE = /^(\d{4}-\d{2}-\d{2})-(\d{4})\.md$/;
 
-export function createDialogueListTool(opts?: {
-  config?: KaijiBotConfig;
-}): AnyAgentTool {
+export function createDialogueListTool(opts?: { config?: KaijiBotConfig }): AnyAgentTool {
   return {
     label: "Dialogue List",
     name: "dialogue_list",
@@ -53,13 +49,9 @@ export function createDialogueListTool(opts?: {
       }
 
       const limit =
-        typeof params.limit === "number"
-          ? Math.min(Math.max(params.limit, 1), 100)
-          : 20;
-      const dateFrom =
-        typeof params.dateFrom === "string" ? params.dateFrom.trim() : undefined;
-      const dateTo =
-        typeof params.dateTo === "string" ? params.dateTo.trim() : undefined;
+        typeof params.limit === "number" ? Math.min(Math.max(params.limit, 1), 100) : 20;
+      const dateFrom = typeof params.dateFrom === "string" ? params.dateFrom.trim() : undefined;
+      const dateTo = typeof params.dateTo === "string" ? params.dateTo.trim() : undefined;
 
       const dialogues: Array<{
         filename: string;

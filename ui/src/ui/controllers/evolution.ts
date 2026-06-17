@@ -13,7 +13,9 @@ export type EvolutionState = {
 };
 
 export async function loadEvolutionRecords(state: EvolutionState) {
-  if (!state.client || !state.connected || !state.evolutionAgentId || !state.evolutionUserId) {return;}
+  if (!state.client || !state.connected || !state.evolutionAgentId || !state.evolutionUserId) {
+    return;
+  }
   state.evolutionLoading = true;
   state.requestUpdate?.();
   try {
@@ -32,7 +34,9 @@ export async function loadEvolutionRecords(state: EvolutionState) {
 }
 
 export async function loadEvolutionAudit(state: EvolutionState) {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   try {
     const res = await state.client.request("cognitive.evolution.audit", {});
     state.evolutionAuditEntries = (res as { entries?: unknown[] }).entries ?? [];

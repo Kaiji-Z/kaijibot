@@ -56,7 +56,7 @@ export function classifyMode(
     /[/\\]\S+\.\w{1,10}(\s|$)/.test(trimmed) || // file paths
     /https?:\/\//.test(trimmed) || // URLs
     /\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(trimmed) || // dates
-    trimmed.startsWith('```'); // code blocks
+    trimmed.startsWith("```"); // code blocks
   if (hasExplicitObject) {
     signals.push("explicit-object");
   }

@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import {
   DEFAULT_CACHE_TTL_MINUTES,
   DEFAULT_TIMEOUT_SECONDS,
@@ -19,6 +18,7 @@ import {
   type WebSearchProviderPlugin,
   writeCache,
 } from "kaijibot/plugin-sdk/provider-web-search";
+import { Type } from "typebox";
 import {
   buildXaiWebSearchPayload,
   extractXaiWebSearchContent,

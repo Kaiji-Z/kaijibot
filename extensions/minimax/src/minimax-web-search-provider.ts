@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import {
   DEFAULT_SEARCH_COUNT,
   MAX_SEARCH_COUNT,
@@ -25,6 +24,7 @@ import {
   type WebSearchProviderToolDefinition,
 } from "kaijibot/plugin-sdk/provider-web-search";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
+import { Type } from "typebox";
 
 const MINIMAX_SEARCH_ENDPOINT_GLOBAL = "https://api.minimax.io/v1/coding_plan/search";
 const MINIMAX_SEARCH_ENDPOINT_CN = "https://api.minimaxi.com/v1/coding_plan/search";

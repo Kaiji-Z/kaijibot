@@ -82,7 +82,6 @@ function listRepoBundledPluginMetadata(): readonly BundledPluginMetadata[] {
   });
 }
 
-
 describe("bundled plugin metadata", () => {
   it(
     "matches the runtime metadata snapshot",
@@ -121,9 +120,7 @@ describe("bundled plugin metadata", () => {
 
   it("loads channel config metadata from the lightweight schema surface", () => {
     const metadata = listRepoBundledPluginMetadata();
-    const channelsWithConfig = metadata.filter(
-      (entry) => entry.packageManifest?.channel != null,
-    );
+    const channelsWithConfig = metadata.filter((entry) => entry.packageManifest?.channel != null);
     expect(channelsWithConfig.length).toBeGreaterThan(0);
   });
 

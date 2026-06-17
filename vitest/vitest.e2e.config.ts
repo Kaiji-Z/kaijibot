@@ -1,7 +1,7 @@
 import os from "node:os";
 import { defineConfig } from "vitest/config";
-import { BUNDLED_PLUGIN_E2E_TEST_GLOB } from "./vitest.bundled-plugin-paths.ts";
 import baseConfig from "../vitest.config.ts";
+import { BUNDLED_PLUGIN_E2E_TEST_GLOB } from "./vitest.bundled-plugin-paths.ts";
 
 const base = baseConfig as unknown as Record<string, unknown>;
 const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";

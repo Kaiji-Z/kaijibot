@@ -226,10 +226,15 @@ const DISABLE_LARK_SKILLS_ENV = "KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL";
 const SKILLS_INSTALL_TIMEOUT_MS = 120_000;
 
 function areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir) {
-  if (!pathExists(skillsDir)) { return false; }
+  if (!pathExists(skillsDir)) {
+    return false;
+  }
   try {
     return readDir(skillsDir, { withFileTypes: true }).some(
-      (e) => e.isDirectory() && e.name.startsWith("lark-") && pathExists(join(skillsDir, e.name, "SKILL.md")),
+      (e) =>
+        e.isDirectory() &&
+        e.name.startsWith("lark-") &&
+        pathExists(join(skillsDir, e.name, "SKILL.md")),
     );
   } catch {
     return false;
@@ -253,9 +258,15 @@ export function installLarkCliSkills(params = {}) {
   const skillsDir = params.skillsDir ?? join(homedir(), ".agents", "skills");
   const platform = params.platform ?? process.platform;
 
-  if (env?.[DISABLE_LARK_SKILLS_ENV]?.trim()) { return; }
-  if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) { return; }
-  if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) { return; }
+  if (env?.[DISABLE_LARK_SKILLS_ENV]?.trim()) {
+    return;
+  }
+  if (isSourceCheckoutRoot({ packageRoot, existsSync: pathExists })) {
+    return;
+  }
+  if (areLarkSkillsInstalledInDir(skillsDir, pathExists, readDir)) {
+    return;
+  }
 
   try {
     const cleanEnv = createNestedNpmInstallEnv(env);

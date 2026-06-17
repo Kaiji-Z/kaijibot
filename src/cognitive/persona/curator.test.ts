@@ -352,7 +352,11 @@ describe("computeInterestPhase via mergeExtraction", () => {
     };
     const result = mergeExtraction(
       persona,
-      { attributes: [], domains: [{ name: "deep-domain", depth: 1, insights: [], questions: [] }], recentFocus: [] },
+      {
+        attributes: [],
+        domains: [{ name: "deep-domain", depth: 1, insights: [], questions: [] }],
+        recentFocus: [],
+      },
       now,
     );
     expect(result.domains["deep-domain"].phase).toBe("stable");
@@ -373,7 +377,11 @@ describe("computeInterestPhase via mergeExtraction", () => {
     };
     const result = mergeExtraction(
       persona,
-      { attributes: [], domains: [{ name: "moderate-domain", depth: 0.5, insights: [], questions: [] }], recentFocus: [] },
+      {
+        attributes: [],
+        domains: [{ name: "moderate-domain", depth: 0.5, insights: [], questions: [] }],
+        recentFocus: [],
+      },
       now,
     );
     expect(result.domains["moderate-domain"].phase).toBe("stable");
@@ -384,7 +392,11 @@ describe("computeInterestPhase via mergeExtraction", () => {
     const persona = createDefaultPersona();
     const result = mergeExtraction(
       persona,
-      { attributes: [], domains: [{ name: "fresh-domain", depth: 0.3, insights: [], questions: [] }], recentFocus: [] },
+      {
+        attributes: [],
+        domains: [{ name: "fresh-domain", depth: 0.3, insights: [], questions: [] }],
+        recentFocus: [],
+      },
       now,
     );
     expect(result.domains["fresh-domain"].phase).toBe("emergent");
@@ -444,7 +456,11 @@ describe("computeInterestPhase via mergeExtraction", () => {
     };
     const result = mergeExtraction(
       persona,
-      { attributes: [], domains: [{ name: "revived-domain", depth: 1, insights: [], questions: [] }], recentFocus: [] },
+      {
+        attributes: [],
+        domains: [{ name: "revived-domain", depth: 1, insights: [], questions: [] }],
+        recentFocus: [],
+      },
       now,
     );
     expect(result.domains["revived-domain"].phase).toBe("revived");

@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { writeJsonAtomic } from "../../infra/json-files.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
@@ -89,11 +89,7 @@ export class PatternRegistry {
    * Add a new promoted pattern and persist to disk.
    * Ensures the registry is loaded before appending.
    */
-  async add(entry: {
-    pattern: string;
-    flags: string;
-    source: string;
-  }): Promise<void> {
+  async add(entry: { pattern: string; flags: string; source: string }): Promise<void> {
     await this.load();
     const record: PromotedPattern = {
       pattern: entry.pattern,

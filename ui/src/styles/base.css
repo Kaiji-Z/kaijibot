@@ -80,7 +80,8 @@
   /* === Typography === */
   --mono: "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
   --font-body: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
-  --font-display: "Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --font-display:
+    "Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
 
   /* === Shadow === */
   --shadow-sm: 0 1px 2px #00000066;
@@ -399,7 +400,7 @@
 :root[data-theme="glaze"] {
   --bg: #0a0c16;
   --bg-accent: #5b4fff10;
-  --bg-elevated: oklch(0.20 0.03 280 / 0.5);
+  --bg-elevated: oklch(0.2 0.03 280 / 0.5);
   --bg-hover: oklch(0.25 0.03 280 / 0.4);
   --bg-muted: oklch(0.15 0.02 280 / 0.6);
   --bg-content: oklch(0.12 0.02 280 / 0.7);
@@ -410,7 +411,7 @@
   --popover: oklch(0.18 0.03 280 / 0.6);
   --popover-foreground: #e6e4e0;
   --panel: oklch(0.15 0.02 280 / 0.6);
-  --panel-strong: oklch(0.20 0.03 280 / 0.5);
+  --panel-strong: oklch(0.2 0.03 280 / 0.5);
   --panel-hover: oklch(0.25 0.03 280 / 0.4);
   --chrome: #0a0c1680;
   --chrome-strong: #0a0c16c0;
@@ -424,7 +425,7 @@
 
   --border: oklch(0.5 0.05 280 / 0.15);
   --border-strong: oklch(0.5 0.05 280 / 0.25);
-  --border-hover: oklch(0.6 0.06 280 / 0.30);
+  --border-hover: oklch(0.6 0.06 280 / 0.3);
   --input: oklch(0.5 0.05 280 / 0.25);
 
   --ring: #a78bfa;
@@ -466,8 +467,8 @@
 
   --shadow-sm: 0 1px 2px #00000066;
   --shadow-md: 0 4px 16px oklch(0.1 0.05 280 / 0.25);
-  --shadow-lg: 0 8px 32px oklch(0.1 0.05 280 / 0.30);
-  --shadow-xl: 0 16px 48px oklch(0.1 0.05 280 / 0.40);
+  --shadow-lg: 0 8px 32px oklch(0.1 0.05 280 / 0.3);
+  --shadow-xl: 0 16px 48px oklch(0.1 0.05 280 / 0.4);
   --shadow-glow: 0 0 40px oklch(0.4 0.1 280 / 0.2);
 
   --grid-line: rgba(167, 139, 250, 0.03);
@@ -552,7 +553,7 @@
 
   --shadow-sm: 0 1px 2px #00000018;
   --shadow-md: 0 4px 16px rgba(167, 139, 250, 0.08);
-  --shadow-lg: 0 8px 32px rgba(167, 139, 250, 0.10);
+  --shadow-lg: 0 8px 32px rgba(167, 139, 250, 0.1);
   --shadow-xl: 0 16px 48px rgba(167, 139, 250, 0.12);
   --shadow-glow: 0 0 40px #a78bfa15;
 

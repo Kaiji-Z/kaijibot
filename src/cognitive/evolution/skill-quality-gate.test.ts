@@ -107,9 +107,11 @@ describe("evaluateSkillQuality", () => {
 describe("refineSkillDraft", () => {
   it("produces improved draft from critique", async () => {
     const { refineSkillDraft } = await import("./skill-quality-gate.js");
-    const mockLLM = vi.fn().mockResolvedValue(
-      "---\nname: improved-skill\ndescription: Better version\n---\n## Triggers\n- do the thing\n\n## Workflow\n1. Use `specific_tool` for action",
-    );
+    const mockLLM = vi
+      .fn()
+      .mockResolvedValue(
+        "---\nname: improved-skill\ndescription: Better version\n---\n## Triggers\n- do the thing\n\n## Workflow\n1. Use `specific_tool` for action",
+      );
     const result = await refineSkillDraft(goodDraft, "Too vague", ["Add tool refs"], {
       generateText: asGenerate(mockLLM),
     });

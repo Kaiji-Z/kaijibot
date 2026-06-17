@@ -244,7 +244,8 @@ Check the server logs
   });
 
   it("returns true for template with code fences around comments", () => {
-    const template = "# HEARTBEAT.md Template\n\n```markdown\n# Keep this file empty (or with only comments) to skip heartbeat API calls.\n\n# Add tasks below when you want the agent to check something periodically.\n```";
+    const template =
+      "# HEARTBEAT.md Template\n\n```markdown\n# Keep this file empty (or with only comments) to skip heartbeat API calls.\n\n# Add tasks below when you want the agent to check something periodically.\n```";
     expect(isHeartbeatContentEffectivelyEmpty(template)).toBe(true);
   });
 

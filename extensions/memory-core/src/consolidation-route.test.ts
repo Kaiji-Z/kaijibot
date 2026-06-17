@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ExtractedItem, RouteItem } from "./consolidation-types.js";
 import { routeToStores, type ConsolidationRouteDeps } from "./consolidation-route.js";
+import type { ExtractedItem, RouteItem } from "./consolidation-types.js";
 
 function makeRouteItem(overrides: Partial<ExtractedItem> = {}): RouteItem {
   return {
@@ -181,35 +181,35 @@ describe("routeToStores", () => {
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
     expect(deps.mergeTypedInsights).toHaveBeenCalledTimes(2);
-    expect(deps.mergeTypedInsights).toHaveBeenCalledWith(
-      "agent-a",
-      "user-1",
-      expect.any(Array),
-    );
-    expect(deps.mergeTypedInsights).toHaveBeenCalledWith(
-      "agent-b",
-      "user-2",
-      expect.any(Array),
-    );
+    expect(deps.mergeTypedInsights).toHaveBeenCalledWith("agent-a", "user-1", expect.any(Array));
+    expect(deps.mergeTypedInsights).toHaveBeenCalledWith("agent-b", "user-2", expect.any(Array));
   });
 
   it("routes with feishu ou_ userId without confusing it with agentId", async () => {
     const items = [
-      { agentId: "main", userId: "ou_abc123", item: makeRouteItem({ category: "domain_knowledge" }).item },
+      {
+        agentId: "main",
+        userId: "ou_abc123",
+        item: makeRouteItem({ category: "domain_knowledge" }).item,
+      },
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
-    expect(deps.mergeTypedInsights).toHaveBeenCalledWith(
-      "main",
-      "ou_abc123",
-      expect.any(Array),
-    );
+    expect(deps.mergeTypedInsights).toHaveBeenCalledWith("main", "ou_abc123", expect.any(Array));
   });
 
   it("calls updateMemoryIndex for items with confidence >= 0.7", async () => {
     const items = [
       makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "User knows Rust" }),
-      makeRouteItem({ category: "stated_preference", confidence: 0.85, content: "Likes dark mode" }),
-      makeRouteItem({ category: "goal_or_aspiration", confidence: 0.75, content: "Learning Rust embedded" }),
+      makeRouteItem({
+        category: "stated_preference",
+        confidence: 0.85,
+        content: "Likes dark mode",
+      }),
+      makeRouteItem({
+        category: "goal_or_aspiration",
+        confidence: 0.75,
+        content: "Learning Rust embedded",
+      }),
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
     expect(deps.updateMemoryIndex).toHaveBeenCalledOnce();
@@ -234,7 +234,11 @@ describe("routeToStores", () => {
   it("excludes behavioral_pattern with confidence < 0.8 from updateMemoryIndex", async () => {
     const items = [
       makeRouteItem({ category: "behavioral_pattern", confidence: 0.75, content: "Habit pattern" }),
-      makeRouteItem({ category: "behavioral_pattern", confidence: 0.85, content: "Strong pattern" }),
+      makeRouteItem({
+        category: "behavioral_pattern",
+        confidence: 0.85,
+        content: "Strong pattern",
+      }),
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
     const callArgs = (deps.updateMemoryIndex as ReturnType<typeof vi.fn>).mock.calls[0]![0];
@@ -406,7 +410,8 @@ describe("routeToStores", () => {
       makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "User knows Rust" }),
     ];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
-    const written = (deps.appendToMemoryFile as ReturnType<typeof vi.fn>).mock.calls[0]![1] as string;
+    const written = (deps.appendToMemoryFile as ReturnType<typeof vi.fn>).mock
+      .calls[0]![1] as string;
     expect(written).not.toContain("[domain_knowledge]");
     expect(written).not.toContain("confidence:");
     expect(written).toContain("- User knows Rust");

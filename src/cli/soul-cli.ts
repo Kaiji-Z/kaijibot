@@ -2,10 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
+import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { readConfigFileSnapshot, replaceConfigFile } from "../config/config.js";
 import { removeSoulFromConfig, setSoulInConfig } from "../config/soul-config-helpers.js";
 import { SOUL_PRESETS, type SoulPreset } from "../config/types.soul.js";
-import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { danger } from "../globals.js";
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
@@ -55,13 +55,8 @@ function loadPresetContent(preset: SoulPreset): string {
   return readFileSync(filePath, "utf-8");
 }
 
-function resolveCurrentPreset(
-  config: MutableConfig,
-  agentId: string,
-): SoulPreset | undefined {
-  const entry = config.agents?.list?.find(
-    (e) => e.id.toLowerCase() === agentId.toLowerCase(),
-  );
+function resolveCurrentPreset(config: MutableConfig, agentId: string): SoulPreset | undefined {
+  const entry = config.agents?.list?.find((e) => e.id.toLowerCase() === agentId.toLowerCase());
   if (entry?.soul?.preset) {
     return entry.soul.preset;
   }
@@ -174,7 +169,9 @@ async function runSoulUnset(agentId?: string): Promise<void> {
   removeSoulFromConfig(sourceConfig, effectiveAgentId);
   await replaceConfigFile({ nextConfig: sourceConfig });
 
-  defaultRuntime.log(`Soul preset removed [agent: ${effectiveAgentId}]. Reverted to default SOUL.md.`);
+  defaultRuntime.log(
+    `Soul preset removed [agent: ${effectiveAgentId}]. Reverted to default SOUL.md.`,
+  );
   defaultRuntime.log("");
   defaultRuntime.log("Change takes effect on the next message (hot-reload).");
 }

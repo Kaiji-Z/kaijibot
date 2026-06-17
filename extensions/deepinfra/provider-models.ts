@@ -16,14 +16,15 @@ export const DEEPINFRA_DEFAULT_MODEL_REF = `deepinfra/${DEEPINFRA_DEFAULT_MODEL_
 const DEEPINFRA_DEFAULT_CONTEXT_WINDOW = 128000;
 const DEEPINFRA_DEFAULT_MAX_TOKENS = 8192;
 
-export const DEEPINFRA_MODEL_CATALOG: ModelDefinitionConfig[] = DEEPINFRA_MANIFEST_CATALOG.models.map(
-  (m) =>
-    ({
-      ...m,
-      reasoning: m.reasoning ?? false,
-      input: [...m.input] as ModelDefinitionConfig["input"],
-    }) as ModelDefinitionConfig,
-);
+export const DEEPINFRA_MODEL_CATALOG: ModelDefinitionConfig[] =
+  DEEPINFRA_MANIFEST_CATALOG.models.map(
+    (m) =>
+      ({
+        ...m,
+        reasoning: m.reasoning ?? false,
+        input: [...m.input] as ModelDefinitionConfig["input"],
+      }) as ModelDefinitionConfig,
+  );
 
 const DISCOVERY_TIMEOUT_MS = 5000;
 const DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1000;

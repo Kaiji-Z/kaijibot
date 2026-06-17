@@ -13,9 +13,7 @@ export const TOGETHER_MODEL_CATALOG: ModelDefinitionConfig[] = TOGETHER_MANIFEST
   }),
 );
 
-export function buildTogetherModelDefinition(
-  model: ModelDefinitionConfig,
-): ModelDefinitionConfig {
+export function buildTogetherModelDefinition(model: ModelDefinitionConfig): ModelDefinitionConfig {
   return {
     ...model,
     api: "openai-completions",

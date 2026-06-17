@@ -52,7 +52,11 @@ describe("buildCooldownOverride", () => {
   it("probes quota API when a rate_limit failure occurs for a probeable provider (zai)", async () => {
     const store = makeStore({ p1: makeApiKeyProfile("zai") });
     shouldProbeQuotaForFailureMock.mockReturnValue(true);
-    probeQuotaForCooldownMock.mockResolvedValue({ cooldownMs: 120_000, reason: "quota_reset_zai", source: "zai" });
+    probeQuotaForCooldownMock.mockResolvedValue({
+      cooldownMs: 120_000,
+      reason: "quota_reset_zai",
+      source: "zai",
+    });
 
     const override = await buildCooldownOverride({
       profileId: "p1",

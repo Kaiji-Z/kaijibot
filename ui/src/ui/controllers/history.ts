@@ -1,5 +1,5 @@
-import type { GatewaySessionRow } from "../types.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
+import type { GatewaySessionRow } from "../types.ts";
 
 export type TranscriptMessage = {
   role?: string;
@@ -55,7 +55,9 @@ export async function loadSessionMessages(state: HistoryState, key: string) {
 }
 
 export async function deleteHistorySession(state: HistoryState, key: string) {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   state.historyLoading = true;
   state.requestUpdate?.();
   try {

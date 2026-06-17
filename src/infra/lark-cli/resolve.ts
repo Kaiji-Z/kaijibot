@@ -59,7 +59,9 @@ export function isLarkCliAvailable(): boolean {
  */
 export function resolveLarkCliBinDir(): string | undefined {
   const binPath = resolveLarkCliPath();
-  if (!binPath) {return undefined;}
+  if (!binPath) {
+    return undefined;
+  }
   let dir = dirname(binPath);
   while (dir !== dirname(dir)) {
     if (basename(dir) === "node_modules") {

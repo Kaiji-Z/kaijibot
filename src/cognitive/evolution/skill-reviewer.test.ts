@@ -51,9 +51,9 @@ describe("reviewSkill", () => {
 
   it("clamps confidence to [0,1]", async () => {
     const { reviewSkill } = await import("./skill-reviewer.js");
-    const mockLLM = vi.fn().mockResolvedValue(
-      JSON.stringify({ approved: true, confidence: 5, notes: "x" }),
-    );
+    const mockLLM = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify({ approved: true, confidence: 5, notes: "x" }));
     const result = await reviewSkill(makeDraft(), "x", { generateText: asGenerate(mockLLM) });
     expect(result.confidence).toBe(1);
   });

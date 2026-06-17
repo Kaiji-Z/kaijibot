@@ -50,7 +50,9 @@ export type AccessGroupMembershipFact = {
 };
 
 export type ChannelIngressAccessGroupMembershipResolver = {
-  resolve: (identity: ChannelIngressIdentityDescriptor) => AccessGroupMembershipFact[] | Promise<AccessGroupMembershipFact[]>;
+  resolve: (
+    identity: ChannelIngressIdentityDescriptor,
+  ) => AccessGroupMembershipFact[] | Promise<AccessGroupMembershipFact[]>;
 };
 
 export type ChannelIngressPolicyInput = {
@@ -160,19 +162,27 @@ function throwNotPorted(name: string): never {
   );
 }
 
-export function createChannelIngressResolver(_params: CreateChannelIngressResolverParams): ChannelIngressResolver {
+export function createChannelIngressResolver(
+  _params: CreateChannelIngressResolverParams,
+): ChannelIngressResolver {
   throwNotPorted("createChannelIngressResolver");
 }
 
-export function defineStableChannelIngressIdentity(_params: StableChannelIngressIdentityParams): ChannelIngressIdentityDescriptor {
+export function defineStableChannelIngressIdentity(
+  _params: StableChannelIngressIdentityParams,
+): ChannelIngressIdentityDescriptor {
   throwNotPorted("defineStableChannelIngressIdentity");
 }
 
-export function resolveChannelMessageIngress(_params: ResolveChannelMessageIngressParams): Promise<ResolvedChannelMessageIngress> {
+export function resolveChannelMessageIngress(
+  _params: ResolveChannelMessageIngressParams,
+): Promise<ResolvedChannelMessageIngress> {
   throwNotPorted("resolveChannelMessageIngress");
 }
 
-export function resolveStableChannelMessageIngress(_params: ResolveStableChannelMessageIngressParams): Promise<ResolvedChannelMessageIngress> {
+export function resolveStableChannelMessageIngress(
+  _params: ResolveStableChannelMessageIngressParams,
+): Promise<ResolvedChannelMessageIngress> {
   throwNotPorted("resolveStableChannelMessageIngress");
 }
 

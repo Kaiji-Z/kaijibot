@@ -4,7 +4,9 @@ const MAIN_SESSION_KEY = "agent:main:main";
 const FEISHU_OPEN_ID_PREFIX = "ou_";
 
 function extractFeishuOpenId(lastTo: string | undefined): string | undefined {
-  if (!lastTo) {return undefined;}
+  if (!lastTo) {
+    return undefined;
+  }
   const stripped = lastTo.replace(/^user:/, "");
   if (
     stripped.startsWith(FEISHU_OPEN_ID_PREFIX) &&

@@ -3,13 +3,13 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { complete, type Api, type Model } from "@earendil-works/pi-ai";
-import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import { resolveAgentWorkspaceDir } from "../../agents/agent-scope.js";
 import { resolveSoulPreset } from "../../agents/bootstrap-files.js";
-import { loadSoulPresetContent } from "../../agents/soul-preset.js";
+import { DEFAULT_MODEL } from "../../agents/defaults.js";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
+import { loadSoulPresetContent } from "../../agents/soul-preset.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { pickPromptVariant } from "../feedback/preference-learner.js";
@@ -2038,8 +2038,7 @@ export async function loadSoulContentForInsight(params: {
   }
 
   const dir =
-    workspaceDir ??
-    (config && agentId ? resolveAgentWorkspaceDir(config, agentId) : undefined);
+    workspaceDir ?? (config && agentId ? resolveAgentWorkspaceDir(config, agentId) : undefined);
   if (dir) {
     try {
       const content = await fs.readFile(path.join(dir, "SOUL.md"), "utf-8");

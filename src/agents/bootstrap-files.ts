@@ -192,9 +192,7 @@ export function resolveSoulPreset(
   }
   const { sessionAgentId } = resolveSessionAgentIds({ config, agentId, sessionKey });
   const resolved = resolveAgentConfig(config, sessionAgentId);
-  return (
-    resolved?.soul?.preset ?? config.agents?.defaults?.soul?.preset ?? config.soul?.preset
-  );
+  return resolved?.soul?.preset ?? config.agents?.defaults?.soul?.preset ?? config.soul?.preset;
 }
 
 export async function resolveBootstrapFilesForRun(params: {

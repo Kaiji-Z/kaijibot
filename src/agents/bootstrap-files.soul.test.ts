@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveSoulPreset } from "./bootstrap-files.js";
 import type { KaijiBotConfig } from "../config/types.js";
+import { resolveSoulPreset } from "./bootstrap-files.js";
 
 describe("resolveSoulPreset", () => {
   it("returns per-agent soul preset when agent has one in list", () => {

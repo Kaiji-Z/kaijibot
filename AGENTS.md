@@ -100,6 +100,7 @@ User sends message in Feishu
 ```
 
 Async pipelines (not triggered by user messages):
+
 - **Proactive insights**: scheduler events (timer/persona-change/info-scan) → PRISM gate → search → identify → resolve → LLM generates insight → deliver via Feishu
 - **Memory consolidation**: cron `0 3 * * *` → scan session files → LLM extract → Jaccard dedup → route to PersonaStore/FragmentStore/CorrectionStore + MEMORY.md inline sections
 - **Skill evolution**: heartbeat triggers agent turn on evolution signal → Agent decides whether to create a skill
@@ -368,7 +369,7 @@ Correction (system prompt injection):
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
 - Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
-- Evolution config: `cognitive.evolution.enabled` (dead fields removed: minComplexity, errorComplexityThreshold, minTrustScore, clawhub*)
+- Evolution config: `cognitive.evolution.enabled` (dead fields removed: minComplexity, errorComplexityThreshold, minTrustScore, clawhub\*)
 - Correction config: enabled by default when `cognitive.enabled` is true; no separate config key
 - Consolidation config: `memory.consolidation.enabled` (default `true`), `memory.consolidation.cron` (default `0 3 * * *`), `memory.consolidation.concurrency` (default 2), `memory.consolidation.batchSize` (default 4000), `memory.consolidation.lookbackDays` (default 7), `memory.consolidation.timezone`
 - Correction data stored at `~/.kaijibot/cognitive/corrections/{userId}.json`. Schema: CorrectionStoreData with records array, each CorrectionRecord has id, domain, trigger, mistake, correction, provenance, reinforcedCount, createdAt, lastReinforced.

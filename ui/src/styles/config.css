@@ -2236,7 +2236,9 @@
   height: 40px;
   border-radius: 8px;
   border: 2px solid transparent;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .appearance-theme-swatch__dot {
@@ -2281,7 +2283,9 @@
   color: var(--muted);
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .appearance-mode-btn svg {
@@ -2303,5 +2307,3 @@
   background: var(--accent-hover);
   color: var(--accent-foreground);
 }
-
-

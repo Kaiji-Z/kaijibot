@@ -3,27 +3,19 @@ import { resolveCorrectionUserId } from "./userid.js";
 
 describe("resolveCorrectionUserId", () => {
   it("extracts ou_xxx from feishu direct session key", () => {
-    expect(
-      resolveCorrectionUserId("agent:main:feishu:direct:ou_abc123"),
-    ).toBe("ou_abc123");
+    expect(resolveCorrectionUserId("agent:main:feishu:direct:ou_abc123")).toBe("ou_abc123");
   });
 
   it("extracts ou_xxx from feishu group session key", () => {
-    expect(
-      resolveCorrectionUserId("agent:main:feishu:group:oc_xxx:ou_abc123"),
-    ).toBe("ou_abc123");
+    expect(resolveCorrectionUserId("agent:main:feishu:group:oc_xxx:ou_abc123")).toBe("ou_abc123");
   });
 
   it("strips user: prefix from deliveryTo", () => {
-    expect(
-      resolveCorrectionUserId(undefined, "user:ou_abc123"),
-    ).toBe("ou_abc123");
+    expect(resolveCorrectionUserId(undefined, "user:ou_abc123")).toBe("ou_abc123");
   });
 
   it("strips feishu: prefix from deliveryTo", () => {
-    expect(
-      resolveCorrectionUserId(undefined, "feishu:ou_abc123"),
-    ).toBe("ou_abc123");
+    expect(resolveCorrectionUserId(undefined, "feishu:ou_abc123")).toBe("ou_abc123");
   });
 
   it("returns null for both undefined inputs", () => {
@@ -44,8 +36,8 @@ describe("resolveCorrectionUserId", () => {
   });
 
   it("prefers deliveryTo over sessionKey", () => {
-    expect(
-      resolveCorrectionUserId("agent:main:feishu:direct:ou_first", "user:ou_second"),
-    ).toBe("ou_second");
+    expect(resolveCorrectionUserId("agent:main:feishu:direct:ou_first", "user:ou_second")).toBe(
+      "ou_second",
+    );
   });
 });

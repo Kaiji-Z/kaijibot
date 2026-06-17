@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { writeTextAtomic } from "../../infra/json-files.js";
 import type { EvolutionRecord, EvolutionConfig } from "./types.js";
 import { DEFAULT_EVOLUTION_CONFIG } from "./types.js";
-import { writeTextAtomic } from "../../infra/json-files.js";
 
 const COGNITIVE_DIR = "cognitive";
 const EVOLUTION_DIR = "evolution";
@@ -60,7 +60,9 @@ export class EvolutionStore {
 
   async loadConfig(agentId: string): Promise<EvolutionConfig> {
     const path = this.configPath(agentId);
-    if (!existsSync(path)) {return { ...DEFAULT_EVOLUTION_CONFIG };}
+    if (!existsSync(path)) {
+      return { ...DEFAULT_EVOLUTION_CONFIG };
+    }
     const raw = await readFile(path, "utf-8");
     return { ...DEFAULT_EVOLUTION_CONFIG, ...JSON.parse(raw) };
   }
@@ -73,7 +75,9 @@ export class EvolutionStore {
 
   private async loadRecords(agentId: string, userId: string): Promise<EvolutionRecord[]> {
     const path = this.recordPath(agentId, userId);
-    if (!existsSync(path)) {return [];}
+    if (!existsSync(path)) {
+      return [];
+    }
     try {
       const raw = await readFile(path, "utf-8");
       return JSON.parse(raw) as EvolutionRecord[];
@@ -103,7 +107,9 @@ export class EvolutionStore {
       for (const name of entries) {
         const full = join(dir, name);
         const s = await stat(full);
-        if (s.isDirectory()) {result.push(name);}
+        if (s.isDirectory()) {
+          result.push(name);
+        }
       }
       return result.toSorted();
     } catch {

@@ -60,7 +60,9 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
       const skills: Array<{ name: string; description: string }> = [];
       for (const name of names) {
         const meta = await writer.readSkillMeta(name);
-        if (meta) {skills.push({ name: meta.name, description: meta.description });}
+        if (meta) {
+          skills.push({ name: meta.name, description: meta.description });
+        }
       }
       existingSkills = skills.length > 0 ? skills : undefined;
     } catch {
@@ -72,7 +74,9 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
   try {
     const { parseAgentSessionKey } = await import("../../routing/session-key.js");
     const parsed = parseAgentSessionKey(params.sessionKey);
-    if (parsed) {agentId = parsed.agentId;}
+    if (parsed) {
+      agentId = parsed.agentId;
+    }
   } catch {}
 
   const signalText = buildEvolutionSignal({

@@ -7,7 +7,6 @@
  */
 
 import path from "node:path";
-import { Type } from "typebox";
 import {
   jsonResult,
   readStringParam,
@@ -16,12 +15,13 @@ import {
   type AnyAgentTool,
   type KaijiBotConfig,
 } from "kaijibot/plugin-sdk/memory-core-host-runtime-core";
-import { MemoryIndexManager } from "./memory-index.js";
+import { Type } from "typebox";
 import { localDateStr } from "./local-date.js";
+import { MemoryIndexManager } from "./memory-index.js";
 import { jaccardSimilarity, tokenize } from "./memory/mmr.js";
 import { TopicManager, createTopicManager, type TopicManagerDeps } from "./topic-manager.js";
-import { type TopicEntry } from "./topic-types.js";
 import { createTopicRegistry, type TopicRegistry } from "./topic-registry.js";
+import { type TopicEntry } from "./topic-types.js";
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -29,7 +29,9 @@ import { createTopicRegistry, type TopicRegistry } from "./topic-registry.js";
 
 export const MemoryTidySchema = Type.Object({
   dryRun: Type.Optional(Type.Boolean({ description: "Preview changes without writing" })),
-  focus: Type.Optional(Type.String({ description: "Focus on a specific topic (name without .md)" })),
+  focus: Type.Optional(
+    Type.String({ description: "Focus on a specific topic (name without .md)" }),
+  ),
 });
 
 // ---------------------------------------------------------------------------
@@ -39,7 +41,13 @@ export const MemoryTidySchema = Type.Object({
 export type TidyOperation =
   | { op: "merge_topics"; from: string; into: string; reason: string }
   | { op: "rename_topic"; from: string; to: string; reason: string }
-  | { op: "dedup_entries"; topic: string; keepIndex: number; absorbIndices: number[]; reason: string }
+  | {
+      op: "dedup_entries";
+      topic: string;
+      keepIndex: number;
+      absorbIndices: number[];
+      reason: string;
+    }
   | { op: "archive_topic"; topic: string; reason: string }
   | { op: "clean_inline"; section: string; removeLineIndices: number[]; reason: string };
 
@@ -99,7 +107,9 @@ function deduplicateLines(lines: string[]): { kept: string[]; removed: number } 
     }
     const isDup = kept.some((k) => {
       const kStripped = stripInlineDatePrefix(k);
-      return kStripped.trim() !== "" && computeJaccard(stripped, kStripped) >= INLINE_DEDUP_THRESHOLD;
+      return (
+        kStripped.trim() !== "" && computeJaccard(stripped, kStripped) >= INLINE_DEDUP_THRESHOLD
+      );
     });
     if (isDup) {
       removed++;
@@ -185,7 +195,9 @@ async function gatherTopicSummaries(
     }
 
     const topic = await topicManager.getTopic(name);
-    if (!topic) { continue; }
+    if (!topic) {
+      continue;
+    }
 
     const entries = topic.entries.slice(0, 5).map((e, i) => ({
       index: i,
@@ -221,7 +233,9 @@ function buildLLMPrompt(
   // Topics section
   parts.push("## Topics");
   for (const topic of topics) {
-    parts.push(`### "${topic.name}" (subject: "${topic.subject}", ${topic.entryCount} entries, last updated: ${topic.lastUpdated})`);
+    parts.push(
+      `### "${topic.name}" (subject: "${topic.subject}", ${topic.entryCount} entries, last updated: ${topic.lastUpdated})`,
+    );
     for (const entry of topic.entries) {
       parts.push(`- [${entry.index}] ${entry.title} (${entry.date}): ${entry.content}...`);
     }
@@ -251,29 +265,43 @@ function buildLLMPrompt(
 
   // Operations
   parts.push("Based on this data, suggest operations. Available operations:");
-  parts.push('1. merge_topics — merge overlapping topics. { "op": "merge_topics", "from": "topic-a", "into": "topic-b", "reason": "..." }');
+  parts.push(
+    '1. merge_topics — merge overlapping topics. { "op": "merge_topics", "from": "topic-a", "into": "topic-b", "reason": "..." }',
+  );
   parts.push('   - "into" must be one of the existing topic names (preferably with more entries)');
   parts.push('   - All entries from "from" move to "into", "from" is deleted');
   parts.push("");
-  parts.push('2. rename_topic — rename to match content. { "op": "rename_topic", "from": "old-name", "to": "new-name", "reason": "..." }');
+  parts.push(
+    '2. rename_topic — rename to match content. { "op": "rename_topic", "from": "old-name", "to": "new-name", "reason": "..." }',
+  );
   parts.push('   - "to" must be kebab-case (lowercase, hyphens, no spaces), max 30 chars');
-  parts.push('   - Must not conflict with existing topic names');
+  parts.push("   - Must not conflict with existing topic names");
   parts.push("");
-  parts.push('3. dedup_entries — merge duplicate entries. { "op": "dedup_entries", "topic": "name", "keepIndex": 0, "absorbIndices": [1, 3], "reason": "..." }');
-  parts.push('   - keepIndex and absorbIndices are 0-based entry indices within the topic');
-  parts.push('   - The kept entry absorbs the others (their content is appended)');
+  parts.push(
+    '3. dedup_entries — merge duplicate entries. { "op": "dedup_entries", "topic": "name", "keepIndex": 0, "absorbIndices": [1, 3], "reason": "..." }',
+  );
+  parts.push("   - keepIndex and absorbIndices are 0-based entry indices within the topic");
+  parts.push("   - The kept entry absorbs the others (their content is appended)");
   parts.push("");
-  parts.push('4. archive_topic — archive inactive topics. { "op": "archive_topic", "topic": "name", "reason": "..." }');
+  parts.push(
+    '4. archive_topic — archive inactive topics. { "op": "archive_topic", "topic": "name", "reason": "..." }',
+  );
   parts.push("");
-  parts.push('5. clean_inline — remove redundant inline lines. { "op": "clean_inline", "section": "⚡ Core Memory", "removeLineIndices": [2, 5], "reason": "..." }');
+  parts.push(
+    '5. clean_inline — remove redundant inline lines. { "op": "clean_inline", "section": "⚡ Core Memory", "removeLineIndices": [2, 5], "reason": "..." }',
+  );
   parts.push("");
   parts.push("Rules:");
   parts.push("- Be conservative. Only suggest operations you're confident about.");
   parts.push('- For merge_topics, "into" should be the topic with more entries.');
   parts.push("- For dedup_entries, only group entries with clearly overlapping content.");
-  parts.push("- For clean_inline, only remove lines that duplicate other lines or are already in topic files.");
+  parts.push(
+    "- For clean_inline, only remove lines that duplicate other lines or are already in topic files.",
+  );
   parts.push("");
-  parts.push("Reply with ONLY a JSON array. Empty array if no changes needed. No markdown fences, no commentary.");
+  parts.push(
+    "Reply with ONLY a JSON array. Empty array if no changes needed. No markdown fences, no commentary.",
+  );
 
   return parts.join("\n");
 }
@@ -311,10 +339,7 @@ interface ValidationContext {
   inlineSections: Map<string, string[]>;
 }
 
-function validateOperations(
-  ops: TidyOperation[],
-  ctx: ValidationContext,
-): TidyOperation[] {
+function validateOperations(ops: TidyOperation[], ctx: ValidationContext): TidyOperation[] {
   const valid: TidyOperation[] = [];
 
   for (const op of ops) {
@@ -324,39 +349,73 @@ function validateOperations(
 
     switch (op.op) {
       case "merge_topics": {
-        if (typeof op.from !== "string" || typeof op.into !== "string") { break; }
-        if (!ctx.topicNames.has(op.from) || !ctx.topicNames.has(op.into)) { break; }
-        if (op.from === op.into) { break; }
+        if (typeof op.from !== "string" || typeof op.into !== "string") {
+          break;
+        }
+        if (!ctx.topicNames.has(op.from) || !ctx.topicNames.has(op.into)) {
+          break;
+        }
+        if (op.from === op.into) {
+          break;
+        }
         valid.push(op);
         break;
       }
       case "rename_topic": {
-        if (typeof op.from !== "string" || typeof op.to !== "string") { break; }
-        if (!ctx.topicNames.has(op.from)) { break; }
-        if (!/^[a-z][a-z0-9-]*$/.test(op.to) || op.to.length > 30) { break; }
-        if (ctx.topicNames.has(op.to)) { break; }
+        if (typeof op.from !== "string" || typeof op.to !== "string") {
+          break;
+        }
+        if (!ctx.topicNames.has(op.from)) {
+          break;
+        }
+        if (!/^[a-z][a-z0-9-]*$/.test(op.to) || op.to.length > 30) {
+          break;
+        }
+        if (ctx.topicNames.has(op.to)) {
+          break;
+        }
         valid.push(op);
         break;
       }
       case "dedup_entries": {
-        if (typeof op.topic !== "string" || typeof op.keepIndex !== "number" || !Array.isArray(op.absorbIndices)) { break; }
+        if (
+          typeof op.topic !== "string" ||
+          typeof op.keepIndex !== "number" ||
+          !Array.isArray(op.absorbIndices)
+        ) {
+          break;
+        }
         // We don't have entry counts in validation context, so validate at execution time
-        if (!ctx.topicNames.has(op.topic)) { break; }
-        if (op.keepIndex < 0) { break; }
+        if (!ctx.topicNames.has(op.topic)) {
+          break;
+        }
+        if (op.keepIndex < 0) {
+          break;
+        }
         valid.push(op);
         break;
       }
       case "archive_topic": {
-        if (typeof op.topic !== "string") { break; }
-        if (!ctx.topicNames.has(op.topic)) { break; }
+        if (typeof op.topic !== "string") {
+          break;
+        }
+        if (!ctx.topicNames.has(op.topic)) {
+          break;
+        }
         valid.push(op);
         break;
       }
       case "clean_inline": {
-        if (typeof op.section !== "string" || !Array.isArray(op.removeLineIndices)) { break; }
+        if (typeof op.section !== "string" || !Array.isArray(op.removeLineIndices)) {
+          break;
+        }
         const sectionLines = ctx.inlineSections.get(op.section);
-        if (!sectionLines) { break; }
-        if (!op.removeLineIndices.every((i: number) => i >= 0 && i < sectionLines.length)) { break; }
+        if (!sectionLines) {
+          break;
+        }
+        if (!op.removeLineIndices.every((i: number) => i >= 0 && i < sectionLines.length)) {
+          break;
+        }
         valid.push(op);
         break;
       }
@@ -417,7 +476,9 @@ async function executeDedupEntries(
   return {
     filesAffected: 1,
     entriesAffected: op.absorbIndices.length,
-    changes: [`${op.topic}: merged "${absorbedTitles.join('", "')}" into "${entries[op.keepIndex]!.title}"`],
+    changes: [
+      `${op.topic}: merged "${absorbedTitles.join('", "')}" into "${entries[op.keepIndex]!.title}"`,
+    ],
   };
 }
 
@@ -478,7 +539,7 @@ async function executeRenameTopic(
     const serialized = serializeTopicFile(parsed);
 
     const tmpName = `${op.to}.md.${process.pid}.${Date.now()}.tmp`;
-    const tmpPath = path.join(deps.workspaceDir, "memory", "topics", tmpName);
+    const _tmpPath = path.join(deps.workspaceDir, "memory", "topics", tmpName);
     const { randomUUID } = await import("node:crypto");
     const atomicTmp = path.join(
       deps.workspaceDir,
@@ -813,7 +874,9 @@ async function runJaccardFallback(
     const { kept, removed } = await filterLinesAgainstTopics(section.lines, deps.topicManager);
     if (removed > 0) {
       entriesAffected += removed;
-      changes.push(`removed ${removed} inline lines already in topic files from "${section.section}"`);
+      changes.push(
+        `removed ${removed} inline lines already in topic files from "${section.section}"`,
+      );
       if (!dryRun) {
         section.lines = kept;
       }

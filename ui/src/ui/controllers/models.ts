@@ -15,14 +15,9 @@ export async function loadModels(
   }
 }
 
-export async function loadProviderStatus(
-  client: GatewayBrowserClient,
-): Promise<string[]> {
+export async function loadProviderStatus(client: GatewayBrowserClient): Promise<string[]> {
   try {
-    const result = await client.request<{ providers: string[] }>(
-      "auth.listProviderStatus",
-      {},
-    );
+    const result = await client.request<{ providers: string[] }>("auth.listProviderStatus", {});
     return result?.providers ?? [];
   } catch {
     return [];

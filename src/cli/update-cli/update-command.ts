@@ -14,8 +14,9 @@ import { formatConfigIssueLines } from "../../config/issue-format.js";
 import { asResolvedSourceConfig, asRuntimeConfig } from "../../config/materialize.js";
 import { resolveGatewayRestartLogPath } from "../../daemon/restart-logs.js";
 import { resolveGatewayService } from "../../daemon/service.js";
+import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { nodeVersionSatisfiesEngine } from "../../infra/runtime-guard.js";
-import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";import {
+import {
   channelToNpmTag,
   DEFAULT_GIT_CHANNEL,
   DEFAULT_PACKAGE_CHANNEL,

@@ -68,12 +68,16 @@ export function parseExtractedItems(raw: string): ExtractedItem[] {
     const category = typeof record.category === "string" ? record.category : "";
     const content = typeof record.content === "string" ? record.content.trim().slice(0, 500) : "";
     const confidence = Number(record.confidence);
-    const evidence = typeof record.evidence === "string" ? record.evidence.trim().slice(0, 300) : "";
+    const evidence =
+      typeof record.evidence === "string" ? record.evidence.trim().slice(0, 300) : "";
     const rawDomains = Array.isArray(record.domains)
-    ? record.domains.filter((d): d is string => typeof d === "string").map((d) => d.trim().slice(0, 60)).filter((d) => d.length > 0)
-    : typeof record.domain === "string" && record.domain.trim().length > 0
-      ? [record.domain.trim().slice(0, 60)]
-      : [];
+      ? record.domains
+          .filter((d): d is string => typeof d === "string")
+          .map((d) => d.trim().slice(0, 60))
+          .filter((d) => d.length > 0)
+      : typeof record.domain === "string" && record.domain.trim().length > 0
+        ? [record.domain.trim().slice(0, 60)]
+        : [];
 
     if (
       !validCategories.has(category) ||
@@ -109,9 +113,7 @@ export async function extractFromBatch(
     return [];
   }
 
-  const transcriptSections = batch.files
-    .map((file) => file.content)
-    .join("\n\n");
+  const transcriptSections = batch.files.map((file) => file.content).join("\n\n");
 
   const prompt = `${EXTRACTION_PROMPT}${transcriptSections}\n</transcript>`;
 

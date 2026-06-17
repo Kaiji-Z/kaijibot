@@ -105,7 +105,9 @@ function makeRealLlmDeps(): LlmInsightDeps {
         error?: { message: string };
         choices?: Array<{ message: { content: string } }>;
       };
-      if (data.error) {throw new Error(data.error.message);}
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
       const text = data.choices?.[0]?.message?.content ?? "";
       return assistantMessage(text);
     },
@@ -163,7 +165,9 @@ function makeRealLlmDeps(): LlmInsightDeps {
           error?: { message: string };
           choices?: Array<{ message: { content: string } }>;
         };
-        if (data.error) {throw new Error(data.error.message);}
+        if (data.error) {
+          throw new Error(data.error.message);
+        }
         const text = data.choices?.[0]?.message?.content ?? "";
         return assistantMessage(text);
       },
@@ -180,7 +184,9 @@ function loadRealPersona(): PersonaTree {
   const files = fs
     .readdirSync(personaDir)
     .filter((f) => f.startsWith("ou_") && f.endsWith(".json"));
-  if (files.length === 0) {throw new Error("No user persona found in " + personaDir);}
+  if (files.length === 0) {
+    throw new Error("No user persona found in " + personaDir);
+  }
   const personaPath = path.join(personaDir, files[0]!);
   return JSON.parse(fs.readFileSync(personaPath, "utf8")) as PersonaTree;
 }
@@ -361,7 +367,9 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
   // 5. Content quality — banned pattern check
   const allKeyInsights = Object.values(persona.domains).flatMap((d) => d.keyInsights);
   const bannedHits = resolved.map((r) => {
-    if (!r.insight) {return 0;}
+    if (!r.insight) {
+      return 0;
+    }
     return GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(r.insight!.content)).length;
   });
   const cleanRate =
@@ -384,7 +392,9 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
   // 7. 2-hop cross-domain
   const userDomainSet = new Set(Object.keys(persona.domains));
   const nonUserDomainInsights = resolved.filter((r) => {
-    if (!r.insight) {return false;}
+    if (!r.insight) {
+      return false;
+    }
     return r.insight.targetDomains.some((d) => !userDomainSet.has(d));
   });
   console.log(`  非用户域洞察 (2-hop): ${nonUserDomainInsights.length}/${resolved.length}`);

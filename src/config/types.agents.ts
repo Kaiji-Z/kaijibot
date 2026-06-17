@@ -3,8 +3,8 @@ import type { AgentDefaultsConfig } from "./types.agent-defaults.js";
 import type { AgentModelConfig, AgentSandboxConfig } from "./types.agents-shared.js";
 import type { HumanDelayConfig, IdentityConfig } from "./types.base.js";
 import type { GroupChatConfig } from "./types.messages.js";
-import type { AgentToolsConfig, MemorySearchConfig } from "./types.tools.js";
 import type { SoulConfig } from "./types.soul.js";
+import type { AgentToolsConfig, MemorySearchConfig } from "./types.tools.js";
 
 export type AgentRuntimeAcpConfig = {
   /** ACP harness adapter id (for example codex, claude). */

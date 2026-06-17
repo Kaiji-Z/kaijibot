@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProviderUsageSnapshot } from "../../infra/provider-usage.types.js";
-import type { AuthProfileCredential, AuthProfileStore } from "./types.js";
 import { probeQuotaForCooldown, shouldProbeQuotaForFailure } from "./quota-probe.js";
+import type { AuthProfileCredential, AuthProfileStore } from "./types.js";
 
 // --- Mocks ----------------------------------------------------------------
 
@@ -450,9 +450,7 @@ describe("probeQuotaForCooldown — cooldown capping", () => {
     fetchZaiUsageMock.mockResolvedValue(
       makeSnapshot({
         provider: "zai",
-        windows: [
-          { label: "30d", usedPercent: 100, resetAt: NOW + fortyEightHoursMs },
-        ],
+        windows: [{ label: "30d", usedPercent: 100, resetAt: NOW + fortyEightHoursMs }],
       }),
     );
 
@@ -476,9 +474,7 @@ describe("probeQuotaForCooldown — resetAt in the past", () => {
     fetchZaiUsageMock.mockResolvedValue(
       makeSnapshot({
         provider: "zai",
-        windows: [
-          { label: "5h", usedPercent: 100, resetAt: NOW - 1_000 },
-        ],
+        windows: [{ label: "5h", usedPercent: 100, resetAt: NOW - 1_000 }],
       }),
     );
 

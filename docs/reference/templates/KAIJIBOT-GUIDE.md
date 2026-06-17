@@ -17,26 +17,26 @@ read_when:
 
 ## Key Config Paths (quick reference)
 
-| Want to...           | Path / Action                                          |
-| -------------------- | ------------------------------------------------------- |
-| Switch model         | `kaijibot models set "zai/glm-5-turbo"`                |
-| Cognitive toggle     | `cognitive.enabled` / `cognitive.proactive.enabled`    |
-| Push frequency       | `cognitive.proactive.minIntervalHours`                 |
-| Active hours         | `cognitive.proactive.activeHours.{start,end,timezone}` |
-| Memory backend       | `memory.backend` ("builtin" or "qmd")                  |
-| Timezone             | `agents.defaults.userTimezone`                         |
+| Want to...       | Path / Action                                          |
+| ---------------- | ------------------------------------------------------ |
+| Switch model     | `kaijibot models set "zai/glm-5-turbo"`                |
+| Cognitive toggle | `cognitive.enabled` / `cognitive.proactive.enabled`    |
+| Push frequency   | `cognitive.proactive.minIntervalHours`                 |
+| Active hours     | `cognitive.proactive.activeHours.{start,end,timezone}` |
+| Memory backend   | `memory.backend` ("builtin" or "qmd")                  |
+| Timezone         | `agents.defaults.userTimezone`                         |
 
 > For any path not listed above, use `config.schema.lookup` to inspect types, defaults, and descriptions.
 
 ## Environment Variables
 
-| Variable                 | Config Path / Purpose          |
-| ------------------------ | ------------------------------ |
-| `ZAI_API_KEY`            | `models.providers.zai.apiKey`  |
-| `EXA_API_KEY`            | Exa search (insight web search) |
-| `TAVILY_API_KEY`         | Tavily search (insight web search) |
-| `KAIJIBOT_GATEWAY_PORT`  | Gateway port (default: 18789)  |
-| `KAIJIBOT_GATEWAY_TOKEN` | Gateway auth token             |
+| Variable                 | Config Path / Purpose                 |
+| ------------------------ | ------------------------------------- |
+| `ZAI_API_KEY`            | `models.providers.zai.apiKey`         |
+| `EXA_API_KEY`            | Exa search (insight web search)       |
+| `TAVILY_API_KEY`         | Tavily search (insight web search)    |
+| `KAIJIBOT_GATEWAY_PORT`  | Gateway port (default: 18789)         |
+| `KAIJIBOT_GATEWAY_TOKEN` | Gateway auth token                    |
 | `KAIJIBOT_HOME`          | Data directory (default: ~/.kaijibot) |
 
 ## Memory System
@@ -53,11 +53,11 @@ read_when:
 
 ## Troubleshooting
 
-| Problem                 | First check                                                   |
-| ----------------------- | ------------------------------------------------------------- |
-| Feishu not receiving    | Verify appId/appSecret + WebSocket events enabled             |
-| Model call failures     | Check `ZAI_API_KEY` env var, `kaijibot models status`        |
-| No proactive insights   | `cognitive.enabled` + `proactive.enabled` must be true; ≥5 rounds needed |
-| Disturbed at night      | Set `proactive.activeHours.start` and `.end`                  |
-| Push too frequent/sparse | Adjust `proactive.minIntervalHours` (default 0.5)            |
-| Repetitive content      | Set `insight.engine` to `"unified"` (default)                |
+| Problem                  | First check                                                              |
+| ------------------------ | ------------------------------------------------------------------------ |
+| Feishu not receiving     | Verify appId/appSecret + WebSocket events enabled                        |
+| Model call failures      | Check `ZAI_API_KEY` env var, `kaijibot models status`                    |
+| No proactive insights    | `cognitive.enabled` + `proactive.enabled` must be true; ≥5 rounds needed |
+| Disturbed at night       | Set `proactive.activeHours.start` and `.end`                             |
+| Push too frequent/sparse | Adjust `proactive.minIntervalHours` (default 0.5)                        |
+| Repetitive content       | Set `insight.engine` to `"unified"` (default)                            |

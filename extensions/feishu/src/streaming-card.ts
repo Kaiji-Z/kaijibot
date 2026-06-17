@@ -454,7 +454,9 @@ export class FeishuStreamingSession {
 
   /** Abort the streaming session, transitioning to a terminal phase. */
   abort(reason: TerminalReason = "abort"): void {
-    if (isTerminalPhase(this.phase)) return;
+    if (isTerminalPhase(this.phase)) {
+      return;
+    }
     const targetPhase = reason === "abort" ? CARD_PHASES.aborted : CARD_PHASES.terminated;
     this.phase = transitionPhase(this.phase, targetPhase);
     this.flushController.cancelPendingFlush();

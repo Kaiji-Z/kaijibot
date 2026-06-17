@@ -17,7 +17,9 @@ function createMemoryFs(): {
   const deps: MemoryIndexDeps["fs"] & { unlink: (path: string) => Promise<void> } = {
     readFile: async (path: string) => {
       const content = files.get(path);
-      if (content === undefined) {throw new Error(`ENOENT: ${path}`);}
+      if (content === undefined) {
+        throw new Error(`ENOENT: ${path}`);
+      }
       return content;
     },
     writeFile: async (path: string, data: string) => {
@@ -26,7 +28,9 @@ function createMemoryFs(): {
     mkdir: async (_path: string, _options: { recursive: boolean }) => {},
     rename: async (oldPath: string, newPath: string) => {
       const content = files.get(oldPath);
-      if (content === undefined) {throw new Error(`ENOENT: ${oldPath}`);}
+      if (content === undefined) {
+        throw new Error(`ENOENT: ${oldPath}`);
+      }
       files.delete(oldPath);
       files.set(newPath, content);
     },
@@ -680,7 +684,6 @@ describe("rebalanceIndex preserves at least one inline section", () => {
     await manager.writeIndex(index);
 
     const written = await manager.readIndex();
-    const raw = (await createManager().manager.readIndex());
     // Confirm data was written
     expect(written.inlineSections!.length).toBe(2);
 

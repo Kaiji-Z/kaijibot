@@ -9,7 +9,6 @@
 
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-
 import { localDateStr } from "./local-date.js";
 import { tokenize, jaccardSimilarity } from "./memory/mmr.js";
 import { parseTopicFile } from "./topic-types.js";
@@ -121,10 +120,7 @@ const RECENT_SESSIONS_HEADING = "## Recent Sessions";
 const PROMOTED_HEADING = "## Promoted From Short-Term Memory";
 const INDEX_TITLE = "# Long-Term Memory";
 
-const INLINE_SECTION_HEADINGS = [
-  "⚡ Core Memory",
-  "🔥 Active Context",
-] as const;
+const INLINE_SECTION_HEADINGS = ["⚡ Core Memory", "🔥 Active Context"] as const;
 
 const INLINE_SECTION_SUBJECTS: Record<string, string> = {
   "⚡ Core Memory": "core",
@@ -162,10 +158,14 @@ async function atomicWrite(
 function parseInlineHeading(line: string): string | null {
   const trimmed = line.trim();
   for (const h of INLINE_SECTION_HEADINGS) {
-    if (trimmed === `## ${h}`) {return h;}
+    if (trimmed === `## ${h}`) {
+      return h;
+    }
   }
   for (const [legacy, migrated] of Object.entries(LEGACY_SECTION_MIGRATION)) {
-    if (trimmed === `## ${legacy}`) {return migrated;}
+    if (trimmed === `## ${legacy}`) {
+      return migrated;
+    }
   }
   return null;
 }
@@ -396,18 +396,29 @@ export function parseMemoryIndex(content: string): MemoryIndex {
 // Diagnostic parsing
 // ---------------------------------------------------------------------------
 
-function isRecognizedSectionHeading(
-  trimmed: string,
-  nextLine: string,
-): boolean {
-  if (isInlineHeading(trimmed)) return true;
-  if (isRecentSessionsHeading(trimmed)) return true;
-  if (isPromotedHeading(trimmed)) return true;
-  if (isReferencesHeading(trimmed)) return true;
-  if (isTopicPointersHeading(trimmed)) return true;
-  if (trimmed === INDEX_TITLE) return true;
+function isRecognizedSectionHeading(trimmed: string, nextLine: string): boolean {
+  if (isInlineHeading(trimmed)) {
+    return true;
+  }
+  if (isRecentSessionsHeading(trimmed)) {
+    return true;
+  }
+  if (isPromotedHeading(trimmed)) {
+    return true;
+  }
+  if (isReferencesHeading(trimmed)) {
+    return true;
+  }
+  if (isTopicPointersHeading(trimmed)) {
+    return true;
+  }
+  if (trimmed === INDEX_TITLE) {
+    return true;
+  }
   const sectionMatch = trimmed.match(SECTION_HEADING_RE);
-  if (sectionMatch && nextLine.startsWith("→ ")) return true;
+  if (sectionMatch && nextLine.startsWith("→ ")) {
+    return true;
+  }
   return false;
 }
 
@@ -422,7 +433,15 @@ export function parseMemoryIndexDiagnostic(content: string): DiagnosticMemoryInd
 
   const headingCounts = new Map<string, number>();
 
-  let activeContext: "none" | "inline" | "topic" | "recent" | "references" | "topicPointers" | "promoted" | "unknown" = "none";
+  let activeContext:
+    | "none"
+    | "inline"
+    | "topic"
+    | "recent"
+    | "references"
+    | "topicPointers"
+    | "promoted"
+    | "unknown" = "none";
   let unknownHeadingIdx = -1;
 
   for (let i = 0; i < lines.length; i++) {
@@ -430,7 +449,9 @@ export function parseMemoryIndexDiagnostic(content: string): DiagnosticMemoryInd
     const trimmed = line.trim();
     const nextLine = lines[i + 1]?.trim() ?? "";
 
-    if (trimmed === INDEX_TITLE || trimmed === "") continue;
+    if (trimmed === INDEX_TITLE || trimmed === "") {
+      continue;
+    }
 
     if (isPromotedHeading(trimmed)) {
       activeContext = "promoted";
@@ -489,7 +510,13 @@ export function parseMemoryIndexDiagnostic(content: string): DiagnosticMemoryInd
       continue;
     }
 
-    if (activeContext === "promoted" || activeContext === "recent" || activeContext === "references" || activeContext === "topicPointers" || activeContext === "topic") {
+    if (
+      activeContext === "promoted" ||
+      activeContext === "recent" ||
+      activeContext === "references" ||
+      activeContext === "topicPointers" ||
+      activeContext === "topic"
+    ) {
       continue;
     }
 
@@ -577,11 +604,21 @@ function isLegacyFormat(content: string): boolean {
   const lines = splitLines(content);
   for (const line of lines) {
     const trimmed = line.trim();
-    if (SECTION_HEADING_RE.test(trimmed)) {return false;}
-    if (isInlineHeading(trimmed)) {return false;}
-    if (isPromotedHeading(trimmed)) {return false;}
-    if (isRecentSessionsHeading(trimmed)) {return false;}
-    if (isReferencesHeading(trimmed)) {return false;}
+    if (SECTION_HEADING_RE.test(trimmed)) {
+      return false;
+    }
+    if (isInlineHeading(trimmed)) {
+      return false;
+    }
+    if (isPromotedHeading(trimmed)) {
+      return false;
+    }
+    if (isRecentSessionsHeading(trimmed)) {
+      return false;
+    }
+    if (isReferencesHeading(trimmed)) {
+      return false;
+    }
   }
   // If it has content but no recognized new-format markers, it's legacy
   return content.trim().length > 0;
@@ -667,7 +704,9 @@ export class MemoryIndexManager {
         inlineSections.reduce((sum, s) => sum + inlineBytes(s), 0) +
         promotedBytes;
 
-      if (totalBytes <= maxBytes) {return;}
+      if (totalBytes <= maxBytes) {
+        return;
+      }
 
       // Step 1: Trim inline section content (remove lines from last section first)
       while (totalBytes > maxBytes) {
@@ -681,7 +720,9 @@ export class MemoryIndexManager {
             break;
           }
         }
-        if (!trimmed) {break;}
+        if (!trimmed) {
+          break;
+        }
       }
 
       if (totalBytes <= maxBytes) {
@@ -744,15 +785,18 @@ export class MemoryIndexManager {
         .replace(/^- \d{4}-\d{2}-\d{2}: /, "")
         .replace(/^- /, "")
         .trim();
-      if (!trimmed) {return true;} // keep blank lines
+      if (!trimmed) {
+        return true;
+      } // keep blank lines
       return !existingEntryContents.some(
         (entryContent) =>
-          jaccardSimilarity(tokenize(trimmed), tokenize(entryContent)) >=
-          RELOCATE_DEDUP_THRESHOLD,
+          jaccardSimilarity(tokenize(trimmed), tokenize(entryContent)) >= RELOCATE_DEDUP_THRESHOLD,
       );
     });
 
-    if (uniqueLines.length === 0) {return;} // all duplicates, skip write
+    if (uniqueLines.length === 0) {
+      return;
+    } // all duplicates, skip write
 
     const frontmatter = !existingContent
       ? [
@@ -766,10 +810,9 @@ export class MemoryIndexManager {
         ].join("\n")
       : "";
 
-    const appendContent = [
-      `## ${section.section} (relocated from MEMORY.md)`,
-      ...uniqueLines,
-    ].join("\n");
+    const appendContent = [`## ${section.section} (relocated from MEMORY.md)`, ...uniqueLines].join(
+      "\n",
+    );
 
     const fullContent = existingContent + frontmatter + appendContent + "\n";
 

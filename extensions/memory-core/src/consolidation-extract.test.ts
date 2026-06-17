@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
+import {
+  extractFromBatch,
+  mergeAndDedupBatches,
+  resolveConflicts,
+  parseExtractedItems,
+} from "./consolidation-extract.js";
 import type { TranscriptBatch, ExtractedItem } from "./consolidation-types.js";
-import { extractFromBatch, mergeAndDedupBatches, resolveConflicts, parseExtractedItems } from "./consolidation-extract.js";
 
 function makeBatch(files: Array<{ path: string; content: string }> = []): TranscriptBatch {
   return { agentId: "test-agent", userId: "test-user", files };
@@ -55,7 +60,8 @@ describe("extractFromBatch", () => {
   });
 
   it("strips markdown code fences before parsing", async () => {
-    const raw = '```json\n[{"category":"domain_knowledge","content":"Likes Rust","confidence":0.7,"evidence":"Rust is great"}]\n```';
+    const raw =
+      '```json\n[{"category":"domain_knowledge","content":"Likes Rust","confidence":0.7,"evidence":"Rust is great"}]\n```';
     const generateText = vi.fn().mockResolvedValue(raw);
     const result = await extractFromBatch(
       makeBatch([{ path: "s.jsonl", content: "transcript" }]),
@@ -66,7 +72,8 @@ describe("extractFromBatch", () => {
   });
 
   it("strips markdown code fences without json tag before parsing", async () => {
-    const raw = '```\n[{"category":"domain_knowledge","content":"Likes Go","confidence":0.75,"evidence":"Go is nice"}]\n```';
+    const raw =
+      '```\n[{"category":"domain_knowledge","content":"Likes Go","confidence":0.75,"evidence":"Go is nice"}]\n```';
     const generateText = vi.fn().mockResolvedValue(raw);
     const result = await extractFromBatch(
       makeBatch([{ path: "s.jsonl", content: "transcript" }]),
@@ -226,38 +233,44 @@ describe("extractFromBatch", () => {
 
 describe("parseExtractedItems", () => {
   it("parses domains array from LLM output", () => {
-    const raw = JSON.stringify([{
-      category: "domain_knowledge",
-      content: "User discussed TypeScript and Rust integration",
-      confidence: 0.9,
-      evidence: "I've been mixing TypeScript and Rust",
-      domains: ["TypeScript", "Rust"],
-    }]);
+    const raw = JSON.stringify([
+      {
+        category: "domain_knowledge",
+        content: "User discussed TypeScript and Rust integration",
+        confidence: 0.9,
+        evidence: "I've been mixing TypeScript and Rust",
+        domains: ["TypeScript", "Rust"],
+      },
+    ]);
     const result = parseExtractedItems(raw);
     expect(result).toHaveLength(1);
     expect(result[0]!.domains).toEqual(["TypeScript", "Rust"]);
   });
 
   it("accepts singular domain field for backward compat", () => {
-    const raw = JSON.stringify([{
-      category: "domain_knowledge",
-      content: "User likes TypeScript",
-      confidence: 0.8,
-      evidence: "I love TypeScript",
-      domain: "TypeScript",
-    }]);
+    const raw = JSON.stringify([
+      {
+        category: "domain_knowledge",
+        content: "User likes TypeScript",
+        confidence: 0.8,
+        evidence: "I love TypeScript",
+        domain: "TypeScript",
+      },
+    ]);
     const result = parseExtractedItems(raw);
     expect(result).toHaveLength(1);
     expect(result[0]!.domains).toEqual(["TypeScript"]);
   });
 
   it("returns undefined domains when field absent", () => {
-    const raw = JSON.stringify([{
-      category: "domain_knowledge",
-      content: "Some content",
-      confidence: 0.8,
-      evidence: "some evidence",
-    }]);
+    const raw = JSON.stringify([
+      {
+        category: "domain_knowledge",
+        content: "Some content",
+        confidence: 0.8,
+        evidence: "some evidence",
+      },
+    ]);
     const result = parseExtractedItems(raw);
     expect(result).toHaveLength(1);
     expect(result[0]!.domains).toBeUndefined();
@@ -295,10 +308,18 @@ describe("mergeAndDedupBatches", () => {
 
   it("dedupes similar items across batches using Jaccard threshold", () => {
     const batch1 = [
-      makeItem({ content: "User prefers TypeScript for backend", confidence: 0.7, category: "domain_knowledge" }),
+      makeItem({
+        content: "User prefers TypeScript for backend",
+        confidence: 0.7,
+        category: "domain_knowledge",
+      }),
     ];
     const batch2 = [
-      makeItem({ content: "User prefers TypeScript for backend development", confidence: 0.85, category: "domain_knowledge" }),
+      makeItem({
+        content: "User prefers TypeScript for backend development",
+        confidence: 0.85,
+        category: "domain_knowledge",
+      }),
     ];
     // These are very similar — Jaccard >= 0.7
     const result = mergeAndDedupBatches([batch1, batch2]);
@@ -308,10 +329,18 @@ describe("mergeAndDedupBatches", () => {
 
   it("does not dedup across different categories", () => {
     const batch1 = [
-      makeItem({ content: "User loves TypeScript for backend", confidence: 0.7, category: "domain_knowledge" }),
+      makeItem({
+        content: "User loves TypeScript for backend",
+        confidence: 0.7,
+        category: "domain_knowledge",
+      }),
     ];
     const batch2 = [
-      makeItem({ content: "User loves TypeScript for backend", confidence: 0.9, category: "behavioral_pattern" }),
+      makeItem({
+        content: "User loves TypeScript for backend",
+        confidence: 0.9,
+        category: "behavioral_pattern",
+      }),
     ];
     const result = mergeAndDedupBatches([batch1, batch2]);
     expect(result).toHaveLength(2);
@@ -319,10 +348,18 @@ describe("mergeAndDedupBatches", () => {
 
   it("keeps both dissimilar items in the same category", () => {
     const batch1 = [
-      makeItem({ content: "Rust memory safety model prevents data races", confidence: 0.8, category: "domain_knowledge" }),
+      makeItem({
+        content: "Rust memory safety model prevents data races",
+        confidence: 0.8,
+        category: "domain_knowledge",
+      }),
     ];
     const batch2 = [
-      makeItem({ content: "Kubernetes pod scheduling strategies", confidence: 0.75, category: "domain_knowledge" }),
+      makeItem({
+        content: "Kubernetes pod scheduling strategies",
+        confidence: 0.75,
+        category: "domain_knowledge",
+      }),
     ];
     const result = mergeAndDedupBatches([batch1, batch2]);
     expect(result).toHaveLength(2);
@@ -362,7 +399,12 @@ describe("mergeAndDedupBatches", () => {
 
   it("handles items with and without domains field in same batch", () => {
     const items = [
-      makeItem({ content: "Item with domains", confidence: 0.8, category: "domain_knowledge", domains: ["Go"] }),
+      makeItem({
+        content: "Item with domains",
+        confidence: 0.8,
+        category: "domain_knowledge",
+        domains: ["Go"],
+      }),
       makeItem({ content: "Item without domains", confidence: 0.7, category: "domain_knowledge" }),
     ];
     const result = mergeAndDedupBatches([items]);
@@ -385,8 +427,16 @@ describe("resolveConflicts", () => {
 
   it("returns all items as resolved when no conflicts", () => {
     const items = [
-      makeItem({ content: "Item about Rust memory safety", category: "domain_knowledge", confidence: 0.9 }),
-      makeItem({ content: "Item about Kubernetes scaling", category: "domain_knowledge", confidence: 0.85 }),
+      makeItem({
+        content: "Item about Rust memory safety",
+        category: "domain_knowledge",
+        confidence: 0.9,
+      }),
+      makeItem({
+        content: "Item about Kubernetes scaling",
+        category: "domain_knowledge",
+        confidence: 0.85,
+      }),
     ];
     const result = resolveConflicts(items);
     expect(result.resolved).toHaveLength(2);
@@ -419,8 +469,16 @@ describe("resolveConflicts", () => {
 
   it("does not detect conflicts across different categories", () => {
     const items = [
-      makeItem({ content: "User loves TypeScript for backend development", category: "domain_knowledge", confidence: 0.8 }),
-      makeItem({ content: "User loves TypeScript for backend development", category: "behavioral_pattern", confidence: 0.7 }),
+      makeItem({
+        content: "User loves TypeScript for backend development",
+        category: "domain_knowledge",
+        confidence: 0.8,
+      }),
+      makeItem({
+        content: "User loves TypeScript for backend development",
+        category: "behavioral_pattern",
+        confidence: 0.7,
+      }),
     ];
     const result = resolveConflicts(items);
     expect(result.conflicts).toHaveLength(0);

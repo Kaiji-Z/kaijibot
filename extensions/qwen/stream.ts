@@ -49,7 +49,9 @@ function isOpenAICompatibleThinkingEnabled(params: {
   thinkingLevel: QwenThinkingLevel;
   options: Parameters<StreamFn>[2];
 }): boolean {
-  if (params.thinkingLevel === "off" || params.thinkingLevel === undefined) return false;
+  if (params.thinkingLevel === "off" || params.thinkingLevel === undefined) {
+    return false;
+  }
   return true;
 }
 

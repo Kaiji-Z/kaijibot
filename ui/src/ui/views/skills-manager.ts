@@ -1,8 +1,12 @@
 import { html, nothing } from "lit";
 import { t } from "../../i18n/index.ts";
 import type { SkillStatusEntry, SkillStatusReport } from "../types.ts";
-import { computeSkillMissing, computeSkillReasons, renderSkillStatusChips } from "./skills-shared.ts";
 import { groupSkills } from "./skills-grouping.ts";
+import {
+  computeSkillMissing,
+  computeSkillReasons,
+  renderSkillStatusChips,
+} from "./skills-shared.ts";
 
 type ClawHubSkillSearchResult = {
   score: number;
@@ -46,12 +50,8 @@ export function renderSkillsManager(props: SkillsManagerProps) {
       </div>
 
       <div class="skills-layout">
-        <div class="skills-panel">
-          ${renderInstalledPanel(props)}
-        </div>
-        <div class="skills-panel">
-          ${renderSearchPanel(props)}
-        </div>
+        <div class="skills-panel">${renderInstalledPanel(props)}</div>
+        <div class="skills-panel">${renderSearchPanel(props)}</div>
       </div>
     </section>
   `;
@@ -79,7 +79,9 @@ function renderInstalledPanel(props: SkillsManagerProps) {
         ${groups.map(
           (group) => html`
             <div class="skills-group">
-              <div class="skills-group-label">${group.label} <span class="text-muted">(${group.skills.length})</span></div>
+              <div class="skills-group-label">
+                ${group.label} <span class="text-muted">(${group.skills.length})</span>
+              </div>
               <div class="skills-card-grid">
                 ${group.skills.map((skill) => renderInstalledSkillCard(skill, props))}
               </div>
@@ -112,9 +114,7 @@ function renderInstalledSkillCard(skill: SkillStatusEntry, props: SkillsManagerP
       ${renderSkillStatusChips({ skill, showBundledBadge: skill.bundled })}
       ${missing.length > 0
         ? html`
-            <div class="callout warn" style="margin-top: 6px;">
-              Missing: ${missing.join(", ")}
-            </div>
+            <div class="callout warn" style="margin-top: 6px;">Missing: ${missing.join(", ")}</div>
           `
         : nothing}
       ${reasons.length > 0
@@ -127,11 +127,7 @@ function renderInstalledSkillCard(skill: SkillStatusEntry, props: SkillsManagerP
       <div class="skills-entry-actions">
         ${skill.source === "kaijibot-managed"
           ? html`
-              <button
-                class="btn"
-                ?disabled=${isActing}
-                @click=${() => props.onUpdate(skill.name)}
-              >
+              <button class="btn" ?disabled=${isActing} @click=${() => props.onUpdate(skill.name)}>
                 ${isActing ? "Updating…" : "Update"}
               </button>
             `
@@ -179,11 +175,11 @@ function renderSearchResultCard(result: ClawHubSkillSearchResult, props: SkillsM
         <span class="skills-entry-name">${result.displayName}</span>
         ${result.version ? html`<span class="pill">${result.version}</span>` : nothing}
       </div>
-      ${result.summary
-        ? html`<div class="skills-entry-desc">${result.summary}</div>`
-        : nothing}
+      ${result.summary ? html`<div class="skills-entry-desc">${result.summary}</div>` : nothing}
       <div class="skills-entry-meta">
-        ${result.score ? html`<span class="text-muted">Score: ${result.score.toFixed(2)}</span>` : nothing}
+        ${result.score
+          ? html`<span class="text-muted">Score: ${result.score.toFixed(2)}</span>`
+          : nothing}
       </div>
       <div class="skills-entry-actions">
         <button
@@ -193,12 +189,7 @@ function renderSearchResultCard(result: ClawHubSkillSearchResult, props: SkillsM
         >
           ${isActing ? "Installing…" : "Install"}
         </button>
-        <button
-          class="btn"
-          @click=${() => props.onDetail(result.slug)}
-        >
-          Details
-        </button>
+        <button class="btn" @click=${() => props.onDetail(result.slug)}>Details</button>
       </div>
     </div>
   `;

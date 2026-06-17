@@ -54,7 +54,7 @@ export function isHeartbeatContentEffectivelyEmpty(content: string | undefined |
       continue;
     }
     // Skip markdown code fences (``` or ```lang) — common in template files
-    if (trimmed.startsWith('```')) {
+    if (trimmed.startsWith("```")) {
       continue;
     }
     // Found a non-empty, non-comment line - there's actionable content

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
-import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
+import type { KaijiBotConfig } from "../../config/config.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
 
@@ -30,8 +30,12 @@ export function createEvolutionSuggestTool(deps: {
   sessionKey?: string;
   deliveryTo?: string;
 }): AnyAgentTool | null {
-  if (deps.config?.cognitive?.enabled === false) {return null;}
-  if (deps.config?.cognitive?.evolution?.enabled === false) {return null;}
+  if (deps.config?.cognitive?.enabled === false) {
+    return null;
+  }
+  if (deps.config?.cognitive?.evolution?.enabled === false) {
+    return null;
+  }
 
   return {
     name: "evaluate_skill_evolution",
@@ -85,9 +89,7 @@ export function createEvolutionSuggestTool(deps: {
               maxTokens: 4000,
               timeout: 60_000,
             });
-            engine = new EvolutionEngine(store, (c) =>
-              generateSkillDraftLLM(c, { generateText }),
-            );
+            engine = new EvolutionEngine(store, (c) => generateSkillDraftLLM(c, { generateText }));
           } else {
             engine = new EvolutionEngine(store);
           }
@@ -132,9 +134,13 @@ export function createEvolutionSuggestTool(deps: {
           const skills: Array<{ name: string; description: string }> = [];
           for (const name of names) {
             const meta = await writer.readSkillMeta(name);
-            if (meta) {skills.push({ name: meta.name, description: meta.description });}
+            if (meta) {
+              skills.push({ name: meta.name, description: meta.description });
+            }
           }
-          if (skills.length > 0) {existingSkills = skills;}
+          if (skills.length > 0) {
+            existingSkills = skills;
+          }
 
           try {
             if (deps.config) {
@@ -187,12 +193,9 @@ export function createEvolutionSuggestTool(deps: {
           let attempts = 0;
           while (!quality.passed && attempts < 2) {
             attempts++;
-            refinedDraft = await refineSkillDraft(
-              refinedDraft,
-              quality.critique,
-              quality.issues,
-              { generateText: genText },
-            );
+            refinedDraft = await refineSkillDraft(refinedDraft, quality.critique, quality.issues, {
+              generateText: genText,
+            });
             quality = await evaluateSkillQuality(refinedDraft, { generateText: genText });
           }
           if (!quality.passed) {
@@ -214,7 +217,9 @@ export function createEvolutionSuggestTool(deps: {
                 target: draft.name,
                 outcome: "skipped",
               });
-            } catch { /* non-fatal */ }
+            } catch {
+              /* non-fatal */
+            }
 
             return jsonResult({
               status: "quality_rejected",
@@ -245,16 +250,22 @@ export function createEvolutionSuggestTool(deps: {
         try {
           const { AuditLog } = await import("../../cognitive/evolution/audit-log.js");
           const audit = new AuditLog(configDir);
-          await audit.append({ operation: "skill.create", actor: userId ?? "agent", target: draft.name, outcome: "success" });
-        } catch { /* non-fatal */ }
+          await audit.append({
+            operation: "skill.create",
+            actor: userId ?? "agent",
+            target: draft.name,
+            outcome: "success",
+          });
+        } catch {
+          /* non-fatal */
+        }
 
         if (generateTextForDedup) {
           const draftForReview = draft;
           const reviewGenerateText = generateTextForDedup;
           void (async () => {
             try {
-              const { reviewSkill } =
-                await import("../../cognitive/evolution/skill-reviewer.js");
+              const { reviewSkill } = await import("../../cognitive/evolution/skill-reviewer.js");
               const review = await reviewSkill(draftForReview, candidate.taskSummary, {
                 generateText: reviewGenerateText,
               });
@@ -268,8 +279,12 @@ export function createEvolutionSuggestTool(deps: {
                   outcome: review.approved ? "success" : "failure",
                   metadata: { confidence: review.confidence, notes: review.notes },
                 });
-              } catch { /* non-fatal */ }
-            } catch { /* non-blocking reviewer */ }
+              } catch {
+                /* non-fatal */
+              }
+            } catch {
+              /* non-blocking reviewer */
+            }
           })();
         }
 

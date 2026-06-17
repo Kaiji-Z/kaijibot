@@ -811,9 +811,7 @@ describe("inline section dedup, date prefix, and rebalance", () => {
     const indexPath = path.join(tempDir, "MEMORY.md");
     const content = await readFile(indexPath, "utf-8");
     const coreSection = content.split("## ⚡ Core Memory")[1]?.split("## ")[0] ?? "";
-    const inlineLines = coreSection
-      .split("\n")
-      .filter((l) => l.startsWith("- "));
+    const inlineLines = coreSection.split("\n").filter((l) => l.startsWith("- "));
     // Only one inline line despite two saves — dedup worked
     expect(inlineLines.length).toBe(1);
   });

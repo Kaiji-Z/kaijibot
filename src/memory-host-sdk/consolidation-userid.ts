@@ -116,7 +116,9 @@ export async function resolveUserIdForSessionFile(filePath: string): Promise<str
   // Also try matching by sessionFile basename (some entries may store relative paths)
   for (const [sessionKey, entry] of Object.entries(store)) {
     const entryFile = entry.sessionFile?.trim();
-    if (!entryFile) {continue;}
+    if (!entryFile) {
+      continue;
+    }
     const entryBase = basename(entryFile);
     const entrySessionId = extractSessionIdFromFileName(entryBase);
     if (entrySessionId === targetSessionId) {

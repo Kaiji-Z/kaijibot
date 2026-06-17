@@ -18,7 +18,10 @@ import {
 import { MAX_IMAGE_BYTES } from "../../../media/constants.js";
 // [fork-removed] ollama-runtime.js removed with Ollama extension
 import { getGlobalHookRunner } from "../../../plugins/hook-runner-global.js";
-import { extractModelCompat, resolveToolCallArgumentsEncoding } from "../../../plugins/provider-model-compat.js";
+import {
+  extractModelCompat,
+  resolveToolCallArgumentsEncoding,
+} from "../../../plugins/provider-model-compat.js";
 import { resolveProviderSystemPromptContribution } from "../../../plugins/provider-runtime.js";
 import { isSubagentSessionKey } from "../../../routing/session-key.js";
 import { normalizeOptionalLowercaseString } from "../../../shared/string-coerce.js";
@@ -2227,11 +2230,17 @@ export async function runEmbeddedAttempt(
                 const store = new PersonaStore(configDir);
                 // TUI/admin sessions have no senderId → skip persona extraction entirely
                 const userId = senderId;
-                if (!userId) {return;}
+                if (!userId) {
+                  return;
+                }
 
                 const extractText = (content: unknown): string => {
-                  if (typeof content === "string") {return content;}
-                  if (!Array.isArray(content)) {return "";}
+                  if (typeof content === "string") {
+                    return content;
+                  }
+                  if (!Array.isArray(content)) {
+                    return "";
+                  }
                   return content
                     .filter(
                       (p): p is { type: string; text: string } =>
@@ -2257,7 +2266,9 @@ export async function runEmbeddedAttempt(
 
                 const persona = await store.loadOrCreate(agentId, userId);
                 const deps = createDefaultDeps();
-                if (!params.config) {return;}
+                if (!params.config) {
+                  return;
+                }
                 const extraction = await extractFromMessageLLM(
                   userText,
                   assistantText,

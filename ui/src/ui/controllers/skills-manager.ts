@@ -26,7 +26,9 @@ export type SkillsManagerState = {
 };
 
 export async function loadSkillsInstalled(state: SkillsManagerState) {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   state.skillsManagerLoading = true;
   state.requestUpdate?.();
   try {
@@ -42,7 +44,9 @@ export async function loadSkillsInstalled(state: SkillsManagerState) {
 }
 
 export async function searchSkills(state: SkillsManagerState, query: string) {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   state.skillsManagerSearchQuery = query;
   state.requestUpdate?.();
   try {
@@ -56,7 +60,9 @@ export async function searchSkills(state: SkillsManagerState, query: string) {
 }
 
 export async function installSkill(state: SkillsManagerState, slug: string) {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   state.skillsManagerInstalling = true;
   state.skillsManagerActionSlug = slug;
   state.requestUpdate?.();
@@ -74,7 +80,9 @@ export async function installSkill(state: SkillsManagerState, slug: string) {
 }
 
 export async function updateSkill(state: SkillsManagerState, slug: string) {
-  if (!state.client || !state.connected) {return;}
+  if (!state.client || !state.connected) {
+    return;
+  }
   state.skillsManagerUpdating = true;
   state.skillsManagerActionSlug = slug;
   state.requestUpdate?.();

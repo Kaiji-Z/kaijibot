@@ -39,10 +39,10 @@ describe("createEvolutionDeleteTool", () => {
   it("refuses deletion when confirm is false", async () => {
     const { createEvolutionDeleteTool } = await import("./evolution-delete-tool.js");
     const tool = createEvolutionDeleteTool({ config: {} as never });
-    const result = await tool!.execute(
-      "test-call",
-      { name: "test-skill", confirm: false } as never,
-    );
+    const result = await tool!.execute("test-call", {
+      name: "test-skill",
+      confirm: false,
+    } as never);
     const text = JSON.stringify(result);
     expect(text).toContain("confirm");
   });

@@ -74,9 +74,9 @@ Step into a pit once. That's enough.
 
 Not locked into any single provider. Switch between domestic and international at will. `kaijibot onboard` wizard auto-discovers configured API keys.
 
-| China (Recommended)                                | International                                    | Aggregator / Self-hosted                        |
-| -------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax …     | Claude · Gemini · Grok · Mistral · Perplexity …  | OpenRouter · Together · Ollama · LMStudio · vLLM … |
+| China (Recommended)                            | International                                   | Aggregator / Self-hosted                           |
+| ---------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
 
 Switch models with a single command:
 

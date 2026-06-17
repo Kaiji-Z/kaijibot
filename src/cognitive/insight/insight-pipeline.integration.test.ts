@@ -13,13 +13,7 @@ import { join } from "node:path";
  * All I/O goes to a temp directory; no real API calls.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import type { PersonaTree, DomainNode, InsightRecord } from "../types.js";
-import {
-  findCrossDomainConnections,
-  semanticDistance,
-  discoverDomainsFromPersona,
-  extendDomainGraph,
-} from "./cross-domain-mapper.js";
+import type { PersonaTree, InsightRecord } from "../types.js";
 import { generateInsightCandidates, isCandidateBlacklisted } from "./engine.js";
 import {
   buildInsightPrompt,

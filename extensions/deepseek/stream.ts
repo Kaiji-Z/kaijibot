@@ -8,7 +8,9 @@ export function createDeepSeekV4ThinkingWrapper(
   baseStreamFn: ProviderWrapStreamFnContext["streamFn"],
   thinkingLevel: DeepSeekThinkingLevel,
 ): ProviderWrapStreamFnContext["streamFn"] | undefined {
-  if (!baseStreamFn) return undefined;
+  if (!baseStreamFn) {
+    return undefined;
+  }
   const wrapper: StreamFn = (model, context, options) => {
     const enabled = thinkingLevel !== "off" && thinkingLevel !== undefined;
     const originalOnPayload = options?.onPayload;

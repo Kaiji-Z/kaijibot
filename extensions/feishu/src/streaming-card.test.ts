@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { CARD_PHASES } from "./card-types.js";
+import { THROTTLE_CONSTANTS } from "./card-types.js";
 import {
   mergeStreamingText,
   resolveStreamingCardSendMode,
   isTerminalPhase,
   transitionPhase,
 } from "./streaming-card.js";
-import { CARD_PHASES, type CardPhase } from "./card-types.js";
-import { THROTTLE_CONSTANTS } from "./card-types.js";
 
 describe("mergeStreamingText", () => {
   it("prefers the latest full text when it already includes prior text", () => {

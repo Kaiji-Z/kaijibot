@@ -107,7 +107,9 @@ async function callLLMMessages(
     error?: { message: string };
     choices?: Array<{ message: { content: string | null; tool_calls?: ToolCall[] } }>;
   };
-  if (data.error) {throw new Error(data.error.message);}
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
   const choice = data.choices?.[0]?.message;
   return { content: choice?.content ?? null, tool_calls: choice?.tool_calls };
 }

@@ -23,9 +23,9 @@ import {
   type CommandRunner,
 } from "./update-global.js";
 
-const FIRST_SIDECAR = BUNDLED_RUNTIME_SIDECAR_PATHS.find(
-  (p) => p.includes("feishu"),
-) ?? BUNDLED_RUNTIME_SIDECAR_PATHS[0]!;
+const FIRST_SIDECAR =
+  BUNDLED_RUNTIME_SIDECAR_PATHS.find((p) => p.includes("feishu")) ??
+  BUNDLED_RUNTIME_SIDECAR_PATHS[0]!;
 
 describe("update global helpers", () => {
   let envSnapshot: ReturnType<typeof captureEnv> | undefined;

@@ -4489,7 +4489,8 @@ details[open] > .ov-expandable-toggle::after {
   flex-direction: column;
   overflow: hidden;
   animation: scale-in 0.2s var(--ease-out);
-  transition: width var(--duration-fast) var(--ease-out),
+  transition:
+    width var(--duration-fast) var(--ease-out),
     max-height var(--duration-fast) var(--ease-out),
     margin var(--duration-fast) var(--ease-out);
 }

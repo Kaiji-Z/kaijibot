@@ -179,7 +179,9 @@ export function renderAgentOverview(params: {
                     ? html` <option value="">Not set</option> `
                     : html`
                         <option value="">
-                          ${defaultPrimary ? `Inherit default (${defaultPrimary})` : "Inherit default"}
+                          ${defaultPrimary
+                            ? `Inherit default (${defaultPrimary})`
+                            : "Inherit default"}
                         </option>
                       `}
                   ${providerModels.map((m) => {
@@ -187,10 +189,16 @@ export function renderAgentOverview(params: {
                     const isSelected = value === effectivePrimary || m.id === effectivePrimary;
                     const ctx = formatContextWindow(m.contextWindow);
                     const hints: string[] = [];
-                    if (ctx) hints.push(ctx);
-                    if (m.reasoning) hints.push("reasoning");
+                    if (ctx) {
+                      hints.push(ctx);
+                    }
+                    if (m.reasoning) {
+                      hints.push("reasoning");
+                    }
                     const suffix = hints.length ? ` — ${hints.join(", ")}` : "";
-                    return html`<option value=${value} ?selected=${isSelected}>${m.name || m.id}${suffix}</option>`;
+                    return html`<option value=${value} ?selected=${isSelected}>
+                      ${m.name || m.id}${suffix}
+                    </option>`;
                   })}
                 </select>
               </div>
@@ -224,35 +232,38 @@ export function renderAgentOverview(params: {
                   </div>
                 `,
               )}
-              ${Array.from({ length: pendingFallbackSlots }, (_, slotIdx) => html`
-                <div class="agent-fallback-item">
-                  <select
-                    class="config-quick-settings__select"
-                    ?disabled=${disabled}
-                    @change=${(e: Event) => {
-                      const modelId = (e.target as HTMLSelectElement).value;
-                      if (modelId) {
+              ${Array.from(
+                { length: pendingFallbackSlots },
+                (_, _slotIdx) => html`
+                  <div class="agent-fallback-item">
+                    <select
+                      class="config-quick-settings__select"
+                      ?disabled=${disabled}
+                      @change=${(e: Event) => {
+                        const modelId = (e.target as HTMLSelectElement).value;
+                        if (modelId) {
+                          pendingFallbackSlots = Math.max(0, pendingFallbackSlots - 1);
+                          onModelFallbacksChange(agent.id, [...fallbackChips, modelId]);
+                        }
+                      }}
+                    >
+                      <option value="" selected>Select fallback model...</option>
+                      ${buildGroupedModelOptions(null, configuredCatalog)}
+                    </select>
+                    <button
+                      type="button"
+                      class="btn btn--sm"
+                      ?disabled=${disabled}
+                      @click=${() => {
                         pendingFallbackSlots = Math.max(0, pendingFallbackSlots - 1);
-                        onModelFallbacksChange(agent.id, [...fallbackChips, modelId]);
-                      }
-                    }}
-                  >
-                    <option value="" selected>Select fallback model...</option>
-                    ${buildGroupedModelOptions(null, configuredCatalog)}
-                  </select>
-                  <button
-                    type="button"
-                    class="btn btn--sm"
-                    ?disabled=${disabled}
-                    @click=${() => {
-                      pendingFallbackSlots = Math.max(0, pendingFallbackSlots - 1);
-                      params.onRequestUpdate?.();
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              `)}
+                        params.onRequestUpdate?.();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                `,
+              )}
               <button
                 type="button"
                 class="btn btn--sm"

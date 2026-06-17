@@ -379,7 +379,9 @@ export function applyCompactionDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
 
 export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
   const cognitive = cfg.cognitive;
-  if (!cognitive) {return cfg;}
+  if (!cognitive) {
+    return cfg;
+  }
 
   let mutated = false;
   const next = { ...cognitive };
@@ -399,7 +401,9 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
       proactive.minIntervalHours = 0.5;
       mutated = true;
     }
-    if (mutated) {next.proactive = proactive;}
+    if (mutated) {
+      next.proactive = proactive;
+    }
   }
 
   if (next.persona) {
@@ -412,7 +416,9 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
       persona.identityRefreshHours = 24;
       mutated = true;
     }
-    if (mutated) {next.persona = persona;}
+    if (mutated) {
+      next.persona = persona;
+    }
   }
 
   if (next.insight) {
@@ -423,13 +429,17 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
         sources.scanIntervalHours = 6;
         mutated = true;
       }
-      if (mutated) {insight.sources = sources;}
+      if (mutated) {
+        insight.sources = sources;
+      }
     }
     if (insight.verificationLevel === undefined) {
       insight.verificationLevel = "basic";
       mutated = true;
     }
-    if (mutated) {next.insight = insight;}
+    if (mutated) {
+      next.insight = insight;
+    }
   }
 
   if (next.feedback) {
@@ -442,10 +452,14 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
       feedback.implicitFeedback = true;
       mutated = true;
     }
-    if (mutated) {next.feedback = feedback;}
+    if (mutated) {
+      next.feedback = feedback;
+    }
   }
 
-  if (!mutated) {return cfg;}
+  if (!mutated) {
+    return cfg;
+  }
 
   return { ...cfg, cognitive: next };
 }

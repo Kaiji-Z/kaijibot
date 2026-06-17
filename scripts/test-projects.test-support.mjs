@@ -19,7 +19,10 @@ import {
 } from "../vitest/vitest.plugin-sdk-paths.mjs";
 import { fullSuiteVitestShards } from "../vitest/vitest.test-shards.mjs";
 import { resolveUnitFastTestIncludePattern } from "../vitest/vitest.unit-fast-paths.mjs";
-import { isBoundaryTestFile, isBundledPluginDependentUnitTestFile } from "../vitest/vitest.unit-paths.mjs";
+import {
+  isBoundaryTestFile,
+  isBundledPluginDependentUnitTestFile,
+} from "../vitest/vitest.unit-paths.mjs";
 import { resolveVitestCliEntry, resolveVitestNodeArgs } from "./run-vitest.mjs";
 
 const DEFAULT_VITEST_CONFIG = "vitest/vitest.unit.config.ts";

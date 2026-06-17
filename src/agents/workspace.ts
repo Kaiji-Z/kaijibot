@@ -572,10 +572,14 @@ async function injectGuideFromTemplate(files: WorkspaceBootstrapFile[]): Promise
 }
 
 function applySoulPresetOverride(files: WorkspaceBootstrapFile[], soulPreset?: SoulPreset): void {
-  if (!soulPreset) {return;}
+  if (!soulPreset) {
+    return;
+  }
 
   const soulEntry = files.find((f) => f.name === DEFAULT_SOUL_FILENAME);
-  if (!soulEntry) {return;}
+  if (!soulEntry) {
+    return;
+  }
 
   const content = loadSoulPresetContent(soulPreset);
   soulEntry.content = content;

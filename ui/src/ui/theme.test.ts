@@ -32,17 +32,11 @@ describe("resolveColorScheme", () => {
   });
 
   it("resolves system mode from OS preference", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: true }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
     expect(resolveColorScheme("ink-jade", "system")).toBe("light");
     vi.unstubAllGlobals();
 
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
     expect(resolveColorScheme("ink-jade", "system")).toBe("dark");
     vi.unstubAllGlobals();
   });

@@ -1678,9 +1678,7 @@ describe("short-term promotion", () => {
     });
 
     it("allows feedback content", () => {
-      expect(isContaminatedSnippet("Feedback: always check docs before answering")).toBe(
-        false,
-      );
+      expect(isContaminatedSnippet("Feedback: always check docs before answering")).toBe(false);
     });
   });
 });

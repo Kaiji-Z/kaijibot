@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Type } from "typebox";
 import Ajv from "ajv";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
+import { Type } from "typebox";
 import {
   formatXHighModelHint,
   normalizeThinkLevel,

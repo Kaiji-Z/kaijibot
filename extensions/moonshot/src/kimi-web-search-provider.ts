@@ -1,4 +1,3 @@
-import { Type } from "typebox";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/provider-onboard";
 import {
   buildSearchCacheKey,
@@ -27,6 +26,7 @@ import {
   writeCachedSearchPayload,
 } from "kaijibot/plugin-sdk/provider-web-search";
 import { normalizeOptionalString } from "kaijibot/plugin-sdk/text-runtime";
+import { Type } from "typebox";
 import {
   isNativeMoonshotBaseUrl,
   MOONSHOT_BASE_URL,

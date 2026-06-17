@@ -111,9 +111,15 @@ const ALL_KNOWN_HEADINGS = new Set([
 
 // Severity bands
 function severityFromScore(score: number): RepairSeverity {
-  if (score === 0) {return "none";}
-  if (score <= 3) {return "minor";}
-  if (score <= 8) {return "moderate";}
+  if (score === 0) {
+    return "none";
+  }
+  if (score <= 3) {
+    return "minor";
+  }
+  if (score <= 8) {
+    return "moderate";
+  }
   return "major";
 }
 
@@ -391,9 +397,7 @@ export function diagnoseStructure(
   return (async () => {
     // Dangling pointers
     if (opts?.topicFileExists) {
-      const topicPointersSection = sections.find(
-        (s) => s.heading === "Topic Pointers",
-      );
+      const topicPointersSection = sections.find((s) => s.heading === "Topic Pointers");
       if (topicPointersSection) {
         for (const line of topicPointersSection.lines) {
           const match = line.trim().match(/^- (.+?) → (.+)$/);
@@ -417,9 +421,7 @@ export function diagnoseStructure(
 
     // Orphan topic files
     if (opts?.listTopicFiles) {
-      const topicPointersSection = sections.find(
-        (s) => s.heading === "Topic Pointers",
-      );
+      const topicPointersSection = sections.find((s) => s.heading === "Topic Pointers");
       const referencedFiles = new Set<string>();
       if (topicPointersSection) {
         for (const line of topicPointersSection.lines) {
@@ -435,8 +437,7 @@ export function diagnoseStructure(
         // listTopicFiles returns bare filenames (e.g. "foo.md"),
         // but referencedFiles stores full relative paths (e.g. "memory/topics/foo.md").
         // Normalize bare filenames to full paths for consistent comparison.
-        const normalized =
-          file.includes("/") ? file : `${TOPIC_DIR}${file}`;
+        const normalized = file.includes("/") ? file : `${TOPIC_DIR}${file}`;
         if (!referencedFiles.has(normalized)) {
           const weight = 1;
           score += weight;
@@ -542,10 +543,7 @@ export function planRepair(diagnostic: RepairDiagnostic): RepairPlan {
   }
 
   // Always reorder if there are issues
-  if (
-    actions.length > 0 &&
-    !actions.some((a) => a.type === "reorder_sections")
-  ) {
+  if (actions.length > 0 && !actions.some((a) => a.type === "reorder_sections")) {
     actions.push({ type: "reorder_sections" });
   }
 
@@ -592,13 +590,14 @@ export function classifyHeuristic(
 }
 
 function deriveSubject(heading: string): string {
-  return heading
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    || "uncategorized";
+  return (
+    heading
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "uncategorized"
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -641,9 +640,15 @@ export async function classifyWithLLM(
 }
 
 function normalizeLLMTarget(raw: string): string {
-  if (raw === "core") {return "⚡ Core Memory";}
-  if (raw === "active") {return "🔥 Active Context";}
-  if (raw.startsWith("topic:")) {return raw;}
+  if (raw === "core") {
+    return "⚡ Core Memory";
+  }
+  if (raw === "active") {
+    return "🔥 Active Context";
+  }
+  if (raw.startsWith("topic:")) {
+    return raw;
+  }
   // If LLM returns something unexpected, wrap it
   return `topic:${raw}`;
 }
@@ -676,18 +681,12 @@ export async function executeRepair(
     switch (action.type) {
       case "migrate_legacy_heading": {
         // Move content from legacy heading to new heading
-        const legacySection = parsed.sections.find(
-          (s) => s.heading === action.from,
-        );
+        const legacySection = parsed.sections.find((s) => s.heading === action.from);
         if (legacySection) {
-          const targetSection = parsed.sections.find(
-            (s) => s.heading === action.to,
-          );
+          const targetSection = parsed.sections.find((s) => s.heading === action.to);
           if (targetSection) {
             targetSection.lines.push(...legacySection.lines);
-            contentRelocated += legacySection.lines.filter(
-              (l) => l.trim().length > 0,
-            ).length;
+            contentRelocated += legacySection.lines.filter((l) => l.trim().length > 0).length;
           } else {
             // Create the target section
             parsed.sections.push({
@@ -695,23 +694,17 @@ export async function executeRepair(
               startLine: -1,
               lines: legacySection.lines,
             });
-            contentRelocated += legacySection.lines.filter(
-              (l) => l.trim().length > 0,
-            ).length;
+            contentRelocated += legacySection.lines.filter((l) => l.trim().length > 0).length;
           }
           // Remove legacy section
-          parsed.sections = parsed.sections.filter(
-            (s) => s.heading !== action.from,
-          );
+          parsed.sections = parsed.sections.filter((s) => s.heading !== action.from);
         }
         actionsApplied.push(`migrate_legacy_heading:${action.from}->${action.to}`);
         break;
       }
 
       case "merge_duplicate_heading": {
-        const duplicates = parsed.sections.filter(
-          (s) => s.heading === action.heading,
-        );
+        const duplicates = parsed.sections.filter((s) => s.heading === action.heading);
         if (duplicates.length > 1) {
           const merged: string[] = [];
           for (const dup of duplicates) {
@@ -732,9 +725,7 @@ export async function executeRepair(
       case "relocate_orphan_lines": {
         const orphans = collectOrphanLines(content.split(/\r?\n/));
         if (orphans.length > 0) {
-          const targetSection = parsed.sections.find(
-            (s) => s.heading === action.target,
-          );
+          const targetSection = parsed.sections.find((s) => s.heading === action.target);
           if (targetSection) {
             targetSection.lines.push(...orphans);
           }
@@ -753,10 +744,7 @@ export async function executeRepair(
         let finalClassified = classified;
         if (plan.requiresLLM) {
           try {
-            const llmResults = await classifyWithLLM(
-              action.blocks,
-              deps.generateText,
-            );
+            const llmResults = await classifyWithLLM(action.blocks, deps.generateText);
             // Use LLM results where heuristic defaulted to topic:
             finalClassified = classified.map((heuristic, i) => {
               const llm = llmResults[i];
@@ -777,12 +765,12 @@ export async function executeRepair(
         // Apply classification
         for (const item of finalClassified) {
           const nonEmpty = item.lines.filter((l) => l.trim().length > 0);
-          if (nonEmpty.length === 0) {continue;}
+          if (nonEmpty.length === 0) {
+            continue;
+          }
 
           if (item.target === "⚡ Core Memory" || item.target === "🔥 Active Context") {
-            const targetSection = parsed.sections.find(
-              (s) => s.heading === item.target,
-            );
+            const targetSection = parsed.sections.find((s) => s.heading === item.target);
             if (targetSection) {
               targetSection.lines.push(...nonEmpty);
             } else {
@@ -795,16 +783,11 @@ export async function executeRepair(
           } else if (item.target.startsWith("topic:")) {
             const subject = item.target.slice("topic:".length);
             const topicPath = `memory/topics/${subject}.md`;
-            await deps.appendToTopicFile(
-              `${workspaceDir}/${topicPath}`,
-              nonEmpty.join("\n"),
-            );
+            await deps.appendToTopicFile(`${workspaceDir}/${topicPath}`, nonEmpty.join("\n"));
           }
 
           // Remove the unknown section
-          parsed.sections = parsed.sections.filter(
-            (s) => s.heading !== item.heading,
-          );
+          parsed.sections = parsed.sections.filter((s) => s.heading !== item.heading);
           contentRelocated += nonEmpty.length;
         }
         actionsApplied.push("classify_and_relocate");
@@ -819,13 +802,9 @@ export async function executeRepair(
 
       case "fix_dangling_pointer": {
         // Remove the dangling pointer from Topic Pointers
-        const tpSection = parsed.sections.find(
-          (s) => s.heading === "Topic Pointers",
-        );
+        const tpSection = parsed.sections.find((s) => s.heading === "Topic Pointers");
         if (tpSection) {
-          tpSection.lines = tpSection.lines.filter(
-            (l) => !l.includes(action.pointer),
-          );
+          tpSection.lines = tpSection.lines.filter((l) => !l.includes(action.pointer));
         }
         actionsApplied.push(`fix_dangling_pointer:${action.pointer}`);
         break;
@@ -833,18 +812,14 @@ export async function executeRepair(
 
       case "register_orphan_file": {
         // Add pointer to Topic Pointers
-        const tpSection = parsed.sections.find(
-          (s) => s.heading === "Topic Pointers",
-        );
+        const tpSection = parsed.sections.find((s) => s.heading === "Topic Pointers");
         if (tpSection) {
           const TOPIC_DIR = "memory/topics/";
           const fileName = action.file.replace(/^.*\//, "").replace(".md", "");
           const fullPointer = action.file.includes("/")
             ? action.file
             : `${TOPIC_DIR}${action.file}`;
-          const alreadyExists = tpSection.lines.some(
-            (l) => l.trim().includes(fullPointer),
-          );
+          const alreadyExists = tpSection.lines.some((l) => l.trim().includes(fullPointer));
           if (!alreadyExists) {
             tpSection.lines.push(`- ${fileName} → ${fullPointer}`);
           }
@@ -854,14 +829,10 @@ export async function executeRepair(
       }
 
       case "relocate_promoted_content": {
-        const promotedSection = parsed.sections.find((s) =>
-          isPromotedHeading(s.heading),
-        );
+        const promotedSection = parsed.sections.find((s) => isPromotedHeading(s.heading));
         if (promotedSection && promotedSection.lines.length > 0) {
           // Move to a topic file
-          const nonEmpty = promotedSection.lines.filter(
-            (l) => l.trim().length > 0,
-          );
+          const nonEmpty = promotedSection.lines.filter((l) => l.trim().length > 0);
           await deps.appendToTopicFile(
             `${workspaceDir}/memory/topics/promoted.md`,
             nonEmpty.join("\n"),
@@ -995,9 +966,7 @@ function serializeRepaired(
   }
 
   // Promoted content (keep it but trimmed)
-  const promotedSection = parsed.sections.find((s) =>
-    isPromotedHeading(s.heading),
-  );
+  const promotedSection = parsed.sections.find((s) => isPromotedHeading(s.heading));
   if (promotedSection && promotedSection.lines.length > 0) {
     parts.push("## Promoted From Short-Term Memory");
     parts.push(...promotedSection.lines);

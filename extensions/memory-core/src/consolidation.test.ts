@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { KaijiBotConfig } from "kaijibot/plugin-sdk/memory-core";
+import type { ConsolidationConfig } from "kaijibot/plugin-sdk/memory-core-host-status";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ConsolidationRouteDeps } from "./consolidation-route.js";
 import {
@@ -8,8 +10,6 @@ import {
   runConsolidationAllAgents,
   type ConsolidationDeps,
 } from "./consolidation.js";
-import type { ConsolidationConfig } from "kaijibot/plugin-sdk/memory-core-host-status";
-import type { KaijiBotConfig } from "kaijibot/plugin-sdk/memory-core";
 
 function makeConfig(overrides: Partial<ConsolidationConfig> = {}): ConsolidationConfig {
   return {
@@ -215,9 +215,7 @@ describe("runConsolidationForAgent", () => {
       });
 
       // Now simulate a second run with new files
-      deps.listSessionFiles = vi
-        .fn()
-        .mockResolvedValue([`${workspaceDir}/session1.jsonl`]);
+      deps.listSessionFiles = vi.fn().mockResolvedValue([`${workspaceDir}/session1.jsonl`]);
       await runConsolidationForAgent({
         agentId: "main",
         workspaceDir,
@@ -342,7 +340,8 @@ describe("runConsolidationForAgent", () => {
       const personaItems = mergeCalls[0]?.[2] as Array<{ domains?: string[] }> | undefined;
       expect(personaItems).toBeDefined();
       const domainKnowledgeItem = personaItems!.find(
-        (i: Record<string, unknown>) => Array.isArray(i.domains) && (i.domains as string[]).includes("Kubernetes"),
+        (i: Record<string, unknown>) =>
+          Array.isArray(i.domains) && (i.domains as string[]).includes("Kubernetes"),
       );
       expect(domainKnowledgeItem).toBeDefined();
 
@@ -403,9 +402,7 @@ describe("runConsolidationAllAgents", () => {
           .mockResolvedValue(
             '[{"category":"domain_knowledge","content":"test","confidence":0.8,"evidence":"ev"}]',
           ),
-        resolveWorkspaces: vi
-          .fn()
-          .mockReturnValue([{ workspaceDir, agentIds: ["main"] }]),
+        resolveWorkspaces: vi.fn().mockReturnValue([{ workspaceDir, agentIds: ["main"] }]),
         routeDeps: makeRouteDeps(),
         resolveUserIdForFile: vi.fn().mockResolvedValue("ou_user1"),
       };
@@ -427,12 +424,10 @@ describe("runConsolidationAllAgents", () => {
           listSessionFiles: vi.fn().mockResolvedValue([]),
           readSessionFile: vi.fn().mockResolvedValue(""),
           generateText: vi.fn().mockResolvedValue("[]"),
-          resolveWorkspaces: vi
-            .fn()
-            .mockReturnValue([
-              { workspaceDir: ws1, agentIds: ["agent-a"] },
-              { workspaceDir: ws2, agentIds: ["agent-b"] },
-            ]),
+          resolveWorkspaces: vi.fn().mockReturnValue([
+            { workspaceDir: ws1, agentIds: ["agent-a"] },
+            { workspaceDir: ws2, agentIds: ["agent-b"] },
+          ]),
           routeDeps: makeRouteDeps(),
           resolveUserIdForFile: vi.fn().mockResolvedValue(null),
         };

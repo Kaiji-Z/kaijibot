@@ -660,12 +660,7 @@ details.usage-filter-select summary::-webkit-details-marker,
 
 .usage-summary-card--throughput {
   background:
-    radial-gradient(
-      circle at top right,
-      var(--accent-subtle) 0%,
-      transparent 42%
-    ),
-    var(--card);
+    radial-gradient(circle at top right, var(--accent-subtle) 0%, transparent 42%), var(--card);
 }
 
 .usage-summary-title,
@@ -1013,10 +1008,7 @@ details.usage-filter-select summary::-webkit-details-marker,
   min-height: 6px;
   border: 1px solid var(--accent-subtle);
   border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm);
-  background: linear-gradient(
-    180deg,
-    var(--accent),
-    var(--accent-muted));
+  background: linear-gradient(180deg, var(--accent), var(--accent-muted));
   transition:
     transform var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
