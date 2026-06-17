@@ -708,13 +708,12 @@ export class ProactiveScheduler {
         previousMode: prevMode,
       });
       persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
+      persona.feedbackProfile.lastProactiveAt = event.timestamp;
       log.info("time-based no-response penalty applied", {
         userId,
         lastProactiveAt,
         consecutiveNoResponses: persona.feedbackProfile.consecutiveNoResponses,
       });
-      // Persist immediately so the penalty survives even if the gate blocks
-      // (otherwise lastNoResponseAt dedup field is lost and every tick re-fires).
       await this.callbacks.savePersona(agentId, userId, persona);
     }
 
