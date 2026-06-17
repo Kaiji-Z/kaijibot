@@ -187,7 +187,11 @@ function parseInsights(text: string): Array<{
       .replace(/\s*```$/m, "")
       .trim();
     const parsed = JSON.parse(cleaned);
-    return Array.isArray(parsed) ? parsed : [];
+    const arr = Array.isArray(parsed) ? parsed : [];
+    return arr.map((item: { content?: string }) => ({
+      ...item,
+      content: (item.content ?? "").replace(/\[\d+\]/g, ""),
+    }));
   } catch {
     return [];
   }
