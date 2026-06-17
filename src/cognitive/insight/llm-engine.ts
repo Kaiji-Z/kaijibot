@@ -154,78 +154,78 @@ export function buildVoiceSection(persona: PersonaTree): string {
 
 const DIVERSE_FEW_SHOT_SETS = [
   {
-    name: "数据先行 (Data-first)",
+    name: "挑衅提问 (Provocative question)",
     examples: [
       {
-        context: "User builds TypeScript + Rust stack. Node 22 ESM support is relevant.",
+        context: "User built Thompson Sampling into insight system but never A/B tested with real users.",
         chinese:
-          "Node 22 的 require(ESM) 原生支持已经 stable 了——这意味着你 KaijiBot 里那些 dynamic import 可以直接换成 require，冷启动能省 15-30%。对你的 Rust sidecar + Node gateway 架构，冷启动延迟一直是痛点。",
+          "你给洞察系统接了 Thompson Sampling 来学用户偏好，但你拿真人验证过这些优化到底是不是真的更好吗？bandit 收敛了不代表用户满意了，只代表系统停止了探索。",
         english:
-          "Node 22's require(ESM) native support is now stable — meaning those dynamic imports in KaijiBot can switch to require directly, saving 15-30% on cold starts. For your Rust sidecar + Node gateway architecture, cold-start latency has always been a pain point.",
+          "You wired Thompson Sampling into the insight system to learn user preferences, but have you validated with real people whether these optimizations actually feel better? Bandit convergence doesn't mean user satisfaction — it means the system stopped exploring.",
       },
       {
-        context: "User tracks pnpm and monorepo tooling. pnpm 9.7 catalog feature.",
+        context: "User has philosophy + tech cross-domain interests, designs quality gates.",
         chinese:
-          "pnpm 9.7 的 catalog: 协议让你在 monorepo 里统一管理依赖版本——不用再每个 package.json 手动同步。你 extensions/ 下 62 个插件，光 react 版本不一致就出过两次构建错误。",
+          "为什么你给认知系统设计了 PRISM 门控和 SIRI 循环，却从没给对话本身加过质量门控？用户发「嗯」和发一段三百字的追问，你用的是同一套回复逻辑。",
         english:
-          "pnpm 9.7's catalog: protocol lets you unify dependency versions across a monorepo — no more manually syncing each package.json. With 62 plugins under extensions/, mismatched React versions alone caused two build failures.",
+          "Why did you design PRISM gating and SIRI loops for the cognitive system, but never added quality gating to conversations themselves? A user sending 'hmm' and a user sending a 300-word follow-up get the same response logic.",
       },
     ],
   },
   {
-    name: "直接推荐 (Direct recommendation)",
+    name: "直接行动 (Direct action)",
     examples: [
       {
-        context: "User has complex cognitive pipeline with many async flows.",
+        context: "User's insight pipeline has long refine loops that over-polish output.",
         chinese:
-          "用 Effect-TS 的 Layer 做你 cognitive pipeline 的依赖注入，替代手写的 createDefaultDeps 模式。因为你的 insight pipeline 有 5 层嵌套异步调用，Effect 的 fiber 调度能让你给每层加独立超时和重试，不用改调用结构。",
+          "把 refine 循环的最大重试次数从 2 降到 1。你的 critique 步骤已经足够严格，第二轮 refine 几乎总是在过度修饰第一轮的输出，反而损失了原始表达的力度。",
         english:
-          "Use Effect-TS Layer for DI in your cognitive pipeline instead of the hand-rolled createDefaultDeps pattern. Because your insight pipeline has 5 levels of nested async calls, Effect's fiber scheduling gives you independent timeout+retry per layer without restructuring call sites.",
+          "Drop the refine loop max retries from 2 to 1. Your critique step is already strict enough — the second refine round almost always over-polishes the first round's output, losing the raw expressive force.",
       },
       {
-        context: "User does LLM-driven extraction with structured output.",
+        context: "User's persona has many domains with low depth consuming prompt space.",
         chinese:
-          "把 structured output 的 schema 校验从 zod passthrough 换成 strict mode——你现在 llm-extractor.ts 里有 6 个 z.object 用了 .passthrough()，LLM 返回多余字段时不会报错但下游取到 undefined。Strict mode 会在 extraction 阶段就拦住，省掉下游 debug 时间。",
+          "给深度低于 1.0 的领域加个自动衰减标签。你有 17 个领域但只有 5 个深度超过 2.0，低深度领域在占 prompt 空间却不产生高质量洞察。",
         english:
-          "Switch structured output schema validation from zod passthrough to strict mode — you have 6 z.object calls using .passthrough() in llm-extractor.ts. When the LLM returns extra fields, no error fires but downstream reads undefined. Strict mode catches this at extraction time, saving downstream debugging.",
+          "Add an auto-decay tag for domains with depth below 1.0. You have 17 domains but only 5 above depth 2.0 — the shallow ones consume prompt space without producing high-quality insights.",
       },
     ],
   },
   {
-    name: "行为观察 (Behavioral observation)",
+    name: "数据冲击 (Data impact)",
     examples: [
       {
-        context: "User consistently extracts shared patterns into plugin SDK boundaries.",
+        context: "User's cognitive system generates ~1.8 insights/day with 30% reply rate.",
         chinese:
-          "你每次发现两个扩展做同样的事，第一反应不是合并代码，而是往 plugin-sdk 里加一个抽象层——extensions/AGENTS.md 那条 'no relative imports escaping package root' 规则就是这么来的。这比大多数人处理依赖的方式更可持续，但也意味着你的 SDK surface area 在持续膨胀。",
+          "你的系统平均每天生成 1.8 条洞察，但用户回复率只有 30%。每周有 8 条洞察被发出去然后被忽略。问题可能不在内容质量，而在发送时机和频率。",
         english:
-          "Every time you spot two extensions doing the same thing, your first move isn't merging code — it's adding an abstraction layer to plugin-sdk. The 'no relative imports escaping package root' rule in extensions/AGENTS.md came from exactly this. More sustainable than how most people handle deps, but it also means your SDK surface area keeps expanding.",
+          "Your system generates an average of 1.8 insights per day, but the user reply rate is only 30%. That's 8 insights per week sent and ignored. The problem might not be content quality but timing and frequency.",
       },
       {
-        context: "User makes architecture decisions by building competing prototypes.",
+        context: "User's insight pipeline has 6 quality gates with 40% delivery rate.",
         chinese:
-          "你选技术方案的方式不是对比文档，而是直接写两个最小原型然后看哪个跑起来更顺——FragmentStore 和 CorrectionStore 都走了这条路。这说明你对代码体感的信任超过对抽象推理的信任，适合你这种写 Rust 的人。",
+          "从 LLM 生成到最终投递，一条洞察要经过 6 道质量检查。你的投递率大约 40%，意味着 60% 的 LLM 调用被浪费了。考虑在生成阶段就提高准入门槛，而不是在后面层层拦截。",
         english:
-          "You pick tech approaches not by comparing docs but by writing two minimal prototypes and seeing which feels better — FragmentStore and CorrectionStore both went through this path. It means you trust code feel over abstract reasoning, which fits someone who writes Rust.",
+          "From LLM generation to final delivery, each insight passes through 6 quality checks. Your delivery rate is about 40%, meaning 60% of LLM calls are wasted. Consider raising the bar at generation time instead of filtering downstream.",
       },
     ],
   },
   {
-    name: "悖论消解 (Paradox resolution)",
+    name: "跨域迁移 (Cross-domain transfer)",
     examples: [
       {
-        context: "User says they want minimal dependencies but keeps adding abstractions.",
+        context: "User works on both existentialist philosophy and AI architecture.",
         chinese:
-          "你说要最小化依赖，但 plugin-sdk 的 export 列表已经 41 个了。这不是矛盾——你真正排斥的不是依赖本身，是黑箱依赖。你宁愿自己写 200 行 well-typed wrapper，也不愿引入一个 50KB 的第三方包。这是一个可预测的标准：只要你能看到源码、能改，就不算'外部依赖'。",
+          "你在哲学里用的「坐标系选择」思路，直接搬到 API 设计上就是：每个接口都隐含了一个世界观，换接口不只是换参数，是换看你系统的角度。GraphQL 和 REST 的争论本质上是康德和黑格尔的争论。",
         english:
-          "You say you want minimal dependencies, but plugin-sdk's export list is already 41 items. Not a contradiction — what you actually resist isn't dependencies themselves but black-box ones. You'd rather write a 200-line well-typed wrapper than pull in a 50KB third-party package. Predictable standard: if you can see the source and modify it, it doesn't count as an 'external dependency'.",
+          "The 'coordinate system choice' approach you use in philosophy maps directly onto API design: every interface implies a worldview, and switching APIs isn't just changing parameters — it's changing the angle from which you view the system. The GraphQL vs REST debate is fundamentally the Kant vs Hegel debate.",
       },
       {
-        context: "User values fast iteration but invests heavily in cognitive infrastructure.",
+        context: "User's Rust background + cognitive system design with persona fields.",
         chinese:
-          "你追求快速迭代，却在认知层写了 10+ 模块、3 套存储引擎、还有个 Thompson Sampling 偏好系统。表面看是过度工程——其实你是在解决一个具体问题：你怎么知道主动推给用户的消息不会让他们烦？答案是需要量化模型。所以不是'慢下来做基础设施'，是'没有这个基础设施，核心功能根本不敢上线'。",
+          "你写 Rust 时用的 borrow checker 思维，放到认知系统设计上就是：每个 persona 字段都应该有明确的 lifecycle owner。你的 feedbackProfile 有 12 个字段但只有 3 个有明确的更新来源，剩下的 9 个靠散落的 side effect 维护。",
         english:
-          "You chase fast iteration, yet built 10+ cognitive modules, 3 storage engines, and a Thompson Sampling preference system. Looks like over-engineering — but you're solving a concrete problem: how do you know proactive messages won't annoy users? The answer requires a quantitative model. So it's not 'slow down to build infra', it's 'without this infra, the core feature can't ship at all'.",
+          "The borrow checker mindset you use writing Rust, applied to cognitive system design, means: every persona field should have a clear lifecycle owner. Your feedbackProfile has 12 fields but only 3 have explicit update sources — the other 9 are maintained by scattered side effects.",
       },
     ],
   },
@@ -1029,12 +1029,12 @@ const PROMPT_FRAMES = [
     if (insight) {
       return `你了解到用户对"${insight}"有独到理解。从这个具体的认知出发，说出一个被大多数人忽略的延伸方向或实际应用场景。不要解释这个认知本身，直接说延伸的部分。`;
     }
-    return `针对${topic}，你有一个具体的观察——不是泛泛的感受，而是能直接指导下一步行动的判断。直接说出来。`;
+    return `针对${topic}，你有一个具体的观察，能直接指导下一步行动。直接说出来。`;
   },
   // 1: Cross-domain with concrete anchor
   (topic: string, extra: PromptFrameExtra) => {
     if (extra.domains.length >= 2 && extra.keyInsights.length >= 2) {
-      return `用户同时在${topic}和${extra.domains[extra.domains.length - 1]!}两个方向有积累。你看到了一条具体的关联线索——不是概念上的相似，而是实际的、可操作的交集。直接把这条线索说出来。`;
+      return `用户同时在${topic}和${extra.domains[extra.domains.length - 1]!}两个方向有积累。你看到了一条具体的关联线索，实际的、可操作的交集。直接把这条线索说出来。`;
     }
     return `在${topic}方向上，用户目前的理解里有一个盲区。你看到了，直接指出来，不要铺垫。`;
   },
@@ -1067,7 +1067,7 @@ const PROMPT_FRAMES = [
   (topic: string, extra: PromptFrameExtra) => {
     if (extra.recentFocus.length >= 1) {
       const focus = extra.recentFocus[Math.min(extra.recentFocus.length - 1, 1)]!;
-      return `${topic}和${focus}之间有一条暗线——不是表面的关联，而是具体的工程方案或技术选型上的共通之处。直接说出这条暗线是什么。`;
+      return `${topic}和${focus}之间有一条暗线，具体的工程方案或技术选型上有共通之处。直接说出这条暗线是什么。`;
     }
     return `你注意到${topic}领域有一个正在发生但还没被广泛讨论的变化。说出它是什么。`;
   },
@@ -1076,7 +1076,7 @@ const PROMPT_FRAMES = [
     if (extra.domains.length >= 2) {
       return `把${extra.domains[extra.domains.length - 1]!}里的一个成熟做法，迁移到${topic}的场景中。说出具体的迁移方案和预期效果。`;
     }
-    return `给${topic}方向一个具体的下一步建议——不是方向性的，而是可以直接执行的那种。`;
+    return `给${topic}方向一个具体的、可以直接执行的下一步建议。`;
   },
 ] as const;
 
