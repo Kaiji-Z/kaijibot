@@ -1471,7 +1471,7 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 ]
 
 Keep insights concise (1-3 sentences). Quality over quantity.`,
-    variant: { fewShotSet: fewShotIdx, frameIndex: 0, patternFrame: patternFrameIdx },
+    variant: { fewShotSet: fewShotIdx, frameIndex: patternFrameIdx, patternFrame: patternFrameIdx },
   };
 }
 
@@ -2094,7 +2094,7 @@ Evaluate this insight on 5 dimensions (each 0.0-1.0):
 2. PERSONA RELEVANCE: Does it reference known facts about THIS user? Or generic advice anyone could receive?
 3. ACTIONABILITY: Can the user act on this? Or is it an abstract observation with no next step?
 4. SURPRISE: Is this genuinely new information the user likely doesn't know? Or obvious/common knowledge?
-5. VOICE MATCH: Does it sound natural for a helpful AI companion? Or stiff/formal/system-notification-like?
+5. VOICE MATCH: Does it sound like it comes from a specific personality with a point of view? Or is it stiff/formal/generic-system-notification-like? Diverse tones (provocative, questioning, playful, contemplative) should score HIGH if they match the agent's personality, not low.
 
 Also provide an overallScore (0.0-1.0), a textual critique, and specific improvement suggestions.
 
@@ -2141,9 +2141,9 @@ Generate a REVISED insight that addresses these specific weaknesses. Keep the st
 
 Constraints:
 - 1-3 sentences, Chinese
-- No question marks, no lists, no numbering
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete fact, observation, or judgment — never with "关于", "在...领域", "结合你", "作为"
+- Questions, lists, and varied sentence structures are ALLOWED if they serve the insight
 
 Respond with ONLY a JSON array (no markdown, no code fences):
 [

@@ -4,9 +4,9 @@ import type { ContentStrategyHint } from "./content-strategy.js";
 
 /** Base weights for each insight mode (sum ≈ 1.0). */
 const BASE_WEIGHTS: Record<InsightMode, number> = {
-  pattern: 0.6,
-  surprise: 0.3,
-  extend: 0.1,
+  pattern: 0.2,
+  surprise: 0.5,
+  extend: 0.3,
 };
 
 /** Minimum probability floor for any candidate mode (prevents starvation). */

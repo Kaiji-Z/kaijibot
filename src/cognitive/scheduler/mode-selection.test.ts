@@ -66,7 +66,7 @@ describe("banditWeightedSelect", () => {
       counts[r]++;
     }
     expect(counts.extend).toBeGreaterThan(0);
-    expect(counts.pattern).toBeGreaterThan(counts.extend);
+    expect(counts.surprise).toBeGreaterThan(counts.extend);
   });
 
   it("respects base weight ordering when bandits are equal", () => {
@@ -81,7 +81,7 @@ describe("banditWeightedSelect", () => {
       const r = banditWeightedSelect(["pattern", "surprise", "extend"], bandits, seed);
       counts[r]++;
     }
-    expect(counts.pattern).toBeGreaterThan(counts.surprise);
+    expect(counts.surprise).toBeGreaterThan(counts.pattern);
     expect(counts.surprise).toBeGreaterThan(counts.extend);
   });
 
