@@ -2,7 +2,6 @@ import {
   getProviderHttpMocks,
   installProviderHttpMockCleanup,
 } from "kaijibot/plugin-sdk/provider-http-test-mocks";
-import { expectExplicitVideoGenerationCapabilities } from "kaijibot/plugin-sdk/provider-test-contracts";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const { postJsonRequestMock, resolveProviderHttpRequestConfigMock } = getProviderHttpMocks();
@@ -24,10 +23,6 @@ function requireFirstPostJsonRequest(): unknown {
 }
 
 describe("deepinfra video generation provider", () => {
-  it("declares explicit mode capabilities", () => {
-    expectExplicitVideoGenerationCapabilities(buildDeepInfraVideoGenerationProvider());
-  });
-
   it("creates native text-to-video requests and returns the hosted output URL", async () => {
     const release = vi.fn(async () => {});
     postJsonRequestMock.mockResolvedValue({

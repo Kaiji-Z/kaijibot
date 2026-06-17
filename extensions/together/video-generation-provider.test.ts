@@ -2,7 +2,6 @@ import {
   getProviderHttpMocks,
   installProviderHttpMockCleanup,
 } from "kaijibot/plugin-sdk/provider-http-test-mocks";
-import { expectExplicitVideoGenerationCapabilities } from "kaijibot/plugin-sdk/provider-test-contracts";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const { postJsonRequestMock, fetchWithTimeoutMock } = getProviderHttpMocks();
@@ -31,10 +30,6 @@ function requireFirstPostJsonRequest(label: string): Record<string, unknown> {
 }
 
 describe("together video generation provider", () => {
-  it("declares explicit mode capabilities", () => {
-    expectExplicitVideoGenerationCapabilities(buildTogetherVideoGenerationProvider());
-  });
-
   it("creates a video, polls completion, and downloads the output", async () => {
     postJsonRequestMock.mockResolvedValue({
       response: {

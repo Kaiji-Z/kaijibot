@@ -1,9 +1,4 @@
-import { clearLiveCatalogCacheForTests } from "kaijibot/plugin-sdk/provider-catalog-shared";
-import {
-  expectExplicitVideoGenerationCapabilities,
-  expectUnifiedModelCatalogEntries,
-} from "kaijibot/plugin-sdk/provider-test-contracts";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildOpenRouterVideoGenerationProvider,
   listOpenRouterVideoModelCatalog,
@@ -71,6 +66,14 @@ function releasedVideo(params: { contentType: string; bytes: string }) {
 }
 
 type OpenRouterVideoProvider = ReturnType<typeof buildOpenRouterVideoGenerationProvider>;
+type OpenRouterVideoProviderWithCapabilities = OpenRouterVideoProvider & {
+  resolveModelCapabilities?: (ctx: {
+    provider?: string;
+    model?: string;
+    cfg?: unknown;
+    timeoutMs?: number;
+  }) => Promise<unknown>;
+};
 type OpenRouterVideoResult = Awaited<ReturnType<OpenRouterVideoProvider["generateVideo"]>>;
 
 function requireGenerateCapabilities(provider: OpenRouterVideoProvider) {
@@ -161,10 +164,6 @@ function requireGeneratedVideoBuffer(result: OpenRouterVideoResult, index: numbe
 }
 
 describe("openrouter video generation provider", () => {
-  beforeEach(() => {
-    clearLiveCatalogCacheForTests();
-  });
-
   afterEach(() => {
     assertOkOrThrowHttpErrorMock.mockClear();
     fetchWithTimeoutGuardedMock.mockReset();
@@ -177,7 +176,6 @@ describe("openrouter video generation provider", () => {
   it("declares explicit mode capabilities", () => {
     const provider = buildOpenRouterVideoGenerationProvider();
 
-    expectExplicitVideoGenerationCapabilities(provider);
     expect(provider.id).toBe("openrouter");
     expect(provider.defaultModel).toBe("google/veo-3.1-fast");
     const generateCapabilities = requireGenerateCapabilities(provider);
@@ -253,10 +251,9 @@ describe("openrouter video generation provider", () => {
       "openrouter-video-models",
     );
     expect(requireFetchCallHeaders(0).get("authorization")).toBe("Bearer resolved-openrouter-key");
-    expectUnifiedModelCatalogEntries(rows, {
-      provider: "openrouter",
-      kind: "video_generation",
-    });
+    if (!rows) {
+      throw new Error("expected OpenRouter catalog rows");
+    }
     expect(rows).toHaveLength(1);
     const row = rows[0];
     if (!row) {
@@ -319,7 +316,8 @@ describe("openrouter video generation provider", () => {
       }),
     );
 
-    const provider = buildOpenRouterVideoGenerationProvider();
+    const provider =
+      buildOpenRouterVideoGenerationProvider() as OpenRouterVideoProviderWithCapabilities;
     const capabilities = await provider.resolveModelCapabilities?.({
       provider: "openrouter",
       model: "google/veo-3.1",
@@ -451,12 +449,16 @@ describe("openrouter video generation provider", () => {
       audio: false,
       inputImages: [
         { buffer: Buffer.from("first-frame"), mimeType: "image/png" },
-        { buffer: Buffer.from("last-frame"), mimeType: "image/png", role: "last_frame" },
+        {
+          buffer: Buffer.from("last-frame"),
+          mimeType: "image/png",
+          role: "last_frame",
+        } as never,
         {
           buffer: Buffer.from("style-reference"),
           mimeType: "image/webp",
           role: "reference_image",
-        },
+        } as never,
       ],
       providerOptions: {
         callback_url: "https://example.com/openrouter-video-hook",

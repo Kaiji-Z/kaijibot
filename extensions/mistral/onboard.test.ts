@@ -1,6 +1,11 @@
 import {
-  expectProviderOnboardMergedLegacyConfig,
-  expectProviderOnboardPrimaryAndFallbacks,
+  resolveAgentModelFallbackValues,
+  resolveAgentModelPrimaryValue,
+} from "kaijibot/plugin-sdk/provider-onboard";
+import {
+  createConfigWithFallbacks,
+  createLegacyProviderConfig,
+  EXPECTED_FALLBACKS,
 } from "kaijibot/plugin-sdk/provider-test-contracts";
 import { describe, expect, it } from "vitest";
 import { buildMistralModelDefinition as buildBundledMistralModelDefinition } from "./model-definitions.js";
@@ -15,23 +20,32 @@ describe("mistral onboard", () => {
     const cfg = applyMistralConfig({});
     expect(cfg.models?.providers?.mistral?.baseUrl).toBe("https://api.mistral.ai/v1");
     expect(cfg.models?.providers?.mistral?.api).toBe("openai-completions");
-    expectProviderOnboardPrimaryAndFallbacks({
-      applyConfig: applyMistralConfig,
-      modelRef: MISTRAL_DEFAULT_MODEL_REF,
-    });
+    // Inline of expectProviderOnboardPrimaryAndFallbacks
+    const cfgWithFallbacks = applyMistralConfig(createConfigWithFallbacks());
+    expect(resolveAgentModelPrimaryValue(cfgWithFallbacks.agents?.defaults?.model)).toBe(
+      MISTRAL_DEFAULT_MODEL_REF,
+    );
+    expect(resolveAgentModelFallbackValues(cfgWithFallbacks.agents?.defaults?.model)).toEqual([
+      ...EXPECTED_FALLBACKS,
+    ]);
   });
 
   it("merges Mistral models and keeps existing provider overrides", () => {
-    const provider = expectProviderOnboardMergedLegacyConfig({
-      applyProviderConfig: applyMistralProviderConfig,
+    // Inline of expectProviderOnboardMergedLegacyConfig
+    const legacy = createLegacyProviderConfig({
       providerId: "mistral",
-      providerApi: "openai-completions",
+      api: "anthropic-messages",
+      modelId: "custom-model",
+      modelName: "Custom",
       baseUrl: "https://api.mistral.ai/v1",
-      legacyApi: "anthropic-messages",
-      legacyModelId: "custom-model",
-      legacyModelName: "Custom",
     });
-    expect(provider?.models.map((m: { id: string }) => m.id)).toEqual(["custom-model", "mistral-large-latest"]);
+    const cfg = applyMistralProviderConfig(legacy);
+    const provider = cfg.models?.providers?.mistral;
+    expect(provider?.api).toBe("openai-completions");
+    expect(provider?.models.map((m: { id: string }) => m.id)).toEqual([
+      "custom-model",
+      "mistral-large-latest",
+    ]);
     const mistralDefault = provider?.models.find(
       (model: { id: string; contextWindow?: number; maxTokens?: number }) =>
         model.id === "mistral-large-latest",

@@ -6,8 +6,9 @@ import {
 } from "kaijibot/plugin-sdk/plugin-test-runtime";
 import { buildOpenAICompletionsParams } from "kaijibot/plugin-sdk/provider-transport-runtime";
 import { describe, expect, it } from "vitest";
-import { runSingleProviderCatalog } from "../test-support/provider-model-test-helpers.js";
 import deepseekPlugin from "./index.js";
+import { buildDeepSeekProvider } from "./provider-catalog.js";
+import { resolveThinkingProfile } from "./provider-policy-api.js";
 import { createDeepSeekV4ThinkingWrapper } from "./stream.js";
 
 type OpenAICompletionsModel = Model<"openai-completions">;
@@ -29,8 +30,6 @@ type ReplayToolCall = {
   };
 };
 
-type RegisteredProvider = Awaited<ReturnType<typeof registerSingleProviderPlugin>>;
-
 const emptyUsage = {
   input: 0,
   output: 0,
@@ -39,15 +38,6 @@ const emptyUsage = {
   totalTokens: 0,
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
-
-function requireThinkingProfileResolver(
-  provider: RegisteredProvider,
-): NonNullable<RegisteredProvider["resolveThinkingProfile"]> {
-  if (!provider.resolveThinkingProfile) {
-    throw new Error("DeepSeek provider did not register a thinking profile resolver");
-  }
-  return provider.resolveThinkingProfile;
-}
 
 const readToolCall = { type: "toolCall", id: "call_1", name: "read", arguments: {} };
 const readToolResult = {
@@ -189,30 +179,25 @@ describe("deepseek provider plugin", () => {
     expect(resolved.method.id).toBe("api-key");
   });
 
-  it("builds the static DeepSeek model catalog", async () => {
-    const provider = await registerSingleProviderPlugin(deepseekPlugin);
-    const catalogProvider = await runSingleProviderCatalog(provider);
+  it("builds the static DeepSeek model catalog", () => {
+    const catalogProvider = buildDeepSeekProvider();
 
     expect(catalogProvider.api).toBe("openai-completions");
     expect(catalogProvider.baseUrl).toBe("https://api.deepseek.com");
-    expect(catalogProvider.models?.map((model: OpenAICompletionsModel) => model.id)).toEqual([
+    expect(catalogProvider.models?.map((model) => model.id)).toEqual([
       "deepseek-v4-flash",
       "deepseek-v4-pro",
       "deepseek-chat",
       "deepseek-reasoner",
     ]);
-    const flashModel = catalogProvider.models?.find(
-      (model: OpenAICompletionsModel) => model.id === "deepseek-v4-flash",
-    );
+    const flashModel = catalogProvider.models?.find((model) => model.id === "deepseek-v4-flash");
     expect(flashModel?.reasoning).toBe(true);
     expect(flashModel?.contextWindow).toBe(1_000_000);
     expect(flashModel?.maxTokens).toBe(384_000);
     expect(flashModel?.compat?.supportsReasoningEffort).toBe(true);
     expect(flashModel?.compat?.maxTokensField).toBe("max_tokens");
     expect(
-      catalogProvider.models?.find(
-        (model: OpenAICompletionsModel) => model.id === "deepseek-reasoner",
-      )?.reasoning,
+      catalogProvider.models?.find((model) => model.id === "deepseek-reasoner")?.reasoning,
     ).toBe(true);
   });
 
@@ -271,9 +256,7 @@ describe("deepseek provider plugin", () => {
     ).toStrictEqual([]);
   });
 
-  it("advertises max thinking levels for DeepSeek V4 models only", async () => {
-    const provider = await registerSingleProviderPlugin(deepseekPlugin);
-    const resolveThinkingProfile = requireThinkingProfileResolver(provider);
+  it("advertises max thinking levels for DeepSeek V4 models only", () => {
     const expectedV4Levels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
     expect(

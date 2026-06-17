@@ -1,10 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  registerProviderPlugin,
-  requireRegisteredProvider,
-} from "kaijibot/plugin-sdk/plugin-test-runtime";
+import { registerProviderPlugin } from "kaijibot/plugin-sdk/plugin-test-runtime";
 import { isLiveTestEnabled } from "kaijibot/plugin-sdk/test-env";
 import { describe, expect, it } from "vitest";
 import plugin from "./index.js";
@@ -22,7 +19,10 @@ const registerGradiumPlugin = () =>
 describe.skipIf(!LIVE || !GRADIUM_API_KEY)("gradium live", () => {
   it("synthesizes speech through the registered provider", async () => {
     const { speechProviders } = await registerGradiumPlugin();
-    const provider = requireRegisteredProvider(speechProviders, "gradium");
+    const provider = speechProviders.find((entry) => entry.id === "gradium");
+    if (!provider) {
+      throw new Error("gradium speech provider was not registered");
+    }
 
     const result = await provider.synthesize({
       text: "Hello, this is a test of Gradium text to speech.",

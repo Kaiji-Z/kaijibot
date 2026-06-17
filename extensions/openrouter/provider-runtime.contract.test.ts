@@ -1,3 +1,3 @@
 import { describeOpenRouterProviderRuntimeContract } from "kaijibot/plugin-sdk/provider-test-contracts";
 
-describeOpenRouterProviderRuntimeContract(() => import("./index.js"));
+describeOpenRouterProviderRuntimeContract();

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createQwenThinkingWrapper, wrapQwenProviderStream } from "./stream.js";
 
 function capturePayload(params: {
-  thinkingLevel?: "off" | "low" | "medium" | "high" | "xhigh" | "max";
+  thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "adaptive";
   thinkingFormat?: string;
   reasoning?: unknown;
   initialPayload?: Record<string, unknown>;

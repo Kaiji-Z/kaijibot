@@ -1,4 +1,5 @@
 import { registerSingleProviderPlugin } from "kaijibot/plugin-sdk/plugin-test-runtime";
+import type { ProviderPlugin } from "kaijibot/plugin-sdk/provider-model-shared";
 import { describe, expect, it } from "vitest";
 import {
   applyMistralModelCompat,
@@ -9,6 +10,18 @@ import {
 } from "./api.js";
 import mistralPlugin from "./index.js";
 import { contributeMistralResolvedModelCompat } from "./provider-compat.js";
+
+type ThinkingProfile = {
+  levels: { id: string }[];
+  defaultLevel: string;
+};
+
+type MistralTestProvider = ProviderPlugin & {
+  resolveThinkingProfile?: (params: {
+    provider?: string;
+    modelId: string;
+  }) => ThinkingProfile | undefined;
+};
 
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Test helper lets assertions ascribe provider compat shape.
 function readCompat<T>(model: unknown): T | undefined {
@@ -148,7 +161,7 @@ describe("applyMistralModelCompat", () => {
   });
 
   it("exposes thinking profile levels for mistral-medium-3-5", async () => {
-    const provider = await registerSingleProviderPlugin(mistralPlugin);
+    const provider = (await registerSingleProviderPlugin(mistralPlugin)) as MistralTestProvider;
 
     expect(
       provider.resolveThinkingProfile?.({

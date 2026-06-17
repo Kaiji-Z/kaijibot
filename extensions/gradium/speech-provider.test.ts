@@ -113,7 +113,7 @@ describe("gradium speech provider", () => {
       providerConfig: { apiKey: "gsk_test123", voiceId: "default-voice" },
       providerOverrides: { voiceId: "override-voice" },
       timeoutMs: 30_000,
-    });
+    } as never);
 
     const [, init] = firstFetchCall(fetchMock);
     expect(JSON.parse(init.body as string)).toEqual({
