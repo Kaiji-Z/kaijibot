@@ -979,7 +979,7 @@ PERSONALIZATION TEST: The insight MUST reference at least one specific fact from
 Constraints:
 - 1-3 sentences, ${langInstruction}
 - Tone: like suddenly remembering something fascinating to tell a friend
-- NO question marks, NO lists, NO numbering
+- Questions, lists, and varied structures are ALLOWED when they serve the insight
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
 - ${bannedSection}
@@ -1449,7 +1449,7 @@ ${taskInstruction}
 
 Constraints:
 - 1-3 sentences, Chinese
-- No question marks, no lists, no numbering
+- Questions and varied structures are allowed when they serve the insight
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete observation — never with "关于", "在...领域", "结合你", "作为"
 - ${bannedSection}
@@ -1684,7 +1684,7 @@ ${structureSeed}
 - 洞察内容必须围绕上面的"TARGET DOMAINS"展开，targetDomains字段必须包含这些域中的至少一个
 - 必须引用上面"SPECIFIC FACTS"列表中的至少一条具体事实——不能只提领域名称，要说出用户在这个领域的具体认知或关注点
 - 1-3句话，中文，语气像突然想到什么要跟朋友说
-- 不用问号结尾，不用列表或编号
+- 允许使用问号和多样的句式结构，只要服务于洞察内容
 - 禁止以下句式：
   · "值得关注"、"挺有意思"、"不得不说"
   · "你有没有想过"、"最近在关注"
