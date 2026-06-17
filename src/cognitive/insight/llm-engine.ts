@@ -1821,7 +1821,7 @@ function parseLLMInsights(text: string, maxCandidates: number): InsightCandidate
       .slice(0, maxCandidates)
       .map((item: Record<string, unknown>) => ({
         id: randomUUID(),
-        content: String(item.content ?? ""),
+        content: String(item.content ?? "").replace(/\[\d+\]/g, ""),
         rationale: String(item.rationale ?? ""),
         targetDomains: Array.isArray(item.targetDomains) ? item.targetDomains.map(String) : [],
         sourceDomains: Array.isArray(item.sourceDomains) ? item.sourceDomains.map(String) : [],
