@@ -31,7 +31,7 @@ export function registerBrowserCli(program: Command) {
           true,
         )}\n\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/browser",
-          "docs.kaijibot.ai/cli/browser",
+          "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/browser.md",
         )}\n`,
     )
     .action(() => {

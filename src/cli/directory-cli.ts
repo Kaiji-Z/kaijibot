@@ -88,7 +88,7 @@ export function registerDirectoryCli(program: Command) {
           ],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/directory",
-          "docs.kaijibot.ai/cli/directory",
+          "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/directory.md",
         )}\n`,
     )
     .action(() => {

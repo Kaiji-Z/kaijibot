@@ -257,7 +257,7 @@ export function registerLogsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/logs", "docs.kaijibot.ai/cli/logs")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/logs", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/logs.md")}\n`,
     );
 
   addGatewayClientOptions(logs);

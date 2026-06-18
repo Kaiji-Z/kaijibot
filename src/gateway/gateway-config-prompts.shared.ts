@@ -27,8 +27,8 @@ export const TAILSCALE_MISSING_BIN_NOTE_LINES = [
 
 export const TAILSCALE_DOCS_LINES = [
   "Docs:",
-  "https://docs.kaijibot.ai/gateway/tailscale",
-  "https://docs.kaijibot.ai/web",
+  "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/tailscale.md",
+  "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web.md",
 ] as const;
 
 function normalizeTailnetHostForUrl(rawHost: string): string | null {

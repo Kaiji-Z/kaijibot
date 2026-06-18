@@ -239,7 +239,7 @@ export function registerCompletionCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/completion", "docs.kaijibot.ai/cli/completion")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/completion", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/completion.md")}\n`,
     )
     .addOption(
       new Option("-s, --shell <shell>", "Shell to generate completion for (default: zsh)").choices(

@@ -78,7 +78,7 @@ describe("web_search unsupported filter response", () => {
       error: "unsupported_country",
       message:
         "country filtering is not supported by the grok provider. Only Brave and Perplexity support country filtering.",
-      docs: "https://docs.kaijibot.ai/tools/web",
+      docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     });
   });
 
@@ -87,7 +87,7 @@ describe("web_search unsupported filter response", () => {
       error: "unsupported_date_filter",
       message:
         "date_after/date_before filtering is not supported by the kimi provider. Only Brave and Perplexity support date filtering.",
-      docs: "https://docs.kaijibot.ai/tools/web",
+      docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     });
   });
 });

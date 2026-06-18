@@ -100,7 +100,7 @@ export function createCodeExecutionTool(options?: {
           error: "missing_xai_api_key",
           message:
             "code_execution needs an xAI API key. Set XAI_API_KEY in the Gateway environment, or configure plugins.entries.xai.config.webSearch.apiKey.",
-          docs: "https://docs.kaijibot.ai/tools/code-execution",
+          docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/code-execution.md",
         });
       }
 

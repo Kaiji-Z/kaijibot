@@ -32,7 +32,7 @@ type SandboxExplainOptions = {
   json: boolean;
 };
 
-const SANDBOX_DOCS_URL = "https://docs.kaijibot.ai/sandbox";
+const SANDBOX_DOCS_URL = "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sandbox.md";
 
 function normalizeExplainSessionKey(params: {
   cfg: KaijiBotConfig;
@@ -339,7 +339,7 @@ export async function sandboxExplainCommand(
     lines.push(`  - ${key}`);
   }
   lines.push("");
-  lines.push(`${key("Docs:")} ${formatDocsLink("/sandbox", "docs.kaijibot.ai/sandbox")}`);
+  lines.push(`${key("Docs:")} ${formatDocsLink("/sandbox", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sandbox.md")}`);
 
   runtime.log(`${lines.join("\n")}\n`);
 }

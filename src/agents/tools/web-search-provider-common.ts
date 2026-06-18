@@ -209,7 +209,7 @@ export function parseIsoDateRange(params: {
       message: string;
       docs: string;
     } {
-  const docs = params.docs ?? "https://docs.kaijibot.ai/tools/web";
+  const docs = params.docs ?? "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md";
   const dateAfter = params.rawDateAfter ? normalizeToIsoDate(params.rawDateAfter) : undefined;
   if (params.rawDateAfter && !dateAfter) {
     return {
@@ -320,7 +320,7 @@ function describeUnsupportedSearchFilter(name: UnsupportedWebSearchFilterName): 
 export function buildUnsupportedSearchFilterResponse(
   params: Record<string, unknown>,
   provider: string,
-  docs = "https://docs.kaijibot.ai/tools/web",
+  docs = "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
 ):
   | {
       error: string;

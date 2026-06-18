@@ -88,7 +88,7 @@ vi.mock("../../terminal/health-style.js", () => ({
 }));
 
 vi.mock("../../terminal/links.js", () => ({
-  formatDocsLink: () => "docs.kaijibot.ai/cli/gateway",
+  formatDocsLink: () => "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/gateway.md",
 }));
 
 vi.mock("../../terminal/theme.js", () => ({

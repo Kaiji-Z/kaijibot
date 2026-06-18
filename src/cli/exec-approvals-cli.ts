@@ -462,7 +462,7 @@ export function registerExecApprovalsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "docs.kaijibot.ai/cli/approvals")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/approvals.md")}\n`,
     );
 
   const getCmd = approvals
@@ -550,7 +550,7 @@ export function registerExecApprovalsCli(program: Command) {
         )}\n${formatExample(
           'kaijibot approvals allowlist remove "~/Projects/**/bin/rg"',
           "Remove an allowlist pattern.",
-        )}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "docs.kaijibot.ai/cli/approvals")}\n`,
+        )}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/approvals.md")}\n`,
     );
 
   registerAllowlistMutationCommand({

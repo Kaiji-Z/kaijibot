@@ -8,11 +8,11 @@ const shouldWarnCompatImport =
 
 if (shouldWarnCompatImport) {
   process.emitWarning(
-    "kaijibot/plugin-sdk/compat is deprecated for new plugins. Migrate to focused kaijibot/plugin-sdk/<subpath> imports. See https://docs.kaijibot.ai/plugins/sdk-migration",
+    "kaijibot/plugin-sdk/compat is deprecated for new plugins. Migrate to focused kaijibot/plugin-sdk/<subpath> imports. See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/sdk-migration.md",
     {
       code: "KAIJIBOT_PLUGIN_SDK_COMPAT_DEPRECATED",
       detail:
-        "Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.kaijibot.ai/plugins/sdk-migration",
+        "Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/sdk-migration.md",
     },
   );
 }

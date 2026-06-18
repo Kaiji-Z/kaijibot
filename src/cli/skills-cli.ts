@@ -56,7 +56,7 @@ export function registerSkillsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/skills", "docs.kaijibot.ai/cli/skills")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/skills", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/skills.md")}\n`,
     );
 
   skills

@@ -101,7 +101,7 @@ export function registerQrCli(program: Command) {
     .description("Generate a mobile pairing QR code and setup code")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/qr", "docs.kaijibot.ai/cli/qr")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/qr", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/qr.md")}\n`,
     )
     .option(
       "--remote",

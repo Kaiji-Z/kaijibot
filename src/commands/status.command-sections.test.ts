@@ -147,8 +147,8 @@ describe("status.command-sections", () => {
         gatewayReachable: false,
       }),
     ).toEqual([
-      "FAQ: https://docs.kaijibot.ai/faq",
-      "Troubleshooting: https://docs.kaijibot.ai/troubleshooting",
+      "FAQ: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/faq.md",
+      "Troubleshooting: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md",
       "",
       "warn(upgrade ready)",
       "Next steps:",

@@ -10,7 +10,7 @@ export function registerClawbotCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/clawbot", "docs.kaijibot.ai/cli/clawbot")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/clawbot", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/clawbot.md")}\n`,
     );
   registerQrCli(clawbot);
 }

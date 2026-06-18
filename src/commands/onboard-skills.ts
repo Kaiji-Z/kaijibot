@@ -194,7 +194,7 @@ export async function setupSkills(
       runtime.log(
         `Tip: run \`${formatCliCommand("kaijibot doctor")}\` to review skills + requirements.`,
       );
-      runtime.log("Docs: https://docs.kaijibot.ai/skills");
+      runtime.log("Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/skills.md");
     }
   }
 

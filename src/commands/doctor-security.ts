@@ -216,7 +216,7 @@ export async function noteSecurityWarnings(cfg: KaijiBotConfig) {
   const saferRemoteAccessLines = [
     "  Safer remote access: keep bind loopback and use Tailscale Serve/Funnel or an SSH tunnel.",
     "  Example tunnel: ssh -N -L 18789:127.0.0.1:18789 user@gateway-host",
-    "  Docs: https://docs.kaijibot.ai/gateway/remote",
+    "  Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/remote.md",
   ];
 
   if (isExposed) {

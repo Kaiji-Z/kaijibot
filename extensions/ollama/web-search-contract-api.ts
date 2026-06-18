@@ -13,7 +13,7 @@ export function createOllamaWebSearchProvider(): WebSearchProviderPlugin {
     envVars: [],
     placeholder: "(run ollama signin)",
     signupUrl: "https://ollama.com/",
-    docsUrl: "https://docs.kaijibot.ai/tools/web",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     autoDetectOrder: 110,
     credentialPath: "",
     ...createWebSearchProviderContractFields({

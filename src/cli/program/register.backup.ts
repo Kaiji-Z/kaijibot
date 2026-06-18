@@ -14,7 +14,7 @@ export function registerBackupCommand(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/backup", "docs.kaijibot.ai/cli/backup")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/backup", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/backup.md")}\n`,
     );
 
   backup

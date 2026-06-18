@@ -15,7 +15,7 @@ export function createXaiWebSearchProvider(): WebSearchProviderPlugin {
     envVars: ["XAI_API_KEY"],
     placeholder: "xai-...",
     signupUrl: "https://console.x.ai/",
-    docsUrl: "https://docs.kaijibot.ai/tools/web",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     autoDetectOrder: 30,
     credentialPath,
     ...createWebSearchProviderContractFields({

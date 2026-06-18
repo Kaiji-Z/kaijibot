@@ -37,7 +37,7 @@ describe("provider attribution", () => {
       product: "KaijiBot",
       version: "2026.3.22",
       headers: {
-        "HTTP-Referer": "https://kaijibot.ai",
+        "HTTP-Referer": "https://gitee.com/kaiji1126/kaijibot",
         "X-OpenRouter-Title": "KaijiBot",
         "X-OpenRouter-Categories": "cli-agent",
       },
@@ -50,7 +50,7 @@ describe("provider attribution", () => {
         KAIJIBOT_VERSION: "2026.3.22",
       }),
     ).toEqual({
-      "HTTP-Referer": "https://kaijibot.ai",
+      "HTTP-Referer": "https://gitee.com/kaiji1126/kaijibot",
       "X-OpenRouter-Title": "KaijiBot",
       "X-OpenRouter-Categories": "cli-agent",
     });

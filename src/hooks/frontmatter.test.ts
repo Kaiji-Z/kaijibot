@@ -233,7 +233,7 @@ describe("resolveKaijiBotMetadata", () => {
     const content = `---
 name: session-memory
 description: "Save session context to memory when /new or /reset command is issued"
-homepage: https://docs.kaijibot.ai/automation/hooks#session-memory
+homepage: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md#session-memory
 metadata:
   {
     "kaijibot":

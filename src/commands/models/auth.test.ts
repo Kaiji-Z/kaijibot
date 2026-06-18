@@ -223,7 +223,7 @@ describe("modelsAuthLoginCommand", () => {
       "Default model available: openai-codex/gpt-5.4 (use --set-default to apply)",
     );
     expect(runtime.log).toHaveBeenCalledWith(
-      "Tip: Codex-capable models can use native Codex web search. Enable it with kaijibot configure --section web (recommended mode: cached). Docs: https://docs.kaijibot.ai/tools/web",
+      "Tip: Codex-capable models can use native Codex web search. Enable it with kaijibot configure --section web (recommended mode: cached). Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     );
   });
 

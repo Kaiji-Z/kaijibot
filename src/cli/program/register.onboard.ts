@@ -67,7 +67,7 @@ export function registerOnboardCommand(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/onboard", "docs.kaijibot.ai/cli/onboard")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/onboard", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/onboard.md")}\n`,
     )
     .option("--workspace <dir>", "Agent workspace directory (default: ~/.kaijibot/workspace)")
     .option(

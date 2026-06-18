@@ -1,6 +1,6 @@
 # Changelog
 
-Docs: https://docs.kaijibot.ai
+Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs
 
 ## Unreleased
 
@@ -1200,15 +1200,15 @@ Docs: https://docs.kaijibot.ai
 
 ### Breaking
 
-- Plugins/install: bare `kaijibot plugins install <package>` now prefers ClawHub before npm for npm-safe names, and only falls back to npm when ClawHub does not have that package or version. Docs: https://docs.kaijibot.ai/tools/clawhub
-- Browser/Chrome MCP: remove the legacy Chrome extension relay path, bundled extension assets, `driver: "extension"`, and `browser.relayBindHost`. Run `kaijibot doctor --fix` to migrate host-local browser config to `existing-session` / `user`; Docker, headless, sandbox, and remote browser flows still use raw CDP. Docs: https://docs.kaijibot.ai/gateway/doctor and https://docs.kaijibot.ai/tools/browser (#47893) Thanks @vincentkoc.
+- Plugins/install: bare `kaijibot plugins install <package>` now prefers ClawHub before npm for npm-safe names, and only falls back to npm when ClawHub does not have that package or version. Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/clawhub
+- Browser/Chrome MCP: remove the legacy Chrome extension relay path, bundled extension assets, `driver: "extension"`, and `browser.relayBindHost`. Run `kaijibot doctor --fix` to migrate host-local browser config to `existing-session` / `user`; Docker, headless, sandbox, and remote browser flows still use raw CDP. Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/doctor and https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/browser (#47893) Thanks @vincentkoc.
 - Tools/image generation: standardize the stock image create/edit path on the core `image_generate` tool. The old `nano-banana-pro` docs/examples are gone; if you previously copied that sample-skill config, switch to `agents.defaults.imageGenerationModel` for built-in image generation or install a separate third-party skill explicitly.
 - Skills/image generation: remove the bundled `nano-banana-pro` skill wrapper. Use `agents.defaults.imageGenerationModel.primary: "google/gemini-3-pro-image-preview"` for the native Nano Banana-style path instead.
-- Plugins/SDK: the new public plugin SDK surface is `kaijibot/plugin-sdk/*`; `kaijibot/extension-api` is removed with no compatibility shim. Bundled plugins must use injected runtime for host-side operations (for example `api.runtime.agent.runEmbeddedPiAgent`) and any remaining direct imports must come from narrow `kaijibot/plugin-sdk/*` subpaths instead of the monolithic SDK root. Docs: https://docs.kaijibot.ai/plugins/sdk-migration and https://docs.kaijibot.ai/plugins/sdk-overview
+- Plugins/SDK: the new public plugin SDK surface is `kaijibot/plugin-sdk/*`; `kaijibot/extension-api` is removed with no compatibility shim. Bundled plugins must use injected runtime for host-side operations (for example `api.runtime.agent.runEmbeddedPiAgent`) and any remaining direct imports must come from narrow `kaijibot/plugin-sdk/*` subpaths instead of the monolithic SDK root. Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/sdk-migration and https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/sdk-overview
 - Plugins/message discovery: require `ChannelMessageActionAdapter.describeMessageTool(...)` for shared `message` tool discovery. The legacy `listActions`, `getCapabilities`, and `getToolSchema` adapter methods are removed. Plugin authors should migrate message discovery to `describeMessageTool(...)` and keep channel-specific action runtime code inside the owning plugin package. Thanks @gumadeiras.
-- Plugins/Matrix: add a new Matrix plugin backed by the official `matrix-js-sdk`. If you are upgrading from the previous public Matrix plugin, follow the migration guide: https://docs.kaijibot.ai/install/migrating-matrix Thanks @gumadeiras.
+- Plugins/Matrix: add a new Matrix plugin backed by the official `matrix-js-sdk`. If you are upgrading from the previous public Matrix plugin, follow the migration guide: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/install/migrating-matrix Thanks @gumadeiras.
 - Config/env: remove legacy `CLAWDBOT_*` and `MOLTBOT_*` compatibility env names across runtime, installers, and test tooling. Use the matching `KAIJIBOT_*` env names instead.
-- Config/state: remove legacy `.moltbot` state-dir and `moltbot.json` auto-detection/migration fallback. If you still keep state under `~/.moltbot`, move it to `~/.kaijibot` or set `KAIJIBOT_STATE_DIR` / `KAIJIBOT_CONFIG_PATH` explicitly. Docs: https://docs.kaijibot.ai/install/migrating and https://docs.kaijibot.ai/start/getting-started
+- Config/state: remove legacy `.moltbot` state-dir and `moltbot.json` auto-detection/migration fallback. If you still keep state under `~/.moltbot`, move it to `~/.kaijibot` or set `KAIJIBOT_STATE_DIR` / `KAIJIBOT_CONFIG_PATH` explicitly. Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/install/migrating and https://gitee.com/kaiji1126/kaijibot/blob/main/docs/start/getting-started
 - Exec/env sandbox: block build-tool JVM injection (`MAVEN_OPTS`, `SBT_OPTS`, `GRADLE_OPTS`, `ANT_OPTS`), glibc tunable exploitation (`GLIBC_TUNABLES`), and .NET dependency resolution hijack (`DOTNET_ADDITIONAL_DEPS`) from the host exec environment, and restrict Gradle init script redirect (`GRADLE_USER_HOME`) as an override-only block so user-configured Gradle homes still propagate. (#49702)
 - Discord/commands: switch native command deployment to Carbon reconcile by default so Discord restarts stop churning slash commands through KaijiBot's local deploy path. (#46597) Thanks @huntharo and @thewilloftheshadow.
 - Security/exec approvals: treat `time` as a transparent dispatch wrapper during allowlist evaluation and allow-always persistence so approved `time ...` commands bind the inner executable instead of the wrapper path. Thanks @YLChen-007 for reporting.
@@ -2485,7 +2485,7 @@ Docs: https://docs.kaijibot.ai
 ### Breaking
 
 - **BREAKING:** Onboarding now defaults `tools.profile` to `messaging` for new local installs (interactive + non-interactive). New setups no longer start with broad coding/system tools unless explicitly configured.
-- **BREAKING:** ACP dispatch now defaults to enabled unless explicitly disabled (`acp.dispatch.enabled=false`). If you need to pause ACP turn routing while keeping `/acp` controls, set `acp.dispatch.enabled=false`. Docs: https://docs.kaijibot.ai/tools/acp-agents
+- **BREAKING:** ACP dispatch now defaults to enabled unless explicitly disabled (`acp.dispatch.enabled=false`). If you need to pause ACP turn routing while keeping `/acp` controls, set `acp.dispatch.enabled=false`. Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/acp-agents
 - **BREAKING:** Plugin SDK removed `api.registerHttpHandler(...)`. Plugins must register explicit HTTP routes via `api.registerHttpRoute({ path, auth, match, handler })`, and dynamic webhook lifecycles should use `registerPluginHttpRoute(...)`.
 - **BREAKING:** Zalo Personal plugin (`@kaijibot/zalouser`) no longer depends on external `zca`-compatible CLI binaries (`openzca`, `zca-cli`) for runtime send/listen/login; operators should use `kaijibot channels login --channel zalouser` after upgrade to refresh sessions in the new JS-native path.
 
@@ -4714,28 +4714,28 @@ Docs: https://docs.kaijibot.ai
 
 ### Highlights
 
-- Providers: Ollama discovery + docs; Venice guide upgrades + cross-links. (#1606) Thanks @abhaymundhara. https://docs.kaijibot.ai/providers/ollama https://docs.kaijibot.ai/providers/venice
+- Providers: Ollama discovery + docs; Venice guide upgrades + cross-links. (#1606) Thanks @abhaymundhara. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/providers/ollama https://gitee.com/kaiji1126/kaijibot/blob/main/docs/providers/venice
 - Channels: LINE plugin (Messaging API) with rich replies + quick replies. (#1630) Thanks @plum-dawg.
-- TTS: Edge fallback (keyless) + `/tts` auto modes. (#1668, #1667) Thanks @steipete, @sebslight. https://docs.kaijibot.ai/tts
-- Exec approvals: approve in-chat via `/approve` across all channels (including plugins). (#1621) Thanks @czekaj. https://docs.kaijibot.ai/tools/exec-approvals https://docs.kaijibot.ai/tools/slash-commands
-- Telegram: DM topics as separate sessions + outbound link preview toggle. (#1597, #1700) Thanks @rohannagpal, @zerone0x. https://docs.kaijibot.ai/channels/telegram
+- TTS: Edge fallback (keyless) + `/tts` auto modes. (#1668, #1667) Thanks @steipete, @sebslight. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tts
+- Exec approvals: approve in-chat via `/approve` across all channels (including plugins). (#1621) Thanks @czekaj. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/exec-approvals https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/slash-commands
+- Telegram: DM topics as separate sessions + outbound link preview toggle. (#1597, #1700) Thanks @rohannagpal, @zerone0x. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/telegram
 
 ### Changes
 
 - Channels: add LINE plugin (Messaging API) with rich replies, quick replies, and plugin HTTP registry. (#1630) Thanks @plum-dawg.
-- TTS: add Edge TTS provider fallback, defaulting to keyless Edge with MP3 retry on format failures. (#1668) Thanks @steipete. https://docs.kaijibot.ai/tts
-- TTS: add auto mode enum (off/always/inbound/tagged) with per-session `/tts` override. (#1667) Thanks @sebslight. https://docs.kaijibot.ai/tts
+- TTS: add Edge TTS provider fallback, defaulting to keyless Edge with MP3 retry on format failures. (#1668) Thanks @steipete. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tts
+- TTS: add auto mode enum (off/always/inbound/tagged) with per-session `/tts` override. (#1667) Thanks @sebslight. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tts
 - Telegram: treat DM topics as separate sessions and keep DM history limits stable with thread suffixes. (#1597) Thanks @rohannagpal.
-- Telegram: add `channels.telegram.linkPreview` to toggle outbound link previews. (#1700) Thanks @zerone0x. https://docs.kaijibot.ai/channels/telegram
-- Web search: add Brave freshness filter parameter for time-scoped results. (#1688) Thanks @JonUleis. https://docs.kaijibot.ai/tools/web
+- Telegram: add `channels.telegram.linkPreview` to toggle outbound link previews. (#1700) Thanks @zerone0x. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/telegram
+- Web search: add Brave freshness filter parameter for time-scoped results. (#1688) Thanks @JonUleis. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web
 - UI: refresh Control UI dashboard design system (colors, icons, typography). (#1745, #1786) Thanks @EnzeD, @mousberg.
-- Exec approvals: forward approval prompts to chat with `/approve` for all channels (including plugins). (#1621) Thanks @czekaj. https://docs.kaijibot.ai/tools/exec-approvals https://docs.kaijibot.ai/tools/slash-commands
+- Exec approvals: forward approval prompts to chat with `/approve` for all channels (including plugins). (#1621) Thanks @czekaj. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/exec-approvals https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/slash-commands
 - Gateway: expose config.patch in the gateway tool with safe partial updates + restart sentinel. (#1653) Thanks @steipete.
-- Diagnostics: add diagnostic flags for targeted debug logs (config + env override). https://docs.kaijibot.ai/diagnostics/flags
+- Diagnostics: add diagnostic flags for targeted debug logs (config + env override). https://gitee.com/kaiji1126/kaijibot/blob/main/docs/diagnostics/flags
 - Docs: expand FAQ (migration, scheduling, concurrency, model recommendations, OpenAI subscription auth, Pi sizing, hackable install, docs SSL workaround).
 - Docs: add verbose installer troubleshooting guidance.
 - Docs: add macOS VM guide with local/hosted options + VPS/nodes guidance. (#1693) Thanks @f-trycua.
-- Docs: add Bedrock EC2 instance role setup + IAM steps. (#1625) Thanks @sergical. https://docs.kaijibot.ai/bedrock
+- Docs: add Bedrock EC2 instance role setup + IAM steps. (#1625) Thanks @sergical. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/bedrock
 - Docs: update Fly.io guide notes.
 - Dev: add prek pre-commit hooks + dependabot config for weekly updates. (#1720) Thanks @dguido.
 
@@ -4747,11 +4747,11 @@ Docs: https://docs.kaijibot.ai
 - Web UI: hide internal `message_id` hints in chat bubbles.
 - Gateway: allow Control UI token-only auth to skip device pairing even when device identity is present (`gateway.controlUi.allowInsecureAuth`). (#1679) Thanks @steipete.
 - Matrix: decrypt E2EE media attachments with preflight size guard. (#1744) Thanks @araa47.
-- BlueBubbles: route phone-number targets to DMs, avoid leaking routing IDs, and auto-create missing DMs (Private API required). (#1751) Thanks @tyler6204. https://docs.kaijibot.ai/channels/bluebubbles
+- BlueBubbles: route phone-number targets to DMs, avoid leaking routing IDs, and auto-create missing DMs (Private API required). (#1751) Thanks @tyler6204. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/bluebubbles
 - BlueBubbles: keep part-index GUIDs in reply tags when short IDs are missing.
 - iMessage: normalize chat_id/chat_guid/chat_identifier prefixes case-insensitively and keep service-prefixed handles stable. (#1708) Thanks @aaronn.
 - Signal: repair reaction sends (group/UUID targets + CLI author flags). (#1651) Thanks @vilkasdev.
-- Signal: add configurable signal-cli startup timeout + external daemon mode docs. (#1677) https://docs.kaijibot.ai/channels/signal
+- Signal: add configurable signal-cli startup timeout + external daemon mode docs. (#1677) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/signal
 - Telegram: set fetch duplex="half" for uploads on Node 22 to avoid sendPhoto failures. (#1684) Thanks @commdata2338.
 - Telegram: use wrapped fetch for long-polling on Node to normalize AbortSignal handling. (#1639)
 - Telegram: honor per-account proxy for outbound API calls. (#1774) Thanks @radek-paclt.
@@ -4791,26 +4791,26 @@ Docs: https://docs.kaijibot.ai
 
 ### Highlights
 
-- TTS: move Telegram TTS into core + enable model-driven TTS tags by default for expressive audio replies. (#1559) Thanks @Glucksberg. https://docs.kaijibot.ai/tts
-- Gateway: add `/tools/invoke` HTTP endpoint for direct tool calls (auth + tool policy enforced). (#1575) Thanks @vignesh07. https://docs.kaijibot.ai/gateway/tools-invoke-http-api
-- Heartbeat: per-channel visibility controls (OK/alerts/indicator). (#1452) Thanks @dlauer. https://docs.kaijibot.ai/gateway/heartbeat
-- Deploy: add Fly.io deployment support + guide. (#1570) https://docs.kaijibot.ai/platforms/fly
-- Channels: add Tlon/Urbit channel plugin (DMs, group mentions, thread replies). (#1544) Thanks @wca4a. https://docs.kaijibot.ai/channels/tlon
+- TTS: move Telegram TTS into core + enable model-driven TTS tags by default for expressive audio replies. (#1559) Thanks @Glucksberg. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tts
+- Gateway: add `/tools/invoke` HTTP endpoint for direct tool calls (auth + tool policy enforced). (#1575) Thanks @vignesh07. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/tools-invoke-http-api
+- Heartbeat: per-channel visibility controls (OK/alerts/indicator). (#1452) Thanks @dlauer. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/heartbeat
+- Deploy: add Fly.io deployment support + guide. (#1570) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/platforms/fly
+- Channels: add Tlon/Urbit channel plugin (DMs, group mentions, thread replies). (#1544) Thanks @wca4a. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/tlon
 
 ### Changes
 
-- Channels: allow per-group tool allow/deny policies across built-in + plugin channels. (#1546) Thanks @adam91holt. https://docs.kaijibot.ai/multi-agent-sandbox-tools
-- Agents: add Bedrock auto-discovery defaults + config overrides. (#1553) Thanks @fal3. https://docs.kaijibot.ai/bedrock
-- CLI: add `kaijibot system` for system events + heartbeat controls; remove standalone `wake`. (commit 71203829d) https://docs.kaijibot.ai/cli/system
-- CLI: add live auth probes to `kaijibot models status` for per-profile verification. (commit 40181afde) https://docs.kaijibot.ai/cli/models
+- Channels: allow per-group tool allow/deny policies across built-in + plugin channels. (#1546) Thanks @adam91holt. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/multi-agent-sandbox-tools
+- Agents: add Bedrock auto-discovery defaults + config overrides. (#1553) Thanks @fal3. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/bedrock
+- CLI: add `kaijibot system` for system events + heartbeat controls; remove standalone `wake`. (commit 71203829d) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/system
+- CLI: add live auth probes to `kaijibot models status` for per-profile verification. (commit 40181afde) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/models
 - CLI: restart the gateway by default after `kaijibot update`; add `--no-restart` to skip it. (commit 2c85b1b40)
 - Browser: add node-host proxy auto-routing for remote gateways (configurable per gateway/node). (commit c3cb26f7c)
-- Plugins: add optional `llm-task` JSON-only tool for workflows. (#1498) Thanks @vignesh07. https://docs.kaijibot.ai/tools/llm-task
+- Plugins: add optional `llm-task` JSON-only tool for workflows. (#1498) Thanks @vignesh07. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/llm-task
 - Markdown: add per-channel table conversion (bullets for Signal/WhatsApp, code blocks elsewhere). (#1495) Thanks @odysseus0.
 - Agents: keep system prompt time zone-only and move current time to `session_status` for better cache hits. (commit 66eec295b)
 - Agents: remove redundant bash tool alias from tool registration/display. (#1571) Thanks @Takhoffman.
-- Docs: add cron vs heartbeat decision guide (with Lobster workflow notes). (#1533) Thanks @JustYannicc. https://docs.kaijibot.ai/automation/cron-vs-heartbeat
-- Docs: clarify HEARTBEAT.md empty file skips heartbeats, missing file still runs. (#1535) Thanks @JustYannicc. https://docs.kaijibot.ai/gateway/heartbeat
+- Docs: add cron vs heartbeat decision guide (with Lobster workflow notes). (#1533) Thanks @JustYannicc. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/cron-vs-heartbeat
+- Docs: clarify HEARTBEAT.md empty file skips heartbeats, missing file still runs. (#1535) Thanks @JustYannicc. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/heartbeat
 
 ### Fixes
 
@@ -4892,15 +4892,15 @@ Docs: https://docs.kaijibot.ai
 
 ### Fixes
 
-- Control UI: ignore bootstrap identity placeholder text for avatar values and fall back to the default avatar. https://docs.kaijibot.ai/cli/agents https://docs.kaijibot.ai/web/control-ui
+- Control UI: ignore bootstrap identity placeholder text for avatar values and fall back to the default avatar. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/agents https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web/control-ui
 - Slack: remove deprecated `filetype` field from `files.uploadV2` to eliminate API warnings. (#1447)
 
 ## 2026.1.21
 
 ### Changes
 
-- Highlight: Lobster optional plugin tool for typed workflows + approval gates. https://docs.kaijibot.ai/tools/lobster
-- Lobster: allow workflow file args via `argsJson` in the plugin tool. https://docs.kaijibot.ai/tools/lobster
+- Highlight: Lobster optional plugin tool for typed workflows + approval gates. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/lobster
+- Lobster: allow workflow file args via `argsJson` in the plugin tool. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/lobster
 - Heartbeat: allow running heartbeats in an explicit session key. (#1256) Thanks @zknicker.
 - CLI: default exec approvals to the local host, add gateway/node targeting flags, and show target details in allowlist output.
 - CLI: exec approvals mutations render tables instead of raw JSON.
@@ -4912,11 +4912,11 @@ Docs: https://docs.kaijibot.ai
 - Sessions: add per-channel reset overrides via `session.resetByChannel`. (#1353) Thanks @cash-echo-bot.
 - Agents: add identity avatar config support and Control UI avatar rendering. (#1329, #1424) Thanks @dlauer.
 - UI: show per-session assistant identity in the Control UI. (#1420) Thanks @robbyczgw-cla.
-- CLI: add `kaijibot update wizard` for interactive channel selection and restart prompts. https://docs.kaijibot.ai/cli/update
+- CLI: add `kaijibot update wizard` for interactive channel selection and restart prompts. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/update
 - Signal: add typing indicators and DM read receipts via signal-cli.
 - MSTeams: add file uploads, adaptive cards, and attachment handling improvements. (#1410) Thanks @Evizero.
 - Onboarding: remove the run setup-token auth option (paste setup-token or reuse CLI creds instead).
-- Docs: add troubleshooting entry for gateway.mode blocking gateway start. https://docs.kaijibot.ai/gateway/troubleshooting
+- Docs: add troubleshooting entry for gateway.mode blocking gateway start. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/troubleshooting
 - Docs: add /model allowlist troubleshooting note. (#1405)
 - Docs: add per-message Gmail search example for gog. (#1220) Thanks @mbelinky.
 
@@ -4944,75 +4944,75 @@ Docs: https://docs.kaijibot.ai
 
 ### Breaking
 
-- **BREAKING:** Control UI now rejects insecure HTTP without device identity by default. Use HTTPS (Tailscale Serve) or set `gateway.controlUi.allowInsecureAuth: true` to allow token-only auth. https://docs.kaijibot.ai/web/control-ui#insecure-http
+- **BREAKING:** Control UI now rejects insecure HTTP without device identity by default. Use HTTPS (Tailscale Serve) or set `gateway.controlUi.allowInsecureAuth: true` to allow token-only auth. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web/control-ui#insecure-http
 - **BREAKING:** Envelope and system event timestamps now default to host-local time (was UTC) so agents don't have to constantly convert.
 
 ## 2026.1.20
 
 ### Changes
 
-- Control UI: add copy-as-markdown with error feedback. (#1345) https://docs.kaijibot.ai/web/control-ui
-- Control UI: drop the legacy list view. (#1345) https://docs.kaijibot.ai/web/control-ui
-- TUI: add syntax highlighting for code blocks. (#1200) https://docs.kaijibot.ai/tui
-- TUI: session picker shows derived titles, fuzzy search, relative times, and last message preview. (#1271) https://docs.kaijibot.ai/tui
-- TUI: add a searchable model picker for quicker model selection. (#1198) https://docs.kaijibot.ai/tui
-- TUI: add input history (up/down) for submitted messages. (#1348) https://docs.kaijibot.ai/tui
-- ACP: add `kaijibot acp` for IDE integrations. https://docs.kaijibot.ai/cli/acp
-- ACP: add `kaijibot acp client` interactive harness for debugging. https://docs.kaijibot.ai/cli/acp
-- Skills: add download installs with OS-filtered options. https://docs.kaijibot.ai/tools/skills
-- Skills: add the local sherpa-onnx-tts skill. https://docs.kaijibot.ai/tools/skills
-- Memory: add hybrid BM25 + vector search (FTS5) with weighted merging and fallback. https://docs.kaijibot.ai/concepts/memory
-- Memory: add SQLite embedding cache to speed up reindexing and frequent updates. https://docs.kaijibot.ai/concepts/memory
-- Memory: add OpenAI batch indexing for embeddings when configured. https://docs.kaijibot.ai/concepts/memory
-- Memory: enable OpenAI batch indexing by default for OpenAI embeddings. https://docs.kaijibot.ai/concepts/memory
-- Memory: allow parallel OpenAI batch indexing jobs (default concurrency: 2). https://docs.kaijibot.ai/concepts/memory
-- Memory: render progress immediately, color batch statuses in verbose logs, and poll OpenAI batch status every 2s by default. https://docs.kaijibot.ai/concepts/memory
-- Memory: add `--verbose` logging for memory status + batch indexing details. https://docs.kaijibot.ai/concepts/memory
-- Memory: add native Gemini embeddings provider for memory search. (#1151) https://docs.kaijibot.ai/concepts/memory
-- Browser: allow config defaults for efficient snapshots in the tool/CLI. (#1336) https://docs.kaijibot.ai/tools/browser
-- Nostr: add the Nostr channel plugin with profile management + onboarding defaults. (#1323) https://docs.kaijibot.ai/channels/nostr
-- Matrix: migrate to matrix-bot-sdk with E2EE support, location handling, and group allowlist upgrades. (#1298) https://docs.kaijibot.ai/channels/matrix
-- Slack: add HTTP webhook mode via Bolt HTTP receiver. (#1143) https://docs.kaijibot.ai/channels/slack
-- Telegram: enrich forwarded-message context with normalized origin details + legacy fallback. (#1090) https://docs.kaijibot.ai/channels/telegram
+- Control UI: add copy-as-markdown with error feedback. (#1345) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web/control-ui
+- Control UI: drop the legacy list view. (#1345) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web/control-ui
+- TUI: add syntax highlighting for code blocks. (#1200) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tui
+- TUI: session picker shows derived titles, fuzzy search, relative times, and last message preview. (#1271) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tui
+- TUI: add a searchable model picker for quicker model selection. (#1198) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tui
+- TUI: add input history (up/down) for submitted messages. (#1348) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tui
+- ACP: add `kaijibot acp` for IDE integrations. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/acp
+- ACP: add `kaijibot acp client` interactive harness for debugging. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/acp
+- Skills: add download installs with OS-filtered options. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/skills
+- Skills: add the local sherpa-onnx-tts skill. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/skills
+- Memory: add hybrid BM25 + vector search (FTS5) with weighted merging and fallback. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: add SQLite embedding cache to speed up reindexing and frequent updates. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: add OpenAI batch indexing for embeddings when configured. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: enable OpenAI batch indexing by default for OpenAI embeddings. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: allow parallel OpenAI batch indexing jobs (default concurrency: 2). https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: render progress immediately, color batch statuses in verbose logs, and poll OpenAI batch status every 2s by default. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: add `--verbose` logging for memory status + batch indexing details. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Memory: add native Gemini embeddings provider for memory search. (#1151) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/memory
+- Browser: allow config defaults for efficient snapshots in the tool/CLI. (#1336) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/browser
+- Nostr: add the Nostr channel plugin with profile management + onboarding defaults. (#1323) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/nostr
+- Matrix: migrate to matrix-bot-sdk with E2EE support, location handling, and group allowlist upgrades. (#1298) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/matrix
+- Slack: add HTTP webhook mode via Bolt HTTP receiver. (#1143) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/slack
+- Telegram: enrich forwarded-message context with normalized origin details + legacy fallback. (#1090) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/telegram
 - Discord: fall back to `/skill` when native command limits are exceeded. (#1287)
 - Discord: expose `/skill` globally. (#1287)
-- Zalouser: add channel dock metadata, config schema, setup wiring, probe, and status issues. (#1219) https://docs.kaijibot.ai/plugins/zalouser
-- Plugins: require manifest-embedded config schemas with preflight validation warnings. (#1272) https://docs.kaijibot.ai/plugins/manifest
-- Plugins: move channel catalog metadata into plugin manifests. (#1290) https://docs.kaijibot.ai/plugins/manifest
-- Plugins: align Nextcloud Talk policy helpers with core patterns. (#1290) https://docs.kaijibot.ai/plugins/manifest
-- Plugins/UI: let channel plugin metadata drive UI labels/icons and cron channel options. (#1306) https://docs.kaijibot.ai/web/control-ui
-- Agents/UI: add agent avatar support in identity config, IDENTITY.md, and the Control UI. (#1329) https://docs.kaijibot.ai/gateway/configuration
-- Plugins: add plugin slots with a dedicated memory slot selector. https://docs.kaijibot.ai/plugins/agent-tools
-- Plugins: ship the bundled BlueBubbles channel plugin (disabled by default). https://docs.kaijibot.ai/channels/bluebubbles
+- Zalouser: add channel dock metadata, config schema, setup wiring, probe, and status issues. (#1219) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/zalouser
+- Plugins: require manifest-embedded config schemas with preflight validation warnings. (#1272) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/manifest
+- Plugins: move channel catalog metadata into plugin manifests. (#1290) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/manifest
+- Plugins: align Nextcloud Talk policy helpers with core patterns. (#1290) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/manifest
+- Plugins/UI: let channel plugin metadata drive UI labels/icons and cron channel options. (#1306) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web/control-ui
+- Agents/UI: add agent avatar support in identity config, IDENTITY.md, and the Control UI. (#1329) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/configuration
+- Plugins: add plugin slots with a dedicated memory slot selector. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/agent-tools
+- Plugins: ship the bundled BlueBubbles channel plugin (disabled by default). https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/bluebubbles
 - Plugins: migrate bundled messaging extensions to the plugin SDK and resolve plugin-sdk imports in the loader.
-- Plugins: migrate the Zalo plugin to the shared plugin SDK runtime. https://docs.kaijibot.ai/channels/zalo
-- Plugins: migrate the Zalo Personal plugin to the shared plugin SDK runtime. https://docs.kaijibot.ai/plugins/zalouser
-- Plugins: allow optional agent tools with explicit allowlists and add the plugin tool authoring guide. https://docs.kaijibot.ai/plugins/agent-tools
+- Plugins: migrate the Zalo plugin to the shared plugin SDK runtime. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/zalo
+- Plugins: migrate the Zalo Personal plugin to the shared plugin SDK runtime. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/zalouser
+- Plugins: allow optional agent tools with explicit allowlists and add the plugin tool authoring guide. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/agent-tools
 - Plugins: auto-enable bundled channel/provider plugins when configuration is present.
 - Plugins: sync plugin sources on channel switches and update npm-installed plugins during `kaijibot update`.
 - Plugins: share npm plugin update logic between `kaijibot update` and `kaijibot plugins update`.
 
 - Gateway/API: add `/v1/responses` (OpenResponses) with item-based input + semantic streaming events. (#1229)
 - Gateway/API: expand `/v1/responses` to support file/image inputs, tool_choice, usage, and output limits. (#1229)
-- Usage: add `/usage cost` summaries and macOS menu cost charts. https://docs.kaijibot.ai/reference/api-usage-costs
-- Security: warn when <=300B models run without sandboxing while web tools are enabled. https://docs.kaijibot.ai/cli/security
-- Exec: add host/security/ask routing for gateway + node exec. https://docs.kaijibot.ai/tools/exec
-- Exec: add `/exec` directive for per-session exec defaults (host/security/ask/node). https://docs.kaijibot.ai/tools/exec
-- Exec approvals: migrate approvals to `~/.kaijibot/exec-approvals.json` with per-agent allowlists + skill auto-allow toggle, and add approvals UI + node exec lifecycle events. https://docs.kaijibot.ai/tools/exec-approvals
-- Nodes: add headless node host (`kaijibot node start`) for `system.run`/`system.which`. https://docs.kaijibot.ai/cli/node
-- Nodes: add node daemon service install/status/start/stop/restart. https://docs.kaijibot.ai/cli/node
+- Usage: add `/usage cost` summaries and macOS menu cost charts. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/reference/api-usage-costs
+- Security: warn when <=300B models run without sandboxing while web tools are enabled. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/security
+- Exec: add host/security/ask routing for gateway + node exec. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/exec
+- Exec: add `/exec` directive for per-session exec defaults (host/security/ask/node). https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/exec
+- Exec approvals: migrate approvals to `~/.kaijibot/exec-approvals.json` with per-agent allowlists + skill auto-allow toggle, and add approvals UI + node exec lifecycle events. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/exec-approvals
+- Nodes: add headless node host (`kaijibot node start`) for `system.run`/`system.which`. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/node
+- Nodes: add node daemon service install/status/start/stop/restart. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/node
 - Bridge: add `skills.bins` RPC to support node host auto-allow skill bins.
-- Sessions: add daily reset policy with per-type overrides and idle windows (default 4am local), preserving legacy idle-only configs. (#1146) https://docs.kaijibot.ai/concepts/session
-- Sessions: allow `sessions_spawn` to override thinking level for sub-agent runs. https://docs.kaijibot.ai/tools/subagents
-- Channels: unify thread/topic allowlist matching + command/mention gating helpers across core providers. https://docs.kaijibot.ai/concepts/groups
-- Models: add Qwen Portal OAuth provider support. (#1120) https://docs.kaijibot.ai/providers/qwen
-- Onboarding: add allowlist prompts and username-to-id resolution across core and extension channels. https://docs.kaijibot.ai/start/onboarding
-- Docs: clarify allowlist input types and onboarding behavior for messaging channels. https://docs.kaijibot.ai/start/onboarding
-- Docs: refresh Android node discovery docs for the Gateway WS service type. https://docs.kaijibot.ai/platforms/android
-- Docs: surface Amazon Bedrock in provider lists and clarify Bedrock auth env vars. (#1289) https://docs.kaijibot.ai/bedrock
-- Docs: clarify WhatsApp voice notes. https://docs.kaijibot.ai/channels/whatsapp
-- Docs: clarify Windows WSL portproxy LAN access notes. https://docs.kaijibot.ai/platforms/windows
-- Docs: refresh bird skill install metadata and usage notes. (#1302) https://docs.kaijibot.ai/tools/browser-login
+- Sessions: add daily reset policy with per-type overrides and idle windows (default 4am local), preserving legacy idle-only configs. (#1146) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/session
+- Sessions: allow `sessions_spawn` to override thinking level for sub-agent runs. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/subagents
+- Channels: unify thread/topic allowlist matching + command/mention gating helpers across core providers. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/groups
+- Models: add Qwen Portal OAuth provider support. (#1120) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/providers/qwen
+- Onboarding: add allowlist prompts and username-to-id resolution across core and extension channels. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/start/onboarding
+- Docs: clarify allowlist input types and onboarding behavior for messaging channels. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/start/onboarding
+- Docs: refresh Android node discovery docs for the Gateway WS service type. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/platforms/android
+- Docs: surface Amazon Bedrock in provider lists and clarify Bedrock auth env vars. (#1289) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/bedrock
+- Docs: clarify WhatsApp voice notes. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/channels/whatsapp
+- Docs: clarify Windows WSL portproxy LAN access notes. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/platforms/windows
+- Docs: refresh bird skill install metadata and usage notes. (#1302) https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/browser-login
 - Agents: add local docs path resolution and include docs/mirror/source/community pointers in the system prompt.
 - Agents: clarify node_modules read-only guidance in agent instructions.
 - Config: stamp last-touched metadata on write and warn if the config is newer than the running build.
@@ -5141,12 +5141,12 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 
 ### Highlights
 
-- Hooks: add hooks system with bundled hooks, CLI tooling, and docs. (#1028) - thanks @ThomsenDrake. https://docs.kaijibot.ai/hooks
-- Media: add inbound media understanding (image/audio/video) with provider + CLI fallbacks. https://docs.kaijibot.ai/nodes/media-understanding
-- Plugins: add Zalo Personal plugin (`@kaijibot/zalouser`) and unify channel directory for plugins. (#1032) - thanks @suminhthanh. https://docs.kaijibot.ai/plugins/zalouser
-- Models: add Vercel AI Gateway auth choice + onboarding updates. (#1016) - thanks @timolins. https://docs.kaijibot.ai/providers/vercel-ai-gateway
-- Sessions: add `session.identityLinks` for cross-platform DM session li nking. (#1033) - thanks @thewilloftheshadow. https://docs.kaijibot.ai/concepts/session
-- Web search: add `country`/`language` parameters (schema + Brave API) and docs. (#1046) - thanks @YuriNachos. https://docs.kaijibot.ai/tools/web
+- Hooks: add hooks system with bundled hooks, CLI tooling, and docs. (#1028) - thanks @ThomsenDrake. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/hooks
+- Media: add inbound media understanding (image/audio/video) with provider + CLI fallbacks. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/nodes/media-understanding
+- Plugins: add Zalo Personal plugin (`@kaijibot/zalouser`) and unify channel directory for plugins. (#1032) - thanks @suminhthanh. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/zalouser
+- Models: add Vercel AI Gateway auth choice + onboarding updates. (#1016) - thanks @timolins. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/providers/vercel-ai-gateway
+- Sessions: add `session.identityLinks` for cross-platform DM session li nking. (#1033) - thanks @thewilloftheshadow. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/session
+- Web search: add `country`/`language` parameters (schema + Brave API) and docs. (#1046) - thanks @YuriNachos. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web
 
 ### Changes
 
@@ -5157,7 +5157,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 - Tools: send Chrome-like headers by default for `web_fetch` to improve extraction on bot-sensitive sites.
 - Tools: Firecrawl fallback now uses bot-circumvention + cache by default; remove basic HTML fallback when extraction fails.
 - Tools: default `exec` exit notifications and auto-migrate legacy `tools.bash` to `tools.exec`.
-- Tools: add `exec` PTY support for interactive sessions. https://docs.kaijibot.ai/tools/exec
+- Tools: add `exec` PTY support for interactive sessions. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/exec
 - Tools: add tmux-style `process send-keys` and bracketed paste helpers for PTY sessions.
 - Tools: add `process submit` helper to send CR for PTY sessions.
 - Tools: respond to PTY cursor position queries to unblock interactive TUIs.
@@ -5213,7 +5213,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 - Sessions: hard-stop `sessions.delete` cleanup.
 - Channels: treat replies to the bot as implicit mentions across supported channels.
 - Channels: normalize object-format capabilities in channel capability parsing.
-- Security: default-deny slash/control commands unless a channel computed `CommandAuthorized` (fixes accidental "open" behavior), and ensure WhatsApp + Zalo plugin channels gate inline `/...` tokens correctly. https://docs.kaijibot.ai/gateway/security
+- Security: default-deny slash/control commands unless a channel computed `CommandAuthorized` (fixes accidental "open" behavior), and ensure WhatsApp + Zalo plugin channels gate inline `/...` tokens correctly. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/security
 - Security: redact sensitive text in gateway WS logs.
 - Tools: cap pending `exec` process output to avoid unbounded buffers.
 - CLI: speed up `kaijibot sandbox-explain` by avoiding heavy plugin imports when normalizing channel ids.
@@ -5245,7 +5245,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 - **BREAKING:** Channel auth now prefers config over env for Discord/Telegram/Matrix (env is fallback only). (#1040) - thanks @thewilloftheshadow.
 - **BREAKING:** Drop legacy `chatType: "room"` support; use `chatType: "channel"`.
 - **BREAKING:** remove legacy provider-specific target resolution fallbacks; target resolution is centralized with plugin hints + directory lookups.
-- **BREAKING:** `kaijibot hooks` is now `kaijibot webhooks`; hooks live under `kaijibot hooks`. https://docs.kaijibot.ai/cli/webhooks
+- **BREAKING:** `kaijibot hooks` is now `kaijibot webhooks`; hooks live under `kaijibot hooks`. https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/webhooks
 - **BREAKING:** `kaijibot plugins install <path>` now copies into `~/.kaijibot/extensions` (use `--link` to keep path-based loading).
 
 ## 2026.1.15
@@ -5539,7 +5539,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 - Agents: add pre-compaction memory flush config (`agents.defaults.compaction.*`) with a soft threshold + system prompt.
 - Config: add `$include` directive for modular config files. (#731) - thanks @pasogott.
 - Build: set pnpm minimum release age to 2880 minutes (2 days). (#718) - thanks @dan-dr.
-- macOS: prompt to install the global `kaijibot` CLI when missing in local mode; install via `kaijibot.ai/install-cli.sh` (no onboarding) and use external launchd/CLI instead of the embedded gateway runtime.
+- macOS: prompt to install the global `kaijibot` CLI when missing in local mode; install via `gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh` (no onboarding) and use external launchd/CLI instead of the embedded gateway runtime.
 - Docs: add gog calendar event color IDs from `gog calendar colors`. (#715) - thanks @mjrussell.
 - Cron/CLI: add `--model` flag to cron add/edit commands. (#711) - thanks @mjrussell.
 - Cron/CLI: trim model overrides on cron edits and document main-session guidance. (#711) - thanks @mjrussell.
@@ -5594,7 +5594,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 
 - Postinstall: replace `git apply` with builtin JS patcher (works npm/pnpm/bun; no git dependency) plus regression tests.
 - Postinstall: skip pnpm patch fallback when the new patcher is active.
-- Installer tests: add root+non-root docker smokes, CI workflow to fetch kaijibot.ai scripts and run install sh/cli with onboarding skipped.
+- Installer tests: add root+non-root docker smokes, CI workflow to fetch gitee.com/kaiji1126/kaijibot scripts and run install sh/cli with onboarding skipped.
 - Installer UX: support `CLAWDBOT_NO_ONBOARD=1` for non-interactive installs; fix npm prefix on Linux and auto-install git.
 - Installer UX: add `install.sh --help` with flags/env and git install hint.
 - Installer UX: add `--install-method git|npm` and auto-detect source checkouts (prompt to update git checkout vs migrate to npm).

@@ -1,7 +1,7 @@
 ---
 name: boot-md
 description: "Run BOOT.md on gateway startup"
-homepage: https://docs.kaijibot.ai/automation/hooks#boot-md
+homepage: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md#boot-md
 metadata:
   {
     "kaijibot":

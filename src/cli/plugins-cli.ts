@@ -238,7 +238,7 @@ export function registerPluginsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/plugins", "docs.kaijibot.ai/cli/plugins")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/plugins", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/plugins.md")}\n`,
     );
 
   plugins
@@ -853,7 +853,7 @@ export function registerPluginsCli(program: Command) {
           lines.push(`- ${formatPluginCompatibilityNotice(notice)} [${marker}]`);
         }
       }
-      const docs = formatDocsLink("/plugin", "docs.kaijibot.ai/plugin");
+      const docs = formatDocsLink("/plugin", "gitee.com/kaiji1126/kaijibot/blob/main/docs/plugin.md");
       lines.push("");
       lines.push(`${theme.muted("Docs:")} ${docs}`);
       defaultRuntime.log(lines.join("\n"));

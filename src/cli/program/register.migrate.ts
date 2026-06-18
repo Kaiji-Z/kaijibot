@@ -13,7 +13,7 @@ export function registerMigrateCommand(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/migrate", "docs.kaijibot.ai/cli/migrate")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/migrate", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/migrate.md")}\n`,
     )
     .option("--dry-run", "Preview migration without applying changes", false)
     .option("--source <path>", "Explicit source directory (overrides auto-detection)")

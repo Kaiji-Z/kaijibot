@@ -19,7 +19,7 @@ describe("config validation SecretRef policy guards", () => {
       expect(issue).toBeDefined();
       expect(issue?.message).toContain("SecretRef objects are not supported at hooks.token");
       expect(issue?.message).toContain(
-        "https://docs.kaijibot.ai/reference/secretref-credential-surface",
+        "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/reference/secretref-credential-surface.md",
       );
       expect(
         result.issues.some(

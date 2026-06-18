@@ -138,7 +138,7 @@ export function configureProgramHelp(program: Command, ctx: ProgramContext) {
     if (command !== program) {
       return "";
     }
-    const docs = formatDocsLink("/cli", "docs.kaijibot.ai/cli");
+    const docs = formatDocsLink("/cli", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli.md");
     return `\n${theme.heading("Examples:")}\n${fmtExamples}\n\n${theme.muted("Docs:")} ${docs}\n`;
   });
 }

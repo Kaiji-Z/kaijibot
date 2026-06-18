@@ -396,7 +396,7 @@ export type ChannelGatewayContext<ResolvedAccount = unknown> = {
    *   partial stubs are not supported
    *
    * @since Plugin SDK 2026.2.19
-   * @see {@link https://docs.kaijibot.ai/plugins/developing-plugins | Plugin SDK documentation}
+   * @see {@link https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/developing-plugins.md | Plugin SDK documentation}
    */
   channelRuntime?: PluginRuntime["channel"];
 };

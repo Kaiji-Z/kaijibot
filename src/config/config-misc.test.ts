@@ -14,11 +14,11 @@ import { KaijiBotSchema } from "./zod-schema.js";
 describe("$schema key in config (#14998)", () => {
   it("accepts config with $schema string", () => {
     const result = KaijiBotSchema.safeParse({
-      $schema: "https://kaijibot.ai/config.json",
+      $schema: "https://example.com/config.json",
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.$schema).toBe("https://kaijibot.ai/config.json");
+      expect(result.data.$schema).toBe("https://example.com/config.json");
     }
   });
 

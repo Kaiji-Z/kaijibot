@@ -275,7 +275,7 @@ export default definePluginEntry({
       buildUnknownModelHint: () =>
         "Ollama requires authentication to be registered as a provider. " +
         'Set OLLAMA_API_KEY="ollama-local" (any value works) or run "kaijibot configure". ' +
-        "See: https://docs.kaijibot.ai/providers/ollama",
+        "See: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/providers/ollama.md",
     });
   },
 });

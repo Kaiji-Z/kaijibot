@@ -81,7 +81,7 @@ session-memory/
 ---
 name: my-hook
 description: "Short description"
-homepage: https://docs.kaijibot.ai/automation/hooks#my-hook
+homepage: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md#my-hook
 metadata:
   { "kaijibot": { "emoji": "🔗", "events": ["command:new"], "requires": { "bins": ["node"] } } }
 ---
@@ -220,4 +220,4 @@ Test your hooks by:
 
 ## Documentation
 
-Full documentation: https://docs.kaijibot.ai/automation/hooks
+Full documentation: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md

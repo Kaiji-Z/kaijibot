@@ -53,7 +53,7 @@ export function registerPairingCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/pairing", "docs.kaijibot.ai/cli/pairing")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/pairing", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/pairing.md")}\n`,
     );
 
   pairing

@@ -457,7 +457,7 @@ export function registerHooksCli(program: Command): void {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/hooks", "docs.kaijibot.ai/cli/hooks")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/hooks", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/hooks.md")}\n`,
     );
 
   hooks

@@ -98,7 +98,7 @@ describe("ollama web search provider", () => {
           results: [
             {
               title: "OpenClaw",
-              url: "https://kaijibot.ai/docs",
+              url: "https://example.com/docs",
               content: "Gateway docs and setup details",
             },
           ],
@@ -144,7 +144,7 @@ describe("ollama web search provider", () => {
       query: "kaijibot docs",
       provider: "ollama",
       count: 1,
-      results: [{ url: "https://kaijibot.ai/docs" }],
+      results: [{ url: "https://example.com/docs" }],
     });
     expect(release).toHaveBeenCalledTimes(1);
   });

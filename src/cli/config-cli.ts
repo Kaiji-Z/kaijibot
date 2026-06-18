@@ -1314,7 +1314,7 @@ export function registerConfigCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/config", "docs.kaijibot.ai/cli/config")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/config", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/config.md")}\n`,
     )
     .option(
       "--section <section>",

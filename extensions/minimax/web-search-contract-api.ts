@@ -16,7 +16,7 @@ export function createMiniMaxWebSearchProvider(): WebSearchProviderPlugin {
     envVars: [...MINIMAX_CODING_PLAN_ENV_VARS],
     placeholder: "sk-cp-...",
     signupUrl: "https://platform.minimax.io/user-center/basic-information/interface-key",
-    docsUrl: "https://docs.kaijibot.ai/tools/minimax-search",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/minimax-search.md",
     autoDetectOrder: 15,
     credentialPath,
     ...createWebSearchProviderContractFields({

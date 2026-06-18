@@ -251,7 +251,7 @@ export async function promptGatewayConfig(
         "Only requests from specified proxy IPs will be trusted.",
         "",
         "Common use cases: Pomerium, Caddy + OAuth, Traefik + forward auth",
-        "Docs: https://docs.kaijibot.ai/gateway/trusted-proxy-auth",
+        "Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/trusted-proxy-auth.md",
       ].join("\n"),
       "Trusted Proxy Auth",
     );

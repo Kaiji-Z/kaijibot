@@ -8,11 +8,11 @@ const shouldWarnExtensionApiImport =
 
 if (shouldWarnExtensionApiImport) {
   process.emitWarning(
-    "kaijibot/extension-api is deprecated. Migrate to api.runtime.agent.* or focused kaijibot/plugin-sdk/<subpath> imports. See https://docs.kaijibot.ai/plugins/sdk-migration",
+    "kaijibot/extension-api is deprecated. Migrate to api.runtime.agent.* or focused kaijibot/plugin-sdk/<subpath> imports. See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/sdk-migration.md",
     {
       code: "KAIJIBOT_EXTENSION_API_DEPRECATED",
       detail:
-        "This compatibility bridge is temporary. Bundled plugins should use the injected plugin runtime instead of importing host-side agent helpers directly. Migration guide: https://docs.kaijibot.ai/plugins/sdk-migration",
+        "This compatibility bridge is temporary. Bundled plugins should use the injected plugin runtime instead of importing host-side agent helpers directly. Migration guide: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/plugins/sdk-migration.md",
     },
   );
 }

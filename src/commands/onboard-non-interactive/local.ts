@@ -304,7 +304,7 @@ export async function runNonInteractiveLocalSetup(params: {
 
   if (!opts.json) {
     runtime.log(
-      `Tip: run \`${formatCliCommand("kaijibot configure --section web")}\` to store your Brave API key for web_search. Docs: https://docs.kaijibot.ai/tools/web`,
+      `Tip: run \`${formatCliCommand("kaijibot configure --section web")}\` to store your Brave API key for web_search. Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md`,
     );
   }
 }

@@ -15,7 +15,7 @@ export function createKimiWebSearchProvider(): WebSearchProviderPlugin {
     envVars: ["KIMI_API_KEY", "MOONSHOT_API_KEY"],
     placeholder: "sk-...",
     signupUrl: "https://platform.moonshot.cn/",
-    docsUrl: "https://docs.kaijibot.ai/tools/web",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     autoDetectOrder: 40,
     credentialPath,
     ...createWebSearchProviderContractFields({

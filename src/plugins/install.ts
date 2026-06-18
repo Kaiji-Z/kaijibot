@@ -34,7 +34,7 @@ type PackageManifest = PluginPackageManifest & {
 };
 
 const MISSING_EXTENSIONS_ERROR =
-  'package.json missing kaijibot.extensions; update the plugin package to include kaijibot.extensions (for example ["./dist/index.js"]). See https://docs.kaijibot.ai/help/troubleshooting#plugin-install-fails-with-missing-kaijibot-extensions';
+  'package.json missing kaijibot.extensions; update the plugin package to include kaijibot.extensions (for example ["./dist/index.js"]). See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md#plugin-install-fails-with-missing-kaijibot-extensions';
 const PLUGIN_ARCHIVE_ROOT_MARKERS = [
   "package.json",
   "kaijibot.plugin.json",

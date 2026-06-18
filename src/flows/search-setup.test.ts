@@ -8,7 +8,7 @@ const mockGrokProvider = vi.hoisted(() => ({
   pluginId: "xai",
   label: "Grok",
   hint: "Search with xAI",
-  docsUrl: "https://docs.kaijibot.ai/tools/web",
+  docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
   requiresCredential: true,
   credentialLabel: "xAI API key",
   placeholder: "xai-...",

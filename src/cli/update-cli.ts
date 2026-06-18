@@ -87,7 +87,7 @@ ${theme.heading("Notes:")}
   - Downgrades require confirmation (can break configuration)
   - Skips update if the working directory has uncommitted changes
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.kaijibot.ai/cli/update")}`;
+${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/update.md")}`;
     })
     .action(async (opts) => {
       try {
@@ -112,7 +112,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.kaijibot.ai/cli/up
     .option("--timeout <seconds>", "Timeout for each update step in seconds (default: 1200)")
     .addHelpText(
       "after",
-      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.kaijibot.ai/cli/update")}\n`,
+      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/update.md")}\n`,
     )
     .action(async (opts, command) => {
       try {
@@ -141,7 +141,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.kaijibot.ai/cli/up
           "- Shows current update channel (stable/beta/dev) and source",
         )}\n${theme.muted("- Includes git tag/branch/SHA for source checkouts")}\n\n${theme.muted(
           "Docs:",
-        )} ${formatDocsLink("/cli/update", "docs.kaijibot.ai/cli/update")}`,
+        )} ${formatDocsLink("/cli/update", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/update.md")}`,
     )
     .action(async (opts, command) => {
       try {

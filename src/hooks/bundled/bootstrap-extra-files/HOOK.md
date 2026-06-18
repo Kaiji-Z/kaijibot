@@ -1,7 +1,7 @@
 ---
 name: bootstrap-extra-files
 description: "Inject additional workspace bootstrap files via glob/path patterns"
-homepage: https://docs.kaijibot.ai/automation/hooks#bootstrap-extra-files
+homepage: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md#bootstrap-extra-files
 metadata:
   {
     "kaijibot":

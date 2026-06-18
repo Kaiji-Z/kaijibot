@@ -71,7 +71,7 @@ describe("setupWizardCommand", () => {
           "Windows detected - KaijiBot runs great on WSL2!",
           "Native Windows might be trickier.",
           "Quick setup: wsl --install (one command, one reboot)",
-          "Guide: https://docs.kaijibot.ai/windows",
+          "Guide: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/platforms/windows.md",
         ].join("\n"),
       );
     } finally {

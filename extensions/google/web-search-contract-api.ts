@@ -15,7 +15,7 @@ export function createGeminiWebSearchProvider(): WebSearchProviderPlugin {
     envVars: ["GEMINI_API_KEY"],
     placeholder: "AIza...",
     signupUrl: "https://aistudio.google.com/apikey",
-    docsUrl: "https://docs.kaijibot.ai/tools/web",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     autoDetectOrder: 20,
     credentialPath,
     ...createWebSearchProviderContractFields({

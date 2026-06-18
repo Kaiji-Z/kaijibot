@@ -67,7 +67,7 @@ export function registerSandboxCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/sandbox", "docs.kaijibot.ai/cli/sandbox")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/sandbox", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sandbox.md")}\n`,
     )
     .action(() => {
       sandbox.help({ error: true });

@@ -338,7 +338,7 @@ function buildOpenRouterAttributionPolicy(
     reviewNote: "Documented app attribution headers. Verified in KaijiBot runtime wrapper.",
     ...identity,
     headers: {
-      "HTTP-Referer": "https://kaijibot.ai",
+      "HTTP-Referer": "https://gitee.com/kaiji1126/kaijibot",
       "X-OpenRouter-Title": identity.product,
       "X-OpenRouter-Categories": "cli-agent",
     },

@@ -50,7 +50,7 @@ export function registerSecretsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/gateway/security", "docs.kaijibot.ai/gateway/security")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/gateway/security", "gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/security.md")}\n`,
     );
 
   addGatewayClientOptions(

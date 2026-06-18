@@ -196,7 +196,7 @@ export async function handleBashChatCommand(params: {
     return buildDisabledCommandReply({
       label: "bash",
       configKey: "bash",
-      docsUrl: "https://docs.kaijibot.ai/tools/slash-commands#config",
+      docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/slash-commands.md#config",
     });
   }
 

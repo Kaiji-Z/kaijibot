@@ -349,7 +349,7 @@ describe("runConfigureWizard", () => {
         envVars: [],
         placeholder: "(no key needed)",
         signupUrl: "https://duckduckgo.com/",
-        docsUrl: "https://docs.kaijibot.ai/tools/web",
+        docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
         credentialPath: "",
       }),
     ]);

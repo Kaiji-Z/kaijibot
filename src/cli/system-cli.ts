@@ -46,7 +46,7 @@ export function registerSystemCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/system", "docs.kaijibot.ai/cli/system")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/system", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/system.md")}\n`,
     );
 
   addGatewayClientOptions(

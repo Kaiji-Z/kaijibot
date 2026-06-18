@@ -71,7 +71,7 @@ ${formatHelpExamples([
   ],
 ])}
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.kaijibot.ai/cli/agent")}`,
+${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/agent.md")}`,
     )
     .action(async (opts) => {
       const verboseLevel =
@@ -90,7 +90,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.kaijibot.ai/cli/age
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/agents", "docs.kaijibot.ai/cli/agents")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/agents", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/agents.md")}\n`,
     );
 
   agents

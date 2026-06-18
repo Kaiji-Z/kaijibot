@@ -401,14 +401,14 @@ describe("provider request config", () => {
       capability: "llm",
       transport: "stream",
       callerHeaders: {
-        "HTTP-Referer": "https://example.com",
+        "HTTP-Referer": "https://gitee.com/kaiji1126/kaijibot",
         "X-Custom": "1",
       },
       precedence: "caller-wins",
     });
 
     expect(resolved).toEqual({
-      "HTTP-Referer": "https://kaijibot.ai",
+      "HTTP-Referer": "https://gitee.com/kaiji1126/kaijibot",
       "X-OpenRouter-Title": "KaijiBot",
       "X-OpenRouter-Categories": "cli-agent",
       "X-Custom": "1",

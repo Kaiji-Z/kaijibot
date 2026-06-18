@@ -258,7 +258,7 @@ describe("packNpmSpecToArchive", () => {
     expectPackError(result, [
       "Package not found on npm",
       "@kaijibot/whatsapp",
-      "docs.kaijibot.ai/tools/plugin",
+      "gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/plugin.md",
     ]);
   });
 

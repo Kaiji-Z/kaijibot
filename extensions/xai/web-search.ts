@@ -193,7 +193,7 @@ export function createXaiWebSearchProvider(): WebSearchProviderPlugin {
     envVars: ["XAI_API_KEY"],
     placeholder: "xai-...",
     signupUrl: "https://console.x.ai/",
-    docsUrl: "https://docs.kaijibot.ai/tools/web",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     autoDetectOrder: 30,
     credentialPath: "plugins.entries.xai.config.webSearch.apiKey",
     inactiveSecretPaths: ["plugins.entries.xai.config.webSearch.apiKey"],
@@ -230,7 +230,7 @@ export function createXaiWebSearchProvider(): WebSearchProviderPlugin {
               error: "missing_xai_api_key",
               message:
                 "web_search (grok) needs an xAI API key. Set XAI_API_KEY in the Gateway environment, or configure plugins.entries.xai.config.webSearch.apiKey.",
-              docs: "https://docs.kaijibot.ai/tools/web",
+              docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
             };
           }
 

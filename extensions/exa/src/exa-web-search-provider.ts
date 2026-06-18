@@ -130,7 +130,7 @@ function invalidContentsPayload(message: string) {
   return {
     error: "invalid_contents",
     message,
-    docs: "https://docs.kaijibot.ai/tools/web",
+    docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
   };
 }
 
@@ -448,7 +448,7 @@ function missingExaKeyPayload() {
     error: "missing_exa_api_key",
     message:
       "web_search (exa) needs an Exa API key. Set EXA_API_KEY in the Gateway environment, or configure tools.web.search.exa.apiKey.",
-    docs: "https://docs.kaijibot.ai/tools/web",
+    docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
   };
 }
 
@@ -482,7 +482,7 @@ function createExaToolDefinition(
         return {
           error: "invalid_freshness",
           message: 'freshness must be one of "day", "week", "month", or "year".',
-          docs: "https://docs.kaijibot.ai/tools/web",
+          docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
         };
       }
 
@@ -493,7 +493,7 @@ function createExaToolDefinition(
           error: "conflicting_time_filters",
           message:
             "freshness cannot be combined with date_after or date_before. Use one time-filter mode.",
-          docs: "https://docs.kaijibot.ai/tools/web",
+          docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
         };
       }
       const parsedDateRange = parseIsoDateRange({
@@ -600,7 +600,7 @@ export function createExaWebSearchProvider(): WebSearchProviderPlugin {
     envVars: ["EXA_API_KEY"],
     placeholder: "exa-...",
     signupUrl: "https://exa.ai/",
-    docsUrl: "https://docs.kaijibot.ai/tools/web",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
     autoDetectOrder: 65,
     credentialPath: "plugins.entries.exa.config.webSearch.apiKey",
     inactiveSecretPaths: ["plugins.entries.exa.config.webSearch.apiKey"],

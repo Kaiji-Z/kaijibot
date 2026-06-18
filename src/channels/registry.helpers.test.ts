@@ -37,7 +37,7 @@ describe("channel registry helpers", () => {
     );
     expect(line).not.toContain("Docs:");
     expect(line).toContain("/channels/telegram");
-    expect(line).toContain("https://kaijibot.ai");
+    expect(line).toContain("https://example.com");
   });
 
   it("prefers the pinned channel registry when resolving registered plugin channels", () => {

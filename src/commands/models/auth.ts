@@ -578,7 +578,7 @@ function maybeLogOpenAICodexNativeSearchTip(runtime: RuntimeEnv, providerId: str
     return;
   }
   runtime.log(
-    "Tip: Codex-capable models can use native Codex web search. Enable it with kaijibot configure --section web (recommended mode: cached). Docs: https://docs.kaijibot.ai/tools/web",
+    "Tip: Codex-capable models can use native Codex web search. Enable it with kaijibot configure --section web (recommended mode: cached). Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
   );
 }
 export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: RuntimeEnv) {

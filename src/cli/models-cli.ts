@@ -46,7 +46,7 @@ export function registerModelsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/models", "docs.kaijibot.ai/cli/models")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/models", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/models.md")}\n`,
     );
 
   models

@@ -78,7 +78,7 @@ export function registerChannelsCli(program: Command) {
           ["kaijibot channels login --channel feishu", "Link a Feishu account."],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/channels",
-          "docs.kaijibot.ai/cli/channels",
+          "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/channels.md",
         )}\n`,
     );
 

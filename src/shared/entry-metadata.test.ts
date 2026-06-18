@@ -5,12 +5,12 @@ describe("shared/entry-metadata", () => {
   it("prefers metadata emoji and homepage when present", () => {
     expect(
       resolveEmojiAndHomepage({
-        metadata: { emoji: "🦀", homepage: " https://kaijibot.ai " },
+        metadata: { emoji: "🦀", homepage: " https://example.com " },
         frontmatter: { emoji: "🙂", homepage: "https://example.com" },
       }),
     ).toEqual({
       emoji: "🦀",
-      homepage: "https://kaijibot.ai",
+      homepage: "https://example.com",
     });
   });
 
@@ -26,11 +26,11 @@ describe("shared/entry-metadata", () => {
   it("falls back through frontmatter homepage aliases and drops blanks", () => {
     expect(
       resolveEmojiAndHomepage({
-        frontmatter: { emoji: "🙂", website: " https://docs.kaijibot.ai " },
+        frontmatter: { emoji: "🙂", website: " https://gitee.com/kaiji1126/kaijibot/blob/main/docs " },
       }),
     ).toEqual({
       emoji: "🙂",
-      homepage: "https://docs.kaijibot.ai",
+      homepage: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs",
     });
     expect(
       resolveEmojiAndHomepage({
@@ -40,10 +40,10 @@ describe("shared/entry-metadata", () => {
     ).toEqual({});
     expect(
       resolveEmojiAndHomepage({
-        frontmatter: { url: " https://kaijibot.ai/install " },
+        frontmatter: { url: " https://example.com/install " },
       }),
     ).toEqual({
-      homepage: "https://kaijibot.ai/install",
+      homepage: "https://example.com/install",
     });
   });
 
@@ -52,8 +52,8 @@ describe("shared/entry-metadata", () => {
       resolveEmojiAndHomepage({
         frontmatter: {
           homepage: " ",
-          website: "https://docs.kaijibot.ai",
-          url: "https://kaijibot.ai/install",
+          website: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs",
+          url: "https://example.com/install",
         },
       }),
     ).toEqual({});

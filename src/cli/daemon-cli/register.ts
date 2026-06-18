@@ -10,7 +10,7 @@ export function registerDaemonCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/gateway", "docs.kaijibot.ai/cli/gateway")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/gateway", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/gateway.md")}\n`,
     );
 
   addGatewayServiceCommands(daemon, {

@@ -128,7 +128,7 @@ describe("configureProgramHelp", () => {
     const help = captureHelpOutput(program);
     expect(help).toContain("BANNER-LINE");
     expect(help).toContain("Examples:");
-    expect(help).toContain("https://docs.kaijibot.ai/cli");
+    expect(help).toContain("https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli.md");
   });
 
   it("prints version and exits immediately when version flags are present", () => {

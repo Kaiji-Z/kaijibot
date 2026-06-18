@@ -193,7 +193,7 @@ function missingMiniMaxKeyPayload() {
   return {
     error: "missing_minimax_api_key",
     message: `web_search (minimax) needs a MiniMax Coding Plan key. Run \`${formatCliCommand("kaijibot configure --section web")}\` to store it, or set MINIMAX_CODE_PLAN_KEY, MINIMAX_CODING_API_KEY, or MINIMAX_API_KEY in the Gateway environment.`,
-    docs: "https://docs.kaijibot.ai/tools/web",
+    docs: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/web.md",
   };
 }
 
@@ -280,7 +280,7 @@ export function createMiniMaxWebSearchProvider(): WebSearchProviderPlugin {
     envVars: [...MINIMAX_CODING_PLAN_ENV_VARS],
     placeholder: "sk-cp-...",
     signupUrl: "https://platform.minimax.io/user-center/basic-information/interface-key",
-    docsUrl: "https://docs.kaijibot.ai/tools/minimax-search",
+    docsUrl: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/minimax-search.md",
     autoDetectOrder: 15,
     credentialPath: "plugins.entries.minimax.config.webSearch.apiKey",
     inactiveSecretPaths: ["plugins.entries.minimax.config.webSearch.apiKey"],

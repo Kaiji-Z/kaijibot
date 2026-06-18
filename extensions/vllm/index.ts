@@ -88,7 +88,7 @@ export default definePluginEntry({
       buildUnknownModelHint: () =>
         "vLLM requires authentication to be registered as a provider. " +
         'Set VLLM_API_KEY (any value works) or run "kaijibot configure". ' +
-        "See: https://docs.kaijibot.ai/providers/vllm",
+        "See: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/providers/vllm.md",
     });
   },
 });

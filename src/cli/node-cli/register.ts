@@ -34,7 +34,7 @@ export function registerNodeCli(program: Command) {
           ["kaijibot node status", "Check node host service status."],
           ["kaijibot node install", "Install the node host service."],
           ["kaijibot node restart", "Restart the installed node host service."],
-        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/node", "docs.kaijibot.ai/cli/node")}\n`,
+        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/node", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/node.md")}\n`,
     );
 
   node

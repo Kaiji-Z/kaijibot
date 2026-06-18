@@ -556,7 +556,7 @@ describe("loadGatewayPlugins", () => {
         }),
       ),
     ).rejects.toThrow(
-      'plugin "voice-call" is not trusted for fallback provider/model override requests. See https://docs.kaijibot.ai/tools/plugin#runtime-helpers and search for: plugins.entries.<id>.subagent.allowModelOverride',
+      'plugin "voice-call" is not trusted for fallback provider/model override requests. See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/plugin.md#runtime-helpers and search for: plugins.entries.<id>.subagent.allowModelOverride',
     );
   });
 

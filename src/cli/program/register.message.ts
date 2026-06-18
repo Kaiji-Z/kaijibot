@@ -45,7 +45,7 @@ ${formatHelpExamples([
   ],
 ])}
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "docs.kaijibot.ai/cli/message")}`,
+${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/message.md")}`,
     )
     .action(() => {
       message.help({ error: true });

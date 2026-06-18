@@ -79,7 +79,7 @@ export function buildGatewayConnectionDetailsWithResolvers(
           ? undefined
           : "Break-glass (trusted private networks only): set KAIJIBOT_ALLOW_INSECURE_PRIVATE_WS=1",
         "Doctor: kaijibot doctor --fix",
-        "Docs: https://docs.kaijibot.ai/gateway/remote",
+        "Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/remote.md",
       ].join("\n"),
     );
   }

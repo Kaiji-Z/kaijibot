@@ -1191,7 +1191,7 @@ export function registerCapabilityCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/infer", "docs.kaijibot.ai/cli/infer")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/infer", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/infer.md")}\n`,
     );
 
   registerCapabilityListAndInspect(capability);

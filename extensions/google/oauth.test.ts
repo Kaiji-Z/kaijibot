@@ -675,7 +675,7 @@ describe("loginGeminiCliOAuth", () => {
         });
       }
       if (url === USERINFO_URL) {
-        return responseJson({ email: "lobster@kaijibot.ai" });
+        return responseJson({ email: "lobster@example.com" });
       }
       if (url === LOAD_PROD) {
         return responseJson({ error: { message: "temporary failure" } }, 503);
@@ -726,7 +726,7 @@ describe("loginGeminiCliOAuth", () => {
         });
       }
       if (url === USERINFO_URL) {
-        return responseJson({ email: "lobster@kaijibot.ai" });
+        return responseJson({ email: "lobster@example.com" });
       }
       if (url === LOAD_PROD) {
         return responseJson({
@@ -783,7 +783,7 @@ describe("loginGeminiCliOAuth", () => {
         });
       }
       if (url === USERINFO_URL) {
-        return responseJson({ email: "lobster@kaijibot.ai" });
+        return responseJson({ email: "lobster@example.com" });
       }
       if ([LOAD_PROD, LOAD_DAILY, LOAD_AUTOPUSH].includes(url)) {
         return responseJson({ error: { message: "unavailable" } }, 503);
@@ -823,7 +823,7 @@ describe("loginGeminiCliOAuth", () => {
         });
       }
       if (url === USERINFO_URL) {
-        return responseJson({ email: "lobster@kaijibot.ai" });
+        return responseJson({ email: "lobster@example.com" });
       }
       throw new Error(`Unexpected request: ${url}`);
     });

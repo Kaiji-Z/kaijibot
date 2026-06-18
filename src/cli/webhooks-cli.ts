@@ -28,7 +28,7 @@ export function registerWebhooksCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/webhooks", "docs.kaijibot.ai/cli/webhooks")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/webhooks", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/webhooks.md")}\n`,
     );
 
   const gmail = webhooks.command("gmail").description("Gmail Pub/Sub hooks (via gogcli)");

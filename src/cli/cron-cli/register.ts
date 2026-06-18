@@ -16,7 +16,7 @@ export function registerCronCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/cron", "docs.kaijibot.ai/cli/cron")}\n${theme.muted("Upgrade tip:")} run \`kaijibot doctor --fix\` to normalize legacy cron job storage.\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/cron", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/cron.md")}\n${theme.muted("Upgrade tip:")} run \`kaijibot doctor --fix\` to normalize legacy cron job storage.\n`,
     );
 
   registerCronStatusCommand(cron);

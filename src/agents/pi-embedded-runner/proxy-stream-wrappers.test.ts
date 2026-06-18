@@ -30,7 +30,7 @@ describe("proxy stream wrappers", () => {
     expect(calls).toEqual([
       {
         headers: {
-          "HTTP-Referer": "https://kaijibot.ai",
+          "HTTP-Referer": "https://gitee.com/kaiji1126/kaijibot",
           "X-OpenRouter-Title": "KaijiBot",
           "X-OpenRouter-Categories": "cli-agent",
           "X-Custom": "1",

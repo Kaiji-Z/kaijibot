@@ -130,7 +130,7 @@ describe("loginOpenAICodexOAuth", () => {
     expect(spin.stop).toHaveBeenCalledWith("OpenAI OAuth failed");
     expect(runtime.error).toHaveBeenCalledWith(expect.stringContaining("oauth failed"));
     expect(prompter.note).toHaveBeenCalledWith(
-      "Trouble with OAuth? See https://docs.kaijibot.ai/start/faq",
+      "Trouble with OAuth? See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/faq.md",
       "OAuth help",
     );
   });

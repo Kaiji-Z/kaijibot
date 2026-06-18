@@ -99,7 +99,7 @@ export function registerGatewayCli(program: Command) {
             ["kaijibot gateway status", "Show service status and probe reachability."],
             ["kaijibot gateway discover", "Find local and wide-area gateway beacons."],
             ["kaijibot gateway call health", "Call a gateway RPC method directly."],
-          ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/gateway", "docs.kaijibot.ai/cli/gateway")}\n`,
+          ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/gateway", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/gateway.md")}\n`,
       ),
   );
 

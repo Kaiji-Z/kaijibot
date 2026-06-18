@@ -15,7 +15,7 @@ export function registerConfigureCommand(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/configure", "docs.kaijibot.ai/cli/configure")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/configure", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/configure.md")}\n`,
     )
     .option(
       "--section <section>",

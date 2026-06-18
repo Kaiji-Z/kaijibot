@@ -160,7 +160,7 @@ function authorizeFallbackModelOverride(params: {
       allowed: false,
       reason:
         `plugin "${pluginId}" is not trusted for fallback provider/model override requests. ` +
-        "See https://docs.kaijibot.ai/tools/plugin#runtime-helpers and search for: " +
+        "See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/tools/plugin.md#runtime-helpers and search for: " +
         "plugins.entries.<id>.subagent.allowModelOverride",
     };
   }

@@ -13,7 +13,7 @@ export function registerDocsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "docs.kaijibot.ai/cli/docs")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/docs.md")}\n`,
     )
     .action(async (queryParts: string[]) => {
       await runCommandWithRuntime(defaultRuntime, async () => {

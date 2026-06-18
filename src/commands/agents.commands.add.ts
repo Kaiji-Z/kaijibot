@@ -347,7 +347,7 @@ export async function agentsAddCommand(
         await prompter.note(
           [
             "Routing unchanged. Add bindings when you're ready.",
-            "Docs: https://docs.kaijibot.ai/concepts/multi-agent",
+            "Docs: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/concepts/multi-agent.md",
           ].join("\n"),
           "Routing",
         );

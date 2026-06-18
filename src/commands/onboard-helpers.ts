@@ -152,8 +152,8 @@ export function formatControlUiSshHint(params: {
     localUrl,
     authedUrl,
     "Docs:",
-    "https://docs.kaijibot.ai/gateway/remote",
-    "https://docs.kaijibot.ai/web/control-ui",
+    "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/gateway/remote.md",
+    "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/web/control-ui.md",
   ]
     .filter(Boolean)
     .join("\n");

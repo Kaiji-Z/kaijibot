@@ -26,7 +26,7 @@ describe("shared/entry-status", () => {
       always: false,
       metadata: {
         emoji: "🦀",
-        homepage: "https://kaijibot.ai",
+        homepage: "https://example.com",
         requires: {
           bins: ["bun"],
           anyBins: ["ffmpeg", "sox"],
@@ -37,7 +37,7 @@ describe("shared/entry-status", () => {
       },
       frontmatter: {
         emoji: "🙂",
-        homepage: "https://docs.kaijibot.ai",
+        homepage: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs",
       },
       hasLocalBin: (bin) => bin === "bun",
       localPlatform: "linux",
@@ -50,7 +50,7 @@ describe("shared/entry-status", () => {
 
     expect(result).toEqual({
       emoji: "🦀",
-      homepage: "https://kaijibot.ai",
+      homepage: "https://example.com",
       required: {
         bins: ["bun"],
         anyBins: ["ffmpeg", "sox"],
@@ -99,7 +99,7 @@ describe("shared/entry-status", () => {
           },
         },
         frontmatter: {
-          website: " https://docs.kaijibot.ai ",
+          website: " https://gitee.com/kaiji1126/kaijibot/blob/main/docs ",
           emoji: "🙂",
         },
       },
@@ -110,7 +110,7 @@ describe("shared/entry-status", () => {
 
     expect(result).toEqual({
       emoji: "🙂",
-      homepage: "https://docs.kaijibot.ai",
+      homepage: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs",
       required: {
         bins: ["missing-bin"],
         anyBins: [],

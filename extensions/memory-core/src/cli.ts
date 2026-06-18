@@ -86,7 +86,7 @@ export function registerMemoryCli(program: Command) {
             "Explain why a specific candidate would or would not promote.",
           ],
           ["kaijibot memory status --json", "Output machine-readable JSON (good for scripts)."],
-        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/memory", "docs.kaijibot.ai/cli/memory")}\n`,
+        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/memory", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/memory.md")}\n`,
     );
 
   memory

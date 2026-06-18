@@ -314,8 +314,8 @@ export function buildStatusFooterLines(params: {
   gatewayReachable: boolean;
 }) {
   return [
-    "FAQ: https://docs.kaijibot.ai/faq",
-    "Troubleshooting: https://docs.kaijibot.ai/troubleshooting",
+    "FAQ: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/faq.md",
+    "Troubleshooting: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md",
     ...(params.updateHint ? ["", params.warn(params.updateHint)] : []),
     "Next steps:",
     `  Need to share?      ${params.formatCliCommand("kaijibot status --all")}`,

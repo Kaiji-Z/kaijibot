@@ -27,7 +27,7 @@ export function registerNodesCli(program: Command) {
             "Invoke a node command directly.",
           ],
           ["kaijibot nodes camera snap --node <id>", "Capture a photo from a node camera."],
-        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/nodes", "docs.kaijibot.ai/cli/nodes")}\n`,
+        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/nodes", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/nodes.md")}\n`,
     );
 
   registerNodesStatusCommands(nodes);

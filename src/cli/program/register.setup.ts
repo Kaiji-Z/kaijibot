@@ -14,7 +14,7 @@ export function registerSetupCommand(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/setup", "docs.kaijibot.ai/cli/setup")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/setup", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/setup.md")}\n`,
     )
     .option(
       "--workspace <dir>",

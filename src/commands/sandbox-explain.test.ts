@@ -37,7 +37,7 @@ describe("sandbox explain command", () => {
 
     const out = logs.join("");
     const parsed = JSON.parse(out);
-    expect(parsed).toHaveProperty("docsUrl", "https://docs.kaijibot.ai/sandbox");
+    expect(parsed).toHaveProperty("docsUrl", "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sandbox.md");
     expect(parsed).toHaveProperty("sandbox.mode", "all");
     expect(parsed).toHaveProperty("sandbox.tools.sources.allow.source");
     expect(Array.isArray(parsed.fixIt)).toBe(true);
