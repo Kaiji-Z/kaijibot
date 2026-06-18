@@ -20,6 +20,7 @@ import {
 } from "./accounts.js";
 import { normalizeString } from "./comment-shared.js";
 import { probeFeishu } from "./probe.js";
+import { registerFeishuAppViaQr } from "./qr-authorize.js";
 import type { FeishuAccountConfig, FeishuConfig } from "./types.js";
 
 const channel = "feishu" as const;
@@ -179,6 +180,9 @@ async function noteFeishuCredentialHelp(
       "3) Get App ID and App Secret from Credentials page",
       "4) Enable required permissions: im:message, im:chat, contact:user.base:readonly",
       "5) Publish the app or add it to a test group",
+      "6) 在「事件订阅」页面，选择 WebSocket 模式",
+      "7) 添加事件：im.message.receive_v1（接收消息）",
+      "8) 发布应用版本并等待审批通过",
       "Tip: you can also set FEISHU_APP_ID / FEISHU_APP_SECRET env vars.",
       `Docs: ${formatDocsLink("/channels/feishu", "feishu")}`,
     ].join("\n"),
@@ -315,77 +319,144 @@ export const feishuSetupWizard: ChannelSetupWizard = {
     let appId: string | null = null;
     let appSecret: SecretInput | null = null;
     let appSecretProbeValue: string | null = null;
+    // Gates three sections below: when true, skip manual credential entry
+    // (help text + prompts) and force connectionMode = "websocket" because
+    // QR-created apps are WebSocket-only.
+    let qrResolved = false;
 
     if (!resolved) {
-      await noteFeishuCredentialHelp(prompter);
-    }
+      const setupChoice = (
+        await prompter.select({
+          message: "Feishu 配置方式",
+          options: [
+            { value: "qr", label: "扫码自动创建飞书机器人（推荐，10 秒搞定）" },
+            { value: "manual", label: "手动输入 App ID / App Secret" },
+          ],
+        })
+      ) as "qr" | "manual";
 
-    const appSecretResult = await promptSingleChannelSecretInput({
-      cfg: next,
-      prompter,
-      providerHint: "feishu",
-      credentialLabel: "App Secret",
-      secretInputMode: options?.secretInputMode,
-      accountConfigured: appSecretPromptState.accountConfigured,
-      canUseEnv: appSecretPromptState.canUseEnv,
-      hasConfigToken: appSecretPromptState.hasConfigToken,
-      envPrompt: "FEISHU_APP_ID + FEISHU_APP_SECRET detected. Use env vars?",
-      keepPrompt: "Feishu App Secret already configured. Keep it?",
-      inputPrompt: "Enter Feishu App Secret",
-      preferredEnvVar: "FEISHU_APP_SECRET",
-    });
-
-    if (appSecretResult.action === "use-env") {
-      next = patchFeishuConfig(next, resolvedAccountId, {});
-    } else if (appSecretResult.action === "set") {
-      appSecret = appSecretResult.value;
-      appSecretProbeValue = appSecretResult.resolvedValue;
-      appId = await promptFeishuAppId({
-        prompter,
-        initialValue:
-          normalizeString(scopedConfig.appId) ?? normalizeString(process.env.FEISHU_APP_ID),
-      });
-    }
-
-    if (appId && appSecret) {
-      next = patchFeishuConfig(next, resolvedAccountId, {
-        appId,
-        appSecret,
-      });
-
-      try {
-        const probe = await probeFeishu({
-          appId,
-          appSecret: appSecretProbeValue ?? undefined,
-          domain: resolveFeishuAccount({ cfg: next, accountId: resolvedAccountId }).domain,
-        });
-        if (probe.ok) {
-          await prompter.note(
-            `Connected as ${probe.botName ?? probe.botOpenId ?? "bot"}`,
-            "Feishu connection test",
-          );
+      if (setupChoice === "qr") {
+        const qrResult = await registerFeishuAppViaQr();
+        if (qrResult.ok) {
+          next = patchFeishuConfig(next, resolvedAccountId, {
+            appId: qrResult.appId,
+            appSecret: qrResult.appSecret,
+          });
+          try {
+            const qrProbe = await probeFeishu({
+              appId: qrResult.appId,
+              appSecret: qrResult.appSecret,
+              domain: resolveFeishuAccount({ cfg: next, accountId: resolvedAccountId }).domain,
+            });
+            if (qrProbe.ok) {
+              await prompter.note(
+                `✅ 飞书机器人「${qrProbe.botName ?? qrProbe.botOpenId ?? "bot"}」创建成功！`,
+                "Feishu",
+              );
+            } else {
+              await prompter.note(
+                `机器人已创建，但连接验证失败：${qrProbe.error ?? "unknown error"}\n请检查应用是否已发布。`,
+                "Feishu 警告",
+              );
+            }
+          } catch (err) {
+            await prompter.note(`连接验证出错：${String(err)}`, "Feishu 警告");
+          }
+          qrResolved = true;
         } else {
-          await prompter.note(
-            `Connection failed: ${probe.error ?? "unknown error"}`,
-            "Feishu connection test",
-          );
+          const fallback = (
+            await prompter.select({
+              message: `扫码失败：${qrResult.error.message}\n是否改为手动输入？`,
+              options: [
+                { value: "manual", label: "手动输入 App ID / App Secret" },
+                { value: "skip", label: "跳过 Feishu 配置" },
+              ],
+            })
+          ) as "manual" | "skip";
+          if (fallback === "skip") {
+            return { cfg: next };
+          }
         }
-      } catch (err) {
-        await prompter.note(`Connection test failed: ${String(err)}`, "Feishu connection test");
       }
     }
 
-    const currentMode =
-      resolveFeishuAccount({ cfg: next, accountId: resolvedAccountId }).config.connectionMode ??
-      "websocket";
-    const connectionMode = (await prompter.select({
-      message: "Feishu connection mode",
-      options: [
-        { value: "websocket", label: "WebSocket (default)" },
-        { value: "webhook", label: "Webhook" },
-      ],
-      initialValue: currentMode,
-    })) as "websocket" | "webhook";
+    if (!resolved && !qrResolved) {
+      await noteFeishuCredentialHelp(prompter);
+    }
+
+    if (!qrResolved) {
+      const appSecretResult = await promptSingleChannelSecretInput({
+        cfg: next,
+        prompter,
+        providerHint: "feishu",
+        credentialLabel: "App Secret",
+        secretInputMode: options?.secretInputMode,
+        accountConfigured: appSecretPromptState.accountConfigured,
+        canUseEnv: appSecretPromptState.canUseEnv,
+        hasConfigToken: appSecretPromptState.hasConfigToken,
+        envPrompt: "FEISHU_APP_ID + FEISHU_APP_SECRET detected. Use env vars?",
+        keepPrompt: "Feishu App Secret already configured. Keep it?",
+        inputPrompt: "Enter Feishu App Secret",
+        preferredEnvVar: "FEISHU_APP_SECRET",
+      });
+
+      if (appSecretResult.action === "use-env") {
+        next = patchFeishuConfig(next, resolvedAccountId, {});
+      } else if (appSecretResult.action === "set") {
+        appSecret = appSecretResult.value;
+        appSecretProbeValue = appSecretResult.resolvedValue;
+        appId = await promptFeishuAppId({
+          prompter,
+          initialValue:
+            normalizeString(scopedConfig.appId) ?? normalizeString(process.env.FEISHU_APP_ID),
+        });
+      }
+
+      if (appId && appSecret) {
+        next = patchFeishuConfig(next, resolvedAccountId, {
+          appId,
+          appSecret,
+        });
+
+        try {
+          const probe = await probeFeishu({
+            appId,
+            appSecret: appSecretProbeValue ?? undefined,
+            domain: resolveFeishuAccount({ cfg: next, accountId: resolvedAccountId }).domain,
+          });
+          if (probe.ok) {
+            await prompter.note(
+              `Connected as ${probe.botName ?? probe.botOpenId ?? "bot"}`,
+              "Feishu connection test",
+            );
+          } else {
+            await prompter.note(
+              `Connection failed: ${probe.error ?? "unknown error"}`,
+              "Feishu connection test",
+            );
+          }
+        } catch (err) {
+          await prompter.note(`Connection test failed: ${String(err)}`, "Feishu connection test");
+        }
+      }
+    }
+
+    let connectionMode: "websocket" | "webhook";
+    if (qrResolved) {
+      connectionMode = "websocket";
+    } else {
+      const currentMode =
+        resolveFeishuAccount({ cfg: next, accountId: resolvedAccountId }).config.connectionMode ??
+        "websocket";
+      connectionMode = (await prompter.select({
+        message: "Feishu connection mode",
+        options: [
+          { value: "websocket", label: "WebSocket (default)" },
+          { value: "webhook", label: "Webhook" },
+        ],
+        initialValue: currentMode,
+      })) as "websocket" | "webhook";
+    }
     next = patchFeishuConfig(next, resolvedAccountId, { connectionMode });
 
     if (connectionMode === "webhook") {

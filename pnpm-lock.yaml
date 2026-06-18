@@ -64,8 +64,8 @@ importers:
         specifier: ^0.27.2
         version: 0.27.2(apache-arrow@18.1.0)
       '@larksuiteoapi/node-sdk':
-        specifier: ^1.60.0
-        version: 1.60.0
+        specifier: ^1.64.0
+        version: 1.66.0
       '@lydell/node-pty':
         specifier: 1.2.0-beta.10
         version: 1.2.0-beta.10
@@ -253,7 +253,7 @@ importers:
     optionalDependencies:
       '@larksuite/cli':
         specifier: latest
-        version: 1.0.53
+        version: 1.0.54
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -1552,15 +1552,12 @@ packages:
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
 
-  '@larksuite/cli@1.0.53':
-    resolution: {integrity: sha512-uXwag2Ve2j8M7Q8I6HuZTGqAYlCgp4wg5KsoEDT9EbFJ7qLPY1FePlJTpyinolgLHD5FicOckATtd9S7g2gmZw==}
+  '@larksuite/cli@1.0.54':
+    resolution: {integrity: sha512-qp5HmP/R4/N88bndVN2klmLly5gaJwk+loJpAUKZqBoEb77/SKQdmi9Gnwd/V5IWCDFQ2w+KJ8PUILjeSgdIDw==}
     engines: {node: '>=16'}
     cpu: [x64, arm64, riscv64]
     os: [darwin, linux, win32]
     hasBin: true
-
-  '@larksuiteoapi/node-sdk@1.60.0':
-    resolution: {integrity: sha512-MS1eXx7K6HHIyIcCBkJLb21okoa8ZatUGQWZaCCUePm6a37RWFmT6ZKlKvHxAanSX26wNuNlwP0RhgscsE+T6g==}
 
   '@larksuiteoapi/node-sdk@1.66.0':
     resolution: {integrity: sha512-ueKbbdvmVGVie3KvKbvHZqvDC/gg3M0rRDeyQanQWK+i2bQgiiTpIfpqVWvxuTgprV31yqV7HPMjN6KegWSCfA==}
@@ -6513,24 +6510,10 @@ snapshots:
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
 
-  '@larksuite/cli@1.0.53':
+  '@larksuite/cli@1.0.54':
     dependencies:
       '@clack/prompts': 1.2.0
     optional: true
-
-  '@larksuiteoapi/node-sdk@1.60.0':
-    dependencies:
-      axios: 1.13.6
-      lodash.identity: 3.0.0
-      lodash.merge: 4.6.2
-      lodash.pickby: 4.6.0
-      protobufjs: 7.5.4
-      qs: 6.14.2
-      ws: 8.20.1
-    transitivePeerDependencies:
-      - bufferutil
-      - debug
-      - utf-8-validate
 
   '@larksuiteoapi/node-sdk@1.66.0':
     dependencies:

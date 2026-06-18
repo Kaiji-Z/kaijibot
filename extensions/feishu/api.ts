@@ -18,4 +18,12 @@ export * from "./src/setup-surface.js";
 export * from "./src/thread-bindings.js";
 export { __testing as feishuThreadBindingTesting } from "./src/thread-bindings.js";
 
+export { registerFeishuAppViaQr, QR_AUTH_TIMEOUT_MS } from "./src/qr-authorize.js";
+export type {
+  QrAuthResult,
+  QrAuthError,
+  QrAuthErrorCode,
+  RegisterViaQrOptions,
+} from "./src/qr-authorize.js";
+
 export const feishuSessionBindingAdapterChannels = ["feishu"] as const;
