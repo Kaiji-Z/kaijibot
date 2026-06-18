@@ -99,41 +99,48 @@ kaijibot skills install <skill-name>
 
 ## 🚀 Quick Start
 
-### macOS / Linux
+### One-click install (recommended — auto-detects environment, installs dependencies, runs onboard wizard)
 
-**One-click install** (recommended — auto-detects environment, installs dependencies, runs onboard wizard):
-
-```bash
-curl -fsSL https://kaijibot.ai/install.sh | bash
-```
-
-Also available via npm:
+**macOS / Linux:**
 
 ```bash
-npm install -g kaijibot
-kaijibot onboard
+curl -fsSL https://raw.githubusercontent.com/Kaiji-Z/kaijibot/main/scripts/install.sh | bash
 ```
 
-### Windows
-
-PowerShell one-click install:
+**Windows (PowerShell):**
 
 ```powershell
-iwr -useb https://kaijibot.ai/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/Kaiji-Z/kaijibot/main/scripts/install.ps1 | iex
 ```
 
-Or via npm:
+### npm
 
-```powershell
+```bash
 npm install -g kaijibot
 kaijibot onboard
 ```
 
 ### Docker
 
+Using the Docker setup script (recommended — handles image build and env config):
+
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
 cd kaijibot
+bash scripts/docker/setup.sh
+```
+
+Or manual:
+
+```bash
+git clone https://github.com/Kaiji-Z/kaijibot.git
+cd kaijibot
+docker build -t kaijibot:local .
+# Create .env (see .env.example), at minimum:
+#   ZAI_API_KEY=your-key
+#   KAIJIBOT_GATEWAY_TOKEN=your-token
+#   KAIJIBOT_CONFIG_DIR=~/.kaijibot
+#   KAIJIBOT_WORKSPACE_DIR=~/.kaijibot/workspace
 docker compose up -d
 ```
 
@@ -154,8 +161,6 @@ kaijibot migrate
 ```bash
 kaijibot gateway --port 18789 --verbose
 ```
-
-After starting, find your bot on Feishu and send a message. KaijiBot automatically begins building your cognitive profile and will push the first proactive insight after a few conversations.
 
 ## ⚙️ Configuration
 

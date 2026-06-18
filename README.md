@@ -104,25 +104,67 @@ kaijibot skills install <skill-name>
 
 ## 🚀 快速开始
 
-### npm 全局安装
+### 一键安装（推荐）
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh | bash
+```
+
+脚本会自动检测系统、安装 Node.js（如未安装）、配置环境，并启动 `kaijibot onboard` 向导。国内使用 Gitee 源，速度快。
+
+**Windows (PowerShell):**
+
+```powershell
+iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
+```
+
+### npm 全局安装（已有 Node.js 环境）
 
 ```bash
 npm install -g kaijibot
-kaijibot onboard
+kaijibot onboard   # 交互式向导，自动配置
 ```
 
 ### Docker
 
+使用一键部署脚本（推荐，自动处理镜像构建和环境配置）：
+
 ```bash
-git clone https://github.com/Kaiji-Z/kaijibot.git
+git clone https://gitee.com/kaiji1126/kaijibot.git
 cd kaijibot
+bash scripts/docker/setup.sh
+```
+
+或手动构建：
+
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+docker build -t kaijibot:local .
+# 创建 .env 文件（参考 .env.example），至少需要：
+#   ZAI_API_KEY=your-key
+#   KAIJIBOT_GATEWAY_TOKEN=your-token
+#   KAIJIBOT_CONFIG_DIR=~/.kaijibot
+#   KAIJIBOT_WORKSPACE_DIR=~/.kaijibot/workspace
 docker compose up -d
 ```
+
+### 中文一键部署脚本
+
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+bash setup-cn.sh
+```
+
+交互式引导：检查 Node.js → 安装依赖 → 构建 → 配置 API Key → 配置飞书 → 启动。
 
 ### 从源码构建
 
 ```bash
-git clone https://github.com/Kaiji-Z/kaijibot.git
+git clone https://gitee.com/kaiji1126/kaijibot.git
 cd kaijibot
 # 国内镜像加速
 pnpm install --registry https://registry.npmmirror.com

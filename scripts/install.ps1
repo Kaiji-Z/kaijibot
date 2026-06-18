@@ -1,6 +1,6 @@
 # KaijiBot Installer for Windows (PowerShell)
-# Usage: iwr -useb https://kaijibot.ai/install.ps1 | iex
-# Or: & ([scriptblock]::Create((iwr -useb https://kaijibot.ai/install.ps1))) -NoOnboard
+# Usage: iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
+# Or: & ([scriptblock]::Create((iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1))) -NoOnboard
 
 param(
     [string]$InstallMethod = "npm",
