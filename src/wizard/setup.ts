@@ -68,7 +68,6 @@ async function resolveAuthChoiceModelSelectionPolicy(params: {
     allowKeepCurrent: setupPolicy?.allowKeepCurrent ?? true,
   };
 }
-
 async function requireRiskAcknowledgement(params: {
   opts: OnboardOptions;
   prompter: WizardPrompter;
@@ -100,6 +99,29 @@ async function requireRiskAcknowledgement(params: {
   if (!ok) {
     throw new WizardCancelledError("risk not accepted");
   }
+}
+
+async function probePrimaryProviderKey(
+  config: KaijiBotConfig,
+  prompter: WizardPrompter,
+): Promise<void> {
+  const { resolvePrimaryModel } = await import("../plugins/provider-model-primary.js");
+  const primaryModel = resolvePrimaryModel(config.agents?.defaults?.model);
+  if (!primaryModel) {
+    return;
+  }
+  const slashIndex = primaryModel.indexOf("/");
+  if (slashIndex <= 0) {
+    return;
+  }
+  const provider = primaryModel.slice(0, slashIndex);
+  const { probeLlmKeyAndWarn } = await import("./llm-key-probe.js");
+  const { resolveEnvApiKey } = await import("../agents/model-auth-env.js");
+  const resolved = resolveEnvApiKey(provider);
+  if (!resolved?.apiKey) {
+    return;
+  }
+  await probeLlmKeyAndWarn(provider, resolved.apiKey, prompter);
 }
 
 export async function runSetupWizard(
@@ -598,6 +620,7 @@ export async function runSetupWizard(
   }
 
   await warnIfModelConfigLooksOff(nextConfig, prompter);
+  await probePrimaryProviderKey(nextConfig, prompter);
 
   const { configureGatewayForSetup } = await import("./setup.gateway-config.js");
   const gateway = await configureGatewayForSetup({
