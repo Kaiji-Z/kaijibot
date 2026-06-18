@@ -9,6 +9,9 @@ import {
   DEFAULT_MEMORY_CONSOLIDATION_BATCH_SIZE,
   DEFAULT_MEMORY_CONSOLIDATION_LOOKBACK_DAYS,
   DEFAULT_MEMORY_CONSOLIDATION_VERBOSE_LOGGING,
+  DEFAULT_MEMORY_CONSOLIDATION_WIKI_ENABLED,
+  DEFAULT_MEMORY_CONSOLIDATION_WIKI_MIN_CONFIDENCE,
+  DEFAULT_MEMORY_CONSOLIDATION_WIKI_MAX_PAGES,
 } from "./consolidation.js";
 
 // ---------------------------------------------------------------------------
@@ -131,6 +134,39 @@ describe("resolveConsolidationConfig", () => {
     });
     expect(config.concurrency).toBe(3);
     expect(config.batchSize).toBe(6000);
+  });
+
+  it("returns wiki defaults when no wiki config provided", () => {
+    const config = resolveConsolidationConfig({});
+    expect(config.wiki.enabled).toBe(DEFAULT_MEMORY_CONSOLIDATION_WIKI_ENABLED);
+    expect(config.wiki.minConfidence).toBe(DEFAULT_MEMORY_CONSOLIDATION_WIKI_MIN_CONFIDENCE);
+    expect(config.wiki.maxPagesPerRun).toBe(DEFAULT_MEMORY_CONSOLIDATION_WIKI_MAX_PAGES);
+  });
+
+  it("merges partial wiki config with defaults", () => {
+    const config = resolveConsolidationConfig({
+      pluginConfig: {
+        consolidation: {
+          wiki: { enabled: true },
+        },
+      },
+    });
+    expect(config.wiki.enabled).toBe(true);
+    expect(config.wiki.minConfidence).toBe(DEFAULT_MEMORY_CONSOLIDATION_WIKI_MIN_CONFIDENCE);
+    expect(config.wiki.maxPagesPerRun).toBe(DEFAULT_MEMORY_CONSOLIDATION_WIKI_MAX_PAGES);
+  });
+
+  it("uses full wiki config values when all provided", () => {
+    const config = resolveConsolidationConfig({
+      pluginConfig: {
+        consolidation: {
+          wiki: { enabled: true, minConfidence: 0.9, maxPagesPerRun: 50 },
+        },
+      },
+    });
+    expect(config.wiki.enabled).toBe(true);
+    expect(config.wiki.minConfidence).toBe(0.9);
+    expect(config.wiki.maxPagesPerRun).toBe(50);
   });
 });
 

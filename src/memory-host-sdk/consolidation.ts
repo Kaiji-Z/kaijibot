@@ -16,8 +16,18 @@ export const DEFAULT_MEMORY_CONSOLIDATION_BATCH_SIZE = 16000;
 export const DEFAULT_MEMORY_CONSOLIDATION_LOOKBACK_DAYS = 7;
 export const DEFAULT_MEMORY_CONSOLIDATION_VERBOSE_LOGGING = false;
 
+export const DEFAULT_MEMORY_CONSOLIDATION_WIKI_ENABLED = false;
+export const DEFAULT_MEMORY_CONSOLIDATION_WIKI_MIN_CONFIDENCE = 0.7;
+export const DEFAULT_MEMORY_CONSOLIDATION_WIKI_MAX_PAGES = 20;
+
 // Backward-compat re-export for existing config reads that reference dreaming storage mode.
 export const DEFAULT_MEMORY_CONSOLIDATION_STORAGE_MODE = "separate" as const;
+
+export type ConsolidationWikiConfig = {
+  enabled: boolean;
+  minConfidence: number;
+  maxPagesPerRun: number;
+};
 
 export type ConsolidationConfig = {
   enabled: boolean;
@@ -27,6 +37,7 @@ export type ConsolidationConfig = {
   concurrency: number;
   batchSize: number;
   lookbackDays: number;
+  wiki: ConsolidationWikiConfig;
 };
 
 export type ConsolidationWorkspace = {
@@ -56,6 +67,21 @@ function normalizeNonNegativeInt(value: unknown, fallback: number): number {
     return fallback;
   }
   return floored;
+}
+
+function normalizeNonNegativeNumber(value: unknown, fallback: number): number {
+  const normalized = normalizeStringifiedOptionalString(value);
+  if (typeof value === "string" && !normalized) {
+    return fallback;
+  }
+  const num = typeof value === "string" ? Number(normalized) : Number(value);
+  if (!Number.isFinite(num)) {
+    return fallback;
+  }
+  if (num < 0) {
+    return fallback;
+  }
+  return num;
 }
 
 function normalizeBoolean(value: unknown, fallback: boolean): boolean {
@@ -92,6 +118,8 @@ export function resolveConsolidationConfig(params: {
     ) ??
     undefined;
 
+  const wiki = asNullableRecord(consolidation?.wiki);
+
   return {
     enabled: normalizeBoolean(consolidation?.enabled, DEFAULT_MEMORY_CONSOLIDATION_ENABLED),
     cron,
@@ -112,6 +140,17 @@ export function resolveConsolidationConfig(params: {
       consolidation?.lookbackDays,
       DEFAULT_MEMORY_CONSOLIDATION_LOOKBACK_DAYS,
     ),
+    wiki: {
+      enabled: normalizeBoolean(wiki?.enabled, DEFAULT_MEMORY_CONSOLIDATION_WIKI_ENABLED),
+      minConfidence: normalizeNonNegativeNumber(
+        wiki?.minConfidence,
+        DEFAULT_MEMORY_CONSOLIDATION_WIKI_MIN_CONFIDENCE,
+      ),
+      maxPagesPerRun: normalizeNonNegativeInt(
+        wiki?.maxPagesPerRun,
+        DEFAULT_MEMORY_CONSOLIDATION_WIKI_MAX_PAGES,
+      ),
+    },
   };
 }
 

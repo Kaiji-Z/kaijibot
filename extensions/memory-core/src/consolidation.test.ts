@@ -19,6 +19,7 @@ function makeConfig(overrides: Partial<ConsolidationConfig> = {}): Consolidation
     concurrency: 2,
     batchSize: 4000,
     lookbackDays: 7,
+    wiki: { enabled: false, minConfidence: 0.7, maxPagesPerRun: 20 },
     ...overrides,
   };
 }
