@@ -1730,6 +1730,8 @@ export async function startGatewayServer(
           type CorrectionRecord = import("../cognitive/correction/types.js").CorrectionRecord;
           type ExtractedItem =
             import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
+          type MemoryWikiPluginConfig =
+            import("../../extensions/memory-wiki/src/config.js").MemoryWikiPluginConfig;
           const { mergeTypedInsights, HALF_LIFE_BY_CATEGORY } =
             await import("../cognitive/persona/curator.js");
 
@@ -1916,6 +1918,53 @@ export async function startGatewayServer(
                 await indexManager.writeIndex(index);
                 await indexManager.rebalanceIndex();
               },
+              routeToWiki: consolidationConfig.wiki.enabled
+                ? async (params: {
+                    workspaceDir: string;
+                    items: ExtractedItem[];
+                    date: string;
+                  }): Promise<void> => {
+                    try {
+                      const [{ applyMemoryWikiMutation }, { resolveMemoryWikiConfig }, { mapConsolidationItemsToWikiSynthesis }] =
+                        await Promise.all([
+                          import("../../extensions/memory-wiki/src/apply.js"),
+                          import("../../extensions/memory-wiki/src/config.js"),
+                          import("../../extensions/memory-wiki/src/consolidation-adapter.js"),
+                        ]);
+                      const wikiConfig = resolveMemoryWikiConfig(
+                        cfgAtStart.plugins?.entries?.["memory-wiki"]?.config as
+                          | MemoryWikiPluginConfig
+                          | undefined,
+                      );
+                      const inputs = params.items.map((item) => ({
+                        category: item.category,
+                        domains: item.domains ?? [],
+                        content: item.content,
+                        confidence: item.confidence,
+                        source: item.source,
+                        evidence: item.evidence ? [item.evidence] : undefined,
+                      }));
+                      const mutations = mapConsolidationItemsToWikiSynthesis(inputs, {
+                        minConfidence: consolidationConfig.wiki.minConfidence,
+                        maxPages: consolidationConfig.wiki.maxPagesPerRun,
+                        date: params.date,
+                      });
+                      for (const mutation of mutations) {
+                        try {
+                          await applyMemoryWikiMutation({ config: wikiConfig, mutation });
+                        } catch (err) {
+                          log.warn(
+                            `consolidation routeToWiki mutation failed: ${err instanceof Error ? err.message : String(err)}`,
+                          );
+                        }
+                      }
+                    } catch (err) {
+                      log.warn(
+                        `consolidation routeToWiki bootstrap failed: ${err instanceof Error ? err.message : String(err)}`,
+                      );
+                    }
+                  }
+                : undefined,
             },
 
             // Memory repair — structural repair step after consolidation routing
