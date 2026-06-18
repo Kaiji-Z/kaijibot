@@ -24,6 +24,7 @@ function makeMockDeps(): ConsolidationRouteDeps {
     appendToMemoryFile: vi.fn().mockResolvedValue(undefined),
     collectFragment: vi.fn().mockResolvedValue(undefined),
     updateMemoryIndex: vi.fn().mockResolvedValue(undefined),
+    routeToWiki: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -415,5 +416,64 @@ describe("routeToStores", () => {
     expect(written).not.toContain("[domain_knowledge]");
     expect(written).not.toContain("confidence:");
     expect(written).toContain("- User knows Rust");
+  });
+
+  it("calls routeToWiki with domain_knowledge items at confidence >= 0.7", async () => {
+    const items = [
+      makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "Knows Rust" }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.routeToWiki).toHaveBeenCalledOnce();
+    const callArgs = (deps.routeToWiki as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    expect(callArgs.items).toHaveLength(1);
+    expect(callArgs.items[0].category).toBe("domain_knowledge");
+    expect(callArgs.workspaceDir).toBe("/tmp/ws");
+  });
+
+  it("excludes items with confidence < 0.7 from routeToWiki", async () => {
+    const items = [
+      makeRouteItem({ category: "domain_knowledge", confidence: 0.5, content: "Low conf" }),
+      makeRouteItem({ category: "stated_preference", confidence: 0.3, content: "Also low" }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.routeToWiki).not.toHaveBeenCalled();
+  });
+
+  it("excludes behavioral_pattern from routeToWiki even at high confidence", async () => {
+    const items = [
+      makeRouteItem({ category: "behavioral_pattern", confidence: 0.95, content: "Strong habit" }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.routeToWiki).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when routeToWiki is undefined (backward compat)", async () => {
+    const noWikiDeps: ConsolidationRouteDeps = {
+      mergeTypedInsights: vi.fn().mockResolvedValue(1),
+      addOrReinforceCorrection: vi.fn().mockResolvedValue("saved"),
+      appendToMemoryFile: vi.fn().mockResolvedValue(undefined),
+      collectFragment: vi.fn().mockResolvedValue(undefined),
+      updateMemoryIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    const items = [
+      makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "High conf" }),
+    ];
+    const result = await routeToStores({ items, workspaceDir: "/tmp/ws", deps: noWikiDeps });
+    expect(result.errors).toEqual([]);
+    expect(noWikiDeps.mergeTypedInsights).toHaveBeenCalled();
+  });
+
+  it("captures routeToWiki error without breaking other routes", async () => {
+    const failingDeps: ConsolidationRouteDeps = {
+      ...deps,
+      routeToWiki: vi.fn().mockRejectedValue(new Error("wiki disk full")),
+    };
+    const items = [
+      makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "Knows X" }),
+    ];
+    const result = await routeToStores({ items, workspaceDir: "/tmp/ws", deps: failingDeps });
+    expect(result.errors.some((e) => e.includes("routeToWiki failed"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("wiki disk full"))).toBe(true);
+    expect(failingDeps.mergeTypedInsights).toHaveBeenCalled();
   });
 });

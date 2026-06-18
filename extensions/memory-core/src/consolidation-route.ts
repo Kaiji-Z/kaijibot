@@ -42,6 +42,12 @@ export type ConsolidationRouteDeps = {
     items: ExtractedItem[];
     date: string;
   }) => Promise<void>;
+  /** Route high-confidence declarative knowledge to memory-wiki as synthesis pages. Optional — undefined when wiki integration is disabled. */
+  routeToWiki?: (params: {
+    workspaceDir: string;
+    items: ExtractedItem[];
+    date: string;
+  }) => Promise<void>;
 };
 
 const CORRECTION_KEYWORDS = [
@@ -187,6 +193,25 @@ export async function routeToStores(params: {
       await deps.appendToMemoryFile(workspaceDir, summary);
     } catch (err) {
       errors.push(`Failed to append memory file for ${workspaceDir}: ${String(err)}`);
+    }
+  }
+
+  if (deps.routeToWiki) {
+    const wikiEligible = items
+      .map((ri) => ri.item)
+      .filter(
+        (item) =>
+          item.confidence >= 0.7 &&
+          (item.category === "domain_knowledge" ||
+            item.category === "stated_preference" ||
+            item.category === "goal_or_aspiration"),
+      );
+    if (wikiEligible.length > 0) {
+      try {
+        await deps.routeToWiki({ workspaceDir, items: wikiEligible, date: localDateStr() });
+      } catch (err) {
+        errors.push(`routeToWiki failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
   }
 
