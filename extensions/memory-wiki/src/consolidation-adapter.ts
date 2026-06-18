@@ -25,7 +25,9 @@ export function mapConsolidationItemsToWikiSynthesis(
   const maxPages = opts?.maxPages ?? 20;
 
   const eligible = items.filter((item) => item.confidence >= minConfidence);
-  if (eligible.length === 0) return [];
+  if (eligible.length === 0) {
+    return [];
+  }
 
   const groups = new Map<string, WikiConsolidationInput[]>();
   for (const item of eligible) {
@@ -40,7 +42,9 @@ export function mapConsolidationItemsToWikiSynthesis(
 
   const mutations: CreateSynthesisMemoryWikiMutation[] = [];
   for (const [domain, groupItems] of groups) {
-    if (mutations.length >= maxPages) break;
+    if (mutations.length >= maxPages) {
+      break;
+    }
 
     const slug = domain
       .toLowerCase()
@@ -64,9 +68,7 @@ export function mapConsolidationItemsToWikiSynthesis(
       text: item.content,
       confidence: item.confidence,
       status: "active",
-      evidence: item.evidence
-        ? item.evidence.map((e) => ({ note: e }))
-        : [],
+      evidence: item.evidence ? item.evidence.map((e) => ({ note: e })) : [],
     }));
 
     const pageConfidence = Math.max(...groupItems.map((i) => i.confidence));
