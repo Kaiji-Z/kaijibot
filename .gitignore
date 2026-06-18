@@ -63,3 +63,6 @@ package-lock.json
 .claude/
 .agent/
 skills-lock.json
+*.omo
+kaijibot@*
+/node
