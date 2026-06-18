@@ -1925,12 +1925,15 @@ export async function startGatewayServer(
                     date: string;
                   }): Promise<void> => {
                     try {
-                      const [{ applyMemoryWikiMutation }, { resolveMemoryWikiConfig }, { mapConsolidationItemsToWikiSynthesis }] =
-                        await Promise.all([
-                          import("../../extensions/memory-wiki/src/apply.js"),
-                          import("../../extensions/memory-wiki/src/config.js"),
-                          import("../../extensions/memory-wiki/src/consolidation-adapter.js"),
-                        ]);
+                      const [
+                        { applyMemoryWikiMutation },
+                        { resolveMemoryWikiConfig },
+                        { mapConsolidationItemsToWikiSynthesis },
+                      ] = await Promise.all([
+                        import("../../extensions/memory-wiki/src/apply.js"),
+                        import("../../extensions/memory-wiki/src/config.js"),
+                        import("../../extensions/memory-wiki/src/consolidation-adapter.js"),
+                      ]);
                       const wikiConfig = resolveMemoryWikiConfig(
                         cfgAtStart.plugins?.entries?.["memory-wiki"]?.config as
                           | MemoryWikiPluginConfig
