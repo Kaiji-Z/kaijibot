@@ -853,7 +853,10 @@ export function registerPluginsCli(program: Command) {
           lines.push(`- ${formatPluginCompatibilityNotice(notice)} [${marker}]`);
         }
       }
-      const docs = formatDocsLink("/plugin", "gitee.com/kaiji1126/kaijibot/blob/main/docs/plugin.md");
+      const docs = formatDocsLink(
+        "/plugin",
+        "gitee.com/kaiji1126/kaijibot/blob/main/docs/plugin.md",
+      );
       lines.push("");
       lines.push(`${theme.muted("Docs:")} ${docs}`);
       defaultRuntime.log(lines.join("\n"));

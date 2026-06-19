@@ -339,7 +339,9 @@ export async function sandboxExplainCommand(
     lines.push(`  - ${key}`);
   }
   lines.push("");
-  lines.push(`${key("Docs:")} ${formatDocsLink("/sandbox", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sandbox.md")}`);
+  lines.push(
+    `${key("Docs:")} ${formatDocsLink("/sandbox", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sandbox.md")}`,
+  );
 
   runtime.log(`${lines.join("\n")}\n`);
 }

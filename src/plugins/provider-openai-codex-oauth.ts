@@ -74,7 +74,10 @@ export async function loginOpenAICodexOAuth(params: {
   } catch (err) {
     spin.stop("OpenAI OAuth failed");
     runtime.error(String(err));
-    await prompter.note("Trouble with OAuth? See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/faq.md", "OAuth help");
+    await prompter.note(
+      "Trouble with OAuth? See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/faq.md",
+      "OAuth help",
+    );
     throw err;
   }
 }

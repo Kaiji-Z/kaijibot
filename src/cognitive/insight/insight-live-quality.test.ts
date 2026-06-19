@@ -222,19 +222,34 @@ function evaluateInsight(content: string, persona: PersonaTree): QualityReport {
   const isSpecific = content.length > 20 && !/泛泛|方向|值得|关注/.test(content);
   const hasFirstPerson = /我|I /.test(content);
   const hasUncertainty = /不太确定|可能|会不会|也许|大概|说不好|牵强/.test(content);
-  const hasConversationalMarker = /刚看到|刚想到|突然觉得|说真的|老实说|你猜|信不信| honestly|actually/.test(content);
+  const hasConversationalMarker =
+    /刚看到|刚想到|突然觉得|说真的|老实说|你猜|信不信| honestly|actually/.test(content);
   const hasQuestion = /[？?]/.test(content);
   const hasIndexLeak = /\[\d+\]/.test(content);
   const hasEmDash = content.includes("——");
 
   let score = 0;
-  if (hasKeyInsight) { score += 2; }
-  if (isNatural) { score += 2; }
-  if (isSpecific) { score += 2; }
-  if (hasFirstPerson) { score += 1; }
-  if (hasUncertainty || hasConversationalMarker) { score += 1; }
-  if (content.length >= 30 && content.length <= 300) { score += 1; }
-  if (!hasIndexLeak) { score += 1; }
+  if (hasKeyInsight) {
+    score += 2;
+  }
+  if (isNatural) {
+    score += 2;
+  }
+  if (isSpecific) {
+    score += 2;
+  }
+  if (hasFirstPerson) {
+    score += 1;
+  }
+  if (hasUncertainty || hasConversationalMarker) {
+    score += 1;
+  }
+  if (content.length >= 30 && content.length <= 300) {
+    score += 1;
+  }
+  if (!hasIndexLeak) {
+    score += 1;
+  }
 
   return {
     content,
@@ -340,7 +355,8 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
       const uncertaintyRate = reports.filter((r) => r.hasUncertainty).length / reports.length;
       console.log(`  不确定性表达率: ${(uncertaintyRate * 100).toFixed(0)}%`);
 
-      const conversationalRate = reports.filter((r) => r.hasConversationalMarker).length / reports.length;
+      const conversationalRate =
+        reports.filter((r) => r.hasConversationalMarker).length / reports.length;
       console.log(`  对话标记率: ${(conversationalRate * 100).toFixed(0)}%`);
 
       const questionRate = reports.filter((r) => r.hasQuestion).length / reports.length;

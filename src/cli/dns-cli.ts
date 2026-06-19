@@ -105,7 +105,8 @@ export function registerDnsCli(program: Command) {
     .description("DNS helpers for wide-area discovery (Tailscale + CoreDNS)")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/dns.md")}\n`,
+      () =>
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/dns.md")}\n`,
     );
 
   dns

@@ -292,6 +292,8 @@ export async function appendStatusAllDiagnosis(params: {
 
   lines.push("");
   lines.push(muted("Pasteable debug report. Auth tokens redacted."));
-  lines.push("Troubleshooting: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md");
+  lines.push(
+    "Troubleshooting: https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md",
+  );
   lines.push("");
 }

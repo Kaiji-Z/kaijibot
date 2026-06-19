@@ -325,15 +325,13 @@ export const feishuSetupWizard: ChannelSetupWizard = {
     let qrResolved = false;
 
     if (!resolved) {
-      const setupChoice = (
-        await prompter.select({
-          message: "Feishu 配置方式",
-          options: [
-            { value: "qr", label: "扫码自动创建飞书机器人（推荐，10 秒搞定）" },
-            { value: "manual", label: "手动输入 App ID / App Secret" },
-          ],
-        })
-      ) as "qr" | "manual";
+      const setupChoice = (await prompter.select({
+        message: "Feishu 配置方式",
+        options: [
+          { value: "qr", label: "扫码自动创建飞书机器人（推荐，10 秒搞定）" },
+          { value: "manual", label: "手动输入 App ID / App Secret" },
+        ],
+      })) as "qr" | "manual";
 
       if (setupChoice === "qr") {
         const qrResult = await registerFeishuAppViaQr();
@@ -364,15 +362,13 @@ export const feishuSetupWizard: ChannelSetupWizard = {
           }
           qrResolved = true;
         } else {
-          const fallback = (
-            await prompter.select({
-              message: `扫码失败：${qrResult.error.message}\n是否改为手动输入？`,
-              options: [
-                { value: "manual", label: "手动输入 App ID / App Secret" },
-                { value: "skip", label: "跳过 Feishu 配置" },
-              ],
-            })
-          ) as "manual" | "skip";
+          const fallback = (await prompter.select({
+            message: `扫码失败：${qrResult.error.message}\n是否改为手动输入？`,
+            options: [
+              { value: "manual", label: "手动输入 App ID / App Secret" },
+              { value: "skip", label: "跳过 Feishu 配置" },
+            ],
+          })) as "manual" | "skip";
           if (fallback === "skip") {
             return { cfg: next };
           }

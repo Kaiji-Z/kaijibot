@@ -4,9 +4,7 @@ import {
   type WikiConsolidationInput,
 } from "./consolidation-adapter.js";
 
-function makeItem(
-  overrides: Partial<WikiConsolidationInput> = {},
-): WikiConsolidationInput {
+function makeItem(overrides: Partial<WikiConsolidationInput> = {}): WikiConsolidationInput {
   return {
     category: "domain_knowledge",
     domains: ["distributed-systems"],
@@ -35,10 +33,7 @@ describe("mapConsolidationItemsToWikiSynthesis", () => {
   });
 
   it("filters out items below default minConfidence (0.7)", () => {
-    const items = [
-      makeItem({ confidence: 0.5 }),
-      makeItem({ confidence: 0.69 }),
-    ];
+    const items = [makeItem({ confidence: 0.5 }), makeItem({ confidence: 0.69 })];
     const result = mapConsolidationItemsToWikiSynthesis(items);
     expect(result).toEqual([]);
   });
@@ -58,9 +53,7 @@ describe("mapConsolidationItemsToWikiSynthesis", () => {
   });
 
   it("groups items with empty domains as 'general'", () => {
-    const items = [
-      makeItem({ domains: [], content: "general knowledge" }),
-    ];
+    const items = [makeItem({ domains: [], content: "general knowledge" })];
     const result = mapConsolidationItemsToWikiSynthesis(items);
     expect(result).toHaveLength(1);
     expect(result[0]!.title).toMatch(/^general — /);
@@ -80,9 +73,7 @@ describe("mapConsolidationItemsToWikiSynthesis", () => {
     const result = mapConsolidationItemsToWikiSynthesis(items, {
       date: "2026-06-18",
     });
-    expect(result[0]!.sourceIds).toEqual([
-      "consolidation:2026-06-18:c-programming",
-    ]);
+    expect(result[0]!.sourceIds).toEqual(["consolidation:2026-06-18:c-programming"]);
   });
 
   it("sets page confidence to max of group confidences", () => {
@@ -134,9 +125,7 @@ describe("mapConsolidationItemsToWikiSynthesis", () => {
   });
 
   it("caps claims at 10 per page", () => {
-    const items = Array.from({ length: 15 }, (_, i) =>
-      makeItem({ content: `item-${i}` }),
-    );
+    const items = Array.from({ length: 15 }, (_, i) => makeItem({ content: `item-${i}` }));
     const result = mapConsolidationItemsToWikiSynthesis(items);
     expect(result).toHaveLength(1);
     expect(result[0]!.claims).toHaveLength(10);
@@ -171,10 +160,7 @@ describe("mapConsolidationItemsToWikiSynthesis", () => {
     ];
     const result = mapConsolidationItemsToWikiSynthesis(items);
     expect(result[0]!.claims).toHaveLength(1);
-    expect(result[0]!.claims![0]!.evidence).toEqual([
-      { note: "source-1" },
-      { note: "source-2" },
-    ]);
+    expect(result[0]!.claims![0]!.evidence).toEqual([{ note: "source-1" }, { note: "source-2" }]);
   });
 
   it("handles items with no evidence gracefully", () => {

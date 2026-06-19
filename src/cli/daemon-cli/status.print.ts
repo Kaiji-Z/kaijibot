@@ -333,5 +333,7 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   }
 
   defaultRuntime.log(`${label("Troubles:")} run ${formatCliCommand("kaijibot status")}`);
-  defaultRuntime.log(`${label("Troubleshooting:")} https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md`);
+  defaultRuntime.log(
+    `${label("Troubleshooting:")} https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md`,
+  );
 }

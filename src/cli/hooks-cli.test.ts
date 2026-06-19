@@ -17,7 +17,8 @@ const report: HookStatusReport = {
       handlerPath: "/tmp/hooks/session-memory/handler.js",
       hookKey: "session-memory",
       emoji: "💾",
-      homepage: "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md#session-memory",
+      homepage:
+        "https://gitee.com/kaiji1126/kaijibot/blob/main/docs/automation/hooks.md#session-memory",
       events: ["command:new"],
       always: false,
       enabledByConfig: true,

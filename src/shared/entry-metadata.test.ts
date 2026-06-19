@@ -26,7 +26,10 @@ describe("shared/entry-metadata", () => {
   it("falls back through frontmatter homepage aliases and drops blanks", () => {
     expect(
       resolveEmojiAndHomepage({
-        frontmatter: { emoji: "🙂", website: " https://gitee.com/kaiji1126/kaijibot/blob/main/docs " },
+        frontmatter: {
+          emoji: "🙂",
+          website: " https://gitee.com/kaiji1126/kaijibot/blob/main/docs ",
+        },
       }),
     ).toEqual({
       emoji: "🙂",

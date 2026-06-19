@@ -26,7 +26,8 @@ export function registerAcpCli(program: Command) {
     .option("-v, --verbose", "Verbose logging to stderr", false)
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/acp", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/acp.md")}\n`,
+      () =>
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/acp", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/acp.md")}\n`,
     )
     .action(async (opts) => {
       try {
