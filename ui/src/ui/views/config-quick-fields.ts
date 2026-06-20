@@ -518,6 +518,52 @@ const LANGUAGE_ENTRY: QuickSettingEntry = {
   },
 };
 
+function renderCognitiveModelSelect(props: ConfigProps): TemplateResult | typeof nothing {
+  const catalog = props.fullModelCatalog ?? [];
+  const whitelist = getModelsWhitelist(props.formValue);
+
+  const favorited = catalog.filter((m) => {
+    const key = m.provider ? `${m.provider}/${m.id}` : m.id;
+    return whitelist.has(key);
+  });
+
+  const rawModel = props.formValue
+    ? getValueAtPath(props.formValue, ["cognitive", "insight", "inferenceModel"])
+    : undefined;
+  const currentModel = typeof rawModel === "string" ? rawModel : "";
+
+  if (favorited.length === 0 && catalog.length === 0) {
+    return html`<div class="config-model-selector__loading">${t("common.loading")}</div>`;
+  }
+
+  const options =
+    favorited.length > 0
+      ? favorited
+      : catalog.slice(0, 20);
+
+  return html`
+    <select
+      class="config-quick-settings__select"
+      ?disabled=${props.loading}
+      @change=${(e: Event) => {
+        const value = (e.target as HTMLSelectElement).value;
+        props.onFormPatch(
+          ["cognitive", "insight", "inferenceModel"],
+          value || undefined,
+        );
+      }}
+    >
+      <option value="" ?selected=${!currentModel}>使用默认模型</option>
+      ${options.map((m) => {
+        const key = m.provider ? `${m.provider}/${m.id}` : m.id;
+        return html`<option value=${key} ?selected=${key === currentModel}>
+          ${m.provider ? `${m.provider} / ` : ""}${m.name}
+        </option>`;
+      })}
+    </select>
+  `;
+}
+
 // --- Quick settings entries ---
 
 export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
@@ -528,10 +574,11 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     section: "cognitive",
   },
   {
-    path: ["cognitive", "evolution", "enabled"],
-    label: "自进化",
-    description: "基于错误学习自动建议新技能",
+    path: ["cognitive", "insight", "inferenceModel"],
+    label: "认知模型",
+    description: "洞察生成和画像提取使用的模型",
     section: "cognitive",
+    render: (props) => renderCognitiveModelSelect(props),
   },
   {
     path: ["tools", "loopDetection", "enabled"],
