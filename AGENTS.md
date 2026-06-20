@@ -23,7 +23,7 @@ KaijiBot is an independent project — a proactive cognitive AI assistant with a
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
 - **`src/infra/openclaw-migrator/`** — OpenClaw → KaijiBot migration: auto-detect OpenClaw installation, import agents/workspace/skills/config with dry-run support, onboard wizard integration
 - **`src/commands/migrate.ts`** — `kaijibot migrate` CLI command
-- **`extensions/`** — 62 bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, memory-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks
+- **`extensions/`** — bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, knowledge-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks
 - **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk
 - **`skills/`** — 22 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts, memory-organize)
 - **`ui/`** — web control UI
