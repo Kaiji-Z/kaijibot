@@ -2,6 +2,7 @@
   "id": "knowledge-wiki",
   "name": "Knowledge Wiki",
   "description": "LLM-compiled knowledge wiki. Reads workspace files and compiles structured knowledge pages.",
+  "enabledByDefault": true,
   "skills": ["./skills"],
   "uiHints": {
     "enabled": {

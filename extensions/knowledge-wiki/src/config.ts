@@ -27,7 +27,7 @@ export type KnowledgeWikiPluginConfig = WikiConfig;
 
 // === Defaults ===
 
-export const DEFAULT_WIKI_ENABLED = false;
+export const DEFAULT_WIKI_ENABLED = true;
 export const DEFAULT_WIKI_CRON = "0 */6 * * *";
 export const DEFAULT_WIKI_MAX_FILE_SIZE = 1_048_576; // 1MB
 export const DEFAULT_WIKI_MIN_CONFIDENCE = 0.5;
