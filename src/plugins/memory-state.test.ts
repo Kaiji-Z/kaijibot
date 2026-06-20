@@ -196,7 +196,7 @@ describe("memory plugin state", () => {
 
   it("appends prompt supplements in plugin-id order", () => {
     registerMemoryPromptSection(() => ["primary"]);
-    registerMemoryPromptSupplement("memory-wiki", () => ["wiki"]);
+    registerMemoryPromptSupplement("knowledge-wiki", () => ["wiki"]);
     registerMemoryPromptSupplement("alpha-helper", () => ["alpha"]);
 
     expect(buildMemoryPromptSection({ availableTools: new Set() })).toEqual([
@@ -212,7 +212,7 @@ describe("memory plugin state", () => {
       get: async () => null,
     };
 
-    registerMemoryCorpusSupplement("memory-wiki", supplement);
+    registerMemoryCorpusSupplement("knowledge-wiki", supplement);
 
     expect(listMemoryCorpusSupplements()).toHaveLength(1);
     await expect(
@@ -254,8 +254,8 @@ describe("memory plugin state", () => {
       relativePath: "memory/first.md",
       runtime,
     });
-    registerMemoryPromptSupplement("memory-wiki", () => ["wiki supplement"]);
-    registerMemoryCorpusSupplement("memory-wiki", {
+    registerMemoryPromptSupplement("knowledge-wiki", () => ["wiki supplement"]);
+    registerMemoryCorpusSupplement("knowledge-wiki", {
       search: async () => [{ corpus: "wiki", path: "sources/alpha.md", score: 1, snippet: "x" }],
       get: async () => null,
     });

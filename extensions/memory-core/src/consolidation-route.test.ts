@@ -428,6 +428,48 @@ describe("routeToStores", () => {
     expect(callArgs.items).toHaveLength(1);
     expect(callArgs.items[0].category).toBe("domain_knowledge");
     expect(callArgs.workspaceDir).toBe("/tmp/ws");
+    expect(callArgs.agentId).toBe("test-agent");
+    expect(callArgs.userId).toBe("test-user");
+    expect(callArgs.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("calls routeToWiki once per (agentId, userId) group with isolated items", async () => {
+    const items = [
+      {
+        agentId: "agent-a",
+        userId: "user-1",
+        item: makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "A1" })
+          .item,
+      },
+      {
+        agentId: "agent-a",
+        userId: "user-1",
+        item: makeRouteItem({ category: "stated_preference", confidence: 0.8, content: "A2" })
+          .item,
+      },
+      {
+        agentId: "agent-b",
+        userId: "user-2",
+        item: makeRouteItem({ category: "goal_or_aspiration", confidence: 0.75, content: "B1" })
+          .item,
+      },
+      {
+        agentId: "agent-a",
+        userId: "user-1",
+        item: makeRouteItem({ category: "behavioral_pattern", confidence: 0.95, content: "skip" })
+          .item,
+      },
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    expect(deps.routeToWiki).toHaveBeenCalledTimes(2);
+    const calls = (deps.routeToWiki as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    const callA = calls.find((c) => c.agentId === "agent-a" && c.userId === "user-1");
+    const callB = calls.find((c) => c.agentId === "agent-b" && c.userId === "user-2");
+    expect(callA).toBeDefined();
+    expect(callB).toBeDefined();
+    expect(callA.items.map((i: { content: string }) => i.content).sort()).toEqual(["A1", "A2"]);
+    expect(callB.items).toHaveLength(1);
+    expect(callB.items[0].content).toBe("B1");
   });
 
   it("excludes items with confidence < 0.7 from routeToWiki", async () => {

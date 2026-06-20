@@ -191,12 +191,12 @@ describe("clearPluginLoaderCache", () => {
       id: "stale",
       create: async () => ({ provider: null }),
     });
-    registerMemoryCorpusSupplement("memory-wiki", {
+    registerMemoryCorpusSupplement("knowledge-wiki", {
       search: async () => [],
       get: async () => null,
     });
     registerMemoryPromptSection(() => ["stale memory section"]);
-    registerMemoryPromptSupplement("memory-wiki", () => ["stale wiki supplement"]);
+    registerMemoryPromptSupplement("knowledge-wiki", () => ["stale wiki supplement"]);
     registerMemoryFlushPlanResolver(() => ({
       softThresholdTokens: 1,
       forceFlushTranscriptBytes: 2,

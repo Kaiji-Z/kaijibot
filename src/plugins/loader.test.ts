@@ -1510,12 +1510,12 @@ module.exports = { id: "throws-after-import", register() {} };`,
       id: "active",
       create: async () => ({ provider: null }),
     });
-    registerMemoryCorpusSupplement("memory-wiki", {
+    registerMemoryCorpusSupplement("knowledge-wiki", {
       search: async () => [],
       get: async () => null,
     });
     registerMemoryPromptSection(() => ["active memory section"]);
-    registerMemoryPromptSupplement("memory-wiki", () => ["active wiki supplement"]);
+    registerMemoryPromptSupplement("knowledge-wiki", () => ["active wiki supplement"]);
     registerMemoryFlushPlanResolver(() => ({
       softThresholdTokens: 1,
       forceFlushTranscriptBytes: 2,

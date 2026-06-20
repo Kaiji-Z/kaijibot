@@ -1,0 +1,100 @@
+{
+  "id": "knowledge-wiki",
+  "name": "Knowledge Wiki",
+  "description": "LLM-compiled knowledge wiki. Reads workspace files and compiles structured knowledge pages.",
+  "skills": ["./skills"],
+  "uiHints": {
+    "enabled": {
+      "label": "Enable Wiki",
+      "help": "Enable the LLM-compiled knowledge wiki."
+    },
+    "cron": {
+      "label": "Cron Schedule",
+      "help": "Cron expression for automatic wiki ingest (default: every 6 hours)."
+    },
+    "vault.path": {
+      "label": "Vault Path",
+      "help": "Directory for the compiled wiki pages."
+    },
+    "scan.extensions": {
+      "label": "Scan Extensions",
+      "help": "File extensions to scan for knowledge extraction."
+    },
+    "scan.includeMemoryCurated": {
+      "label": "Include Memory Curated",
+      "help": "Include MEMORY.md and topic files as knowledge sources."
+    },
+    "extraction.minConfidence": {
+      "label": "Min Confidence",
+      "help": "Minimum confidence threshold for extracted claims."
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "cron": {
+        "type": "string"
+      },
+      "vault": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "scan": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludeDirs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludePatterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxFileSize": {
+            "type": "number",
+            "minimum": 1
+          },
+          "includeMemoryCurated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "extraction": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "minConfidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "maxClaimsPerPage": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "commandAliases": [{ "name": "wiki" }]
+}

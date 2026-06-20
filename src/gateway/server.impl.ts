@@ -1730,8 +1730,8 @@ export async function startGatewayServer(
           type CorrectionRecord = import("../cognitive/correction/types.js").CorrectionRecord;
           type ExtractedItem =
             import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
-          type MemoryWikiPluginConfig =
-            import("../../extensions/memory-wiki/src/config.js").MemoryWikiPluginConfig;
+          type KnowledgeWikiPluginConfig =
+            import("../../extensions/knowledge-wiki/src/config.js").KnowledgeWikiPluginConfig;
           const { mergeTypedInsights, HALF_LIFE_BY_CATEGORY } =
             await import("../cognitive/persona/curator.js");
 
@@ -1918,56 +1918,7 @@ export async function startGatewayServer(
                 await indexManager.writeIndex(index);
                 await indexManager.rebalanceIndex();
               },
-              routeToWiki: consolidationConfig.wiki.enabled
-                ? async (params: {
-                    workspaceDir: string;
-                    items: ExtractedItem[];
-                    date: string;
-                  }): Promise<void> => {
-                    try {
-                      const [
-                        { applyMemoryWikiMutation },
-                        { resolveMemoryWikiConfig },
-                        { mapConsolidationItemsToWikiSynthesis },
-                      ] = await Promise.all([
-                        import("../../extensions/memory-wiki/src/apply.js"),
-                        import("../../extensions/memory-wiki/src/config.js"),
-                        import("../../extensions/memory-wiki/src/consolidation-adapter.js"),
-                      ]);
-                      const wikiConfig = resolveMemoryWikiConfig(
-                        cfgAtStart.plugins?.entries?.["memory-wiki"]?.config as
-                          | MemoryWikiPluginConfig
-                          | undefined,
-                      );
-                      const inputs = params.items.map((item) => ({
-                        category: item.category,
-                        domains: item.domains ?? [],
-                        content: item.content,
-                        confidence: item.confidence,
-                        source: item.source,
-                        evidence: item.evidence ? [item.evidence] : undefined,
-                      }));
-                      const mutations = mapConsolidationItemsToWikiSynthesis(inputs, {
-                        minConfidence: consolidationConfig.wiki.minConfidence,
-                        maxPages: consolidationConfig.wiki.maxPagesPerRun,
-                        date: params.date,
-                      });
-                      for (const mutation of mutations) {
-                        try {
-                          await applyMemoryWikiMutation({ config: wikiConfig, mutation });
-                        } catch (err) {
-                          log.warn(
-                            `consolidation routeToWiki mutation failed: ${err instanceof Error ? err.message : String(err)}`,
-                          );
-                        }
-                      }
-                    } catch (err) {
-                      log.warn(
-                        `consolidation routeToWiki bootstrap failed: ${err instanceof Error ? err.message : String(err)}`,
-                      );
-                    }
-                  }
-                : undefined,
+              routeToWiki: undefined,
             },
 
             // Memory repair — structural repair step after consolidation routing
@@ -2112,6 +2063,76 @@ export async function startGatewayServer(
           );
         } catch (err) {
           log.warn(`evolution removeStale bootstrap skipped: ${String(err)}`);
+        }
+      })();
+    }
+
+    if (!minimalTestGateway) {
+      void (async () => {
+        try {
+          const { resolveWikiConfig } = await import(
+            "../../extensions/knowledge-wiki/src/config.js"
+          );
+          const { ingestAll } = await import(
+            "../../extensions/knowledge-wiki/src/ingest.js"
+          );
+          const { initializeWikiVault } = await import(
+            "../../extensions/knowledge-wiki/src/vault.js"
+          );
+          const { resolveConfigDir } = await import("../utils.js");
+          const { resolveAgentWorkspaceDir } = await import(
+            "../agents/agent-scope.js",
+          );
+          const { createStandaloneGenerateText } = await import(
+            "../cognitive/evolution/standalone-generate.js",
+          );
+          const { Cron } = await import("croner");
+
+          const wikiConfig = resolveWikiConfig(
+            cfgAtStart.plugins?.entries?.["knowledge-wiki"]?.config as
+              | Parameters<typeof resolveWikiConfig>[0]
+              | undefined,
+          );
+
+          if (!wikiConfig.enabled) {
+            return;
+          }
+
+          const defaultAgentId = cfgAtStart.agents?.list?.[0]?.id ?? "main";
+          const workspaceDir =
+            resolveAgentWorkspaceDir(cfgAtStart, defaultAgentId) ??
+            path.join(resolveConfigDir(), "workspace");
+          const vaultRoot = wikiConfig.vault.path;
+
+          const runWikiIngest = async () => {
+            try {
+              await initializeWikiVault(vaultRoot);
+              const generateText = await createStandaloneGenerateText(cfgAtStart);
+              const result = await ingestAll(
+                workspaceDir,
+                vaultRoot,
+                generateText,
+                wikiConfig,
+              );
+              if (result.ingested.length > 0) {
+                log.info(
+                  `wiki ingest: ${result.ingested.length} files compiled (${result.skipped} skipped)`,
+                );
+              }
+            } catch (err) {
+              log.warn(`wiki ingest run failed: ${String(err)}`);
+            }
+          };
+
+          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const cronJob = new Cron(wikiConfig.cron, { timezone }, () => {
+            void runWikiIngest();
+          });
+          log.info(
+            `wiki ingest scheduled (cron=${wikiConfig.cron}, tz=${timezone}, next=${cronJob.nextRun()?.toISOString() ?? "unknown"})`,
+          );
+        } catch (err) {
+          log.warn(`wiki ingest bootstrap skipped: ${String(err)}`);
         }
       })();
     }

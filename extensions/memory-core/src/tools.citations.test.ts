@@ -217,7 +217,7 @@ describe("memory tools", () => {
   });
 
   it("searches registered wiki corpus supplements without calling memory search", async () => {
-    registerMemoryCorpusSupplement("memory-wiki", {
+    registerMemoryCorpusSupplement("knowledge-wiki", {
       search: async () => [
         {
           corpus: "wiki",
@@ -250,7 +250,7 @@ describe("memory tools", () => {
   });
 
   it("merges memory and wiki corpus search results for corpus=all", async () => {
-    registerMemoryCorpusSupplement("memory-wiki", {
+    registerMemoryCorpusSupplement("knowledge-wiki", {
       search: async () => [
         {
           corpus: "wiki",
@@ -279,7 +279,7 @@ describe("memory tools", () => {
     setMemoryReadFileImpl(async () => {
       throw new Error("path required");
     });
-    registerMemoryCorpusSupplement("memory-wiki", {
+    registerMemoryCorpusSupplement("knowledge-wiki", {
       search: async () => [],
       get: async () => ({
         corpus: "wiki",

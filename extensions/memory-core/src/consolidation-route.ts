@@ -42,9 +42,11 @@ export type ConsolidationRouteDeps = {
     items: ExtractedItem[];
     date: string;
   }) => Promise<void>;
-  /** Route high-confidence declarative knowledge to memory-wiki as synthesis pages. Optional — undefined when wiki integration is disabled. */
+  /** Route high-confidence declarative knowledge to knowledge-wiki as synthesis pages. Optional — undefined when wiki integration is disabled. Called once per (agentId, userId) group. */
   routeToWiki?: (params: {
     workspaceDir: string;
+    agentId: string;
+    userId: string;
     items: ExtractedItem[];
     date: string;
   }) => Promise<void>;
@@ -197,20 +199,44 @@ export async function routeToStores(params: {
   }
 
   if (deps.routeToWiki) {
-    const wikiEligible = items
-      .map((ri) => ri.item)
-      .filter(
-        (item) =>
-          item.confidence >= 0.7 &&
-          (item.category === "domain_knowledge" ||
-            item.category === "stated_preference" ||
-            item.category === "goal_or_aspiration"),
-      );
-    if (wikiEligible.length > 0) {
+    const wikiEligibleByUser = new Map<
+      string,
+      { agentId: string; userId: string; items: ExtractedItem[] }
+    >();
+    for (const ri of items) {
+      const item = ri.item;
+      if (
+        item.confidence < 0.7 ||
+        (item.category !== "domain_knowledge" &&
+          item.category !== "stated_preference" &&
+          item.category !== "goal_or_aspiration")
+      ) {
+        continue;
+      }
+      const key = `${ri.agentId}:${ri.userId}`;
+      let group = wikiEligibleByUser.get(key);
+      if (!group) {
+        group = { agentId: ri.agentId, userId: ri.userId, items: [] };
+        wikiEligibleByUser.set(key, group);
+      }
+      group.items.push(item);
+    }
+    for (const group of wikiEligibleByUser.values()) {
+      if (group.items.length === 0) {
+        continue;
+      }
       try {
-        await deps.routeToWiki({ workspaceDir, items: wikiEligible, date: localDateStr() });
+        await deps.routeToWiki({
+          workspaceDir,
+          agentId: group.agentId,
+          userId: group.userId,
+          items: group.items,
+          date: localDateStr(),
+        });
       } catch (err) {
-        errors.push(`routeToWiki failed: ${err instanceof Error ? err.message : String(err)}`);
+        errors.push(
+          `routeToWiki failed for ${group.agentId}/${group.userId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }
