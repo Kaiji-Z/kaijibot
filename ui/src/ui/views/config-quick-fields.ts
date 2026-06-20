@@ -559,6 +559,12 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     description: "检测并阻止重复的工具调用",
     section: "system",
   },
+  {
+    path: ["plugins", "entries", "knowledge-wiki", "config", "enabled"],
+    label: "知识维基",
+    description: "LLM 自动编译工作空间文件为结构化知识库",
+    section: "system",
+  },
 ];
 
 function getValueAtPath(root: Record<string, unknown>, path: readonly string[]): unknown {
