@@ -62,6 +62,11 @@ export const BUILD_ALL_STEPS = [
     kind: "node",
     args: ["--import", "tsx", "scripts/write-cli-compat.ts"],
   },
+  {
+    label: "build-control-ui",
+    kind: "node",
+    args: ["--import", "tsx", "scripts/build-control-ui.ts"],
+  },
 ];
 
 function resolveStepEnv(step, env, platform) {

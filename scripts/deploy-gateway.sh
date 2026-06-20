@@ -3,7 +3,6 @@ set -euo pipefail
 
 echo "[deploy] Building..."
 pnpm build
-pnpm ui:build
 
 echo "[deploy] Stopping gateway..."
 pkill -f 'kaijibot-gateway' 2>/dev/null || true
