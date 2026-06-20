@@ -528,31 +528,11 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     section: "cognitive",
   },
   {
-    path: ["cognitive", "proactive", "enabled"],
-    label: "主动推送",
-    description: "主动向用户发送洞察消息",
-    section: "cognitive",
-  },
-  {
-    path: ["cognitive", "persona", "autoExtract"],
-    label: "用户画像",
-    description: "自动从对话中提取兴趣和偏好",
-    section: "cognitive",
-  },
-  {
     path: ["cognitive", "evolution", "enabled"],
     label: "自进化",
     description: "基于错误学习自动建议新技能",
     section: "cognitive",
   },
-  INTERVAL_ENTRY,
-  {
-    path: ["memory", "citations"],
-    label: "来源标注",
-    description: "显示回答内容的参考来源",
-    section: "memory",
-  },
-  LANGUAGE_ENTRY,
   {
     path: ["tools", "loopDetection", "enabled"],
     label: "防重复保护",
