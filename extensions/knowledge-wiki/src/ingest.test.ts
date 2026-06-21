@@ -227,11 +227,19 @@ describe("ingestAll", () => {
       config,
     );
 
+    const { readdir: debugReaddir } = await import("node:fs/promises");
+    const summaries = await debugReaddir(path.join(TMP, "wiki", "summaries")).catch(() => []);
+    const entities = await debugReaddir(path.join(TMP, "wiki", "entities")).catch(() => []);
+    const concepts = await debugReaddir(path.join(TMP, "wiki", "concepts")).catch(() => []);
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(entities.length).toBeGreaterThan(0);
+    expect(concepts.length).toBeGreaterThan(0);
+
     const indexContent = await readFile(
       path.join(TMP, "wiki", "index.md"),
       "utf8",
     );
-    expect(indexContent).toContain("Summary");
+    expect(indexContent).toContain("Summar");
     expect(indexContent).toContain("Entit");
     expect(indexContent).toContain("Concept");
   });

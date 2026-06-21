@@ -149,13 +149,8 @@ export async function ingestAll(
   }
 
   if (ingested.length > 0) {
-    const allPages = ingested.flatMap((r) => [
-      { path: r.summaryPage, title: r.sourcePath, type: "summary" },
-      ...r.entityPages.map((p) => ({ path: p, title: p, type: "entity" })),
-      ...r.conceptPages.map((p) => ({ path: p, title: p, type: "concept" })),
-    ]);
     try {
-      await writeIndexPage(vaultRoot, allPages);
+      await writeIndexPage(vaultRoot);
     } catch {
       // index update is non-fatal
     }

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -146,51 +146,85 @@ describe("wiki-writer", () => {
   });
 
   describe("writeIndexPage", () => {
-    it("groups pages into sections by page type", async () => {
-      const pages = [
-        { path: "summaries/notes-rust.md", title: "Notes Rust", type: "summary" },
-        { path: "entities/rust.md", title: "Rust", type: "entity" },
-        {
-          path: "concepts/zero-cost-abstractions.md",
-          title: "Zero-cost abstractions",
-          type: "concept",
-        },
-      ];
+    it("scans vault directories and builds index from actual files", async () => {
+      await mkdir(path.join(vaultRoot, "summaries"), { recursive: true });
+      await mkdir(path.join(vaultRoot, "entities"), { recursive: true });
+      await mkdir(path.join(vaultRoot, "concepts"), { recursive: true });
 
-      await writeIndexPage(vaultRoot, pages);
+      await writeFile(
+        path.join(vaultRoot, "summaries", "notes-rust.md"),
+        "---\npageType: summary\ntitle: Notes Rust\n---\n# Notes Rust",
+        "utf8",
+      );
+      await writeFile(
+        path.join(vaultRoot, "entities", "rust.md"),
+        "---\npageType: entity\ntitle: Rust\n---\n# Rust",
+        "utf8",
+      );
+      await writeFile(
+        path.join(vaultRoot, "concepts", "zero-cost.md"),
+        "---\npageType: concept\ntitle: Zero-cost abstractions\n---\n# Zero-cost",
+        "utf8",
+      );
+
+      await writeIndexPage(vaultRoot);
 
       const indexContent = await readFile(path.join(vaultRoot, "index.md"), "utf8");
 
       expect(indexContent).toContain("# Wiki Index");
-      // Each type yields a header of the form "## <Capitalized>s (<count>)".
-      expect(indexContent).toContain("## Summarys (1)");
-      expect(indexContent).toContain("## Entitys (1)");
+      expect(indexContent).toContain("## Summaries (1)");
+      expect(indexContent).toContain("## Entities (1)");
       expect(indexContent).toContain("## Concepts (1)");
-      // Each page is rendered as a wiki link with its title.
       expect(indexContent).toContain("[[summaries/notes-rust]] — Notes Rust");
       expect(indexContent).toContain("[[entities/rust]] — Rust");
-      expect(indexContent).toContain(
-        "[[concepts/zero-cost-abstractions]] — Zero-cost abstractions",
-      );
+      expect(indexContent).toContain("[[concepts/zero-cost]] — Zero-cost abstractions");
     });
 
-    it("counts multiple pages of the same type together", async () => {
-      const pages = [
-        { path: "entities/rust.md", title: "Rust", type: "entity" },
-        { path: "entities/go.md", title: "Go", type: "entity" },
-      ];
+    it("counts multiple files in same directory", async () => {
+      await mkdir(path.join(vaultRoot, "entities"), { recursive: true });
 
-      await writeIndexPage(vaultRoot, pages);
+      await writeFile(
+        path.join(vaultRoot, "entities", "rust.md"),
+        "---\npageType: entity\ntitle: Rust\n---\n# Rust",
+        "utf8",
+      );
+      await writeFile(
+        path.join(vaultRoot, "entities", "go.md"),
+        "---\npageType: entity\ntitle: Go\n---\n# Go",
+        "utf8",
+      );
+
+      await writeIndexPage(vaultRoot);
 
       const indexContent = await readFile(path.join(vaultRoot, "index.md"), "utf8");
 
-      expect(indexContent).toContain("## Entitys (2)");
-      // Pages are sorted by title, so Go precedes Rust.
+      expect(indexContent).toContain("## Entities (2)");
       const goIdx = indexContent.indexOf("[[entities/go]] — Go");
       const rustIdx = indexContent.indexOf("[[entities/rust]] — Rust");
       expect(goIdx).toBeGreaterThan(-1);
       expect(rustIdx).toBeGreaterThan(-1);
       expect(goIdx).toBeLessThan(rustIdx);
+    });
+
+    it("handles empty vault gracefully", async () => {
+      await writeIndexPage(vaultRoot);
+
+      const indexContent = await readFile(path.join(vaultRoot, "index.md"), "utf8");
+      expect(indexContent).toContain("# Wiki Index");
+    });
+
+    it("uses filename as title when frontmatter missing", async () => {
+      await mkdir(path.join(vaultRoot, "entities"), { recursive: true });
+      await writeFile(
+        path.join(vaultRoot, "entities", "unknown.md"),
+        "# Unknown\n\nNo frontmatter here.",
+        "utf8",
+      );
+
+      await writeIndexPage(vaultRoot);
+
+      const indexContent = await readFile(path.join(vaultRoot, "index.md"), "utf8");
+      expect(indexContent).toContain("[[entities/unknown]] — unknown");
     });
   });
 

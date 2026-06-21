@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename, readdir } from "node:fs/promises";
 import path from "node:path";
 import {
   parseWikiMarkdown,
@@ -219,15 +219,39 @@ ${concept.description}
 
 export async function writeIndexPage(
   vaultRoot: string,
-  pages: ReadonlyArray<{ path: string; title: string; type: string }>,
 ): Promise<void> {
   const indexPath = path.join(vaultRoot, "index.md");
-
+  const dirs = ["summaries", "entities", "concepts"] as const;
   const byType = new Map<string, Array<{ path: string; title: string; type: string }>>();
-  for (const page of pages) {
-    const arr = byType.get(page.type) ?? [];
-    arr.push(page);
-    byType.set(page.type, arr);
+
+  for (const dir of dirs) {
+    const dirPath = path.join(vaultRoot, dir);
+    let entries: string[];
+    try {
+      entries = await readdir(dirPath);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.endsWith(".md")) {
+        continue;
+      }
+      let content: string;
+      try {
+        content = await readFile(path.join(dirPath, entry), "utf8");
+      } catch {
+        continue;
+      }
+      const parsed = parseWikiMarkdown(content);
+      const title =
+        typeof parsed.frontmatter.title === "string"
+          ? parsed.frontmatter.title
+          : entry.replace(/\.md$/, "");
+      const relativePath = path.join(dir, entry).replace(/\\/g, "/");
+      const arr = byType.get(dir) ?? [];
+      arr.push({ path: relativePath, title, type: dir });
+      byType.set(dir, arr);
+    }
   }
 
   const lines = [
@@ -237,9 +261,13 @@ export async function writeIndexPage(
     "",
   ];
 
-  for (const [type, typePages] of byType) {
-    const label = type.charAt(0).toUpperCase() + type.slice(1);
-    lines.push(`## ${label}s (${typePages.length})`);
+  for (const dir of dirs) {
+    const typePages = byType.get(dir) ?? [];
+    if (typePages.length === 0) {
+      continue;
+    }
+    const label = dir.charAt(0).toUpperCase() + dir.slice(1);
+    lines.push(`## ${label} (${typePages.length})`);
     lines.push("");
     for (const page of typePages.toSorted((a, b) => a.title.localeCompare(b.title))) {
       const linkPath = page.path.replace(/\.md$/, "").replace(/\\/g, "/");
