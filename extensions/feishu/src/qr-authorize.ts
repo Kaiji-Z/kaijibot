@@ -112,10 +112,8 @@ function mapRegisterError(err: unknown): QrAuthError {
  */
 function renderQr(url: string): void {
   qrcode.generate(url, { small: true }, (ascii: string) => {
-    // eslint-disable-next-line no-console
     console.log(ascii);
   });
-  // eslint-disable-next-line no-console
   console.log(url);
 }
 

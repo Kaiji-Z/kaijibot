@@ -234,7 +234,7 @@ export async function runWikiIngestAllAgents(params: {
           errors: result.errors.length,
           durationMs: Date.now() - startTime,
         };
-      } catch (err) {
+      } catch {
         return {
           agentIds: ws.agentIds,
           compiled: 0,

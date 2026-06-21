@@ -1730,8 +1730,6 @@ export async function startGatewayServer(
           type CorrectionRecord = import("../cognitive/correction/types.js").CorrectionRecord;
           type ExtractedItem =
             import("../../extensions/memory-core/src/consolidation-types.js").ExtractedItem;
-          type KnowledgeWikiPluginConfig =
-            import("../../extensions/knowledge-wiki/src/config.js").KnowledgeWikiPluginConfig;
           const { mergeTypedInsights, HALF_LIFE_BY_CATEGORY } =
             await import("../cognitive/persona/curator.js");
 

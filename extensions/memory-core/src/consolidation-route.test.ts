@@ -467,7 +467,7 @@ describe("routeToStores", () => {
     const callB = calls.find((c) => c.agentId === "agent-b" && c.userId === "user-2");
     expect(callA).toBeDefined();
     expect(callB).toBeDefined();
-    expect(callA.items.map((i: { content: string }) => i.content).sort()).toEqual(["A1", "A2"]);
+    expect(callA.items.map((i: { content: string }) => i.content).toSorted()).toEqual(["A1", "A2"]);
     expect(callB.items).toHaveLength(1);
     expect(callB.items[0].content).toBe("B1");
   });

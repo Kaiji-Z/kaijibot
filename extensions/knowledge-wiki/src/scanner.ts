@@ -137,7 +137,7 @@ export async function scanWorkspace(
 
   await walkDir(workspaceDir, "");
 
-  files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  files.toSorted((a, b) => a.relativePath.localeCompare(b.relativePath));
 
   return { files, skipped, errors };
 }

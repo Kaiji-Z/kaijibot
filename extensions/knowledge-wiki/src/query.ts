@@ -57,7 +57,7 @@ export async function queryWiki(
     }
   }
 
-  matches.sort((a, b) => b.score - a.score);
+  matches.toSorted((a, b) => b.score - a.score);
   const topMatches = matches.slice(0, maxResults);
   const suggestedPages = matches
     .slice(maxResults, maxResults + 3)
