@@ -2070,7 +2070,7 @@ export async function startGatewayServer(
     if (!minimalTestGateway) {
       void (async () => {
         try {
-          const { resolveWikiConfig } = await import(
+          const { resolveWikiConfig, resolveEffectiveVaultRoot } = await import(
             "../../extensions/knowledge-wiki/src/config.js"
           );
           const { ingestAll } = await import(
@@ -2079,9 +2079,8 @@ export async function startGatewayServer(
           const { initializeWikiVault } = await import(
             "../../extensions/knowledge-wiki/src/vault.js"
           );
-          const { resolveConfigDir } = await import("../utils.js");
-          const { resolveAgentWorkspaceDir } = await import(
-            "../agents/agent-scope.js",
+          const { resolveConsolidationWorkspaces } = await import(
+            "../memory-host-sdk/consolidation.js",
           );
           const { createStandaloneGenerateText } = await import(
             "../cognitive/evolution/standalone-generate.js",
@@ -2098,26 +2097,33 @@ export async function startGatewayServer(
             return;
           }
 
-          const defaultAgentId = cfgAtStart.agents?.list?.[0]?.id ?? "main";
-          const workspaceDir =
-            resolveAgentWorkspaceDir(cfgAtStart, defaultAgentId) ??
-            path.join(resolveConfigDir(), "workspace");
-          const vaultRoot = wikiConfig.vault.path;
-
           const runWikiIngest = async () => {
             try {
-              await initializeWikiVault(vaultRoot);
+              const workspaces = resolveConsolidationWorkspaces(cfgAtStart);
               const generateText = await createStandaloneGenerateText(cfgAtStart);
-              const result = await ingestAll(
-                workspaceDir,
-                vaultRoot,
-                generateText,
-                wikiConfig,
-              );
-              if (result.ingested.length > 0) {
-                log.info(
-                  `wiki ingest: ${result.ingested.length} files compiled (${result.skipped} skipped)`,
+              for (const ws of workspaces) {
+                const vaultRoot = resolveEffectiveVaultRoot(
+                  wikiConfig,
+                  ws.workspaceDir,
                 );
+                try {
+                  await initializeWikiVault(vaultRoot);
+                  const result = await ingestAll(
+                    ws.workspaceDir,
+                    vaultRoot,
+                    generateText,
+                    wikiConfig,
+                  );
+                  if (result.ingested.length > 0) {
+                    log.info(
+                      `wiki ingest [${ws.agentIds.join(",")}]: ${result.ingested.length} files compiled (${result.skipped} skipped)`,
+                    );
+                  }
+                } catch (err) {
+                  log.warn(
+                    `wiki ingest failed for [${ws.agentIds.join(",")}]: ${String(err)}`,
+                  );
+                }
               }
             } catch (err) {
               log.warn(`wiki ingest run failed: ${String(err)}`);

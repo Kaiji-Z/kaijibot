@@ -9,8 +9,8 @@ import { initializeWikiVault } from "./vault.js";
 
 export type GatewayDeps = {
   config: WikiConfig;
-  workspaceDir: string;
-  vaultRoot: string;
+  resolveVault: (workspaceDir: string | undefined) => string;
+  defaultWorkspaceDir: string;
   getGenerateText: () => Promise<GenerateTextFn>;
 };
 
@@ -18,8 +18,19 @@ export function registerWikiGatewayMethods(
   api: KaijiBotPluginApi,
   deps: GatewayDeps,
 ): void {
-  api.registerGatewayMethod("wiki.status", async ({ respond }) => {
-    const status = await resolveWikiStatus(deps.vaultRoot);
+  const resolveVaultFromParams = (params: Record<string, unknown>) => {
+    const workspaceDir = typeof params.workspaceDir === "string"
+      ? params.workspaceDir
+      : deps.defaultWorkspaceDir;
+    return {
+      vaultRoot: deps.resolveVault(workspaceDir || undefined),
+      workspaceDir,
+    };
+  };
+
+  api.registerGatewayMethod("wiki.status", async ({ params, respond }) => {
+    const { vaultRoot } = resolveVaultFromParams(params);
+    const status = await resolveWikiStatus(vaultRoot);
     respond(true, status);
   });
 
@@ -29,21 +40,24 @@ export function registerWikiGatewayMethods(
       respond(false, { error: "query is required" });
       return;
     }
-    const result = await queryWiki(deps.vaultRoot, query);
+    const { vaultRoot } = resolveVaultFromParams(params);
+    const result = await queryWiki(vaultRoot, query);
     respond(true, result);
   });
 
-  api.registerGatewayMethod("wiki.lint", async ({ respond }) => {
-    const report = await lintWiki(deps.vaultRoot);
+  api.registerGatewayMethod("wiki.lint", async ({ params, respond }) => {
+    const { vaultRoot } = resolveVaultFromParams(params);
+    const report = await lintWiki(vaultRoot);
     respond(true, report);
   });
 
-  api.registerGatewayMethod("wiki.ingest", async ({ respond }) => {
-    await initializeWikiVault(deps.vaultRoot);
+  api.registerGatewayMethod("wiki.ingest", async ({ params, respond }) => {
+    const { vaultRoot, workspaceDir } = resolveVaultFromParams(params);
+    await initializeWikiVault(vaultRoot);
     const generateText = await deps.getGenerateText();
     const result = await ingestAll(
-      deps.workspaceDir,
-      deps.vaultRoot,
+      workspaceDir,
+      vaultRoot,
       generateText,
       deps.config,
     );

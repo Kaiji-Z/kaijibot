@@ -9,8 +9,8 @@ import { initializeWikiVault } from "./vault.js";
 
 export type CliDeps = {
   config: WikiConfig;
-  workspaceDir: string;
-  vaultRoot: string;
+  resolveVault: (workspaceDir: string | undefined) => string;
+  defaultWorkspaceDir: string;
   getGenerateText: () => Promise<GenerateTextFn>;
 };
 
@@ -22,12 +22,22 @@ export function registerWikiCli(
     .command("wiki")
     .description("LLM-compiled knowledge wiki");
 
+  const resolveFromOpts = (opts: { workspaceDir?: string }) => {
+    const workspaceDir = opts.workspaceDir ?? deps.defaultWorkspaceDir;
+    return {
+      workspaceDir,
+      vaultRoot: deps.resolveVault(workspaceDir || undefined),
+    };
+  };
+
   wiki
     .command("status")
     .description("Show wiki vault status")
     .option("--json", "Print JSON")
-    .action(async (opts: { json?: boolean }) => {
-      const status = await resolveWikiStatus(deps.vaultRoot);
+    .option("--workspace-dir <dir>", "Agent workspace directory")
+    .action(async (opts: { json?: boolean; workspaceDir?: string }) => {
+      const { vaultRoot } = resolveFromOpts(opts);
+      const status = await resolveWikiStatus(vaultRoot);
       if (opts.json) {
         console.log(JSON.stringify(status, null, 2));
       } else {
@@ -38,8 +48,10 @@ export function registerWikiCli(
   wiki
     .command("init")
     .description("Initialize the wiki vault")
-    .action(async () => {
-      const result = await initializeWikiVault(deps.vaultRoot);
+    .option("--workspace-dir <dir>", "Agent workspace directory")
+    .action(async (opts: { workspaceDir?: string }) => {
+      const { vaultRoot } = resolveFromOpts(opts);
+      const result = await initializeWikiVault(vaultRoot);
       console.log(
         result.created
           ? `Initialized wiki at ${result.vaultPath} (${result.createdDirs.length} dirs, ${result.createdFiles.length} files)`
@@ -51,12 +63,14 @@ export function registerWikiCli(
     .command("ingest")
     .description("Ingest all changed workspace files into the wiki")
     .option("--json", "Print JSON")
-    .action(async (opts: { json?: boolean }) => {
-      await initializeWikiVault(deps.vaultRoot);
+    .option("--workspace-dir <dir>", "Agent workspace directory")
+    .action(async (opts: { json?: boolean; workspaceDir?: string }) => {
+      const { workspaceDir, vaultRoot } = resolveFromOpts(opts);
+      await initializeWikiVault(vaultRoot);
       const generateText = await deps.getGenerateText();
       const result = await ingestAll(
-        deps.workspaceDir,
-        deps.vaultRoot,
+        workspaceDir,
+        vaultRoot,
         generateText,
         deps.config,
       );
@@ -76,9 +90,14 @@ export function registerWikiCli(
     .command("query <search>")
     .description("Search the compiled wiki")
     .option("--json", "Print JSON")
+    .option("--workspace-dir <dir>", "Agent workspace directory")
     .action(
-      async (search: string, opts: { json?: boolean }) => {
-        const result = await queryWiki(deps.vaultRoot, search);
+      async (
+        search: string,
+        opts: { json?: boolean; workspaceDir?: string },
+      ) => {
+        const { vaultRoot } = resolveFromOpts(opts);
+        const result = await queryWiki(vaultRoot, search);
         if (opts.json) {
           console.log(JSON.stringify(result, null, 2));
         } else {
@@ -99,8 +118,10 @@ export function registerWikiCli(
     .command("lint")
     .description("Health-check the wiki")
     .option("--json", "Print JSON")
-    .action(async (opts: { json?: boolean }) => {
-      const report = await lintWiki(deps.vaultRoot);
+    .option("--workspace-dir <dir>", "Agent workspace directory")
+    .action(async (opts: { json?: boolean; workspaceDir?: string }) => {
+      const { vaultRoot } = resolveFromOpts(opts);
+      const report = await lintWiki(vaultRoot);
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {

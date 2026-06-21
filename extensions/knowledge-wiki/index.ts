@@ -1,7 +1,11 @@
 import path from "node:path";
 import { definePluginEntry } from "./api.js";
 import { registerWikiCli } from "./src/cli.js";
-import { knowledgeWikiConfigSchema, resolveWikiConfig } from "./src/config.js";
+import {
+  knowledgeWikiConfigSchema,
+  resolveWikiConfig,
+  resolveEffectiveVaultRoot,
+} from "./src/config.js";
 import { registerWikiGatewayMethods } from "./src/gateway.js";
 import { createWikiPromptSectionBuilder } from "./src/prompt-section.js";
 import {
@@ -22,9 +26,6 @@ export default definePluginEntry({
   register(api) {
     const config = resolveWikiConfig(api.pluginConfig);
 
-    const vaultRoot = config.vault.path;
-    const workspaceDir = path.dirname(vaultRoot);
-
     const getGenerateText = async (): Promise<GenerateTextFn> => {
       const { createStandaloneGenerateText } = await import(
         "kaijibot/plugin-sdk/generate-text"
@@ -33,26 +34,47 @@ export default definePluginEntry({
       return fn;
     };
 
-    const toolContext: WikiToolContext = {
-      config,
-      workspaceDir,
-      vaultRoot,
-      getGenerateText,
-    };
+    const resolveVault = (workspaceDir: string | undefined) =>
+      resolveEffectiveVaultRoot(config, workspaceDir);
 
-    api.registerTool(createWikiStatusTool(toolContext), { name: "wiki_status" });
-    api.registerTool(createWikiQueryTool(toolContext), { name: "wiki_query" });
-    api.registerTool(createWikiIngestTool(toolContext), { name: "wiki_ingest" });
-    api.registerTool(createWikiLintTool(toolContext), { name: "wiki_lint" });
+    const makeToolContext = (
+      workspaceDir: string | undefined,
+    ): WikiToolContext => ({
+      config,
+      workspaceDir: workspaceDir ?? "",
+      vaultRoot: resolveVault(workspaceDir),
+      getGenerateText,
+    });
+
+    api.registerTool(
+      (ctx) => createWikiStatusTool(makeToolContext(ctx.workspaceDir)),
+      { name: "wiki_status" },
+    );
+    api.registerTool(
+      (ctx) => createWikiQueryTool(makeToolContext(ctx.workspaceDir)),
+      { name: "wiki_query" },
+    );
+    api.registerTool(
+      (ctx) => createWikiIngestTool(makeToolContext(ctx.workspaceDir)),
+      { name: "wiki_ingest" },
+    );
+    api.registerTool(
+      (ctx) => createWikiLintTool(makeToolContext(ctx.workspaceDir)),
+      { name: "wiki_lint" },
+    );
 
     api.registerMemoryPromptSupplement?.(
-      createWikiPromptSectionBuilder(config, vaultRoot),
+      createWikiPromptSectionBuilder(config),
+    );
+
+    const defaultWorkspaceDir = path.dirname(
+      resolveVault(undefined) || "",
     );
 
     registerWikiGatewayMethods(api, {
       config,
-      workspaceDir,
-      vaultRoot,
+      resolveVault,
+      defaultWorkspaceDir,
       getGenerateText,
     });
 
@@ -60,8 +82,8 @@ export default definePluginEntry({
       ({ program }) => {
         registerWikiCli(program, {
           config,
-          workspaceDir,
-          vaultRoot,
+          resolveVault,
+          defaultWorkspaceDir,
           getGenerateText,
         });
       },

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   resolveWikiConfig,
   resolveDefaultWikiVaultPath,
+  resolveAgentVaultRoot,
+  resolveEffectiveVaultRoot,
   DEFAULT_WIKI_ENABLED,
   DEFAULT_WIKI_CRON,
   DEFAULT_SCAN_EXTENSIONS,
@@ -36,17 +38,22 @@ describe("resolveWikiConfig", () => {
     expect(config.cron).toBe("0 3 * * *");
   });
 
-  it("respects custom vault path", () => {
+  it("respects custom vault path override", () => {
     const config = resolveWikiConfig({ vault: { path: "/custom/vault" } });
     expect(config.vault.path).toBe("/custom/vault");
   });
 
-  it("expands ~ in vault path", () => {
+  it("expands ~ in vault path override", () => {
     const config = resolveWikiConfig(
       { vault: { path: "~/my-wiki" } },
       { homedir: "/home/test" },
     );
     expect(config.vault.path).toBe("/home/test/my-wiki");
+  });
+
+  it("vault.path defaults to empty string (derive from workspace)", () => {
+    const config = resolveWikiConfig(undefined);
+    expect(config.vault.path).toBe("");
   });
 
   it("respects custom scan extensions", () => {
@@ -96,5 +103,48 @@ describe("resolveWikiConfig", () => {
     const vaultPath = resolveDefaultWikiVaultPath("/home/test");
     expect(vaultPath).toContain("workspace");
     expect(vaultPath).toContain("wiki");
+  });
+});
+
+describe("resolveAgentVaultRoot", () => {
+  it("derives vault from workspace directory", () => {
+    const vault = resolveAgentVaultRoot("/home/user/.kaijibot/workspace");
+    expect(vault).toBe("/home/user/.kaijibot/workspace/wiki");
+  });
+
+  it("derives different vaults for different agent workspaces", () => {
+    const main = resolveAgentVaultRoot("/home/user/.kaijibot/workspace");
+    const ops = resolveAgentVaultRoot("/home/user/.kaijibot/workspace-ops");
+    expect(main).toBe("/home/user/.kaijibot/workspace/wiki");
+    expect(ops).toBe("/home/user/.kaijibot/workspace-ops/wiki");
+    expect(main).not.toBe(ops);
+  });
+});
+
+describe("resolveEffectiveVaultRoot", () => {
+  it("uses config vault.path override when set", () => {
+    const config = resolveWikiConfig({ vault: { path: "/custom/vault" } });
+    const vault = resolveEffectiveVaultRoot(config, "/some/workspace");
+    expect(vault).toBe("/custom/vault");
+  });
+
+  it("derives from workspace when vault.path is empty", () => {
+    const config = resolveWikiConfig(undefined);
+    const vault = resolveEffectiveVaultRoot(config, "/home/user/.kaijibot/workspace");
+    expect(vault).toBe("/home/user/.kaijibot/workspace/wiki");
+  });
+
+  it("falls back to default when workspaceDir is undefined", () => {
+    const config = resolveWikiConfig(undefined);
+    const vault = resolveEffectiveVaultRoot(config, undefined);
+    expect(vault).toContain("workspace");
+    expect(vault).toContain("wiki");
+  });
+
+  it("provides isolation: different workspaces get different vaults", () => {
+    const config = resolveWikiConfig(undefined);
+    const main = resolveEffectiveVaultRoot(config, "/data/.kaijibot/workspace");
+    const ops = resolveEffectiveVaultRoot(config, "/data/.kaijibot/workspace-ops");
+    expect(main).not.toBe(ops);
   });
 });

@@ -56,11 +56,21 @@ export function resolveDefaultWikiVaultPath(homedir = os.homedir()): string {
   return path.join(homedir, ".kaijibot", "workspace", "wiki");
 }
 
-export function resolveWikiVaultPath(
-  basePath: string,
-  agentId: string,
+export function resolveAgentVaultRoot(workspaceDir: string): string {
+  return path.join(workspaceDir, "wiki");
+}
+
+export function resolveEffectiveVaultRoot(
+  config: WikiConfig,
+  workspaceDir: string | undefined,
 ): string {
-  return path.join(basePath, agentId);
+  if (config.vault.path) {
+    return config.vault.path;
+  }
+  if (!workspaceDir) {
+    return resolveDefaultWikiVaultPath();
+  }
+  return resolveAgentVaultRoot(workspaceDir);
 }
 
 // === Config Schema (Zod) ===
@@ -100,10 +110,9 @@ export function resolveWikiConfig(
     enabled: safeConfig.enabled ?? DEFAULT_WIKI_ENABLED,
     cron: safeConfig.cron ?? DEFAULT_WIKI_CRON,
     vault: {
-      path: expandHomePath(
-        safeConfig.vault?.path ?? resolveDefaultWikiVaultPath(homedir),
-        homedir,
-      ),
+      path: safeConfig.vault?.path
+        ? expandHomePath(safeConfig.vault.path, homedir)
+        : "",
     },
     scan: {
       extensions: safeConfig.scan?.extensions ?? [...DEFAULT_SCAN_EXTENSIONS],

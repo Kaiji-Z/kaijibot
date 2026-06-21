@@ -1,14 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { WikiConfig } from "./config.js";
+import { resolveEffectiveVaultRoot } from "./config.js";
 
-export function createWikiPromptSectionBuilder(
-  config: WikiConfig,
-  vaultRoot: string,
-) {
+export function createWikiPromptSectionBuilder(config: WikiConfig) {
   return function buildWikiPromptSection(params: {
     availableTools: Set<string>;
     citationsMode?: string;
+    agentId?: string;
+    workspaceDir?: string;
   }): string[] {
     if (!config.enabled) {
       return [];
@@ -21,6 +21,8 @@ export function createWikiPromptSectionBuilder(
     if (!hasIngest && !hasQuery && !hasLint) {
       return [];
     }
+
+    const vaultRoot = resolveEffectiveVaultRoot(config, params.workspaceDir);
 
     const lines: string[] = ["## Knowledge Wiki"];
 
