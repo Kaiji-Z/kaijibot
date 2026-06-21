@@ -2073,11 +2073,8 @@ export async function startGatewayServer(
           const { resolveWikiConfig, resolveEffectiveVaultRoot } = await import(
             "../../extensions/knowledge-wiki/src/config.js"
           );
-          const { ingestAll } = await import(
+          const { runWikiIngestAllAgents } = await import(
             "../../extensions/knowledge-wiki/src/ingest.js"
-          );
-          const { initializeWikiVault } = await import(
-            "../../extensions/knowledge-wiki/src/vault.js"
           );
           const { resolveConsolidationWorkspaces } = await import(
             "../memory-host-sdk/consolidation.js",
@@ -2101,29 +2098,17 @@ export async function startGatewayServer(
             try {
               const workspaces = resolveConsolidationWorkspaces(cfgAtStart);
               const generateText = await createStandaloneGenerateText(cfgAtStart);
-              for (const ws of workspaces) {
-                const vaultRoot = resolveEffectiveVaultRoot(
-                  wikiConfig,
-                  ws.workspaceDir,
+              const results = await runWikiIngestAllAgents({
+                workspaces,
+                resolveVaultRoot: (ws) => resolveEffectiveVaultRoot(wikiConfig, ws),
+                generateText,
+                config: wikiConfig,
+                concurrency: 2,
+              });
+              for (const result of results) {
+                log.info(
+                  `wiki ingest: agent=${result.agentIds.join(",")} compiled=${result.compiled} skipped=${result.skipped} errors=${result.errors} duration=${result.durationMs}ms`,
                 );
-                try {
-                  await initializeWikiVault(vaultRoot);
-                  const result = await ingestAll(
-                    ws.workspaceDir,
-                    vaultRoot,
-                    generateText,
-                    wikiConfig,
-                  );
-                  if (result.ingested.length > 0) {
-                    log.info(
-                      `wiki ingest [${ws.agentIds.join(",")}]: ${result.ingested.length} files compiled (${result.skipped} skipped)`,
-                    );
-                  }
-                } catch (err) {
-                  log.warn(
-                    `wiki ingest failed for [${ws.agentIds.join(",")}]: ${String(err)}`,
-                  );
-                }
               }
             } catch (err) {
               log.warn(`wiki ingest run failed: ${String(err)}`);

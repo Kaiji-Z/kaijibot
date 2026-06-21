@@ -17,6 +17,7 @@ import {
   writeSummaryPage,
 } from "./wiki-writer.js";
 import { appendWikiLog } from "./log.js";
+import { initializeWikiVault } from "./vault.js";
 import type { FileStateEntry } from "./types.js";
 
 export type IngestAllResult = {
@@ -159,4 +160,92 @@ export async function ingestAll(
   }
 
   return { ingested, skipped, errors };
+}
+
+export type WikiIngestWorkspace = {
+  readonly workspaceDir: string;
+  readonly agentIds: readonly string[];
+};
+
+export type WikiIngestAgentResult = {
+  readonly agentIds: readonly string[];
+  readonly compiled: number;
+  readonly skipped: number;
+  readonly errors: number;
+  readonly durationMs: number;
+};
+
+async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  limit: number,
+): Promise<{ results: T[]; errors: string[] }> {
+  if (tasks.length === 0) {
+    return { results: [], errors: [] };
+  }
+  const resolvedLimit = Math.max(1, Math.min(limit, tasks.length));
+  const results: T[] = Array.from({ length: tasks.length });
+  const errors: string[] = [];
+  let next = 0;
+  const workers = Array.from({ length: resolvedLimit }, async () => {
+    while (true) {
+      const index = next;
+      next += 1;
+      if (index >= tasks.length) {
+        return;
+      }
+      try {
+        results[index] = await tasks[index]!();
+      } catch (err) {
+        errors.push(String(err));
+      }
+    }
+  });
+  await Promise.allSettled(workers);
+  return { results, errors };
+}
+
+export async function runWikiIngestAllAgents(params: {
+  readonly workspaces: readonly WikiIngestWorkspace[];
+  readonly resolveVaultRoot: (workspaceDir: string) => string;
+  readonly generateText: GenerateTextFn;
+  readonly config: WikiConfig;
+  readonly concurrency: number;
+}): Promise<WikiIngestAgentResult[]> {
+  if (params.workspaces.length === 0) {
+    return [];
+  }
+
+  const tasks = params.workspaces.map(
+    (ws: WikiIngestWorkspace) => async (): Promise<WikiIngestAgentResult> => {
+      const vaultRoot = params.resolveVaultRoot(ws.workspaceDir);
+      const startTime = Date.now();
+      try {
+        await initializeWikiVault(vaultRoot);
+        const result = await ingestAll(
+          ws.workspaceDir,
+          vaultRoot,
+          params.generateText,
+          params.config,
+        );
+        return {
+          agentIds: ws.agentIds,
+          compiled: result.ingested.length,
+          skipped: result.skipped,
+          errors: result.errors.length,
+          durationMs: Date.now() - startTime,
+        };
+      } catch (err) {
+        return {
+          agentIds: ws.agentIds,
+          compiled: 0,
+          skipped: 0,
+          errors: 1,
+          durationMs: Date.now() - startTime,
+        };
+      }
+    },
+  );
+
+  const { results } = await runWithConcurrency(tasks, params.concurrency);
+  return results;
 }
