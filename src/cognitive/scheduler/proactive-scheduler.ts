@@ -1071,7 +1071,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
       pAccept,
       pAct: pNeed * pAccept,
       metadata: { bridge: conn.bridge, distance: conn.distance },
-      modeCandidates: ["surprise", "extend"],
+      modeCandidates: ["pattern", "surprise", "extend"],
     };
   });
 
@@ -1102,7 +1102,7 @@ function scanCrossDomain(persona: PersonaTree, event: SchedulerEvent): Opportuni
         pAccept,
         pAct: pNeed * pAccept,
         metadata: { intraUserCrossPollination: true, semanticDistance: weakestPair.distance },
-        modeCandidates: ["surprise", "extend"],
+        modeCandidates: ["pattern", "surprise", "extend"],
       });
     }
   }
@@ -1146,7 +1146,7 @@ function scanDomainDepth(persona: PersonaTree, _event: SchedulerEvent): Opportun
         pNeed,
         pAccept,
         pAct: pNeed * pAccept,
-        modeCandidates: ["surprise", "extend"],
+        modeCandidates: ["pattern", "surprise", "extend"],
       };
     });
 }
@@ -1166,7 +1166,7 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
         pNeed: 0.7,
         pAccept,
         pAct: 0.7 * pAccept,
-        modeCandidates: ["surprise"],
+        modeCandidates: ["pattern", "surprise", "extend"],
       }));
   }
 
@@ -1182,7 +1182,7 @@ function scanPersonaChange(persona: PersonaTree, event: SchedulerEvent): Opportu
       pAccept,
       pAct: 0.9 * pAccept,
       metadata: { isNewDomain: true },
-      modeCandidates: ["surprise"],
+      modeCandidates: ["pattern", "surprise", "extend"],
     };
   });
 }
@@ -1205,7 +1205,7 @@ function scanInfoScan(persona: PersonaTree, event: SchedulerEvent): Opportunity[
     pAccept,
     pAct: 0.6 * pAccept,
     metadata: { scanDerived: true },
-    modeCandidates: ["surprise", "extend"],
+    modeCandidates: ["pattern", "surprise", "extend"],
   }));
 }
 

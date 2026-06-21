@@ -4,8 +4,8 @@ import type { ContentStrategyHint } from "./content-strategy.js";
 
 /** Base weights for each insight mode (sum ≈ 1.0). */
 const BASE_WEIGHTS: Record<InsightMode, number> = {
-  pattern: 0.2,
-  surprise: 0.5,
+  pattern: 0.3,
+  surprise: 0.4,
   extend: 0.3,
 };
 
