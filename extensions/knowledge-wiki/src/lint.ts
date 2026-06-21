@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   parseWikiMarkdown,
   extractWikiLinks,
+  inferWikiPageKind,
   type WikiPageSummary,
 } from "./markdown.js";
 import {
@@ -12,6 +13,12 @@ import {
 import type { LintIssue, LintReport } from "./types.js";
 
 const WIKI_DIRS = ["summaries", "entities", "concepts"] as const;
+
+const DIR_TO_KIND: Record<string, WikiPageSummary["kind"]> = {
+  summaries: "summary",
+  entities: "entity",
+  concepts: "concept",
+};
 
 export async function lintWiki(vaultRoot: string): Promise<LintReport> {
   const pages = await readAllWikiPages(vaultRoot);
@@ -33,8 +40,15 @@ export async function lintWiki(vaultRoot: string): Promise<LintReport> {
 
   const inboundLinks = buildInboundLinkMap(pages);
   for (const page of pages) {
-    const links = inboundLinks.get(page.relativePath) ?? 0;
-    if (links === 0 && page.kind !== "source" && page.kind !== "summary") {
+    if (page.kind === "source" || page.kind === "summary") {
+      continue;
+    }
+    const bare = pageBareName(page.relativePath);
+    const full = page.relativePath.replace(/\.md$/, "");
+    const links =
+      (inboundLinks.get(bare) ?? 0) +
+      (inboundLinks.get(full) ?? 0);
+    if (links === 0) {
       issues.push({
         severity: "info",
         category: "orphan",
@@ -71,6 +85,11 @@ export async function lintWiki(vaultRoot: string): Promise<LintReport> {
   };
 }
 
+function pageBareName(relativePath: string): string {
+  const parts = relativePath.split("/");
+  return (parts[parts.length - 1] ?? "").replace(/\.md$/, "");
+}
+
 async function readAllWikiPages(
   vaultRoot: string,
 ): Promise<WikiPageSummary[]> {
@@ -92,10 +111,11 @@ async function readAllWikiPages(
         const content = await readFile(fullPath, "utf8");
         const parsed = parseWikiMarkdown(content);
         const relativePath = path.join(dir, entry).replace(/\\/g, "/");
+        const kind = inferWikiPageKind(relativePath) ?? DIR_TO_KIND[dir] ?? "summary";
         pages.push({
           absolutePath: fullPath,
           relativePath,
-          kind: (dir.slice(0, -1) || "summary") as WikiPageSummary["kind"],
+          kind,
           title:
             typeof parsed.frontmatter.title === "string"
               ? parsed.frontmatter.title

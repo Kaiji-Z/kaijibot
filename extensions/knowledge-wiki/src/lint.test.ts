@@ -38,12 +38,12 @@ describe("lintWiki", () => {
     await rm(TMP, { recursive: true, force: true });
   });
 
-  it("returns empty issues for clean wiki", async () => {
+  it("returns empty orphan issues for interconnected wiki", async () => {
     await createPage(
       "summaries",
       "doc1",
       { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
-      "# Doc1\n\nSome content.",
+      "# Doc1\n\nSee [[rust]] for details.",
     );
     await createPage(
       "entities",
@@ -54,6 +54,8 @@ describe("lintWiki", () => {
 
     const report = await lintWiki(path.join(TMP, "wiki"));
     expect(report.totalPages).toBe(2);
+    const orphanIssues = report.issues.filter((i) => i.category === "orphan");
+    expect(orphanIssues).toHaveLength(0);
   });
 
   it("detects orphan entity pages (no inbound links)", async () => {
@@ -72,7 +74,7 @@ describe("lintWiki", () => {
 
     const report = await lintWiki(path.join(TMP, "wiki"));
     const orphanIssue = report.issues.find(
-      (i) => i.category === "orphan" && i.pagePath.includes("orphan"),
+      (i) => i.category === "orphan" && i.pagePath === "entities/orphan.md",
     );
     expect(orphanIssue).toBeDefined();
   });
@@ -92,10 +94,80 @@ describe("lintWiki", () => {
     );
 
     const report = await lintWiki(path.join(TMP, "wiki"));
-    const orphanIssues = report.issues.filter(
-      (i) => i.category === "orphan" && i.pagePath.includes("summary"),
+    const summaryOrphanIssues = report.issues.filter(
+      (i) => i.category === "orphan" && i.pagePath.startsWith("summaries/"),
     );
-    expect(orphanIssues).toHaveLength(0);
+    expect(summaryOrphanIssues).toHaveLength(0);
+  });
+
+  it("detects inbound links via bare wikilink name", async () => {
+    await createPage(
+      "summaries",
+      "doc1",
+      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# Doc1\n\nSee [[rust]] for details.",
+    );
+    await createPage(
+      "entities",
+      "rust",
+      { pageType: "entity", title: "Rust", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# Rust\n\nA programming language.",
+    );
+
+    const report = await lintWiki(path.join(TMP, "wiki"));
+    const rustOrphan = report.issues.find(
+      (i) => i.category === "orphan" && i.pagePath === "entities/rust.md",
+    );
+    expect(rustOrphan).toBeUndefined();
+  });
+
+  it("detects inbound links via path-prefixed wikilink", async () => {
+    await createPage(
+      "summaries",
+      "doc1",
+      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# Doc1\n\nSee [[entities/rust]] for details.",
+    );
+    await createPage(
+      "entities",
+      "rust",
+      { pageType: "entity", title: "Rust", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# Rust",
+    );
+
+    const report = await lintWiki(path.join(TMP, "wiki"));
+    const rustOrphan = report.issues.find(
+      (i) => i.category === "orphan" && i.pagePath === "entities/rust.md",
+    );
+    expect(rustOrphan).toBeUndefined();
+  });
+
+  it("assigns correct page kind for each directory", async () => {
+    await createPage(
+      "summaries",
+      "s1",
+      { pageType: "summary", title: "S1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# S1",
+    );
+    await createPage(
+      "entities",
+      "e1",
+      { pageType: "entity", title: "E1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# E1\n\n[[s1]]",
+    );
+    await createPage(
+      "concepts",
+      "c1",
+      { pageType: "concept", title: "C1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      "# C1\n\n[[s1]]",
+    );
+
+    const report = await lintWiki(path.join(TMP, "wiki"));
+    expect(report.totalPages).toBe(3);
+    const summaryOrphans = report.issues.filter(
+      (i) => i.category === "orphan" && i.pagePath.startsWith("summaries/"),
+    );
+    expect(summaryOrphans).toHaveLength(0);
   });
 
   it("handles empty wiki gracefully", async () => {
