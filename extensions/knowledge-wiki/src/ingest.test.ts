@@ -1,7 +1,7 @@
 import { mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { ingestFile, ingestAll } from "./ingest.js";
+import { ingestFile, ingestAll, runWikiIngestAllAgents } from "./ingest.js";
 import { initializeWikiVault } from "./vault.js";
 import { loadFileState } from "./file-state.js";
 import { resolveWikiConfig } from "./config.js";
@@ -261,5 +261,119 @@ describe("ingestAll", () => {
 
     expect(result2.ingested.length).toBe(0);
     expect(result2.skipped).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("runWikiIngestAllAgents", () => {
+  beforeEach(async () => {
+    await rm(TMP, { recursive: true, force: true });
+    await createWorkspace();
+    await mkdir(path.join(TMP, "workspace-b"), { recursive: true });
+    await writeFile(
+      path.join(TMP, "workspace-b", "README.md"),
+      "# Agent B\n\nAnother agent workspace.",
+      "utf8",
+    );
+  });
+
+  afterEach(async () => {
+    await rm(TMP, { recursive: true, force: true });
+  });
+
+  it("processes multiple workspaces and returns per-agent results", async () => {
+    const results = await runWikiIngestAllAgents({
+      workspaces: [
+        { workspaceDir: path.join(TMP, "workspace"), agentIds: ["main"] },
+        { workspaceDir: path.join(TMP, "workspace-b"), agentIds: ["testagent"] },
+      ],
+      resolveVaultRoot: (ws) => path.join(ws, "wiki"),
+      generateText: mockGenerateText,
+      config,
+      concurrency: 2,
+    });
+
+    expect(results).toHaveLength(2);
+    const main = results.find((r) => r.agentIds.includes("main"));
+    const testagent = results.find((r) => r.agentIds.includes("testagent"));
+    expect(main).toBeDefined();
+    expect(main!.compiled).toBeGreaterThan(0);
+    expect(main!.errors).toBe(0);
+    expect(main!.durationMs).toBeGreaterThanOrEqual(0);
+    expect(testagent).toBeDefined();
+    expect(testagent!.compiled).toBeGreaterThan(0);
+    expect(testagent!.errors).toBe(0);
+  });
+
+  it("creates separate wiki vaults per workspace", async () => {
+    await runWikiIngestAllAgents({
+      workspaces: [
+        { workspaceDir: path.join(TMP, "workspace"), agentIds: ["main"] },
+        { workspaceDir: path.join(TMP, "workspace-b"), agentIds: ["testagent"] },
+      ],
+      resolveVaultRoot: (ws) => path.join(ws, "wiki"),
+      generateText: mockGenerateText,
+      config,
+      concurrency: 2,
+    });
+
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(path.join(TMP, "workspace", "wiki", "index.md"))).toBe(true);
+    expect(existsSync(path.join(TMP, "workspace-b", "wiki", "index.md"))).toBe(true);
+  });
+
+  it("continues processing other workspaces when one fails", async () => {
+    const results = await runWikiIngestAllAgents({
+      workspaces: [
+        { workspaceDir: "/nonexistent/path", agentIds: ["broken"] },
+        { workspaceDir: path.join(TMP, "workspace"), agentIds: ["main"] },
+      ],
+      resolveVaultRoot: (ws) => path.join(ws, "wiki"),
+      generateText: mockGenerateText,
+      config,
+      concurrency: 2,
+    });
+
+    expect(results).toHaveLength(2);
+    const broken = results.find((r) => r.agentIds.includes("broken"));
+    const main = results.find((r) => r.agentIds.includes("main"));
+    expect(broken!.errors).toBe(1);
+    expect(broken!.compiled).toBe(0);
+    expect(main!.compiled).toBeGreaterThan(0);
+    expect(main!.errors).toBe(0);
+  });
+
+  it("returns empty array for empty workspaces list", async () => {
+    const results = await runWikiIngestAllAgents({
+      workspaces: [],
+      resolveVaultRoot: (ws) => path.join(ws, "wiki"),
+      generateText: mockGenerateText,
+      config,
+      concurrency: 2,
+    });
+    expect(results).toHaveLength(0);
+  });
+
+  it("reports skipped files for unchanged workspaces on second run", async () => {
+    const workspaces = [
+      { workspaceDir: path.join(TMP, "workspace"), agentIds: ["main"] },
+    ];
+    await runWikiIngestAllAgents({
+      workspaces,
+      resolveVaultRoot: (ws) => path.join(ws, "wiki"),
+      generateText: mockGenerateText,
+      config,
+      concurrency: 1,
+    });
+    const results2 = await runWikiIngestAllAgents({
+      workspaces,
+      resolveVaultRoot: (ws) => path.join(ws, "wiki"),
+      generateText: mockGenerateText,
+      config,
+      concurrency: 1,
+    });
+
+    expect(results2).toHaveLength(1);
+    expect(results2[0]!.compiled).toBe(0);
+    expect(results2[0]!.skipped).toBeGreaterThan(0);
   });
 });
