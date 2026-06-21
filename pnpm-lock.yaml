@@ -253,7 +253,7 @@ importers:
     optionalDependencies:
       '@larksuite/cli':
         specifier: latest
-        version: 1.0.55
+        version: 1.0.56
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -429,6 +429,19 @@ importers:
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
 
+  extensions/knowledge-wiki:
+    dependencies:
+      yaml:
+        specifier: ^2.8.3
+        version: 2.9.0
+    devDependencies:
+      '@kaijibot/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      kaijibot:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/litellm:
     devDependencies:
       '@kaijibot/plugin-sdk':
@@ -480,19 +493,6 @@ importers:
       '@kaijibot/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
-
-  extensions/memory-wiki:
-    dependencies:
-      yaml:
-        specifier: ^2.8.3
-        version: 2.8.3
-    devDependencies:
-      '@kaijibot/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-      kaijibot:
-        specifier: workspace:*
-        version: link:../..
 
   extensions/microsoft:
     dependencies:
@@ -1552,8 +1552,8 @@ packages:
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
 
-  '@larksuite/cli@1.0.55':
-    resolution: {integrity: sha512-rNKO2p0eaGjZkzekDfklI+2KFoA0N7548FQCi13uT+VmnQ0Dt3MEydDuG/yjp7A5dqG4QNNJbxLLo/YsLozNbw==}
+  '@larksuite/cli@1.0.56':
+    resolution: {integrity: sha512-2YVqNz8ZiOY8PC9YES7VjXjwldTdmxAo6HUrdZsOmIVRC36mrommgFKjyohKwpL668iYTL5cGIA94vbO+ULfcA==}
     engines: {node: '>=16'}
     cpu: [x64, arm64, riscv64]
     os: [darwin, linux, win32]
@@ -6516,7 +6516,7 @@ snapshots:
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
 
-  '@larksuite/cli@1.0.55':
+  '@larksuite/cli@1.0.56':
     dependencies:
       '@clack/prompts': 1.2.0
     optional: true
