@@ -35,7 +35,8 @@
     "additionalProperties": false,
     "properties": {
       "enabled": {
-        "type": "boolean"
+        "type": "boolean",
+        "default": true
       },
       "cron": {
         "type": "string"
