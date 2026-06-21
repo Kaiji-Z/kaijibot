@@ -24,7 +24,9 @@ const testExtraction: ExtractionResult = {
     { name: "Zero-cost abstractions", description: "Abstractions with no runtime overhead" },
   ],
   topics: ["rust", "performance"],
-  relationships: [],
+  relationships: [
+    { from: "Rust", to: "Zero-cost abstractions", type: "part-of" },
+  ],
 };
 
 const rustEntity: ExtractedEntity = {
@@ -74,6 +76,25 @@ describe("wiki-writer", () => {
 
       expect(content).toContain(testExtraction.summary);
     });
+
+    it("renders relationships as wikilinks in Connections section", async () => {
+      const relativePath = await writeSummaryPage(vaultRoot, "notes/rust.md", testExtraction);
+      const content = await readFile(path.join(vaultRoot, relativePath), "utf8");
+
+      expect(content).toContain("## Connections");
+      expect(content).toContain("[[rust]]");
+      expect(content).toContain("[[zero-cost-abstractions]]");
+      expect(content).toContain("part-of");
+    });
+
+    it("renders topics as tags", async () => {
+      const relativePath = await writeSummaryPage(vaultRoot, "notes/rust.md", testExtraction);
+      const content = await readFile(path.join(vaultRoot, relativePath), "utf8");
+
+      expect(content).toContain("**Topics:**");
+      expect(content).toContain("#rust");
+      expect(content).toContain("#performance");
+    });
   });
 
   describe("writeEntityPage", () => {
@@ -91,6 +112,16 @@ describe("wiki-writer", () => {
       expect(parsed.body).toContain("**Type:** technology");
       expect(parsed.body).toContain("Systems programming language");
       expect(parsed.body).toContain("[[notes-rust]]");
+    });
+
+    it("renders connections from relationships involving this entity", async () => {
+      const rels = testExtraction.relationships;
+      const relativePath = await writeEntityPage(vaultRoot, rustEntity, "notes/rust.md", rels);
+      const content = await readFile(path.join(vaultRoot, relativePath), "utf8");
+
+      expect(content).toContain("**Connections:**");
+      expect(content).toContain("[[zero-cost-abstractions]]");
+      expect(content).toContain("(part-of)");
     });
 
     it("merges a second source into an existing entity page", async () => {

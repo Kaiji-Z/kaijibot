@@ -6,9 +6,9 @@ const EXTRACTION_SYSTEM_PROMPT = `You are a knowledge compiler. Read the source 
 
 Return a JSON object with this exact shape:
 {
-  "summary": "2-3 paragraph summary of key points",
+  "summary": "2-3 paragraph summary of key points. Use [[EntityName]] and [[ConceptName]] wikilinks to cross-reference extracted entities and concepts within the summary text.",
   "claims": [{ "text": "specific factual assertion", "confidence": 0.0-1.0, "category": "domain_knowledge|technical_decision|stated_preference|process|constraint|contextual_fact|goal_or_aspiration", "evidence": "quote or paraphrase from source" }],
-  "entities": [{ "name": "named thing", "type": "person|tool|project|technology|place|organization|concept", "description": "what it is in context" }],
+  "entities": [{ "name": "named thing", "type": "person|tool|project|technology|place|organization", "description": "what it is in context" }],
   "concepts": [{ "name": "abstract idea or methodology", "description": "explanation", "relatedTo": ["other concept names"] }],
   "topics": ["subject area tags"],
   "relationships": [{ "from": "entity/concept name", "to": "entity/concept name", "type": "uses|contradicts|relates-to|depends-on|part-of" }]
@@ -18,7 +18,10 @@ Rules:
 - Extract only what is explicitly stated or directly implied in the document
 - Confidence: 0.9+ for explicit statements, 0.7-0.9 for strong implications, 0.5-0.7 for weak implications
 - Keep claim text concise (one sentence)
-- Entity names should be proper nouns or well-known terms
+- Entity naming: use the canonical, most common English form. For "Rust" use "Rust", not "rust-language" or "Rust Programming Language". For Chinese names, use the most common form (e.g. "凯机" not "kaiji-user"). Person names: use real name if known, otherwise username.
+- Within this document, use consistent entity names — do not use "Rust" in one place and "rust-lang" in another
+- Do NOT classify abstract ideas as entities — use the concepts array for those
+- Relationships: extract all meaningful connections between entities and concepts mentioned in the document
 - Return ONLY the JSON, no markdown fences, no commentary`;
 
 export async function extractFromSource(

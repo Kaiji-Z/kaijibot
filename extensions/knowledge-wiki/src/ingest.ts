@@ -75,6 +75,7 @@ export async function ingestFile(
         vaultRoot,
         entity,
         source.relativePath,
+        extraction.relationships,
       );
       entityPages.push(pagePath);
     } catch {
@@ -89,6 +90,7 @@ export async function ingestFile(
         vaultRoot,
         concept,
         source.relativePath,
+        extraction.relationships,
       );
       conceptPages.push(pagePath);
     } catch {

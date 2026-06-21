@@ -6,7 +6,7 @@ import {
   slugifyWikiSegment,
   type WikiClaim,
 } from "./markdown.js";
-import type { ExtractionResult, ExtractedEntity, ExtractedConcept } from "./types.js";
+import type { ExtractionResult, ExtractedEntity, ExtractedConcept, ExtractedRelationship } from "./types.js";
 
 async function atomicWrite(filePath: string, content: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -53,6 +53,16 @@ export async function writeSummaryPage(
     .map((c) => `[[${slugifyWikiSegment(c.name)}]]`)
     .join(", ");
 
+  const relationshipLines = extraction.relationships.length > 0
+    ? extraction.relationships.map(
+        (r) => `- [[${slugifyWikiSegment(r.from)}]] ${r.type} [[${slugifyWikiSegment(r.to)}]]`,
+      )
+    : [];
+
+  const topicTags = extraction.topics.length > 0
+    ? extraction.topics.map((t) => `#${t}`).join(" ")
+    : "";
+
   const body = [
     `# ${sourcePath}`,
     "",
@@ -62,10 +72,15 @@ export async function writeSummaryPage(
     entityLinks ? `**Entities:** ${entityLinks}` : "",
     conceptLinks ? `**Concepts:** ${conceptLinks}` : "",
     "",
+    relationshipLines.length > 0
+      ? ["## Connections", ...relationshipLines, ""].join("\n")
+      : "",
     "## Key Claims",
     ...extraction.claims.slice(0, 10).map(
       (c) => `- (${(c.confidence * 100).toFixed(0)}%) ${c.text}`,
     ),
+    "",
+    topicTags ? `**Topics:** ${topicTags}` : "",
     "",
     `*Source: ${sourcePath}*`,
   ]
@@ -90,6 +105,7 @@ export async function writeEntityPage(
   vaultRoot: string,
   entity: ExtractedEntity,
   sourcePath: string,
+  relationships?: readonly ExtractedRelationship[],
 ): Promise<string> {
   const relativePath = entityPagePath(entity.name);
   const absolutePath = path.join(vaultRoot, relativePath);
@@ -98,6 +114,20 @@ export async function writeEntityPage(
   const parsed = existing ? parseWikiMarkdown(existing) : null;
 
   const sourceLink = `[[${slugifyWikiSegment(sourcePath.replace(/\.[^.]+$/, ""))}]]`;
+  const entitySlug = slugifyWikiSegment(entity.name);
+  const connectionLines = (relationships ?? [])
+    .filter(
+      (r) =>
+        slugifyWikiSegment(r.from) === entitySlug ||
+        slugifyWikiSegment(r.to) === entitySlug,
+    )
+    .map((r) => {
+      const otherSlug =
+        slugifyWikiSegment(r.from) === entitySlug
+          ? slugifyWikiSegment(r.to)
+          : slugifyWikiSegment(r.from);
+      return `- [[${otherSlug}]] (${r.type})`;
+    });
 
   if (parsed) {
     const existingSourceIds = Array.isArray(parsed.frontmatter.sourceIds)
@@ -107,13 +137,16 @@ export async function writeEntityPage(
       existingSourceIds.push(sourceLink);
     }
 
+    const connectionBlock = connectionLines.length > 0
+      ? `\n**Connections:**\n${connectionLines.join("\n")}\n`
+      : "\n";
     const mergedBody = `${parsed.body.trimEnd()}
 
 ---
 ### From: ${sourcePath}
 **Type:** ${entity.type}
 ${entity.description}
-`;
+${connectionBlock}`;
     const content = renderWikiMarkdown({
       frontmatter: {
         ...parsed.frontmatter,
@@ -131,8 +164,14 @@ ${entity.description}
       "",
       entity.description,
       "",
+      connectionLines.length > 0
+        ? `**Connections:**\n${connectionLines.join("\n")}`
+        : "",
+      "",
       `**Sources:** ${sourceLink}`,
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const content = renderWikiMarkdown({
       frontmatter: {
@@ -154,6 +193,7 @@ export async function writeConceptPage(
   vaultRoot: string,
   concept: ExtractedConcept,
   sourcePath: string,
+  relationships?: readonly ExtractedRelationship[],
 ): Promise<string> {
   const relativePath = conceptPagePath(concept.name);
   const absolutePath = path.join(vaultRoot, relativePath);
@@ -162,6 +202,20 @@ export async function writeConceptPage(
   const parsed = existing ? parseWikiMarkdown(existing) : null;
 
   const sourceLink = `[[${slugifyWikiSegment(sourcePath.replace(/\.[^.]+$/, ""))}]]`;
+  const conceptSlug = slugifyWikiSegment(concept.name);
+  const connectionLines = (relationships ?? [])
+    .filter(
+      (r) =>
+        slugifyWikiSegment(r.from) === conceptSlug ||
+        slugifyWikiSegment(r.to) === conceptSlug,
+    )
+    .map((r) => {
+      const otherSlug =
+        slugifyWikiSegment(r.from) === conceptSlug
+          ? slugifyWikiSegment(r.to)
+          : slugifyWikiSegment(r.from);
+      return `- [[${otherSlug}]] (${r.type})`;
+    });
 
   if (parsed) {
     const existingSourceIds = Array.isArray(parsed.frontmatter.sourceIds)
@@ -171,12 +225,15 @@ export async function writeConceptPage(
       existingSourceIds.push(sourceLink);
     }
 
+    const conceptConnectionBlock = connectionLines.length > 0
+      ? `\n**Connections:**\n${connectionLines.join("\n")}\n`
+      : "\n";
     const mergedBody = `${parsed.body.trimEnd()}
 
 ---
 ### From: ${sourcePath}
 ${concept.description}
-`;
+${conceptConnectionBlock}`;
     const content = renderWikiMarkdown({
       frontmatter: {
         ...parsed.frontmatter,
@@ -194,6 +251,10 @@ ${concept.description}
       `# ${concept.name}`,
       "",
       concept.description,
+      "",
+      connectionLines.length > 0
+        ? `**Connections:**\n${connectionLines.join("\n")}`
+        : "",
       "",
       `**Sources:** ${sourceLink}`,
       relatedLinks ? `**Related:** ${relatedLinks}` : "",
