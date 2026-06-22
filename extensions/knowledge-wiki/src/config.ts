@@ -42,8 +42,7 @@ export const DEFAULT_EXCLUDE_DIRS = [
 export const DEFAULT_EXCLUDE_PATTERNS = [
   "memory/\\d{4}-\\d{2}-\\d{2}\\.md$",
   "memory/dialogues/",
-  "^(AGENTS|HEARTBEAT|IDENTITY|SOUL|TOOLS|USER|MEMORY|BOOTSTRAP|KAIJIBOT-GUIDE)\\.md$",
-  "^main/",
+  "^(HEARTBEAT|BOOTSTRAP|TOOLS)\\.md$",
 ] as const;
 
 // === Path Resolution ===
