@@ -37,10 +37,13 @@ export const DEFAULT_SCAN_EXTENSIONS = [".md", ".txt", ".rst"] as const;
 export const DEFAULT_EXCLUDE_DIRS = [
   ".git", "node_modules", ".kaijibot", "wiki", "sessions",
   ".pnpm-store", ".venv", "venv", "dist", "build",
+  "skills", ".agents",
 ] as const;
 export const DEFAULT_EXCLUDE_PATTERNS = [
   "memory/\\d{4}-\\d{2}-\\d{2}\\.md$",
   "memory/dialogues/",
+  "^(AGENTS|HEARTBEAT|IDENTITY|SOUL|TOOLS|USER|MEMORY|BOOTSTRAP|KAIJIBOT-GUIDE)\\.md$",
+  "^main/",
 ] as const;
 
 // === Path Resolution ===
