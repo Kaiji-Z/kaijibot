@@ -7,7 +7,7 @@ import { DEFAULT_BOOTSTRAP_FILENAME } from "../agents/workspace.js";
 import type { PluginCompatibilityNotice } from "../plugins/status.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter, WizardSelectParams } from "./prompts.js";
-import { runSetupWizard } from "./setup.js";
+import { runSetupWizard, showPrerequisiteChecklist } from "./setup.js";
 
 type ResolveProviderPluginChoice =
   typeof import("../plugins/provider-auth-choice.runtime.js").resolveProviderPluginChoice;
@@ -252,6 +252,37 @@ function createRuntime(opts?: { throwsOnExit?: boolean }): RuntimeEnv {
     exit: vi.fn(),
   };
 }
+
+describe("showPrerequisiteChecklist", () => {
+  it("displays a checklist mentioning API Key and 飞书, then asks for confirmation", async () => {
+    const note: WizardPrompter["note"] = vi.fn(async () => {});
+    const confirm: WizardPrompter["confirm"] = vi.fn(async () => true);
+    const prompter = buildWizardPrompter({ note, confirm });
+
+    const result = await showPrerequisiteChecklist(prompter);
+
+    expect(result).toBe(true);
+
+    const noteCalls = getWizardNoteCalls(note);
+    expect(noteCalls).toHaveLength(1);
+    const body = String(noteCalls[0]?.[0] ?? "");
+    expect(body).toContain("API Key");
+    expect(body).toContain("飞书");
+
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("继续配置") }),
+    );
+  });
+
+  it("returns false when the user declines the checklist confirmation", async () => {
+    const confirm: WizardPrompter["confirm"] = vi.fn(async () => false);
+    const prompter = buildWizardPrompter({ confirm });
+
+    const result = await showPrerequisiteChecklist(prompter);
+
+    expect(result).toBe(false);
+  });
+});
 
 describe("runSetupWizard", () => {
   let suiteRoot = "";
@@ -691,5 +722,68 @@ describe("runSetupWizard", () => {
           call[0].includes("Gateway port: 18791"),
       ),
     ).toBe(true);
+  });
+
+  it("aborts gracefully when the prerequisite checklist is declined", async () => {
+    readConfigFileSnapshot.mockClear();
+    const confirm: WizardPrompter["confirm"] = vi.fn(async () => false);
+    const prompter = buildWizardPrompter({ confirm });
+    const runtime = createRuntime();
+
+    await runSetupWizard(
+      {
+        // acceptRisk intentionally omitted so the interactive checklist fires
+        flow: "quickstart",
+        authChoice: "skip",
+        installDaemon: false,
+        skipChannels: true,
+        skipSkills: true,
+        skipSearch: true,
+        skipHealth: true,
+        skipUi: true,
+      },
+      runtime,
+      prompter,
+    );
+
+    expect(prompter.outro).toHaveBeenCalledWith(expect.stringContaining("取消"));
+    expect(readConfigFileSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("shows provider registration URLs before the auth choice prompt", async () => {
+    promptAuthChoiceGrouped.mockClear();
+    const note: WizardPrompter["note"] = vi.fn(async () => {});
+    const prompter = buildWizardPrompter({ note });
+    const runtime = createRuntime();
+
+    await runSetupWizard(
+      {
+        acceptRisk: true,
+        flow: "quickstart",
+        // authChoice intentionally omitted so the auth prompt fires
+        installDaemon: false,
+        skipChannels: true,
+        skipSkills: true,
+        skipSearch: true,
+        skipHealth: true,
+        skipUi: true,
+      },
+      runtime,
+      prompter,
+    );
+
+    const noteCalls = getWizardNoteCalls(note);
+    const providerNoteIndex = noteCalls.findIndex(
+      (call) => typeof call?.[0] === "string" && call[0].includes("注册 API Key"),
+    );
+    expect(providerNoteIndex).toBeGreaterThanOrEqual(0);
+
+    const noteCallOrders = (
+      note as unknown as { mock: { invocationCallOrder: number[] } }
+    ).mock.invocationCallOrder;
+    const providerNoteOrder = noteCallOrders[providerNoteIndex];
+    const authOrder = promptAuthChoiceGrouped.mock.invocationCallOrder[0];
+    expect(authOrder).toBeDefined();
+    expect(providerNoteOrder).toBeLessThan(authOrder);
   });
 });

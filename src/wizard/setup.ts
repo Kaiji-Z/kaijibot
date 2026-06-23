@@ -101,6 +101,33 @@ async function requireRiskAcknowledgement(params: {
   }
 }
 
+export async function showPrerequisiteChecklist(prompter: WizardPrompter): Promise<boolean> {
+  await prompter.note(
+    [
+      "开始前请准备好以下条件：",
+      "",
+      "  1. LLM API Key（必需）",
+      "     推荐「智谱 GLM」：https://open.bigmodel.cn/",
+      "     注册后进入「API Keys」页面创建密钥",
+      "     其他可选：DeepSeek / Claude / Gemini / 通义千问",
+      "",
+      "  2. 飞书账号（必需）",
+      "     向导中可选「扫码自动创建飞书机器人」，10 秒搞定",
+      "     或手动在 https://open.feishu.cn/ 创建企业自建应用",
+      "",
+      "  3. Node.js 22+ 环境",
+      "     如通过一键安装脚本运行，会自动安装",
+      "",
+      "准备好后继续配置。",
+    ].join("\n"),
+    "📋 配置前准备",
+  );
+  return prompter.confirm({
+    message: "我已准备好以上条件，继续配置？",
+    initialValue: true,
+  });
+}
+
 async function probePrimaryProviderKey(
   config: KaijiBotConfig,
   prompter: WizardPrompter,
@@ -132,6 +159,15 @@ export async function runSetupWizard(
   const onboardHelpers = await import("../commands/onboard-helpers.js");
   onboardHelpers.printWizardHeader(runtime);
   await prompter.intro("KaijiBot 配置向导");
+
+  if (opts.acceptRisk !== true) {
+    const prereqOk = await showPrerequisiteChecklist(prompter);
+    if (!prereqOk) {
+      await prompter.outro("配置已取消。准备好后再来吧！");
+      return;
+    }
+  }
+
   await requireRiskAcknowledgement({ opts, prompter });
 
   const snapshot = await readConfigFileSnapshot();
@@ -546,6 +582,19 @@ export async function runSetupWizard(
   const { applyAuthChoice, resolvePreferredProviderForAuthChoice, warnIfModelConfigLooksOff } =
     await import("../commands/auth-choice.js");
   const { applyPrimaryModel, promptDefaultModel } = await import("../commands/model-picker.js");
+
+  await prompter.note(
+    [
+      "选择你的 AI 提供商。如需注册 API Key：",
+      "",
+      "  智谱 GLM（推荐）：https://open.bigmodel.cn/",
+      "  DeepSeek：https://platform.deepseek.com/",
+      "  Anthropic Claude：https://console.anthropic.com/",
+      "  Google Gemini：https://aistudio.google.com/apikey",
+      "  通义千问：https://dashscope.console.aliyun.com/",
+    ].join("\n"),
+    "🔑 AI 提供商",
+  );
 
   const authStore = ensureAuthProfileStore(undefined, {
     allowKeychainPrompt: false,
