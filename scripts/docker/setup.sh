@@ -12,6 +12,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+DIM='\033[2m'
 BOLD='\033[1m'
 NC='\033[0m'
 
@@ -195,6 +196,32 @@ ENVEOF
     update_env_var "$env_file" "TAVILY_API_KEY" "$tavily_input"
   fi
 
+  # 飞书机器人配置
+  echo ""
+  echo -e "${CYAN}📡 飞书机器人配置（必需）${NC}"
+  echo "  飞书是 KaijiBot 的消息渠道，不配置则机器人无法收发消息。"
+  echo ""
+  echo -e "${DIM}  方式一：手动创建${NC}"
+  echo -e "${DIM}    1. 打开 https://open.feishu.cn/${NC}"
+  echo -e "${DIM}    2. 创建企业自建应用 → 获取 App ID 和 App Secret${NC}"
+  echo -e "${DIM}    3. 机器人能力 → 开启「机器人」${NC}"
+  echo -e "${DIM}    4. 事件订阅 → 选择 WebSocket 模式 → 添加 im.message.receive_v1${NC}"
+  echo ""
+  echo -e "${DIM}  方式二：不填，启动后进入容器运行 kaijibot onboard 扫码创建${NC}"
+  echo ""
+
+  read -rp "  FEISHU_APP_ID（留空稍后配置）: " feishu_app_id
+  if [[ -n "$feishu_app_id" ]]; then
+    update_env_var "$env_file" "FEISHU_APP_ID" "$feishu_app_id"
+    read -rp "  FEISHU_APP_SECRET: " feishu_app_secret
+    if [[ -n "$feishu_app_secret" ]]; then
+      update_env_var "$env_file" "FEISHU_APP_SECRET" "$feishu_app_secret"
+      print_success "飞书凭证已写入 .env"
+    fi
+  else
+    print_warning "未配置飞书凭证。启动后可进入容器运行 kaijibot onboard 进行配置（支持扫码创建）。"
+  fi
+
   # 设置 Docker 卷路径
   local config_dir="$HOME/.kaijibot"
   local workspace_dir="$HOME/.kaijibot/workspace"
@@ -303,14 +330,20 @@ show_status() {
   echo -e "${BOLD}${CYAN}  🧠 下一步操作${NC}"
   echo -e "${BOLD}${CYAN}═══════════════════════════════════════════${NC}"
   echo ""
-  echo -e "${BOLD}1. 配置飞书机器人${NC}"
-  echo "   在飞书开放平台创建机器人后，运行以下命令配置："
-  echo ""
-  echo "   ${CYAN}docker exec kaijibot-gateway-kaijibot-gateway-1 \\"
-  echo "     node dist/index.js config set channels.feishu.appId \"你的 AppID\"${NC}"
-  echo ""
-  echo "   ${CYAN}docker exec kaijibot-gateway-kaijibot-gateway-1 \\"
-  echo "     node dist/index.js config set channels.feishu.appSecret \"你的 AppSecret\"${NC}"
+  echo -e "${BOLD}1. 配置飞书机器人（如尚未配置）${NC}"
+  if grep -q "^FEISHU_APP_ID=." "$PROJECT_ROOT/.env" 2>/dev/null; then
+    print_success "飞书凭证已通过 .env 配置"
+  else
+    echo "   方式一（推荐）：进入容器运行向导（支持扫码创建机器人）"
+    echo "   ${CYAN}${compose_cmd} exec kaijibot-gateway \\"
+    echo "     node dist/index.js onboard --skip-deps --skip-build${NC}"
+    echo ""
+    echo "   方式二：手动设置凭证"
+    echo "   ${CYAN}${compose_cmd} exec kaijibot-gateway \\"
+    echo "     node dist/index.js config set channels.feishu.appId \"你的AppID\"${NC}"
+    echo "   ${CYAN}${compose_cmd} exec kaijibot-gateway \\"
+    echo "     node dist/index.js config set channels.feishu.appSecret \"你的AppSecret\"${NC}"
+  fi
   echo ""
   echo "   飞书开放平台: https://open.feishu.cn/"
   echo ""
