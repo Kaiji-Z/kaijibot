@@ -2,7 +2,7 @@
 
 > **你的 AI 助手会主动找你聊天，而不是干等着你提问。**
 
-可插拔 provider/channel 架构 · 认知层让 AI 从被动变主动 · 30+ LLM 提供商
+可插拔 provider/channel 架构 · 认知层让 AI 从被动变主动 · 35+ LLM 提供商
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
@@ -104,75 +104,32 @@ kaijibot skills install <skill-name>
 
 ## 🚀 快速开始
 
-### 一键安装（推荐）
+### 准备工作
 
-**macOS / Linux:**
+开始前你需要准备：
+
+| 条件 | 说明 | 获取方式 |
+|------|------|----------|
+| **LLM API Key** | 至少一个 AI 提供商的密钥 | 推荐 [智谱 GLM](https://open.bigmodel.cn/)（国内速度快） |
+| **飞书账号** | 用于收发消息 | [open.feishu.cn](https://open.feishu.cn/) 注册即可，向导支持扫码自动创建机器人 |
+
+### 安装（推荐方式）
+
+**macOS / Linux** — 一条命令搞定：
 
 ```bash
 curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh | bash
 ```
 
-脚本会自动检测系统、安装 Node.js（如未安装）、配置环境，并启动 `kaijibot onboard` 向导。国内使用 Gitee 源，速度快。
+脚本会自动：检测系统 → 安装 Node.js（如未安装）→ 安装 KaijiBot → 启动配置向导。
 
-**Windows (PowerShell):**
+**Windows** — PowerShell：
 
 ```powershell
 iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
 ```
 
-### npm 全局安装（已有 Node.js 环境）
-
-```bash
-npm install -g kaijibot
-kaijibot onboard   # 交互式向导，自动配置
-```
-
-### Docker
-
-使用一键部署脚本（推荐，自动处理镜像构建和环境配置）：
-
-```bash
-git clone https://gitee.com/kaiji1126/kaijibot.git
-cd kaijibot
-bash scripts/docker/setup.sh
-```
-
-或手动构建：
-
-```bash
-git clone https://gitee.com/kaiji1126/kaijibot.git
-cd kaijibot
-docker build -t kaijibot:local .
-# 创建 .env 文件（参考 .env.example），至少需要：
-#   ZAI_API_KEY=your-key
-#   KAIJIBOT_GATEWAY_TOKEN=your-token
-#   KAIJIBOT_CONFIG_DIR=~/.kaijibot
-#   KAIJIBOT_WORKSPACE_DIR=~/.kaijibot/workspace
-docker compose up -d
-```
-
-### 中文一键部署脚本
-
-```bash
-git clone https://gitee.com/kaiji1126/kaijibot.git
-cd kaijibot
-bash setup-cn.sh
-```
-
-交互式引导：检查 Node.js → 安装依赖 → 构建 → 配置 API Key → 配置飞书 → 启动。
-
-### 从源码构建
-
-```bash
-git clone https://gitee.com/kaiji1126/kaijibot.git
-cd kaijibot
-# 国内镜像加速
-pnpm install --registry https://registry.npmmirror.com
-pnpm build
-kaijibot onboard   # 交互式向导，自动配置
-# 从 OpenClaw 迁移？运行：
-kaijibot migrate
-```
+安装完成后，向导会引导你配置 LLM 提供商、飞书机器人、网关等。飞书机器人支持**扫码自动创建**（10 秒搞定，无需手动在开放平台操作）。
 
 ### 启动
 
@@ -182,7 +139,55 @@ kaijibot gateway --port 18789 --verbose
 
 启动后在飞书里找到你的机器人，发一条消息。KaijiBot 自动开始构建你的认知画像，几轮对话后会主动推送第一条洞察。
 
-## ⚙️ 配置
+<details>
+<summary><b>📦 其他安装方式</b></summary>
+
+#### npm 全局安装（已有 Node.js 22+ 环境）
+
+```bash
+npm install -g kaijibot
+kaijibot onboard   # 交互式向导，自动配置
+```
+
+#### Docker 部署
+
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+bash scripts/docker/setup.sh   # 一键部署脚本（推荐）
+```
+
+或手动构建：
+
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+docker build -t kaijibot:local .
+docker compose up -d
+```
+
+#### 中文一键部署脚本（从源码运行）
+
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+bash setup-cn.sh
+```
+
+#### 从源码构建
+
+```bash
+git clone https://gitee.com/kaiji1126/kaijibot.git
+cd kaijibot
+pnpm install --registry https://registry.npmmirror.com  # 国内镜像加速
+pnpm build
+kaijibot onboard   # 交互式向导
+# 从 OpenClaw 迁移？运行：kaijibot migrate
+```
+
+</details>
+
+### 配置
 
 **必需**：至少一个 LLM 提供商的 API Key + 飞书机器人凭证。
 
@@ -193,7 +198,7 @@ export ZAI_API_KEY="your-key"              # 智谱 GLM
 # export ANTHROPIC_API_KEY="your-key"      # Claude
 # export GOOGLE_API_KEY="your-key"         # Gemini
 
-# 飞书频道
+# 飞书频道（也可在向导中扫码自动配置）
 kaijibot config set channels.feishu.appId "your-app-id"
 kaijibot config set channels.feishu.appSecret "your-app-secret"
 ```
