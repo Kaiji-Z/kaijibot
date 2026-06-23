@@ -1,5 +1,5 @@
 ---
-summary: "Install KaijiBot -- source build, Docker, and cloud deployment methods"
+summary: "Install KaijiBot -- one-click installer, npm, Docker, and source build"
 read_when:
   - You need an install method other than the Getting Started quickstart
   - You want to deploy to a cloud platform
@@ -9,7 +9,8 @@ title: "Install"
 
 # Install
 
-KaijiBot is distributed as source code. Build from source or use Docker.
+KaijiBot supports multiple installation methods: one-click installer (recommended for most users), npm, Docker, or build from source.
+（KaijiBot 支持多种安装方式：一键安装（推荐）、npm、Docker 或从源码构建。）
 
 ## System requirements
 
@@ -17,7 +18,33 @@ KaijiBot is distributed as source code. Build from source or use Docker.
 - **pnpm** -- required for building from source (`corepack enable`)
 - **macOS, Linux, or Windows** -- both native Windows and WSL2 are supported; WSL2 is more stable. See [Windows](/platforms/windows).
 
-## Source build (recommended)
+## One-click install (recommended / 推荐)
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
+```
+
+The script auto-detects your system, installs Node.js if needed, and launches
+the `kaijibot onboard` wizard.（自动检测系统、安装 Node.js，并启动 onboard 向导。）
+
+## npm install
+
+If you already have Node.js 22+:
+
+```bash
+npm install -g kaijibot
+kaijibot onboard
+```
+
+## Source build
 
 Clone the repo, install dependencies, and build:
 

@@ -8,7 +8,7 @@ title: "Getting Started"
 
 # Getting Started
 
-Build KaijiBot from source, run onboarding, and start chatting in about 5 minutes. By the end you will have a running Gateway, configured auth, and a working chat session.
+Build KaijiBot from source, run onboarding, and start chatting in about 5 minutes. Alternatively, use the [one-click installer](/install) or `npm install -g kaijibot` for a faster setup. By the end you will have a running Gateway, configured auth, and a working chat session.
 
 ## What you need
 
@@ -45,7 +45,7 @@ Check your Node version with `node --version`.
     The wizard walks you through choosing a model provider, setting an API key, and configuring the Gateway. It takes about 2 minutes.
 
     <Tip>
-    KaijiBot 支持 40+ 个 LLM 提供商。国内用户推荐优先选择：
+    KaijiBot 支持 35+ 个 LLM 提供商。国内用户推荐优先选择：
     - **Z.AI（智谱 GLM）** -- 默认选项，国内访问最快
     - **DeepSeek** -- 性价比极高
     - **通义千问（Qwen）** -- 阿里云，中文能力强
@@ -80,6 +80,18 @@ docker compose up -d
 ```
 
 See [Docker](/install/docker) for configuration details.
+
+## npm install (alternative)
+
+If you already have Node.js 22+ installed, skip the source build entirely:
+
+```bash
+npm install -g kaijibot
+kaijibot onboard
+kaijibot gateway --port 18789
+```
+
+Or use the one-click installer for the fastest path: see [Installation Guide](/install).
 
 ## What to do next
 

@@ -1,7 +1,7 @@
 ---
-summary: "Build and install KaijiBot from source (git clone + pnpm), Docker alternative, and environment setup"
+summary: "Install KaijiBot: one-click installer, npm, Docker, or build from source"
 read_when:
-  - You want to install KaijiBot from source
+  - You want to install KaijiBot
   - You want to run KaijiBot via Docker
   - You want to set up a development environment
 title: "Installation Guide"
@@ -9,9 +9,15 @@ title: "Installation Guide"
 
 # Installation
 
-KaijiBot is installed by building from source. There is no npm package or
-installer script -- clone the repository and build with pnpm.
-(没有 npm 包或安装脚本，通过源码构建安装。)
+KaijiBot supports multiple installation methods. Pick the one that suits your environment.
+（KaijiBot 支持多种安装方式，按需选择。）
+
+| Method | Command | Best for |
+| ------ | ------- | -------- |
+| **One-click install** (recommended / 推荐) | `curl -fsSL ... \| bash` | Most users, fastest path |
+| **npm install** | `npm install -g kaijibot` | Users with Node.js already installed |
+| **Docker** | `docker compose up -d` | Containerized / headless deployments |
+| **Build from source** | `git clone` + `pnpm build` | Contributors and custom builds |
 
 ## Prerequisites
 
@@ -29,7 +35,45 @@ upstream. A GitHub remote is also available for international contributors.
 
 ---
 
-## Source build (source build / 源码构建)
+## One-click install (一键安装，推荐)
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh | bash
+```
+
+The script auto-detects your system, installs Node.js if needed, configures the
+environment, and launches the `kaijibot onboard` wizard. Uses the Gitee mirror
+for fast downloads in China.（自动检测系统、安装 Node.js、配置环境，并启动
+onboard 向导。）
+
+**Windows (PowerShell):**
+
+```powershell
+iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
+```
+
+---
+
+## npm install (npm 全局安装)
+
+If you already have Node.js 22+ installed:
+
+```bash
+npm install -g kaijibot
+kaijibot onboard   # interactive setup wizard
+```
+
+Then start the gateway:
+
+```bash
+kaijibot gateway --port 18789
+```
+
+---
+
+## Source build (从源码构建)
 
 ### 1. Clone the repository
 
