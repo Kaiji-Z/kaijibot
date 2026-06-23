@@ -116,7 +116,7 @@ print_banner() {
 
 # ── 步骤 1: 检查 Node.js ─────────────────────────────────────────────────────
 check_node() {
-  step 1 7 "检查 Node.js 环境"
+  step 1 6 "检查 Node.js 环境"
 
   if ! command -v node &>/dev/null; then
     fail "未检测到 Node.js"
@@ -137,13 +137,14 @@ check_node() {
     exit 1
   fi
 
-  local node_version
-  node_version=$(node -v | sed 's/^v//' | cut -d. -f1)
+  local node_major node_minor
+  node_major=$(node -v | sed 's/^v//' | cut -d. -f1)
+  node_minor=$(node -v | sed 's/^v//' | cut -d. -f2)
 
-  if [[ "$node_version" -lt 22 ]]; then
+  if [[ "$node_major" -lt 22 ]] || { [[ "$node_major" -eq 22 ]] && [[ "$node_minor" -lt 14 ]]; }; then
     local full_version
     full_version=$(node -v)
-    warn "Node.js 版本过低: ${full_version}（需要 ≥ 22）"
+    warn "Node.js 版本过低: ${full_version}（需要 ≥ 22.14）"
     echo ""
     echo "升级建议："
     echo "  nvm install 22"
@@ -158,7 +159,7 @@ check_node() {
 
 # ── 步骤 2: 检查 pnpm ────────────────────────────────────────────────────────
 check_pnpm() {
-  step 2 7 "检查 pnpm"
+  step 2 6 "检查 pnpm"
 
   if ! command -v pnpm &>/dev/null; then
     warn "未检测到 pnpm，正在尝试安装..."
@@ -182,7 +183,7 @@ check_pnpm() {
 
 # ── 步骤 3: 设置项目 ─────────────────────────────────────────────────────────
 setup_project() {
-  step 3 7 "准备项目代码"
+  step 3 6 "准备项目代码"
 
   # 检测当前目录是否已经是 KaijiBot 项目
   if [[ -f "package.json" ]] && grep -q '"name": "kaijibot"' package.json 2>/dev/null; then
@@ -205,7 +206,7 @@ setup_project() {
 
 # ── 步骤 4: 安装依赖 ─────────────────────────────────────────────────────────
 install_deps() {
-  step 4 7 "安装依赖"
+  step 4 6 "安装依赖"
 
   if [[ -d "node_modules" ]] && [[ -f "node_modules/.pnpm/lock.yaml" ]]; then
     ok "依赖已安装，跳过（如需重装请删除 node_modules 目录）"
@@ -219,7 +220,7 @@ install_deps() {
 
 # ── 步骤 5: 构建 ──────────────────────────────────────────────────────────────
 build_project() {
-  step 5 7 "构建项目"
+  step 5 6 "构建项目"
 
   if [[ "$SKIP_BUILD" == true ]]; then
     warn "已跳过构建（--skip-build）"
@@ -236,165 +237,33 @@ build_project() {
   ok "构建完成"
 }
 
-# ── 步骤 6: 配置环境变量 ─────────────────────────────────────────────────────
-configure_env() {
-  step 6 7 "配置环境变量"
-
-  local env_file=".env"
-
-  # 如果 .env 已存在且包含 ZAI_API_KEY，跳过
-  if [[ -f "$env_file" ]] && grep -q "^ZAI_API_KEY=." "$env_file" 2>/dev/null; then
-    ok ".env 已配置，跳过（如需修改请编辑 ${env_file}）"
-    return 0
-  fi
-
-  # 从 .env.example 复制模板
-  if [[ -f ".env.example" ]]; then
-    cp .env.example "$env_file"
-    info "已从 .env.example 创建 .env"
-  else
-    # 手动创建最小化 .env
-    cat > "$env_file" <<'ENVEOF'
-# KaijiBot 环境变量配置
-# 由 setup-cn.sh 自动生成
-
-# 网关认证 Token
-KAIJIBOT_GATEWAY_TOKEN=
-
-# Z.AI API Key（必填）
-ZAI_API_KEY=
-
-# 网络搜索（可选）
-# EXA_API_KEY=
-# TAVILY_API_KEY=
-ENVEOF
-    info "已创建 .env 模板"
-  fi
+# ── 步骤 6: 启动配置向导 ─────────────────────────────────────────────────────
+launch_onboard() {
+  step 6 6 "启动配置向导"
 
   echo ""
-  # ── Z.AI API Key ──
-  echo -e "${BOLD}🔑 Z.AI（智谱 GLM）API Key${NC}"
-  echo -e "${DIM}   获取地址: https://open.bigmodel.cn/${NC}"
-  echo -e "${DIM}   注册后进入「API Keys」页面创建密钥${NC}"
-  local zai_key=""
-  ask_value "请输入 Z.AI API Key: " "zai_key" true
-  sed -i "s|^ZAI_API_KEY=.*|ZAI_API_KEY=${zai_key}|" "$env_file"
-  ok "Z.AI API Key 已写入"
-
-  # ── Gateway Token ──
-  local gateway_token
-  if command -v openssl &>/dev/null; then
-    gateway_token=$(openssl rand -hex 32)
-  else
-    gateway_token="kaijibot-$(date +%s)-$RANDOM$RANDOM$RANDOM"
-    warn "openssl 不可用，已生成简单 Token（建议安装 openssl 后重新生成）"
-  fi
-  sed -i "s|^KAIJIBOT_GATEWAY_TOKEN=.*|KAIJIBOT_GATEWAY_TOKEN=${gateway_token}|" "$env_file"
-  ok "Gateway Token 已自动生成"
-
-  # ── 网络搜索（可选）──
+  echo -e "${YELLOW}💡 提示：请提前准备好 LLM API Key。推荐智谱 GLM：https://open.bigmodel.cn/${NC}"
+  echo -e "${YELLOW}💡 提示：向导中可选择「扫码自动创建飞书机器人」，10 秒搞定，无需手动在开放平台创建应用。${NC}"
   echo ""
-  echo -e "${BOLD}🔍 网络搜索 API（可选，用于增强洞察时效性）${NC}"
-  echo -e "${DIM}   不配置也能正常使用，但洞察内容不会包含实时信息${NC}"
 
-  if ask_yes_no "是否配置网络搜索 API？"; then
-    local exa_key=""
-    echo ""
-    echo -e "${DIM}   Exa: 高质量语义搜索 (https://exa.ai/)${NC}"
-    if ask_yes_no "配置 Exa API Key？" "N"; then
-      ask_value "请输入 Exa API Key（留空跳过）: " "exa_key" false
-      if [[ -n "$exa_key" ]]; then
-        sed -i "s|^# EXA_API_KEY=.*|EXA_API_KEY=${exa_key}|" "$env_file"
-        ok "Exa API Key 已写入"
-      fi
-    fi
-
-    local tavily_key=""
-    echo ""
-    echo -e "${DIM}   Tavily: AI 摘要搜索 (https://tavily.com/)${NC}"
-    if ask_yes_no "配置 Tavily API Key？" "N"; then
-      ask_value "请输入 Tavily API Key（留空跳过）: " "tavily_key" false
-      if [[ -n "$tavily_key" ]]; then
-        sed -i "s|^# TAVILY_API_KEY=.*|TAVILY_API_KEY=${tavily_key}|" "$env_file"
-        ok "Tavily API Key 已写入"
-      fi
-    fi
-  fi
-
-  echo ""
-  ok "环境变量配置完成 → ${env_file}"
+  exec pnpm kaijibot onboard
 }
 
-# ── 步骤 7: 配置飞书 ─────────────────────────────────────────────────────────
-configure_feishu() {
-  step 7 7 "配置飞书机器人"
-
-  if [[ "$SKIP_FEISHU" == true ]]; then
-    warn "已跳过飞书配置（--skip-feishu）"
-    return 0
-  fi
-
-  echo -e "${BOLD}📡 飞书应用配置${NC}"
-  echo -e "${DIM}   开放平台: https://open.feishu.cn/${NC}"
-  echo -e "${DIM}   创建企业自建应用 → 获取 App ID 和 App Secret${NC}"
-  echo -e "${DIM}   机器人能力 → 开启「机器人」${NC}"
+# ── 完成提示 ───────────────────────────────────────────────────────────────────
+show_completion() {
   echo ""
-
-  if ! ask_yes_no "是否现在配置飞书？（可稍后手动配置）"; then
-    warn "跳过飞书配置"
-    info "稍后可通过以下命令配置："
-    echo "  kaijibot config set channels.feishu.appId \"你的AppID\""
-    echo "  kaijibot config set channels.feishu.appSecret \"你的AppSecret\""
-    return 0
-  fi
-
-  local app_id="" app_secret=""
-  ask_value "请输入飞书 App ID: " "app_id" false
-  ask_value "请输入飞书 App Secret: " "app_secret" false
-
-  if [[ -n "$app_id" && -n "$app_secret" ]]; then
-    pnpm kaijibot config set channels.feishu.appId "$app_id" 2>/dev/null || \
-      warn "kaijibot config 命令失败，请手动配置"
-    pnpm kaijibot config set channels.feishu.appSecret "$app_secret" 2>/dev/null || \
-      warn "kaijibot config 命令失败，请手动配置"
-    ok "飞书配置完成"
-  else
-    warn "未输入完整信息，飞书未配置"
-    info "稍后请手动运行："
-    echo "  kaijibot config set channels.feishu.appId \"你的AppID\""
-    echo "  kaijibot config set channels.feishu.appSecret \"你的AppSecret\""
-  fi
-}
-
-# ── 启动网关 ──────────────────────────────────────────────────────────────────
-start_gateway() {
-  echo ""
-  echo -e "${BOLD}${CYAN}════════════════════════════════════════${NC}"
+  echo -e "${BOLD}${CYAN}════════════════════════════════════════════════════════${NC}"
   echo -e "${BOLD}${GREEN}  🧠 KaijiBot 部署完成！${NC}"
-  echo -e "${BOLD}${CYAN}════════════════════════════════════════${NC}"
+  echo -e "${BOLD}${CYAN}════════════════════════════════════════════════════════${NC}"
   echo ""
-
-  if ask_yes_no "是否现在启动网关？"; then
-    echo ""
-    info "正在启动 KaijiBot Gateway..."
-    echo -e "${DIM}按 Ctrl+C 停止${NC}"
-    echo ""
-    exec pnpm kaijibot gateway --port 18789 --verbose
-  else
-    echo ""
-    info "手动启动方式："
-    echo ""
-    echo -e "  ${BOLD}前台运行：${NC}"
-    echo "    pnpm kaijibot gateway --port 18789 --verbose"
-    echo ""
-    echo -e "  ${BOLD}后台运行：${NC}"
-    echo "    nohup pnpm kaijibot gateway --port 18789 > kaijibot.log 2>&1 &"
-    echo "    # 查看日志: tail -f kaijibot.log"
-    echo ""
-    echo -e "  ${BOLD}systemd 服务（推荐生产环境）：${NC}"
-    echo "    # 创建 /etc/systemd/system/kaijibot.service"
-    echo "    # 参考文档: docs/ 目录下的部署指南"
-  fi
+  echo -e "${DIM}配置向导已完成。如向导中未启动网关，请手动启动：${NC}"
+  echo ""
+  echo -e "  ${BOLD}前台运行：${NC}"
+  echo "    pnpm kaijibot gateway --port 18789 --verbose"
+  echo ""
+  echo -e "  ${BOLD}后台运行：${NC}"
+  echo "    nohup pnpm kaijibot gateway --port 18789 > kaijibot.log 2>&1 &"
+  echo "    # 查看日志: tail -f kaijibot.log"
 }
 
 # ── 后续步骤 ──────────────────────────────────────────────────────────────────
@@ -403,20 +272,20 @@ show_next_steps() {
   echo -e "${BOLD}${CYAN}📋 后续步骤${NC}"
   echo -e "${DIM}────────────────────────────────────────${NC}"
   echo ""
-  echo -e "${BOLD}1. 配置飞书机器人${NC}"
-  echo "   开放平台: https://open.feishu.cn/"
-  echo "   事件订阅 URL: http://<你的IP>:18789/feishu/webhook"
-  echo "   需要订阅的事件：im.message.receive_v1"
-  echo ""
-  echo -e "${BOLD}2. 查看日志${NC}"
+  echo -e "${BOLD}1. 查看日志${NC}"
   echo "   启动时加 --verbose 查看详细日志"
   echo "   日志目录: ~/.kaijibot/logs/"
   echo ""
-  echo -e "${BOLD}3. 配置认知系统${NC}"
+  echo -e "${BOLD}2. 配置认知系统${NC}"
   echo "   kaijibot config set cognitive.enabled true"
   echo "   kaijibot config set cognitive.proactive.enabled true"
   echo "   kaijibot config set cognitive.proactive.minIntervalHours 4"
   echo "   kaijibot config set cognitive.proactive.activeHours \"09:00-22:00\""
+  echo ""
+  echo -e "${BOLD}3. systemd 服务（推荐生产环境）${NC}"
+  echo "   模板文件: docs/install/kaijibot.service.template"
+  echo "   cp docs/install/kaijibot.service.template /etc/systemd/system/kaijibot.service"
+  echo "   # 编辑后: sudo systemctl enable --now kaijibot"
   echo ""
   echo -e "${BOLD}4. 更新版本${NC}"
   echo "   git pull origin main"
@@ -438,10 +307,8 @@ main() {
   setup_project
   install_deps
   build_project
-  configure_env
-  configure_feishu
   show_next_steps
-  start_gateway
+  launch_onboard
 }
 
 main
