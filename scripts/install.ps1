@@ -151,12 +151,14 @@ function Install-Node {
 function Ensure-Node {
     $nodeVersion = Get-NodeVersion
     if ($nodeVersion) {
-        $major = [int]($nodeVersion -split '\.')[0]
-        if ($major -ge 22) {
+        $parts = $nodeVersion -split '\.'
+        $major = [int]$parts[0]
+        $minor = [int]$parts[1]
+        if ($major -ge 22 -and $minor -ge 14) {
             Write-Host "Node.js v$nodeVersion found" -Level success
             return $true
         }
-        Write-Host "Node.js v$nodeVersion found, but need v22+" -Level warn
+        Write-Host "Node.js v$nodeVersion found, but need v22.14+" -Level warn
     }
     return Install-Node
 }
