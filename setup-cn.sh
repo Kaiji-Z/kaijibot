@@ -246,7 +246,7 @@ launch_onboard() {
   echo -e "${YELLOW}💡 提示：向导中可选择「扫码自动创建飞书机器人」，10 秒搞定，无需手动在开放平台创建应用。${NC}"
   echo ""
 
-  exec pnpm kaijibot onboard
+  pnpm kaijibot onboard || warn "配置向导退出（可能未完成配置）"
 }
 
 # ── 完成提示 ───────────────────────────────────────────────────────────────────
@@ -307,8 +307,9 @@ main() {
   setup_project
   install_deps
   build_project
-  show_next_steps
   launch_onboard
+  show_completion
+  show_next_steps
 }
 
 main
