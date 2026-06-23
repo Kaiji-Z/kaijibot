@@ -2509,6 +2509,11 @@ main() {
                     warn_kaijibot_not_found
                     return 0
                 fi
+                echo ""
+                echo "💡 配置向导提示："
+                echo "   • 飞书机器人可选择「扫码自动创建」，10 秒搞定"
+                echo "   • 请提前准备好 LLM API Key（推荐智谱：https://open.bigmodel.cn/）"
+                echo ""
                 exec </dev/tty
                 exec "$claw" onboard
             fi
