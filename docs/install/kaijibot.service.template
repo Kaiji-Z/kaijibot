@@ -1,0 +1,51 @@
+# KaijiBot Gateway — systemd 服务模板
+#
+# 使用方法：
+#   1. 复制此文件：sudo cp docs/install/kaijibot.service.template /etc/systemd/system/kaijibot.service
+#   2. 编辑替换所有 <PLACEHOLDER> 变量（见下方说明）
+#   3. 重新加载 systemd：sudo systemctl daemon-reload
+#   4. 启用并启动：sudo systemctl enable --now kaijibot
+#
+# 占位符说明：
+#   <USER>          — 运行服务的用户名（建议专用用户，非 root）
+#   <INSTALL_DIR>   — KaijiBot 安装目录（如 /opt/kaijibot 或 /home/<USER>/projects/KaijiBot）
+#   <CONFIG_DIR>    — 配置目录（通常为 /home/<USER>/.kaijibot）
+#
+# 环境变量从 <CONFIG_DIR>/.env 文件加载。
+# 日志通过 journalctl 查看：journalctl -u kaijibot -f
+
+[Unit]
+Description=KaijiBot Gateway — Proactive Cognitive AI Assistant
+Documentation=https://github.com/Kaiji-Z/kaijibot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<USER>
+WorkingDirectory=<INSTALL_DIR>
+
+# 从 .env 文件加载环境变量
+EnvironmentFile=<CONFIG_DIR>/.env
+
+# 启动网关
+ExecStart=/usr/bin/env node <INSTALL_DIR>/dist/index.js gateway --port 18789
+
+# 自动重启
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kaijibot
+
+# 安全限制
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
