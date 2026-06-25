@@ -1251,6 +1251,7 @@
     }
   },
   "optionalDependencies": {
+    "@img/sharp-wasm32": "^0.34.5",
     "@larksuite/cli": "latest",
     "openshell": "0.1.0"
   },

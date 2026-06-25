@@ -32,13 +32,20 @@ function prefersSips(): boolean {
 }
 
 async function loadSharp(): Promise<(buffer: Buffer) => ReturnType<Sharp>> {
-  const mod = (await import("sharp")) as unknown as { default?: Sharp };
-  const sharp = mod.default ?? (mod as unknown as Sharp);
-  return (buffer) =>
-    sharp(buffer, {
-      failOnError: false,
-      limitInputPixels: MAX_IMAGE_INPUT_PIXELS,
-    });
+  const opts = {
+    failOnError: false,
+    limitInputPixels: MAX_IMAGE_INPUT_PIXELS,
+  };
+
+  try {
+    const mod = (await import("sharp")) as unknown as { default?: Sharp };
+    const sharp = mod.default ?? (mod as unknown as Sharp);
+    return (buffer) => sharp(buffer, opts);
+  } catch {
+    const wasm = (await import("@img/sharp-wasm32")) as unknown as { default?: Sharp };
+    const sharp = wasm.default ?? (wasm as unknown as Sharp);
+    return (buffer) => sharp(buffer, opts);
+  }
 }
 
 function isPositiveImageDimension(value: number): boolean {
