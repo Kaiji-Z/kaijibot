@@ -393,7 +393,11 @@ export function globalInstallArgs(
   if (resolved.manager === "bun") {
     return [resolved.command, "add", "-g", spec];
   }
-  return [resolved.command, "i", "-g", spec, ...NPM_GLOBAL_INSTALL_QUIET_FLAGS];
+  const flags: string[] = [...NPM_GLOBAL_INSTALL_QUIET_FLAGS];
+  if (process.platform === "android") {
+    flags.push("--force");
+  }
+  return [resolved.command, "i", "-g", spec, ...flags];
 }
 
 export function globalInstallFallbackArgs(
