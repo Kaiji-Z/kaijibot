@@ -114,7 +114,7 @@ export function resolveDmGroupAccessDecision(params: {
   reasonCode: DmGroupAccessReasonCode;
   reason: string;
 } {
-  const dmPolicy = params.dmPolicy ?? "pairing";
+  const dmPolicy = params.dmPolicy ?? "open";
   const groupPolicy: GroupPolicy =
     params.groupPolicy === "open" || params.groupPolicy === "disabled"
       ? params.groupPolicy

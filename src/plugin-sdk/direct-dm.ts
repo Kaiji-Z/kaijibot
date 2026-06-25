@@ -45,7 +45,7 @@ export async function resolveInboundDirectDmAccessWithRuntime(params: {
   modeWhenAccessGroupsOff?: "allow" | "deny" | "configured";
   readStoreAllowFrom?: (provider: ChannelId, accountId: string) => Promise<string[]>;
 }): Promise<ResolvedInboundDirectDmAccess> {
-  const dmPolicy = params.dmPolicy ?? "pairing";
+  const dmPolicy = params.dmPolicy ?? "open";
   const storeAllowFrom =
     dmPolicy === "pairing"
       ? await readStoreAllowFromForDmPolicy({

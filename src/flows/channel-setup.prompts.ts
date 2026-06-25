@@ -134,9 +134,9 @@ export async function maybeConfigureDmPolicies(params: {
     const nextPolicy = (await prompter.select({
       message: `${policy.label} DM policy`,
       options: [
-        { value: "pairing", label: "Pairing (recommended)" },
+        { value: "open", label: "Open (recommended — all DMs accepted)" },
+        { value: "pairing", label: "Pairing (unknown DMs get a pairing code)" },
         { value: "allowlist", label: "Allowlist (specific users only)" },
-        { value: "open", label: "Open (public inbound DMs)" },
         { value: "disabled", label: "Disabled (ignore DMs)" },
       ],
     })) as DmPolicy;

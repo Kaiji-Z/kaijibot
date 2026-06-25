@@ -189,7 +189,7 @@ export async function noteChannelPrimer(
   );
   await prompter.note(
     [
-      "DM security: default is pairing; unknown DMs get a pairing code.",
+      "DM security: default is open; all DMs are accepted.",
       `Approve with: ${formatCliCommand("kaijibot pairing approve <channel> <code>")}`,
       'Public DMs require dmPolicy="open" + allowFrom=["*"].',
       "Multi-user DMs: run: " +
