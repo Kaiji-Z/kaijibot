@@ -5,6 +5,7 @@ import {
   readGatewayServiceState,
   resolveGatewayService,
   startGatewayService,
+  tryResolveGatewayService,
 } from "./service.js";
 import { createMockGatewayService } from "./service.test-helpers.js";
 
@@ -47,6 +48,18 @@ describe("resolveGatewayService", () => {
   it("throws for unsupported platforms", () => {
     setPlatform("aix");
     expect(() => resolveGatewayService()).toThrow("Gateway service install not supported on aix");
+  });
+
+  it("returns null on unsupported platforms via tryResolveGatewayService", () => {
+    setPlatform("aix");
+    expect(tryResolveGatewayService()).toBeNull();
+  });
+
+  it("returns the service on supported platforms via tryResolveGatewayService", () => {
+    setPlatform("linux");
+    const service = tryResolveGatewayService();
+    expect(service).not.toBeNull();
+    expect(service!.label).toBe("systemd");
   });
 
   it("describes scheduled restart handoffs consistently", () => {

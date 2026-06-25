@@ -79,8 +79,11 @@ vi.mock("../../config/commands.js", () => ({
   isRestartEnabled: (config?: { commands?: unknown }) => isRestartEnabled(config),
 }));
 
+const tryResolveGatewayService = vi.hoisted(() => vi.fn<() => typeof service | null>(() => service));
+
 vi.mock("../../daemon/service.js", () => ({
   resolveGatewayService: () => service,
+  tryResolveGatewayService: () => tryResolveGatewayService(),
 }));
 
 vi.mock("./launchd-recovery.js", () => ({
@@ -106,9 +109,9 @@ vi.mock("./lifecycle-core.js", () => ({
 }));
 
 describe("runDaemonRestart health checks", () => {
-  let runDaemonStart: (opts?: { json?: boolean }) => Promise<void>;
+  let runDaemonStart: (opts?: { json?: boolean }) => Promise<boolean>;
   let runDaemonRestart: (opts?: { json?: boolean }) => Promise<boolean>;
-  let runDaemonStop: (opts?: { json?: boolean }) => Promise<void>;
+  let runDaemonStop: (opts?: { json?: boolean }) => Promise<boolean>;
   let envSnapshot: ReturnType<typeof captureEnv>;
 
   function mockUnmanagedRestart({
@@ -159,6 +162,7 @@ describe("runDaemonRestart health checks", () => {
     isRestartEnabled.mockReset();
     loadConfig.mockReset();
     recoverInstalledLaunchAgent.mockReset();
+    tryResolveGatewayService.mockReset();
 
     service.readCommand.mockResolvedValue({
       programArguments: ["kaijibot", "gateway", "--port", "18789"],
@@ -167,6 +171,7 @@ describe("runDaemonRestart health checks", () => {
     service.restart.mockResolvedValue({ outcome: "completed" });
     runServiceStart.mockResolvedValue(undefined);
     recoverInstalledLaunchAgent.mockResolvedValue(null);
+    tryResolveGatewayService.mockReturnValue(service);
 
     runServiceRestart.mockImplementation(async (params: RestartParams) => {
       const fail = (message: string, hints?: string[]) => {
@@ -418,5 +423,67 @@ describe("runDaemonRestart health checks", () => {
     await runDaemonStop({ json: true });
 
     expect(signalVerifiedGatewayPidSync).not.toHaveBeenCalled();
+  });
+
+  it("restart sends SIGUSR1 directly on unsupported platforms (Android/Termux)", async () => {
+    tryResolveGatewayService.mockReturnValue(null);
+    findVerifiedGatewayListenerPidsOnPortSync.mockReturnValue([7777]);
+    waitForGatewayHealthyListener.mockResolvedValue({ healthy: true });
+
+    const result = await runDaemonRestart();
+
+    expect(signalVerifiedGatewayPidSync).toHaveBeenCalledWith(7777, "SIGUSR1");
+    expect(waitForGatewayHealthyListener).toHaveBeenCalledWith(
+      expect.objectContaining({ port: 18789 }),
+    );
+    expect(result).toBe(true);
+  });
+
+  it("restart returns false on unsupported platforms when no gateway process exists", async () => {
+    tryResolveGatewayService.mockReturnValue(null);
+    findVerifiedGatewayListenerPidsOnPortSync.mockReturnValue([]);
+
+    const result = await runDaemonRestart();
+
+    expect(signalVerifiedGatewayPidSync).not.toHaveBeenCalled();
+    expect(result).toBe(false);
+  });
+
+  it("restart returns false on unsupported platforms when health check times out", async () => {
+    tryResolveGatewayService.mockReturnValue(null);
+    findVerifiedGatewayListenerPidsOnPortSync.mockReturnValue([7777]);
+    waitForGatewayHealthyListener.mockResolvedValue({ healthy: false });
+
+    const result = await runDaemonRestart();
+
+    expect(signalVerifiedGatewayPidSync).toHaveBeenCalledWith(7777, "SIGUSR1");
+    expect(result).toBe(false);
+  });
+
+  it("stop sends SIGTERM directly on unsupported platforms (Android/Termux)", async () => {
+    tryResolveGatewayService.mockReturnValue(null);
+    findVerifiedGatewayListenerPidsOnPortSync.mockReturnValue([7777]);
+
+    await runDaemonStop();
+
+    expect(signalVerifiedGatewayPidSync).toHaveBeenCalledWith(7777, "SIGTERM");
+  });
+
+  it("stop returns false on unsupported platforms when no gateway process exists", async () => {
+    tryResolveGatewayService.mockReturnValue(null);
+    findVerifiedGatewayListenerPidsOnPortSync.mockReturnValue([]);
+
+    const result = await runDaemonStop();
+
+    expect(signalVerifiedGatewayPidSync).not.toHaveBeenCalled();
+    expect(result).toBe(false);
+  });
+
+  it("start returns false and hints at foreground start on unsupported platforms", async () => {
+    tryResolveGatewayService.mockReturnValue(null);
+
+    const result = await runDaemonStart();
+
+    expect(result).toBe(false);
   });
 });

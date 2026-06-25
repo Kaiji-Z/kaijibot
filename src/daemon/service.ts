@@ -218,8 +218,23 @@ function isSupportedGatewayServicePlatform(
 }
 
 export function resolveGatewayService(): GatewayService {
+  const service = tryResolveGatewayService();
+  if (service) {
+    return service;
+  }
+  throw new Error(`Gateway service install not supported on ${process.platform}`);
+}
+
+/**
+ * Like {@link resolveGatewayService} but returns `null` for unsupported
+ * platforms (e.g. Android/Termux) instead of throwing. Callers that have
+ * signal-based fallbacks (SIGUSR1 / SIGTERM) should use this so the CLI
+ * gateway restart/stop commands still work on platforms without a service
+ * manager.
+ */
+export function tryResolveGatewayService(): GatewayService | null {
   if (isSupportedGatewayServicePlatform(process.platform)) {
     return GATEWAY_SERVICE_REGISTRY[process.platform];
   }
-  throw new Error(`Gateway service install not supported on ${process.platform}`);
+  return null;
 }

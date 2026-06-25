@@ -1,6 +1,6 @@
 import { isRestartEnabled } from "../../config/commands.js";
 import { readBestEffortConfig, resolveGatewayPort } from "../../config/config.js";
-import { resolveGatewayService } from "../../daemon/service.js";
+import { resolveGatewayService, tryResolveGatewayService } from "../../daemon/service.js";
 import { probeGateway } from "../../gateway/probe.js";
 import {
   findVerifiedGatewayListenerPidsOnPortSync,
@@ -54,7 +54,10 @@ function formatRestartFailure(params: {
   };
 }
 
-async function resolveGatewayLifecyclePort(service = resolveGatewayService()) {
+async function resolveGatewayLifecyclePort(service = tryResolveGatewayService()): Promise<number> {
+  if (!service) {
+    return resolveGatewayPortFallback();
+  }
   const command = await service.readCommand(process.env).catch(() => null);
   const serviceEnv = command?.environment ?? undefined;
   const mergedEnv = {
@@ -144,9 +147,18 @@ export async function runDaemonUninstall(opts: DaemonLifecycleOptions = {}) {
 }
 
 export async function runDaemonStart(opts: DaemonLifecycleOptions = {}) {
-  return await runServiceStart({
+  const service = tryResolveGatewayService();
+  if (!service) {
+    defaultRuntime.log(
+      theme.warn(
+        `No service manager on ${process.platform}. Start the gateway directly: ${formatCliCommand("kaijibot gateway")}`,
+      ),
+    );
+    return false;
+  }
+  await runServiceStart({
     serviceNoun: "Gateway",
-    service: resolveGatewayService(),
+    service,
     renderStartHints: renderGatewayServiceStartHints,
     onNotLoaded:
       process.platform === "darwin"
@@ -154,19 +166,30 @@ export async function runDaemonStart(opts: DaemonLifecycleOptions = {}) {
         : undefined,
     opts,
   });
+  return true;
 }
 
 export async function runDaemonStop(opts: DaemonLifecycleOptions = {}) {
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
   const gatewayPort = await resolveGatewayLifecyclePort(service).catch(() =>
     resolveGatewayPortFallback(),
   );
-  return await runServiceStop({
+  if (!service) {
+    const handled = await stopGatewayWithoutServiceManager(gatewayPort);
+    if (handled) {
+      defaultRuntime.log(theme.success(handled.message));
+      return true;
+    }
+    defaultRuntime.log(theme.muted("Gateway is not running."));
+    return false;
+  }
+  await runServiceStop({
     serviceNoun: "Gateway",
     service,
     opts,
     onNotLoaded: async () => stopGatewayWithoutServiceManager(gatewayPort),
   });
+  return true;
 }
 
 /**
@@ -176,13 +199,47 @@ export async function runDaemonStop(opts: DaemonLifecycleOptions = {}) {
  */
 export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promise<boolean> {
   const json = Boolean(opts.json);
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
   let restartedWithoutServiceManager = false;
   const restartPort = await resolveGatewayLifecyclePort(service).catch(() =>
     resolveGatewayPortFallback(),
   );
   const restartWaitMs = POST_RESTART_HEALTH_ATTEMPTS * POST_RESTART_HEALTH_DELAY_MS;
   const restartWaitSeconds = Math.round(restartWaitMs / 1000);
+
+  if (!service) {
+    const handled = await restartGatewayWithoutServiceManager(restartPort);
+    if (!handled) {
+      if (!json) {
+        defaultRuntime.log(
+          theme.warn(
+            `No gateway process found on port ${restartPort}. Start it with ${formatCliCommand("kaijibot gateway")}.`,
+          ),
+        );
+      }
+      return false;
+    }
+    if (!json) {
+      defaultRuntime.log(theme.success(handled.message));
+    }
+    const health = await waitForGatewayHealthyListener({
+      port: restartPort,
+      attempts: POST_RESTART_HEALTH_ATTEMPTS,
+      delayMs: POST_RESTART_HEALTH_DELAY_MS,
+    });
+    if (health.healthy) {
+      return true;
+    }
+    const diagnostics = renderGatewayPortHealthDiagnostics(health);
+    const timeoutLine = `Timed out after ${restartWaitSeconds}s waiting for gateway port ${restartPort} to become healthy.`;
+    if (!json) {
+      defaultRuntime.log(theme.warn(timeoutLine));
+      for (const line of diagnostics) {
+        defaultRuntime.log(theme.muted(line));
+      }
+    }
+    return false;
+  }
 
   if (process.platform === "win32") {
     writeGatewayRestartHandoffSync({
