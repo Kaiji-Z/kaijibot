@@ -48,7 +48,7 @@ npm install -g kaijibot --force --registry=https://registry.npmjs.org
 ok "KaijiBot $(kaijibot --version)"
 
 info "安装图片处理组件..."
-npm install -g @img/sharp-wasm32 --force || warn "sharp-wasm32 安装失败，图片处理功能将受限"
+npm install -g @img/sharp-wasm32 --force --registry=https://registry.npmmirror.com || warn "sharp-wasm32 安装失败，图片处理功能将受限"
 
 # ── 配置 Android 环境 ────────────────────────────────────────
 
