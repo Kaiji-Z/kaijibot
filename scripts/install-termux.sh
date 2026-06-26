@@ -44,7 +44,7 @@ pkg install -y nodejs-lts imagemagick ffmpeg git lsof -o Dpkg::Options::="--forc
 # ── 安装 KaijiBot ────────────────────────────────────────────
 
 info "安装 KaijiBot（可能需要几分钟）..."
-npm install -g kaijibot --force
+npm install -g kaijibot --force --registry=https://registry.npmjs.org
 ok "KaijiBot $(kaijibot --version)"
 
 info "安装图片处理组件..."
