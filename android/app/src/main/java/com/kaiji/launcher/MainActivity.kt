@@ -77,22 +77,45 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun installBundledTermux() {
-        try {
-            val apkFile = File(cacheDir, "termux.apk")
-            resources.openRawResource(R.raw.termux).use { input ->
-                FileOutputStream(apkFile).use { output -> input.copyTo(output) }
-            }
+        actionButton.isEnabled = false
+        actionButton.text = "正在准备..."
+        statusText.text = "正在提取 Termux 安装包（约 34MB），请稍候..."
 
-            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", apkFile)
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        Thread {
+            try {
+                val apkFile = File(cacheDir, "termux.apk")
+                resources.openRawResource(R.raw.termux).use { input ->
+                    FileOutputStream(apkFile).use { output -> input.copyTo(output) }
+                }
+
+                runOnUiThread {
+                    statusText.text = "请在弹出的窗口中点击「安装」"
+                    val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", apkFile)
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "application/vnd.android.package-archive")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "无法启动安装器: ${e.message}", Toast.LENGTH_LONG).show()
+                        Log.e("KaijiBot", "startActivity failed", e)
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "安装失败: ${e.message}"
+                    Toast.makeText(this, "安装失败: ${e.message}", Toast.LENGTH_LONG).show()
+                    Log.e("KaijiBot", "installBundledTermux failed", e)
+                }
+            } finally {
+                runOnUiThread {
+                    actionButton.isEnabled = true
+                    actionButton.text = "安装 Termux"
+                }
             }
-            startActivity(intent)
-        } catch (e: Exception) {
-            statusText.text = "安装失败: ${e.message}"
-        }
+        }.start()
     }
 
     private fun showTermuxReady() {
