@@ -43,9 +43,23 @@ jobs:
         working-directory: android
         run: gradle assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Rename APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            kaijibot-launcher.apk
+
+      - name: Upload to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+          if [ -n "$LATEST_TAG" ]; then
+            gh release upload "$LATEST_TAG" kaijibot-launcher.apk --clobber
+          fi
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: kaijibot-launcher
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: kaijibot-launcher.apk
           retention-days: 90
