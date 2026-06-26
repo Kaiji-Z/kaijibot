@@ -1,0 +1,39 @@
+name: Publish npm tarball to Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  upload-tarball:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create tarball
+        run: npm pack --ignore-scripts
+
+      - name: Upload to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          TARBALL=$(ls kaijibot-*.tgz | head -1)
+          gh release upload "$TAG" "$TARBALL" --clobber

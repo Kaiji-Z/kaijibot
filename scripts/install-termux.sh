@@ -49,8 +49,18 @@ npm config set registry https://registry.npmmirror.com
 
 # ── 安装 KaijiBot ────────────────────────────────────────────
 
-info "安装 KaijiBot（可能需要几分钟）..."
-npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v2026.6.26-1/kaijibot-2026.6.26-1.tgz" --force
+info "获取最新版本号..."
+KB_VER=$(curl -fsSL https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null)
+if [ -z "$KB_VER" ]; then
+  info "无法获取版本号，使用 npm 直接安装..."
+  npm install -g kaijibot --force --registry=https://registry.npmjs.org
+else
+  info "安装 KaijiBot v${KB_VER}（可能需要几分钟）..."
+  npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force || {
+    info "tarball 下载失败，回退到 npm registry..."
+    npm install -g kaijibot@latest --force --registry=https://registry.npmjs.org
+  }
+fi
 ok "KaijiBot $(kaijibot --version)"
 
 info "安装图片处理组件..."
