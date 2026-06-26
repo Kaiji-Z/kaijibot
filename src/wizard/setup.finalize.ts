@@ -23,7 +23,7 @@ import {
 } from "../commands/onboard-helpers.js";
 import type { OnboardOptions } from "../commands/onboard-types.js";
 import type { KaijiBotConfig } from "../config/config.js";
-import { describeGatewayServiceRestart, resolveGatewayService } from "../daemon/service.js";
+import { describeGatewayServiceRestart, tryResolveGatewayService } from "../daemon/service.js";
 import { isSystemdUserServiceAvailable } from "../daemon/systemd.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
 import { formatErrorMessage } from "../infra/errors.js";
@@ -69,11 +69,14 @@ export async function finalizeSetupWizard(
     }
   };
 
+  const serviceManagerAvailable = tryResolveGatewayService() !== null;
   const systemdAvailable =
-    process.platform === "linux" ? await isSystemdUserServiceAvailable() : true;
-  if (process.platform === "linux" && !systemdAvailable) {
+    process.platform === "linux" ? await isSystemdUserServiceAvailable() : serviceManagerAvailable;
+  if (!serviceManagerAvailable) {
     await prompter.note(
-      "Systemd user services are unavailable. Skipping lingering checks and service install.",
+      process.platform === "android"
+        ? "No service manager on Android/Termux. The gateway will start in the foreground."
+        : "Systemd user services are unavailable. Skipping lingering checks and service install.",
       "Systemd",
     );
   }
@@ -97,6 +100,8 @@ export async function finalizeSetupWizard(
   let installDaemon: boolean;
   if (explicitInstallDaemon !== undefined) {
     installDaemon = explicitInstallDaemon;
+  } else if (!serviceManagerAvailable) {
+    installDaemon = false;
   } else if (process.platform === "linux" && !systemdAvailable) {
     installDaemon = false;
   } else if (flow === "quickstart") {
@@ -108,9 +113,11 @@ export async function finalizeSetupWizard(
     });
   }
 
-  if (process.platform === "linux" && !systemdAvailable && installDaemon) {
+  if (!serviceManagerAvailable && installDaemon) {
     await prompter.note(
-      "Systemd user services are unavailable; skipping service install. Use your container supervisor or `docker compose up -d`.",
+      process.platform === "android"
+        ? "No service manager on Android/Termux. Start the gateway manually: kaijibot gateway run"
+        : "Systemd user services are unavailable; skipping service install. Use your container supervisor or `docker compose up -d`.",
       "Gateway service",
     );
     installDaemon = false;
@@ -131,7 +138,10 @@ export async function finalizeSetupWizard(
         "Gateway service runtime",
       );
     }
-    const service = resolveGatewayService();
+    const service = tryResolveGatewayService();
+    if (!service) {
+      throw new Error("Unreachable: serviceManagerAvailable was checked above");
+    }
     const loaded = await service.isLoaded({ env: process.env });
     let restartWasScheduled = false;
     if (loaded) {
