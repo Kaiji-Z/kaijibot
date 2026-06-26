@@ -21,19 +21,20 @@ fi
 
 info "检测到 Termux，开始安装 KaijiBot..."
 
+export DEBIAN_FRONTEND=noninteractive
+export DPKG_FORCE_CONFFILE_UPDATE=1
+
 # ── 切换 Termux 国内镜像（在 pkg 之前）─────────────────────
 
 SOURCES="$PREFIX/etc/apt/sources.list"
-if grep -q "packages.termux.dev" "$SOURCES" 2>/dev/null; then
-  info "切换 Termux 镜像源为清华 TUNA..."
-  sed -i 's|packages.termux.dev|mirrors.tuna.tsinghua.edu.cn/termux|g' "$SOURCES"
-fi
+echo "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main" > "$SOURCES"
+info "镜像源已固定为清华 TUNA"
 
 # ── 升级 Termux 核心库 ──────────────────────────────────────
 
 info "升级 Termux 核心库（可能需要几分钟）..."
-pkg update -y || true
-pkg upgrade -y || true
+pkg update -y -o Dpkg::Options::="--force-confold" || true
+pkg upgrade -y -o Dpkg::Options::="--force-confold" || true
 
 # ── 安装 Node.js 和系统工具 ─────────────────────────────────
 

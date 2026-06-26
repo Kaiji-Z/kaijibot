@@ -98,16 +98,12 @@ function parseNodeMajor(versionText: string): number | null {
 
 async function switchTermuxMirror(runtime: OutputRuntimeEnv): Promise<void> {
   const sourcesPath = path.join(process.env.PREFIX ?? "/data/data/com.termux/files/usr", "etc", "apt", "sources.list");
-  try {
-    const content = await fs.readFile(sourcesPath, "utf8");
-    if (content.includes("packages.termux.dev")) {
-      runtime.log(`  → Switching Termux mirror to TUNA (China)`);
-      const updated = content.replaceAll("packages.termux.dev", "mirrors.tuna.tsinghua.edu.cn/termux");
-      await writeTextAtomic(sourcesPath, updated, { mode: 0o644 });
-    }
-  } catch {
-    // sources.list might not exist yet; skip silently
-  }
+  runtime.log(`  → Setting Termux mirror to TUNA (China)`);
+  await writeTextAtomic(
+    sourcesPath,
+    "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main\n",
+    { mode: 0o644 },
+  );
 }
 
 async function switchNpmMirror(runtime: OutputRuntimeEnv): Promise<void> {
@@ -173,8 +169,14 @@ async function ensureRequiredPackages(runtime: OutputRuntimeEnv): Promise<void> 
   }
 }
 
+const PKG_CONFFILE_FLAGS = ["-o", "Dpkg::Options::=--force-confold"];
+
 function runPkg(runtime: OutputRuntimeEnv, args: readonly string[]): void {
-  const result = spawnSync("pkg", args as string[], { stdio: "inherit" });
+  const fullArgs = [...args, ...PKG_CONFFILE_FLAGS];
+  const result = spawnSync("pkg", fullArgs, {
+    stdio: "inherit",
+    env: { ...process.env, DEBIAN_FRONTEND: "noninteractive" },
+  });
   if (result.error || result.status !== 0) {
     runtime.error(`pkg ${args.join(" ")} failed.`);
     runtime.exit(1);
