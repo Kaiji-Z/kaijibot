@@ -40,14 +40,6 @@
             android:textColor="#C9D1D9"
             android:textSize="16sp" />
 
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:visibility="gone" />
-
         <Button
             android:id="@+id/actionButton"
             android:layout_width="match_parent"

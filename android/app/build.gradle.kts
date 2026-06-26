@@ -15,6 +15,10 @@ android {
         versionName = "1.0"
     }
 
+    aaptOptions {
+        noCompress("apk")
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

@@ -4,6 +4,9 @@ build/
 *.apk
 local.properties
 
+# Bundled Termux APK (downloaded during CI build)
+app/src/main/res/raw/termux.apk
+
 # IDE
 .idea/
 *.iml
