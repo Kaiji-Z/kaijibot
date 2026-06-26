@@ -55,7 +55,6 @@ export async function runAndroidInstall(
   await switchTermuxMirror(runtime);
   await ensureTermuxUpToDate(runtime);
   await ensureNode(runtime);
-  await switchNpmMirror(runtime);
   await ensureRequiredPackages(runtime);
   await ensureKaijiBot(runtime);
   await installSharpWasm32(runtime);

@@ -39,12 +39,7 @@ pkg upgrade -y -o Dpkg::Options::="--force-confold" || true
 # ── 安装 Node.js 和系统工具 ─────────────────────────────────
 
 info "安装 Node.js 和系统工具..."
-pkg install -y nodejs-lts imagemagick ffmpeg git lsof
-
-# ── 切换 npm 国内镜像（npm 已安装）──────────────────────────
-
-info "切换 npm 镜像源为 npmmirror..."
-npm config set registry https://registry.npmmirror.com
+pkg install -y nodejs-lts imagemagick ffmpeg git lsof -o Dpkg::Options::="--force-confold"
 
 # ── 安装 KaijiBot ────────────────────────────────────────────
 
