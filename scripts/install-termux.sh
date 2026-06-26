@@ -21,12 +21,25 @@ fi
 
 info "检测到 Termux，开始安装 KaijiBot..."
 
+# ── 切换国内镜像（加速下载）─────────────────────────────────
+
+SOURCES="$PREFIX/etc/apt/sources.list"
+if grep -q "packages.termux.dev" "$SOURCES" 2>/dev/null; then
+  info "切换 Termux 镜像源为清华 TUNA..."
+  sed -i 's|packages.termux.dev|mirrors.tuna.tsinghua.edu.cn/termux|g' "$SOURCES"
+fi
+
+info "切换 npm 镜像源为 npmmirror..."
+npm config set registry https://registry.npmmirror.com 2>/dev/null || true
+
 # ── 全自动安装 ─────────────────────────────────────────────
 
+info "升级 Termux 核心库（可能需要几分钟）..."
 pkg update -y -q || true
+pkg upgrade -y -q || true
 
-info "安装 Node.js 和媒体工具..."
-pkg install -y nodejs-lts imagemagick ffmpeg -q
+info "安装 Node.js 和系统工具..."
+pkg install -y nodejs-lts imagemagick ffmpeg git lsof -q
 
 info "安装 KaijiBot..."
 npm install -g kaijibot --force 2>/dev/null

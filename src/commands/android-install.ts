@@ -9,7 +9,7 @@ export type AndroidInstallOptions = {
   nonInteractive?: boolean;
 };
 
-const REQUIRED_PACKAGES = ["imagemagick", "ffmpeg"] as const;
+const REQUIRED_PACKAGES = ["git", "lsof", "imagemagick", "ffmpeg"] as const;
 const MIN_NODE_MAJOR = 22;
 const GATEWAY_PORT = 18789;
 const BOOT_SCRIPT_MODE = 0o755;
@@ -52,6 +52,8 @@ export async function runAndroidInstall(
     return;
   }
 
+  await switchToChinaMirror(runtime);
+  await ensureTermuxUpToDate(runtime);
   await ensureNode(runtime);
   await ensureRequiredPackages(runtime);
   await ensureKaijiBot(runtime);
@@ -91,6 +93,30 @@ function parseNodeMajor(versionText: string): number | null {
   }
   const parsed = Number.parseInt(match[1]!, 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function switchToChinaMirror(runtime: OutputRuntimeEnv): Promise<void> {
+  const sourcesPath = path.join(process.env.PREFIX ?? "/data/data/com.termux/files/usr", "etc", "apt", "sources.list");
+  try {
+    const content = await fs.readFile(sourcesPath, "utf8");
+    if (content.includes("packages.termux.dev")) {
+      runtime.log(`  → Switching Termux mirror to TUNA (China)`);
+      const updated = content.replaceAll("packages.termux.dev", "mirrors.tuna.tsinghua.edu.cn/termux");
+      await writeTextAtomic(sourcesPath, updated, { mode: 0o644 });
+    }
+  } catch {
+    // sources.list might not exist yet; skip silently
+  }
+  runtime.log(`  → Switching npm registry to npmmirror (China)`);
+  run("npm", ["config", "set", "registry", "https://registry.npmmirror.com"]);
+  runtime.log(`  ${theme.success("✓")} Mirrors configured`);
+}
+
+async function ensureTermuxUpToDate(runtime: OutputRuntimeEnv): Promise<void> {
+  runtime.log(`  → Updating Termux packages (this may take a few minutes)...`);
+  runPkg(runtime, ["update", "-y"]);
+  runPkg(runtime, ["upgrade", "-y"]);
+  runtime.log(`  ${theme.success("✓")} Termux packages up to date`);
 }
 
 async function ensureNode(runtime: OutputRuntimeEnv): Promise<void> {
