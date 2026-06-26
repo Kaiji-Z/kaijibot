@@ -1,7 +1,6 @@
 import { spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process";import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { confirm, isCancel } from "@clack/prompts";
 import { writeTextAtomic } from "../infra/json-files.js";
 import type { OutputRuntimeEnv } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
@@ -20,6 +19,19 @@ const BOOT_SCRIPT_BODY = [
   "#!/data/data/com.termux/files/usr/bin/bash",
   "termux-wake-lock",
   `kaijibot gateway --port ${GATEWAY_PORT} >> ~/.kaijibot/gateway.log 2>&1 &`,
+  "",
+].join("\n");
+
+const BASHRC_AUTOSTART_MARKER = "# >>> kaijibot autostart >>>";
+const BASHRC_AUTOSTART_END = "# <<< kaijibot autostart <<<";
+const BASHRC_AUTOSTART_BODY = [
+  BASHRC_AUTOSTART_MARKER,
+  'if ! pgrep -f "kaijibot gateway" > /dev/null 2>&1; then',
+  "  termux-wake-lock 2>/dev/null",
+  `  kaijibot gateway --port ${GATEWAY_PORT} >> ~/.kaijibot/gateway.log 2>&1 &`,
+  '  echo "KaijiBot gateway started (port ' + GATEWAY_PORT + ')"',
+  "fi",
+  BASHRC_AUTOSTART_END,
   "",
 ].join("\n");
 
@@ -45,10 +57,12 @@ export async function runAndroidInstall(
   await ensureKaijiBot(runtime);
   await installSharpWasm32(runtime);
   await writeBootScript(runtime);
+  await writeBashrcAutostart(runtime);
   checkTermuxBoot(runtime);
-  printBatteryOptimization(runtime);
+  triggerBatteryDialog(runtime);
+  printBatteryHint(runtime);
   await ensureAllowExternalApps(runtime);
-  await maybeRunOnboard(runtime, opts);
+  await runOnboard(runtime, opts);
 }
 
 function isTermux(): boolean {
@@ -189,6 +203,51 @@ async function writeBootScript(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log(`  ${theme.success("✓")} Boot script written: ${theme.accent(bootPath)}`);
 }
 
+async function writeBashrcAutostart(runtime: OutputRuntimeEnv): Promise<void> {
+  const bashrcPath = path.join(os.homedir(), ".bashrc");
+  let existing = "";
+  try {
+    existing = await fs.readFile(bashrcPath, "utf8");
+  } catch {
+    existing = "";
+  }
+
+  if (existing.includes(BASHRC_AUTOSTART_MARKER)) {
+    runtime.log(`  ${theme.success("✓")} .bashrc autostart already configured`);
+    return;
+  }
+
+  const updated = existing.length === 0 || existing.endsWith("\n")
+    ? `${existing}${BASHRC_AUTOSTART_BODY}`
+    : `${existing}\n${BASHRC_AUTOSTART_BODY}`;
+  await writeTextAtomic(bashrcPath, updated, { mode: 0o644 });
+  runtime.log(`  ${theme.success("✓")} .bashrc autostart configured (open Termux = gateway starts)`);
+}
+
+function triggerBatteryDialog(runtime: OutputRuntimeEnv): void {
+  runtime.log(`  ${theme.warn("→")} Opening battery optimization settings...`);
+  const result = spawnSync(
+    "am",
+    ["start", "-a", "android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS", "-d", "package:com.termux"],
+    { stdio: "ignore" },
+  );
+  if (result.status === 0) {
+    runtime.log(`  ${theme.success("✓")} Battery settings opened — tap "Allow"`);
+  } else {
+    runtime.log(`  ${theme.warn("⚠")} Could not auto-open settings. See manual steps below.`);
+  }
+}
+
+function printBatteryHint(runtime: OutputRuntimeEnv): void {
+  const manufacturer = detectManufacturer();
+  const instructions = batteryInstructionsFor(manufacturer);
+  runtime.log(`  ${theme.muted(`OEM: ${manufacturer || "unknown"} — if the dialog didn't open, manually:`)}`);
+  for (const line of instructions) {
+    runtime.log(`    ${line}`);
+  }
+  runtime.log("");
+}
+
 function checkTermuxBoot(runtime: OutputRuntimeEnv): void {
   const listed = runText("pm", ["list", "packages"]);
   if (listed.includes("com.termux.boot")) {
@@ -209,21 +268,6 @@ function checkTermuxBoot(runtime: OutputRuntimeEnv): void {
 function detectManufacturer(): string {
   const raw = runText("getprop", ["ro.product.manufacturer"]);
   return raw.toLowerCase();
-}
-
-function printBatteryOptimization(runtime: OutputRuntimeEnv): void {
-  const manufacturer = detectManufacturer();
-  const instructions = batteryInstructionsFor(manufacturer);
-
-  runtime.log("");
-  runtime.log(theme.heading("Battery optimization (manual step required)"));
-  runtime.log(`  ${theme.warn("⚠")} Android aggressively kills background apps. Disable battery optimization for both Termux and Termux:Boot, or the gateway will be killed.`);
-  runtime.log("");
-  runtime.log(`  Detected OEM: ${theme.accent(manufacturer || "unknown")}`);
-  for (const line of instructions) {
-    runtime.log(`    ${line}`);
-  }
-  runtime.log("");
 }
 
 function batteryInstructionsFor(manufacturer: string): string[] {
@@ -302,28 +346,18 @@ async function ensureAllowExternalApps(runtime: OutputRuntimeEnv): Promise<void>
   );
 }
 
-async function maybeRunOnboard(runtime: OutputRuntimeEnv, opts: AndroidInstallOptions): Promise<void> {
+async function runOnboard(runtime: OutputRuntimeEnv, opts: AndroidInstallOptions): Promise<void> {
   runtime.log("");
-  runtime.log(theme.heading("Setup complete!"));
-  runtime.log(`  Next: configure your LLM provider and Feishu bot via ${theme.command("kaijibot onboard")}.`);
-  runtime.log("");
+  runtime.log(theme.heading("Starting onboard wizard..."));
+  runtime.log(`  ${theme.muted("Configure your LLM API key and Feishu bot.")}`);
 
   if (opts.nonInteractive) {
-    runtime.log(`Skipping onboard prompt (non-interactive). Run ${theme.command("kaijibot onboard")} when ready.`);
-    return;
-  }
-
-  const answer = await confirm({
-    message: "Run kaijibot onboard now to configure providers and channels?",
-    initialValue: true,
-  });
-  if (isCancel(answer) || !answer) {
-    runtime.log(`You can run ${theme.command("kaijibot onboard")} later.`);
+    runtime.log(`  Skipping onboard (--non-interactive). Run ${theme.command("kaijibot onboard")} later.`);
     return;
   }
 
   const result = run("kaijibot", ["onboard"], { stdio: "inherit" });
   if (result.error || (result.status !== null && result.status !== 0)) {
-    runtime.error(`kaijibot onboard exited with an error. You can re-run it manually.`);
+    runtime.log(`  ${theme.warn("⚠")} onboard exited with an error. Re-run: ${theme.command("kaijibot onboard")}`);
   }
 }
