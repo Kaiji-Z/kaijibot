@@ -114,7 +114,10 @@ export const DEFAULT_PENDING_MAX_OUTPUT = clampWithDefault(
   200_000,
 );
 export const DEFAULT_PATH =
-  process.env.PATH ?? "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+  process.env.PATH ??
+  (process.platform === "android"
+    ? "/data/data/com.termux/files/usr/bin"
+    : "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
 export const DEFAULT_NOTIFY_TAIL_CHARS = 400;
 const DEFAULT_NOTIFY_SNIPPET_CHARS = 180;
 export const DEFAULT_APPROVAL_TIMEOUT_MS = DEFAULT_EXEC_APPROVAL_TIMEOUT_MS;

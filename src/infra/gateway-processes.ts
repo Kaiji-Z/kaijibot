@@ -8,7 +8,7 @@ import {
 } from "./windows-port-pids.js";
 
 export function readGatewayProcessArgsSync(pid: number): string[] | null {
-  if (process.platform === "linux") {
+  if (process.platform === "linux" || process.platform === "android") {
     try {
       return parseProcCmdline(fsSync.readFileSync(`/proc/${pid}/cmdline`, "utf8"));
     } catch {

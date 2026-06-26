@@ -87,6 +87,11 @@ const coreEntrySpecs: readonly CommandGroupDescriptorSpec<
         loadModule: () => import("./register.migrate.js"),
         exportName: "registerMigrateCommand",
       },
+      {
+        commandNames: ["android-install"],
+        loadModule: () => import("./register.android-install.js"),
+        exportName: "registerAndroidInstallCommand",
+      },
     ]),
   ),
   defineImportedCommandGroupSpec(

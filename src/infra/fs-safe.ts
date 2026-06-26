@@ -402,7 +402,7 @@ export async function resolveOpenedFileRealPathForHandle(
   }
 
   const fdCandidates =
-    process.platform === "linux"
+    process.platform === "linux" || process.platform === "android"
       ? [`/proc/self/fd/${handle.fd}`, `/dev/fd/${handle.fd}`]
       : process.platform === "win32"
         ? []

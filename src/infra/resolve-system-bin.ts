@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getTermuxPrefix, isAndroidTermux } from "../shared/platform.js";
 import { getWindowsInstallRoots, getWindowsProgramFilesRoots } from "./windows-install-roots.js";
 
 /**
@@ -78,6 +79,13 @@ function buildWindowsTrustedDirs(): readonly string[] {
 function buildUnixTrustedDirs(trust: SystemBinTrust): readonly string[] {
   const dirs: string[] = [...UNIX_BASE_TRUSTED_DIRS];
   const platform = process.platform;
+
+  if (isAndroidTermux()) {
+    const prefix = getTermuxPrefix();
+    if (prefix) {
+      dirs.unshift(path.join(prefix, "bin"));
+    }
+  }
 
   if (platform === "linux") {
     // Fixed NixOS system profile path. Never derive trust from NIX_PROFILES:

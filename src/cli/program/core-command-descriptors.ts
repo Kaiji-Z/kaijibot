@@ -56,6 +56,11 @@ const coreCliCommandCatalog = defineCommandDescriptorCatalog([
     hasSubcommands: false,
   },
   {
+    name: "android-install",
+    description: "Set up KaijiBot on Android/Termux (auto-installs packages, boot script, battery settings)",
+    hasSubcommands: false,
+  },
+  {
     name: "message",
     description: "Send, read, and manage messages",
     hasSubcommands: true,

@@ -1,9 +1,15 @@
 import fs from "node:fs";
+import { isAndroidTermux, isLinuxLikePlatform } from "../shared/platform.js";
 
 export const LINUX_CA_BUNDLE_PATHS = [
   "/etc/ssl/certs/ca-certificates.crt",
   "/etc/pki/tls/certs/ca-bundle.crt",
   "/etc/ssl/ca-bundle.pem",
+] as const;
+
+export const TERMUX_CA_BUNDLE_PATHS = [
+  "/data/data/com.termux/files/usr/etc/tls/ca-bundle.crt",
+  "/data/data/com.termux/files/usr/etc/ssl/certs/ca-certificates.crt",
 ] as const;
 
 export type EnvMap = Record<string, string | undefined>;
@@ -16,12 +22,15 @@ export function resolveLinuxSystemCaBundle(
   } = {},
 ): string | undefined {
   const platform = params.platform ?? process.platform;
-  if (platform !== "linux") {
+  if (!isLinuxLikePlatform(platform)) {
     return undefined;
   }
 
   const accessSync = params.accessSync ?? fs.accessSync.bind(fs);
-  for (const candidate of LINUX_CA_BUNDLE_PATHS) {
+  const candidates = isAndroidTermux(platform)
+    ? [...TERMUX_CA_BUNDLE_PATHS, ...LINUX_CA_BUNDLE_PATHS]
+    : LINUX_CA_BUNDLE_PATHS;
+  for (const candidate of candidates) {
     try {
       accessSync(candidate, fs.constants.R_OK);
       return candidate;
@@ -57,7 +66,7 @@ export function resolveAutoNodeExtraCaCerts(
 
   const platform = params.platform ?? process.platform;
   const execPath = params.execPath ?? process.execPath;
-  if (platform !== "linux" || !isNodeVersionManagerRuntime(env, execPath)) {
+  if (!isLinuxLikePlatform(platform) || !isNodeVersionManagerRuntime(env, execPath)) {
     return undefined;
   }
 

@@ -1,3 +1,4 @@
+import { isAndroidTermux } from "../shared/platform.js";
 import { isWSLEnv } from "./wsl.js";
 
 export function isRemoteEnvironment(): boolean {
@@ -7,6 +8,10 @@ export function isRemoteEnvironment(): boolean {
 
   if (process.env.REMOTE_CONTAINERS || process.env.CODESPACES) {
     return true;
+  }
+
+  if (isAndroidTermux()) {
+    return false;
   }
 
   if (

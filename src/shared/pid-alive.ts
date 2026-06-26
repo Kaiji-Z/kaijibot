@@ -1,4 +1,5 @@
 import fsSync from "node:fs";
+import { isLinuxLikePlatform } from "./platform.js";
 
 function isValidPid(pid: number): boolean {
   return Number.isInteger(pid) && pid > 0;
@@ -9,7 +10,7 @@ function isValidPid(pid: number): boolean {
  * Returns false on non-Linux platforms or if the proc file can't be read.
  */
 function isZombieProcess(pid: number): boolean {
-  if (process.platform !== "linux") {
+  if (!isLinuxLikePlatform()) {
     return false;
   }
   try {
@@ -45,7 +46,7 @@ export function isPidAlive(pid: number): boolean {
  * return different starttimes, the PID has been reused by a different process.
  */
 export function getProcessStartTime(pid: number): number | null {
-  if (process.platform !== "linux") {
+  if (!isLinuxLikePlatform()) {
     return null;
   }
   if (!isValidPid(pid)) {

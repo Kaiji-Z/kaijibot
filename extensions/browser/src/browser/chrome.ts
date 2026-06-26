@@ -114,7 +114,7 @@ export function buildKaijiBotChromeLaunchArgs(params: {
     args.push("--no-sandbox");
     args.push("--disable-setuid-sandbox");
   }
-  if (process.platform === "linux") {
+  if (process.platform === "linux" || process.platform === "android") {
     args.push("--disable-dev-shm-usage");
   }
   if (resolved.extraArgs.length > 0) {
@@ -416,7 +416,7 @@ export async function launchKaijiBotChrome(
       ? `\nChrome stderr:\n${stderrOutput.slice(0, CHROME_STDERR_HINT_MAX_CHARS)}`
       : "";
     const sandboxHint =
-      process.platform === "linux" && !resolved.noSandbox
+      (process.platform === "linux" || process.platform === "android") && !resolved.noSandbox
         ? "\nHint: If running in a container or as root, try setting browser.noSandbox: true in config."
         : "";
     try {
