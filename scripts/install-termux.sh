@@ -41,10 +41,16 @@ pkg upgrade -y -o Dpkg::Options::="--force-confold" || true
 info "安装 Node.js 和系统工具..."
 pkg install -y nodejs-lts imagemagick ffmpeg git lsof -o Dpkg::Options::="--force-confold"
 
+info "设置 npm 超时重试..."
+npm config set fetch-retries 5
+npm config set fetch-retry-mintimeout 20000
+npm config set fetch-timeout 600000
+npm config set registry https://registry.npmmirror.com
+
 # ── 安装 KaijiBot ────────────────────────────────────────────
 
 info "安装 KaijiBot（可能需要几分钟）..."
-npm install -g kaijibot --force --registry=https://registry.npmjs.org
+npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v2026.6.26-1/kaijibot-2026.6.26-1.tgz" --force
 ok "KaijiBot $(kaijibot --version)"
 
 info "安装图片处理组件..."
