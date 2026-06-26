@@ -24,7 +24,7 @@ info "检测到 Termux，开始安装 KaijiBot..."
 export DEBIAN_FRONTEND=noninteractive
 export DPKG_FORCE_CONFFILE_UPDATE=1
 
-# ── 切换 Termux 国内镜像（在 pkg 之前）─────────────────────
+# ── 切换 Termux 国内镜像 ───────────────────────────────────
 
 SOURCES="$PREFIX/etc/apt/sources.list"
 echo "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main" > "$SOURCES"
@@ -45,20 +45,20 @@ info "设置 npm 超时重试..."
 npm config set fetch-retries 5
 npm config set fetch-retry-mintimeout 20000
 npm config set fetch-timeout 600000
-npm config set registry https://registry.npmmirror.com
 
 # ── 安装 KaijiBot ────────────────────────────────────────────
 
 info "获取最新版本号..."
-KB_VER=$(curl -fsSL https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null)
+KB_VER=$(curl -fsSL https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || true)
+
 if [ -z "$KB_VER" ]; then
-  info "无法获取版本号，使用 npm 直接安装..."
-  npm install -g kaijibot --force --registry=https://registry.npmjs.org
+  info "无法获取版本号，直接从 npm 安装..."
+  npm install -g kaijibot@latest --force --registry=https://registry.npmjs.org
 else
   info "安装 KaijiBot v${KB_VER}（可能需要几分钟）..."
-  npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force || {
+  npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force --registry=https://registry.npmmirror.com || {
     info "tarball 下载失败，回退到 npm registry..."
-    npm install -g kaijibot@latest --force --registry=https://registry.npmjs.org
+    npm install -g "kaijibot@${KB_VER}" --force --registry=https://registry.npmjs.org
   }
 fi
 ok "KaijiBot $(kaijibot --version)"
@@ -69,12 +69,24 @@ npm install -g @img/sharp-wasm32 --force --registry=https://registry.npmmirror.c
 # ── 配置 Android 环境 ────────────────────────────────────────
 
 info "配置 Android 环境（开机自启 + 后台保活）..."
-kaijibot android-install --non-interactive
+kaijibot android-install --non-interactive || warn "android-install 未完成，之后可运行: kaijibot android-install"
 
 # ── 运行配置向导 ──────────────────────────────────────────────
 
 info "启动配置向导（配置 API Key 和飞书机器人）..."
 kaijibot onboard < /dev/tty || warn "配置未完成，之后运行: kaijibot onboard"
+
+# ── 启动 Gateway ─────────────────────────────────────────────
+
+info "启动 Gateway..."
+termux-wake-lock 2>/dev/null || true
+kaijibot gateway --port 18789 >> ~/.kaijibot/gateway.log 2>&1 &
+sleep 3
+if pgrep -f "kaijibot gateway" > /dev/null 2>&1; then
+  ok "Gateway 已启动（端口 18789）"
+else
+  warn "Gateway 启动中，请稍等。查看日志: tail -f ~/.kaijibot/gateway.log"
+fi
 
 # ── 完成 ────────────────────────────────────────────────────
 
@@ -83,12 +95,11 @@ printf "${SUCCESS}━━━━━━━━━━━━━━━━━━━━�
 printf "${SUCCESS}  ✓ KaijiBot 安装完成${NC}\n"
 printf "${SUCCESS}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 echo ""
-printf "  Gateway 已在运行。在飞书里给你的机器人发消息试试！\n"
-echo ""
 printf "${BOLD}日常使用：${NC}\n"
 printf "  • 打开 Termux = 自动启动 Gateway\n"
 printf "  • kaijibot gateway restart  — 重启\n"
 printf "  • kaijibot update           — 更新\n"
+printf "  • 日志: tail -f ~/.kaijibot/gateway.log\n"
 echo ""
 printf "${WARN}重要：如果 Gateway 频繁被杀，请在手机设置中${NC}\n"
 printf "${WARN}关闭 Termux 的电池优化（设置→应用→Termux→电池→不限制）${NC}\n"
