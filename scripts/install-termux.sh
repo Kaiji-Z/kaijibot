@@ -15,13 +15,13 @@ warn()  { printf "${WARN}[!]${NC} %s\n" "$*"; }
 
 if [ ! -d "/data/data/com.termux" ]; then
   echo "此脚本必须在 Termux 中运行。"
-  echo "下载 Termux: https://gitee.com/kaiji1126/kaijibot/releases"
+  echo "下载 Termux: https://github.com/Kaiji-Z/kaijibot/releases"
   exit 1
 fi
 
 info "检测到 Termux，开始安装 KaijiBot..."
 
-# ── 切换国内镜像（加速下载）─────────────────────────────────
+# ── 切换 Termux 国内镜像（在 pkg 之前）─────────────────────
 
 SOURCES="$PREFIX/etc/apt/sources.list"
 if grep -q "packages.termux.dev" "$SOURCES" 2>/dev/null; then
@@ -29,30 +29,40 @@ if grep -q "packages.termux.dev" "$SOURCES" 2>/dev/null; then
   sed -i 's|packages.termux.dev|mirrors.tuna.tsinghua.edu.cn/termux|g' "$SOURCES"
 fi
 
-info "切换 npm 镜像源为 npmmirror..."
-npm config set registry https://registry.npmmirror.com 2>/dev/null || true
-
-# ── 全自动安装 ─────────────────────────────────────────────
+# ── 升级 Termux 核心库 ──────────────────────────────────────
 
 info "升级 Termux 核心库（可能需要几分钟）..."
-pkg update -y -q || true
-pkg upgrade -y -q || true
+pkg update -y || true
+pkg upgrade -y || true
+
+# ── 安装 Node.js 和系统工具 ─────────────────────────────────
 
 info "安装 Node.js 和系统工具..."
-pkg install -y nodejs-lts imagemagick ffmpeg git lsof -q
+pkg install -y nodejs-lts imagemagick ffmpeg git lsof
 
-info "安装 KaijiBot..."
-npm install -g kaijibot --force 2>/dev/null
+# ── 切换 npm 国内镜像（npm 已安装）──────────────────────────
+
+info "切换 npm 镜像源为 npmmirror..."
+npm config set registry https://registry.npmmirror.com
+
+# ── 安装 KaijiBot ────────────────────────────────────────────
+
+info "安装 KaijiBot（可能需要几分钟）..."
+npm install -g kaijibot --force
 ok "KaijiBot $(kaijibot --version)"
 
 info "安装图片处理组件..."
-npm install -g @img/sharp-wasm32 --force 2>/dev/null || true
+npm install -g @img/sharp-wasm32 --force || warn "sharp-wasm32 安装失败，图片处理功能将受限"
+
+# ── 配置 Android 环境 ────────────────────────────────────────
 
 info "配置 Android 环境（开机自启 + 后台保活）..."
 kaijibot android-install --non-interactive
 
+# ── 运行配置向导 ──────────────────────────────────────────────
+
 info "启动配置向导（配置 API Key 和飞书机器人）..."
-kaijibot onboard || warn "配置未完成，之后运行: kaijibot onboard"
+kaijibot onboard < /dev/tty || warn "配置未完成，之后运行: kaijibot onboard"
 
 # ── 完成 ────────────────────────────────────────────────────
 

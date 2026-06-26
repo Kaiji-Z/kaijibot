@@ -52,9 +52,10 @@ export async function runAndroidInstall(
     return;
   }
 
-  await switchToChinaMirror(runtime);
+  await switchTermuxMirror(runtime);
   await ensureTermuxUpToDate(runtime);
   await ensureNode(runtime);
+  await switchNpmMirror(runtime);
   await ensureRequiredPackages(runtime);
   await ensureKaijiBot(runtime);
   await installSharpWasm32(runtime);
@@ -95,7 +96,7 @@ function parseNodeMajor(versionText: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-async function switchToChinaMirror(runtime: OutputRuntimeEnv): Promise<void> {
+async function switchTermuxMirror(runtime: OutputRuntimeEnv): Promise<void> {
   const sourcesPath = path.join(process.env.PREFIX ?? "/data/data/com.termux/files/usr", "etc", "apt", "sources.list");
   try {
     const content = await fs.readFile(sourcesPath, "utf8");
@@ -107,9 +108,12 @@ async function switchToChinaMirror(runtime: OutputRuntimeEnv): Promise<void> {
   } catch {
     // sources.list might not exist yet; skip silently
   }
+}
+
+async function switchNpmMirror(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log(`  → Switching npm registry to npmmirror (China)`);
   run("npm", ["config", "set", "registry", "https://registry.npmmirror.com"]);
-  runtime.log(`  ${theme.success("✓")} Mirrors configured`);
+  runtime.log(`  ${theme.success("✓")} npm mirror configured`);
 }
 
 async function ensureTermuxUpToDate(runtime: OutputRuntimeEnv): Promise<void> {
