@@ -52,10 +52,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
-          if [ -n "$LATEST_TAG" ]; then
-            gh release upload "$LATEST_TAG" kaijibot-launcher.apk --clobber
+          if ! gh release view launcher > /dev/null 2>&1; then
+            gh release create launcher --title "KaijiBot Launcher APK" --notes "Android 一键安装包（内置 Termux）。安装后打开，按提示操作即可。不需要更新此 APK — 它会自动安装最新版 KaijiBot。"
           fi
+          gh release upload launcher kaijibot-launcher.apk --clobber
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
