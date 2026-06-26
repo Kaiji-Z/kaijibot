@@ -142,6 +142,16 @@ kaijibot gateway --port 18789 --verbose
 <details>
 <summary><b>📦 其他安装方式</b></summary>
 
+#### Android / Termux（手机运行）
+
+```bash
+# 1. 从 F-Droid 安装 Termux（不要用 Google Play 版）
+# 2. 在 Termux 中运行：
+curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.sh | bash
+```
+
+详见 [Termux 部署指南](./docs/platforms/termux.md)。
+
 #### npm 全局安装（已有 Node.js 22+ 环境）
 
 ```bash

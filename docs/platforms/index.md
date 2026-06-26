@@ -20,6 +20,7 @@ Native companion apps for Windows are also planned; the Gateway is recommended v
 - macOS: [macOS](/platforms/macos)
 - iOS: [iOS](/platforms/ios)
 - Android: [Android](/platforms/android)
+- Android (Termux): [Termux](/platforms/termux)
 - Windows: [Windows](/platforms/windows)
 - Linux: [Linux](/platforms/linux)
 
