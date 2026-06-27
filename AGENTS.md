@@ -357,7 +357,8 @@ Correction (system prompt injection):
 
 ## Release Process
 
-- **One command**: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.7.1`)
+- **Versioning**: `YYYY.M.DD` format (e.g. `2026.6.27`). Multiple releases on the same date append `-1`, `-2`, `-3` (e.g. `2026.6.27-1`, `2026.6.27-2`). Do NOT use future dates.
+- **One command**: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.6.27-1`)
 - The script: bumps version → `pnpm build` → `npm publish --ignore-scripts` → `git tag` → `git push`
 - **CI auto-builds npm tarball**: `.github/workflows/publish-tarball.yml` triggers on tag push (`v*`), runs `npm pack`, uploads `kaijibot-<version>.tgz` to the corresponding GitHub Release
 - Tarball is required for Android/Termux install (the install script downloads it from GitHub Releases instead of npmjs.org for China network reliability)
