@@ -65,36 +65,3 @@ jobs:
           name: kaijibot-launcher
           path: kaijibot-launcher.apk
           retention-days: 90
-
-      - name: Upload to Gitee Release
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: |
-          if [ -z "$GITEE_TOKEN" ]; then
-            echo "GITEE_TOKEN not set, skipping Gitee upload"
-            exit 0
-          fi
-          # Gitee blocks .apk uploads, must zip first
-          zip -j kaijibot-launcher.zip kaijibot-launcher.apk
-          API="https://gitee.com/api/v5/repos/kaiji1126/kaijibot"
-          # Find existing launcher release
-          REL_ID=$(curl -fsSL "$API/releases?access_token=$GITEE_TOKEN" 2>/dev/null \
-            | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);const r=j.find(x=>x.tag_name==='launcher');console.log(r?r.id:'')" 2>/dev/null || echo "")
-          if [ -z "$REL_ID" ]; then
-            echo "Creating Gitee release..."
-            RESP=$(curl -sSL -X POST "$API/releases" \
-              -H "Content-Type: application/json;charset=UTF-8" \
-              -d "{\"access_token\":\"$GITEE_TOKEN\",\"tag_name\":\"launcher\",\"name\":\"KaijiBot Launcher APK\",\"body\":\"Android 一键安装包（内置 Termux）。Gitee 要求 zip 格式，下载后解压获取 APK。\",\"target_commitish\":\"main\"}" 2>&1)
-            echo "Create response: $RESP"
-            REL_ID=$(echo "$RESP" | node -e "const d=require('fs').readFileSync(0,'utf8');try{console.log(JSON.parse(d).id||'')}catch(e){console.log('')}" 2>/dev/null || echo "")
-            if [ -z "$REL_ID" ]; then
-              echo "Failed to create Gitee release, skipping upload"
-              exit 0
-            fi
-          fi
-          echo "Uploading zip to Gitee release $REL_ID..."
-          RESP=$(curl -sSL -X POST "$API/releases/$REL_ID/attach_files" \
-            -F "access_token=$GITEE_TOKEN" \
-            -F "file=@kaijibot-launcher.zip" 2>&1)
-          echo "Upload response: $RESP"
-          echo "Gitee upload complete"
