@@ -355,6 +355,15 @@ Correction (system prompt injection):
 - Concise, action-oriented commit messages (e.g. `CLI: add verbose flag to send`).
 - Group related changes; avoid bundling unrelated refactors.
 
+## Release Process
+
+- One command: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.7.1`)
+- The script: bumps version → `pnpm build` → `npm publish` → `git tag` → `git push`
+- **CI auto-builds npm tarball**: `.github/workflows/publish-tarball.yml` triggers on tag push (`v*`), runs `npm pack`, uploads `kaijibot-<version>.tgz` to the corresponding GitHub Release
+- Tarball is required for Android/Termux install (the install script downloads it from GitHub Releases instead of npmjs.org for China network reliability)
+- Launcher APK: `.github/workflows/android-build.yml` triggers on `android/**` changes, builds APK with bundled Termux, uploads to `launcher` release tag
+- Release guardrails: do not change version numbers without operator's explicit consent.
+
 ## Prompt Cache Stability
 
 - Any code assembling model/tool payloads from maps, sets, registries, plugin lists, or filesystem reads must make ordering deterministic before building the request.
