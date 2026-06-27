@@ -19,31 +19,52 @@ fi
 
 info "检测到 Termux，开始安装..."
 
-export DEBIAN_FRONTEND=noninteractive
-
 SOURCES="$PREFIX/etc/apt/sources.list"
-echo "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main" > "$SOURCES"
+TUNA_MIRROR="deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main"
 
-info "升级 Termux 核心库（可能需要几分钟）..."
-pkg update -y -o Dpkg::Options::="--force-confold" || true
-pkg upgrade -y -o Dpkg::Options::="--force-confold" || true
+TZ_PROP=$(getprop persist.sys.timezone 2>/dev/null || echo "")
+case "$TZ_PROP" in
+  Asia/Shanghai|Asia/Chongqing|Asia/Harbin|Asia/Urumqi|Asia/Kashgar|PRC|CTT)
+    echo "$TUNA_MIRROR" > "$SOURCES"
+    info "检测到中国时区，使用 TUNA 镜像"
+    ;;
+  *)
+    info "时区: ${TZ_PROP:-未知}，使用 Termux 默认镜像"
+    ;;
+esac
+
+export DEBIAN_FRONTEND=noninteractive
+APT_OPTS="-y -o Dpkg::Options::=--force-confold"
+
+info "更新软件源..."
+apt-get update $APT_OPTS || true
+apt-get upgrade $APT_OPTS || true
 
 info "安装 Node.js..."
-pkg install -y nodejs-lts -o Dpkg::Options::="--force-confold"
+apt-get install $APT_OPTS nodejs-lts
 
 npm config set fetch-retries 5
 npm config set fetch-retry-mintimeout 20000
 npm config set fetch-timeout 600000
+
+case "$TZ_PROP" in
+  Asia/Shanghai|Asia/Chongqing|Asia/Harbin|Asia/Urumqi|Asia/Kashgar|PRC|CTT)
+    NPM_REGISTRY="--registry=https://registry.npmmirror.com"
+    ;;
+  *)
+    NPM_REGISTRY=""
+    ;;
+esac
 
 info "获取最新版本号..."
 KB_VER=$(curl -fsSL https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || true)
 
 if [ -z "$KB_VER" ]; then
   info "无法获取版本号，直接从 npm 安装..."
-  npm install -g kaijibot@latest --force --registry=https://registry.npmjs.org
+  npm install -g kaijibot@latest --force $NPM_REGISTRY
 else
   info "安装 KaijiBot v${KB_VER}..."
-  npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force --registry=https://registry.npmmirror.com || {
+  npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force $NPM_REGISTRY || {
     info "tarball 失败，回退 npm..."
     npm install -g "kaijibot@${KB_VER}" --force --registry=https://registry.npmjs.org
   }

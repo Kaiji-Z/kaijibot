@@ -124,7 +124,26 @@ function parseNodeMajor(versionText: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const CHINA_TIMEZONES = new Set([
+  "Asia/Shanghai",
+  "Asia/Chongqing",
+  "Asia/Harbin",
+  "Asia/Urumqi",
+  "Asia/Kashgar",
+  "PRC",
+  "CTT",
+]);
+
+function isChinaTimezone(): boolean {
+  const tz = runText("getprop", ["persist.sys.timezone"]);
+  return tz.length > 0 && CHINA_TIMEZONES.has(tz);
+}
+
 async function switchTermuxMirror(runtime: OutputRuntimeEnv): Promise<void> {
+  if (!isChinaTimezone()) {
+    runtime.log(`  ${theme.success("✓")} Termux default mirror (non-China timezone)`);
+    return;
+  }
   const sourcesPath = path.join(process.env.PREFIX ?? "/data/data/com.termux/files/usr", "etc", "apt", "sources.list");
   runtime.log(`  → Setting Termux mirror to TUNA (China)`);
   await writeTextAtomic(
@@ -195,12 +214,12 @@ const PKG_CONFFILE_FLAGS = ["-o", "Dpkg::Options::=--force-confold"];
 
 function runPkg(runtime: OutputRuntimeEnv, args: readonly string[]): void {
   const fullArgs = [...args, ...PKG_CONFFILE_FLAGS];
-  const result = spawnSync("pkg", fullArgs, {
+  const result = spawnSync("apt-get", fullArgs, {
     stdio: "inherit",
     env: { ...process.env, DEBIAN_FRONTEND: "noninteractive" },
   });
   if (result.error || result.status !== 0) {
-    runtime.error(`pkg ${args.join(" ")} failed.`);
+    runtime.error(`apt-get ${args.join(" ")} failed.`);
     runtime.exit(1);
   }
 }
@@ -223,7 +242,8 @@ async function ensureKaijiBot(runtime: OutputRuntimeEnv): Promise<void> {
 
 async function installSharpWasm32(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log(`  ${theme.warn("→")} Installing @img/sharp-wasm32 (image processing)...`);
-  const result = run("npm", ["install", "-g", "@img/sharp-wasm32", "--force", "--registry=https://registry.npmmirror.com"], { stdio: "inherit" });
+  const registry = isChinaTimezone() ? ["--registry=https://registry.npmmirror.com"] : [];
+  const result = run("npm", ["install", "-g", "@img/sharp-wasm32", "--force", ...registry], { stdio: "inherit" });
   if (result.error || result.status !== 0) {
     runtime.log(
       `  ${theme.warn("⚠")} Could not install @img/sharp-wasm32 (image features may be limited). Retry with ${theme.command("npm install -g @img/sharp-wasm32 --force")}.`,
