@@ -90,7 +90,7 @@ jobs:
             fi
           fi
           echo "Uploading zip to Gitee release $REL_ID..."
-          curl -sSL --max-time 300 -X POST "$API/releases/$REL_ID/attach_files" \
+          curl -sSL --max-time 600 -X POST "$API/releases/$REL_ID/attach_files" \
             -F "access_token=$GITEE_TOKEN" \
             -F "file=@kaijibot-launcher.zip" 2>&1 || true
           # Delete old attachment and re-upload (Gitee doesn't support --clobber)
