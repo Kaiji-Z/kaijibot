@@ -1,4 +1,4 @@
-import { spawn, spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process";
+import { spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -442,11 +442,18 @@ async function startGateway(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log("");
   runtime.log(theme.heading("Starting Gateway..."));
   spawnSync("termux-wake-lock", [], { stdio: "ignore" });
-  const gw = spawn("kaijibot", ["gateway", "--port", String(GATEWAY_PORT)], {
+  const logPath = path.join(os.homedir(), ".kaijibot", "gateway.log");
+  spawnSync("bash", ["-c", `nohup kaijibot gateway --port ${GATEWAY_PORT} >> "${logPath}" 2>&1 &`], {
     stdio: "ignore",
-    detached: true,
   });
-  gw.unref();
-  runtime.log(`  ${theme.success("✓")} Gateway started on port ${GATEWAY_PORT}`);
-  runtime.log(`  ${theme.muted("    Logs: tail -f ~/.kaijibot/gateway.log")}`);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const alive = runText("pgrep", ["-f", "kaijibot gateway"]);
+  if (alive.length > 0) {
+    runtime.log(`  ${theme.success("✓")} Gateway started on port ${GATEWAY_PORT}`);
+    runtime.log(`  ${theme.muted("    Logs: tail -f ~/.kaijibot/gateway.log")}`);
+  } else {
+    runtime.log(`  ${theme.warn("⚠")} Gateway may not have started. Check logs:`);
+    runtime.log(`  ${theme.muted("    tail -20 ~/.kaijibot/gateway.log")}`);
+    runtime.log(`  ${theme.muted(`    Or start manually: kaijibot gateway --port ${GATEWAY_PORT}`)}`);
+  }
 }
