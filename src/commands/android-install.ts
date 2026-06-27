@@ -11,7 +11,12 @@ export type AndroidInstallOptions = {
   nonInteractive?: boolean;
 };
 
-const REQUIRED_PACKAGES = ["git", "lsof", "imagemagick", "ffmpeg"] as const;
+const REQUIRED_PACKAGES: ReadonlyArray<{ pkg: string; binary: string; required: boolean }> = [
+  { pkg: "git", binary: "git", required: true },
+  { pkg: "lsof", binary: "lsof", required: true },
+  { pkg: "imagemagick", binary: "magick", required: false },
+  { pkg: "ffmpeg", binary: "ffmpeg", required: true },
+];
 const MIN_NODE_MAJOR = 22;
 const GATEWAY_PORT = 18789;
 const BOOT_SCRIPT_MODE = 0o755;
@@ -190,21 +195,27 @@ async function ensureNode(runtime: OutputRuntimeEnv): Promise<void> {
 }
 
 async function ensureRequiredPackages(runtime: OutputRuntimeEnv): Promise<void> {
-  for (const pkg of REQUIRED_PACKAGES) {
-    const found = findBinary(pkg);
+  for (const { pkg, binary, required } of REQUIRED_PACKAGES) {
+    const found = findBinary(binary);
     if (found.length > 0) {
       runtime.log(`  ${theme.success("✓")} ${pkg} (${theme.muted(found)})`);
       continue;
     }
     runtime.log(`  ${theme.warn("→")} ${pkg} not found. Installing via pkg...`);
     runPkg(runtime, ["install", "-y", pkg]);
-    const recheck = findBinary(pkg);
+    const recheck = findBinary(binary);
     if (recheck.length === 0) {
-      runtime.error(
-        `Failed to install ${pkg}. Please run ${theme.command(`pkg install ${pkg}`)} manually.`,
+      if (required) {
+        runtime.error(
+          `Failed to install ${pkg}. Please run ${theme.command(`pkg install ${pkg}`)} manually.`,
+        );
+        runtime.exit(1);
+        return;
+      }
+      runtime.log(
+        `  ${theme.warn("⚠")} ${pkg} not fully installed (image features may be limited).`,
       );
-      runtime.exit(1);
-      return;
+      continue;
     }
     runtime.log(`  ${theme.success("✓")} ${pkg} installed`);
   }

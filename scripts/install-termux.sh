@@ -57,7 +57,7 @@ case "$TZ_PROP" in
 esac
 
 info "获取最新版本号..."
-KB_VER=$(curl -fsSL https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || true)
+KB_VER=$(curl -fsSL --connect-timeout 15 https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || true)
 
 if [ -z "$KB_VER" ]; then
   info "无法获取版本号，直接从 npm 安装..."
