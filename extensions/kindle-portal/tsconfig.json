@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.package-boundary.base.json",
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

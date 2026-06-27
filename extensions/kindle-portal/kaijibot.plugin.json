@@ -1,0 +1,61 @@
+{
+  "id": "kindle-portal",
+  "name": "Kindle Portal",
+  "description": "Kindle e-ink dashboard: live agent state monitor and cognitive map visualization. Served at /kindle/ on the gateway HTTP port for Kindle's experimental browser.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": false,
+        "description": "Master toggle. When false, no HTTP routes are registered and the service stays dormant."
+      },
+      "accessToken": {
+        "type": "string",
+        "description": "Optional shared secret. When set, non-loopback HTTP requests must carry ?token=<value>. Loopback (127.0.0.1 / ::1) is always allowed."
+      },
+      "refreshIntervalSeconds": {
+        "type": "number",
+        "minimum": 15,
+        "default": 15,
+        "description": "Monitor page XHR polling interval in seconds. Floor of 15 enforced for e-ink refresh compatibility."
+      },
+      "mapRefreshSeconds": {
+        "type": "number",
+        "minimum": 60,
+        "default": 300,
+        "description": "Map page meta-refresh interval in seconds. PNG rendering is expensive; keep >=60."
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["last-active", "all-users", "specific-user"],
+        "default": "last-active",
+        "description": "Which user's persona to visualize on the cognitive map. 'last-active' picks the most recently updated session; 'specific-user' requires userId."
+      },
+      "userId": {
+        "type": "string",
+        "description": "Required when scope='specific-user'. Feishu open_id format (ou_xxx)."
+      },
+      "showWiki": {
+        "type": "boolean",
+        "default": true,
+        "description": "Overlay knowledge-wiki concept/entity nodes on the cognitive map when a vault exists."
+      },
+      "maxDomains": {
+        "type": "number",
+        "minimum": 5,
+        "maximum": 50,
+        "default": 20,
+        "description": "Maximum persona domain nodes to render on the map. Top by strength; rest are noted as truncated."
+      },
+      "pngWidth": {
+        "type": "number",
+        "minimum": 400,
+        "maximum": 1072,
+        "default": 758,
+        "description": "Rendered cognitive map PNG width in pixels. 758 fits Kindle Paperwhite viewport."
+      }
+    }
+  }
+}

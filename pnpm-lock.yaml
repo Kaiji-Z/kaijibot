@@ -78,6 +78,9 @@ importers:
       '@napi-rs/canvas':
         specifier: ^0.1.89
         version: 0.1.92
+      '@viz-js/viz':
+        specifier: ^3.28.0
+        version: 3.28.0
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
@@ -256,7 +259,7 @@ importers:
         version: 0.34.5
       '@larksuite/cli':
         specifier: latest
-        version: 1.0.57
+        version: 1.0.58
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -427,6 +430,22 @@ importers:
         version: link:../../packages/plugin-sdk
 
   extensions/kimi-coding:
+    devDependencies:
+      '@kaijibot/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+
+  extensions/kindle-portal:
+    dependencies:
+      '@viz-js/viz':
+        specifier: ^3.28.0
+        version: 3.28.0
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
     devDependencies:
       '@kaijibot/plugin-sdk':
         specifier: workspace:*
@@ -676,6 +695,22 @@ importers:
       '@kaijibot/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
+
+  extensions/wechat:
+    dependencies:
+      silk-wasm:
+        specifier: ^3.7.1
+        version: 3.7.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@kaijibot/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      kaijibot:
+        specifier: workspace:*
+        version: link:../..
 
   extensions/xai:
     devDependencies:
@@ -1555,8 +1590,8 @@ packages:
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
 
-  '@larksuite/cli@1.0.57':
-    resolution: {integrity: sha512-aSr8SI1x+mE7lBkqql8QYHzX3UotbEXJNlq67yZSJNJt2LtT0qg9w2kahLLHClO5CA8Rz2Pt/vQcNn21DuZxJQ==}
+  '@larksuite/cli@1.0.58':
+    resolution: {integrity: sha512-i8TM0ydGVMaLmc+eAinp7gw8ev6BY9u+p5ARfhRmYuUnZ6YT28SFA9Nx+wDMzWQkRE2OhPtthErp9dekWv9BqA==}
     engines: {node: '>=16'}
     cpu: [x64, arm64, riscv64]
     os: [darwin, linux, win32]
@@ -2886,6 +2921,9 @@ packages:
 
   '@vitest/utils@4.1.9':
     resolution: {integrity: sha512-A51o8ymO5PpqlWNnBP9ZHPXDIpuMtTLlGSjN7la4US+LJzoUMyhwjA5QXlm39JexgwHKW4Xjs8Z2d3dLCXOeuA==}
+
+  '@viz-js/viz@3.28.0':
+    resolution: {integrity: sha512-nPt+jbGHGgd7lUQLBT79/4lChIzeW44I+hFrscx18AnpNyX9vdRFVNwVbKz9eq+ACeKSm4bFQns17WhCW11eWQ==}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -4800,6 +4838,10 @@ packages:
     peerDependencies:
       signal-polyfill: ^0.2.0
 
+  silk-wasm@3.7.1:
+    resolution: {integrity: sha512-mXPwLRtZxrYV3TZx41jMAeKc80wvmyrcXIcs8HctFxK15Ahz2OJQENYhNgEPeCEOdI6Mbx1NxQsqxzwc3DKerw==}
+    engines: {node: '>=16.11.0'}
+
   simple-git@3.33.0:
     resolution: {integrity: sha512-D4V/tGC2sjsoNhoMybKyGoE+v8A60hRawKQ1iFRA1zwuDgGZCBJ4ByOzZ5J8joBbi4Oam0qiPH+GhzmSBwbJng==}
 
@@ -6519,7 +6561,7 @@ snapshots:
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
 
-  '@larksuite/cli@1.0.57':
+  '@larksuite/cli@1.0.58':
     dependencies:
       '@clack/prompts': 1.2.0
     optional: true
@@ -7715,9 +7757,9 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.5.2)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.0.1(@noble/hashes@2.0.1))(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.2)(esbuild@0.27.4)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
+      vitest: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.5.2)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@29.0.1(@noble/hashes@2.0.1))(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.2)(esbuild@0.27.4)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
     optionalDependencies:
-      '@vitest/browser': 4.1.9(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.2)(esbuild@0.27.4)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))(vitest@4.1.9)
+      '@vitest/browser': 4.1.9(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.2)(esbuild@0.27.4)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.9)
 
   '@vitest/expect@4.1.9':
     dependencies:
@@ -7767,6 +7809,8 @@ snapshots:
       '@vitest/pretty-format': 4.1.9
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
+
+  '@viz-js/viz@3.28.0': {}
 
   abort-controller@3.0.0:
     dependencies:
@@ -9878,6 +9922,8 @@ snapshots:
   signal-utils@0.21.1(signal-polyfill@0.2.2):
     dependencies:
       signal-polyfill: 0.2.2
+
+  silk-wasm@3.7.1: {}
 
   simple-git@3.33.0:
     dependencies:

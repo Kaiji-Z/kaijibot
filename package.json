@@ -1182,6 +1182,7 @@
     "@lydell/node-pty": "1.2.0-beta.10",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@mozilla/readability": "^0.6.0",
+    "@viz-js/viz": "^3.28.0",
     "ajv": "^8.18.0",
     "chalk": "^5.6.2",
     "chokidar": "^5.0.0",
