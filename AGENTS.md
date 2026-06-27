@@ -357,12 +357,22 @@ Correction (system prompt injection):
 
 ## Release Process
 
-- One command: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.7.1`)
-- The script: bumps version → `pnpm build` → `npm publish` → `git tag` → `git push`
+- **One command**: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.7.1`)
+- The script: bumps version → `pnpm build` → `npm publish --ignore-scripts` → `git tag` → `git push`
 - **CI auto-builds npm tarball**: `.github/workflows/publish-tarball.yml` triggers on tag push (`v*`), runs `npm pack`, uploads `kaijibot-<version>.tgz` to the corresponding GitHub Release
 - Tarball is required for Android/Termux install (the install script downloads it from GitHub Releases instead of npmjs.org for China network reliability)
 - Launcher APK: `.github/workflows/android-build.yml` triggers on `android/**` changes, builds APK with bundled Termux, uploads to `launcher` release tag
 - Release guardrails: do not change version numbers without operator's explicit consent.
+
+### Manual release (if `release.sh` is unavailable)
+
+These gotchas are handled by `release.sh` automatically. If doing manual steps:
+
+1. **`pnpm build` is mandatory before `npm publish`** — `dist/` is not committed to git; npm package includes it. Without rebuild, published package has stale code.
+2. **`npm publish --ignore-scripts` is mandatory** — the `prepack` script fails on Control UI build (non-fatal error exits with code 1). `--ignore-scripts` skips prepack.
+3. **GitHub push uses SSH** — `git push github main` (remote `github` = `git@github.com:Kaiji-Z/kaijibot.git`). Never use HTTPS to github.com (port 443 unreachable from this machine).
+4. **Gitee push uses HTTPS** — `git push origin main` (remote `origin` = Gitee).
+5. **Create GitHub Release tarball after publish** — `npm pack --ignore-scripts` → upload `.tgz` to GitHub Release for that tag. Android install script depends on it.
 
 ## Prompt Cache Stability
 
