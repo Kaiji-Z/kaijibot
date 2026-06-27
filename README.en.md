@@ -74,7 +74,7 @@ Step into a pit once. That's enough.
 
 Not locked into any single provider. Switch between domestic and international at will. `kaijibot onboard` wizard auto-discovers configured API keys.
 
-| China (Recommended)                            | International                                   | Aggregator / Self-hosted                           |
+| China                                          | International                                   | Aggregator / Self-hosted                           |
 | ---------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
 | Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
 
@@ -167,11 +167,11 @@ kaijibot gateway --port 18789 --verbose
 **Required**: At least one LLM provider API key + Feishu bot credentials.
 
 ```bash
-# LLM API Key (pick one)
-export ZAI_API_KEY="your-key"              # Zhipu GLM
-# export DEEPSEEK_API_KEY="your-key"       # DeepSeek
-# export ANTHROPIC_API_KEY="your-key"      # Claude
-# export GOOGLE_API_KEY="your-key"         # Gemini
+# LLM API Key — pick one provider, uncomment the corresponding line
+# export ZAI_API_KEY="your-key"              # Zhipu GLM
+# export DEEPSEEK_API_KEY="your-key"         # DeepSeek
+# export ANTHROPIC_API_KEY="your-key"        # Claude
+# export GOOGLE_API_KEY="your-key"           # Gemini
 
 # Feishu channel
 kaijibot config set channels.feishu.appId "your-app-id"

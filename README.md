@@ -74,7 +74,7 @@ AI 助手每次新建会话都犯同样的错？KaijiBot 不会。它有一套�
 
 不绑死任何一家。国内国际随意切换，`kaijibot onboard` 向导自动发现已配置的 API Key。
 
-| 国内（推荐）                                      | 国际主流                                        | 聚合 / 自部署                                      |
+| 国内                                              | 国际主流                                        | 聚合 / 自部署                                      |
 | ------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
 | 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
 
@@ -110,7 +110,7 @@ kaijibot skills install <skill-name>
 
 | 条件 | 说明 | 获取方式 |
 |------|------|----------|
-| **LLM API Key** | 至少一个 AI 提供商的密钥 | 推荐 [智谱 GLM](https://open.bigmodel.cn/)（国内速度快） |
+| **LLM API Key** | 至少一个 AI 提供商的密钥 | [智谱 GLM](https://open.bigmodel.cn/) · [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) 任选其一 |
 | **飞书账号** | 用于收发消息 | [open.feishu.cn](https://open.feishu.cn/) 注册即可，向导支持扫码自动创建机器人 |
 
 ### 安装（推荐方式）
@@ -202,11 +202,11 @@ kaijibot onboard   # 交互式向导
 **必需**：至少一个 LLM 提供商的 API Key + 飞书机器人凭证。
 
 ```bash
-# LLM API Key（任选一个）
-export ZAI_API_KEY="your-key"              # 智谱 GLM
-# export DEEPSEEK_API_KEY="your-key"       # DeepSeek
-# export ANTHROPIC_API_KEY="your-key"      # Claude
-# export GOOGLE_API_KEY="your-key"         # Gemini
+# LLM API Key — 任选一个提供商，取消对应行的注释
+# export ZAI_API_KEY="your-key"              # 智谱 GLM
+# export DEEPSEEK_API_KEY="your-key"         # DeepSeek
+# export ANTHROPIC_API_KEY="your-key"        # Claude
+# export GOOGLE_API_KEY="your-key"           # Gemini
 
 # 飞书频道（也可在向导中扫码自动配置）
 kaijibot config set channels.feishu.appId "your-app-id"

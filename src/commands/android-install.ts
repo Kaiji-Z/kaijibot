@@ -1,4 +1,5 @@
 import { spawn, spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process";
+import { accessSync, constants } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -88,6 +89,32 @@ function runText(cmd: string, args: readonly string[], options: SpawnSyncOptions
   return result.stdout.toString("utf8").trim();
 }
 
+/**
+ * Locate a binary on PATH. Uses `command -v` via shell (POSIX standard)
+ * because `which` is not guaranteed to exist on Termux/Android.
+ */
+function findBinary(name: string): string {
+  const result = spawnSync("sh", ["-c", `command -v "${name}"`], DEFAULT_SPAWN_OPTIONS);
+  if (result.status === 0 && typeof result.stdout === "string") {
+    const found = result.stdout.trim();
+    if (found.length > 0) {
+      return found;
+    }
+  }
+  // Fallback: check Termux $PREFIX/bin directly (where pkg installs binaries)
+  const prefix = process.env.PREFIX;
+  if (prefix) {
+    const candidate = path.join(prefix, "bin", name);
+    try {
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // pkg installs to $PREFIX/bin — binary not present there
+    }
+  }
+  return "";
+}
+
 function parseNodeMajor(versionText: string): number | null {
   const match = /v?(\d+)\./.exec(versionText);
   if (!match) {
@@ -145,14 +172,14 @@ async function ensureNode(runtime: OutputRuntimeEnv): Promise<void> {
 
 async function ensureRequiredPackages(runtime: OutputRuntimeEnv): Promise<void> {
   for (const pkg of REQUIRED_PACKAGES) {
-    const which = runText("which", [pkg]);
-    if (which.length > 0) {
-      runtime.log(`  ${theme.success("✓")} ${pkg} (${theme.muted(which)})`);
+    const found = findBinary(pkg);
+    if (found.length > 0) {
+      runtime.log(`  ${theme.success("✓")} ${pkg} (${theme.muted(found)})`);
       continue;
     }
     runtime.log(`  ${theme.warn("→")} ${pkg} not found. Installing via pkg...`);
     runPkg(runtime, ["install", "-y", pkg]);
-    const recheck = runText("which", [pkg]);
+    const recheck = findBinary(pkg);
     if (recheck.length === 0) {
       runtime.error(
         `Failed to install ${pkg}. Please run ${theme.command(`pkg install ${pkg}`)} manually.`,
