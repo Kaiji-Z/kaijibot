@@ -6,12 +6,10 @@ set -euo pipefail
 
 BOLD='\033[1m'
 SUCCESS='\033[38;2;0;229;204m'
-WARN='\033[38;2;255;176;32m'
 NC='\033[0m'
 
 info()  { printf "${BOLD}[*]${NC} %s\n" "$*"; }
 ok()    { printf "${SUCCESS}[✓]${NC} %s\n" "$*"; }
-warn()  { printf "${WARN}[!]${NC} %s\n" "$*"; }
 
 if [ ! -d "/data/data/com.termux" ]; then
   echo "此脚本必须在 Termux 中运行。"
@@ -19,34 +17,23 @@ if [ ! -d "/data/data/com.termux" ]; then
   exit 1
 fi
 
-info "检测到 Termux，开始安装 KaijiBot..."
+info "检测到 Termux，开始安装..."
 
 export DEBIAN_FRONTEND=noninteractive
-export DPKG_FORCE_CONFFILE_UPDATE=1
-
-# ── 切换 Termux 国内镜像 ───────────────────────────────────
 
 SOURCES="$PREFIX/etc/apt/sources.list"
 echo "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main" > "$SOURCES"
-info "镜像源已固定为清华 TUNA"
-
-# ── 升级 Termux 核心库 ──────────────────────────────────────
 
 info "升级 Termux 核心库（可能需要几分钟）..."
 pkg update -y -o Dpkg::Options::="--force-confold" || true
 pkg upgrade -y -o Dpkg::Options::="--force-confold" || true
 
-# ── 安装 Node.js 和系统工具 ─────────────────────────────────
+info "安装 Node.js..."
+pkg install -y nodejs-lts -o Dpkg::Options::="--force-confold"
 
-info "安装 Node.js 和系统工具..."
-pkg install -y nodejs-lts imagemagick ffmpeg git lsof -o Dpkg::Options::="--force-confold"
-
-info "设置 npm 超时重试..."
 npm config set fetch-retries 5
 npm config set fetch-retry-mintimeout 20000
 npm config set fetch-timeout 600000
-
-# ── 安装 KaijiBot ────────────────────────────────────────────
 
 info "获取最新版本号..."
 KB_VER=$(curl -fsSL https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || true)
@@ -55,51 +42,13 @@ if [ -z "$KB_VER" ]; then
   info "无法获取版本号，直接从 npm 安装..."
   npm install -g kaijibot@latest --force --registry=https://registry.npmjs.org
 else
-  info "安装 KaijiBot v${KB_VER}（可能需要几分钟）..."
+  info "安装 KaijiBot v${KB_VER}..."
   npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force --registry=https://registry.npmmirror.com || {
-    info "tarball 下载失败，回退到 npm registry..."
+    info "tarball 失败，回退 npm..."
     npm install -g "kaijibot@${KB_VER}" --force --registry=https://registry.npmjs.org
   }
 fi
 ok "KaijiBot $(kaijibot --version)"
 
-info "安装图片处理组件..."
-npm install -g @img/sharp-wasm32 --force --registry=https://registry.npmmirror.com || warn "sharp-wasm32 安装失败，图片处理功能将受限"
-
-# ── 配置 Android 环境 ────────────────────────────────────────
-
-info "配置 Android 环境（开机自启 + 后台保活）..."
-kaijibot android-install --non-interactive || warn "android-install 未完成，之后可运行: kaijibot android-install"
-
-# ── 运行配置向导 ──────────────────────────────────────────────
-
-info "启动配置向导（配置 API Key 和飞书机器人）..."
-kaijibot onboard < /dev/tty || warn "配置未完成，之后运行: kaijibot onboard"
-
-# ── 启动 Gateway ─────────────────────────────────────────────
-
-info "启动 Gateway..."
-termux-wake-lock 2>/dev/null || true
-kaijibot gateway --port 18789 >> ~/.kaijibot/gateway.log 2>&1 &
-sleep 3
-if pgrep -f "kaijibot gateway" > /dev/null 2>&1; then
-  ok "Gateway 已启动（端口 18789）"
-else
-  warn "Gateway 启动中，请稍等。查看日志: tail -f ~/.kaijibot/gateway.log"
-fi
-
-# ── 完成 ────────────────────────────────────────────────────
-
-echo ""
-printf "${SUCCESS}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
-printf "${SUCCESS}  ✓ KaijiBot 安装完成${NC}\n"
-printf "${SUCCESS}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
-echo ""
-printf "${BOLD}日常使用：${NC}\n"
-printf "  • 打开 Termux = 自动启动 Gateway\n"
-printf "  • kaijibot gateway restart  — 重启\n"
-printf "  • kaijibot update           — 更新\n"
-printf "  • 日志: tail -f ~/.kaijibot/gateway.log\n"
-echo ""
-printf "${WARN}重要：如果 Gateway 频繁被杀，请在手机设置中${NC}\n"
-printf "${WARN}关闭 Termux 的电池优化（设置→应用→Termux→电池→不限制）${NC}\n"
+info "启动配置向导，按提示操作..."
+exec kaijibot android-install < /dev/tty

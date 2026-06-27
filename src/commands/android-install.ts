@@ -1,4 +1,5 @@
-import { spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process";import fs from "node:fs/promises";
+import { spawn, spawnSync, type SpawnSyncOptions, type SpawnSyncReturns } from "node:child_process";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { writeTextAtomic } from "../infra/json-files.js";
@@ -65,6 +66,7 @@ export async function runAndroidInstall(
   printBatteryHint(runtime);
   await ensureAllowExternalApps(runtime);
   await runOnboard(runtime, opts);
+  await startGateway(runtime);
 }
 
 function isTermux(): boolean {
@@ -103,12 +105,6 @@ async function switchTermuxMirror(runtime: OutputRuntimeEnv): Promise<void> {
     "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main/ stable main\n",
     { mode: 0o644 },
   );
-}
-
-async function switchNpmMirror(runtime: OutputRuntimeEnv): Promise<void> {
-  runtime.log(`  → Switching npm registry to npmmirror (China)`);
-  run("npm", ["config", "set", "registry", "https://registry.npmmirror.com"]);
-  runtime.log(`  ${theme.success("✓")} npm mirror configured`);
 }
 
 async function ensureTermuxUpToDate(runtime: OutputRuntimeEnv): Promise<void> {
@@ -186,30 +182,21 @@ async function ensureKaijiBot(runtime: OutputRuntimeEnv): Promise<void> {
   const version = runText("kaijibot", ["--version"]);
   if (version.length > 0) {
     runtime.log(`  ${theme.success("✓")} KaijiBot CLI present (${theme.muted(version)})`);
-    runtime.log(`  ${theme.muted("    Reinstalling to ensure latest version...")}`);
-  } else {
-    runtime.log(`  ${theme.warn("→")} KaijiBot CLI not found. Installing globally via npm...`);
+    return;
   }
-
+  runtime.log(`  ${theme.warn("→")} KaijiBot CLI not found. Installing via npm...`);
   const install = run("npm", ["install", "-g", "kaijibot", "--force"], { stdio: "inherit" });
   if (install.error || install.status !== 0) {
-    runtime.error(
-      `Failed to install KaijiBot. Please run ${theme.command("npm install -g kaijibot --force")} manually.`,
-    );
+    runtime.error(`Failed to install KaijiBot. Run ${theme.command("npm install -g kaijibot --force")} manually.`);
     runtime.exit(1);
     return;
   }
-  const installed = runText("kaijibot", ["--version"]);
-  runtime.log(
-    installed.length > 0
-      ? `  ${theme.success("✓")} KaijiBot installed (${theme.muted(installed)})`
-      : `  ${theme.success("✓")} KaijiBot installed`,
-  );
+  runtime.log(`  ${theme.success("✓")} KaijiBot installed`);
 }
 
 async function installSharpWasm32(runtime: OutputRuntimeEnv): Promise<void> {
-  runtime.log(`  ${theme.warn("→")} Installing @img/sharp-wasm32 (image processing for Android)...`);
-  const result = run("npm", ["install", "-g", "@img/sharp-wasm32", "--force"], { stdio: "inherit" });
+  runtime.log(`  ${theme.warn("→")} Installing @img/sharp-wasm32 (image processing)...`);
+  const result = run("npm", ["install", "-g", "@img/sharp-wasm32", "--force", "--registry=https://registry.npmmirror.com"], { stdio: "inherit" });
   if (result.error || result.status !== 0) {
     runtime.log(
       `  ${theme.warn("⚠")} Could not install @img/sharp-wasm32 (image features may be limited). Retry with ${theme.command("npm install -g @img/sharp-wasm32 --force")}.`,
@@ -391,4 +378,17 @@ async function runOnboard(runtime: OutputRuntimeEnv, opts: AndroidInstallOptions
   if (result.error || (result.status !== null && result.status !== 0)) {
     runtime.log(`  ${theme.warn("⚠")} onboard exited with an error. Re-run: ${theme.command("kaijibot onboard")}`);
   }
+}
+
+async function startGateway(runtime: OutputRuntimeEnv): Promise<void> {
+  runtime.log("");
+  runtime.log(theme.heading("Starting Gateway..."));
+  spawnSync("termux-wake-lock", [], { stdio: "ignore" });
+  const gw = spawn("kaijibot", ["gateway", "--port", String(GATEWAY_PORT)], {
+    stdio: "ignore",
+    detached: true,
+  });
+  gw.unref();
+  runtime.log(`  ${theme.success("✓")} Gateway started on port ${GATEWAY_PORT}`);
+  runtime.log(`  ${theme.muted("    Logs: tail -f ~/.kaijibot/gateway.log")}`);
 }
