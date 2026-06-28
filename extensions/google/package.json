@@ -5,7 +5,7 @@
   "description": "KaijiBot Google plugin",
   "type": "module",
   "dependencies": {
-    "@google/genai": "^1.48.0"
+    "@google/genai": "^2.10.0"
   },
   "devDependencies": {
     "@kaijibot/plugin-sdk": "workspace:*"
