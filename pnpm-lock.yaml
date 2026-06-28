@@ -67,8 +67,8 @@ importers:
         specifier: ^1.64.0
         version: 1.66.0
       '@lydell/node-pty':
-        specifier: 1.2.0-beta.10
-        version: 1.2.0-beta.10
+        specifier: 1.2.0-beta.12
+        version: 1.2.0-beta.12
       '@modelcontextprotocol/sdk':
         specifier: 1.29.0
         version: 1.29.0(zod@4.3.6)
@@ -1615,38 +1615,38 @@ packages:
   '@lit/reactive-element@2.1.2':
     resolution: {integrity: sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A==}
 
-  '@lydell/node-pty-darwin-arm64@1.2.0-beta.10':
-    resolution: {integrity: sha512-C+eqDyRNHRYvx7RaHj6VVCx6nCpRBPuuxhTcc3JH3GuBMoxTsYeY4GkWH2XOktrgbAq1BG8e/Y8bu/wNQreCEw==}
+  '@lydell/node-pty-darwin-arm64@1.2.0-beta.12':
+    resolution: {integrity: sha512-tqaifcY9Cr41SblO1+FLzh8oxxtkNhuW9Dhl22lKme9BreYvKvxEZcdPIXTuqkJc5tagOEC4QHShKmJjLyLXLQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@lydell/node-pty-darwin-x64@1.2.0-beta.10':
-    resolution: {integrity: sha512-aZoIK6HtJO5BiT4ELm683U4dyHtt8b7wNgq3NJqYAQwSXrcPv576Z8vY3BIulVxfcFkht/SPLKou9TtdFXdNpg==}
+  '@lydell/node-pty-darwin-x64@1.2.0-beta.12':
+    resolution: {integrity: sha512-4LrS5pCJwqHKDVf1zS2gyNV0m4hKAXch+XZNhbZ6LY8uwVL8BhchzQBO40Os5anuRxRCWzHpw4Sp64Ie8q7E4Q==}
     cpu: [x64]
     os: [darwin]
 
-  '@lydell/node-pty-linux-arm64@1.2.0-beta.10':
-    resolution: {integrity: sha512-0cKX2iMyXFNBE4fGtGK6B7IkdXcDMZajyEDoGMOgQQs/DDtoI5tSPcBcqNY9VitVrsRQA8+gFt6eKYU9Ye/lUA==}
+  '@lydell/node-pty-linux-arm64@1.2.0-beta.12':
+    resolution: {integrity: sha512-Sx+A71x5BDGHt9ansfrtGxwq2VFVDWvJUAdlUL0Hv0qeiJUfts+hgopx+CgT4PSwahKjdEgtu0+FAfY9rICKRw==}
     cpu: [arm64]
     os: [linux]
 
-  '@lydell/node-pty-linux-x64@1.2.0-beta.10':
-    resolution: {integrity: sha512-J9HnxvSzEeMH748+Ul1VrmCLWMo7iCVJy9EGijRR62+YO/Yk5GaCydUTZ+KzlH0/X5aTrgt5cfiof4vx45tRRg==}
+  '@lydell/node-pty-linux-x64@1.2.0-beta.12':
+    resolution: {integrity: sha512-bJzs94njofYhGg/UDqW1nj0dtvvu+2OvxMY+RlLS1T17VgcktKoIR6PuenTwE5HJ/D6StCPADmXcT0nNsCKmIQ==}
     cpu: [x64]
     os: [linux]
 
-  '@lydell/node-pty-win32-arm64@1.2.0-beta.10':
-    resolution: {integrity: sha512-PlDJpJX/pnKyy6OmADKzhf+INZDDnzTBGaI0LT4laVNc6NblZNqUSkCMjLFWbeakeuQp0VG37M49WQSN9FDfeA==}
+  '@lydell/node-pty-win32-arm64@1.2.0-beta.12':
+    resolution: {integrity: sha512-p7POgjVEiFaBC3/y+AKuV1FzePCsJ6HmZDv2XK+jBZSfwP8+uBAw181ZiKYN1YuRa/XpmBGaWezcI8hZkbW++g==}
     cpu: [arm64]
     os: [win32]
 
-  '@lydell/node-pty-win32-x64@1.2.0-beta.10':
-    resolution: {integrity: sha512-ExFgWrzyldNAMi45U9PLIOu+g/RatP+f0c/dZxaooifME6yLW32BoHveH26/TtoAjZyJrc2iL0u48pgnR1fzmg==}
+  '@lydell/node-pty-win32-x64@1.2.0-beta.12':
+    resolution: {integrity: sha512-IDFa00g7qUDGUYgByrUBJtC+mOjYVt/8KYyWivCg5JjGOHbBUACUQZLl0jTWmnr+tld/UyTpX90a2PY6oTVtRw==}
     cpu: [x64]
     os: [win32]
 
-  '@lydell/node-pty@1.2.0-beta.10':
-    resolution: {integrity: sha512-Fv+A3+MZVA8qhkBIZsM1E6dCdHNMyXXz22mAYiMWd03LlyK///F3OH6CKPX9mj4id7LUlxpr45yPzyBVy9aDPw==}
+  '@lydell/node-pty@1.2.0-beta.12':
+    resolution: {integrity: sha512-qIK890UwPupoj07osVvgOIa++1mxeHbcGry4PKRHhNVNs81V2SCG34eJr46GybiOmBtc8Sj5PB1/GGM5PL549g==}
 
   '@mariozechner/clipboard-darwin-arm64@0.3.9':
     resolution: {integrity: sha512-BfgV7vCEWZwJwZJw03r6bP5+tf0iI/ANuQYCxi9RNn7FrWB3yzGuMKCrNLRl6V761vXRdL8+OqZ0wd4TqlsNOQ==}
@@ -2795,8 +2795,8 @@ packages:
   '@types/mdurl@2.0.0':
     resolution: {integrity: sha512-RGdgjQUZba5p6QEFAVx2OGb8rQDL/cPRG7GiedRzMcJ1tYnUANBncjbSB1NRGwbvjcPeikRABz2nshyPk1bhWg==}
 
-  '@types/node@20.19.41':
-    resolution: {integrity: sha512-ECymXOukMnOoVkC2bb1Vc/w/836DXncOg5m8Xj1RH7xSHZJWNYY6Zh7EH477vcnD5egKNNfy2RpNOmuChhFPgQ==}
+  '@types/node@20.19.43':
+    resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
 
   '@types/node@25.5.0':
     resolution: {integrity: sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw==}
@@ -6598,32 +6598,32 @@ snapshots:
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.5.1
 
-  '@lydell/node-pty-darwin-arm64@1.2.0-beta.10':
+  '@lydell/node-pty-darwin-arm64@1.2.0-beta.12':
     optional: true
 
-  '@lydell/node-pty-darwin-x64@1.2.0-beta.10':
+  '@lydell/node-pty-darwin-x64@1.2.0-beta.12':
     optional: true
 
-  '@lydell/node-pty-linux-arm64@1.2.0-beta.10':
+  '@lydell/node-pty-linux-arm64@1.2.0-beta.12':
     optional: true
 
-  '@lydell/node-pty-linux-x64@1.2.0-beta.10':
+  '@lydell/node-pty-linux-x64@1.2.0-beta.12':
     optional: true
 
-  '@lydell/node-pty-win32-arm64@1.2.0-beta.10':
+  '@lydell/node-pty-win32-arm64@1.2.0-beta.12':
     optional: true
 
-  '@lydell/node-pty-win32-x64@1.2.0-beta.10':
+  '@lydell/node-pty-win32-x64@1.2.0-beta.12':
     optional: true
 
-  '@lydell/node-pty@1.2.0-beta.10':
+  '@lydell/node-pty@1.2.0-beta.12':
     optionalDependencies:
-      '@lydell/node-pty-darwin-arm64': 1.2.0-beta.10
-      '@lydell/node-pty-darwin-x64': 1.2.0-beta.10
-      '@lydell/node-pty-linux-arm64': 1.2.0-beta.10
-      '@lydell/node-pty-linux-x64': 1.2.0-beta.10
-      '@lydell/node-pty-win32-arm64': 1.2.0-beta.10
-      '@lydell/node-pty-win32-x64': 1.2.0-beta.10
+      '@lydell/node-pty-darwin-arm64': 1.2.0-beta.12
+      '@lydell/node-pty-darwin-x64': 1.2.0-beta.12
+      '@lydell/node-pty-linux-arm64': 1.2.0-beta.12
+      '@lydell/node-pty-linux-x64': 1.2.0-beta.12
+      '@lydell/node-pty-win32-arm64': 1.2.0-beta.12
+      '@lydell/node-pty-win32-x64': 1.2.0-beta.12
 
   '@mariozechner/clipboard-darwin-arm64@0.3.9':
     optional: true
@@ -7614,7 +7614,7 @@ snapshots:
 
   '@types/mdurl@2.0.0': {}
 
-  '@types/node@20.19.41':
+  '@types/node@20.19.43':
     dependencies:
       undici-types: 6.21.0
 
@@ -7870,7 +7870,7 @@ snapshots:
       '@swc/helpers': 0.5.23
       '@types/command-line-args': 5.2.3
       '@types/command-line-usage': 5.0.4
-      '@types/node': 20.19.41
+      '@types/node': 20.19.43
       command-line-args: 5.2.1
       command-line-usage: 7.0.4
       flatbuffers: 24.12.23
