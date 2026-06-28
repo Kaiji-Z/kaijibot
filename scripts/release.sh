@@ -29,8 +29,8 @@ echo "[3/4] Published to npm"
 git add package.json
 git commit -m "chore(release): v${VERSION}"
 git tag "v${VERSION}"
-git push origin main --tags
-git push github main --tags
+git push origin main "v${VERSION}"
+git push github main "v${VERSION}"
 echo "[4/4] Pushed. CI will auto-build tarball and upload to GitHub Release."
 
 echo ""
