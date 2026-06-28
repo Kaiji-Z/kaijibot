@@ -6,7 +6,7 @@
   "type": "module",
   "dependencies": {
     "@viz-js/viz": "^3.28.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.2",
     "typebox": "^1.1",
     "zod": "^4.3.6"
   },
