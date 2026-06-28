@@ -12,6 +12,9 @@
  *   - `?wiki=1` — include the wiki concept layer in the rendered SVG. When
  *     absent, the wiki layer is omitted entirely (smaller payload, no wiki
  *     nodes / cross edges).
+ *   - `?zoom=N` — physical SVG dimensions scale by N/100 while the viewBox
+ *     stays fixed at "0 0 758 1024". Range 50-400, default 100. At zoom=200
+ *     the SVG is 1516x2048 and the map page's scroll container pans over it.
  *
  * SVG output is cacheable for 5 min to ease repeated refreshes.
  */
@@ -47,6 +50,35 @@ function parseWikiFlag(req: IncomingMessage): boolean {
   return true;
 }
 
+/**
+ * Parse `?zoom=N` from the request URL. Default 100, clamped to [50, 400].
+ *
+ * Values outside the range are silently clamped — invalid input never causes
+ * a 500, it just produces a sensible default-size SVG.
+ */
+function parseZoomLevel(req: IncomingMessage): number {
+  const rawUrl = req.url ?? "";
+  const q = rawUrl.indexOf("?");
+  if (q === -1) {
+    return 100;
+  }
+  const search = rawUrl.slice(q + 1);
+  for (const pair of search.split("&")) {
+    const eq = pair.indexOf("=");
+    const key = eq === -1 ? pair : pair.slice(0, eq);
+    if (key !== "zoom") {
+      continue;
+    }
+    const val = eq === -1 ? "" : pair.slice(eq + 1);
+    const parsed = parseInt(val, 10);
+    if (Number.isNaN(parsed)) {
+      return 100;
+    }
+    return Math.max(50, Math.min(400, parsed));
+  }
+  return 100;
+}
+
 export async function handleMapSvg(
   req: IncomingMessage,
   res: ServerResponse,
@@ -54,9 +86,10 @@ export async function handleMapSvg(
 ): Promise<void> {
   res.setHeader("Cache-Control", SVG_CACHE);
   try {
-    // Always read the wiki flag from the URL so the page's toggle button can
+    // Always read the wiki flag from the URL so the page's toggle link can
     // request the wiki layer on demand even when global showWiki is true.
     const showWikiLayer = parseWikiFlag(req);
+    const zoomLevel = parseZoomLevel(req);
 
     const user = await resolveActiveUser(ctx.loadStore, ctx.cfg.scope, {
       userId: ctx.cfg.userId,
@@ -66,7 +99,7 @@ export async function handleMapSvg(
       // valid image instead of a broken one.
       const svg = renderMapGraphSvg(
         { nodes: [], edges: [] },
-        { wiki: showWikiLayer },
+        { wiki: showWikiLayer, zoom: zoomLevel },
       );
       res.setHeader("Content-Type", SVG_CONTENT_TYPE);
       res.end(svg);
@@ -83,7 +116,7 @@ export async function handleMapSvg(
       maxDomains: ctx.cfg.maxDomains,
       showWiki: ctx.cfg.showWiki,
     });
-    const svg = renderMapGraphSvg(graph, { wiki: showWikiLayer });
+    const svg = renderMapGraphSvg(graph, { wiki: showWikiLayer, zoom: zoomLevel });
     res.setHeader("Content-Type", SVG_CONTENT_TYPE);
     res.end(svg);
   } catch (err) {

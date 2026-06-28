@@ -161,11 +161,11 @@ describe("renderMapGraphSvg — wiki option", () => {
 
 describe("renderMapGraphSvg — node positioning", () => {
   it("places a single domain node at the top of the circle (379, 100)", () => {
-    // angle = -PI/2 → x=379, y=400-300=100; box top-left = (299, 78)
+    // angle = -PI/2 → x=379, y=400-300=100; box top-left = (279, 74)
     const g: MapGraph = { nodes: [domain("solo", "Solo", 0.5)], edges: [] };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('x="299"');
-    expect(svg).toContain('y="78"');
+    expect(svg).toContain('x="279"');
+    expect(svg).toContain('y="74"');
   });
 
   it("places two domain nodes at top and bottom of the circle", () => {
@@ -175,10 +175,10 @@ describe("renderMapGraphSvg — node positioning", () => {
       edges: [],
     };
     const svg = renderMapGraphSvg(g);
-    // top node box y = 100 - 22 = 78
-    expect(svg).toContain('y="78"');
-    // bottom node box y = 700 - 22 = 678
-    expect(svg).toContain('y="678"');
+    // top node box y = 100 - 26 = 74
+    expect(svg).toContain('y="74"');
+    // bottom node box y = 700 - 26 = 674
+    expect(svg).toContain('y="674"');
   });
 });
 
@@ -215,17 +215,17 @@ describe("renderMapGraphSvg — label truncation", () => {
 });
 
 describe("renderMapGraphSvg — strength bar", () => {
-  it("renders a 6px-wide strength bar with height 36 for strength 1.0", () => {
+  it("renders a 6px-wide strength bar with height 44 for strength 1.0", () => {
     const g: MapGraph = { nodes: [domain("s", "Strong", 1.0)], edges: [] };
     const svg = renderMapGraphSvg(g);
     expect(svg).toContain('width="6"');
-    expect(svg).toContain('height="36"');
+    expect(svg).toContain('height="44"');
   });
 
-  it("renders a proportional bar (strength 0.5 → height 18)", () => {
+  it("renders a proportional bar (strength 0.5 → height 22)", () => {
     const g: MapGraph = { nodes: [domain("m", "Medium", 0.5)], edges: [] };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('height="18"');
+    expect(svg).toContain('height="22"');
   });
 
   it("renders height 0 for strength 0", () => {
@@ -234,10 +234,10 @@ describe("renderMapGraphSvg — strength bar", () => {
     expect(svg).toContain('height="0"');
   });
 
-  it("clamps strength above 1.0 to bar height 36", () => {
+  it("clamps strength above 1.0 to bar height 44", () => {
     const g: MapGraph = { nodes: [domain("x", "X", 1.5)], edges: [] };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('height="36"');
+    expect(svg).toContain('height="44"');
   });
 });
 

@@ -39,6 +39,26 @@ export interface FleetAgent {
 }
 
 /**
+ * A registered agent (from `kaijibot.json` → `agents.list`), enriched with
+ * session-store-derived stats. The monitor dashboard always shows every
+ * registered agent, even when none have active runs.
+ */
+export interface RegisteredAgent {
+  /** Agent ID from config (e.g. "main", "testagent"). Never a UUID. */
+  readonly id: string;
+  /** Primary model string from config (e.g. "zai/glm-5.2"). */
+  readonly model: string;
+  /** True if this agent is marked `default: true` in config. */
+  readonly isDefault: boolean;
+  /** "active" if present in the current fleet snapshot; "idle" otherwise. */
+  readonly status: "active" | "idle";
+  /** Most recent `updatedAt` across this agent's sessions (ms epoch). */
+  readonly lastActiveAt?: number;
+  /** Total number of sessions recorded for this agent. */
+  readonly sessionCount: number;
+}
+
+/**
  * Snapshot returned by `/kindle/api/fleet`.
  *
  * Under Option A (pure plugin boundary), `lanes` is always empty and
@@ -66,6 +86,12 @@ export interface FleetSnapshot {
     readonly corrections: number;
     readonly skills: number;
   };
+  /**
+   * All registered agents from config (populated by /api/fleet and the
+   * monitor page). Always present in the enriched snapshot; absent in
+   * bare test snapshots for backward compatibility.
+   */
+  readonly registeredAgents?: readonly RegisteredAgent[];
 }
 
 /**

@@ -1,40 +1,127 @@
 /**
  * Cognitive map HTML template for Kindle Portal.
  *
- * Renders an ES5-compatible page that displays the cognitive map as a
+ * Renders a JavaScript-FREE page that displays the cognitive map as a
  * standalone SVG image via `<img src="/kindle/api/map.svg">`. Kindle
  * Paperwhite ≤5.16.3 silently ignores inline `<svg>` tags embedded in HTML,
  * but it DOES render `<img src="*.svg">` — so the SVG is served by a
  * separate endpoint and referenced here as a regular image.
  *
- * Features:
- *   - `<img>` tag pointing at `/kindle/api/map.svg` (token-aware).
- *   - Zoom in/out buttons (A- / A+) that scale the image width via CSS.
- *   - Wiki-toggle button that rebuilds the img src with `?wiki=1`.
- *   - Auto-refresh via `<meta http-equiv="refresh">`.
+ * Interaction model — pure URL links, no JavaScript:
+ *   - Tab bar: `<a href="/kindle/{?token}">Monitor</a>` + active "Map" span.
+ *   - Zoom: `<a href="/kindle/map?zoom=N&...">` links for 100/150/200/300%.
+ *     The current zoom level's link gets the `.active` class (bold + larger).
+ *     Clicking reloads the page with a new `?zoom=N` query; the server
+ *     regenerates the SVG at the requested physical dimensions and the
+ *     scroll container pans over the larger image.
+ *   - Wiki toggle: `<a href="/kindle/map?wiki=1&...">Wiki</a>` link.
  *
- * All HTML/script is built with `+` concatenation — no template literals —
- * so the rendered output passes `lintKindleHtml` (no backticks, no `=>`, no
+ * Kindle's old WebKit has unreliable `onclick` handlers on `<button>`, so
+ * all interaction is via plain `<a>` links with URL query parameters. This
+ * always works on Kindle.
+ *
+ * Auto-refresh via `<meta http-equiv="refresh">`. Meta refresh reloads the
+ * current URL, which preserves any query params (zoom, wiki, token) that
+ * the user navigated to — so the refresh honors the current view state.
+ *
+ * All HTML is built with `+` concatenation — no template literals — so the
+ * rendered output passes `lintKindleHtml` (no backticks, no `=>`, no
  * `const`/`let`, no `fetch`). This page is self-contained: it does NOT use
  * shared-css.ts (the map has its own e-ink styling).
  */
 import type { KindleConfig } from "../config.js";
 
+/** Allowed zoom levels offered in the UI, in percent. */
+const ZOOM_LEVELS: readonly number[] = [100, 150, 200, 300];
+
+/** Escape a query-string value (alphanumeric + a few safe chars preserved). */
+function escapeQueryParam(s: string): string {
+  return encodeURIComponent(s);
+}
+
+/**
+ * Append a key/value pair to a query-string buffer.
+ *
+ * `q` is either "" (no params yet) or starts with "?". New pairs are joined
+ * with "&". Returns the updated buffer.
+ */
+function appendQuery(q: string, key: string, val: string): string {
+  var pair = key + "=" + escapeQueryParam(val);
+  return q === "" ? "?" + pair : q + "&" + pair;
+}
+
 /**
  * Build the cognitive-map HTML page.
  *
  * The SVG itself is built independently by the `/kindle/api/map.svg`
- * endpoint, so this template no longer receives a graph — it only needs the
- * refresh interval and optional access token to assemble the img URL and
- * meta-refresh tag.
+ * endpoint, so this template only needs the refresh interval, optional
+ * access token, and the current view state (zoom / wiki) to assemble the
+ * img URL, zoom links, and meta-refresh tag.
  *
- * @param cfg  Refresh interval and optional access token.
+ * @param cfg   Refresh interval and optional access token.
+ * @param opts  Current view state: `zoom` (default 100) and `wiki`
+ *              (default false). Used to highlight the active zoom link and
+ *              to build the SVG img URL.
  */
 export function renderMapHtml(
   cfg: Pick<KindleConfig, "mapRefreshSeconds" | "accessToken">,
+  opts?: { zoom?: number; wiki?: boolean },
 ): string {
   var sec = String(cfg.mapRefreshSeconds);
-  var tq = cfg.accessToken ? "?token=" + cfg.accessToken : "";
+  var token = cfg.accessToken ?? "";
+  var zoom = opts?.zoom ?? 100;
+  var wiki = opts?.wiki === true;
+
+  // Token query string for page links: "" or "?token=xxx".
+  var tq = token === "" ? "" : "?token=" + escapeQueryParam(token);
+
+  // Build the SVG img URL query: combines zoom + wiki + token.
+  // Always includes zoom so the server renders at the requested size.
+  // Wiki is only appended when enabled (default off — lighter payload).
+  var svgQ = "";
+  svgQ = appendQuery(svgQ, "zoom", String(zoom));
+  if (wiki) {
+    svgQ = appendQuery(svgQ, "wiki", "1");
+  }
+  if (token !== "") {
+    svgQ = appendQuery(svgQ, "token", token);
+  }
+  var svgSrc = "/kindle/api/map.svg" + svgQ;
+
+  // Build a reusable param suffix for the zoom/wiki nav links. Each link
+  // carries the OPPOSITE state (e.g. zoom links preserve current wiki,
+  // wiki link preserves current zoom) plus the token. We compose them per
+  // link below rather than pre-computing, because each link overrides one
+  // specific param.
+  function linkHref(linkZoom: number, linkWiki: boolean): string {
+    var q = "";
+    q = appendQuery(q, "zoom", String(linkZoom));
+    if (linkWiki) {
+      q = appendQuery(q, "wiki", "1");
+    }
+    if (token !== "") {
+      q = appendQuery(q, "token", token);
+    }
+    return "/kindle/map" + q;
+  }
+
+  // Build the zoom link list. The active level gets `.active` (bold).
+  var zoomLinkParts: string[] = [];
+  for (var i = 0; i < ZOOM_LEVELS.length; i++) {
+    var lvl = ZOOM_LEVELS[i];
+    var cls = lvl === zoom ? 'zoom-link active"' : 'zoom-link"';
+    zoomLinkParts.push(
+      '<a class="' + cls + ' href="' + linkHref(lvl, wiki) + '">' + lvl + "%</a>",
+    );
+  }
+  var zoomLinks = zoomLinkParts.join(" ");
+
+  // Wiki toggle link: shows the opposite of the current state.
+  var wikiHref = linkHref(zoom, !wiki);
+  var wikiLabel = wiki ? "Wiki ON" : "Wiki OFF";
+
+  // Tab bar: Monitor (link) + Map (active span).
+  var monitorTabHref = "/kindle/" + tq;
 
   return (
     "<!DOCTYPE html>"
@@ -44,80 +131,56 @@ export function renderMapHtml(
     + '<meta http-equiv="refresh" content="' + sec + '">'
     + "<title>KaijiBot Cognitive Map</title>"
     + "<style>"
-    + 'body { margin: 0; padding: 8px; background: #fff; color: #000;'
-    + ' font-family: "Bookerly", "Palatino", serif; font-size: 18px;'
+    + 'body { font-family: "Bookerly", "Palatino", serif; font-size: 24px;'
+    + " margin: 0; padding: 8px; background: #fff; color: #000;"
     + " line-height: 1.3; }"
-    + ".head { border-bottom: 1px solid #000; padding: 4px 0; }"
-    // clearfix for the floated tools — uses display:block (allowed on Kindle)
-    + '.head::after { content: ""; display: block; clear: both; }'
-    + ".title { font-size: 22px; font-weight: bold; }"
-    + ".tools { float: right; margin-top: 4px; }"
-    + '.tools button { font-size: 14px; margin-left: 4px; padding: 2px 8px;'
-    + ' font-family: "Bookerly", "Palatino", serif; }'
-    + ".scroller { overflow: auto; width: 100%; height: 860px;"
-    + " margin: 8px 0; }"
-    + "#mapimg { width: 100%; border: 1px solid #999; }"
-    + ".nav { margin: 8px 0; font-size: 14px; }"
-    + ".nav a { color: #000; text-decoration: underline; }"
-    + ".note { color: #555; font-size: 12px; margin-top: 8px; }"
+    + ".tabs { border-bottom: 3px solid #000; margin-bottom: 12px; padding: 0; }"
+    + ".tab { display: inline-block; padding: 8px 20px; font-size: 16px;"
+    + ' font-weight: bold; text-decoration: none; color: #666;'
+    + " border: 2px solid #ccc; border-bottom: none; }"
+    + ".tab-active { color: #000; border: 2px solid #000;"
+    + " border-bottom: 3px solid #fff; }"
+    + ".title { font-size: 22px; font-weight: bold; margin: 8px 0 4px 0; }"
+    + ".zoom-links { margin: 8px 0; font-size: 18px; }"
+    + '.zoom-links a { margin-right: 12px; color: #000; text-decoration: underline; }'
+    + ".zoom-links .active { font-weight: bold; font-size: 22px; }"
+    + ".scroller { overflow: auto; width: 100%; height: 800px;"
+    + " border: 1px solid #999; background: #eee; }"
+    + ".scroller img { display: block; }"
     + ".footer { border-top: 1px solid #999; margin-top: 8px; padding-top: 4px;"
-    + " font-size: 11px; color: #555; }"
+    + " font-size: 14px; color: #555; }"
+    + ".note { color: #555; font-size: 14px; margin-top: 4px; }"
     + "</style>"
     + "</head>"
     + "<body>"
-    + '<div class="head">'
-    // Floated tools come first in source order so the float clears correctly.
-    + '<div class="tools">'
-    + '<button onclick="zoomOut()">A-</button>'
-    + '<button onclick="zoomIn()">A+</button>'
-    + '<button onclick="toggleWiki()">Wiki</button>'
+    // ── Tab bar (Monitor | Map) ──
+    + '<div class="tabs">'
+    + '<a class="tab" href="' + monitorTabHref + '">Monitor</a>'
+    + '<span class="tab tab-active">Map</span>'
     + "</div>"
+    // ── Title ──
     + '<div class="title">Cognitive Map</div>'
+    // ── Zoom + Wiki controls (all plain <a> links — no JS) ──
+    + '<div class="zoom-links">'
+    + zoomLinks
+    + ' | <a class="zoom-link' + (wiki ? " active" : "") + '"'
+    + ' href="' + wikiHref + '">' + wikiLabel + "</a>"
     + "</div>"
-    + '<div class="nav"><a href="/kindle/' + tq + '">Monitor</a></div>'
+    // ── Scrollable SVG container ──
+    // The img has NO width style — it uses the SVG's natural dimensions
+    // (which change with the zoom param). At zoom=200 the SVG is 1516x2048
+    // and this container scrolls.
     + '<div class="scroller">'
-    + '<img id="mapimg" src="/kindle/api/map.svg' + tq + '"'
-    + ' style="width:100%; border:1px solid #999;"/>'
+    + '<img src="' + svgSrc + '" alt="Cognitive map" />'
     + "</div>"
+    // ── Footer ──
     + '<div class="footer">'
     + "Auto-refresh: " + sec + "s"
-    + " | Vector map served as standalone SVG image."
+    + " | Vector map served as standalone SVG."
+    + ' | <a href="' + monitorTabHref + '">Monitor</a>'
     + "</div>"
-    + '<div class="note">Use A-/A+ to zoom, Wiki to toggle concepts.'
+    + '<div class="note">Use the zoom links to enlarge.'
     + " Read-only view of AI understanding.</div>"
-    + "<script>"
-    // ── Token query string injected for the toggleWiki URL builder. ──
-    // Either "" or "?token=xxx".
-    + "var TOKEN_Q = \"" + tq + "\";"
-    // ── Zoom: tracks image width as a percentage. ──
-    //    zoomIn adds 25 (max 300), zoomOut subtracts 20 (min 50).
-    + "var zoomPct = 100;"
-    + "function applyZoom() {"
-    + 'document.getElementById("mapimg").style.width = zoomPct + "%";'
-    + "}"
-    + "function zoomIn() {"
-    + "zoomPct = zoomPct + 25;"
-    + "if (zoomPct > 300) zoomPct = 300;"
-    + "applyZoom();"
-    + "}"
-    + "function zoomOut() {"
-    + "zoomPct = zoomPct - 20;"
-    + "if (zoomPct < 50) zoomPct = 50;"
-    + "applyZoom();"
-    + "}"
-    // ── Wiki toggle: rebuilds the img src with/without ?wiki=1. ──
-    //    Keeps any existing ?token=xxx (appended as &wiki=1).
-    + "var wikiOn = 0;"
-    + "function toggleWiki() {"
-    + "wikiOn = wikiOn === 0 ? 1 : 0;"
-    + 'var base = "/kindle/api/map.svg";'
-    + "var q = TOKEN_Q;"
-    + "if (wikiOn === 1) {"
-    + 'q = q ? q + "&wiki=1" : "?wiki=1";'
-    + "}"
-    + 'document.getElementById("mapimg").setAttribute("src", base + q);'
-    + "}"
-    + "</script>"
     + "</body>"
     + "</html>"
   );

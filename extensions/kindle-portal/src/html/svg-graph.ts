@@ -35,10 +35,13 @@ const DOMAIN_RADIUS = 300;
 const WIKI_RADIUS = 430;
 
 // ── Node box dimensions ──
-const DOMAIN_W = 160;
-const DOMAIN_H = 44;
-const WIKI_W = 100;
-const WIKI_H = 28;
+// Boxes are sized to fit the larger label fonts (20px domain / 14px wiki)
+// so text doesn't overflow at 100% zoom. Scaling happens at the SVG root
+// via the `zoom` option, not inside these constants.
+const DOMAIN_W = 200;
+const DOMAIN_H = 52;
+const WIKI_W = 120;
+const WIKI_H = 32;
 
 // ── Label limit for wiki nodes ──
 const WIKI_LABEL_MAX = 12;
@@ -48,16 +51,29 @@ const STYLE_DOMAIN_EDGE = 'stroke="#000" stroke-width="1.5"';
 const STYLE_WIKI_EDGE = 'stroke="#ccc" stroke-width="0.5"';
 const STYLE_CROSS_EDGE = 'stroke="#666" stroke-width="1" stroke-dasharray="4,2"';
 
-const SVG_ROOT_OPEN =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="' +
-  CANVAS_W +
-  '" height="' +
-  CANVAS_H +
-  '" viewBox="0 0 ' +
-  CANVAS_W +
-  " " +
-  CANVAS_H +
-  '">';
+/**
+ * Build an `<svg>` root opening tag with physical dimensions scaled by
+ * `zoomFactor` while keeping the viewBox fixed at "0 0 758 1024".
+ *
+ * The browser scales the rendered SVG to the specified width/height, which
+ * is what Kindle's `<img src="*.svg">` renderer honors. A zoom of 200
+ * produces a 1516x2048 SVG that the surrounding scroll container pans over.
+ */
+function buildSvgRootOpen(zoomFactor: number): string {
+  var w = Math.round(CANVAS_W * zoomFactor);
+  var h = Math.round(CANVAS_H * zoomFactor);
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+    w +
+    '" height="' +
+    h +
+    '" viewBox="0 0 ' +
+    CANVAS_W +
+    " " +
+    CANVAS_H +
+    '">'
+  );
+}
 
 // White background rect — the FIRST child of the SVG root. Kindle's SVG
 // renderer (used when the SVG is loaded via <img src="...svg">) ignores CSS
@@ -108,9 +124,9 @@ interface Pt {
 function renderDomainNode(n: MapNode, cx: number, cy: number): string {
   const left = cx - DOMAIN_W / 2;
   const top = cy - DOMAIN_H / 2;
-  const barH = Math.round(clamp(n.strength, 0, 1) * 36);
+  const barH = Math.round(clamp(n.strength, 0, 1) * 44);
   const barY = top + (DOMAIN_H - barH) / 2;
-  const textY = Math.round(cy + 6); // baseline offset for ~vertical centering
+  const textY = Math.round(cy + 7); // baseline offset for ~vertical centering of 20px font
   return (
     '<rect x="' +
     r1(left) +
@@ -132,7 +148,7 @@ function renderDomainNode(n: MapNode, cx: number, cy: number): string {
     r1(cx) +
     '" y="' +
     textY +
-    '" text-anchor="middle" font-size="16" font-weight="bold" fill="#000" font-family="serif">' +
+    '" text-anchor="middle" font-size="20" font-weight="bold" fill="#000" font-family="serif">' +
     escapeXml(n.label) +
     "</text>"
   );
@@ -142,7 +158,7 @@ function renderDomainNode(n: MapNode, cx: number, cy: number): string {
 function renderWikiNode(n: MapNode, cx: number, cy: number): string {
   const left = cx - WIKI_W / 2;
   const top = cy - WIKI_H / 2;
-  const textY = Math.round(cy + 4); // baseline offset for 12px font
+  const textY = Math.round(cy + 5); // baseline offset for 14px font
   const label = escapeXml(truncateLabel(n.label, WIKI_LABEL_MAX));
   return (
     '<rect x="' +
@@ -158,7 +174,7 @@ function renderWikiNode(n: MapNode, cx: number, cy: number): string {
     r1(cx) +
     '" y="' +
     textY +
-    '" text-anchor="middle" font-size="12" fill="#333" font-family="serif">' +
+    '" text-anchor="middle" font-size="14" fill="#333" font-family="serif">' +
     label +
     "</text>"
   );
@@ -196,17 +212,25 @@ function renderLine(a: Pt, b: Pt, style: string): string {
  * and cross-domain-wiki edges) is omitted entirely — producing a lighter
  * SVG for the toggle-off case. Default is `wiki: true` (backward compatible).
  *
+ * When `opts.zoom` is provided (e.g. 200), the SVG root's physical width and
+ * height are scaled proportionally while the viewBox stays fixed at
+ * "0 0 758 1024". The browser scales the rendered SVG to the new size,
+ * producing a zoom effect for the Kindle `<img>` renderer.
+ *
  * @param graph   The cognitive map graph (nodes + edges).
- * @param opts    Optional: `width` (reserved, currently unused) and `wiki`
- *                (boolean, default true) controlling wiki-layer emission.
- * @returns A complete `<svg>...</svg>` string sized 758x1024 with a white
- *          background rect as the first child.
+ * @param opts    Optional: `width` (reserved), `wiki` (boolean, default true)
+ *                controlling wiki-layer emission, and `zoom` (number, default
+ *                100) controlling physical SVG dimensions.
+ * @returns A complete `<svg>...</svg>` string with a white background rect
+ *          as the first child.
  */
 export function renderMapGraphSvg(
   graph: MapGraph,
-  opts?: { width?: number; wiki?: boolean },
+  opts?: { width?: number; wiki?: boolean; zoom?: number },
 ): string {
   const includeWiki = opts?.wiki !== false;
+  const zoomFactor = (opts?.zoom ?? 100) / 100;
+  const svgOpen = buildSvgRootOpen(zoomFactor);
   const nodes = graph.nodes;
 
   // Partition nodes by kind.
@@ -248,7 +272,7 @@ export function renderMapGraphSvg(
   // ── Empty state: no domain nodes → centered message ──
   if (dn === 0) {
     return (
-      SVG_ROOT_OPEN +
+      svgOpen +
       SVG_BG_RECT +
       '<text x="' +
       CENTER_X +
@@ -297,7 +321,7 @@ export function renderMapGraphSvg(
     '<g id="domain-layer">' + domainEdges.join("") + domainNodeSvg.join("") + "</g>";
 
   if (!includeWiki) {
-    return SVG_ROOT_OPEN + SVG_BG_RECT + domainLayer + "</svg>";
+    return svgOpen + SVG_BG_RECT + domainLayer + "</svg>";
   }
 
   const wikiLayer =
@@ -307,5 +331,5 @@ export function renderMapGraphSvg(
     wikiNodeSvg.join("") +
     "</g>";
 
-  return SVG_ROOT_OPEN + SVG_BG_RECT + domainLayer + wikiLayer + "</svg>";
+  return svgOpen + SVG_BG_RECT + domainLayer + wikiLayer + "</svg>";
 }

@@ -11,7 +11,7 @@ import { lintKindleHtml } from "./es5-lint.js";
 // map-template will be imported once implemented
 import { renderMapHtml } from "./map-template.js";
 import { renderMonitorHtml } from "./monitor-template.js";
-import type { FleetSnapshot, FleetAgent } from "../types.js";
+import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 
 describe("renderMapHtml", () => {
   it("map html passes lintKindleHtml", () => {
@@ -33,41 +33,84 @@ describe("renderMapHtml", () => {
     expect(html).not.toContain("map.png");
   });
 
-  it("renders zoom buttons A- and A+", () => {
+  it("renders tab bar with Monitor link and active Map span", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    expect(html).toContain("A-");
-    expect(html).toContain("A+");
+    expect(html).toContain('class="tabs"');
+    expect(html).toContain('class="tab"');
+    expect(html).toContain('class="tab tab-active"');
+    expect(html).toContain(">Monitor</a>");
+    expect(html).toContain(">Map</span>");
   });
 
-  it("declares zoomIn, zoomOut, and toggleWiki JS functions", () => {
+  it("renders zoom links for 100%, 150%, 200%, 300%", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    expect(html).toContain("function zoomIn");
-    expect(html).toContain("function zoomOut");
-    expect(html).toContain("function toggleWiki");
+    expect(html).toContain("100%</a>");
+    expect(html).toContain("150%</a>");
+    expect(html).toContain("200%</a>");
+    expect(html).toContain("300%</a>");
+    expect(html).toContain("/kindle/map?zoom=100");
+    expect(html).toContain("/kindle/map?zoom=150");
+    expect(html).toContain("/kindle/map?zoom=200");
+    expect(html).toContain("/kindle/map?zoom=300");
   });
 
-  it("toggleWiki rebuilds img src with wiki=1 when enabling wiki layer", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+  it("marks the current zoom level as active", () => {
+    const html100 = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 100 });
+    expect(html100).toContain('zoom-link active" href="/kindle/map?zoom=100');
+
+    const html200 = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 200 });
+    expect(html200).toContain('zoom-link active" href="/kindle/map?zoom=200');
+    // Non-active levels do NOT carry the active class.
+    expect(html200).not.toContain('active" href="/kindle/map?zoom=100');
+  });
+
+  it("includes wiki toggle link that preserves zoom", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 150 });
+    expect(html).toContain("Wiki");
+    // Toggling wiki from a zoom=150 state should keep zoom=150.
+    expect(html).toContain("/kindle/map?zoom=150&wiki=1");
+  });
+
+  it("img src includes zoom param when provided", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 200 });
+    expect(html).toContain('src="/kindle/api/map.svg?zoom=200');
+  });
+
+  it("img src includes wiki=1 when wiki is enabled", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 }, { wiki: true });
     expect(html).toContain("wiki=1");
-    expect(html).toContain("TOKEN_Q");
+    expect(html).toContain('src="/kindle/api/map.svg?zoom=100&wiki=1');
   });
 
-  it("contains link back to monitor", () => {
+  it("contains NO javascript (no <script> tag, no onclick)", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    expect(html).toContain('href="/kindle/');
+    expect(html).not.toContain("<script");
+    expect(html).not.toContain("</script>");
+    expect(html).not.toContain("onclick");
+    expect(html).not.toContain("function ");
+    expect(html).not.toContain("var ");
   });
 
-  it("includes accessToken in monitor link and img src when configured", () => {
+  it("contains link back to monitor via tab and footer", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain('href="/kindle/"');
+    expect(html).toContain(">Monitor</a>");
+  });
+
+  it("includes accessToken in tab link and img src when configured", () => {
     const html = renderMapHtml({
       mapRefreshSeconds: 300,
       accessToken: "s3cret",
     });
-    expect(html).toContain("?token=s3cret");
+    expect(html).toContain("token=s3cret");
+    expect(html).toContain('href="/kindle/?token=s3cret"');
+    expect(html).toContain("src=\"/kindle/api/map.svg?zoom=100&token=s3cret");
   });
 
   it("omits token query when accessToken undefined", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('href="/kindle/"');
+    expect(html).not.toContain("token=");
   });
 
   it("uses serif font stack", () => {
@@ -100,10 +143,20 @@ describe("renderMapHtml", () => {
     expect(html).not.toContain("`");
   });
 
-  it("img src defaults to no wiki=1 (wiki layer off until toggled)", () => {
+  it("img is inside a scrollable container", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    // The static img src should be exactly /kindle/api/map.svg (no ?wiki=1).
-    expect(html).toContain('src="/kindle/api/map.svg"');
+    expect(html).toContain('class="scroller"');
+    expect(html).toContain("overflow: auto");
+  });
+
+  it("img has no inline width style (uses natural SVG dimensions)", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    // The img tag should not set a width style — it relies on the SVG's
+    // natural dimensions which change with the zoom param.
+    const imgMatch = html.match(/<img[^>]*>/);
+    expect(imgMatch).not.toBeNull();
+    expect(imgMatch![0]).not.toContain("width:");
+    expect(imgMatch![0]).not.toContain("width=");
   });
 });
 
@@ -141,32 +194,38 @@ describe("renderMonitorHtml", () => {
     };
   }
 
+  function makeRegisteredAgent(over: Partial<RegisteredAgent> = {}): RegisteredAgent {
+    return {
+      id: "main",
+      model: "zai/glm-5.2",
+      isDefault: true,
+      status: "idle",
+      sessionCount: 5,
+      ...over,
+    };
+  }
+
   it("monitor html passes lintKindleHtml", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
     expect(lintKindleHtml(html)).toEqual([]);
   });
 
+  it("renders tab bar with Monitor active and Map link", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain('class="tabs"');
+    expect(html).toContain("tab-active");
+    expect(html).toContain(">Monitor</span>");
+    expect(html).toContain('href="/kindle/map');
+  });
+
   it("renders idle state when no active agents", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("No active agents");
     expect(html).toContain("IDLE");
   });
 
   it("renders ACTIVE when agents present", () => {
     const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1" })]), cfg);
     expect(html).toContain("ACTIVE");
-  });
-
-  it("renders 3 agent cards for 3-agent snapshot", () => {
-    const snap = snapshotWith([
-      makeAgent({ runId: "r1", sessionLabel: "Agent 1" }),
-      makeAgent({ runId: "r2", sessionLabel: "Agent 2" }),
-      makeAgent({ runId: "r3", sessionLabel: "Agent 3" }),
-    ]);
-    const html = renderMonitorHtml(snap, cfg);
-    expect(html).toContain("Agent 1");
-    expect(html).toContain("Agent 2");
-    expect(html).toContain("Agent 3");
   });
 
   it("status symbol mapping: thinking=■", () => {
@@ -243,18 +302,6 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain("Model: unknown");
   });
 
-  it("truncates long session labels with ellipsis", () => {
-    const longLabel = "A".repeat(50);
-    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: longLabel })]), cfg);
-    expect(html).toContain("A".repeat(40) + "...");
-    expect(html).not.toContain(longLabel);
-  });
-
-  it("prepends [STALE] for stale agents", () => {
-    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1", stale: true })]), cfg);
-    expect(html).toContain("[STALE]");
-  });
-
   it("includes link to map page", () => {
     const html = renderMonitorHtml(emptySnapshot, cfgWithToken);
     expect(html).toContain('href="/kindle/map');
@@ -290,42 +337,109 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain('font-family: "Bookerly"');
   });
 
-  it("renders metrics row with three .metric boxes", () => {
+  it("uses 30px base font", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("font-size: 30px");
+  });
+
+  it("declares zoomLevel starting at 30", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("var zoomLevel = 30;");
+  });
+
+  it("renders usage metrics row with AGENTS, TOKENS, COST labels", () => {
     const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1" })]), cfg);
     expect(html).toContain('class="metrics-row');
-    const metricMatches = html.match(/class="metric"/g);
-    expect(metricMatches).not.toBeNull();
-    expect(metricMatches!.length).toBe(3);
     expect(html).toContain("AGENTS");
     expect(html).toContain("TOKENS");
     expect(html).toContain("COST");
   });
 
-  it("renders ACTIVE AGENTS and COGNITIVE MAP section headers", () => {
+  it("renders COGNITIVE STATUS, AGENTS, and ACTIVE SESSIONS section headers", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("ACTIVE AGENTS");
-    expect(html).toContain("COGNITIVE MAP");
+    expect(html).toContain("COGNITIVE STATUS");
+    expect(html).toContain("AGENTS");
+    expect(html).toContain("ACTIVE SESSIONS");
     expect(html).toContain("section-h");
   });
 
-  it("renders cognitive stat counts line", () => {
+  it("renders cognitive stat counts and labels", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("domains");
-    expect(html).toContain("insights");
-    expect(html).toContain("skills");
-    expect(html).toContain("corrections");
+    expect(html).toContain("DOMAINS");
+    expect(html).toContain("CORRECTIONS");
+    expect(html).toContain("SKILLS");
   });
 
-  it("renders zoom buttons A- and A+", () => {
+  it("renders stat-bar for cognitive visualization", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("A-");
-    expect(html).toContain("A+");
+    expect(html).toContain("stat-bar");
+    expect(html).toContain("stat-bar-fill");
   });
 
-  it("declares zoomIn and zoomOut JS functions", () => {
+  it("renders 'No active sessions' when no active runs", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("function zoomIn");
-    expect(html).toContain("function zoomOut");
-    expect(html).toContain("var zoomLevel = 22;");
+    expect(html).toContain("No active sessions");
+  });
+
+  it("shows registered agent IDs, not UUIDs", () => {
+    const agents: RegisteredAgent[] = [
+      makeRegisteredAgent({ id: "main", sessionCount: 42 }),
+      makeRegisteredAgent({ id: "testagent", isDefault: false, sessionCount: 1 }),
+    ];
+    const html = renderMonitorHtml(emptySnapshot, cfg, agents);
+    expect(html).toContain("main");
+    expect(html).toContain("testagent");
+    expect(html).not.toContain("f6fecfcf");
+    expect(html).not.toContain("run-1");
+  });
+
+  it("marks registered agent as ACTIVE when snapshot has matching agentId", () => {
+    const agents: RegisteredAgent[] = [
+      makeRegisteredAgent({ id: "main", status: "idle" }),
+    ];
+    const snap = snapshotWith([makeAgent({ agentId: "main", sessionLabel: "A1" })]);
+    const html = renderMonitorHtml(snap, cfg, agents);
+    expect(html).toContain("● ACTIVE");
+  });
+
+  it("shows idle registered agent with ○ IDLE", () => {
+    const agents: RegisteredAgent[] = [
+      makeRegisteredAgent({ id: "testagent", status: "idle" }),
+    ];
+    const html = renderMonitorHtml(emptySnapshot, cfg, agents);
+    expect(html).toContain("○ IDLE");
+  });
+
+  it("renders session count for registered agents", () => {
+    const agents: RegisteredAgent[] = [
+      makeRegisteredAgent({ id: "main", sessionCount: 42 }),
+    ];
+    const html = renderMonitorHtml(emptySnapshot, cfg, agents);
+    expect(html).toContain("42 sessions");
+  });
+
+  it("renders '1 session' singular for single-session agent", () => {
+    const agents: RegisteredAgent[] = [
+      makeRegisteredAgent({ id: "testagent", sessionCount: 1 }),
+    ];
+    const html = renderMonitorHtml(emptySnapshot, cfg, agents);
+    expect(html).toContain("1 session");
+  });
+
+  it("renders relative time for lastActiveAt", () => {
+    const agents: RegisteredAgent[] = [
+      makeRegisteredAgent({ id: "main", lastActiveAt: Date.now() - 120000 }),
+    ];
+    const html = renderMonitorHtml(emptySnapshot, cfg, agents);
+    expect(html).toContain("ago");
+  });
+
+  it("does not show runId UUIDs when agentId is available", () => {
+    const snap = snapshotWith([
+      makeAgent({ runId: "f6fecfcf-uuid-1234", agentId: "main", sessionLabel: "A1" }),
+    ]);
+    const html = renderMonitorHtml(snap, cfg);
+    expect(html).toContain("main");
+    expect(html).not.toContain("f6fecfcf");
   });
 });

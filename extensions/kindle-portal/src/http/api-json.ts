@@ -17,6 +17,7 @@ import { buildMapGraph } from "../map/graph-builder.js";
 import { readPersona } from "../map/persona-reader.js";
 import { readWikiGraph } from "../map/wiki-reader.js";
 import { readCognitiveStats, type CognitiveStats } from "../monitor/cognitive-reader.js";
+import { readAllAgents } from "../monitor/agent-reader.js";
 
 // ── Public types ──
 
@@ -79,18 +80,36 @@ export async function handleFleetJson(
     let estimatedCostUsd = 0;
     let totalToolCalls = 0;
     for (const a of snapshot.agents) {
-      if (a.totalTokens !== undefined) totalTokens += a.totalTokens;
-      if (a.estimatedCostUsd !== undefined) estimatedCostUsd += a.estimatedCostUsd;
+      if (a.totalTokens !== undefined) {
+        totalTokens += a.totalTokens;
+      }
+      if (a.estimatedCostUsd !== undefined) {
+        estimatedCostUsd += a.estimatedCostUsd;
+      }
       totalToolCalls += a.toolCallCount;
     }
 
     // Cognitive stats are best-effort; failure yields zeros, never throws.
     const cognitive: CognitiveStats = await readCognitiveStats(ctx.stateDir);
 
+    const registeredAgents = await readAllAgents(ctx.stateDir, ctx.loadStore);
+
+    const activeAgentIds = new Set<string>();
+    for (const a of snapshot.agents) {
+      if (a.agentId) {
+        activeAgentIds.add(a.agentId);
+      }
+    }
+    const mergedAgents = registeredAgents.map((ra) => ({
+      ...ra,
+      status: activeAgentIds.has(ra.id) ? ("active" as const) : ra.status,
+    }));
+
     const payload = {
       ...snapshot,
       usage: { totalTokens, estimatedCostUsd, totalToolCalls },
       cognitive,
+      registeredAgents: mergedAgents,
     };
     send(res, 200, payload);
   } catch (err) {
