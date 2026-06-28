@@ -419,6 +419,7 @@ export function renderApp(state: AppViewState) {
               .value=${state.sessionKey}
               ?disabled=${!state.connected}
               title="Switch session"
+              aria-label="Switch session"
               @change=${(e: Event) => {
                 const next = (e.target as HTMLSelectElement).value;
                 if (state.sessionKey === next) {
@@ -527,7 +528,7 @@ export function renderApp(state: AppViewState) {
           : nothing}
         <section class="content-header ${isChat ? "content-header--chat" : ""}">
           <div>
-            <div class="page-title">${titleForTab(state.tab)}</div>
+            <h1 class="page-title">${titleForTab(state.tab)}</h1>
             <div class="page-sub">${subtitleForTab(state.tab)}</div>
           </div>
           <div class="page-meta">

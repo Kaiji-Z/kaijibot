@@ -214,13 +214,13 @@
 /* ── Blockquotes ── */
 
 .sidebar-markdown :where(blockquote) {
-  border-left: 3px solid var(--border-strong);
   padding: 8px 14px;
   margin-left: 0;
   margin-top: 0.75em;
   color: var(--muted);
   background: var(--accent-subtle);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 :root[data-theme-mode="light"] .sidebar-markdown :where(blockquote) {

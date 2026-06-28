@@ -1864,7 +1864,6 @@
   font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--text-strong);
-  border-left: 3px solid var(--accent);
   line-height: 1.3;
 }
 

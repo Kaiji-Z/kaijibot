@@ -90,13 +90,12 @@
 }
 
 .chat-text :where(blockquote) {
-  border-left: 3px solid var(--border-strong);
-  padding-left: 12px;
+  padding: 8px 12px;
   margin-left: 0;
   color: var(--muted);
   background: var(--accent-subtle);
-  padding: 8px 12px;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .chat-text :where(blockquote blockquote) {
@@ -152,8 +151,6 @@
 }
 
 .chat-text[dir="rtl"] :where(blockquote) {
-  border-left: none;
-  border-right: 3px solid var(--border);
   padding-left: 0;
   padding-right: 1em;
 }

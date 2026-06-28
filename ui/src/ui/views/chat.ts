@@ -1274,6 +1274,7 @@ export function renderChat(props: ChatProps) {
           accept=${CHAT_ATTACHMENT_ACCEPT}
           multiple
           class="agent-chat__file-input"
+          aria-label="Attach file"
           @change=${(e: Event) => handleFileSelect(e, props)}
         />
 
@@ -1319,6 +1320,7 @@ export function renderChat(props: ChatProps) {
           @input=${handleInput}
           @paste=${(e: ClipboardEvent) => handlePaste(e, props)}
           placeholder=${vs.sttRecording ? "Listening..." : placeholder}
+          aria-label="Message input"
           rows="1"
         ></textarea>
 

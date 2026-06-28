@@ -3604,8 +3604,8 @@ td.data-table-key-col {
 
 .md-preview-dialog__body.sidebar-markdown blockquote {
   padding: 0.85rem 1rem;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--secondary) 60%, transparent);
   color: var(--text-soft, var(--text));
 }
