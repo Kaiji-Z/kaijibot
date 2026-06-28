@@ -64,9 +64,13 @@ if [ -z "$KB_VER" ]; then
   npm install -g kaijibot@latest --force $NPM_REGISTRY
 else
   info "安装 KaijiBot v${KB_VER}..."
-  npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force $NPM_REGISTRY || {
-    info "tarball 失败，回退 npm..."
-    npm install -g "kaijibot@${KB_VER}" --force --registry=https://registry.npmjs.org
+  # 1. Try npmmirror first (fast in China), 2. GitHub tarball, 3. npmjs.org
+  npm install -g "kaijibot@${KB_VER}" --force $NPM_REGISTRY || {
+    info "npmmirror 未同步，尝试 GitHub tarball..."
+    npm install -g "https://github.com/Kaiji-Z/kaijibot/releases/download/v${KB_VER}/kaijibot-${KB_VER}.tgz" --force $NPM_REGISTRY || {
+      info "tarball 也失败，回退 npmjs.org..."
+      npm install -g "kaijibot@${KB_VER}" --force --registry=https://registry.npmjs.org
+    }
   }
 fi
 ok "KaijiBot $(kaijibot --version)"
