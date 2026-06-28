@@ -24,7 +24,8 @@ import type { LoadSessionStore, SessionStoreSnapshot, SessionStoreEntry } from "
 import type { AgentEventPayload } from "./monitor/fleet-state.js";
 import { FleetState } from "./monitor/fleet-state.js";
 import { createKindlePortalService } from "./service.js";
-import { createKindleHttpHandler } from "./http/router.js";
+import { createKindleHttpHandler, createRootRedirectHandler, createShortPathHandler } from "./http/router.js";
+import { createKindleSetupTool, createKindleStatusTool } from "./tools.js";
 
 /** Conventional default agent id used to resolve workspace + session store. */
 const DEFAULT_AGENT_ID = "main";
@@ -71,21 +72,42 @@ export function registerKindlePortalPlugin(api: KaijiBotPluginApi, cfg: KindleCo
   });
 
   // 5. HTTP route (prefix match so /kindle, /kindle/, /kindle/api/* all land here).
+  const routeCtx = { state, cfg, loadStore, stateDir, workspaceDir };
   api.registerHttpRoute({
     path: "/kindle",
     auth: "plugin",
     match: "prefix",
     replaceExisting: true,
-    handler: createKindleHttpHandler({
-      state,
-      cfg,
-      loadStore,
-      stateDir,
-      workspaceDir,
-    }),
+    handler: createKindleHttpHandler(routeCtx),
   });
 
-  // 6. Register the background service.
+  // 5b. Root path: Kindle UA → 302 redirect to /kindle/ (saves typing on Kindle).
+  api.registerHttpRoute({
+    path: "/",
+    auth: "plugin",
+    match: "exact",
+    handler: createRootRedirectHandler(routeCtx),
+  });
+
+  // 5c. Short path: /k serves monitor HTML (shorter URL for Kindle keyboard).
+  api.registerHttpRoute({
+    path: "/k",
+    auth: "plugin",
+    match: "exact",
+    handler: createShortPathHandler(routeCtx),
+  });
+
+  // 6. Agent tools: let users configure Kindle Portal by chatting.
+  api.registerTool(
+    () => createKindleSetupTool({ logger: api.logger }),
+    { name: "kindle_setup" },
+  );
+  api.registerTool(
+    () => createKindleStatusTool({ logger: api.logger }),
+    { name: "kindle_status" },
+  );
+
+  // 7. Register the background service.
   api.registerService(service);
 
   api.logger.info?.("[kindle-portal] registered: HTTP route /kindle/* + service");

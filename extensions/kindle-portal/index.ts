@@ -29,11 +29,11 @@ export default definePluginEntry({
   async register(api: KaijiBotPluginApi) {
     const cfg = resolveKindleConfigSafe(api.pluginConfig, (issues) => {
       api.logger.warn?.(
-        `[kindle-portal] config validation failed; plugin stays dormant. Issues: ${JSON.stringify(issues)}`,
+        `[kindle-portal] config validation failed: ${JSON.stringify(issues)}`,
       );
     });
-    if (!cfg?.enabled) {
-      api.logger.info?.("[kindle-portal] disabled (config.enabled is false or config invalid).");
+    if (!cfg) {
+      api.logger.warn?.("[kindle-portal] config invalid, plugin stays dormant.");
       return;
     }
     registerKindlePortalPlugin(api, cfg);

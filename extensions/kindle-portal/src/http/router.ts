@@ -117,6 +117,68 @@ export function createKindleHttpHandler(
   };
 }
 
+// ── Root-path and short-path handlers (T2) ──
+//
+// Separate from createKindleHttpHandler because `/` and `/k` do not share
+// the `/kindle` prefix. T4 wires each creator to its path.
+
+/**
+ * Kindle UA contains "Kindle" or "Linux armv" (ARM Linux = Kindle/e-ink).
+ * The armv fallback covers non-Kindle-branded e-readers on the same engine.
+ */
+export function isKindleUserAgent(userAgent: string | undefined): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  return ua.includes("kindle") || ua.includes("linux armv");
+}
+
+/**
+ * `/`: Kindle UA → 302 to `/kindle/` (+ `?token=` when accessToken is set,
+ * so the redirect lands inside the auth gate without a second round-trip).
+ * Non-Kindle UA → returns `false` (pass-through to next registered handler).
+ */
+export function createRootRedirectHandler(ctx: RouterContext) {
+  return async function handler(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<boolean> {
+    if (!isKindleUserAgent(req.headers["user-agent"])) {
+      return false;
+    }
+    const tokenQuery = ctx.cfg.accessToken
+      ? "?token=" + encodeURIComponent(ctx.cfg.accessToken)
+      : "";
+    res.statusCode = 302;
+    res.setHeader("Location", "/kindle/" + tokenQuery);
+    res.end();
+    return true;
+  };
+}
+
+/**
+ * `/k`: serves the monitor HTML with the same auth gate as `/kindle/`
+ * (loopback always allowed; `?token=` required on LAN when configured).
+ */
+export function createShortPathHandler(ctx: RouterContext) {
+  return async function handler(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<boolean> {
+    const auth = authorize(req, {
+      accessToken: ctx.cfg.accessToken,
+      loopbackAllowed: true,
+    });
+    if (!auth.ok) {
+      res.statusCode = 403;
+      res.setHeader("Content-Type", "text/plain");
+      res.end(FORBIDDEN_BODY);
+      return true;
+    }
+    await handleMonitorHtml(req, res, ctx);
+    return true;
+  };
+}
+
 // ── Helpers ──
 
 /** Strip the query string so `..` inside `?…` is not flagged as traversal. */

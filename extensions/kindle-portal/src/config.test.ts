@@ -80,8 +80,19 @@ describe("KINDLE_PORTAL_CONFIG_SCHEMA", () => {
     expect(() => resolveKindleConfig({ accessToken: 123 })).toThrow();
   });
 
-  it("rejects empty accessToken after trim", () => {
-    expect(() => resolveKindleConfig({ accessToken: "   " })).toThrow();
+  it("accepts empty string accessToken as LAN-open", () => {
+    const cfg = resolveKindleConfig({ accessToken: "" });
+    expect(cfg.accessToken).toBeUndefined();
+  });
+
+  it("accepts whitespace-only accessToken as LAN-open", () => {
+    const cfg = resolveKindleConfig({ accessToken: "   " });
+    expect(cfg.accessToken).toBeUndefined();
+  });
+
+  it("preserves non-empty accessToken", () => {
+    const cfg = resolveKindleConfig({ accessToken: "s3cret" });
+    expect(cfg.accessToken).toBe("s3cret");
   });
 
   it("trims accessToken whitespace", () => {

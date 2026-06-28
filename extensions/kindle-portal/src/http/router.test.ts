@@ -4,7 +4,13 @@ import type { Mock } from "vitest";
 import type { FleetState } from "../monitor/fleet-state.js";
 import type { KindleConfig } from "../config.js";
 import type { LoadSessionStore } from "../monitor/scope-resolver.js";
-import { createKindleHttpHandler, type RouterContext } from "./router.js";
+import {
+  createKindleHttpHandler,
+  createRootRedirectHandler,
+  createShortPathHandler,
+  isKindleUserAgent,
+  type RouterContext,
+} from "./router.js";
 
 // ── vi.mock the handler modules so we test ROUTING, not handler bodies ──
 
@@ -52,10 +58,12 @@ function asRes(r: FakeResponse): ServerResponse {
 function fakeReq(opts: {
   remoteAddress?: string | undefined;
   url?: string;
+  headers?: Record<string, string>;
 }): IncomingMessage {
   return {
     socket: { remoteAddress: opts.remoteAddress },
     url: opts.url,
+    headers: opts.headers ?? {},
   } as unknown as IncomingMessage;
 }
 
@@ -302,8 +310,9 @@ describe("createKindleHttpHandler — path traversal", () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe("createKindleHttpHandler — auth gate", () => {
-  it("LAN without token + no accessToken configured → 403", async () => {
-    const handler = createKindleHttpHandler(fakeCtx({ cfg: fakeCfg({ accessToken: undefined }) }));
+  it("LAN without token + no accessToken configured → LAN-open (passes auth)", async () => {
+    const ctx = fakeCtx({ cfg: fakeCfg({ accessToken: undefined }) });
+    const handler = createKindleHttpHandler(ctx);
     const res = fakeRes();
 
     const handled = await handler(
@@ -312,9 +321,11 @@ describe("createKindleHttpHandler — auth gate", () => {
     );
 
     expect(handled).toBe(true);
-    expect(res.statusCode).toBe(403);
-    expect(res.end).toHaveBeenCalledWith("Forbidden");
-    expect(mocked.handleMonitorHtml).not.toHaveBeenCalled();
+    expect(mocked.handleMonitorHtml).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      ctx,
+    );
   });
 
   it("LAN with wrong token → 403", async () => {
@@ -388,5 +399,173 @@ describe("createKindleHttpHandler — error handling", () => {
 
     expect(handled).toBe(true);
     expect(res.statusCode).toBe(500);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// isKindleUserAgent
+// ═══════════════════════════════════════════════════════════════════
+
+describe("isKindleUserAgent", () => {
+  it("classic Kindle UA → true", () => {
+    const ua =
+      "Mozilla/5.0 (X11;; U; Linux armv7l; en-us) AppleWebKit/534.26 Kindle/3.0";
+    expect(isKindleUserAgent(ua)).toBe(true);
+  });
+
+  it("contains 'Kindle' (any case) → true", () => {
+    expect(isKindleUserAgent("Mozilla/5.0 (KHTML) kInDlE/5.0")).toBe(true);
+  });
+
+  it("contains 'Linux armv' → true", () => {
+    expect(isKindleUserAgent("Mozilla/5.0 (Linux armv7l) Gecko/1234")).toBe(true);
+  });
+
+  it("Chrome UA → false", () => {
+    const ua =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0 Safari/537.36";
+    expect(isKindleUserAgent(ua)).toBe(false);
+  });
+
+  it("undefined → false", () => {
+    expect(isKindleUserAgent(undefined)).toBe(false);
+  });
+
+  it("empty string → false", () => {
+    expect(isKindleUserAgent("")).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// createRootRedirectHandler
+// ═══════════════════════════════════════════════════════════════════
+
+describe("createRootRedirectHandler", () => {
+  it("Kindle UA → 302 redirect to /kindle/", async () => {
+    const handler = createRootRedirectHandler(fakeCtx());
+    const res = fakeRes();
+    const req = fakeReq({
+      remoteAddress: "192.168.1.5",
+      url: "/",
+      headers: { "user-agent": "Mozilla/5.0 (Linux armv7l) Kindle/3.0" },
+    });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(true);
+    expect(res.statusCode).toBe(302);
+    expect(res.setHeader).toHaveBeenCalledWith("Location", "/kindle/");
+    expect(res.end).toHaveBeenCalledWith();
+  });
+
+  it("Kindle UA + accessToken configured → 302 with token query appended", async () => {
+    const handler = createRootRedirectHandler(
+      fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) }),
+    );
+    const res = fakeRes();
+    const req = fakeReq({
+      remoteAddress: "192.168.1.5",
+      url: "/",
+      headers: { "user-agent": "Mozilla/5.0 (Linux armv7l) Kindle/3.0" },
+    });
+
+    await handler(req, asRes(res));
+
+    expect(res.statusCode).toBe(302);
+    expect(res.setHeader).toHaveBeenCalledWith(
+      "Location",
+      "/kindle/?token=s3cret",
+    );
+  });
+
+  it("non-Kindle UA → returns false (pass through, no response written)", async () => {
+    const handler = createRootRedirectHandler(fakeCtx());
+    const res = fakeRes();
+    const req = fakeReq({
+      remoteAddress: "192.168.1.5",
+      url: "/",
+      headers: { "user-agent": "Mozilla/5.0 Chrome/120 Safari/537.36" },
+    });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(false);
+    expect(res.setHeader).not.toHaveBeenCalled();
+    expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it("missing User-Agent header → returns false", async () => {
+    const handler = createRootRedirectHandler(fakeCtx());
+    const res = fakeRes();
+    const req = fakeReq({ remoteAddress: "192.168.1.5", url: "/", headers: {} });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(false);
+    expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it("Linux armv UA (without 'Kindle' brand) → detected as Kindle, 302", async () => {
+    const handler = createRootRedirectHandler(fakeCtx());
+    const res = fakeRes();
+    const req = fakeReq({
+      remoteAddress: "192.168.1.5",
+      url: "/",
+      headers: { "user-agent": "Mozilla/5.0 (Linux armv8l) Gecko E-reader" },
+    });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(true);
+    expect(res.statusCode).toBe(302);
+    expect(res.setHeader).toHaveBeenCalledWith("Location", "/kindle/");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// createShortPathHandler
+// ═══════════════════════════════════════════════════════════════════
+
+describe("createShortPathHandler", () => {
+  it("/k loopback → serves monitor HTML, returns true", async () => {
+    const ctx = fakeCtx();
+    const handler = createShortPathHandler(ctx);
+    const res = fakeRes();
+    const req = fakeReq({ remoteAddress: "127.0.0.1", url: "/k" });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(true);
+    expect(mocked.handleMonitorHtml).toHaveBeenCalledWith(req, asRes(res), ctx);
+  });
+
+  it("/k non-loopback without token + accessToken set → 403", async () => {
+    const handler = createShortPathHandler(
+      fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) }),
+    );
+    const res = fakeRes();
+    const req = fakeReq({ remoteAddress: "192.168.1.5", url: "/k" });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(true);
+    expect(res.statusCode).toBe(403);
+    expect(res.end).toHaveBeenCalledWith("Forbidden");
+    expect(mocked.handleMonitorHtml).not.toHaveBeenCalled();
+  });
+
+  it("/k non-loopback with valid token → serves monitor HTML", async () => {
+    const ctx = fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) });
+    const handler = createShortPathHandler(ctx);
+    const res = fakeRes();
+    const req = fakeReq({
+      remoteAddress: "192.168.1.5",
+      url: "/k?token=s3cret",
+    });
+
+    const handled = await handler(req, asRes(res));
+
+    expect(handled).toBe(true);
+    expect(mocked.handleMonitorHtml).toHaveBeenCalledWith(req, asRes(res), ctx);
   });
 });

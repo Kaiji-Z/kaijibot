@@ -130,13 +130,12 @@ describe("authorize", () => {
   });
 
   describe("LAN without accessToken configured", () => {
-    it("LAN no token + no accessToken → forbidden", () => {
+    it("LAN no token + no accessToken → LAN-open (ok)", () => {
       const res = authorize(
         fakeReq({ remoteAddress: "192.168.1.5", url: "/kindle/" }),
         LOOPBACK_OPTS,
       );
-      expect(res.ok).toBe(false);
-      expect(res.code).toBe("forbidden");
+      expect(res.ok).toBe(true);
     });
   });
 
@@ -190,10 +189,9 @@ describe("authorize", () => {
   });
 
   describe("edge: missing socket / remoteAddress", () => {
-    it("undefined remoteAddress + no accessToken → forbidden", () => {
+    it("undefined remoteAddress + no accessToken → LAN-open (ok)", () => {
       const res = authorize(fakeReq({ remoteAddress: undefined }), LOOPBACK_OPTS);
-      expect(res.ok).toBe(false);
-      expect(res.code).toBe("forbidden");
+      expect(res.ok).toBe(true);
     });
 
     it("undefined remoteAddress + accessToken configured + valid token → ok", () => {

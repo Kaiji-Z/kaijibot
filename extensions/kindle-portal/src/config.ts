@@ -6,8 +6,17 @@ import { buildPluginConfigSchema, type KaijiBotPluginConfigSchema } from "../api
  * All fields optional at input boundary; defaults applied by resolver.
  */
 export const KINDLE_PORTAL_CONFIG_SOURCE = z.strictObject({
+  /**
+   * Deprecated no-op. The gateway-level `plugins.entries.kindle-portal.enabled`
+   * is the only switch that matters. This field is kept in the schema so
+   * existing configs that still carry it do not fail strict validation.
+   */
   enabled: z.boolean().optional(),
-  accessToken: z.string().trim().min(1).optional(),
+  /**
+   * Optional shared secret for non-loopback requests.
+   * Empty string and undefined are equivalent (LAN-open, no token required).
+   */
+  accessToken: z.string().trim().optional(),
   refreshIntervalSeconds: z.number().int().min(15).optional(),
   mapRefreshSeconds: z.number().int().min(60).optional(),
   scope: z.enum(["last-active", "all-users", "specific-user"]).optional(),
@@ -74,9 +83,10 @@ export function resolveKindleConfigSafe(
 }
 
 function applyDefaults(input: KindleConfigInput | undefined): KindleConfig {
+  const rawToken = input?.accessToken;
   return {
     enabled: input?.enabled ?? KINDLE_PORTAL_DEFAULTS.enabled,
-    accessToken: input?.accessToken,
+    accessToken: rawToken && rawToken.length > 0 ? rawToken : undefined,
     refreshIntervalSeconds: input?.refreshIntervalSeconds ?? KINDLE_PORTAL_DEFAULTS.refreshIntervalSeconds,
     mapRefreshSeconds: input?.mapRefreshSeconds ?? KINDLE_PORTAL_DEFAULTS.mapRefreshSeconds,
     scope: input?.scope ?? KINDLE_PORTAL_DEFAULTS.scope,

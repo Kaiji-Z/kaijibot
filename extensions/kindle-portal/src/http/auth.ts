@@ -58,9 +58,10 @@ export function authorize(req: IncomingMessage, opts: AuthorizeOptions): Authori
     return { ok: true };
   }
 
-  // 2. No secret configured: non-loopback requests cannot be authenticated.
+  // 2. No secret configured: LAN-open mode (trusted home network).
+  //    Every non-loopback request is permitted without a token.
   if (!opts.accessToken) {
-    return { ok: false, code: "forbidden" };
+    return { ok: true };
   }
 
   // 3. Token configured: require ?token= query parameter.
