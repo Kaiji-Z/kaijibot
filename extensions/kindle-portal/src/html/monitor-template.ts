@@ -157,8 +157,9 @@ export function renderMonitorHtml(
   // ── Provider quota ──
   var quota = snapshot.providerQuota;
   var quotaSection: string;
-  if (quota) {
-    var pct = Math.max(0, Math.min(100, Math.round(quota.usedPercent)));
+  if (quota && quota.windows && quota.windows.length > 0) {
+    var w = quota.windows[0];
+    var pct = Math.max(0, Math.min(100, Math.round(w.usedPercent)));
     var model = quota.provider === "zai" ? "glm-5.2" : quota.provider;
     quotaSection = '<div class="quota-section">'
       + '<div class="quota-label">' + quota.displayName + " (" + model + ") \u2014 "

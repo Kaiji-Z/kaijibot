@@ -18,8 +18,7 @@ import { readPersona } from "../map/persona-reader.js";
 import { readWikiGraph } from "../map/wiki-reader.js";
 import { readCognitiveStats } from "../monitor/cognitive-reader.js";
 import { readAllAgents } from "../monitor/agent-reader.js";
-import { readUsageTotals } from "../monitor/usage-reader.js";
-import { readProviderQuota } from "../monitor/quota-reader.js";
+import { fetchGatewayStatus } from "../monitor/status-fetcher.js";
 
 // ── Public types ──
 
@@ -77,12 +76,8 @@ export async function handleFleetJson(
       pngCapability: ctx.pngCapability,
     });
 
-    // Cumulative + today usage from JSONL session scanning (never throws).
-    const usageTotals = await readUsageTotals(ctx.stateDir);
-
-    // Provider quota (5-min cached, never throws — null when unavailable).
-    const apiKey = process.env.ZAI_API_KEY ?? "";
-    const quota = apiKey ? await readProviderQuota(apiKey) : null;
+    // Aggregate usage + provider quota from gateway /api/status (5-min cached).
+    const gwStatus = await fetchGatewayStatus();
 
     // Cognitive stats best-effort; kept for the map page, monitor doesn't show them.
     const cognitive = await readCognitiveStats(ctx.stateDir);
@@ -100,17 +95,20 @@ export async function handleFleetJson(
       status: activeAgentIds.has(ra.id) ? ("active" as const) : ra.status,
     }));
 
+    const gwUsage = gwStatus?.usage;
     const payload = {
       ...snapshot,
-      usage: {
-        totalTokens: usageTotals.totalTokens,
-        totalCostUsd: usageTotals.totalCostUsd,
-        sessionCount: usageTotals.sessionCount,
-        todayTokens: usageTotals.todayTokens,
-        todayCostUsd: usageTotals.todayCostUsd,
-        todaySessions: usageTotals.todaySessions,
-      },
-      providerQuota: quota,
+      usage: gwUsage
+        ? {
+            totalTokens: gwUsage.month?.totalTokens ?? 0,
+            totalCostUsd: gwUsage.month?.totalCost ?? 0,
+            sessionCount: 0,
+            todayTokens: gwUsage.today?.totalTokens ?? 0,
+            todayCostUsd: gwUsage.today?.totalCost ?? 0,
+            todaySessions: 0,
+          }
+        : undefined,
+      providerQuota: gwStatus?.providers?.[0] ?? null,
       cognitive,
       registeredAgents: mergedAgents,
     };

@@ -376,7 +376,7 @@ describe("renderMonitorHtml", () => {
       providerQuota: {
         provider: "zai",
         displayName: "ZAI",
-        usedPercent: 78,
+        windows: [{ label: "Tokens (30d)", usedPercent: 78 }],
       },
     };
     const html = renderMonitorHtml(snap, cfg);

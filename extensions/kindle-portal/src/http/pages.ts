@@ -10,8 +10,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ApiHandlerContext } from "./api-json.js";
 import { buildFleetSnapshot } from "../monitor/snapshot-source.js";
 import { readAllAgents } from "../monitor/agent-reader.js";
-import { readUsageTotals } from "../monitor/usage-reader.js";
-import { readProviderQuota } from "../monitor/quota-reader.js";
+import { fetchGatewayStatus } from "../monitor/status-fetcher.js";
 import { readCognitiveStats } from "../monitor/cognitive-reader.js";
 import { renderMonitorHtml } from "../html/monitor-template.js";
 import { renderMapHtml } from "../html/map-template.js";
@@ -35,21 +34,21 @@ export async function handleMonitorHtml(
   });
   const registeredAgents = await readAllAgents(ctx.stateDir, ctx.loadStore);
 
-  // Enrich snapshot with usage + quota (never-throwing readers).
-  const usageTotals = await readUsageTotals(ctx.stateDir);
-  const apiKey = process.env.ZAI_API_KEY ?? "";
-  const quota = apiKey ? await readProviderQuota(apiKey) : null;
+  const gwStatus = await fetchGatewayStatus();
+  const gwUsage = gwStatus?.usage;
   const enriched = {
     ...snapshot,
-    usage: {
-      totalTokens: usageTotals.totalTokens,
-      totalCostUsd: usageTotals.totalCostUsd,
-      sessionCount: usageTotals.sessionCount,
-      todayTokens: usageTotals.todayTokens,
-      todayCostUsd: usageTotals.todayCostUsd,
-      todaySessions: usageTotals.todaySessions,
-    },
-    providerQuota: quota,
+    usage: gwUsage
+      ? {
+          totalTokens: gwUsage.month?.totalTokens ?? 0,
+          totalCostUsd: gwUsage.month?.totalCost ?? 0,
+          sessionCount: 0,
+          todayTokens: gwUsage.today?.totalTokens ?? 0,
+          todayCostUsd: gwUsage.today?.totalCost ?? 0,
+          todaySessions: 0,
+        }
+      : undefined,
+    providerQuota: gwStatus?.providers?.[0] ?? null,
   };
 
   const html = renderMonitorHtml(
