@@ -7,42 +7,100 @@
  *
  * Target: Kindle Paperwhite viewport (758px wide), 16-grayscale palette.
  * Layout uses floats + text-align only — old WebKit has no flexbox.
+ *
+ * E-ink design system:
+ * - 5-tone grayscale palette: #000 / #333 / #666 / #ccc / #fff
+ * - Bookerly serif stack (Kindle system font), falls back to Palatino/Times
+ * - 18px base font; em-based type scale so body.fontSize zoom propagates
+ * - 2px borders on cards, 3px rule under header, 1px dividers inside cards
+ * - Status accent: 4px left bar on thinking/tool_calling/failed cards;
+ *   completed cards dim to #666 (less prominent)
  */
 
 export const SHARED_CSS: string =
-  "body { margin: 0; padding: 8px; background: #fff; color: #000;"
-  + ' font-family: "Bookerly", "Palatino", serif; font-size: 14px;'
-  + " line-height: 1.3; }"
+  // ── Base ──────────────────────────────────────────────────────────────
+  "body { margin: 0; padding: 10px 12px 18px; background: #fff; color: #000;"
+  + ' font-family: "Bookerly", "Palatino", "Times", serif;'
+  + " font-size: 18px; line-height: 1.4; }"
   + "\n"
+  // ── Clearfix (float layout helper) ────────────────────────────────────
   + '.clearfix::after { content: ""; display: block; clear: both; }'
   + "\n"
-  + ".header { border-bottom: 1px solid #000; padding: 4px 0; margin-bottom: 8px; }"
+  // ── Header bar ────────────────────────────────────────────────────────
+  + ".header { border-bottom: 3px solid #000; padding: 4px 0 10px;"
+  + " margin-bottom: 12px; }"
   + "\n"
-  + ".title { font-size: 18px; font-weight: bold; }"
+  + ".title { font-size: 1.22em; font-weight: bold; margin: 0 0 4px;"
+  + " line-height: 1.2; letter-spacing: 0.3px; }"
   + "\n"
-  + ".meta { font-size: 12px; color: #555; }"
+  + ".meta { font-size: 0.78em; color: #333; line-height: 1.5; }"
   + "\n"
-  + ".card { border: 1px solid #999; padding: 8px; margin: 8px 0; background: #fff; }"
+  // ── Zoom controls (float right in header) ─────────────────────────────
+  + ".zoom-bar { float: right; margin-left: 10px; }"
   + "\n"
-  + ".card-id { font-size: 14px; font-weight: bold; margin-bottom: 4px; }"
+  + ".zoom-btn { display: inline-block; min-width: 36px; min-height: 36px;"
+  + " padding: 5px 10px; margin-left: 4px; border: 2px solid #000;"
+  + " background: #fff; color: #000;"
+  + ' font-family: "Bookerly", "Palatino", "Times", serif;'
+  + " font-size: 1em; font-weight: bold; line-height: 1.2;"
+  + " text-align: center; cursor: pointer; }"
   + "\n"
-  + ".card-row { font-size: 12px; margin: 2px 0; }"
+  // ── Inline badge (ACTIVE/IDLE indicator in header meta) ───────────────
+  + ".badge { font-weight: bold; white-space: nowrap; }"
   + "\n"
-  + ".status-thinking { font-weight: bold; }"
+  // ── Navigation ────────────────────────────────────────────────────────
+  + ".nav { margin: 10px 0; font-size: 0.89em; }"
   + "\n"
-  + ".status-tool_calling { font-weight: bold; }"
+  + ".nav a { color: #000; text-decoration: underline; font-weight: bold; }"
   + "\n"
-  + ".status-completed { color: #555; }"
+  // ── Lane note (always "unavailable" under plugin boundary) ────────────
+  + ".lane-note { font-size: 0.78em; color: #666; font-style: italic;"
+  + " margin: 12px 0; padding: 6px 10px; border-left: 3px solid #ccc; }"
   + "\n"
-  + ".status-failed { font-weight: bold; }"
+  // ── Empty state ───────────────────────────────────────────────────────
+  + ".empty { font-size: 1em; color: #333; padding: 28px 12px;"
+  + " text-align: center; border: 2px dashed #ccc; margin: 12px 0;"
+  + " font-style: italic; }"
   + "\n"
-  + ".lane-note { font-size: 12px; color: #555; font-style: italic; margin: 8px 0; }"
+  // ── Agent card ────────────────────────────────────────────────────────
+  + ".card { border: 2px solid #000; padding: 14px; margin: 10px 0;"
+  + " background: #fff; }"
   + "\n"
-  + ".empty { font-size: 14px; color: #555; padding: 16px 0; text-align: center; }"
+  + ".card-head { margin-bottom: 8px; }"
   + "\n"
-  + ".footer { border-top: 1px solid #999; margin-top: 8px; padding-top: 4px;"
-  + " font-size: 11px; color: #555; }"
+  + ".card-name { font-size: 1.11em; font-weight: bold; line-height: 1.25;"
+  + " word-wrap: break-word; overflow-wrap: break-word; }"
   + "\n"
-  + ".nav { margin: 4px 0; font-size: 12px; }"
+  + ".status-badge { float: right; margin-left: 10px; margin-bottom: 4px;"
+  + " padding: 2px 8px; border: 1px solid #000; background: #fff; }"
   + "\n"
-  + ".nav a { color: #000; text-decoration: underline; }";
+  + ".status-icon { font-size: 1.22em; font-weight: bold;"
+  + " letter-spacing: 0.5px; white-space: nowrap; }"
+  + "\n"
+  + ".card-body { border-top: 1px solid #ccc; padding-top: 8px;"
+  + " margin-bottom: 4px; }"
+  + "\n"
+  + ".card-row { font-size: 0.89em; color: #333; margin: 3px 0; }"
+  + "\n"
+  + ".card-foot { border-top: 1px solid #ccc; padding-top: 6px;"
+  + " margin-top: 6px; font-size: 0.78em; color: #666; }"
+  + "\n"
+  // ── Status modifiers (applied to .card) ───────────────────────────────
+  // Active/working/failed cards get a 4px black accent bar and bold body
+  // text so they pop on e-ink. Completed cards dim to #666 (less important).
+  + ".card.status-thinking, .card.status-tool_calling, .card.status-failed {"
+  + " border-left: 4px solid #000; font-weight: bold; }"
+  + "\n"
+  + ".card.status-completed { color: #666; }"
+  + "\n"
+  + ".card.status-completed .card-name { color: #666; }"
+  + "\n"
+  // ── Header state badge variants ───────────────────────────────────────
+  // Re-uses status-* class names but scoped to inline .badge context.
+  + ".badge .status-thinking { font-weight: bold; }"
+  + "\n"
+  + ".badge .status-completed { color: #666; font-weight: bold; }"
+  + "\n"
+  // ── Footer ────────────────────────────────────────────────────────────
+  + ".footer { border-top: 2px solid #000; margin-top: 14px;"
+  + " padding-top: 8px; font-size: 0.78em; color: #666; }";

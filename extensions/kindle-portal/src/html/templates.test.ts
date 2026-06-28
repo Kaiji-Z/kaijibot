@@ -11,74 +11,123 @@ import { lintKindleHtml } from "./es5-lint.js";
 // map-template will be imported once implemented
 import { renderMapHtml } from "./map-template.js";
 import { renderMonitorHtml } from "./monitor-template.js";
-import type { FleetSnapshot, FleetAgent } from "../types.js";
+import type { FleetSnapshot, FleetAgent, MapGraph } from "../types.js";
 
 describe("renderMapHtml", () => {
+  const emptyGraph: MapGraph = { nodes: [], edges: [] };
+
+  const sampleGraph: MapGraph = {
+    nodes: [
+      { id: "ai", label: "AI", kind: "domain", strength: 0.8 },
+      { id: "rust", label: "Rust", kind: "domain", strength: 0.6 },
+      {
+        id: "embedding",
+        label: "Vector Embeddings",
+        kind: "concept",
+        strength: 0.5,
+      },
+    ],
+    edges: [{ from: "ai", to: "rust", label: "related" }],
+  };
+
   it("map html passes lintKindleHtml", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
     expect(lintKindleHtml(html)).toEqual([]);
   });
 
   it("contains meta refresh with configured seconds", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
     expect(html).toContain('http-equiv="refresh"');
     expect(html).toContain('content="300"');
   });
 
-  it("contains map.png img tag", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    expect(html).toContain('src="/kindle/api/map.png');
+  it("embeds an inline SVG (no img / no map.png reference)", () => {
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain("<svg");
+    expect(html).not.toContain("map.png");
+    expect(html).not.toContain("<img");
+  });
+
+  it("svg carries a viewBox attribute (enables JS zoom)", () => {
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain("viewBox");
+  });
+
+  it("svg contains a domain-layer group (renderMapGraphSvg output)", () => {
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain('<g id="domain-layer"');
+  });
+
+  it("renders zoom buttons A- and A+", () => {
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain("A-");
+    expect(html).toContain("A+");
+  });
+
+  it("exposes a wiki toggle calling toggleWiki()", () => {
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain("toggleWiki");
   });
 
   it("contains link back to monitor", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
     expect(html).toContain('href="/kindle/');
   });
 
-  it("includes accessToken in img src when configured", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300, accessToken: "s3cret" });
-    expect(html).toContain('src="/kindle/api/map.png?token=s3cret"');
-  });
-
   it("includes accessToken in monitor link when configured", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300, accessToken: "s3cret" });
+    const html = renderMapHtml(sampleGraph, {
+      mapRefreshSeconds: 300,
+      accessToken: "s3cret",
+    });
     expect(html).toContain("?token=s3cret");
   });
 
   it("omits token query when accessToken undefined", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    // map.png should be followed by " (closing quote), not "?"
-    expect(html).toMatch(/src="\/kindle\/api\/map\.png"/);
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain('href="/kindle/"');
   });
 
   it("uses serif font stack", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
     expect(html).toContain('font-family: "Bookerly"');
   });
 
   it("has lang attribute", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    expect(html).toContain("<html lang=\"en\">");
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain('<html lang="en">');
   });
 
   it("has charset meta", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    expect(html).toContain("<meta charset=\"utf-8\">");
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain('<meta charset="utf-8">');
   });
 
   it("DOCTYPE present", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
     expect(html.toLowerCase().startsWith("<!doctype html>")).toBe(true);
   });
 
   it("mapRefreshSeconds=60 produces content='60'", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 60 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 60 });
     expect(html).toContain('content="60"');
   });
 
   it("no template literals (no backticks)", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
     expect(html).not.toContain("`");
+  });
+
+  it("renders node counts in footer", () => {
+    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    expect(html).toContain("2 domains");
+    expect(html).toContain("1 wiki nodes");
+    expect(html).toContain("1 edges");
+  });
+
+  it("empty graph still renders valid lint-clean html", () => {
+    const html = renderMapHtml(emptyGraph, { mapRefreshSeconds: 300 });
+    expect(lintKindleHtml(html)).toEqual([]);
+    expect(html).toContain("<svg");
   });
 });
 
@@ -144,22 +193,30 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain("Agent 3");
   });
 
-  it("status symbol mapping: thinking=...", () => {
+  it("status symbol mapping: thinking=■", () => {
     const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1", status: "thinking" })]), cfg);
-    expect(html).toContain("... THINKING");
+    expect(html).toContain("■ THINKING");
   });
 
-  it("status symbol mapping: tool_calling=>", () => {
+  it("status symbol mapping: tool_calling=▶", () => {
     const html = renderMonitorHtml(
       snapshotWith([makeAgent({ sessionLabel: "A1", status: "tool_calling" })]),
       cfg,
     );
-    expect(html).toContain("> TOOL CALLING");
+    expect(html).toContain("▶ TOOL CALLING");
   });
 
-  it("status symbol mapping: failed=X", () => {
+  it("status symbol mapping: completed=✓", () => {
+    const html = renderMonitorHtml(
+      snapshotWith([makeAgent({ sessionLabel: "A1", status: "completed" })]),
+      cfg,
+    );
+    expect(html).toContain("✓ COMPLETED");
+  });
+
+  it("status symbol mapping: failed=✗", () => {
     const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1", status: "failed" })]), cfg);
-    expect(html).toContain("X FAILED");
+    expect(html).toContain("✗ FAILED");
   });
 
   it("calculates elapsed seconds from startedAt", () => {
@@ -232,6 +289,18 @@ describe("renderMonitorHtml", () => {
     const snap: FleetSnapshot = { ...emptySnapshot, pngCapability: "graphviz-dot" };
     const html = renderMonitorHtml(snap, cfg);
     expect(html).toContain("graphviz-dot");
+  });
+
+  it("renders zoom buttons A- and A+", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("A-");
+    expect(html).toContain("A+");
+  });
+
+  it("declares zoomIn and zoomOut JS functions", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("function zoomIn");
+    expect(html).toContain("function zoomOut");
   });
 
   it("DOCTYPE and charset present", () => {
