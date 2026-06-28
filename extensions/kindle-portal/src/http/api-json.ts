@@ -16,6 +16,7 @@ import { resolveActiveUser } from "../monitor/scope-resolver.js";
 import { buildMapGraph } from "../map/graph-builder.js";
 import { readPersona } from "../map/persona-reader.js";
 import { readWikiGraph } from "../map/wiki-reader.js";
+import { readCognitiveStats, type CognitiveStats } from "../monitor/cognitive-reader.js";
 
 // ── Public types ──
 
@@ -43,6 +44,7 @@ export const defaultSendJson: SendJsonFn = (res, status, body) => {
 // ── Cache-Control helper ──
 
 const NO_STORE = "no-store, max-age=0";
+const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
 function setNoStore(res: ServerResponse): void {
   try {
@@ -71,7 +73,26 @@ export async function handleFleetJson(
       cfg: ctx.cfg,
       pngCapability: ctx.pngCapability,
     });
-    send(res, 200, snapshot);
+
+    // Aggregate usage across all agents for the dashboard metrics row.
+    let totalTokens = 0;
+    let estimatedCostUsd = 0;
+    let totalToolCalls = 0;
+    for (const a of snapshot.agents) {
+      if (a.totalTokens !== undefined) totalTokens += a.totalTokens;
+      if (a.estimatedCostUsd !== undefined) estimatedCostUsd += a.estimatedCostUsd;
+      totalToolCalls += a.toolCallCount;
+    }
+
+    // Cognitive stats are best-effort; failure yields zeros, never throws.
+    const cognitive: CognitiveStats = await readCognitiveStats(ctx.stateDir);
+
+    const payload = {
+      ...snapshot,
+      usage: { totalTokens, estimatedCostUsd, totalToolCalls },
+      cognitive,
+    };
+    send(res, 200, payload);
   } catch (err) {
     send(res, 500, { error: String(err) });
     console.warn("[kindle-portal] /api/fleet error:", String(err));
@@ -115,5 +136,23 @@ export async function handleMapJson(
   } catch (err) {
     send(res, 500, { error: String(err) });
     console.warn("[kindle-portal] /api/map.json error:", String(err));
+  }
+}
+
+// ── /kindle/api/cognitive.json ──
+
+export async function handleCognitiveJson(
+  _req: IncomingMessage,
+  res: ServerResponse,
+  ctx: ApiHandlerContext,
+): Promise<void> {
+  res.setHeader("Content-Type", JSON_CONTENT_TYPE);
+  setNoStore(res);
+  try {
+    const stats = await readCognitiveStats(ctx.stateDir);
+    res.end(JSON.stringify(stats));
+  } catch {
+    res.statusCode = 500;
+    res.end('{"error":"failed"}');
   }
 }

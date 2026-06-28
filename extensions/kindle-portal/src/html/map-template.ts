@@ -1,14 +1,16 @@
 /**
  * Cognitive map HTML template for Kindle Portal.
  *
- * Renders an ES5-compatible page with an inline SVG cognitive map. Vector
- * `<text>` elements stay crisp on Kindle WebKit at any zoom level — fixing
- * the blurry-PNG bug where the 16-gray quantization destroyed all labels.
+ * Renders an ES5-compatible page that displays the cognitive map as a
+ * standalone SVG image via `<img src="/kindle/api/map.svg">`. Kindle
+ * Paperwhite ≤5.16.3 silently ignores inline `<svg>` tags embedded in HTML,
+ * but it DOES render `<img src="*.svg">` — so the SVG is served by a
+ * separate endpoint and referenced here as a regular image.
  *
  * Features:
- *   - Inline SVG (rendered by `renderMapGraphSvg`) embedded in a container.
- *   - Zoom in/out buttons (A- / A+) that modify the SVG `viewBox`.
- *   - Wiki-layer toggle button that flips `<g id="wiki-layer">` visibility.
+ *   - `<img>` tag pointing at `/kindle/api/map.svg` (token-aware).
+ *   - Zoom in/out buttons (A- / A+) that scale the image width via CSS.
+ *   - Wiki-toggle button that rebuilds the img src with `?wiki=1`.
  *   - Auto-refresh via `<meta http-equiv="refresh">`.
  *
  * All HTML/script is built with `+` concatenation — no template literals —
@@ -16,37 +18,23 @@
  * `const`/`let`, no `fetch`). This page is self-contained: it does NOT use
  * shared-css.ts (the map has its own e-ink styling).
  */
-import type { MapGraph } from "../types.js";
 import type { KindleConfig } from "../config.js";
-import { renderMapGraphSvg } from "./svg-graph.js";
 
 /**
- * Build the cognitive-map HTML page for a graph.
+ * Build the cognitive-map HTML page.
  *
- * The SVG is rendered inline (not as an external PNG) so labels are crisp
- * vectors. The page reloads itself periodically via meta-refresh; zoom and
- * wiki-toggle are handled client-side in ES5.
+ * The SVG itself is built independently by the `/kindle/api/map.svg`
+ * endpoint, so this template no longer receives a graph — it only needs the
+ * refresh interval and optional access token to assemble the img URL and
+ * meta-refresh tag.
  *
- * @param graph  The cognitive map graph (nodes + edges) to render.
- * @param cfg    Refresh interval and optional access token.
+ * @param cfg  Refresh interval and optional access token.
  */
 export function renderMapHtml(
-  graph: MapGraph,
   cfg: Pick<KindleConfig, "mapRefreshSeconds" | "accessToken">,
 ): string {
   var sec = String(cfg.mapRefreshSeconds);
   var tq = cfg.accessToken ? "?token=" + cfg.accessToken : "";
-
-  // Node counts for the footer.
-  var domainCount = 0;
-  var wikiCount = 0;
-  for (var i = 0; i < graph.nodes.length; i++) {
-    if (graph.nodes[i].kind === "domain") domainCount++;
-    else wikiCount++;
-  }
-  var edgeCount = graph.edges.length;
-
-  var svg = renderMapGraphSvg(graph);
 
   return (
     "<!DOCTYPE html>"
@@ -66,9 +54,9 @@ export function renderMapHtml(
     + ".tools { float: right; margin-top: 4px; }"
     + '.tools button { font-size: 14px; margin-left: 4px; padding: 2px 8px;'
     + ' font-family: "Bookerly", "Palatino", serif; }'
-    + "#svg-container { margin: 8px 0; }"
-    + "#svg-container svg { width: 100%; height: auto; display: block;"
-    + " border: 1px solid #999; }"
+    + ".scroller { overflow: auto; width: 100%; height: 860px;"
+    + " margin: 8px 0; }"
+    + "#mapimg { width: 100%; border: 1px solid #999; }"
     + ".nav { margin: 8px 0; font-size: 14px; }"
     + ".nav a { color: #000; text-decoration: underline; }"
     + ".note { color: #555; font-size: 12px; margin-top: 8px; }"
@@ -87,48 +75,47 @@ export function renderMapHtml(
     + '<div class="title">Cognitive Map</div>'
     + "</div>"
     + '<div class="nav"><a href="/kindle/' + tq + '">Monitor</a></div>'
-    + '<div id="svg-container">' + svg + "</div>"
-    + '<div class="footer">'
-    + domainCount + " domains, " + wikiCount + " wiki nodes, " + edgeCount + " edges"
-    + " | Auto-refresh: " + sec + "s"
+    + '<div class="scroller">'
+    + '<img id="mapimg" src="/kindle/api/map.svg' + tq + '"'
+    + ' style="width:100%; border:1px solid #999;"/>'
     + "</div>"
-    + '<div class="note">Vector map. Use A-/A+ to zoom, Wiki to toggle concepts.'
+    + '<div class="footer">'
+    + "Auto-refresh: " + sec + "s"
+    + " | Vector map served as standalone SVG image."
+    + "</div>"
+    + '<div class="note">Use A-/A+ to zoom, Wiki to toggle concepts.'
     + " Read-only view of AI understanding.</div>"
     + "<script>"
-    // ── Zoom: tracks a viewBox size ratio (1 = original).
-    //    zoomIn multiplies ratio by 0.8 (see less → magnify), clamped so
-    //    magnification never exceeds 2x (ratio floor 0.5).
-    //    zoomOut multiplies by 1.25, clamped so magnification never drops
-    //    below 0.3x (ratio ceiling 1/0.3 ≈ 3.333).
-    + "var ORIG_W = 758;"
-    + "var ORIG_H = 1024;"
-    + "var ratio = 1;"
-    + "function applyView() {"
-    + 'var svgEl = document.getElementById("cogmap");'
-    + "var w = ORIG_W * ratio;"
-    + "var h = ORIG_H * ratio;"
-    + "var x = (ORIG_W - w) / 2;"
-    + "var y = (ORIG_H - h) / 2;"
-    + 'svgEl.setAttribute("viewBox", x + " " + y + " " + w + " " + h);'
+    // ── Token query string injected for the toggleWiki URL builder. ──
+    // Either "" or "?token=xxx".
+    + "var TOKEN_Q = \"" + tq + "\";"
+    // ── Zoom: tracks image width as a percentage. ──
+    //    zoomIn adds 25 (max 300), zoomOut subtracts 20 (min 50).
+    + "var zoomPct = 100;"
+    + "function applyZoom() {"
+    + 'document.getElementById("mapimg").style.width = zoomPct + "%";'
     + "}"
     + "function zoomIn() {"
-    + "ratio = ratio * 0.8;"
-    + "if (ratio < 0.5) ratio = 0.5;"
-    + "applyView();"
+    + "zoomPct = zoomPct + 25;"
+    + "if (zoomPct > 300) zoomPct = 300;"
+    + "applyZoom();"
     + "}"
     + "function zoomOut() {"
-    + "ratio = ratio * 1.25;"
-    + "if (ratio > 3.333) ratio = 3.333;"
-    + "applyView();"
+    + "zoomPct = zoomPct - 20;"
+    + "if (zoomPct < 50) zoomPct = 50;"
+    + "applyZoom();"
     + "}"
-    // ── Wiki toggle: flips the wiki-layer group between hidden and visible.
+    // ── Wiki toggle: rebuilds the img src with/without ?wiki=1. ──
+    //    Keeps any existing ?token=xxx (appended as &wiki=1).
+    + "var wikiOn = 0;"
     + "function toggleWiki() {"
-    + 'var layer = document.getElementById("wiki-layer");'
-    + 'if (layer.style.display === "none") {'
-    + 'layer.style.display = "inline";'
-    + "} else {"
-    + 'layer.style.display = "none";'
+    + "wikiOn = wikiOn === 0 ? 1 : 0;"
+    + 'var base = "/kindle/api/map.svg";'
+    + "var q = TOKEN_Q;"
+    + "if (wikiOn === 1) {"
+    + 'q = q ? q + "&wiki=1" : "?wiki=1";'
     + "}"
+    + 'document.getElementById("mapimg").setAttribute("src", base + q);'
     + "}"
     + "</script>"
     + "</body>"

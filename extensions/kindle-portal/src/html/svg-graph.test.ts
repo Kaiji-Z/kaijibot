@@ -36,15 +36,28 @@ describe("renderMapGraphSvg — empty state", () => {
 });
 
 describe("renderMapGraphSvg — svg root", () => {
-  it("root svg has width=100%, viewBox, id=cogmap, white background", () => {
+  it("root svg has explicit width/height (standalone image), viewBox, background rect", () => {
     const svg = renderMapGraphSvg({
       nodes: [domain("a", "A", 0.5)],
       edges: [],
     });
-    expect(svg).toContain('width="100%"');
+    expect(svg).toContain('width="758"');
+    expect(svg).toContain('height="1024"');
     expect(svg).toContain('viewBox="0 0 758 1024"');
-    expect(svg).toContain('id="cogmap"');
-    expect(svg).toContain("background:#fff");
+    expect(svg).not.toContain('width="100%"');
+    expect(svg).not.toContain('id="cogmap"');
+    expect(svg).not.toContain("background:#fff");
+  });
+
+  it("emits a full-canvas white background rect as the first child", () => {
+    const svg = renderMapGraphSvg({
+      nodes: [domain("a", "A", 0.5)],
+      edges: [],
+    });
+    expect(svg).toContain('<rect width="758" height="1024" fill="#fff"/>');
+    const rootEnd = svg.indexOf('">') + 2;
+    const firstChild = svg.slice(rootEnd, rootEnd + 40);
+    expect(firstChild.startsWith('<rect width="758"')).toBe(true);
   });
 });
 
@@ -60,20 +73,89 @@ describe("renderMapGraphSvg — layer structure", () => {
     expect(svg).toContain("ML");
   });
 
-  it("wraps wiki nodes in a hidden wiki-layer group (display:none)", () => {
+  it("wraps wiki nodes in a wiki-layer group (visible by default)", () => {
     const g: MapGraph = {
       nodes: [domain("ai", "AI", 0.8), wiki("emb", "Embeddings")],
       edges: [],
     };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('<g id="wiki-layer" style="display:none">');
+    expect(svg).toContain('<g id="wiki-layer">');
+    expect(svg).not.toContain('style="display:none"');
     expect(svg).toContain("Embeddings");
   });
 
-  it("always emits a wiki-layer group even with no wiki nodes", () => {
+  it("always emits a wiki-layer group even with no wiki nodes (default)", () => {
     const g: MapGraph = { nodes: [domain("ai", "AI", 0.8)], edges: [] };
     const svg = renderMapGraphSvg(g);
     expect(svg).toContain('id="wiki-layer"');
+  });
+});
+
+describe("renderMapGraphSvg — wiki option", () => {
+  it("emits wiki-layer when wiki option is true (explicit)", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8), wiki("emb", "Embeddings")],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g, { wiki: true });
+    expect(svg).toContain('<g id="wiki-layer">');
+    expect(svg).toContain("Embeddings");
+  });
+
+  it("defaults to wiki=true when option is omitted (backward compatible)", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8), wiki("emb", "Embeddings")],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('<g id="wiki-layer">');
+  });
+
+  it("omits the entire wiki-layer group when wiki=false", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8), wiki("emb", "Embeddings")],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g, { wiki: false });
+    expect(svg).not.toContain('<g id="wiki-layer"');
+    expect(svg).not.toContain('id="wiki-layer"');
+  });
+
+  it("omits wiki node labels when wiki=false", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8), wiki("emb", "Embeddings")],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g, { wiki: false });
+    expect(svg).not.toContain("Embeddings");
+    expect(svg).toContain("AI");
+  });
+
+  it("omits cross edges when wiki=false", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.9), wiki("w1", "W1")],
+      edges: [{ from: "ai", to: "w1" }],
+    };
+    const svg = renderMapGraphSvg(g, { wiki: false });
+    expect(svg).not.toContain('stroke-dasharray="4,2"');
+  });
+
+  it("still emits domain-layer and background rect when wiki=false", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8)],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g, { wiki: false });
+    expect(svg).toContain('<rect width="758" height="1024" fill="#fff"/>');
+    expect(svg).toContain('<g id="domain-layer">');
+    expect(svg).toContain("AI");
+    expect(svg).toContain("</svg>");
+  });
+
+  it("empty-state SVG still includes background rect", () => {
+    const svg = renderMapGraphSvg({ nodes: [], edges: [] });
+    expect(svg).toContain('<rect width="758" height="1024" fill="#fff"/>');
+    expect(svg).toContain("No persona data yet");
   });
 });
 

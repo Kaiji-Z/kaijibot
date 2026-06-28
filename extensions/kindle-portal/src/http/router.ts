@@ -19,10 +19,12 @@ import { authorize } from "./auth.js";
 import {
   handleFleetJson,
   handleMapJson,
+  handleCognitiveJson,
   type ApiHandlerContext,
 } from "./api-json.js";
 import { handleMonitorHtml, handleMapHtml } from "./pages.js";
 import { handleMapPng } from "./png.js";
+import { handleMapSvg } from "./svg.js";
 
 export type RouterContext = ApiHandlerContext;
 
@@ -104,6 +106,14 @@ export function createKindleHttpHandler(
       }
       if (subPath === "/api/map.png") {
         await handleMapPng(req, res, ctx);
+        return true;
+      }
+      if (subPath === "/api/map.svg") {
+        await handleMapSvg(req, res, ctx);
+        return true;
+      }
+      if (subPath === "/api/cognitive.json") {
+        await handleCognitiveJson(req, res, ctx);
         return true;
       }
       return notFound(res);

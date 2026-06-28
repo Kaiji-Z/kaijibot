@@ -53,6 +53,19 @@ export interface FleetSnapshot {
   readonly generatedAt: number;
   /** PNG renderer capability flag, surfaced for operator visibility. */
   readonly pngCapability?: PngCapability;
+  /** Aggregate usage across all agents (populated by /api/fleet). */
+  readonly usage?: {
+    readonly totalTokens: number;
+    readonly estimatedCostUsd: number;
+    readonly totalToolCalls: number;
+  };
+  /** Aggregate cognitive store stats (populated by /api/fleet). */
+  readonly cognitive?: {
+    readonly domains: number;
+    readonly insights: number;
+    readonly corrections: number;
+    readonly skills: number;
+  };
 }
 
 /**

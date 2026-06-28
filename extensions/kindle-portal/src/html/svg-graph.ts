@@ -1,14 +1,15 @@
 /**
- * Inline SVG renderer for the cognitive map graph.
+ * Standalone SVG renderer for the cognitive map graph.
  *
- * Converts a {@link MapGraph} into a crisp vector SVG string suitable for
- * inline embedding in the Kindle Portal map page. Kindle WebKit renders
- * `<text>` elements natively, so labels stay sharp at any zoom level —
- * unlike the PNG pipeline which quantizes to 16 grays and destroys text.
+ * Converts a {@link MapGraph} into a crisp vector SVG string served as a
+ * standalone image via `/kindle/api/map.svg` and referenced by the map page
+ * through an `<img>` tag. Kindle Paperwhite ≤5.16.3 silently ignores inline
+ * `<svg>` tags embedded in HTML but DOES render `<img src="*.svg">`, so the
+ * SVG carries explicit width/height (758x1024) and a white background rect.
  *
  * Layout: domain nodes on an inner circle, wiki nodes on an outer ring.
- * The wiki layer is wrapped in `<g style="display:none">` so it can be
- * toggled on/off via JavaScript without re-rendering.
+ * The wiki layer can be omitted entirely via `opts.wiki === false` for a
+ * lighter payload when the user has toggled wiki off.
  *
  * Pure function — no I/O, no side effects. All string assembly uses `+`
  * concatenation so the embedded output stays free of backticks.
@@ -48,11 +49,21 @@ const STYLE_WIKI_EDGE = 'stroke="#ccc" stroke-width="0.5"';
 const STYLE_CROSS_EDGE = 'stroke="#666" stroke-width="1" stroke-dasharray="4,2"';
 
 const SVG_ROOT_OPEN =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ' +
+  '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+  CANVAS_W +
+  '" height="' +
+  CANVAS_H +
+  '" viewBox="0 0 ' +
   CANVAS_W +
   " " +
   CANVAS_H +
-  '" id="cogmap" style="background:#fff">';
+  '">';
+
+// White background rect — the FIRST child of the SVG root. Kindle's SVG
+// renderer (used when the SVG is loaded via <img src="...svg">) ignores CSS
+// `background:#fff` on the root element, so we paint a full-canvas rect.
+const SVG_BG_RECT =
+  '<rect width="' + CANVAS_W + '" height="' + CANVAS_H + '" fill="#fff"/>';
 
 const EMPTY_MESSAGE =
   "No persona data yet. Chat with KaijiBot to build your cognitive map.";
@@ -171,22 +182,31 @@ function renderLine(a: Pt, b: Pt, style: string): string {
 }
 
 /**
- * Convert a {@link MapGraph} into an inline SVG string.
+ * Convert a {@link MapGraph} into a standalone SVG string.
  *
  * Domain nodes (kind="domain") are placed on an inner circle of radius 300
  * centered at (379, 400). Wiki nodes (kind="concept"|"entity") are placed on
- * an outer ring of radius 430. The wiki layer is wrapped in a hidden `<g>` so
- * it can be toggled. Edges are classified by endpoint kinds into three styles.
+ * an outer ring of radius 430. Edges are classified by endpoint kinds into
+ * three styles.
  *
  * When wiki nodes exceed {@link MAX_WIKI_NODES}, only the first 60 are
  * rendered and edges referencing dropped nodes are filtered out.
  *
+ * When `opts.wiki === false`, the wiki layer (wiki nodes, wiki-wiki edges,
+ * and cross-domain-wiki edges) is omitted entirely — producing a lighter
+ * SVG for the toggle-off case. Default is `wiki: true` (backward compatible).
+ *
  * @param graph   The cognitive map graph (nodes + edges).
- * @param _opts   Reserved width override; currently unused — the canvas is
- *                fixed at 758x1024 so `viewBox` stays stable for the zoom JS.
- * @returns A complete `<svg>...</svg>` string with `id="cogmap"`.
+ * @param opts    Optional: `width` (reserved, currently unused) and `wiki`
+ *                (boolean, default true) controlling wiki-layer emission.
+ * @returns A complete `<svg>...</svg>` string sized 758x1024 with a white
+ *          background rect as the first child.
  */
-export function renderMapGraphSvg(graph: MapGraph, _opts?: { width?: number }): string {
+export function renderMapGraphSvg(
+  graph: MapGraph,
+  opts?: { width?: number; wiki?: boolean },
+): string {
+  const includeWiki = opts?.wiki !== false;
   const nodes = graph.nodes;
 
   // Partition nodes by kind.
@@ -229,6 +249,7 @@ export function renderMapGraphSvg(graph: MapGraph, _opts?: { width?: number }): 
   if (dn === 0) {
     return (
       SVG_ROOT_OPEN +
+      SVG_BG_RECT +
       '<text x="' +
       CENTER_X +
       '" y="512" text-anchor="middle" font-size="18" fill="#333" font-family="serif">' +
@@ -275,16 +296,16 @@ export function renderMapGraphSvg(graph: MapGraph, _opts?: { width?: number }): 
   const domainLayer =
     '<g id="domain-layer">' + domainEdges.join("") + domainNodeSvg.join("") + "</g>";
 
-  // Wiki layer: wiki-wiki edges + cross edges + wiki nodes. Hidden by default
-  // so cross edges (which connect to wiki nodes) hide together with the wiki
-  // nodes. The group is always emitted (even when empty) so toggleWiki() in
-  // the page script never hits a null element.
+  if (!includeWiki) {
+    return SVG_ROOT_OPEN + SVG_BG_RECT + domainLayer + "</svg>";
+  }
+
   const wikiLayer =
-    '<g id="wiki-layer" style="display:none">' +
+    '<g id="wiki-layer">' +
     wikiEdges.join("") +
     crossEdges.join("") +
     wikiNodeSvg.join("") +
     "</g>";
 
-  return SVG_ROOT_OPEN + domainLayer + wikiLayer + "</svg>";
+  return SVG_ROOT_OPEN + SVG_BG_RECT + domainLayer + wikiLayer + "</svg>";
 }

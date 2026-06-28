@@ -11,71 +11,54 @@ import { lintKindleHtml } from "./es5-lint.js";
 // map-template will be imported once implemented
 import { renderMapHtml } from "./map-template.js";
 import { renderMonitorHtml } from "./monitor-template.js";
-import type { FleetSnapshot, FleetAgent, MapGraph } from "../types.js";
+import type { FleetSnapshot, FleetAgent } from "../types.js";
 
 describe("renderMapHtml", () => {
-  const emptyGraph: MapGraph = { nodes: [], edges: [] };
-
-  const sampleGraph: MapGraph = {
-    nodes: [
-      { id: "ai", label: "AI", kind: "domain", strength: 0.8 },
-      { id: "rust", label: "Rust", kind: "domain", strength: 0.6 },
-      {
-        id: "embedding",
-        label: "Vector Embeddings",
-        kind: "concept",
-        strength: 0.5,
-      },
-    ],
-    edges: [{ from: "ai", to: "rust", label: "related" }],
-  };
-
   it("map html passes lintKindleHtml", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(lintKindleHtml(html)).toEqual([]);
   });
 
   it("contains meta refresh with configured seconds", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('http-equiv="refresh"');
     expect(html).toContain('content="300"');
   });
 
-  it("embeds an inline SVG (no img / no map.png reference)", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
-    expect(html).toContain("<svg");
+  it("references the SVG via an <img> tag (no inline <svg>)", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain("<img");
+    expect(html).toContain('src="/kindle/api/map.svg');
+    expect(html).not.toContain("<svg");
     expect(html).not.toContain("map.png");
-    expect(html).not.toContain("<img");
-  });
-
-  it("svg carries a viewBox attribute (enables JS zoom)", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
-    expect(html).toContain("viewBox");
-  });
-
-  it("svg contains a domain-layer group (renderMapGraphSvg output)", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
-    expect(html).toContain('<g id="domain-layer"');
   });
 
   it("renders zoom buttons A- and A+", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain("A-");
     expect(html).toContain("A+");
   });
 
-  it("exposes a wiki toggle calling toggleWiki()", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
-    expect(html).toContain("toggleWiki");
+  it("declares zoomIn, zoomOut, and toggleWiki JS functions", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain("function zoomIn");
+    expect(html).toContain("function zoomOut");
+    expect(html).toContain("function toggleWiki");
+  });
+
+  it("toggleWiki rebuilds img src with wiki=1 when enabling wiki layer", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain("wiki=1");
+    expect(html).toContain("TOKEN_Q");
   });
 
   it("contains link back to monitor", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('href="/kindle/');
   });
 
-  it("includes accessToken in monitor link when configured", () => {
-    const html = renderMapHtml(sampleGraph, {
+  it("includes accessToken in monitor link and img src when configured", () => {
+    const html = renderMapHtml({
       mapRefreshSeconds: 300,
       accessToken: "s3cret",
     });
@@ -83,51 +66,44 @@ describe("renderMapHtml", () => {
   });
 
   it("omits token query when accessToken undefined", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('href="/kindle/"');
   });
 
   it("uses serif font stack", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('font-family: "Bookerly"');
   });
 
   it("has lang attribute", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('<html lang="en">');
   });
 
   it("has charset meta", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).toContain('<meta charset="utf-8">');
   });
 
   it("DOCTYPE present", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html.toLowerCase().startsWith("<!doctype html>")).toBe(true);
   });
 
   it("mapRefreshSeconds=60 produces content='60'", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 60 });
+    const html = renderMapHtml({ mapRefreshSeconds: 60 });
     expect(html).toContain('content="60"');
   });
 
   it("no template literals (no backticks)", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
     expect(html).not.toContain("`");
   });
 
-  it("renders node counts in footer", () => {
-    const html = renderMapHtml(sampleGraph, { mapRefreshSeconds: 300 });
-    expect(html).toContain("2 domains");
-    expect(html).toContain("1 wiki nodes");
-    expect(html).toContain("1 edges");
-  });
-
-  it("empty graph still renders valid lint-clean html", () => {
-    const html = renderMapHtml(emptyGraph, { mapRefreshSeconds: 300 });
-    expect(lintKindleHtml(html)).toEqual([]);
-    expect(html).toContain("<svg");
+  it("img src defaults to no wiki=1 (wiki layer off until toggled)", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    // The static img src should be exactly /kindle/api/map.svg (no ?wiki=1).
+    expect(html).toContain('src="/kindle/api/map.svg"');
   });
 });
 
@@ -312,5 +288,44 @@ describe("renderMonitorHtml", () => {
   it("uses serif font stack in CSS", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
     expect(html).toContain('font-family: "Bookerly"');
+  });
+
+  it("renders metrics row with three .metric boxes", () => {
+    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1" })]), cfg);
+    expect(html).toContain('class="metrics-row');
+    const metricMatches = html.match(/class="metric"/g);
+    expect(metricMatches).not.toBeNull();
+    expect(metricMatches!.length).toBe(3);
+    expect(html).toContain("AGENTS");
+    expect(html).toContain("TOKENS");
+    expect(html).toContain("COST");
+  });
+
+  it("renders ACTIVE AGENTS and COGNITIVE MAP section headers", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("ACTIVE AGENTS");
+    expect(html).toContain("COGNITIVE MAP");
+    expect(html).toContain("section-h");
+  });
+
+  it("renders cognitive stat counts line", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("domains");
+    expect(html).toContain("insights");
+    expect(html).toContain("skills");
+    expect(html).toContain("corrections");
+  });
+
+  it("renders zoom buttons A- and A+", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("A-");
+    expect(html).toContain("A+");
+  });
+
+  it("declares zoomIn and zoomOut JS functions", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).toContain("function zoomIn");
+    expect(html).toContain("function zoomOut");
+    expect(html).toContain("var zoomLevel = 22;");
   });
 });
