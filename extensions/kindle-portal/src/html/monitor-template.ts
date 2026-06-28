@@ -1,80 +1,54 @@
 /**
- * Live fleet monitor dashboard HTML template for Kindle Portal.
+ * Focused operational dashboard for Kindle Portal.
  *
- * Renders an ES5-compatible dashboard for a Kindle Paperwhite 7th gen placed
- * below a computer monitor at ~60-80cm viewing distance. Body base is 30px
- * with every child size in `em`, so the A-/A+ zoom buttons (which step
+ * Shows exactly four things, nothing else:
+ *   1. Today's Usage — tokens + cost (big numbers)
+ *   2. Provider Quota — ZAI usage percentage (progress bar)
+ *   3. Agent Status — every registered agent with session counts
+ *   4. System Health — ACTIVE/IDLE + last activity time
+ *
+ * No cognitive stats, no lane notes, no stat-bar visualizations, no active
+ * session cards. Clean and operational.
+ *
+ * Renders ES5-compatible HTML for a Kindle Paperwhite 7th gen placed below
+ * a computer monitor at ~60-80cm viewing distance. Body base is 30px with
+ * every child size in `em`, so the A-/A+ zoom buttons (which step
  * `document.body.style.fontSize` across 20-42px) scale the whole page.
- *
- * Layout (float-based — old WebKit has no flexbox):
- *   1. Tab bar: Monitor (active) / Map
- *   2. Header: title + ◉ ACTIVE / ○ IDLE badge + A-/A+ zoom (float right)
- *   3. Cognitive Status: domains bar + metrics row (DOMAINS/CORRECTIONS/SKILLS)
- *   4. Agents: every registered agent (idle + active), always visible
- *   5. Active Sessions: currently running runs, or "No active sessions"
- *   6. Usage metrics: AGENTS / TOKENS / COST
- *   7. Footer: PNG renderer capability + refresh note
- *
- * The page reloads itself via XHR polling (`setInterval` + XMLHttpRequest)
- * with a `<meta http-equiv="refresh">` no-JS fallback.
  *
  * All HTML/script is built with `+` concatenation — no template literals —
  * so the rendered output passes `lintKindleHtml` (no backticks, no `=>`, no
- * `const`/`let`, no `fetch`). Status uses Unicode geometric symbols
- * (■ ▶ ✓ ✗ ● ○) that render reliably on the e-ink system fonts.
- *
- * Agent name resolution: ALWAYS uses agent.id (e.g. "main"). Never shows
- * runId or sessionKey UUIDs. Active snapshot agents are matched to registered
- * agents by agentId to mark them as ACTIVE in the roster.
+ * `const`/`let`, no `fetch`).
  */
 
 import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 import type { KindleConfig } from "../config.js";
 import { SHARED_CSS } from "./shared-css.js";
 
-const STATUS_SYMBOLS: Record<FleetAgent["status"], string> = {
-  thinking: "■",
-  tool_calling: "▶",
-  completed: "✓",
-  failed: "✗",
-};
-
-function statusLabel(status: FleetAgent["status"]): string {
-  return status.replace(/_/g, " ").toUpperCase();
-}
-
 /**
- * Resolve the display name for an active session agent. Priority:
- * agentId → sessionLabel → "session". Never returns runId (a UUID).
- */
-function activeSessionName(agent: FleetAgent): string {
-  if (agent.agentId !== undefined && agent.agentId.length > 0) {
-    return agent.agentId;
-  }
-  if (agent.sessionLabel !== undefined && agent.sessionLabel.length > 0) {
-    return agent.sessionLabel;
-  }
-  return "session";
-}
-
-/**
- * Compact token formatter: values >= 1000 get a "K" suffix with one decimal
- * (trailing ".0" dropped), e.g. 12300 -> "12.3K", 5000 -> "5K".
+ * Format token counts with K/M suffixes: 302000 -> "302K", 1200000 -> "1.2M".
  */
 function formatTokens(n: number): string {
-  if (n >= 1000) {
-    var s = (n / 1000).toFixed(1);
-    if (s.length >= 2 && s.charAt(s.length - 1) === "0" && s.charAt(s.length - 2) === ".") {
-      s = s.substring(0, s.length - 2);
+  if (n >= 1000000) {
+    var m = n / 1000000;
+    var ms = m.toFixed(1);
+    if (ms.charAt(ms.length - 1) === "0" && ms.charAt(ms.length - 2) === ".") {
+      ms = ms.substring(0, ms.length - 2);
     }
-    return s + "K";
+    return ms + "M";
+  }
+  if (n >= 1000) {
+    var k = n / 1000;
+    var ks = k.toFixed(1);
+    if (ks.charAt(ks.length - 1) === "0" && ks.charAt(ks.length - 2) === ".") {
+      ks = ks.substring(0, ks.length - 2);
+    }
+    return ks + "K";
   }
   return String(n);
 }
 
 /**
  * Relative time formatter: "just now", "5m ago", "3h ago", "2d ago".
- * Returns "" when timestamp is undefined.
  */
 function formatRelativeTime(timestamp: number | undefined, now: number): string {
   if (timestamp === undefined) {
@@ -101,56 +75,21 @@ function formatRelativeTime(timestamp: number | undefined, now: number): string 
 }
 
 /**
- * Render a registered-agent card. Uses agent.id (never a UUID).
- * Active agents get a thick left border; idle agents are dimmed.
+ * Resolve the most recent activity timestamp across registered agents.
  */
-function renderAgentCard(agent: RegisteredAgent): string {
-  var statusClass = agent.status === "active" ? "active" : "idle";
-  var statusIcon = agent.status === "active" ? "● ACTIVE" : "○ IDLE";
-  var model = agent.model;
-  var sessionCount = String(agent.sessionCount);
-  var sessionWord = agent.sessionCount === 1 ? "session" : "sessions";
-  var lastActive = agent.lastActiveAt !== undefined
-    ? " · last: " + formatRelativeTime(agent.lastActiveAt, Date.now())
-    : "";
-  return '<div class="agent-card ' + statusClass + '">'
-    + '<div class="agent-status">' + statusIcon + "</div>"
-    + '<div class="agent-id">' + agent.id + "</div>"
-    + '<div class="agent-model">'
-    + model + " · " + sessionCount + " " + sessionWord + lastActive
-    + "</div>"
-    + "</div>";
+function lastActivityTime(agents: readonly RegisteredAgent[]): number | undefined {
+  var latest: number | undefined;
+  for (var i = 0; i < agents.length; i++) {
+    var ts = agents[i].lastActiveAt;
+    if (ts !== undefined && (latest === undefined || ts > latest)) {
+      latest = ts;
+    }
+  }
+  return latest;
 }
 
 /**
- * Render an active-session card from the fleet snapshot. Shows live run
- * details: status, elapsed time, tool calls, model, cost.
- */
-function renderActiveSessionCard(agent: FleetAgent, generatedAt: number): string {
-  var name = activeSessionName(agent);
-  var sym = STATUS_SYMBOLS[agent.status];
-  var label = statusLabel(agent.status);
-  var model = agent.model ?? "unknown";
-  var toolCallCount = String(agent.toolCallCount);
-  var elapsedSeconds = String(Math.max(0, Math.round((generatedAt - agent.startedAt) / 1000)));
-  var cost = agent.estimatedCostUsd !== undefined ? agent.estimatedCostUsd.toFixed(4) : "—";
-
-  return '<div class="card status-' + agent.status + '">'
-    + '<div class="card-head clearfix">'
-    + '<div class="status-badge"><span class="status-icon">'
-    + sym + " " + label + "</span></div>"
-    + '<div class="card-name">' + name + "</div>"
-    + "</div>"
-    + '<div class="card-detail">'
-    + label + " · " + elapsedSeconds + "s ago · " + toolCallCount
-    + " tools · Model: " + model + " · $" + cost
-    + "</div>"
-    + "</div>";
-}
-
-/**
- * Build the set of agent IDs that currently have active runs, for O(1)
- * lookup when marking registered agents as active.
+ * Collect agent IDs that currently have active runs for O(1) lookup.
  */
 function collectActiveAgentIds(agents: readonly FleetAgent[]): Set<string> {
   var ids = new Set<string>();
@@ -164,14 +103,37 @@ function collectActiveAgentIds(agents: readonly FleetAgent[]): Set<string> {
 }
 
 /**
- * Build the dashboard HTML page for a fleet snapshot.
+ * Render a registered-agent card. Active agents get a thick left border;
+ * idle agents are dimmed.
+ */
+function renderAgentCard(agent: RegisteredAgent): string {
+  var statusClass = agent.status === "active" ? "active" : "idle";
+  var statusIcon = agent.status === "active" ? "\u25cf ACTIVE" : "\u25cb IDLE";
+  var model = agent.model;
+  var sessionCount = String(agent.sessionCount);
+  var sessionWord = agent.sessionCount === 1 ? "session" : "sessions";
+  var lastActive = agent.lastActiveAt !== undefined
+    ? " \u00b7 last: " + formatRelativeTime(agent.lastActiveAt, Date.now())
+    : "";
+  return '<div class="agent-card ' + statusClass + '">'
+    + '<div class="agent-status">' + statusIcon + "</div>"
+    + '<div class="agent-id">' + agent.id + "</div>"
+    + '<div class="agent-model">'
+    + model + " \u00b7 " + sessionCount + " " + sessionWord + lastActive
+    + "</div>"
+    + "</div>";
+}
+
+/**
+ * Build the focused operational dashboard HTML.
  *
- * When `registeredAgents` is provided, the AGENTS section always shows every
- * registered agent (idle + active). When omitted (backward compat / tests),
- * the AGENTS section falls back to showing active agents from the snapshot.
- *
- * When `snapshot.usage` or `snapshot.cognitive` are undefined, the
- * corresponding metrics render "—" and cognitive counts render 0.
+ * Layout (float-based — old WebKit has no flexbox):
+ *   1. Tab bar: Monitor (active) / Map
+ *   2. Header: title + ACTIVE/IDLE badge + last activity + A-/A+ zoom
+ *   3. Today's Usage: tokens + cost (2 metrics)
+ *   4. Provider Quota: ZAI usage progress bar
+ *   5. Agents: every registered agent, always visible
+ *   6. Footer: refresh note + nav links
  */
 export function renderMonitorHtml(
   snapshot: FleetSnapshot,
@@ -181,28 +143,37 @@ export function renderMonitorHtml(
   var sec = String(cfg.refreshIntervalSeconds);
   var tq = cfg.accessToken ? "?token=" + cfg.accessToken : "";
   var iso = new Date(snapshot.generatedAt).toISOString().substring(0, 19) + "Z";
-  var activeCount = String(snapshot.agents.length);
   var isActive = !snapshot.idle;
-  var stateIcon = isActive ? "◉" : "○";
+  var stateIcon = isActive ? "\u25c9" : "\u25cb";
   var stateText = isActive ? "ACTIVE" : "IDLE";
-  var pngCap = snapshot.pngCapability ?? "unknown";
 
+  // ── Today's usage metrics ──
   var usage = snapshot.usage;
-  var tokensStr = usage && usage.totalTokens ? formatTokens(usage.totalTokens) : "—";
-  var costStr = usage && usage.estimatedCostUsd !== undefined
-    ? "$" + usage.estimatedCostUsd.toFixed(2)
-    : "—";
+  var todayTokens = usage ? usage.todayTokens : 0;
+  var todayCost = usage ? usage.todayCostUsd : 0;
+  var tokensStr = todayTokens > 0 ? formatTokens(todayTokens) : "0";
+  var costStr = "$" + todayCost.toFixed(2);
 
-  var cog = snapshot.cognitive;
-  var domainsN = cog ? String(cog.domains) : "0";
-  var correctionsN = cog ? String(cog.corrections) : "0";
-  var skillsN = cog ? String(cog.skills) : "0";
-  var domainsNum = cog ? cog.domains : 0;
-  var barPct = Math.min(100, Math.round((domainsNum / 150) * 100));
+  // ── Provider quota ──
+  var quota = snapshot.providerQuota;
+  var quotaSection: string;
+  if (quota) {
+    var pct = Math.max(0, Math.min(100, Math.round(quota.usedPercent)));
+    var model = quota.provider === "zai" ? "glm-5.2" : quota.provider;
+    quotaSection = '<div class="quota-section">'
+      + '<div class="quota-label">' + quota.displayName + " (" + model + ") \u2014 "
+      + pct + "% used</div>"
+      + '<div class="quota-bar"><div class="quota-fill" style="width:'
+      + pct + '%"></div></div>'
+      + "</div>";
+  } else {
+    quotaSection = '<div class="quota-section">'
+      + '<div class="quota-label">Provider quota unavailable</div>'
+      + "</div>";
+  }
 
+  // ── Agents section (always shows all registered agents) ──
   var activeAgentIds = collectActiveAgentIds(snapshot.agents);
-
-  // ── AGENTS section ──
   var agentsSection: string;
   if (registeredAgents !== undefined && registeredAgents.length > 0) {
     var agentParts: string[] = [];
@@ -219,36 +190,16 @@ export function renderMonitorHtml(
       agentParts.push(renderAgentCard(merged));
     }
     agentsSection = agentParts.join("");
-  } else if (snapshot.agents.length > 0) {
-    // Backward compat: no registered agents provided, show active ones.
-    var fallbackParts: string[] = [];
-    for (var fi = 0; fi < snapshot.agents.length; fi++) {
-      var fa = snapshot.agents[fi];
-      var fallbackAgent: RegisteredAgent = {
-        id: activeSessionName(fa),
-        model: fa.model ?? "unknown",
-        isDefault: false,
-        status: "active",
-        sessionCount: 0,
-      };
-      fallbackParts.push(renderAgentCard(fallbackAgent));
-    }
-    agentsSection = fallbackParts.join("");
   } else {
-    agentsSection = '<div class="empty">○ No agents configured.</div>';
+    agentsSection = '<div class="empty">\u25cb No agents configured.</div>';
   }
 
-  // ── ACTIVE SESSIONS section ──
-  var sessionsSection: string;
-  if (snapshot.agents.length === 0) {
-    sessionsSection = '<div class="empty">○ No active sessions.</div>';
-  } else {
-    var sessionParts: string[] = [];
-    for (var si = 0; si < snapshot.agents.length; si++) {
-      sessionParts.push(renderActiveSessionCard(snapshot.agents[si], snapshot.generatedAt));
-    }
-    sessionsSection = sessionParts.join("");
-  }
+  // ── System health: last activity ──
+  var allAgents = registeredAgents ?? [];
+  var lastTs = lastActivityTime(allAgents);
+  var lastActivityStr = lastTs !== undefined
+    ? formatRelativeTime(lastTs, snapshot.generatedAt)
+    : "never";
 
   var refreshMs = String(cfg.refreshIntervalSeconds * 1000);
 
@@ -261,7 +212,7 @@ export function renderMonitorHtml(
     + "<style>" + SHARED_CSS + "</style>"
     + "</head>"
     + "<body>"
-    // ── Tab bar (always at top) ──
+    // ── Tab bar ──
     + '<div class="tabs">'
     + '<span class="tab tab-active">Monitor</span>'
     + '<a class="tab" href="/kindle/map' + tq + '">Map</a>'
@@ -276,67 +227,34 @@ export function renderMonitorHtml(
     + '<div class="meta">'
     + '<span class="badge"><span class="status-icon">' + stateIcon + "</span> " + stateText + "</span>"
     + " | " + iso
-    + " | Agents: " + activeCount
+    + " | Last: " + lastActivityStr
     + "</div>"
     + "</div>"
-    // ── Cognitive Status section (visualized) ──
-    + '<div class="section">'
-    + '<div class="section-h">COGNITIVE STATUS</div>'
-    + "<div>Domains: <strong>" + domainsN + "</strong></div>"
-    + '<div class="stat-bar"><div class="stat-bar-fill" style="width:' + barPct + '%"></div></div>'
+    // ── Today's Usage (2 metrics) ──
     + '<div class="metrics-row clearfix">'
-    + '<div class="metric">'
-    + '<div class="metric-num">' + domainsN + "</div>"
-    + '<div class="metric-label">DOMAINS</div>'
-    + "</div>"
-    + '<div class="metric">'
-    + '<div class="metric-num">' + correctionsN + "</div>"
-    + '<div class="metric-label">CORRECTIONS</div>'
-    + "</div>"
-    + '<div class="metric">'
-    + '<div class="metric-num">' + skillsN + "</div>"
-    + '<div class="metric-label">SKILLS</div>'
-    + "</div>"
-    + "</div>"
-    + '<div class="nav"><a href="/kindle/map' + tq + '">View cognitive map &rarr;</a></div>'
-    + "</div>"
-    // ── Agents section (always shows all registered agents) ──
-    + '<div class="section">'
-    + '<div class="section-h">AGENTS</div>'
-    + agentsSection
-    + "</div>"
-    // ── Active Sessions section ──
-    + '<div class="section">'
-    + '<div class="section-h">ACTIVE SESSIONS</div>'
-    + sessionsSection
-    + "</div>"
-    // ── Usage metrics row: AGENTS / TOKENS / COST ──
-    + '<div class="metrics-row clearfix">'
-    + '<div class="metric">'
-    + '<div class="metric-num">' + activeCount + "</div>"
-    + '<div class="metric-label">AGENTS</div>'
-    + "</div>"
     + '<div class="metric">'
     + '<div class="metric-num">' + tokensStr + "</div>"
-    + '<div class="metric-label">TOKENS</div>'
+    + '<div class="metric-label">TOKENS TODAY</div>'
     + "</div>"
     + '<div class="metric">'
     + '<div class="metric-num">' + costStr + "</div>"
-    + '<div class="metric-label">COST</div>'
+    + '<div class="metric-label">COST TODAY</div>'
     + "</div>"
     + "</div>"
-    // ── Lane note ──
-    + '<div class="lane-note">Lane/queue depth unavailable (plugin-boundary).</div>'
+    // ── Provider Quota ──
+    + quotaSection
+    // ── Agents section ──
+    + '<div class="section">'
+    + agentsSection
+    + "</div>"
     // ── Footer ──
     + '<div class="footer">'
-    + "PNG renderer: " + pngCap + " | Auto-refresh: " + sec + "s"
+    + "Auto-refresh: " + sec + "s"
     + ' | <a href="/kindle/' + tq + '">Monitor</a>'
     + ' &middot; <a href="/kindle/map' + tq + '">Map</a>'
     + "</div>"
     + "<script>"
     // ── Zoom (ES5: var, function declarations, + concatenation) ──
-    // body.fontSize is the em-anchor; child sizes scale relatively.
-    // Range 20-42px, step 2, base 30px.
     + "var zoomLevel = 30;"
     + "function zoomIn() {"
     + "if (zoomLevel < 42) {"

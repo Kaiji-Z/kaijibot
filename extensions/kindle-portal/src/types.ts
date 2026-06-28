@@ -59,6 +59,47 @@ export interface RegisteredAgent {
 }
 
 /**
+ * Cumulative + today token/cost usage, computed by scanning JSONL session
+ * files (see `monitor/usage-reader.ts`).
+ */
+export interface UsageSummary {
+  readonly totalTokens: number;
+  readonly totalCostUsd: number;
+  readonly sessionCount: number;
+  readonly todayTokens: number;
+  readonly todayCostUsd: number;
+  readonly todaySessions: number;
+}
+
+/**
+ * Provider account quota usage (see `monitor/quota-reader.ts`).
+ * Currently only ZAI is supported.
+ */
+export interface ProviderQuota {
+  /** Provider id (e.g. "zai"). */
+  readonly provider: string;
+  /** Human-readable display name (e.g. "ZAI"). */
+  readonly displayName: string;
+  /** Usage percentage 0-100. */
+  readonly usedPercent: number;
+  /** Optional reset timestamp (Unix ms epoch). */
+  readonly resetAt?: number;
+  /** Present when the last fetch failed (for diagnostics). */
+  readonly error?: string;
+}
+
+/**
+ * Aggregate cognitive store stats (populated by /api/fleet). Surfaced for the
+ * map page; the monitor dashboard no longer displays these directly.
+ */
+export interface CognitiveStats {
+  readonly domains: number;
+  readonly insights: number;
+  readonly corrections: number;
+  readonly skills: number;
+}
+
+/**
  * Snapshot returned by `/kindle/api/fleet`.
  *
  * Under Option A (pure plugin boundary), `lanes` is always empty and
@@ -73,19 +114,12 @@ export interface FleetSnapshot {
   readonly generatedAt: number;
   /** PNG renderer capability flag, surfaced for operator visibility. */
   readonly pngCapability?: PngCapability;
-  /** Aggregate usage across all agents (populated by /api/fleet). */
-  readonly usage?: {
-    readonly totalTokens: number;
-    readonly estimatedCostUsd: number;
-    readonly totalToolCalls: number;
-  };
+  /** Cumulative + today usage from JSONL scanning (populated by /api/fleet). */
+  readonly usage?: UsageSummary;
+  /** Provider quota usage (populated by /api/fleet). `null` when unavailable. */
+  readonly providerQuota?: ProviderQuota | null;
   /** Aggregate cognitive store stats (populated by /api/fleet). */
-  readonly cognitive?: {
-    readonly domains: number;
-    readonly insights: number;
-    readonly corrections: number;
-    readonly skills: number;
-  };
+  readonly cognitive?: CognitiveStats;
   /**
    * All registered agents from config (populated by /api/fleet and the
    * monitor page). Always present in the enriched snapshot; absent in

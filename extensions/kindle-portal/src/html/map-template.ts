@@ -9,12 +9,15 @@
  *
  * Interaction model — pure URL links, no JavaScript:
  *   - Tab bar: `<a href="/kindle/{?token}">Monitor</a>` + active "Map" span.
- *   - Zoom: `<a href="/kindle/map?zoom=N&...">` links for 100/150/200/300%.
+ *   - Zoom: `<a href="/kindle/map?zoom=N&...">` links for 25/50/100/200/400%.
  *     The current zoom level's link gets the `.active` class (bold + larger).
- *     Clicking reloads the page with a new `?zoom=N` query; the server
- *     regenerates the SVG at the requested physical dimensions and the
- *     scroll container pans over the larger image.
+ *     Default zoom is 50 (fits most of the graph on screen). Clicking
+ *     reloads the page with a new `?zoom=N` query; the server regenerates
+ *     the SVG at the requested physical dimensions and the scroll container
+ *     pans over the larger image.
  *   - Wiki toggle: `<a href="/kindle/map?wiki=1&...">Wiki</a>` link.
+ *   - Cognitive stats: when `opts.cognitive` is provided, a summary line
+ *     ("N domains · N corrections · N skills") appears below the zoom links.
  *
  * Kindle's old WebKit has unreliable `onclick` handlers on `<button>`, so
  * all interaction is via plain `<a>` links with URL query parameters. This
@@ -32,7 +35,15 @@
 import type { KindleConfig } from "../config.js";
 
 /** Allowed zoom levels offered in the UI, in percent. */
-const ZOOM_LEVELS: readonly number[] = [100, 150, 200, 300];
+const ZOOM_LEVELS: readonly number[] = [25, 50, 100, 200, 400];
+
+/** Cognitive stats shape (subset of CognitiveStats from cognitive-reader). */
+interface CognitiveStatsOpt {
+  readonly domains: number;
+  readonly insights: number;
+  readonly corrections: number;
+  readonly skills: number;
+}
 
 /** Escape a query-string value (alphanumeric + a few safe chars preserved). */
 function escapeQueryParam(s: string): string {
@@ -55,22 +66,24 @@ function appendQuery(q: string, key: string, val: string): string {
  *
  * The SVG itself is built independently by the `/kindle/api/map.svg`
  * endpoint, so this template only needs the refresh interval, optional
- * access token, and the current view state (zoom / wiki) to assemble the
- * img URL, zoom links, and meta-refresh tag.
+ * access token, and the current view state (zoom / wiki / cognitive) to
+ * assemble the img URL, zoom links, and meta-refresh tag.
  *
  * @param cfg   Refresh interval and optional access token.
- * @param opts  Current view state: `zoom` (default 100) and `wiki`
- *              (default false). Used to highlight the active zoom link and
- *              to build the SVG img URL.
+ * @param opts  Current view state: `zoom` (default 50), `wiki`
+ *              (default false), and optional `cognitive` stats. Used to
+ *              highlight the active zoom link, build the SVG img URL, and
+ *              render the cognitive stats summary line.
  */
 export function renderMapHtml(
   cfg: Pick<KindleConfig, "mapRefreshSeconds" | "accessToken">,
-  opts?: { zoom?: number; wiki?: boolean },
+  opts?: { zoom?: number; wiki?: boolean; cognitive?: CognitiveStatsOpt },
 ): string {
   var sec = String(cfg.mapRefreshSeconds);
   var token = cfg.accessToken ?? "";
-  var zoom = opts?.zoom ?? 100;
+  var zoom = opts?.zoom ?? 50;
   var wiki = opts?.wiki === true;
+  var cognitive = opts?.cognitive;
 
   // Token query string for page links: "" or "?token=xxx".
   var tq = token === "" ? "" : "?token=" + escapeQueryParam(token);
@@ -120,6 +133,20 @@ export function renderMapHtml(
   var wikiHref = linkHref(zoom, !wiki);
   var wikiLabel = wiki ? "Wiki ON" : "Wiki OFF";
 
+  var cognitiveStatsLine = "";
+  if (cognitive) {
+    cognitiveStatsLine =
+      '<div class="cognitive-stats">' +
+      cognitive.domains +
+      " domains" +
+      " \u00b7 " +
+      cognitive.corrections +
+      " corrections" +
+      " \u00b7 " +
+      cognitive.skills +
+      " skills</div>";
+  }
+
   // Tab bar: Monitor (link) + Map (active span).
   var monitorTabHref = "/kindle/" + tq;
 
@@ -129,7 +156,7 @@ export function renderMapHtml(
     + "<head>"
     + '<meta charset="utf-8">'
     + '<meta http-equiv="refresh" content="' + sec + '">'
-    + "<title>KaijiBot Cognitive Map</title>"
+    + "<title>KaijiBot Knowledge Graph</title>"
     + "<style>"
     + 'body { font-family: "Bookerly", "Palatino", serif; font-size: 24px;'
     + " margin: 0; padding: 8px; background: #fff; color: #000;"
@@ -144,6 +171,7 @@ export function renderMapHtml(
     + ".zoom-links { margin: 8px 0; font-size: 18px; }"
     + '.zoom-links a { margin-right: 12px; color: #000; text-decoration: underline; }'
     + ".zoom-links .active { font-weight: bold; font-size: 22px; }"
+    + ".cognitive-stats { margin: 4px 0 8px 0; font-size: 16px; color: #444; }"
     + ".scroller { overflow: auto; width: 100%; height: 800px;"
     + " border: 1px solid #999; background: #eee; }"
     + ".scroller img { display: block; }"
@@ -159,19 +187,21 @@ export function renderMapHtml(
     + '<span class="tab tab-active">Map</span>'
     + "</div>"
     // ── Title ──
-    + '<div class="title">Cognitive Map</div>'
+    + '<div class="title">Knowledge Graph</div>'
     // ── Zoom + Wiki controls (all plain <a> links — no JS) ──
     + '<div class="zoom-links">'
     + zoomLinks
     + ' | <a class="zoom-link' + (wiki ? " active" : "") + '"'
     + ' href="' + wikiHref + '">' + wikiLabel + "</a>"
     + "</div>"
+    // ── Cognitive stats (optional) ──
+    + cognitiveStatsLine
     // ── Scrollable SVG container ──
     // The img has NO width style — it uses the SVG's natural dimensions
-    // (which change with the zoom param). At zoom=200 the SVG is 1516x2048
+    // (which change with the zoom param). At zoom=100 the SVG is 2400x3600
     // and this container scrolls.
     + '<div class="scroller">'
-    + '<img src="' + svgSrc + '" alt="Cognitive map" />'
+    + '<img src="' + svgSrc + '" alt="Knowledge graph" />'
     + "</div>"
     // ── Footer ──
     + '<div class="footer">'
@@ -180,7 +210,7 @@ export function renderMapHtml(
     + ' | <a href="' + monitorTabHref + '">Monitor</a>'
     + "</div>"
     + '<div class="note">Use the zoom links to enlarge.'
-    + " Read-only view of AI understanding.</div>"
+    + " Force-directed layout: connected domains cluster together.</div>"
     + "</body>"
     + "</html>"
   );

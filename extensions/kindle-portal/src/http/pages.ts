@@ -10,6 +10,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ApiHandlerContext } from "./api-json.js";
 import { buildFleetSnapshot } from "../monitor/snapshot-source.js";
 import { readAllAgents } from "../monitor/agent-reader.js";
+import { readUsageTotals } from "../monitor/usage-reader.js";
+import { readProviderQuota } from "../monitor/quota-reader.js";
+import { readCognitiveStats } from "../monitor/cognitive-reader.js";
 import { renderMonitorHtml } from "../html/monitor-template.js";
 import { renderMapHtml } from "../html/map-template.js";
 
@@ -31,8 +34,26 @@ export async function handleMonitorHtml(
     pngCapability: ctx.pngCapability,
   });
   const registeredAgents = await readAllAgents(ctx.stateDir, ctx.loadStore);
+
+  // Enrich snapshot with usage + quota (never-throwing readers).
+  const usageTotals = await readUsageTotals(ctx.stateDir);
+  const apiKey = process.env.ZAI_API_KEY ?? "";
+  const quota = apiKey ? await readProviderQuota(apiKey) : null;
+  const enriched = {
+    ...snapshot,
+    usage: {
+      totalTokens: usageTotals.totalTokens,
+      totalCostUsd: usageTotals.totalCostUsd,
+      sessionCount: usageTotals.sessionCount,
+      todayTokens: usageTotals.todayTokens,
+      todayCostUsd: usageTotals.todayCostUsd,
+      todaySessions: usageTotals.todaySessions,
+    },
+    providerQuota: quota,
+  };
+
   const html = renderMonitorHtml(
-    snapshot,
+    enriched,
     {
       refreshIntervalSeconds: ctx.cfg.refreshIntervalSeconds,
       accessToken: ctx.cfg.accessToken,
@@ -47,11 +68,11 @@ export async function handleMonitorHtml(
  *
  * The page itself is a thin shell that references the standalone SVG image
  * at `/kindle/api/map.svg` via an `<img>` tag. Graph building happens inside
- * the SVG endpoint (see `handleMapSvg`), so this handler no longer needs to
- * resolve a user / read persona / build a graph.
+ * the SVG endpoint (see `handleMapSvg`), so this handler only resolves view
+ * state (zoom / wiki) and cognitive stats for the template.
  *
  * URL query params honored by this page:
- *   - `?zoom=N` — current zoom level (50-400, default 100). Passed to the
+ *   - `?zoom=N` — current zoom level (25-400, default 50). Passed to the
  *     template to highlight the active zoom link and to build the SVG img URL.
  *   - `?wiki=1` — current wiki-layer state (default off). Passed to the
  *     template to highlight the wiki toggle and to build the SVG img URL.
@@ -67,13 +88,14 @@ export async function handleMapHtml(
   res.setHeader("Cache-Control", NO_STORE);
 
   const url = new URL(req.url ?? "/", "http://localhost");
-  const rawZoom = parseInt(url.searchParams.get("zoom") ?? "100", 10);
-  const zoom = Number.isNaN(rawZoom) ? 100 : Math.max(50, Math.min(400, rawZoom));
+  const rawZoom = parseInt(url.searchParams.get("zoom") ?? "50", 10);
+  const zoom = Number.isNaN(rawZoom) ? 50 : Math.max(25, Math.min(400, rawZoom));
   const wiki = url.searchParams.get("wiki") === "1";
+  const cognitive = await readCognitiveStats(ctx.stateDir);
 
   const html = renderMapHtml(
     { mapRefreshSeconds: ctx.cfg.mapRefreshSeconds, accessToken: ctx.cfg.accessToken },
-    { zoom, wiki },
+    { zoom, wiki, cognitive },
   );
   res.end(html);
 }

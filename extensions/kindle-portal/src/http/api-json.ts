@@ -16,8 +16,10 @@ import { resolveActiveUser } from "../monitor/scope-resolver.js";
 import { buildMapGraph } from "../map/graph-builder.js";
 import { readPersona } from "../map/persona-reader.js";
 import { readWikiGraph } from "../map/wiki-reader.js";
-import { readCognitiveStats, type CognitiveStats } from "../monitor/cognitive-reader.js";
+import { readCognitiveStats } from "../monitor/cognitive-reader.js";
 import { readAllAgents } from "../monitor/agent-reader.js";
+import { readUsageTotals } from "../monitor/usage-reader.js";
+import { readProviderQuota } from "../monitor/quota-reader.js";
 
 // ── Public types ──
 
@@ -75,22 +77,15 @@ export async function handleFleetJson(
       pngCapability: ctx.pngCapability,
     });
 
-    // Aggregate usage across all agents for the dashboard metrics row.
-    let totalTokens = 0;
-    let estimatedCostUsd = 0;
-    let totalToolCalls = 0;
-    for (const a of snapshot.agents) {
-      if (a.totalTokens !== undefined) {
-        totalTokens += a.totalTokens;
-      }
-      if (a.estimatedCostUsd !== undefined) {
-        estimatedCostUsd += a.estimatedCostUsd;
-      }
-      totalToolCalls += a.toolCallCount;
-    }
+    // Cumulative + today usage from JSONL session scanning (never throws).
+    const usageTotals = await readUsageTotals(ctx.stateDir);
 
-    // Cognitive stats are best-effort; failure yields zeros, never throws.
-    const cognitive: CognitiveStats = await readCognitiveStats(ctx.stateDir);
+    // Provider quota (5-min cached, never throws — null when unavailable).
+    const apiKey = process.env.ZAI_API_KEY ?? "";
+    const quota = apiKey ? await readProviderQuota(apiKey) : null;
+
+    // Cognitive stats best-effort; kept for the map page, monitor doesn't show them.
+    const cognitive = await readCognitiveStats(ctx.stateDir);
 
     const registeredAgents = await readAllAgents(ctx.stateDir, ctx.loadStore);
 
@@ -107,7 +102,15 @@ export async function handleFleetJson(
 
     const payload = {
       ...snapshot,
-      usage: { totalTokens, estimatedCostUsd, totalToolCalls },
+      usage: {
+        totalTokens: usageTotals.totalTokens,
+        totalCostUsd: usageTotals.totalCostUsd,
+        sessionCount: usageTotals.sessionCount,
+        todayTokens: usageTotals.todayTokens,
+        todayCostUsd: usageTotals.todayCostUsd,
+        todaySessions: usageTotals.todaySessions,
+      },
+      providerQuota: quota,
       cognitive,
       registeredAgents: mergedAgents,
     };

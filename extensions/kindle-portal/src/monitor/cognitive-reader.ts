@@ -17,13 +17,9 @@
  */
 import { readdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { CognitiveStats } from "../types.js";
 
-export interface CognitiveStats {
-  readonly domains: number;
-  readonly insights: number;
-  readonly corrections: number;
-  readonly skills: number;
-}
+export type { CognitiveStats };
 
 /**
  * Recursively collect every `*.json` file under `dir`. Returns `[]` if the

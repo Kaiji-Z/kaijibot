@@ -13,8 +13,9 @@
  *     absent, the wiki layer is omitted entirely (smaller payload, no wiki
  *     nodes / cross edges).
  *   - `?zoom=N` — physical SVG dimensions scale by N/100 while the viewBox
- *     stays fixed at "0 0 758 1024". Range 50-400, default 100. At zoom=200
- *     the SVG is 1516x2048 and the map page's scroll container pans over it.
+ *     stays fixed at "0 0 2400 3600". Range 25-400, default 50. At zoom=50
+ *     the SVG is 1200x1800 (fits most of the graph on screen); at zoom=200
+ *     the SVG is 4800x7200 and the map page's scroll container pans over it.
  *
  * SVG output is cacheable for 5 min to ease repeated refreshes.
  */
@@ -51,7 +52,7 @@ function parseWikiFlag(req: IncomingMessage): boolean {
 }
 
 /**
- * Parse `?zoom=N` from the request URL. Default 100, clamped to [50, 400].
+ * Parse `?zoom=N` from the request URL. Default 50, clamped to [25, 400].
  *
  * Values outside the range are silently clamped — invalid input never causes
  * a 500, it just produces a sensible default-size SVG.
@@ -60,7 +61,7 @@ function parseZoomLevel(req: IncomingMessage): number {
   const rawUrl = req.url ?? "";
   const q = rawUrl.indexOf("?");
   if (q === -1) {
-    return 100;
+    return 50;
   }
   const search = rawUrl.slice(q + 1);
   for (const pair of search.split("&")) {
@@ -72,11 +73,11 @@ function parseZoomLevel(req: IncomingMessage): number {
     const val = eq === -1 ? "" : pair.slice(eq + 1);
     const parsed = parseInt(val, 10);
     if (Number.isNaN(parsed)) {
-      return 100;
+      return 50;
     }
-    return Math.max(50, Math.min(400, parsed));
+    return Math.max(25, Math.min(400, parsed));
   }
-  return 100;
+  return 50;
 }
 
 export async function handleMapSvg(

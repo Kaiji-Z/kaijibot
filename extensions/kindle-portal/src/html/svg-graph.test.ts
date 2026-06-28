@@ -1,12 +1,14 @@
 /**
  * Unit tests for the inline SVG graph renderer.
  *
- * Verifies layout positioning, label truncation, strength-bar rendering,
- * edge classification, wiki-node slicing, and XML escaping — all without
+ * Verifies force-directed layout positioning (within canvas bounds, not
+ * exact coordinates — the layout is deterministic but positions float),
+ * variable node sizes, label truncation, edge classification, wiki-node
+ * slicing, XML escaping, zoom scaling, and determinism — all without
  * touching the filesystem or the LLM.
  */
 import { describe, it, expect } from "vitest";
-import { renderMapGraphSvg, MAX_WIKI_NODES } from "./svg-graph.js";
+import { renderMapGraphSvg, computeForceLayout, MAX_WIKI_NODES } from "./svg-graph.js";
 import type { MapGraph, MapNode } from "../types.js";
 
 function domain(id: string, label: string, strength: number): MapNode {
@@ -19,6 +21,17 @@ function wiki(
   kind: "concept" | "entity" = "concept",
 ): MapNode {
   return { id, label, kind, strength: 0.5 };
+}
+
+/** Extract all cx/cy circle attributes from the SVG (for bounds checking). */
+function extractCircleCenters(svg: string): Array<{ cx: number; cy: number }> {
+  const re = /<circle[^>]*cx="([\d.]+)"[^>]*cy="([\d.]+)"/g;
+  const out: Array<{ cx: number; cy: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(svg)) !== null) {
+    out.push({ cx: parseFloat(m[1]), cy: parseFloat(m[2]) });
+  }
+  return out;
 }
 
 describe("renderMapGraphSvg — empty state", () => {
@@ -36,14 +49,14 @@ describe("renderMapGraphSvg — empty state", () => {
 });
 
 describe("renderMapGraphSvg — svg root", () => {
-  it("root svg has explicit width/height (standalone image), viewBox, background rect", () => {
+  it("root svg has explicit width/height (standalone image), viewBox 2400x3600, background rect", () => {
     const svg = renderMapGraphSvg({
       nodes: [domain("a", "A", 0.5)],
       edges: [],
     });
-    expect(svg).toContain('width="758"');
-    expect(svg).toContain('height="1024"');
-    expect(svg).toContain('viewBox="0 0 758 1024"');
+    expect(svg).toContain('width="2400"');
+    expect(svg).toContain('height="3600"');
+    expect(svg).toContain('viewBox="0 0 2400 3600"');
     expect(svg).not.toContain('width="100%"');
     expect(svg).not.toContain('id="cogmap"');
     expect(svg).not.toContain("background:#fff");
@@ -54,10 +67,30 @@ describe("renderMapGraphSvg — svg root", () => {
       nodes: [domain("a", "A", 0.5)],
       edges: [],
     });
-    expect(svg).toContain('<rect width="758" height="1024" fill="#fff"/>');
+    expect(svg).toContain('<rect width="2400" height="3600" fill="#fff"/>');
     const rootEnd = svg.indexOf('">') + 2;
     const firstChild = svg.slice(rootEnd, rootEnd + 40);
-    expect(firstChild.startsWith('<rect width="758"')).toBe(true);
+    expect(firstChild.startsWith('<rect width="2400"')).toBe(true);
+  });
+
+  it("scales physical dimensions with zoom (zoom=50 → 1200x1800)", () => {
+    const svg = renderMapGraphSvg(
+      { nodes: [domain("a", "A", 0.5)], edges: [] },
+      { zoom: 50 },
+    );
+    expect(svg).toContain('width="1200"');
+    expect(svg).toContain('height="1800"');
+    // viewBox stays fixed at the full canvas.
+    expect(svg).toContain('viewBox="0 0 2400 3600"');
+  });
+
+  it("scales physical dimensions with zoom (zoom=200 → 4800x7200)", () => {
+    const svg = renderMapGraphSvg(
+      { nodes: [domain("a", "A", 0.5)], edges: [] },
+      { zoom: 200 },
+    );
+    expect(svg).toContain('width="4800"');
+    expect(svg).toContain('height="7200"');
   });
 });
 
@@ -137,7 +170,7 @@ describe("renderMapGraphSvg — wiki option", () => {
       edges: [{ from: "ai", to: "w1" }],
     };
     const svg = renderMapGraphSvg(g, { wiki: false });
-    expect(svg).not.toContain('stroke-dasharray="4,2"');
+    expect(svg).not.toContain('stroke-dasharray="3,2"');
   });
 
   it("still emits domain-layer and background rect when wiki=false", () => {
@@ -146,7 +179,7 @@ describe("renderMapGraphSvg — wiki option", () => {
       edges: [],
     };
     const svg = renderMapGraphSvg(g, { wiki: false });
-    expect(svg).toContain('<rect width="758" height="1024" fill="#fff"/>');
+    expect(svg).toContain('<rect width="2400" height="3600" fill="#fff"/>');
     expect(svg).toContain('<g id="domain-layer">');
     expect(svg).toContain("AI");
     expect(svg).toContain("</svg>");
@@ -154,31 +187,108 @@ describe("renderMapGraphSvg — wiki option", () => {
 
   it("empty-state SVG still includes background rect", () => {
     const svg = renderMapGraphSvg({ nodes: [], edges: [] });
-    expect(svg).toContain('<rect width="758" height="1024" fill="#fff"/>');
+    expect(svg).toContain('<rect width="2400" height="3600" fill="#fff"/>');
     expect(svg).toContain("No persona data yet");
   });
 });
 
-describe("renderMapGraphSvg — node positioning", () => {
-  it("places a single domain node at the top of the circle (379, 100)", () => {
-    // angle = -PI/2 → x=379, y=400-300=100; box top-left = (279, 74)
-    const g: MapGraph = { nodes: [domain("solo", "Solo", 0.5)], edges: [] };
+describe("renderMapGraphSvg — force-directed positioning", () => {
+  it("places all domain nodes within canvas bounds [50, 2350] x [50, 3550]", () => {
+    const nodes: MapNode[] = [];
+    for (let i = 0; i < 10; i++) {
+      nodes.push(domain("d" + i, "D" + i, 0.5));
+    }
+    const g: MapGraph = { nodes, edges: [] };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('x="279"');
-    expect(svg).toContain('y="74"');
+    const centers = extractCircleCenters(svg);
+    expect(centers.length).toBe(10);
+    for (const c of centers) {
+      expect(c.cx).toBeGreaterThanOrEqual(50);
+      expect(c.cx).toBeLessThanOrEqual(2350);
+      expect(c.cy).toBeGreaterThanOrEqual(50);
+      expect(c.cy).toBeLessThanOrEqual(3550);
+    }
   });
 
-  it("places two domain nodes at top and bottom of the circle", () => {
-    // node 0: angle -PI/2 → (379, 100); node 1: angle PI/2 → (379, 700)
+  it("produces deterministic output (same input → same SVG)", () => {
     const g: MapGraph = {
-      nodes: [domain("top", "Top", 0.9), domain("bot", "Bot", 0.8)],
+      nodes: [domain("a", "A", 0.8), domain("b", "B", 0.6), domain("c", "C", 0.4)],
+      edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }],
+    };
+    const svg1 = renderMapGraphSvg(g);
+    const svg2 = renderMapGraphSvg(g);
+    expect(svg1).toBe(svg2);
+  });
+
+  it("produces different layouts for different edge sets", () => {
+    const nodes: MapNode[] = [domain("a", "A", 0.5), domain("b", "B", 0.5), domain("c", "C", 0.5)];
+    const g1: MapGraph = { nodes, edges: [{ from: "a", to: "b" }] };
+    const g2: MapGraph = { nodes, edges: [{ from: "a", to: "c" }] };
+    const svg1 = renderMapGraphSvg(g1);
+    const svg2 = renderMapGraphSvg(g2);
+    // Different edges → different attractive forces → different positions.
+    // The circle cx values should not all be identical between the two.
+    const centers1 = extractCircleCenters(svg1).map((c) => c.cx);
+    const centers2 = extractCircleCenters(svg2).map((c) => c.cx);
+    expect(centers1).not.toEqual(centers2);
+  });
+});
+
+describe("renderMapGraphSvg — variable node sizes", () => {
+  it("renders domain circles with radius scaling by strength (20 + strength*30)", () => {
+    const g: MapGraph = {
+      nodes: [domain("weak", "Weak", 0.0), domain("strong", "Strong", 1.0)],
       edges: [],
     };
     const svg = renderMapGraphSvg(g);
-    // top node box y = 100 - 26 = 74
-    expect(svg).toContain('y="74"');
-    // bottom node box y = 700 - 26 = 674
-    expect(svg).toContain('y="674"');
+    // strength 0.0 → radius 20; strength 1.0 → radius 50
+    expect(svg).toContain('r="20"');
+    expect(svg).toContain('r="50"');
+  });
+
+  it("renders domain circles with radius 35 for strength 0.5", () => {
+    const g: MapGraph = { nodes: [domain("mid", "Mid", 0.5)], edges: [] };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('r="35"');
+  });
+
+  it("uses black fill (#000) for strong domains (strength >= 0.5)", () => {
+    const g: MapGraph = { nodes: [domain("s", "Strong", 0.8)], edges: [] };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('fill="#000"');
+  });
+
+  it("uses lighter fill (#333) for weak domains (strength < 0.5)", () => {
+    const g: MapGraph = { nodes: [domain("w", "Weak", 0.2)], edges: [] };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('fill="#333"');
+  });
+
+  it("renders wiki nodes with fixed radius 12 and gray fill (#999)", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8), wiki("emb", "Embeddings")],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('r="12"');
+    expect(svg).toContain('fill="#999"');
+  });
+
+  it("renders domain labels with font-size 20 and bold", () => {
+    const g: MapGraph = { nodes: [domain("ai", "AI", 0.8)], edges: [] };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('font-size="20"');
+    expect(svg).toContain('font-weight="bold"');
+  });
+
+  it("renders wiki labels with font-size 12 and fill #666", () => {
+    const g: MapGraph = {
+      nodes: [domain("ai", "AI", 0.8), wiki("emb", "Go")],
+      edges: [],
+    };
+    const svg = renderMapGraphSvg(g);
+    expect(svg).toContain('font-size="12"');
+    expect(svg).toContain('fill="#666"');
   });
 });
 
@@ -214,42 +324,14 @@ describe("renderMapGraphSvg — label truncation", () => {
   });
 });
 
-describe("renderMapGraphSvg — strength bar", () => {
-  it("renders a 6px-wide strength bar with height 44 for strength 1.0", () => {
-    const g: MapGraph = { nodes: [domain("s", "Strong", 1.0)], edges: [] };
-    const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('width="6"');
-    expect(svg).toContain('height="44"');
-  });
-
-  it("renders a proportional bar (strength 0.5 → height 22)", () => {
-    const g: MapGraph = { nodes: [domain("m", "Medium", 0.5)], edges: [] };
-    const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('height="22"');
-  });
-
-  it("renders height 0 for strength 0", () => {
-    const g: MapGraph = { nodes: [domain("w", "Weak", 0)], edges: [] };
-    const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('height="0"');
-  });
-
-  it("clamps strength above 1.0 to bar height 44", () => {
-    const g: MapGraph = { nodes: [domain("x", "X", 1.5)], edges: [] };
-    const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('height="44"');
-  });
-});
-
 describe("renderMapGraphSvg — edge classification", () => {
-  it("renders domain-domain edges as solid black (stroke-width 1.5)", () => {
+  it("renders domain-domain edges as solid black (stroke-width 2)", () => {
     const g: MapGraph = {
       nodes: [domain("a", "A", 0.9), domain("b", "B", 0.9)],
       edges: [{ from: "a", to: "b" }],
     };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('stroke="#000" stroke-width="1.5"');
-    expect(svg).not.toContain("stroke-dasharray");
+    expect(svg).toContain('stroke="#000" stroke-width="2"');
   });
 
   it("renders wiki-wiki edges as light gray (stroke #ccc, width 0.5)", () => {
@@ -261,18 +343,17 @@ describe("renderMapGraphSvg — edge classification", () => {
     expect(svg).toContain('stroke="#ccc" stroke-width="0.5"');
   });
 
-  it("renders domain-wiki edges as dashed gray (stroke-dasharray 4,2)", () => {
+  it("renders domain-wiki edges as dashed gray (stroke-dasharray 3,2)", () => {
     const g: MapGraph = {
       nodes: [domain("a", "A", 0.9), wiki("w1", "W1")],
       edges: [{ from: "a", to: "w1" }],
     };
     const svg = renderMapGraphSvg(g);
-    expect(svg).toContain('stroke-dasharray="4,2"');
+    expect(svg).toContain('stroke-dasharray="3,2"');
     expect(svg).toContain('stroke="#666"');
   });
 
   it("drops edges that reference filtered wiki nodes", () => {
-    // More than MAX_WIKI_NODES wiki nodes; edge targets a dropped one.
     const nodes: MapNode[] = [domain("d", "D", 0.9)];
     for (let i = 0; i < MAX_WIKI_NODES + 5; i++) {
       nodes.push(wiki("w" + i, "WL" + i));
@@ -282,14 +363,13 @@ describe("renderMapGraphSvg — edge classification", () => {
       edges: [{ from: "d", to: "w" + (MAX_WIKI_NODES + 1) }],
     };
     const svg = renderMapGraphSvg(g);
-    // The dashed cross-edge should be absent (endpoint filtered out).
-    expect(svg).not.toContain('stroke-dasharray="4,2"');
+    expect(svg).not.toContain('stroke-dasharray="3,2"');
   });
 
-  it("drops self-edges is the graph builder's job; renderer drops unknown endpoints", () => {
+  it("drops edges that reference unknown endpoints", () => {
     const g: MapGraph = {
       nodes: [domain("a", "A", 0.5)],
-      edges: [{ from: "a", to: "ghost" }], // "ghost" has no position
+      edges: [{ from: "a", to: "ghost" }],
     };
     const svg = renderMapGraphSvg(g);
     expect(svg).not.toContain("<line");
@@ -332,5 +412,60 @@ describe("renderMapGraphSvg — XML escaping", () => {
     };
     const svg = renderMapGraphSvg(g);
     expect(svg).toContain("&quot;");
+  });
+});
+
+describe("computeForceLayout — unit tests", () => {
+  it("returns empty map for no nodes", () => {
+    const pos = computeForceLayout([], [], 2400, 3600);
+    expect(pos.size).toBe(0);
+  });
+
+  it("returns a position for each node", () => {
+    const nodes = [domain("a", "A", 0.5), domain("b", "B", 0.5), domain("c", "C", 0.5)];
+    const pos = computeForceLayout(nodes, [], 2400, 3600);
+    expect(pos.size).toBe(3);
+    expect(pos.has("a")).toBe(true);
+    expect(pos.has("b")).toBe(true);
+    expect(pos.has("c")).toBe(true);
+  });
+
+  it("places all nodes within canvas bounds", () => {
+    const nodes: MapNode[] = [];
+    for (let i = 0; i < 20; i++) {
+      nodes.push(domain("n" + i, "N" + i, 0.5));
+    }
+    const pos = computeForceLayout(nodes, [], 2400, 3600);
+    for (const p of pos.values()) {
+      expect(p.x).toBeGreaterThanOrEqual(50);
+      expect(p.x).toBeLessThanOrEqual(2350);
+      expect(p.y).toBeGreaterThanOrEqual(50);
+      expect(p.y).toBeLessThanOrEqual(3550);
+    }
+  });
+
+  it("is deterministic (same input → same output)", () => {
+    const nodes = [domain("a", "A", 0.5), domain("b", "B", 0.5)];
+    const edges = [{ from: "a", to: "b" }];
+    const pos1 = computeForceLayout(nodes, edges, 2400, 3600);
+    const pos2 = computeForceLayout(nodes, edges, 2400, 3600);
+    expect(pos1.get("a")).toEqual(pos2.get("a"));
+    expect(pos1.get("b")).toEqual(pos2.get("b"));
+  });
+
+  it("completes in reasonable time for 80 nodes (performance)", () => {
+    const nodes: MapNode[] = [];
+    for (let i = 0; i < 80; i++) {
+      nodes.push(domain("n" + i, "N" + i, 0.5));
+    }
+    const edges: Array<{ from: string; to: string }> = [];
+    for (let i = 0; i < 100; i++) {
+      edges.push({ from: "n" + (i % 80), to: "n" + ((i + 1) % 80) });
+    }
+    const start = Date.now();
+    computeForceLayout(nodes, edges, 2400, 3600);
+    const elapsed = Date.now() - start;
+    // Should complete in well under 100ms; allow generous headroom for CI.
+    expect(elapsed).toBeLessThan(500);
   });
 });

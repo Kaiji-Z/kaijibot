@@ -42,33 +42,46 @@ describe("renderMapHtml", () => {
     expect(html).toContain(">Map</span>");
   });
 
-  it("renders zoom links for 100%, 150%, 200%, 300%", () => {
+  it("renders zoom links for 25%, 50%, 100%, 200%, 400%", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain("25%</a>");
+    expect(html).toContain("50%</a>");
     expect(html).toContain("100%</a>");
-    expect(html).toContain("150%</a>");
     expect(html).toContain("200%</a>");
-    expect(html).toContain("300%</a>");
+    expect(html).toContain("400%</a>");
+    expect(html).toContain("/kindle/map?zoom=25");
+    expect(html).toContain("/kindle/map?zoom=50");
     expect(html).toContain("/kindle/map?zoom=100");
-    expect(html).toContain("/kindle/map?zoom=150");
     expect(html).toContain("/kindle/map?zoom=200");
-    expect(html).toContain("/kindle/map?zoom=300");
+    expect(html).toContain("/kindle/map?zoom=400");
+  });
+
+  it("does not render old zoom levels (150%, 300%)", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).not.toContain("150%");
+    expect(html).not.toContain("300%");
   });
 
   it("marks the current zoom level as active", () => {
+    const html50 = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 50 });
+    expect(html50).toContain('zoom-link active" href="/kindle/map?zoom=50');
+
     const html100 = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 100 });
     expect(html100).toContain('zoom-link active" href="/kindle/map?zoom=100');
-
-    const html200 = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 200 });
-    expect(html200).toContain('zoom-link active" href="/kindle/map?zoom=200');
     // Non-active levels do NOT carry the active class.
-    expect(html200).not.toContain('active" href="/kindle/map?zoom=100');
+    expect(html100).not.toContain('active" href="/kindle/map?zoom=50');
+  });
+
+  it("defaults to zoom=50 when no zoom provided", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain('src="/kindle/api/map.svg?zoom=50');
   });
 
   it("includes wiki toggle link that preserves zoom", () => {
-    const html = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 150 });
+    const html = renderMapHtml({ mapRefreshSeconds: 300 }, { zoom: 100 });
     expect(html).toContain("Wiki");
-    // Toggling wiki from a zoom=150 state should keep zoom=150.
-    expect(html).toContain("/kindle/map?zoom=150&wiki=1");
+    // Toggling wiki from a zoom=100 state should keep zoom=100.
+    expect(html).toContain("/kindle/map?zoom=100&wiki=1");
   });
 
   it("img src includes zoom param when provided", () => {
@@ -79,7 +92,25 @@ describe("renderMapHtml", () => {
   it("img src includes wiki=1 when wiki is enabled", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 }, { wiki: true });
     expect(html).toContain("wiki=1");
-    expect(html).toContain('src="/kindle/api/map.svg?zoom=100&wiki=1');
+    expect(html).toContain('src="/kindle/api/map.svg?zoom=50&wiki=1');
+  });
+
+  it("renders cognitive stats line when cognitive data provided", () => {
+    const html = renderMapHtml(
+      { mapRefreshSeconds: 300 },
+      { cognitive: { domains: 110, insights: 50, corrections: 25, skills: 2 } },
+    );
+    expect(html).toContain('class="cognitive-stats"');
+    expect(html).toContain("110 domains");
+    expect(html).toContain("25 corrections");
+    expect(html).toContain("2 skills");
+  });
+
+  it("omits cognitive stats line when no cognitive data", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).not.toContain('<div class="cognitive-stats">');
+    expect(html).not.toContain("domains \u00b7");
+    expect(html).not.toContain("corrections \u00b7");
   });
 
   it("contains NO javascript (no <script> tag, no onclick)", () => {
@@ -104,7 +135,7 @@ describe("renderMapHtml", () => {
     });
     expect(html).toContain("token=s3cret");
     expect(html).toContain('href="/kindle/?token=s3cret"');
-    expect(html).toContain("src=\"/kindle/api/map.svg?zoom=100&token=s3cret");
+    expect(html).toContain("src=\"/kindle/api/map.svg?zoom=50&token=s3cret");
   });
 
   it("omits token query when accessToken undefined", () => {
@@ -133,6 +164,12 @@ describe("renderMapHtml", () => {
     expect(html.toLowerCase().startsWith("<!doctype html>")).toBe(true);
   });
 
+  it("page title is 'Knowledge Graph'", () => {
+    const html = renderMapHtml({ mapRefreshSeconds: 300 });
+    expect(html).toContain("<title>KaijiBot Knowledge Graph</title>");
+    expect(html).toContain(">Knowledge Graph<");
+  });
+
   it("mapRefreshSeconds=60 produces content='60'", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 60 });
     expect(html).toContain('content="60"');
@@ -151,8 +188,6 @@ describe("renderMapHtml", () => {
 
   it("img has no inline width style (uses natural SVG dimensions)", () => {
     const html = renderMapHtml({ mapRefreshSeconds: 300 });
-    // The img tag should not set a width style — it relies on the SVG's
-    // natural dimensions which change with the zoom param.
     const imgMatch = html.match(/<img[^>]*>/);
     expect(imgMatch).not.toBeNull();
     expect(imgMatch![0]).not.toContain("width:");
@@ -228,49 +263,6 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain("ACTIVE");
   });
 
-  it("status symbol mapping: thinking=■", () => {
-    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1", status: "thinking" })]), cfg);
-    expect(html).toContain("■ THINKING");
-  });
-
-  it("status symbol mapping: tool_calling=▶", () => {
-    const html = renderMonitorHtml(
-      snapshotWith([makeAgent({ sessionLabel: "A1", status: "tool_calling" })]),
-      cfg,
-    );
-    expect(html).toContain("▶ TOOL CALLING");
-  });
-
-  it("status symbol mapping: completed=✓", () => {
-    const html = renderMonitorHtml(
-      snapshotWith([makeAgent({ sessionLabel: "A1", status: "completed" })]),
-      cfg,
-    );
-    expect(html).toContain("✓ COMPLETED");
-  });
-
-  it("status symbol mapping: failed=✗", () => {
-    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1", status: "failed" })]), cfg);
-    expect(html).toContain("✗ FAILED");
-  });
-
-  it("calculates elapsed seconds from startedAt", () => {
-    const snap: FleetSnapshot = {
-      agents: [makeAgent({ sessionLabel: "A1", startedAt: GEN_AT - 60000 })],
-      lanes: [],
-      laneSupport: "unavailable",
-      idle: false,
-      generatedAt: GEN_AT,
-    };
-    const html = renderMonitorHtml(snap, cfg);
-    expect(html).toContain("60s ago");
-  });
-
-  it("renders lane-unavailable note", () => {
-    const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("Lane/queue depth unavailable");
-  });
-
   it("includes XHR polling script with configured interval", () => {
     const html = renderMonitorHtml(emptySnapshot, { refreshIntervalSeconds: 15 });
     expect(html).toContain("15000");
@@ -289,29 +281,10 @@ describe("renderMonitorHtml", () => {
     expect(html).not.toContain("?token");
   });
 
-  it("renders cost with 4 decimal places", () => {
-    const html = renderMonitorHtml(
-      snapshotWith([makeAgent({ sessionLabel: "A1", estimatedCostUsd: 0.04321 })]),
-      cfg,
-    );
-    expect(html).toContain("0.0432");
-  });
-
-  it("renders 'unknown' for missing model", () => {
-    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1" })]), cfg);
-    expect(html).toContain("Model: unknown");
-  });
-
   it("includes link to map page", () => {
     const html = renderMonitorHtml(emptySnapshot, cfgWithToken);
     expect(html).toContain('href="/kindle/map');
     expect(html).toContain("?token=s3cret");
-  });
-
-  it("includes pngCapability in footer", () => {
-    const snap: FleetSnapshot = { ...emptySnapshot, pngCapability: "graphviz-dot" };
-    const html = renderMonitorHtml(snap, cfg);
-    expect(html).toContain("graphviz-dot");
   });
 
   it("renders zoom buttons A- and A+", () => {
@@ -347,50 +320,100 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain("var zoomLevel = 30;");
   });
 
-  it("renders usage metrics row with AGENTS, TOKENS, COST labels", () => {
-    const html = renderMonitorHtml(snapshotWith([makeAgent({ sessionLabel: "A1" })]), cfg);
+  it("renders TOKENS TODAY and COST TODAY metrics labels", () => {
+    const snap: FleetSnapshot = {
+      ...emptySnapshot,
+      usage: {
+        totalTokens: 0,
+        totalCostUsd: 0,
+        sessionCount: 0,
+        todayTokens: 302000,
+        todayCostUsd: 0.05,
+        todaySessions: 3,
+      },
+    };
+    const html = renderMonitorHtml(snap, cfg);
     expect(html).toContain('class="metrics-row');
-    expect(html).toContain("AGENTS");
-    expect(html).toContain("TOKENS");
-    expect(html).toContain("COST");
+    expect(html).toContain("TOKENS TODAY");
+    expect(html).toContain("COST TODAY");
   });
 
-  it("renders COGNITIVE STATUS, AGENTS, and ACTIVE SESSIONS section headers", () => {
+  it("formats today tokens with K suffix", () => {
+    const snap: FleetSnapshot = {
+      ...emptySnapshot,
+      usage: {
+        totalTokens: 0,
+        totalCostUsd: 0,
+        sessionCount: 0,
+        todayTokens: 302000,
+        todayCostUsd: 0,
+        todaySessions: 0,
+      },
+    };
+    const html = renderMonitorHtml(snap, cfg);
+    expect(html).toContain("302K");
+  });
+
+  it("formats today cost with dollar sign and 2 decimals", () => {
+    const snap: FleetSnapshot = {
+      ...emptySnapshot,
+      usage: {
+        totalTokens: 0,
+        totalCostUsd: 0,
+        sessionCount: 0,
+        todayTokens: 0,
+        todayCostUsd: 0.05,
+        todaySessions: 0,
+      },
+    };
+    const html = renderMonitorHtml(snap, cfg);
+    expect(html).toContain("$0.05");
+  });
+
+  it("renders quota bar when providerQuota is provided", () => {
+    const snap: FleetSnapshot = {
+      ...emptySnapshot,
+      providerQuota: {
+        provider: "zai",
+        displayName: "ZAI",
+        usedPercent: 78,
+      },
+    };
+    const html = renderMonitorHtml(snap, cfg);
+    expect(html).toContain("quota-section");
+    expect(html).toContain("quota-bar");
+    expect(html).toContain("quota-fill");
+    expect(html).toContain("width:78%");
+    expect(html).toContain("78% used");
+  });
+
+  it("renders 'Provider quota unavailable' when providerQuota is null", () => {
+    const snap: FleetSnapshot = {
+      ...emptySnapshot,
+      providerQuota: null,
+    };
+    const html = renderMonitorHtml(snap, cfg);
+    expect(html).toContain("Provider quota unavailable");
+    expect(html).not.toContain('class="quota-fill"');
+  });
+
+  it("renders 'Provider quota unavailable' when providerQuota is undefined", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("COGNITIVE STATUS");
-    expect(html).toContain("AGENTS");
-    expect(html).toContain("ACTIVE SESSIONS");
-    expect(html).toContain("section-h");
+    expect(html).toContain("Provider quota unavailable");
+    expect(html).not.toContain('class="quota-fill"');
   });
 
-  it("renders cognitive stat counts and labels", () => {
-    const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("DOMAINS");
-    expect(html).toContain("CORRECTIONS");
-    expect(html).toContain("SKILLS");
-  });
-
-  it("renders stat-bar for cognitive visualization", () => {
-    const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("stat-bar");
-    expect(html).toContain("stat-bar-fill");
-  });
-
-  it("renders 'No active sessions' when no active runs", () => {
-    const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain("No active sessions");
-  });
-
-  it("shows registered agent IDs, not UUIDs", () => {
+  it("agent cards always show registered agents even when idle", () => {
     const agents: RegisteredAgent[] = [
-      makeRegisteredAgent({ id: "main", sessionCount: 42 }),
+      makeRegisteredAgent({ id: "main", sessionCount: 55 }),
       makeRegisteredAgent({ id: "testagent", isDefault: false, sessionCount: 1 }),
     ];
     const html = renderMonitorHtml(emptySnapshot, cfg, agents);
-    expect(html).toContain("main");
-    expect(html).toContain("testagent");
-    expect(html).not.toContain("f6fecfcf");
-    expect(html).not.toContain("run-1");
+    expect(html).toContain("agent-card");
+    expect(html).toContain(">main<");
+    expect(html).toContain(">testagent<");
+    expect(html).toContain("55 sessions");
+    expect(html).toContain("1 session");
   });
 
   it("marks registered agent as ACTIVE when snapshot has matching agentId", () => {
@@ -399,15 +422,15 @@ describe("renderMonitorHtml", () => {
     ];
     const snap = snapshotWith([makeAgent({ agentId: "main", sessionLabel: "A1" })]);
     const html = renderMonitorHtml(snap, cfg, agents);
-    expect(html).toContain("● ACTIVE");
+    expect(html).toContain("\u25cf ACTIVE");
   });
 
-  it("shows idle registered agent with ○ IDLE", () => {
+  it("shows idle registered agent with IDLE marker", () => {
     const agents: RegisteredAgent[] = [
       makeRegisteredAgent({ id: "testagent", status: "idle" }),
     ];
     const html = renderMonitorHtml(emptySnapshot, cfg, agents);
-    expect(html).toContain("○ IDLE");
+    expect(html).toContain("\u25cb IDLE");
   });
 
   it("renders session count for registered agents", () => {
@@ -426,20 +449,35 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain("1 session");
   });
 
-  it("renders relative time for lastActiveAt", () => {
-    const agents: RegisteredAgent[] = [
-      makeRegisteredAgent({ id: "main", lastActiveAt: Date.now() - 120000 }),
-    ];
-    const html = renderMonitorHtml(emptySnapshot, cfg, agents);
-    expect(html).toContain("ago");
+  it("does not contain cognitive stats display", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).not.toContain("COGNITIVE STATUS");
+    expect(html).not.toContain("DOMAINS");
+    expect(html).not.toContain("CORRECTIONS");
+    expect(html).not.toContain("SKILLS");
   });
 
-  it("does not show runId UUIDs when agentId is available", () => {
-    const snap = snapshotWith([
-      makeAgent({ runId: "f6fecfcf-uuid-1234", agentId: "main", sessionLabel: "A1" }),
-    ]);
-    const html = renderMonitorHtml(snap, cfg);
-    expect(html).toContain("main");
-    expect(html).not.toContain("f6fecfcf");
+  it("does not contain stat-bar visualization", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).not.toContain("stat-bar");
+    expect(html).not.toContain("stat-bar-fill");
+  });
+
+  it("does not contain lane note", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).not.toContain("Lane/queue");
+    expect(html).not.toContain("lane-note");
+  });
+
+  it("does not contain old AGENTS/TOKENS/COST metrics labels", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).not.toContain(">AGENTS<");
+    expect(html).not.toContain(">TOKENS<");
+    expect(html).not.toContain(">COST<");
+  });
+
+  it("no template literals (no backticks)", () => {
+    const html = renderMonitorHtml(emptySnapshot, cfg);
+    expect(html).not.toContain("`");
   });
 });
