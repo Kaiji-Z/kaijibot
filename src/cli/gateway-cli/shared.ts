@@ -3,7 +3,7 @@ import {
   resolveGatewaySystemdServiceName,
   resolveGatewayWindowsTaskName,
 } from "../../daemon/constants.js";
-import { resolveGatewayService } from "../../daemon/service.js";
+import { tryResolveGatewayService } from "../../daemon/service.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatCliCommand } from "../command-format.js";
 import { parsePort } from "../shared/parse-port.js";
@@ -62,7 +62,13 @@ export function renderGatewayServiceStopHints(env: NodeJS.ProcessEnv = process.e
 }
 
 export async function maybeExplainGatewayServiceStop() {
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    defaultRuntime.error(
+      `Gateway already running. Stop it first: ${formatCliCommand("kaijibot gateway stop")}`,
+    );
+    return;
+  }
   let loaded: boolean | null = null;
   try {
     loaded = await service.isLoaded({ env: process.env });

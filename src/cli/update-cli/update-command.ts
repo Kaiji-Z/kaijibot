@@ -13,7 +13,7 @@ import {
 import { formatConfigIssueLines } from "../../config/issue-format.js";
 import { asResolvedSourceConfig, asRuntimeConfig } from "../../config/materialize.js";
 import { resolveGatewayRestartLogPath } from "../../daemon/restart-logs.js";
-import { resolveGatewayService } from "../../daemon/service.js";
+import { tryResolveGatewayService } from "../../daemon/service.js";
 import { writeGatewayRestartHandoffSync } from "../../infra/restart-handoff.js";
 import { nodeVersionSatisfiesEngine } from "../../infra/runtime-guard.js";
 import {
@@ -699,12 +699,15 @@ async function maybeRestartService(params: {
       }
 
       if (!params.opts.json && restartInitiated) {
-        const service = resolveGatewayService();
-        let health = await waitForGatewayHealthyRestart({
-          service,
-          port: params.gatewayPort,
-        });
-        if (!health.healthy && health.staleGatewayPids.length > 0) {
+        const service = tryResolveGatewayService();
+        if (!service) {
+          defaultRuntime.log(theme.muted("Gateway health check skipped (no service manager)."));
+        } else {
+          let health = await waitForGatewayHealthyRestart({
+            service,
+            port: params.gatewayPort,
+          });
+          if (!health.healthy && health.staleGatewayPids.length > 0) {
           if (!params.opts.json) {
             defaultRuntime.log(
               theme.warn(
@@ -737,6 +740,7 @@ async function maybeRestartService(params: {
           );
         }
         defaultRuntime.log("");
+        }
       }
     } catch (err) {
       if (!params.opts.json) {
@@ -978,7 +982,8 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
   );
   if (shouldRestart) {
     try {
-      const loaded = await resolveGatewayService().isLoaded({ env: process.env });
+      const service = tryResolveGatewayService();
+      const loaded = service ? await service.isLoaded({ env: process.env }) : false;
       if (loaded) {
         restartScriptPath = await prepareRestartScript(process.env, gatewayPort);
         refreshGatewayServiceEnv = true;

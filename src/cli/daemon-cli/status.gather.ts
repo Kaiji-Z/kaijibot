@@ -14,7 +14,7 @@ import { readLastGatewayErrorLine } from "../../daemon/diagnostics.js";
 import type { FindExtraGatewayServicesOptions } from "../../daemon/inspect.js";
 import type { ServiceConfigAudit } from "../../daemon/service-audit.js";
 import type { GatewayServiceRuntime } from "../../daemon/service-runtime.js";
-import { resolveGatewayService } from "../../daemon/service.js";
+import { tryResolveGatewayService } from "../../daemon/service.js";
 import { trimToUndefined } from "../../gateway/credentials.js";
 import {
   inspectBestEffortPrimaryTailnetIPv4,
@@ -337,18 +337,20 @@ export async function gatherDaemonStatus(
     deep?: boolean;
   } & FindExtraGatewayServicesOptions,
 ): Promise<DaemonStatus> {
-  const service = resolveGatewayService();
-  const command = await service.readCommand(process.env).catch(() => null);
+  const service = tryResolveGatewayService();
+  const command = service ? await service.readCommand(process.env).catch(() => null) : null;
   const serviceEnv = command?.environment
     ? ({
         ...process.env,
         ...command.environment,
       } satisfies NodeJS.ProcessEnv)
     : process.env;
-  const [loaded, runtime] = await Promise.all([
-    service.isLoaded({ env: serviceEnv }).catch(() => false),
-    service.readRuntime(serviceEnv).catch((err) => ({ status: "unknown", detail: String(err) })),
-  ]);
+  const [loaded, runtime] = service
+    ? await Promise.all([
+        service.isLoaded({ env: serviceEnv }).catch(() => false),
+        service.readRuntime(serviceEnv).catch((err) => ({ status: "unknown", detail: String(err) })),
+      ])
+    : [false, { status: "unknown", detail: "no service manager" }];
   const configAudit = command
     ? await loadServiceAuditModule().then(({ auditGatewayServiceConfig }) =>
         auditGatewayServiceConfig({
@@ -437,7 +439,7 @@ export async function gatherDaemonStatus(
     rpcAuthWarning = undefined;
   }
   const health =
-    opts.probe && loaded
+    opts.probe && loaded && service
       ? await loadRestartHealthModule()
           .then(({ inspectGatewayRestart }) =>
             inspectGatewayRestart({
@@ -456,15 +458,25 @@ export async function gatherDaemonStatus(
 
   return {
     logFile: resolveConfiguredLogFilePath(cliCfg),
-    service: {
-      label: service.label,
-      loaded,
-      loadedText: service.loadedText,
-      notLoadedText: service.notLoadedText,
-      command,
-      runtime,
-      configAudit,
-    },
+    service: service
+      ? {
+          label: service.label,
+          loaded,
+          loadedText: service.loadedText,
+          notLoadedText: service.notLoadedText,
+          command,
+          runtime,
+          configAudit,
+        }
+      : {
+          label: "none",
+          loaded: false,
+          loadedText: "not available",
+          notLoadedText: "no service manager on this platform",
+          command: null,
+          runtime: { status: "unknown", detail: "no service manager" },
+          configAudit,
+        },
     config: {
       cli: cliConfigSummary,
       daemon: daemonConfigSummary,
