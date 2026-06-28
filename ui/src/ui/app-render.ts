@@ -54,7 +54,15 @@ import {
 } from "./controllers/cron.ts";
 import "./components/dashboard-header.ts";
 import { icons } from "./icons.ts";
-import { iconForTab, pathForTab, TABS, subtitleForTab, titleForTab } from "./navigation.ts";
+import {
+  DECK_OVERFLOW_TABS,
+  DECK_PRIMARY_TABS,
+  iconForTab,
+  pathForTab,
+  TABS,
+  subtitleForTab,
+  titleForTab,
+} from "./navigation.ts";
 import {
   buildAgentMainSessionKey,
   parseAgentSessionKey,
@@ -358,7 +366,7 @@ export function renderApp(state: AppViewState) {
           aria-label="Mode switcher"
           aria-expanded=${state.modeSwitcherOpen ?? false}
         >
-          <span class="mode-switcher__brand">KaijiBot</span>
+          <span class="mode-switcher__brand">KaijiBot 导航</span>
           <span class="mode-switcher__divider" aria-hidden="true">/</span>
           <span class="mode-switcher__current-tab">${titleForTab(state.tab)}</span>
         </button>
@@ -519,10 +527,8 @@ export function renderApp(state: AppViewState) {
           : nothing}
         <section class="content-header ${isChat ? "content-header--chat" : ""}">
           <div>
-            ${isChat
-              ? html`<div class="page-title">${state.assistantName || "Chat"}</div>`
-              : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
-            ${isChat ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
+            <div class="page-title">${titleForTab(state.tab)}</div>
+            <div class="page-sub">${subtitleForTab(state.tab)}</div>
           </div>
           <div class="page-meta">
             ${state.lastError ? html`<div class="pill danger">${state.lastError}</div>` : nothing}
@@ -1377,7 +1383,7 @@ export function renderApp(state: AppViewState) {
           : nothing}
       </main>
       <nav class="deck-bar" aria-label="Main navigation">
-        ${TABS.map(
+        ${DECK_PRIMARY_TABS.map(
           (tab) => html`
             <a
               href=${pathForTab(tab, state.basePath)}
@@ -1410,7 +1416,77 @@ export function renderApp(state: AppViewState) {
             </a>
           `,
         )}
+        <button
+          type="button"
+          class="deck-bar__item deck-bar__more ${(DECK_OVERFLOW_TABS as readonly string[]).includes(
+            state.tab,
+          )
+            ? "deck-bar__item--active"
+            : ""}"
+          @click=${() => {
+            state.deckMoreOpen = !state.deckMoreOpen;
+            state.modeSwitcherOpen = false;
+          }}
+          aria-label="More tabs"
+          aria-expanded=${state.deckMoreOpen ?? false}
+        >
+          <span class="deck-bar__icon" aria-hidden="true">${icons.moreHorizontal}</span>
+          <span class="deck-bar__label">More</span>
+        </button>
       </nav>
+
+      ${state.deckMoreOpen
+        ? html`
+            <div
+              class="deck-more-backdrop"
+              @click=${() => {
+                state.deckMoreOpen = false;
+              }}
+            ></div>
+            <div class="deck-more-sheet" role="dialog" aria-label="More navigation">
+              <div class="deck-more-sheet__handle" aria-hidden="true"></div>
+              <div class="deck-more-sheet__grid">
+                ${DECK_OVERFLOW_TABS.map(
+                  (tab) => html`
+                    <a
+                      href=${pathForTab(tab, state.basePath)}
+                      class="deck-more-sheet__item ${state.tab === tab
+                        ? "deck-more-sheet__item--active"
+                        : ""}"
+                      @click=${(event: MouseEvent) => {
+                        if (
+                          event.defaultPrevented ||
+                          event.button !== 0 ||
+                          event.metaKey ||
+                          event.ctrlKey ||
+                          event.shiftKey ||
+                          event.altKey
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        state.deckMoreOpen = false;
+                        if (tab === "chat") {
+                          const mainSessionKey = resolveSidebarChatSessionKey(state);
+                          if (state.sessionKey !== mainSessionKey) {
+                            resetChatStateForSessionSwitch(state, mainSessionKey);
+                            void state.loadAssistantIdentity();
+                          }
+                        }
+                        state.setTab(tab);
+                      }}
+                    >
+                      <span class="deck-more-sheet__icon" aria-hidden="true"
+                        >${icons[iconForTab(tab)]}</span
+                      >
+                      <span class="deck-more-sheet__label">${titleForTab(tab)}</span>
+                    </a>
+                  `,
+                )}
+              </div>
+            </div>
+          `
+        : nothing}
 
       <div class="cognitive-orb">
         <button

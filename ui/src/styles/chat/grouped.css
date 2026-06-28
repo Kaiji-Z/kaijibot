@@ -500,3 +500,23 @@ img.chat-avatar {
     display: none;
   }
 }
+
+/* Touch targets — apply on coarse pointers OR narrow (touch-first) screens.
+   Must follow the base .chat-group-footer button rule to win the cascade. */
+@media (pointer: coarse), (max-width: 768px) {
+  .chat-group-footer button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .chat-bubble-actions .btn,
+  .chat-bubble-actions .btn--xs {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .chat-delete-confirm__cancel,
+  .chat-delete-confirm__yes {
+    min-height: 44px;
+  }
+}

@@ -4854,3 +4854,19 @@ details[open] > .ov-expandable-toggle::after {
     box-shadow: var(--shadow-lg);
   }
 }
+
+@media (pointer: coarse), (max-width: 768px) {
+  .btn--sm,
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .agent-tab,
+  .cron-filter-pill,
+  .appearance-mode-btn,
+  .config-model-favorites__bulk-btn,
+  .config-model-favorites__provider-toggle {
+    min-height: 44px;
+  }
+}

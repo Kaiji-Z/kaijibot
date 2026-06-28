@@ -151,6 +151,7 @@ export class KaijiBotApp extends LitElement {
   @state() chatManualRefreshInFlight = false;
   @state() navDrawerOpen = false;
   @state() modeSwitcherOpen = false;
+  @state() deckMoreOpen = false;
 
   onSlashAction?: (action: string) => void;
 

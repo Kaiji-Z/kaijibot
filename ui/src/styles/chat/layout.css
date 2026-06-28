@@ -3,7 +3,7 @@
    ============================================= */
 
 /* Main chat card - fills the entire .content area */
-.chat {
+.content > .chat {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1028,6 +1028,7 @@
 
   .chip-dropdown {
     min-width: 200px;
+    max-width: calc(100vw - 20px);
     max-height: 240px;
   }
 
@@ -1044,6 +1045,7 @@
     max-width: 12ch;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-height: 44px;
   }
 
   .agent-chat__input {
@@ -1053,6 +1055,11 @@
   .agent-chat__input > textarea {
     min-height: 44px;
     font-size: 16px;
+  }
+
+  .agent-chat__toolbar-right .btn--ghost,
+  .agent-chat__toolbar-right .token-ring {
+    display: none;
   }
 
   .input-settings-popover {

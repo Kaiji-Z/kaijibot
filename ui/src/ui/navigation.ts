@@ -18,6 +18,18 @@ export const TABS = [
 
 export type Tab = (typeof TABS)[number];
 
+export const DECK_PRIMARY_TABS: readonly Tab[] = [
+  "chat",
+  "agents",
+  "cognitive",
+  "insights",
+  "settings",
+];
+
+export const DECK_OVERFLOW_TABS: readonly Tab[] = TABS.filter(
+  (tab) => !(DECK_PRIMARY_TABS as readonly string[]).includes(tab),
+);
+
 const TAB_PATHS: Record<Tab, string> = {
   chat: "/chat",
   agents: "/agents",

@@ -71,6 +71,7 @@ export type AppViewState = {
   chatNewMessagesBelow: boolean;
   navDrawerOpen: boolean;
   modeSwitcherOpen: boolean;
+  deckMoreOpen: boolean;
   sidebarOpen: boolean;
   sidebarContent: string | null;
   sidebarError: string | null;
