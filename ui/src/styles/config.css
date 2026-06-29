@@ -1907,6 +1907,18 @@
   margin-top: 4px;
 }
 
+.config-quick-settings__hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.config-quick-settings__hint strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .config-quick-settings__select {
   width: 100%;
   padding: 6px 10px;

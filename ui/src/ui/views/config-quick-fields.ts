@@ -2,8 +2,6 @@ import { html, nothing, type TemplateResult } from "lit";
 import { t } from "../../i18n/index.ts";
 import type { ModelCatalogEntry, ProviderAuthInfo } from "../types.ts";
 import type { ConfigProps } from "./config.js";
-import { renderNode } from "./config-form.node.ts";
-import { schemaType, type JsonSchema } from "./config-form.shared.ts";
 
 export type QuickSettingCustomRender = (props: ConfigProps) => TemplateResult | typeof nothing;
 
@@ -627,56 +625,41 @@ function renderKindleToggle(props: ConfigProps): TemplateResult | typeof nothing
   const value = getValueAtPath(props.formValue ?? {}, KINDLE_PATH);
   const enabled = value === true;
 
-  const toggle = renderNode({
-    schema: getKindleSchemaNode(props),
-    value,
-    path: KINDLE_PATH,
-    hints: props.uiHints,
-    unsupported: new Set(),
-    disabled: props.loading,
-    showLabel: false,
-    onPatch: (p, v) => {
-      props.onFormPatch(p, v);
-      if (v === true) {
-        props.onFormPatch(["gateway", "bind"], "lan");
-      }
-    },
-  });
-
-  if (!enabled) return toggle;
-
-  fetchKindleUrl().then(() => {
-    (props as unknown as { requestUpdate?: () => void }).requestUpdate?.();
-  });
-
-  const url = kindleUrlCache;
+  if (kindleUrlCache === undefined) {
+    fetchKindleUrl().then(() => {
+      props.onRequestUpdate?.();
+    });
+  }
 
   return html`
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      ${toggle}
-      ${url
-        ? html`<div style="font-size:0.8em;opacity:0.7;padding:2px 0;">
-            Kindle 浏览器输入：<strong>${url}</strong>
+    <div>
+      <label class="cfg-toggle-row ${props.loading ? "disabled" : ""}">
+        <div class="cfg-toggle-row__content">
+          <span class="cfg-toggle-row__label">Kindle 监控已${enabled ? "开启" : "关闭"}</span>
+        </div>
+        <div class="cfg-toggle">
+          <input
+            type="checkbox"
+            .checked=${enabled}
+            ?disabled=${props.loading}
+            @change=${(e: Event) => {
+              const v = (e.target as HTMLInputElement).checked;
+              props.onFormPatch(KINDLE_PATH, v);
+              if (v) {
+                props.onFormPatch(["gateway", "bind"], "lan");
+              }
+            }}
+          />
+          <span class="cfg-toggle__track"></span>
+        </div>
+      </label>
+      ${enabled && kindleUrlCache
+        ? html`<div class="config-quick-settings__hint">
+            Kindle 浏览器输入：<strong>${kindleUrlCache}</strong>
           </div>`
         : nothing}
     </div>
   `;
-}
-
-function getKindleSchemaNode(props: ConfigProps): JsonSchema {
-  const root = props.schema as JsonSchema | null;
-  if (!root || schemaType(root) !== "object" || !root.properties) {
-    return { type: "boolean" } as JsonSchema;
-  }
-  let node: unknown = root;
-  for (const seg of ["plugins", "entries", "kindle-portal", "enabled"]) {
-    if (node && typeof node === "object" && "properties" in node) {
-      node = (node as { properties: Record<string, unknown> }).properties[seg];
-    } else {
-      return { type: "boolean" } as JsonSchema;
-    }
-  }
-  return (node as JsonSchema) ?? ({ type: "boolean" } as JsonSchema);
 }
 
 function getValueAtPath(root: Record<string, unknown>, path: readonly string[]): unknown {

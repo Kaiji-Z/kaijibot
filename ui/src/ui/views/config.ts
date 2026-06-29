@@ -240,6 +240,37 @@ function getValueAtPath(root: Record<string, unknown>, path: readonly string[]):
   return current;
 }
 
+function renderStatusToggleRow(params: {
+  label: string;
+  enabled: boolean;
+  disabled: boolean;
+  path: Array<string | number>;
+  onPatch: (path: Array<string | number>, value: unknown) => void;
+  extraOnChange?: (enabled: boolean) => void;
+}): TemplateResult {
+  const { label, enabled, disabled, path, onPatch, extraOnChange } = params;
+  return html`
+    <label class="cfg-toggle-row ${disabled ? "disabled" : ""}">
+      <div class="cfg-toggle-row__content">
+        <span class="cfg-toggle-row__label">${label}已${enabled ? "开启" : "关闭"}</span>
+      </div>
+      <div class="cfg-toggle">
+        <input
+          type="checkbox"
+          .checked=${enabled}
+          ?disabled=${disabled}
+          @change=${(e: Event) => {
+            const v = (e.target as HTMLInputElement).checked;
+            onPatch(path, v);
+            extraOnChange?.(v);
+          }}
+        />
+        <span class="cfg-toggle__track"></span>
+      </div>
+    </label>
+  `;
+}
+
 function renderQuickSettings(props: ConfigProps) {
   if (!props.formValue || !props.schema) {
     return nothing;
@@ -273,6 +304,28 @@ function renderQuickSettings(props: ConfigProps) {
     }
 
     const value = getValueAtPath(props.formValue, entry.path);
+
+    if (schemaType(nodeSchema) === "boolean") {
+      const enabled =
+        value === true || (value === undefined && nodeSchema.default === true);
+      const control = renderStatusToggleRow({
+        label: entry.label,
+        enabled,
+        disabled: props.loading,
+        path: entry.path,
+        onPatch: props.onFormPatch,
+      });
+      items.push(html`
+        <div class="config-quick-settings__item">
+          <div class="config-quick-settings__item-label">${entry.label}</div>
+          ${entry.description
+            ? html`<div class="config-quick-settings__item-desc">${entry.description}</div>`
+            : nothing}
+          <div class="config-quick-settings__item-control">${control}</div>
+        </div>
+      `);
+      continue;
+    }
 
     const control = renderNode({
       schema: nodeSchema,
