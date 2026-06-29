@@ -110,16 +110,21 @@ function renderAgentCard(agent: RegisteredAgent): string {
   var statusClass = agent.status === "active" ? "active" : "idle";
   var statusIcon = agent.status === "active" ? "\u25cf ACTIVE" : "\u25cb IDLE";
   var model = agent.model;
-  var sessionCount = String(agent.sessionCount);
-  var sessionWord = agent.sessionCount === 1 ? "session" : "sessions";
   var lastActive = agent.lastActiveAt !== undefined
-    ? " \u00b7 last: " + formatRelativeTime(agent.lastActiveAt, Date.now())
+    ? " \u00b7 " + formatRelativeTime(agent.lastActiveAt, Date.now())
     : "";
+  var ctxStr = "";
+  if (agent.contextUsed !== undefined && agent.contextMax !== undefined && agent.contextMax > 0) {
+    ctxStr = formatTokens(agent.contextUsed) + "/" + formatTokens(agent.contextMax) + " tokens";
+  } else {
+    var sc = String(agent.sessionCount);
+    ctxStr = sc + (agent.sessionCount === 1 ? " session" : " sessions");
+  }
   return '<div class="agent-card ' + statusClass + '">'
     + '<div class="agent-status">' + statusIcon + "</div>"
     + '<div class="agent-id">' + agent.id + "</div>"
     + '<div class="agent-model">'
-    + model + " \u00b7 " + sessionCount + " " + sessionWord + lastActive
+    + model + " \u00b7 " + ctxStr + lastActive
     + "</div>"
     + "</div>";
 }
@@ -147,26 +152,46 @@ export function renderMonitorHtml(
   var stateIcon = isActive ? "\u25c9" : "\u25cb";
   var stateText = isActive ? "ACTIVE" : "IDLE";
 
-  // ── Today's usage metrics ──
+  // ── Usage metrics (today + month from gateway /api/status) ──
   var usage = snapshot.usage;
   var todayTokens = usage ? usage.todayTokens : 0;
   var todayCost = usage ? usage.todayCostUsd : 0;
-  var tokensStr = todayTokens > 0 ? formatTokens(todayTokens) : "0";
-  var costStr = "$" + todayCost.toFixed(2);
+  var monthTokens = usage ? usage.totalTokens : 0;
+  var monthCost = usage ? usage.totalCostUsd : 0;
+  var todayTokensStr = todayTokens > 0 ? formatTokens(todayTokens) : "0";
+  var todayCostStr = "$" + todayCost.toFixed(2);
+  var monthTokensStr = monthTokens > 0 ? formatTokens(monthTokens) : "0";
+  var monthCostStr = "$" + monthCost.toFixed(2);
 
-  // ── Provider quota ──
+  // ── Provider quota: show all windows as stacked bars ──
   var quota = snapshot.providerQuota;
   var quotaSection: string;
   if (quota && quota.windows && quota.windows.length > 0) {
-    var w = quota.windows[0];
-    var pct = Math.max(0, Math.min(100, Math.round(w.usedPercent)));
-    var model = quota.provider === "zai" ? "glm-5.2" : quota.provider;
-    quotaSection = '<div class="quota-section">'
-      + '<div class="quota-label">' + quota.displayName + " (" + model + ") \u2014 "
-      + pct + "% used</div>"
-      + '<div class="quota-bar"><div class="quota-fill" style="width:'
-      + pct + '%"></div></div>'
-      + "</div>";
+    var qParts: string[] = ['<div class="quota-section">'];
+    qParts.push('<div class="quota-label">' + quota.displayName + "</div>");
+    for (var qi = 0; qi < quota.windows.length; qi++) {
+      var win = quota.windows[qi];
+      var wpct = Math.max(0, Math.min(100, Math.round(win.usedPercent)));
+      var resetStr = "";
+      if (win.resetAt && wpct >= 80) {
+        var diffMs = win.resetAt - snapshot.generatedAt;
+        if (diffMs > 0) {
+          var diffH = Math.round(diffMs / 3600000);
+          if (diffH >= 24) {
+            resetStr = " resets in " + Math.round(diffH / 24) + "d";
+          } else if (diffH >= 1) {
+            resetStr = " resets in " + diffH + "h";
+          }
+        }
+      }
+      qParts.push('<div class="quota-window">'
+        + '<div class="quota-window-label">' + win.label + " " + wpct + "%" + resetStr + "</div>"
+        + '<div class="quota-bar"><div class="quota-fill" style="width:'
+        + wpct + '%"></div></div>'
+        + "</div>");
+    }
+    qParts.push("</div>");
+    quotaSection = qParts.join("");
   } else {
     quotaSection = '<div class="quota-section">'
       + '<div class="quota-label">Provider quota unavailable</div>'
@@ -187,6 +212,8 @@ export function renderMonitorHtml(
         status: activeAgentIds.has(ra.id) ? "active" : ra.status,
         lastActiveAt: ra.lastActiveAt,
         sessionCount: ra.sessionCount,
+        contextUsed: ra.contextUsed,
+        contextMax: ra.contextMax,
       };
       agentParts.push(renderAgentCard(merged));
     }
@@ -233,13 +260,21 @@ export function renderMonitorHtml(
     + "</div>"
     // ── Today's Usage (2 metrics) ──
     + '<div class="metrics-row clearfix">'
-    + '<div class="metric">'
-    + '<div class="metric-num">' + tokensStr + "</div>"
-    + '<div class="metric-label">TOKENS TODAY</div>'
+    + '<div class="metric metric-quarter">'
+    + '<div class="metric-num">' + todayTokensStr + "</div>"
+    + '<div class="metric-label">TODAY TOKENS</div>'
     + "</div>"
-    + '<div class="metric">'
-    + '<div class="metric-num">' + costStr + "</div>"
-    + '<div class="metric-label">COST TODAY</div>'
+    + '<div class="metric metric-quarter">'
+    + '<div class="metric-num">' + todayCostStr + "</div>"
+    + '<div class="metric-label">TODAY COST</div>'
+    + "</div>"
+    + '<div class="metric metric-quarter">'
+    + '<div class="metric-num">' + monthTokensStr + "</div>"
+    + '<div class="metric-label">MONTH TOKENS</div>'
+    + "</div>"
+    + '<div class="metric metric-quarter">'
+    + '<div class="metric-num">' + monthCostStr + "</div>"
+    + '<div class="metric-label">MONTH COST</div>'
     + "</div>"
     + "</div>"
     // ── Provider Quota ──

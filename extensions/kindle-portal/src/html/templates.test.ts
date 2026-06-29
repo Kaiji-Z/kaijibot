@@ -334,8 +334,8 @@ describe("renderMonitorHtml", () => {
     };
     const html = renderMonitorHtml(snap, cfg);
     expect(html).toContain('class="metrics-row');
-    expect(html).toContain("TOKENS TODAY");
-    expect(html).toContain("COST TODAY");
+    expect(html).toContain("TODAY TOKENS");
+    expect(html).toContain("TODAY COST");
   });
 
   it("formats today tokens with K suffix", () => {
@@ -384,7 +384,7 @@ describe("renderMonitorHtml", () => {
     expect(html).toContain("quota-bar");
     expect(html).toContain("quota-fill");
     expect(html).toContain("width:78%");
-    expect(html).toContain("78% used");
+    expect(html).toContain("Tokens (30d) 78%");
   });
 
   it("renders 'Provider quota unavailable' when providerQuota is null", () => {

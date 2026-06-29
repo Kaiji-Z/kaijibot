@@ -19,18 +19,14 @@ import type { LoadSessionStore } from "./scope-resolver.js";
  * A single registered agent, enriched with session-store-derived stats.
  */
 export interface AgentInfo {
-  /** Agent ID from config (e.g. "main", "testagent"). Never a UUID. */
   readonly id: string;
-  /** Primary model string from config (e.g. "zai/glm-5.2"). */
   readonly model: string;
-  /** True if this agent is marked `default: true` in config. */
   readonly isDefault: boolean;
-  /** "active" if present in the current fleet snapshot; "idle" otherwise. */
   readonly status: "active" | "idle";
-  /** Most recent `updatedAt` across this agent's sessions (ms epoch). */
   readonly lastActiveAt?: number;
-  /** Total number of sessions recorded for this agent. */
   readonly sessionCount: number;
+  readonly contextUsed?: number;
+  readonly contextMax?: number;
 }
 
 /** Structural guard for a config agents.list entry. */
@@ -43,6 +39,8 @@ interface ConfigAgentEntry {
 /** Structural guard for a sessions.json record. */
 interface SessionRecord {
   readonly updatedAt?: unknown;
+  readonly totalTokens?: unknown;
+  readonly contextTokens?: unknown;
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -94,7 +92,12 @@ function extractAgentList(configRoot: unknown): readonly ConfigAgentEntry[] {
 async function readAgentSessionStats(
   stateDir: string,
   agentId: string,
-): Promise<{ readonly count: number; readonly lastActiveAt?: number }> {
+): Promise<{
+  readonly count: number;
+  readonly lastActiveAt?: number;
+  readonly contextUsed?: number;
+  readonly contextMax?: number;
+}> {
   const file = join(stateDir, "agents", agentId, "sessions", "sessions.json");
   const data = await readJson(file);
   if (!isObject(data)) {
@@ -103,6 +106,8 @@ async function readAgentSessionStats(
 
   let count = 0;
   let lastActiveAt: number | undefined;
+  let contextUsed: number | undefined;
+  let contextMax: number | undefined;
   for (const key of Object.keys(data)) {
     const entry = data[key];
     if (!isObject(entry)) {
@@ -113,9 +118,11 @@ async function readAgentSessionStats(
     const ts = asNumber(rec.updatedAt);
     if (ts !== undefined && (lastActiveAt === undefined || ts > lastActiveAt)) {
       lastActiveAt = ts;
+      contextUsed = asNumber(rec.totalTokens);
+      contextMax = asNumber(rec.contextTokens);
     }
   }
-  return { count, lastActiveAt };
+  return { count, lastActiveAt, contextUsed, contextMax };
 }
 
 /**
@@ -155,6 +162,8 @@ export async function readAllAgents(
           status: "idle",
           lastActiveAt: stats.lastActiveAt,
           sessionCount: stats.count,
+          contextUsed: stats.contextUsed,
+          contextMax: stats.contextMax,
         });
       } catch {
         // Skip a single malformed agent entry; keep processing the rest.

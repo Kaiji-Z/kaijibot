@@ -44,18 +44,14 @@ export interface FleetAgent {
  * registered agent, even when none have active runs.
  */
 export interface RegisteredAgent {
-  /** Agent ID from config (e.g. "main", "testagent"). Never a UUID. */
   readonly id: string;
-  /** Primary model string from config (e.g. "zai/glm-5.2"). */
   readonly model: string;
-  /** True if this agent is marked `default: true` in config. */
   readonly isDefault: boolean;
-  /** "active" if present in the current fleet snapshot; "idle" otherwise. */
   readonly status: "active" | "idle";
-  /** Most recent `updatedAt` across this agent's sessions (ms epoch). */
   readonly lastActiveAt?: number;
-  /** Total number of sessions recorded for this agent. */
   readonly sessionCount: number;
+  readonly contextUsed?: number;
+  readonly contextMax?: number;
 }
 
 /**
@@ -75,16 +71,17 @@ export interface UsageSummary {
  * Provider account quota usage (see `monitor/quota-reader.ts`).
  * Currently only ZAI is supported.
  */
-export interface ProviderQuota {
-  /** Provider id (e.g. "zai"). */
-  readonly provider: string;
-  /** Human-readable display name (e.g. "ZAI"). */
-  readonly displayName: string;
-  /** Usage percentage 0-100. */
+export interface QuotaWindow {
+  readonly label: string;
   readonly usedPercent: number;
-  /** Optional reset timestamp (Unix ms epoch). */
   readonly resetAt?: number;
-  /** Present when the last fetch failed (for diagnostics). */
+}
+
+export interface ProviderQuota {
+  readonly provider: string;
+  readonly displayName: string;
+  readonly plan?: string;
+  readonly windows: readonly QuotaWindow[];
   readonly error?: string;
 }
 
