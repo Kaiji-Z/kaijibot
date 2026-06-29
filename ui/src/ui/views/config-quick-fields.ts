@@ -2,6 +2,8 @@ import { html, nothing, type TemplateResult } from "lit";
 import { t } from "../../i18n/index.ts";
 import type { ModelCatalogEntry, ProviderAuthInfo } from "../types.ts";
 import type { ConfigProps } from "./config.js";
+import { renderNode } from "./config-form.node.ts";
+import { schemaType, type JsonSchema } from "./config-form.shared.ts";
 
 export type QuickSettingCustomRender = (props: ConfigProps) => TemplateResult | typeof nothing;
 
@@ -595,62 +597,86 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
   {
     path: ["plugins", "entries", "kindle-portal", "enabled"],
     label: "Kindle 监控",
-    description: "在 Kindle 电子书上显示 agent 状态与配额用量",
+    description: "启用后可在 Kindle 电子书上查看 agent 状态与配额用量",
     section: "system",
     render: (props) => renderKindleToggle(props),
   },
 ];
 
+let kindleUrlCache: string | null | undefined;
+
+async function fetchKindleUrl(): Promise<string | null> {
+  if (kindleUrlCache !== undefined) return kindleUrlCache;
+  try {
+    const resp = await fetch("/api/status");
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { lanIp?: string | null; port?: number };
+    if (data.lanIp && data.port) {
+      kindleUrlCache = `http://${data.lanIp}:${data.port}/kindle/`;
+    } else {
+      kindleUrlCache = null;
+    }
+  } catch {
+    kindleUrlCache = null;
+  }
+  return kindleUrlCache;
+}
+
 function renderKindleToggle(props: ConfigProps): TemplateResult | typeof nothing {
-  const value = getValueAtPath(props.formValue ?? {}, [
-    "plugins",
-    "entries",
-    "kindle-portal",
-    "enabled",
-  ]);
+  const KINDLE_PATH = ["plugins", "entries", "kindle-portal", "enabled"];
+  const value = getValueAtPath(props.formValue ?? {}, KINDLE_PATH);
   const enabled = value === true;
 
-  const host =
-    typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const port =
-    typeof window !== "undefined" && window.location.port
-      ? window.location.port
-      : "18789";
-  const url = `http://${host}:${port}/kindle/`;
+  const toggle = renderNode({
+    schema: getKindleSchemaNode(props),
+    value,
+    path: KINDLE_PATH,
+    hints: props.uiHints,
+    unsupported: new Set(),
+    disabled: props.loading,
+    showLabel: false,
+    onPatch: (p, v) => {
+      props.onFormPatch(p, v);
+      if (v === true) {
+        props.onFormPatch(["gateway", "bind"], "lan");
+      }
+    },
+  });
+
+  if (!enabled) return toggle;
+
+  fetchKindleUrl().then(() => {
+    (props as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+  });
+
+  const url = kindleUrlCache;
 
   return html`
-    <div style="display:flex;flex-direction:column;gap:6px;">
-      <label
-        style="display:flex;align-items:center;gap:8px;cursor:pointer;"
-      >
-        <input
-          type="checkbox"
-          .checked=${enabled}
-          @change=${(e: Event) => {
-            const checked = (e.target as HTMLInputElement).checked;
-            props.onFormPatch(
-              ["plugins", "entries", "kindle-portal", "enabled"],
-              checked,
-            );
-            if (checked) {
-              props.onFormPatch(["gateway", "bind"], "lan");
-            }
-          }}
-          style="width:18px;height:18px;cursor:pointer;"
-        />
-        <span>${enabled ? "已启用" : "未启用"}</span>
-      </label>
-      ${enabled
-        ? html`
-            <div
-              style="font-size:0.85em;color:var(--text-dim,#666);padding:4px 0;"
-            >
-              Kindle 浏览器访问地址: <strong>${url}</strong>
-            </div>
-          `
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      ${toggle}
+      ${url
+        ? html`<div style="font-size:0.8em;opacity:0.7;padding:2px 0;">
+            Kindle 浏览器输入：<strong>${url}</strong>
+          </div>`
         : nothing}
     </div>
   `;
+}
+
+function getKindleSchemaNode(props: ConfigProps): JsonSchema {
+  const root = props.schema as JsonSchema | null;
+  if (!root || schemaType(root) !== "object" || !root.properties) {
+    return { type: "boolean" } as JsonSchema;
+  }
+  let node: unknown = root;
+  for (const seg of ["plugins", "entries", "kindle-portal", "enabled"]) {
+    if (node && typeof node === "object" && "properties" in node) {
+      node = (node as { properties: Record<string, unknown> }).properties[seg];
+    } else {
+      return { type: "boolean" } as JsonSchema;
+    }
+  }
+  return (node as JsonSchema) ?? ({ type: "boolean" } as JsonSchema);
 }
 
 function getValueAtPath(root: Record<string, unknown>, path: readonly string[]): unknown {

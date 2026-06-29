@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { networkInterfaces } from "node:os";
 import type { KaijiBotConfig } from "../config/types.kaijibot.js";
 import { loadCostUsageSummary } from "../infra/session-cost-usage.js";
 import { loadProviderUsageSummary } from "../infra/provider-usage.load.js";
@@ -9,6 +10,26 @@ import { isLocalDirectRequest } from "./auth.js";
 import { sendJson, sendMethodNotAllowed } from "./http-common.js";
 import { authorizeGatewayHttpRequestOrReply } from "./http-utils.js";
 import { loadCognitiveStatsSummary } from "./server-methods/cognitive.js";
+
+function isLanIp(ip: string): boolean {
+  return (
+    ip.startsWith("192.168.") ||
+    ip.startsWith("10.") ||
+    /^172\.(1[6-9]|2[0-9]|3[01])\./.test(ip)
+  );
+}
+
+function detectLanIp(): string | null {
+  for (const addrs of Object.values(networkInterfaces())) {
+    if (!addrs) continue;
+    for (const a of addrs) {
+      if (a.family === "IPv4" && !a.internal && isLanIp(a.address)) {
+        return a.address;
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * HTTP handler for `GET /api/status`. Returns a lightweight aggregate snapshot
@@ -97,9 +118,14 @@ export async function handleStatusHttpRequest(
   const todayStr = new Date().toISOString().substring(0, 10);
   const todayEntry = usage?.daily?.find((d) => d.date === todayStr) ?? null;
 
+  const lanIp = detectLanIp();
+  const port = cfg?.gateway?.port ?? 18789;
+
   sendJson(res, 200, {
     version: VERSION,
     uptime: Math.floor(process.uptime()),
+    lanIp,
+    port,
     agents,
     usage: usage
       ? {
