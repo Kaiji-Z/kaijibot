@@ -245,12 +245,10 @@ describe("renderMonitorHtml", () => {
     expect(lintKindleHtml(html)).toEqual([]);
   });
 
-  it("renders tab bar with Monitor active and Map link", () => {
+  it("does not render tab bar (single-page dashboard)", () => {
     const html = renderMonitorHtml(emptySnapshot, cfg);
-    expect(html).toContain('class="tabs"');
-    expect(html).toContain("tab-active");
-    expect(html).toContain(">Monitor</span>");
-    expect(html).toContain('href="/kindle/map');
+    expect(html).not.toContain('class="tabs"');
+    expect(html).not.toContain('href="/kindle/map');
   });
 
   it("renders idle state when no active agents", () => {
@@ -281,10 +279,9 @@ describe("renderMonitorHtml", () => {
     expect(html).not.toContain("?token");
   });
 
-  it("includes link to map page", () => {
+  it("does not include link to map page", () => {
     const html = renderMonitorHtml(emptySnapshot, cfgWithToken);
-    expect(html).toContain('href="/kindle/map');
-    expect(html).toContain("?token=s3cret");
+    expect(html).not.toContain('href="/kindle/map');
   });
 
   it("renders zoom buttons A- and A+", () => {

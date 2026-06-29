@@ -240,12 +240,6 @@ export function renderMonitorHtml(
     + "<style>" + SHARED_CSS + "</style>"
     + "</head>"
     + "<body>"
-    // ── Tab bar ──
-    + '<div class="tabs">'
-    + '<span class="tab tab-active">Monitor</span>'
-    + '<a class="tab" href="/kindle/map' + tq + '">Map</a>'
-    + "</div>"
-    // ── Header bar ──
     + '<div class="header clearfix">'
     + '<div class="zoom-bar">'
     + '<button type="button" class="zoom-btn" onclick="zoomOut()">A-</button>'
@@ -265,12 +259,12 @@ export function renderMonitorHtml(
     + '<div class="metric-label">TODAY TOKENS</div>'
     + "</div>"
     + '<div class="metric metric-quarter">'
-    + '<div class="metric-num">' + todayCostStr + "</div>"
-    + '<div class="metric-label">TODAY COST</div>'
-    + "</div>"
-    + '<div class="metric metric-quarter">'
     + '<div class="metric-num">' + monthTokensStr + "</div>"
     + '<div class="metric-label">MONTH TOKENS</div>'
+    + "</div>"
+    + '<div class="metric metric-quarter">'
+    + '<div class="metric-num">' + todayCostStr + "</div>"
+    + '<div class="metric-label">TODAY COST</div>'
     + "</div>"
     + '<div class="metric metric-quarter">'
     + '<div class="metric-num">' + monthCostStr + "</div>"
@@ -286,8 +280,6 @@ export function renderMonitorHtml(
     // ── Footer ──
     + '<div class="footer">'
     + "Auto-refresh: " + sec + "s"
-    + ' | <a href="/kindle/' + tq + '">Monitor</a>'
-    + ' &middot; <a href="/kindle/map' + tq + '">Map</a>'
     + "</div>"
     + "<script>"
     // ── Zoom (ES5: var, function declarations, + concatenation) ──
