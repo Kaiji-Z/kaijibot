@@ -58,5 +58,14 @@
             android:text="重新复制命令"
             android:textColor="#58A6FF" />
 
+        <Button
+            android:id="@+id/helpButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:text="常用操作"
+            android:textColor="#8B949E" />
+
     </LinearLayout>
 </ScrollView>

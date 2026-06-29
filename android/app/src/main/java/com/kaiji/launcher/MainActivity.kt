@@ -39,6 +39,10 @@ class MainActivity : AppCompatActivity() {
         hintButton = findViewById(R.id.hintButton)
         hintButton.visibility = View.GONE
 
+        findViewById<android.widget.Button>(R.id.helpButton).setOnClickListener {
+            startActivity(Intent(this, HelpActivity::class.java))
+        }
+
         updateState()
     }
 
