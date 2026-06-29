@@ -592,7 +592,66 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     description: "LLM 自动编译工作空间文件为结构化知识库",
     section: "system",
   },
+  {
+    path: ["plugins", "entries", "kindle-portal", "enabled"],
+    label: "Kindle 监控",
+    description: "在 Kindle 电子书上显示 agent 状态与配额用量",
+    section: "system",
+    render: (props) => renderKindleToggle(props),
+  },
 ];
+
+function renderKindleToggle(props: ConfigProps): TemplateResult | typeof nothing {
+  const value = getValueAtPath(props.formValue ?? {}, [
+    "plugins",
+    "entries",
+    "kindle-portal",
+    "enabled",
+  ]);
+  const enabled = value === true;
+
+  const host =
+    typeof window !== "undefined" ? window.location.hostname : "localhost";
+  const port =
+    typeof window !== "undefined" && window.location.port
+      ? window.location.port
+      : "18789";
+  const url = `http://${host}:${port}/kindle/`;
+
+  return html`
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <label
+        style="display:flex;align-items:center;gap:8px;cursor:pointer;"
+      >
+        <input
+          type="checkbox"
+          .checked=${enabled}
+          @change=${(e: Event) => {
+            const checked = (e.target as HTMLInputElement).checked;
+            props.onFormPatch(
+              ["plugins", "entries", "kindle-portal", "enabled"],
+              checked,
+            );
+            if (checked) {
+              props.onFormPatch(["gateway", "bind"], "lan");
+            }
+          }}
+          style="width:18px;height:18px;cursor:pointer;"
+        />
+        <span>${enabled ? "已启用" : "未启用"}</span>
+      </label>
+      ${enabled
+        ? html`
+            <div
+              style="font-size:0.85em;color:var(--text-dim,#666);padding:4px 0;"
+            >
+              Kindle 浏览器访问地址: <strong>${url}</strong>
+            </div>
+          `
+        : nothing}
+    </div>
+  `;
+}
 
 function getValueAtPath(root: Record<string, unknown>, path: readonly string[]): unknown {
   let current: unknown = root;
