@@ -328,6 +328,11 @@ export async function refreshActiveTab(host: SettingsHost) {
       void c.loadSkillsInstalled(host as unknown as Parameters<typeof c.loadSkillsInstalled>[0]);
     });
   }
+  if (host.tab === "usage") {
+    void import("./controllers/usage.ts").then((c) => {
+      void c.loadUsageCost(host as unknown as Parameters<typeof c.loadUsageCost>[0]);
+    });
+  }
   if (host.tab === "history") {
     void import("./controllers/history.ts").then((c) => {
       void c.loadHistorySessions(host as unknown as Parameters<typeof c.loadHistorySessions>[0]);

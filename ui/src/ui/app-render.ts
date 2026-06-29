@@ -1136,6 +1136,22 @@ export function renderApp(state: AppViewState) {
               }),
             )
           : nothing}
+        ${state.tab === "usage"
+          ? lazyRender(lazyUsage, (m) =>
+              m.renderUsageDashboard({
+                loading: state.usageDashboardLoading,
+                error: state.usageDashboardError,
+                costData: state.usageCostData,
+                sessionsData: state.usageSessionsData,
+                providerStatus: state.usageProviderStatus,
+                onRefresh: () => {
+                  import("./controllers/usage.ts").then((c) => {
+                    void c.loadUsageCost(state as Parameters<typeof c.loadUsageCost>[0]);
+                  });
+                },
+              }),
+            )
+          : nothing}
         ${state.tab === "history"
           ? lazyRender(lazyHistory, (m) =>
               m.renderHistory({
