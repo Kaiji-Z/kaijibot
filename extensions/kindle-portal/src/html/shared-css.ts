@@ -108,6 +108,10 @@ export const SHARED_CSS: string =
   + "\n"
   + ".agent-model { font-size: 0.6em; color: #666; margin-top: 4px; }"
   + "\n"
+  // ── Agent dog illustration ─────────────────────────────────────────────
+  + ".agent-dog { text-align: right; margin-top: 6px;"
+  + ' font-size: 0.75em; color: #555; }'
+  + "\n"
   // ── Empty state ───────────────────────────────────────────────────────
   + ".empty { font-size: 1em; color: #333; padding: 24px 0;"
   + " text-align: center; border: 2px dashed #ccc; margin: 8px 0;"

@@ -48,6 +48,7 @@ export interface RegisteredAgent {
   readonly model: string;
   readonly isDefault: boolean;
   readonly status: "active" | "idle";
+  readonly runStatus?: "thinking" | "tool_calling" | "completed" | "failed";
   readonly lastActiveAt?: number;
   readonly sessionCount: number;
   readonly contextUsed?: number;

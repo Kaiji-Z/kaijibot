@@ -419,7 +419,9 @@ describe("renderMonitorHtml", () => {
     ];
     const snap = snapshotWith([makeAgent({ agentId: "main", sessionLabel: "A1" })]);
     const html = renderMonitorHtml(snap, cfg, agents);
-    expect(html).toContain("\u25cf ACTIVE");
+    expect(html).toContain("agent-card active");
+    expect(html).toContain("\u25c9 THINKING");
+    expect(html).toContain("agent-dog");
   });
 
   it("shows idle registered agent with IDLE marker", () => {

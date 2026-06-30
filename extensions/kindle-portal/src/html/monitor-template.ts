@@ -23,6 +23,7 @@
 import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 import type { KindleConfig } from "../config.js";
 import { SHARED_CSS } from "./shared-css.js";
+import { getDogArt, type DogStatus } from "./dog-svgs.js";
 
 /**
  * Format token counts with K/M suffixes: 302000 -> "302K", 1200000 -> "1.2M".
@@ -103,12 +104,53 @@ function collectActiveAgentIds(agents: readonly FleetAgent[]): Set<string> {
 }
 
 /**
+ * Build a map of agentId → most recent FleetAgent (by lastEventAt).
+ * Used to surface run-level status (thinking/tool_calling/completed/failed)
+ * for the dog illustration on each agent card.
+ */
+function collectLatestFleetByAgentId(
+  agents: readonly FleetAgent[],
+): Map<string, FleetAgent> {
+  var map = new Map<string, FleetAgent>();
+  for (var i = 0; i < agents.length; i++) {
+    var a = agents[i];
+    if (a.agentId === undefined || a.agentId.length === 0) continue;
+    var existing = map.get(a.agentId);
+    if (existing === undefined || a.lastEventAt > existing.lastEventAt) {
+      map.set(a.agentId, a);
+    }
+  }
+  return map;
+}
+
+/**
  * Render a registered-agent card. Active agents get a thick left border;
  * idle agents are dimmed.
  */
 function renderAgentCard(agent: RegisteredAgent): string {
-  var statusClass = agent.status === "active" ? "active" : "idle";
-  var statusIcon = agent.status === "active" ? "\u25cf ACTIVE" : "\u25cb IDLE";
+  var isActive = agent.status === "active";
+  var statusClass = isActive ? "active" : "idle";
+  var runStatus = agent.runStatus;
+  var dogStatus: DogStatus;
+  var statusText: string;
+  if (isActive && runStatus !== undefined) {
+    dogStatus = runStatus;
+    if (runStatus === "thinking") {
+      statusText = "\u25c9 THINKING";
+    } else if (runStatus === "tool_calling") {
+      statusText = "\u25c9 RUNNING";
+    } else if (runStatus === "completed") {
+      statusText = "\u2713 DONE";
+    } else {
+      statusText = "\u2717 FAILED";
+    }
+  } else if (isActive) {
+    dogStatus = "thinking";
+    statusText = "\u25cf ACTIVE";
+  } else {
+    dogStatus = "idle";
+    statusText = "\u25cb IDLE";
+  }
   var model = agent.model;
   var lastActive = agent.lastActiveAt !== undefined
     ? " \u00b7 " + formatRelativeTime(agent.lastActiveAt, Date.now())
@@ -120,12 +162,13 @@ function renderAgentCard(agent: RegisteredAgent): string {
     var sc = String(agent.sessionCount);
     ctxStr = sc + (agent.sessionCount === 1 ? " session" : " sessions");
   }
-  return '<div class="agent-card ' + statusClass + '">'
-    + '<div class="agent-status">' + statusIcon + "</div>"
+  return '<div class="agent-card ' + statusClass + ' clearfix">'
+    + '<div class="agent-status">' + statusText + "</div>"
     + '<div class="agent-id">' + agent.id + "</div>"
     + '<div class="agent-model">'
     + model + " \u00b7 " + ctxStr + lastActive
     + "</div>"
+    + '<div class="agent-dog">' + getDogArt(dogStatus) + "</div>"
     + "</div>";
 }
 
@@ -200,16 +243,20 @@ export function renderMonitorHtml(
 
   // ── Agents section (always shows all registered agents) ──
   var activeAgentIds = collectActiveAgentIds(snapshot.agents);
+  var latestFleet = collectLatestFleetByAgentId(snapshot.agents);
   var agentsSection: string;
   if (registeredAgents !== undefined && registeredAgents.length > 0) {
     var agentParts: string[] = [];
     for (var ai = 0; ai < registeredAgents.length; ai++) {
       var ra = registeredAgents[ai];
+      var isActive = activeAgentIds.has(ra.id);
+      var fleetAgent = latestFleet.get(ra.id);
       var merged: RegisteredAgent = {
         id: ra.id,
         model: ra.model,
         isDefault: ra.isDefault,
-        status: activeAgentIds.has(ra.id) ? "active" : ra.status,
+        status: isActive ? "active" : ra.status,
+        runStatus: fleetAgent !== undefined ? fleetAgent.status : undefined,
         lastActiveAt: ra.lastActiveAt,
         sessionCount: ra.sessionCount,
         contextUsed: ra.contextUsed,
