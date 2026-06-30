@@ -41,7 +41,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<TextView>(R.id.asciiArt).text = ASCII_ART
+        findViewById<TextView>(R.id.asciiArt).let { tv ->
+            tv.text = ASCII_ART
+            val screenWidth = resources.displayMetrics.widthPixels
+            val horizontalPaddingPx = (40 * resources.displayMetrics.density).toInt()
+            val availableWidth = screenWidth - horizontalPaddingPx
+            // monospace char width ≈ 0.6 × font-size; ASCII art is 56 chars wide
+            val fontSize = (availableWidth / (56 * 0.6)).toFloat().coerceIn(4f, 16f)
+            tv.textSize = fontSize
+        }
         statusText = findViewById(R.id.statusText)
         actionButton = findViewById(R.id.actionButton)
         hintButton = findViewById(R.id.hintButton)

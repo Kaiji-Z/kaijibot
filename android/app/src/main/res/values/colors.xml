@@ -1,5 +1,5 @@
 <resources>
-    <color name="ic_background">#020617</color>
+    <color name="ic_background">#06080F</color>
 
     <!-- Ink Jade (墨玉) dark theme tokens from Control UI -->
     <color name="bg_void">#06080F</color>
