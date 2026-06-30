@@ -10,7 +10,7 @@
   "dependencies": {
     "@pierre/diffs": "1.1.10",
     "@pierre/theme": "0.0.29",
-    "playwright-core": "1.59.1",
+    "playwright-core": "1.61.1",
     "typebox": "^1.1"
   },
   "devDependencies": {
