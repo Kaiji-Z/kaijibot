@@ -28,12 +28,20 @@ class MainActivity : AppCompatActivity() {
         private const val TERMUX_PACKAGE = "com.termux"
         private const val INSTALL_CMD =
             "curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.sh | bash"
+        private const val ASCII_ART =
+            "██╗  ██╗ █████╗ ██╗     ██╗██╗██████╗  ██████╗ ████████╗\n" +
+            "██║ ██╔╝██╔══██╗██║     ██║██║██╔══██╗██╔═══██╗╚══██╔══╝\n" +
+            "█████╔╝ ███████║██║     ██║██║██████╔╝██║   ██║   ██║   \n" +
+            "██╔═██╗ ██╔══██║██║██   ██║██║██╔══██╗██║   ██║   ██║   \n" +
+            "██║  ██╗██║  ██║██║╚█████╔╝██║██████╔╝╚██████╔╝   ██║   \n" +
+            "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚════╝ ╚═╝╚═════╝  ╚═════╝    ╚═╝   "
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        findViewById<TextView>(R.id.asciiArt).text = ASCII_ART
         statusText = findViewById(R.id.statusText)
         actionButton = findViewById(R.id.actionButton)
         hintButton = findViewById(R.id.hintButton)

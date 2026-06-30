@@ -1,397 +1,240 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D1117"
+    android:background="@color/bg_void"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingTop="56dp"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="40dp">
 
         <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
+
+            <ImageButton
+                android:id="@+id/backButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_media_previous"
+                android:tint="@color/ink_2"
+                android:contentDescription="返回" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="常用操作"
+                android:textColor="@color/ink_1"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="44dp"
+            android:layout_marginTop="6dp"
             android:layout_marginBottom="4dp"
-            android:text="常用操作"
-            android:textColor="#58A6FF"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:text="点击行复制命令，自动跳转 Termux"
+            android:textColor="@color/ink_2"
+            android:textSize="12sp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="点击命令卡片即可复制，切到 Termux 粘贴执行"
-            android:textColor="#8B949E"
-            android:textSize="13sp" />
+        <!-- Section: gateway -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:layout_marginBottom="8dp"
+            android:fontFamily="monospace" android:text="# gateway"
+            android:textColor="@color/accent_dim" android:textSize="11sp" />
 
-        <!-- Section: 网关控制 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:text="网关控制"
-            android:textColor="#C9D1D9"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <!-- Command: status -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="查看运行状态"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text="kaijibot gateway status"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdStatus"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:background="@color/bg_surface" android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="▮" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="查看运行状态" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text="kaijibot gateway status"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Command: start -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdStart"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="启动网关（后台运行）"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text=". ~/.kaijibot/start-gateway.sh"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdStart"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="▶" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="14sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="启动网关（后台运行）" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text=". ~/.kaijibot/start-gateway.sh"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Command: restart -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdRestart"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="重启网关"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text="kaijibot gateway restart"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdRestart"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="↻" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="重启网关" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text="kaijibot gateway restart"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Command: stop -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdStop"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="停止网关"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text="kaijibot gateway stop"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdStop"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="■" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="14sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="停止网关" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text="kaijibot gateway stop"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Command: log -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdLog"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="查看运行日志"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text="tail -50 ~/.kaijibot/gateway.log"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdLog"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="☰" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="查看运行日志" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text="tail -50 ~/.kaijibot/gateway.log"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Section: 维护 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:text="维护"
-            android:textColor="#C9D1D9"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+        <!-- Section: maintenance -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:layout_marginBottom="8dp"
+            android:fontFamily="monospace" android:text="# maintenance"
+            android:textColor="@color/accent_dim" android:textSize="11sp" />
 
-        <!-- Command: update -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="更新 KaijiBot 到最新版"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text="kaijibot update"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdUpdate"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:background="@color/bg_surface" android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="↓" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="更新到最新版" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text="kaijibot update"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Command: onboard -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdOnboard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="重新配置（LLM / 飞书 / 认知）"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="monospace"
-                    android:text="kaijibot onboard"
-                    android:textColor="#7EE787"
-                    android:textSize="14sp" />
-
+        <LinearLayout android:id="@+id/cmdOnboard"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="⚙" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="重新配置" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="monospace" android:text="kaijibot onboard"
+                    android:textColor="@color/accent_dim" android:textSize="11sp"
+                    android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Section: 系统设置 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:text="系统设置"
-            android:textColor="#C9D1D9"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+        <!-- Section: system -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:layout_marginBottom="8dp"
+            android:fontFamily="monospace" android:text="# system"
+            android:textColor="@color/accent_dim" android:textSize="11sp" />
 
-        <!-- Battery whitelist -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdBattery"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="电池优化白名单"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="防止系统杀后台 → 点击打开设置"
-                    android:textColor="#8B949E"
-                    android:textSize="12sp" />
-
+        <LinearLayout android:id="@+id/cmdBattery"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:background="@color/bg_surface" android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="⚡" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="电池优化白名单" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="防止系统杀后台进程" android:textColor="@color/ink_3" android:textSize="12sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Termux:Boot -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cmdBoot"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#161B22"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#30363D"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="开机自启动"
-                    android:textColor="#C9D1D9"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="安装 Termux:Boot → 重启即可自动启动网关"
-                    android:textColor="#8B949E"
-                    android:textSize="12sp" />
-
+        <LinearLayout android:id="@+id/cmdBoot"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="12dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true">
+            <TextView android:layout_width="32dp" android:layout_height="wrap_content"
+                android:gravity="center" android:text="⏻" android:textColor="@color/accent"
+                android:alpha="0.7" android:textSize="16sp" android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="开机自启动" android:textColor="@color/ink_1" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="安装 Termux:Boot 即可" android:textColor="@color/ink_3" android:textSize="12sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

@@ -7,18 +7,25 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.card.MaterialCardView
 
 class HelpActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TERMUX_PACKAGE = "com.termux"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_help)
 
-        // Command cards: card ID → command to copy
-        val commandCards = mapOf(
+        findViewById<View>(R.id.backButton).setOnClickListener {
+            finish()
+        }
+
+        val commandRows = mapOf(
             R.id.cmdStatus  to "kaijibot gateway status",
             R.id.cmdStart   to ". ~/.kaijibot/start-gateway.sh",
             R.id.cmdRestart to "kaijibot gateway restart",
@@ -28,27 +35,34 @@ class HelpActivity : AppCompatActivity() {
             R.id.cmdOnboard to "kaijibot onboard",
         )
 
-        for ((cardId, command) in commandCards) {
-            findViewById<MaterialCardView>(cardId).setOnClickListener {
-                copyCommand(command)
+        for ((rowId, command) in commandRows) {
+            findViewById<View>(rowId).setOnClickListener {
+                copyAndLaunchTermux(command)
             }
         }
 
-        // Battery whitelist → open system settings
-        findViewById<MaterialCardView>(R.id.cmdBattery).setOnClickListener {
+        findViewById<View>(R.id.cmdBattery).setOnClickListener {
             openBatteryOptimizationSettings()
         }
 
-        // Termux:Boot → open F-Droid
-        findViewById<MaterialCardView>(R.id.cmdBoot).setOnClickListener {
+        findViewById<View>(R.id.cmdBoot).setOnClickListener {
             openTermuxBootInstall()
         }
     }
 
-    private fun copyCommand(command: String) {
+    private fun copyAndLaunchTermux(command: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("KaijiBot", command))
         Toast.makeText(this, "已复制: $command", Toast.LENGTH_SHORT).show()
+
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun openBatteryOptimizationSettings() {
@@ -58,7 +72,6 @@ class HelpActivity : AppCompatActivity() {
             }
             startActivity(intent)
         } catch (_: Exception) {
-            // Fallback to app details settings
             try {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.parse("package:$packageName")
@@ -72,8 +85,7 @@ class HelpActivity : AppCompatActivity() {
     }
 
     private fun openTermuxBootInstall() {
-        // Copy the boot script command, then try to open F-Droid
-        copyCommand("mkdir -p ~/.termux/boot && echo '. ~/.kaijibot/start-gateway.sh' > ~/.termux/boot/start-kaijibot.sh")
+        copyAndLaunchTermux("mkdir -p ~/.termux/boot && echo '. ~/.kaijibot/start-gateway.sh' > ~/.termux/boot/start-kaijibot.sh")
 
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://f-droid.org/packages/com.termux.boot/")).apply {
@@ -81,7 +93,7 @@ class HelpActivity : AppCompatActivity() {
             }
             startActivity(intent)
         } catch (_: Exception) {
-            Toast.makeText(this, "打开浏览器失败，命令已复制到剪贴板", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "打开浏览器失败，命令已复制", Toast.LENGTH_LONG).show()
         }
     }
 }
