@@ -558,4 +558,41 @@ describe("handleControlUiHttpRequest", () => {
       },
     });
   });
+
+  describe("PWA manifest serving", () => {
+    it("serves .webmanifest with application/manifest+json content type", async () => {
+      await withControlUiRoot({
+        fn: async (tmp) => {
+          await fs.writeFile(
+            path.join(tmp, "manifest.webmanifest"),
+            JSON.stringify({ name: "KaijiBot" }),
+          );
+          const { res, setHeader } = makeMockHttpResponse();
+          handleControlUiHttpRequest(
+            { url: "/manifest.webmanifest", method: "GET" } as IncomingMessage,
+            res,
+            { root: { kind: "resolved", path: tmp } },
+          );
+          expect(res.statusCode).toBe(200);
+          expect(setHeader).toHaveBeenCalledWith(
+            "Content-Type",
+            "application/manifest+json",
+          );
+        },
+      });
+    });
+
+    it("returns 404 for missing .webmanifest (not SPA fallback)", async () => {
+      await withControlUiRoot({
+        fn: async (tmp) => {
+          const { res, end, handled } = runControlUiRequest({
+            url: "/missing.manifest.webmanifest",
+            method: "GET",
+            rootPath: tmp,
+          });
+          expectNotFoundResponse({ handled, res, end });
+        },
+      });
+    });
+  });
 });

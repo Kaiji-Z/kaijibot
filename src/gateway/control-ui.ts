@@ -58,6 +58,8 @@ function contentTypeForExt(ext: string): string {
     case ".json":
     case ".map":
       return "application/json; charset=utf-8";
+    case ".webmanifest":
+      return "application/manifest+json";
     case ".svg":
       return "image/svg+xml";
     case ".png":
@@ -90,6 +92,7 @@ const STATIC_ASSET_EXTENSIONS = new Set([
   ".css",
   ".json",
   ".map",
+  ".webmanifest",
   ".svg",
   ".png",
   ".jpg",
