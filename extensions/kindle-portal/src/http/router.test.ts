@@ -264,7 +264,7 @@ describe("createKindleHttpHandler — path traversal", () => {
     expect(mocked.handleMonitorHtml).not.toHaveBeenCalled();
     expect(mocked.handleFleetJson).not.toHaveBeenCalled();
     // pass-through means we did not write a body for a /kindle route
-    if (handled === false) {
+    if (!handled) {
       expect(res.end).not.toHaveBeenCalled();
     } else {
       expect(res.statusCode).toBe(404);

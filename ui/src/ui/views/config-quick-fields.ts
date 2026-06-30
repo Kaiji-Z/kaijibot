@@ -604,10 +604,14 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
 let kindleUrlCache: string | null | undefined;
 
 async function fetchKindleUrl(): Promise<string | null> {
-  if (kindleUrlCache !== undefined) return kindleUrlCache;
+  if (kindleUrlCache !== undefined) {
+    return kindleUrlCache;
+  }
   try {
     const resp = await fetch("/api/status");
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      return null;
+    }
     const data = (await resp.json()) as { lanIp?: string | null; port?: number };
     if (data.lanIp && data.port) {
       kindleUrlCache = `http://${data.lanIp}:${data.port}/kindle/`;

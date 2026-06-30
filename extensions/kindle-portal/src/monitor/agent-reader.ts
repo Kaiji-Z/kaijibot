@@ -136,7 +136,6 @@ async function readAgentSessionStats(
  */
 export async function readAllAgents(
   stateDir: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _loadStore?: LoadSessionStore,
 ): Promise<AgentInfo[]> {
   try {
