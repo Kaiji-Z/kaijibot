@@ -73,8 +73,8 @@
   background: var(--bg-hover);
   padding: 0.15em 0.4em;
   border-radius: var(--radius-sm);
-  overflow-wrap: normal;
-  word-break: keep-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .chat-text :where(pre) {

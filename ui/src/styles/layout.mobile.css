@@ -11,6 +11,30 @@
     height: 100vh;
     height: 100dvh;
     padding-bottom: 0;
+    --content-padding: 14px;
+  }
+
+  .chat-thread {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table td {
+    overflow-wrap: anywhere;
+  }
+
+  .stat-value {
+    overflow-wrap: anywhere;
+  }
+
+  .cron-workspace {
+    grid-template-columns: 1fr !important;
+  }
+  .usage-grid:has(.usage-grid__main) {
+    grid-template-columns: 1fr !important;
+  }
+  .chat-main {
+    min-width: 0;
   }
 
   .deck-bar {
@@ -482,13 +506,30 @@
     display: none;
   }
 
-  /* Mode switcher — compact on narrow phones */
+  :root {
+    --content-padding: 12px;
+  }
+
+  .mode-switcher__brand {
+    display: none;
+  }
+
+  .content-header {
+    padding: 8px 0 4px;
+  }
+
+  .usage-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .usage-table td {
+    max-width: 160px;
+  }
+
   .mode-switcher__pill {
     padding: 6px 10px;
     gap: 4px;
-  }
-  .mode-switcher__brand {
-    font-size: 13px;
   }
   .mode-switcher__dropdown {
     min-width: 160px;
@@ -573,6 +614,9 @@
 
 @media (pointer: coarse), (max-width: 768px) {
   .deck-bar__item {
+    min-height: 44px;
+  }
+  .btn {
     min-height: 44px;
   }
   .mode-switcher__pill {
