@@ -194,10 +194,10 @@ describe("handleFleetJson", () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe("handleMapJson", () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let _warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    _warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   it("returns 200 with graph shape on success", async () => {

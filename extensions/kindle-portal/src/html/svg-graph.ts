@@ -144,7 +144,7 @@ export function computeForceLayout(
 ): Map<string, Pt> {
   const result = new Map<string, Pt>();
   const n = nodes.length;
-  if (n === 0) return result;
+  if (n === 0) {return result;}
 
   // Optimal distance between nodes — balances repulsion and attraction.
   const k = Math.sqrt((width * height) / n) * K_SCALE;
@@ -153,8 +153,8 @@ export function computeForceLayout(
 
   // Initialize positions with seeded random across the full canvas.
   const rng = createSeededRandom(LAYOUT_SEED);
-  const xs: number[] = new Array(n);
-  const ys: number[] = new Array(n);
+  const xs: number[] = Array.from({ length: n });
+  const ys: number[] = Array.from({ length: n });
   for (let i = 0; i < n; i++) {
     xs[i] = rng() * width;
     ys[i] = rng() * height;
@@ -162,7 +162,7 @@ export function computeForceLayout(
 
   // Build id → array-index lookup and resolve edges to index pairs.
   const idToIdx = new Map<string, number>();
-  for (let i = 0; i < n; i++) idToIdx.set(nodes[i].id, i);
+  for (let i = 0; i < n; i++) {idToIdx.set(nodes[i].id, i);}
   const edgePairs: Array<[number, number]> = [];
   for (const e of edges) {
     const a = idToIdx.get(e.from);
@@ -173,8 +173,8 @@ export function computeForceLayout(
   }
 
   // Displacement accumulators (reused per iteration to avoid GC pressure).
-  const dispX: number[] = new Array(n);
-  const dispY: number[] = new Array(n);
+  const dispX: number[] = Array.from({ length: n });
+  const dispY: number[] = Array.from({ length: n });
 
   for (let iter = 0; iter < LAYOUT_ITERATIONS; iter++) {
     // Reset displacements.
@@ -189,7 +189,7 @@ export function computeForceLayout(
         const dx = xs[i] - xs[j];
         const dy = ys[i] - ys[j];
         let dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 0.1) dist = 0.1; // avoid division by zero
+        if (dist < 0.1) {dist = 0.1;} // avoid division by zero
         const force = (k * k) / dist;
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -207,7 +207,7 @@ export function computeForceLayout(
       const dx = xs[i] - xs[j];
       const dy = ys[i] - ys[j];
       let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 0.1) dist = 0.1;
+      if (dist < 0.1) {dist = 0.1;}
       const force = (dist * dist) / k;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
@@ -230,7 +230,7 @@ export function computeForceLayout(
       const dx = dispX[i];
       const dy = dispY[i];
       let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 0.1) dist = 0.1;
+      if (dist < 0.1) {dist = 0.1;}
       const limited = Math.min(dist, temperature);
       xs[i] += (dx / dist) * limited;
       ys[i] += (dy / dist) * limited;
@@ -413,8 +413,8 @@ export function renderMapGraphSvg(
   const domainNodes: MapNode[] = [];
   const wikiNodesAll: MapNode[] = [];
   for (const n of nodes) {
-    if (n.kind === "domain") domainNodes.push(n);
-    else wikiNodesAll.push(n);
+    if (n.kind === "domain") {domainNodes.push(n);}
+    else {wikiNodesAll.push(n);}
   }
 
   // Slice wiki nodes to prevent Kindle DOM overload (see MAX_WIKI_NODES).
@@ -446,7 +446,7 @@ export function renderMapGraphSvg(
 
   // Kind set for edge classification.
   const isDomainId = new Set<string>();
-  for (const d of domainNodes) isDomainId.add(d.id);
+  for (const d of domainNodes) {isDomainId.add(d.id);}
 
   // ── Classify edges by endpoint kinds, dropping any that reference
   //    filtered (out-of-cap) wiki nodes. ──
@@ -456,7 +456,7 @@ export function renderMapGraphSvg(
   for (const e of graph.edges) {
     const a = pos.get(e.from);
     const b = pos.get(e.to);
-    if (a === undefined || b === undefined) continue; // dropped node
+    if (a === undefined || b === undefined) {continue;} // dropped node
     const aDom = isDomainId.has(e.from);
     const bDom = isDomainId.has(e.to);
     if (aDom && bDom) {
@@ -472,14 +472,14 @@ export function renderMapGraphSvg(
   const domainNodeSvg: string[] = [];
   for (const d of domainNodes) {
     const p = pos.get(d.id);
-    if (p !== undefined) domainNodeSvg.push(renderDomainNode(d, p.x, p.y));
+    if (p !== undefined) {domainNodeSvg.push(renderDomainNode(d, p.x, p.y));}
   }
 
   // ── Render wiki node fragments ──
   const wikiNodeSvg: string[] = [];
   for (const w of wikiNodes) {
     const p = pos.get(w.id);
-    if (p !== undefined) wikiNodeSvg.push(renderWikiNode(w, p.x, p.y));
+    if (p !== undefined) {wikiNodeSvg.push(renderWikiNode(w, p.x, p.y));}
   }
 
   // Domain layer: edges first (under nodes), then nodes.

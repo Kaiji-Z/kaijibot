@@ -67,7 +67,7 @@ interface RunRecord {
  * compile without fighting TypeScript's declared (non-null) parameter type.
  */
 function readRunId(payload: unknown): string | undefined {
-  if (payload === null || typeof payload !== "object") return undefined;
+  if (payload === null || typeof payload !== "object") {return undefined;}
   const runId = (payload as { runId?: unknown }).runId;
   return typeof runId === "string" && runId !== "" ? runId : undefined;
 }
@@ -90,7 +90,7 @@ export class FleetState {
   applyEvent(payload: AgentEventPayload): void {
     try {
       const runId = readRunId(payload);
-      if (runId === undefined) return;
+      if (runId === undefined) {return;}
 
       const data = payload.data;
       const stream = payload.stream;
@@ -115,12 +115,12 @@ export class FleetState {
       }
 
       // Unknown run + non-start event → ignore.
-      if (existing === undefined) return;
+      if (existing === undefined) {return;}
 
       switch (stream) {
         case "item": {
           if (data.phase === "start" && data.kind === "tool") {
-            if (existing.status === "completed" || existing.status === "failed") break;
+            if (existing.status === "completed" || existing.status === "failed") {break;}
             existing.status = "tool_calling";
             existing.toolName = data.name;
             bumpToolCall(existing, data.toolCallId);
@@ -135,7 +135,7 @@ export class FleetState {
         }
         case "tool": {
           if (data.status === "running") {
-            if (existing.status === "completed" || existing.status === "failed") break;
+            if (existing.status === "completed" || existing.status === "failed") {break;}
             existing.status = "tool_calling";
             existing.toolName = data.toolName ?? data.name;
             bumpToolCall(existing, data.toolCallId);
@@ -151,13 +151,13 @@ export class FleetState {
         case "assistant":
         case "thinking": {
           // Content stream — touches activity only, never changes status.
-          if (existing.status === "completed" || existing.status === "failed") break;
+          if (existing.status === "completed" || existing.status === "failed") {break;}
           existing.lastEventAt = ts;
           break;
         }
         case "lifecycle": {
           if (data.phase === "end") {
-            if (existing.status === "completed" || existing.status === "failed") break;
+            if (existing.status === "completed" || existing.status === "failed") {break;}
             existing.status = "completed";
             existing.stopReason = data.stopReason;
             existing.lastEventAt = ts;
@@ -165,7 +165,7 @@ export class FleetState {
           break;
         }
         case "error": {
-          if (existing.status === "completed" || existing.status === "failed") break;
+          if (existing.status === "completed" || existing.status === "failed") {break;}
           existing.status = "failed";
           const explicit = data.stopReason ?? data.error;
           existing.stopReason =
@@ -189,7 +189,7 @@ export class FleetState {
    * objects never share references with internal state.
    */
   snapshot(): { active: FleetAgent[] } {
-    const records = [...this.records.values()].sort((a, b) => a.startedAt - b.startedAt);
+    const records = [...this.records.values()].toSorted((a, b) => a.startedAt - b.startedAt);
     return { active: records.map(projectFleetAgent) };
   }
 
@@ -218,7 +218,7 @@ export class FleetState {
     const now = Date.now();
     let flagged = 0;
     for (const rec of this.records.values()) {
-      if (rec.stale === true) continue;
+      if (rec.stale === true) {continue;}
       if (now - rec.lastEventAt > staleAfterMs) {
         rec.stale = true;
         flagged += 1;
@@ -240,8 +240,8 @@ export class FleetState {
 
 /** Deduplicate and increment tool-call count by toolCallId. Mutates `rec`. */
 function bumpToolCall(rec: RunRecord, toolCallId: string | undefined): void {
-  if (typeof toolCallId !== "string" || toolCallId === "") return;
-  if (rec.toolCallSet.has(toolCallId)) return;
+  if (typeof toolCallId !== "string" || toolCallId === "") {return;}
+  if (rec.toolCallSet.has(toolCallId)) {return;}
   rec.toolCallSet.add(toolCallId);
   rec.toolCallCount += 1;
 }

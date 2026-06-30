@@ -133,7 +133,7 @@ function adaptSessionStore(raw: Record<string, Record<string, unknown>>): Sessio
   const byAgent = new Map<string, SessionStoreEntry[]>();
 
   for (const [sessionKey, entry] of Object.entries(raw)) {
-    if (!entry || typeof entry !== "object") continue;
+    if (!entry || typeof entry !== "object") {continue;}
     const agentId = extractAgentId(sessionKey) ?? DEFAULT_AGENT_ID;
     const record: SessionStoreEntry = {
       sessionKey,
@@ -160,7 +160,7 @@ function adaptSessionStore(raw: Record<string, Record<string, unknown>>): Sessio
 
 /** Extract the agent id from a `agent:<id>:...` session key. */
 function extractAgentId(sessionKey: string): string | undefined {
-  if (!sessionKey.startsWith("agent:")) return undefined;
+  if (!sessionKey.startsWith("agent:")) {return undefined;}
   const rest = sessionKey.slice("agent:".length);
   const colon = rest.indexOf(":");
   return colon === -1 ? rest : rest.slice(0, colon);

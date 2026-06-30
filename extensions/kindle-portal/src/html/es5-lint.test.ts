@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { lintKindleHtml } from "./es5-lint.js";
-import type { LintIssue } from "../types.js";
 
 describe("lintKindleHtml", () => {
   // --- Individual token tests (16 forbidden tokens) ---

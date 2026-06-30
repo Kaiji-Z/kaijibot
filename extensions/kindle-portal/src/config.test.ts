@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KINDLE_PORTAL_CONFIG_SCHEMA, resolveKindleConfig, resolveKindleConfigSafe } from "./config.js";
+import { resolveKindleConfig, resolveKindleConfigSafe } from "./config.js";
 
 describe("KINDLE_PORTAL_CONFIG_SCHEMA", () => {
   it("applies all defaults when given empty object", () => {

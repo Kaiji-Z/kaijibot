@@ -54,12 +54,12 @@ export interface KindleStatusDeps {
  * (RFC 1918: 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12).
  */
 function isLanIp(ip: string): boolean {
-  if (ip.startsWith("192.168.")) return true;
-  if (ip.startsWith("10.")) return true;
+  if (ip.startsWith("192.168.")) {return true;}
+  if (ip.startsWith("10.")) {return true;}
   const m = ip.match(/^172\.(\d+)\./);
   if (m) {
     const octet = Number(m[1]);
-    if (octet >= 16 && octet <= 31) return true;
+    if (octet >= 16 && octet <= 31) {return true;}
   }
   return false;
 }
@@ -71,7 +71,7 @@ function isLanIp(ip: string): boolean {
 export function detectLanIp(): string | null {
   const interfaces = networkInterfaces();
   for (const addrs of Object.values(interfaces)) {
-    if (!addrs) continue;
+    if (!addrs) {continue;}
     for (const a of addrs) {
       if (a.family === "IPv4" && !a.internal && isLanIp(a.address)) {
         return a.address;
@@ -168,7 +168,7 @@ async function waitForGateway(opts: {
 }): Promise<boolean> {
   const deadline = Date.now() + opts.pollTimeoutMs;
   while (Date.now() < deadline) {
-    if (await probeGateway()) return true;
+    if (await probeGateway()) {return true;}
     await new Promise<void>((r) => setTimeout(r, opts.pollIntervalMs));
   }
   return false;

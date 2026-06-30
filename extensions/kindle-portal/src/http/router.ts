@@ -137,7 +137,7 @@ export function createKindleHttpHandler(
  * The armv fallback covers non-Kindle-branded e-readers on the same engine.
  */
 export function isKindleUserAgent(userAgent: string | undefined): boolean {
-  if (!userAgent) return false;
+  if (!userAgent) {return false;}
   const ua = userAgent.toLowerCase();
   return ua.includes("kindle") || ua.includes("linux armv");
 }

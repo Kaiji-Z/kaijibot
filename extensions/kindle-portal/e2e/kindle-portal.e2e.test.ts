@@ -58,7 +58,7 @@ let cfg: KindleConfig;
 let ctx: RouterContext;
 let tmpStateDir: string;
 let tmpWorkspaceDir: string;
-let emptyLoadStore: LoadSessionStore;
+let _emptyLoadStore: LoadSessionStore;
 
 // ── Helpers ──
 
@@ -154,7 +154,7 @@ function bootServer(context: RouterContext): Promise<{ server: Server; baseUrl: 
 
 /** Close the server and wait for the socket to release. */
 function closeServer(srv: Server | null): Promise<void> {
-  if (srv === null) return Promise.resolve();
+  if (srv === null) {return Promise.resolve();}
   return new Promise((resolve) => {
     srv.close(() => resolve());
   });
@@ -243,7 +243,7 @@ beforeEach(async () => {
   cfg = resolveKindleConfig({ enabled: true });
   ctx = buildContext(cfg, tmpStateDir, tmpWorkspaceDir);
   state = ctx.state;
-  emptyLoadStore = ctx.loadStore;
+  _emptyLoadStore = ctx.loadStore;
 
   const { server: srv, baseUrl: url } = await bootServer(ctx);
   server = srv;

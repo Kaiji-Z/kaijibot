@@ -57,7 +57,7 @@ async function scanDir(
   }
 
   for (const entry of entries) {
-    if (!entry.endsWith(".md")) continue;
+    if (!entry.endsWith(".md")) {continue;}
     const stem = entry.slice(0, -3);
     const id = stem.toLowerCase();
     const file = path.join(dir, entry);
@@ -98,7 +98,7 @@ export async function readWikiGraph(
   const root = path.join(workspaceDir, "wiki");
   try {
     const stat = await fs.stat(root);
-    if (!stat.isDirectory()) return { nodes: [], edges: [] };
+    if (!stat.isDirectory()) {return { nodes: [], edges: [] };}
   } catch {
     return { nodes: [], edges: [] };
   }
@@ -110,7 +110,7 @@ export async function readWikiGraph(
   const seenNode = new Set<string>();
   const nodes: WikiNode[] = [];
   for (const n of [...entities.nodes, ...concepts.nodes]) {
-    if (seenNode.has(n.id)) continue;
+    if (seenNode.has(n.id)) {continue;}
     seenNode.add(n.id);
     nodes.push(n);
   }
@@ -118,9 +118,9 @@ export async function readWikiGraph(
   const seenEdge = new Set<string>();
   const edges: WikiEdge[] = [];
   for (const e of [...entities.edges, ...concepts.edges]) {
-    if (e.from === e.to) continue;
+    if (e.from === e.to) {continue;}
     const key = e.from < e.to ? `${e.from}\u0000${e.to}` : `${e.to}\u0000${e.from}`;
-    if (seenEdge.has(key)) continue;
+    if (seenEdge.has(key)) {continue;}
     seenEdge.add(key);
     edges.push(e);
   }

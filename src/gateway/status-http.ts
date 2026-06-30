@@ -21,7 +21,7 @@ function isLanIp(ip: string): boolean {
 
 function detectLanIp(): string | null {
   for (const addrs of Object.values(networkInterfaces())) {
-    if (!addrs) continue;
+    if (!addrs) { continue; }
     for (const a of addrs) {
       if (a.family === "IPv4" && !a.internal && isLanIp(a.address)) {
         return a.address;

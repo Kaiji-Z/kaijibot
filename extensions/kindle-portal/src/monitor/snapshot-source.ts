@@ -42,9 +42,9 @@ export async function buildFleetSnapshot(opts: SnapshotSourceOpts): Promise<Flee
   }
 
   const enriched: FleetAgent[] = active.map((agent) => {
-    if (agent.sessionKey === undefined) return agent;
+    if (agent.sessionKey === undefined) {return agent;}
     const entry = entries?.get(agent.sessionKey);
-    if (entry === undefined) return agent;
+    if (entry === undefined) {return agent;}
     return {
       ...agent,
       sessionLabel: entry.label,
@@ -75,12 +75,12 @@ function indexStoreBySessionKey(store: SessionStoreSnapshot): Map<string, Sessio
   const out = new Map<string, SessionStoreEntry>();
   const agents = readArraySafe(store?.agents);
   for (const agent of agents) {
-    if (agent === null || typeof agent !== "object") continue;
+    if (agent === null || typeof agent !== "object") {continue;}
     const sessions = readArraySafe((agent as { sessions?: unknown }).sessions);
     for (const session of sessions) {
-      if (session === null || typeof session !== "object") continue;
+      if (session === null || typeof session !== "object") {continue;}
       const s = session as SessionStoreEntry;
-      if (typeof s.sessionKey !== "string") continue;
+      if (typeof s.sessionKey !== "string") {continue;}
       out.set(s.sessionKey, s);
     }
   }

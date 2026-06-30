@@ -114,7 +114,7 @@ function collectLatestFleetByAgentId(
   var map = new Map<string, FleetAgent>();
   for (var i = 0; i < agents.length; i++) {
     var a = agents[i];
-    if (a.agentId === undefined || a.agentId.length === 0) continue;
+    if (a.agentId === undefined || a.agentId.length === 0) {continue;}
     var existing = map.get(a.agentId);
     if (existing === undefined || a.lastEventAt > existing.lastEventAt) {
       map.set(a.agentId, a);
@@ -190,7 +190,7 @@ export function renderMonitorHtml(
   var sec = String(cfg.refreshIntervalSeconds);
   var tq = cfg.accessToken ? "?token=" + cfg.accessToken : "";
   var iso = new Date(snapshot.generatedAt).toISOString().substring(0, 19) + "Z";
-  var isActive = !snapshot.idle;
+  const isActive = !snapshot.idle;
   var stateIcon = isActive ? "\u25c9" : "\u25cb";
   var stateText = isActive ? "ACTIVE" : "IDLE";
 
@@ -248,7 +248,7 @@ export function renderMonitorHtml(
     var agentParts: string[] = [];
     for (var ai = 0; ai < registeredAgents.length; ai++) {
       var ra = registeredAgents[ai];
-      var isActive = activeAgentIds.has(ra.id);
+      const isActive = activeAgentIds.has(ra.id);
       var fleetAgent = latestFleet.get(ra.id);
       var merged: RegisteredAgent = {
         id: ra.id,

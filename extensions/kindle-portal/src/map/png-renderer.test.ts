@@ -141,7 +141,7 @@ describe("buildHandrolledSvg", () => {
 describe("probeDotCapability", () => {
   it("caches the first probe result", () => {
     mocks.execFileSync.mockImplementation((_cmd: string, args: readonly string[]) => {
-      if (args[0] === "-V") return "";
+      if (args[0] === "-V") {return "";}
       throw new Error("unexpected");
     });
     expect(probeDotCapability()).toBe(true);
@@ -180,8 +180,8 @@ describe("renderGraphPng", () => {
 
   it("uses graphviz-dot tier when dot binary is available", async () => {
     mocks.execFileSync.mockImplementation((_cmd: string, args: readonly string[]) => {
-      if (args[0] === "-V") return ""; // probe success
-      if (args[0] === "-Tsvg") return Buffer.from(SAMPLE_SVG, "utf-8");
+      if (args[0] === "-V") {return "";} // probe success
+      if (args[0] === "-Tsvg") {return Buffer.from(SAMPLE_SVG, "utf-8");}
       throw new Error("unexpected dot invocation");
     });
     const { capability } = await renderGraphPng(GRAPH_3);

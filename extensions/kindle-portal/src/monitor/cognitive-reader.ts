@@ -43,7 +43,7 @@ async function listJsonFiles(dir: string): Promise<string[]> {
     }
     if (st.isDirectory()) {
       const nested = await listJsonFiles(full);
-      for (const n of nested) out.push(n);
+      for (const n of nested) {out.push(n);}
     } else if (st.isFile() && name.endsWith(".json")) {
       out.push(full);
     }
@@ -126,7 +126,7 @@ export async function readCognitiveStats(stateDir: string): Promise<CognitiveSta
     for (const name of names) {
       try {
         const st = await stat(join(skillsDir, name));
-        if (st.isDirectory()) skills += 1;
+        if (st.isDirectory()) {skills += 1;}
       } catch {
         continue;
       }

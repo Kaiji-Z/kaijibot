@@ -80,7 +80,7 @@ export async function resolveActiveUser(
   cfg: { readonly userId?: string },
 ): Promise<ActiveUser | null> {
   // "all-users" never needs the store — the caller enumerates independently.
-  if (scope === "all-users") return null;
+  if (scope === "all-users") {return null;}
 
   let store: SessionStoreSnapshot;
   try {
@@ -105,7 +105,7 @@ function resolveLastActive(store: SessionStoreSnapshot): ActiveUser | null {
   for (const agent of store.agents ?? []) {
     for (const session of agent.sessions ?? []) {
       const userId = extractUserId(session.sessionKey) ?? session.origin?.from;
-      if (userId === undefined) continue;
+      if (userId === undefined) {continue;}
       if (best === null || session.updatedAt > best.updatedAt) {
         best = { agentId: agent.agentId, userId, updatedAt: session.updatedAt };
       }
@@ -120,7 +120,7 @@ function resolveSpecific(
   store: SessionStoreSnapshot,
   userId: string | undefined,
 ): ActiveUser | null {
-  if (userId === undefined) return null;
+  if (userId === undefined) {return null;}
 
   for (const agent of store.agents ?? []) {
     for (const session of agent.sessions ?? []) {

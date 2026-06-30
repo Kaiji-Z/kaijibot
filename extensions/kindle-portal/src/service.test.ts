@@ -60,9 +60,9 @@ describe("createKindlePortalService", () => {
     const state = new FleetState();
     state.applyEvent(startEvent("r-prune"));
 
-    let capturedListener: ((payload: unknown) => void) | null = null;
+    let _capturedListener: ((payload: unknown) => void) | null = null;
     const subscribe = vi.fn().mockImplementation((l) => {
-      capturedListener = l;
+      _capturedListener = l;
       return vi.fn();
     });
 
@@ -163,9 +163,9 @@ describe("createKindlePortalService", () => {
   });
 
   it("no leaked references after stop+start cycle", () => {
-    let capturedListener: ((payload: unknown) => void) | null = null;
+    let _capturedListener: ((payload: unknown) => void) | null = null;
     const subscribe = vi.fn().mockImplementation((l) => {
-      capturedListener = l;
+      _capturedListener = l;
       return vi.fn();
     });
     const state = new FleetState();

@@ -34,7 +34,7 @@ export function createKindlePortalService(
   let pruneTimer: ReturnType<typeof setInterval> | undefined;
 
   async function start(_ctx: KaijiBotPluginServiceContext): Promise<void> {
-    if (started) return;
+    if (started) {return;}
     started = true;
 
     try {
@@ -60,7 +60,7 @@ export function createKindlePortalService(
   }
 
   async function stop(_ctx: KaijiBotPluginServiceContext): Promise<void> {
-    if (!started) return;
+    if (!started) {return;}
 
     try {
       collectorUnsub?.();

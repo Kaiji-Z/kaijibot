@@ -36,7 +36,7 @@ export async function readPersona(
   let raw: string;
   try {
     raw = await fs.readFile(file, "utf-8");
-  } catch (err) {
+  } catch {
     // ENOENT and any other read failure → graceful null
     return null;
   }
@@ -48,9 +48,9 @@ export async function readPersona(
     return null;
   }
 
-  if (typeof data !== "object" || data === null) return null;
+  if (typeof data !== "object" || data === null) {return null;}
   const obj = data as Record<string, unknown>;
-  if (typeof obj.domains !== "object" || obj.domains === null) return null;
+  if (typeof obj.domains !== "object" || obj.domains === null) {return null;}
 
   // Cast carefully: additional fields are tolerated by the structural type.
   return data as PersonaTree;

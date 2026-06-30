@@ -78,9 +78,9 @@ function tokenize(label: string): Set<string> {
  * Returns 0 if either set is empty (avoids vacuous overlap).
  */
 function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
+  if (a.size === 0 || b.size === 0) {return 0;}
   let intersection = 0;
-  for (const t of a) if (b.has(t)) intersection++;
+  for (const t of a) { if (b.has(t)) { intersection++; } }
   const union = a.size + b.size - intersection;
   return union === 0 ? 0 : intersection / union;
 }
@@ -99,7 +99,7 @@ function countMeaningfulInsights(node: PersonaDomainNode): number {
     let n = 0;
     for (const i of node.insights) {
       const cat = i?.category;
-      if (cat !== undefined && EXCLUDED_INSIGHT_CATEGORIES.has(cat)) continue;
+      if (cat !== undefined && EXCLUDED_INSIGHT_CATEGORIES.has(cat)) {continue;}
       n++;
     }
     return n;
@@ -180,14 +180,14 @@ export function buildMapGraph(
   const crossDomainEdges: MapEdge[] = [];
   for (let i = 0; i < shownDomainNodes.length; i++) {
     const a = shownDomainNodes[i];
-    if (a.strength <= CROSS_DOMAIN_STRENGTH_THRESHOLD) continue;
+    if (a.strength <= CROSS_DOMAIN_STRENGTH_THRESHOLD) {continue;}
     const aTokens = domainTokensById.get(a.id);
-    if (aTokens === undefined) continue;
+    if (aTokens === undefined) {continue;}
     for (let j = i + 1; j < shownDomainNodes.length; j++) {
       const b = shownDomainNodes[j];
-      if (b.strength <= CROSS_DOMAIN_STRENGTH_THRESHOLD) continue;
+      if (b.strength <= CROSS_DOMAIN_STRENGTH_THRESHOLD) {continue;}
       const bTokens = domainTokensById.get(b.id);
-      if (bTokens === undefined) continue;
+      if (bTokens === undefined) {continue;}
       if (jaccard(aTokens, bTokens) >= JACCARD_THRESHOLD) {
         crossDomainEdges.push({ from: a.id, to: b.id, label: "related" });
       }
@@ -201,7 +201,7 @@ export function buildMapGraph(
       const wTokens = tokenize(wn.label);
       for (const dn of shownDomainNodes) {
         const dTokens = domainTokensById.get(dn.id);
-        if (dTokens === undefined) continue;
+        if (dTokens === undefined) {continue;}
         if (jaccard(dTokens, wTokens) >= JACCARD_THRESHOLD) {
           personaWikiEdges.push({
             from: dn.id,
@@ -217,7 +217,7 @@ export function buildMapGraph(
   const seenNodeIds = new Set<string>();
   const dedupedNodes: MapNode[] = [];
   for (const node of [...shownDomainNodes, ...wikiNodes]) {
-    if (seenNodeIds.has(node.id)) continue;
+    if (seenNodeIds.has(node.id)) {continue;}
     seenNodeIds.add(node.id);
     dedupedNodes.push(node);
   }
@@ -227,9 +227,9 @@ export function buildMapGraph(
   const seenEdgeKeys = new Set<string>();
   const dedupedEdges: MapEdge[] = [];
   for (const edge of [...wikiEdges, ...crossDomainEdges, ...personaWikiEdges]) {
-    if (edge.from === edge.to) continue;
+    if (edge.from === edge.to) {continue;}
     const key = edgeKey(edge.from, edge.to);
-    if (seenEdgeKeys.has(key)) continue;
+    if (seenEdgeKeys.has(key)) {continue;}
     seenEdgeKeys.add(key);
     dedupedEdges.push(edge);
   }
