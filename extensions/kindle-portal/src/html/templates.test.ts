@@ -421,7 +421,7 @@ describe("renderMonitorHtml", () => {
     const html = renderMonitorHtml(snap, cfg, agents);
     expect(html).toContain("agent-card active");
     expect(html).toContain("\u25c9 THINKING");
-    expect(html).toContain("agent-dog");
+    expect(html).toContain("\u03c9");
   });
 
   it("shows idle registered agent with IDLE marker", () => {

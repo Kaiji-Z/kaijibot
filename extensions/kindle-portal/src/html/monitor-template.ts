@@ -163,12 +163,11 @@ function renderAgentCard(agent: RegisteredAgent): string {
     ctxStr = sc + (agent.sessionCount === 1 ? " session" : " sessions");
   }
   return '<div class="agent-card ' + statusClass + ' clearfix">'
-    + '<div class="agent-status">' + statusText + "</div>"
+    + '<div class="agent-status">' + statusText + " " + getDogArt(dogStatus) + "</div>"
     + '<div class="agent-id">' + agent.id + "</div>"
     + '<div class="agent-model">'
     + model + " \u00b7 " + ctxStr + lastActive
     + "</div>"
-    + '<div class="agent-dog">' + getDogArt(dogStatus) + "</div>"
     + "</div>";
 }
 
