@@ -356,6 +356,14 @@ export function renderApp(state: AppViewState) {
         ? "shell--nav-collapsed"
         : ""} ${state.onboarding ? "shell--onboarding" : ""}"
     >
+      ${state.modeSwitcherOpen
+        ? html`<div
+            class="mode-switcher__backdrop"
+            @click=${() => {
+              state.modeSwitcherOpen = false;
+            }}
+          ></div>`
+        : nothing}
       <div class="mode-switcher">
         <button
           type="button"

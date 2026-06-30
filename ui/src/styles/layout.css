@@ -181,6 +181,12 @@
   display: none;
 }
 
+.mode-switcher__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+
 .mode-switcher__pill {
   display: flex;
   align-items: center;
