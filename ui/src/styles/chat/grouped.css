@@ -501,6 +501,20 @@ img.chat-avatar {
   }
 }
 
+@media (max-width: 768px) {
+  .chat-bubble-actions {
+    opacity: 0.2;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+  .chat-bubble:active .chat-bubble-actions,
+  .chat-bubble-actions:active {
+    opacity: 1;
+  }
+  .chat-bubble.has-copy {
+    padding-right: 12px;
+  }
+}
+
 /* Touch targets — apply on coarse pointers OR narrow (touch-first) screens.
    Must follow the base .chat-group-footer button rule to win the cascade. */
 @media (pointer: coarse), (max-width: 768px) {

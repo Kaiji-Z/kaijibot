@@ -174,45 +174,48 @@ export function renderHistory(props: HistoryProps) {
         </button>
       </div>
 
-      <div
-        style="display:grid; grid-template-columns:40% 60%; gap:var(--space-md); min-height:60vh;"
-      >
-        <!-- Left panel: session list -->
-        <div class="stack" style="gap:var(--space-sm); overflow-y:auto; max-height:75vh;">
-          <input
-            type="text"
-            class="input"
-            placeholder="${t("common.search")}…"
-            .value=${props.searchQuery}
-            @input=${(e: Event) => {
-              const target = e.target as HTMLInputElement;
-              props.onSearch(target.value);
-            }}
-          />
+      <div class="two-col-layout ${props.selectedKey ? "two-col-layout--detail" : ""}">
+        <div class="two-col-layout__sidebar">
+          <div class="stack" style="gap:var(--space-sm); overflow-y:auto; max-height:75vh;">
+            <input
+              type="text"
+              class="input"
+              placeholder="${t("common.search")}…"
+              .value=${props.searchQuery}
+              @input=${(e: Event) => {
+                const target = e.target as HTMLInputElement;
+                props.onSearch(target.value);
+              }}
+            />
 
-          ${filteredSessions.length === 0
-            ? html`<div class="callout">
-                ${props.searchQuery ? "No matching sessions." : "No sessions found."}
-              </div>`
-            : filteredSessions.map((s) =>
-                renderSessionCard(
-                  s,
-                  s.key === props.selectedKey,
-                  () => props.onSelectSession(s.key),
-                  props.onDeleteSession,
-                ),
-              )}
+            ${filteredSessions.length === 0
+              ? html`<div class="callout">
+                  ${props.searchQuery ? "No matching sessions." : "No sessions found."}
+                </div>`
+              : filteredSessions.map((s) =>
+                  renderSessionCard(
+                    s,
+                    s.key === props.selectedKey,
+                    () => props.onSelectSession(s.key),
+                    props.onDeleteSession,
+                  ),
+                )}
+          </div>
         </div>
 
-        <!-- Right panel: transcript viewer -->
-        <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
-          ${props.selectedKey == null
-            ? html`<div class="callout">Select a session to view its transcript.</div>`
-            : props.messages.length === 0
-              ? html`<div class="callout">No messages in this session.</div>`
-              : html`<div class="stack" style="gap:var(--space-sm);">
-                  ${props.messages.map((msg) => renderMessage(msg))}
-                </div>`}
+        <div class="two-col-layout__detail">
+          ${props.selectedKey
+            ? html`<button class="two-col-back" @click=${() => props.onSelectSession(null)} aria-label="Back to list">←</button>`
+            : nothing}
+          <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
+            ${props.selectedKey == null
+              ? html`<div class="callout">Select a session to view its transcript.</div>`
+              : props.messages.length === 0
+                ? html`<div class="callout">No messages in this session.</div>`
+                : html`<div class="stack" style="gap:var(--space-sm);">
+                    ${props.messages.map((msg) => renderMessage(msg))}
+                  </div>`}
+          </div>
         </div>
       </div>
     </section>

@@ -1136,26 +1136,26 @@
   }
 
   .input-settings-popover {
+    position: fixed;
     left: 0;
+    right: 0;
+    bottom: 0;
     transform: none;
-    min-width: 240px;
-    max-width: calc(100vw - 20px);
-    max-height: 400px;
+    width: 100%;
+    max-width: 100%;
+    max-height: 50vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    bottom: calc(100% + 6px);
-    animation: popover-in-mobile var(--duration-fast) var(--ease-out);
+    animation: popover-slide-up var(--duration-normal, 250ms) var(--ease-out);
   }
 
-  @keyframes popover-in-mobile {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
+  @keyframes popover-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
 
   .input-settings-popover__toggle-row {

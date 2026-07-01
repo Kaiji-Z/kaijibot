@@ -998,9 +998,11 @@ export function renderApp(state: AppViewState) {
                   state.cognitiveAgentId = agentId;
                   state.cognitiveUserId = userId;
                   (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
-                  import("./controllers/cognitive.ts").then((c) => {
-                    void c.loadPersonaDetail(state as Parameters<typeof c.loadPersonaDetail>[0]);
-                  });
+                  if (agentId && userId) {
+                    import("./controllers/cognitive.ts").then((c) => {
+                      void c.loadPersonaDetail(state as Parameters<typeof c.loadPersonaDetail>[0]);
+                    });
+                  }
                 },
                 onRefresh: () => {
                   import("./controllers/cognitive.ts").then((c) => {
@@ -1023,9 +1025,11 @@ export function renderApp(state: AppViewState) {
                   state.insightsAgentId = agentId;
                   state.insightsUserId = userId;
                   (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
-                  import("./controllers/insights.ts").then((c) => {
-                    void c.loadInsights(state as Parameters<typeof c.loadInsights>[0]);
-                  });
+                  if (agentId && userId) {
+                    import("./controllers/insights.ts").then((c) => {
+                      void c.loadInsights(state as Parameters<typeof c.loadInsights>[0]);
+                    });
+                  }
                 },
                 onFeedback: (id: string, feedback: string) => {
                   import("./controllers/insights.ts").then((c) => {
@@ -1062,12 +1066,14 @@ export function renderApp(state: AppViewState) {
                   state.evolutionAgentId = agentId;
                   state.evolutionUserId = userId;
                   (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
-                  import("./controllers/evolution.ts").then((c) => {
-                    void c.loadEvolutionRecords(
-                      state as Parameters<typeof c.loadEvolutionRecords>[0],
-                    );
-                    void c.loadEvolutionAudit(state as Parameters<typeof c.loadEvolutionAudit>[0]);
-                  });
+                  if (agentId && userId) {
+                    import("./controllers/evolution.ts").then((c) => {
+                      void c.loadEvolutionRecords(
+                        state as Parameters<typeof c.loadEvolutionRecords>[0],
+                      );
+                      void c.loadEvolutionAudit(state as Parameters<typeof c.loadEvolutionAudit>[0]);
+                    });
+                  }
                 },
                 onRefresh: () => {
                   import("./controllers/evolution.ts").then((c) => {
@@ -1094,9 +1100,11 @@ export function renderApp(state: AppViewState) {
                   state.correctionsAgentId = agentId;
                   state.correctionsUserId = userId;
                   (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
-                  import("./controllers/corrections.ts").then((c) => {
-                    void c.loadCorrections(state as Parameters<typeof c.loadCorrections>[0]);
-                  });
+                  if (agentId && userId) {
+                    import("./controllers/corrections.ts").then((c) => {
+                      void c.loadCorrections(state as Parameters<typeof c.loadCorrections>[0]);
+                    });
+                  }
                 },
                 onRefresh: () => {
                   import("./controllers/corrections.ts").then((c) => {
