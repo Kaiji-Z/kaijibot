@@ -368,14 +368,15 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: var(--shell-panel-width, 240px);
+  --shell-panel-width: 200px;
+  width: var(--shell-panel-width, 200px);
   background: var(--sidebar-bg);
   backdrop-filter: blur(var(--shell-glass-blur)) saturate(var(--shell-glass-saturate));
   -webkit-backdrop-filter: blur(var(--shell-glass-blur)) saturate(var(--shell-glass-saturate));
   border-right: 1px solid var(--sidebar-border);
   overflow: hidden;
   z-index: 40;
-  transition: width var(--duration-normal) var(--ease-out);
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 .shell--nav-collapsed .shell-nav {
@@ -461,7 +462,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: padding var(--duration-normal) var(--ease-out);
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 .shell-nav__brand-ascii {

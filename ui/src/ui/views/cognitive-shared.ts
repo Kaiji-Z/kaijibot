@@ -23,6 +23,17 @@ export type PersonaListResult = {
 
 // ── Shared helpers ────────────────────────────────────────────────
 
+/** Truncate a raw `ou_xxx` ID to its first 12 chars + "…"; leave other IDs untouched. */
+export function truncateOuid(id: string | null | undefined): string {
+  if (!id) {
+    return "";
+  }
+  if (id.startsWith("ou_") && id.length > 12) {
+    return id.slice(0, 12) + "…";
+  }
+  return id;
+}
+
 const PHASE_COLORS: Record<string, string> = {
   emergent:
     "color: var(--info); border-color: rgba(59,130,246,0.35); background: rgba(59,130,246,0.08);",
@@ -56,7 +67,7 @@ export function trustBar(score: number | undefined | null): unknown {
         style="flex:1;height:6px;border-radius:var(--radius-full);background:var(--border);overflow:hidden;"
       >
         <div
-          style="height:100%;width:${pctDisplay}%;border-radius:var(--radius-full);background:${color};transition:width var(--duration-normal) var(--ease-out);"
+          style="height:100%;width:100%;transform-origin:left center;transform:scaleX(${pct});border-radius:var(--radius-full);background:${color};transition:transform var(--duration-normal) var(--ease-out);"
         ></div>
       </div>
       <span style="font-size:13px;font-weight:600;color:${color};min-width:36px;text-align:right;"
@@ -136,7 +147,7 @@ export function renderUserSidebar(opts: {
                             >
                               <span
                                 style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                                >${user.displayName || user.userId}</span
+                                >${user.displayName || truncateOuid(user.userId)}</span
                               >
                               ${phasePill(user.phase)}
                             </div>

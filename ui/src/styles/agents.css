@@ -12,7 +12,7 @@
   }
 }
 
-@keyframes typing-bounce {
+@keyframes typing-pulse {
   0%,
   80%,
   100% {
@@ -312,7 +312,7 @@
   height: 3px;
   border-radius: var(--radius-full);
   background: var(--accent);
-  animation: typing-bounce 1.4s var(--ease-in-out) infinite;
+  animation: typing-pulse 1.4s var(--ease-out) infinite;
   box-shadow:
     6px 0 0 var(--accent),
     12px 0 0 var(--accent);
@@ -376,7 +376,8 @@
   height: 100%;
   border-radius: var(--radius-full);
   background: var(--accent);
-  transition: width var(--duration-normal) var(--ease-out);
+  transform-origin: left center;
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 /* ===========================================

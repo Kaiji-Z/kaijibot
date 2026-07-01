@@ -77,7 +77,7 @@ function renderCorrectionCard(rec: CorrectionRecord) {
   return html`
     <div class="card" style="padding: 12px;">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-        <span class="pill">${rec.domain}</span>
+        <span class="pill" style="color:var(--text);">${rec.domain}</span>
         ${provenanceBadge(rec.provenance)}
         <span
           class="pill ${rec.reinforcedCount > 2 ? "danger" : ""}"
@@ -152,7 +152,7 @@ export function renderCorrections(props: CorrectionsProps) {
       <div style="display:flex;flex-direction:column;gap:8px;">
         <div class="row" style="justify-content:space-between;align-items:center;">
           <h3 style="font-size:16px;font-weight:600;margin:0;">${t("tabs.corrections")}</h3>
-          <span class="text-muted">${sorted.length} 条记录</span>
+          <span class="text-muted" style="white-space:nowrap;">${sorted.length} 条</span>
         </div>
         <div class="stack">${sorted.map((rec) => renderCorrectionCard(rec))}</div>
       </div>

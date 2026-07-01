@@ -8,6 +8,7 @@ import {
   renderTwoColumnLayout,
   phasePill,
   trustBar,
+  truncateOuid,
 } from "./cognitive-shared.ts";
 
 // ── Types mirroring backend shapes ──────────────────────────────
@@ -115,7 +116,7 @@ function renderDetail(persona: PersonaTree): unknown {
     <div style="display:grid;gap:16px;">
       <!-- Identity section -->
       <div class="card">
-        <h4 style="font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text-strong);">
+        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
           Identity
         </h4>
         <div style="display:grid;gap:10px;">
@@ -144,7 +145,7 @@ function renderDetail(persona: PersonaTree): unknown {
                 <div>
                   <span
                     class="muted"
-                    style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;"
+                    style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;"
                     >Expert domains</span
                   >
                   <div class="chip-row" style="margin-top:4px;">
@@ -160,14 +161,14 @@ function renderDetail(persona: PersonaTree): unknown {
 
       <!-- Trust & Rapport -->
       <div class="card">
-        <h4 style="font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text-strong);">
+        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
           Trust & Rapport
         </h4>
         <div style="display:grid;gap:10px;">
           <div>
             <div
               class="muted"
-              style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;"
+              style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;"
             >
               Trust Score
             </div>
@@ -200,7 +201,7 @@ function renderDetail(persona: PersonaTree): unknown {
 
       <!-- Domain map -->
       <div class="card">
-        <h4 style="font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text-strong);">
+        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
           Domain Map
           <span class="muted" style="font-weight:400;font-size:13px;margin-left:6px;"
             >${domainEntries.length} domains</span
@@ -266,7 +267,7 @@ function renderDetail(persona: PersonaTree): unknown {
       ${recentFocus.length > 0
         ? html`
             <div class="card">
-              <h4 style="font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text-strong);">
+              <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
                 Recent Focus
               </h4>
               <div class="chip-row">
@@ -278,7 +279,7 @@ function renderDetail(persona: PersonaTree): unknown {
 
       <!-- Lifecycle -->
       <div class="card">
-        <h4 style="font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text-strong);">
+        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
           Lifecycle
         </h4>
         <div style="display:grid;gap:8px;">
@@ -346,5 +347,11 @@ export function renderCognitive(props: CognitiveProps) {
         "Click a user card on the left to explore their cognitive profile.",
       );
 
-  return renderTwoColumnLayout(sidebar, detailContent, !!detail, () => props.onUserSelect("", ""), `${props.agentId ?? ""} / ${props.userId ?? ""}`);
+  return renderTwoColumnLayout(
+    sidebar,
+    detailContent,
+    !!detail,
+    () => props.onUserSelect("", ""),
+    `${props.agentId ?? ""} / ${detail?.identity?.displayName || truncateOuid(props.userId)}`,
+  );
 }

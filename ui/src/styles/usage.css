@@ -1853,7 +1853,8 @@ details.usage-filter-select summary::-webkit-details-marker,
   height: 100%;
   border-radius: var(--radius-full);
   background: var(--accent);
-  transition: width var(--duration-fast) var(--ease-out);
+  transform-origin: left center;
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
 .usage-window-fill--warn {

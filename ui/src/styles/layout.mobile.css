@@ -216,6 +216,11 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
+  .mode-switcher__option--active {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    font-weight: 600;
+  }
 
   .mobile-session-select {
     display: none;

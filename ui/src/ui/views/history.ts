@@ -86,6 +86,32 @@ function formatRelativeTime(ts: number | null | undefined): string {
   return formatRelativeTimestamp(ts);
 }
 
+/**
+ * Parse a raw session key (e.g. "agent:main:cron:uuid") into a human-readable
+ * label. The raw key is still used as the data/value attribute — this only
+ * controls the display text shown to the user.
+ */
+function formatSessionLabel(key: string): string {
+  // Parse patterns like "agent:main:main", "agent:main:cron:uuid", "agent:main:ou_xxx"
+  const parts = key.split(":");
+  if (parts.length >= 2) {
+    const agent = parts[1]; // e.g. "main"
+    if (parts.length >= 3) {
+      const third = parts[2];
+      // If it's "main" or a simple session name, show "agent / session"
+      if (third === "main") return `${agent} / main`;
+      // If it starts with "ou_" (feishu user ID), show "agent / user"
+      if (third.startsWith("ou_")) return `${agent} / ${third.slice(0, 12)}…`;
+      // If it's "cron" + UUID, show "agent / 定时任务"
+      if (third === "cron") return `${agent} / 定时任务`;
+      // Generic: show agent + truncated third part
+      return `${agent} / ${third.slice(0, 20)}`;
+    }
+    return agent;
+  }
+  return key.slice(0, 30);
+}
+
 // ── Sub-renders ───────────────────────────────────────
 
 function renderSessionCard(
@@ -96,22 +122,27 @@ function renderSessionCard(
 ) {
   const label = session.label || session.displayName || "";
   const updated = formatRelativeTime(session.updatedAt);
+  const sessionLabel = formatSessionLabel(session.key);
 
   return html`
     <div
       class="card ${isSelected ? "selected" : ""}"
-      style="cursor:pointer; padding:var(--space-sm); border-left:3px solid ${isSelected
-        ? "var(--accent)"
-        : "transparent"};"
+      style="cursor:pointer; padding:var(--space-xs) var(--space-sm); ${isSelected
+        ? "background:var(--accent-subtle); border-color:var(--accent-muted);"
+        : ""}"
       @click=${onSelect}
     >
       <div
         style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-xs);"
       >
-        <span class="text-mono" style="font-size:0.8em; word-break:break-all;">${session.key}</span>
-        <div style="display:flex; align-items:center; gap:6px;">
+        <span
+          class="text-mono"
+          style="font-size:0.8em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;"
+          >${sessionLabel}</span
+        >
+        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
           ${updated
-            ? html`<span class="text-muted" style="font-size:0.75em; white-space:nowrap;"
+            ? html`<span class="text-muted" style="font-size:0.7em; white-space:nowrap;"
                 >${updated}</span
               >`
             : nothing}
@@ -129,7 +160,11 @@ function renderSessionCard(
         </div>
       </div>
       ${label
-        ? html`<div class="text-muted" style="font-size:0.85em; margin-top:2px;">${label}</div>`
+        ? html`<div
+            class="text-muted"
+            style="font-size:0.8em; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+            >${label}</div
+          >`
         : nothing}
     </div>
   `;
@@ -205,7 +240,7 @@ export function renderHistory(props: HistoryProps) {
 
         <div class="two-col-layout__detail">
           ${props.selectedKey
-            ? html`<div class="two-col-back-bar" @click=${() => props.onSelectSession(null)}><span class="two-col-back-bar__arrow" aria-hidden="true"></span><span class="two-col-back-bar__context">${props.selectedKey}</span></div>`
+            ? html`<div class="two-col-back-bar" @click=${() => props.onSelectSession(null)}><span class="two-col-back-bar__arrow" aria-hidden="true"></span><span class="two-col-back-bar__context">${formatSessionLabel(props.selectedKey)}</span></div>`
             : nothing}
           <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
             ${props.selectedKey == null
