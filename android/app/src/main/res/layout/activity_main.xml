@@ -114,8 +114,8 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="16dp"
             android:background="@color/line" />
 
         <com.google.android.material.button.MaterialButton
@@ -141,7 +141,7 @@
             android:layout_marginTop="4dp"
             android:fontFamily="monospace"
             android:text="~ /常用操作"
-            android:textColor="@color/ink_3"
+            android:textColor="@color/ink_2"
             android:textSize="13sp"
             app:rippleColor="@color/accent_dim" />
 
