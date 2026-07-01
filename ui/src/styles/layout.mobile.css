@@ -253,6 +253,15 @@
       calc(16px + env(safe-area-inset-bottom, 0px)) var(--content-padding, 16px);
   }
 
+  .two-col-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .two-col-layout__detail {
+    overflow-y: visible;
+  }
+
   .shell--chat .content {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -267,6 +276,10 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .chat-input-top-bar {
+    display: none;
   }
 
   .shell--chat .agent-chat__input {
@@ -520,10 +533,6 @@
 
   :root {
     --content-padding: 12px;
-  }
-
-  .mode-switcher__brand {
-    display: none;
   }
 
   .content-header {

@@ -374,7 +374,7 @@ export function renderApp(state: AppViewState) {
           aria-label="Mode switcher"
           aria-expanded=${state.modeSwitcherOpen ?? false}
         >
-          <span class="mode-switcher__brand">KaijiBot 导航</span>
+          <span class="mode-switcher__brand">${titleForTab(state.tab)}</span>
           <span class="mode-switcher__divider" aria-hidden="true">/</span>
           <span class="mode-switcher__current-tab">${titleForTab(state.tab)}</span>
         </button>

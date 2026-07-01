@@ -1023,7 +1023,7 @@
 
 @media (max-width: 768px) {
   .chat-input-top-bar {
-    gap: 4px;
+    display: none;
   }
 
   .chip-dropdown {

@@ -115,7 +115,7 @@ function getConfiguredModels(
   return catalog.filter((m) => configuredProviders.has(m.provider));
 }
 
-const collapsedProviders = new Set<string>();
+const expandedProviders = new Set<string>();
 
 function renderFavoriteModels(
   props: ConfigProps,
@@ -181,16 +181,16 @@ function renderFavoriteModels(
           const providerFavCount = models.filter((m) =>
             whitelist.has(m.provider ? `${m.provider}/${m.id}` : m.id),
           ).length;
-          const collapsed = collapsedProviders.has(provider);
+          const collapsed = !expandedProviders.has(provider);
           return html`
             <div class="config-model-favorites__provider">
               <button
                 class="config-model-favorites__provider-toggle"
                 @click=${() => {
-                  if (collapsedProviders.has(provider)) {
-                    collapsedProviders.delete(provider);
+                  if (expandedProviders.has(provider)) {
+                    expandedProviders.delete(provider);
                   } else {
-                    collapsedProviders.add(provider);
+                    expandedProviders.add(provider);
                   }
                   props.onRequestUpdate?.();
                 }}

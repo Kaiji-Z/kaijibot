@@ -184,11 +184,9 @@ export function renderEmptyDetail(title: string, subtitle: string): unknown {
 
 export function renderTwoColumnLayout(sidebar: unknown, detail: unknown): unknown {
   return html`
-    <section
-      style="display:grid;grid-template-columns:minmax(0,0.3fr) minmax(0,0.7fr);gap:16px;min-height:0;"
-    >
+    <section class="two-col-layout">
       ${sidebar}
-      <div style="overflow-y:auto;">${detail}</div>
+      <div class="two-col-layout__detail">${detail}</div>
     </section>
   `;
 }

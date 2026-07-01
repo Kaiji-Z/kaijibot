@@ -86,6 +86,17 @@
   overflow: auto;
 }
 
+.two-col-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.3fr) minmax(0, 0.7fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.two-col-layout__detail {
+  overflow-y: auto;
+}
+
 /* ===========================================
    Deck Bar (bottom navigation)
    =========================================== */
