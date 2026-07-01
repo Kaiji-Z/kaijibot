@@ -13,7 +13,6 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import android.util.Log
-import android.animation.AnimatorInflater
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import java.io.File
@@ -23,7 +22,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var actionButton: Button
-    private lateinit var hintButton: Button
 
     companion object {
         private const val TERMUX_PACKAGE = "com.termux"
@@ -37,21 +35,12 @@ class MainActivity : AppCompatActivity() {
 
         statusText = findViewById(R.id.statusText)
         actionButton = findViewById(R.id.actionButton)
-        hintButton = findViewById(R.id.hintButton)
-        hintButton.visibility = View.GONE
 
-        findViewById<View>(R.id.statusDot).let { dot ->
-            AnimatorInflater.loadAnimator(this, R.animator.pulse).apply {
-                setTarget(dot)
-                start()
-            }
-        }
-
-        findViewById<android.widget.Button>(R.id.helpButton).setOnClickListener {
+        findViewById<Button>(R.id.helpButton).setOnClickListener {
             startActivity(Intent(this, HelpActivity::class.java))
         }
 
-        findViewById<android.widget.Button>(R.id.openWebUiButton).setOnClickListener {
+        findViewById<Button>(R.id.openWebUiButton).setOnClickListener {
             startActivity(Intent(this, WebUiActivity::class.java))
         }
 
@@ -86,8 +75,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showInstallTermux() {
-        statusText.text = "第一步：安装 Termux 终端环境"
-        hintButton.visibility = View.GONE
+        statusText.text = "// termux: not installed"
+        statusText.setTextColor(android.graphics.Color.parseColor("#8A8D96"))
         actionButton.text = "安装 Termux"
         actionButton.setOnClickListener { installBundledTermux() }
     }
@@ -95,7 +84,6 @@ class MainActivity : AppCompatActivity() {
     private fun installBundledTermux() {
         actionButton.isEnabled = false
         actionButton.text = "正在准备..."
-        statusText.text = "正在提取 Termux 安装包（约 34MB），请稍候..."
 
         Thread {
             try {
@@ -105,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 runOnUiThread {
-                    statusText.text = "请在弹出的窗口中点击「安装」"
+                    statusText.text = "// 正在安装 Termux…"
                     val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", apkFile)
                     val intent = Intent(Intent.ACTION_VIEW).apply {
                         setDataAndType(uri, "application/vnd.android.package-archive")
@@ -121,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    statusText.text = "安装失败: ${e.message}"
+                    statusText.text = "// 安装失败: ${e.message}"
                     Toast.makeText(this, "安装失败: ${e.message}", Toast.LENGTH_LONG).show()
                     Log.e("KaijiBot", "installBundledTermux failed", e)
                 }
@@ -135,21 +123,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showTermuxReady() {
-        statusText.text = "Termux 已安装！\n\n点击下方按钮，命令会自动复制到剪贴板。\n打开 Termux 后长按屏幕粘贴并回车即可。"
+        statusText.text = "// termux: ready"
+        statusText.setTextColor(android.graphics.Color.parseColor("#00D4AA"))
         actionButton.text = "复制命令并打开 Termux"
         actionButton.setOnClickListener {
             copyToClipboard()
             launchTermux()
         }
-
-        hintButton.visibility = View.VISIBLE
-        hintButton.text = "重新复制命令"
-        hintButton.setOnClickListener { copyToClipboard() }
     }
 
     private fun copyToClipboard() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("KaijiBot", INSTALL_CMD))
+        Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show()
     }
 
     private fun launchTermux() {

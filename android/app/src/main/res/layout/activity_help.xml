@@ -49,17 +49,16 @@
             android:textColor="@color/ink_2"
             android:textSize="12sp" />
 
-        <!-- Section: gateway -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="20dp" android:layout_marginBottom="8dp"
             android:fontFamily="monospace" android:text="# gateway"
             android:textColor="@color/accent_muted" android:textSize="11sp" />
 
-        <LinearLayout android:orientation="vertical" android:layout_marginBottom="4dp">
         <LinearLayout android:id="@+id/cmdStatus"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_card" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_status" android:layout_marginEnd="12dp" />
@@ -77,7 +76,8 @@
         <LinearLayout android:id="@+id/cmdStart"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@null" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_play" android:layout_marginEnd="12dp" />
@@ -95,7 +95,8 @@
         <LinearLayout android:id="@+id/cmdRestart"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@null" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_restart" android:layout_marginEnd="12dp" />
@@ -113,7 +114,8 @@
         <LinearLayout android:id="@+id/cmdStop"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@null" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_stop" android:layout_marginEnd="12dp" />
@@ -131,7 +133,8 @@
         <LinearLayout android:id="@+id/cmdLog"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@null" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_log" android:layout_marginEnd="12dp" />
@@ -145,19 +148,17 @@
                     android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
         </LinearLayout>
-        </LinearLayout>
 
-        <!-- Section: maintenance -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:layout_marginBottom="8dp"
             android:fontFamily="monospace" android:text="# maintenance"
             android:textColor="@color/accent_muted" android:textSize="11sp" />
 
-        <LinearLayout android:orientation="vertical" android:layout_marginBottom="4dp">
         <LinearLayout android:id="@+id/cmdUpdate"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_card" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_download" android:layout_marginEnd="12dp" />
@@ -175,7 +176,8 @@
         <LinearLayout android:id="@+id/cmdOnboard"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_settings" android:layout_marginEnd="12dp" />
@@ -189,22 +191,18 @@
                     android:maxLines="1" android:ellipsize="end" />
             </LinearLayout>
         </LinearLayout>
-        </LinearLayout>
-
-        <!-- Section: system -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:layout_marginBottom="8dp"
             android:fontFamily="monospace" android:text="# system"
             android:textColor="@color/accent_muted" android:textSize="11sp" />
 
-        <LinearLayout android:orientation="vertical" android:layout_marginBottom="4dp">
         <LinearLayout android:id="@+id/cmdBattery"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_card" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
-            <ImageView android:layout_width="20dp" android:height="20dp"
-                android:layout_height="20dp"
+            <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_battery" android:layout_marginEnd="12dp" />
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:orientation="vertical">
@@ -218,7 +216,8 @@
         <LinearLayout android:id="@+id/cmdBoot"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:minHeight="52dp" android:orientation="horizontal" android:gravity="center_vertical"
-            android:background="@drawable/bg_cmd_ripple" android:padding="14dp" android:layout_marginBottom="4dp"
+            android:padding="14dp" android:layout_marginBottom="4dp"
+            android:foreground="?attr/selectableItemBackground"
             android:clickable="true" android:focusable="true">
             <ImageView android:layout_width="20dp" android:layout_height="20dp"
                 android:src="@drawable/ic_power" android:layout_marginEnd="12dp" />
@@ -229,7 +228,6 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="安装 Termux:Boot 即可" android:textColor="@color/ink_3" android:textSize="12sp" />
             </LinearLayout>
-        </LinearLayout>
         </LinearLayout>
 
     </LinearLayout>

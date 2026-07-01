@@ -12,8 +12,8 @@
                 android:gradientRadius="400dp"
                 android:startColor="#100D1A18"
                 android:endColor="@android:color/transparent"
-                android:centerX="30%"
-                android:centerY="20%" />
+                android:centerX="0.3"
+                android:centerY="0.2" />
         </shape>
     </item>
     <item>
@@ -23,8 +23,8 @@
                 android:gradientRadius="350dp"
                 android:startColor="#0C0E1219"
                 android:endColor="@android:color/transparent"
-                android:centerX="80%"
-                android:centerY="85%" />
+                android:centerX="0.8"
+                android:centerY="0.85" />
         </shape>
     </item>
 </layer-list>

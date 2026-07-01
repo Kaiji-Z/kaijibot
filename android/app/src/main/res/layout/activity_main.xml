@@ -39,36 +39,21 @@
             android:textColor="@color/ink_2"
             android:textSize="12sp"
             android:letterSpacing="0.08"
-            android:layout_marginBottom="28dp" />
+            android:layout_marginBottom="24dp" />
 
-        <LinearLayout
+        <!-- Status indicator — terminal inline style -->
+        <TextView
+            android:id="@+id/statusText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_marginBottom="20dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/bg_pill"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp">
+            android:fontFamily="monospace"
+            android:text="// termux: ready"
+            android:textColor="@color/accent"
+            android:textSize="11sp"
+            android:layout_marginBottom="20dp" />
 
-            <View
-                android:id="@+id/statusDot"
-                android:layout_width="7dp"
-                android:layout_height="7dp"
-                android:layout_marginEnd="8dp"
-                android:background="@color/accent" />
-
-            <TextView
-                android:id="@+id/statusText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Termux 已就绪"
-                android:textColor="@color/accent"
-                android:textSize="12sp" />
-
-        </LinearLayout>
-
+        <!-- Terminal block -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -98,6 +83,7 @@
 
         </LinearLayout>
 
+        <!-- Primary CTA with glow -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -125,21 +111,10 @@
 
         </FrameLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/hintButton"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="重新复制命令"
-            android:textColor="@color/ink_2"
-            android:textSize="14sp"
-            app:rippleColor="@color/accent_dim" />
-
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="12dp"
             android:background="@color/line" />
 
