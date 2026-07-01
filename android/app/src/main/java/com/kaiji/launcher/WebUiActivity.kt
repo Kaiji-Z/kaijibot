@@ -96,7 +96,7 @@ class WebUiActivity : AppCompatActivity() {
                 text = "请确认 Termux 中网关已启动：\n. ~/.kaijibot/start-gateway.sh"
                 setTextColor(Color.parseColor("#8A8D96"))
                 textSize = 13f
-                fontFamily = android.graphics.Typeface.MONOSPACE
+                typeface = android.graphics.Typeface.MONOSPACE
             }
             val retry = android.widget.Button(this@WebUiActivity).apply {
                 text = "重试"
