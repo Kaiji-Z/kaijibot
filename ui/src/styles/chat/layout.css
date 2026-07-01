@@ -1073,12 +1073,17 @@
     gap: 4px;
     padding: 6px 8px;
     margin: 0;
+    position: relative;
   }
 
   .agent-chat__toolbar,
   .agent-chat__toolbar-left,
   .agent-chat__toolbar-right {
     display: contents;
+  }
+
+  .input-settings-wrapper {
+    position: static;
   }
 
   .agent-chat__input > textarea {
@@ -1136,26 +1141,25 @@
   }
 
   .input-settings-popover {
-    position: fixed;
-    left: 0;
+    position: absolute;
+    bottom: calc(100% + 8px);
     right: 0;
-    bottom: 0;
+    left: auto;
     transform: none;
-    width: 100%;
-    max-width: 100%;
+    width: min(320px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
     max-height: 50vh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    border: 1px solid var(--border);
-    border-bottom: none;
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    animation: popover-slide-up var(--duration-normal, 250ms) var(--ease-out);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg, 0 4px 16px rgba(0, 0, 0, 0.12));
+    animation: popover-slide-up var(--duration-fast, 150ms) var(--ease-out);
   }
 
   @keyframes popover-slide-up {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .input-settings-popover__toggle-row {

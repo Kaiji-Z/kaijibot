@@ -997,6 +997,9 @@ export function renderApp(state: AppViewState) {
                 onUserSelect: (agentId: string, userId: string) => {
                   state.cognitiveAgentId = agentId;
                   state.cognitiveUserId = userId;
+                  if (!agentId || !userId) {
+                    state.cognitivePersonaDetail = null;
+                  }
                   (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
                   if (agentId && userId) {
                     import("./controllers/cognitive.ts").then((c) => {

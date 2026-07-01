@@ -513,6 +513,17 @@ img.chat-avatar {
   .chat-bubble.has-copy {
     padding-right: 12px;
   }
+
+  .chat-delete-confirm {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
+    bottom: 30vh;
+    min-width: 280px;
+    max-width: calc(100vw - 32px);
+    z-index: 200;
+  }
 }
 
 /* Touch targets — apply on coarse pointers OR narrow (touch-first) screens.
