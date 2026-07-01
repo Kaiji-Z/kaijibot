@@ -1,8 +1,11 @@
 <resources>
     <style name="Theme.KaijiBot" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#238636</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="android:statusBarColor">#0D1117</item>
-        <item name="android:navigationBarColor">#0D1117</item>
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorOnPrimary">@color/bg_void</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/ink_1</item>
+        <item name="android:statusBarColor">@color/bg_void</item>
+        <item name="android:navigationBarColor">@color/bg_void</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

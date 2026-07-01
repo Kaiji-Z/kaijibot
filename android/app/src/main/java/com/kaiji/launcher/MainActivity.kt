@@ -13,6 +13,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import android.util.Log
+import android.animation.AnimatorInflater
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import java.io.File
@@ -38,6 +39,13 @@ class MainActivity : AppCompatActivity() {
         actionButton = findViewById(R.id.actionButton)
         hintButton = findViewById(R.id.hintButton)
         hintButton.visibility = View.GONE
+
+        findViewById<View>(R.id.statusDot).let { dot ->
+            AnimatorInflater.loadAnimator(this, R.animator.pulse).apply {
+                setTarget(dot)
+                start()
+            }
+        }
 
         findViewById<android.widget.Button>(R.id.helpButton).setOnClickListener {
             startActivity(Intent(this, HelpActivity::class.java))

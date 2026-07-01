@@ -5,14 +5,19 @@
     <color name="bg_void">#06080F</color>
     <color name="bg_surface">#0E1219</color>
     <color name="bg_raised">#171C28</color>
-    <color name="bg_inset">#06080F</color>
+    <color name="bg_inset">#03050A</color>
     <color name="ink_1">#E6E4E0</color>
     <color name="ink_2">#8A8D96</color>
     <color name="ink_3">#6B6D75</color>
     <color name="accent">#00D4AA</color>
     <color name="accent_hover">#00EABC</color>
     <color name="accent_dim">#8000D4AA</color>
+    <color name="accent_muted">#8000D4AA</color>
+    <color name="accent_subtle">#1800D4AA</color>
+    <color name="accent_glow">#2000D4AA</color>
     <color name="accent_2">#F5A623</color>
     <color name="line">#1C2030</color>
     <color name="line_soft">#131720</color>
+    <color name="pill_bg">#20E6E4E0</color>
+    <color name="pill_border">#33FFFFFF</color>
 </resources>
