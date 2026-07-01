@@ -261,11 +261,22 @@
   .two-col-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+    overflow-x: hidden;
   }
 
   .two-col-layout__detail {
     overflow-y: visible;
+    overflow-x: hidden;
     min-width: 0;
+  }
+
+  .two-col-layout__detail > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .two-col-layout__detail div[style*="display:grid"] {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .two-col-layout:not(.two-col-layout--detail) .two-col-layout__detail {
