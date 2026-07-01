@@ -11,31 +11,25 @@
         android:orientation="vertical"
         android:paddingTop="56dp"
         android:paddingHorizontal="20dp"
-        android:paddingBottom="40dp">
+        android:paddingBottom="32dp">
 
-        <!-- ASCII Hero -->
-        <TextView
-            android:id="@+id/asciiArt"
+        <!-- ASCII Banner -->
+        <ImageView
+            android:id="@+id/asciiBanner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:fontFamily="monospace"
-            android:textColor="@color/accent"
-            android:textSize="9sp"
-            android:lineSpacingExtra="1dp"
-            android:shadowColor="@color/accent"
-            android:shadowRadius="8"
-            android:gravity="center"
-            android:text="" />
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ascii_banner" />
 
-        <!-- Divider -->
-        <View
+        <!-- Gradient divider -->
+        <ImageView
             android:layout_width="80dp"
             android:layout_height="1dp"
             android:layout_gravity="center"
-            android:layout_marginTop="14dp"
-            android:layout_marginBottom="10dp"
-            android:background="@color/accent_dim" />
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"
+            android:src="@drawable/bg_gradient_line" />
 
         <!-- Tagline -->
         <TextView
@@ -46,48 +40,46 @@
             android:text="Think. Learn. Reach out."
             android:textColor="@color/ink_3"
             android:textSize="12sp"
-            android:letterSpacing="0.08" />
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="32dp" />
 
-        <!-- Status pill -->
+        <!-- Status pill (card style) -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_marginTop="28dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="20dp"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_card"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
 
             <View
-                android:layout_width="6dp"
-                android:layout_height="6dp"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:layout_marginEnd="8dp"
                 android:background="@color/accent" />
 
             <TextView
+                android:id="@+id/statusText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:text="Termux 已就绪"
                 android:textColor="@color/accent"
                 android:textSize="12sp" />
 
         </LinearLayout>
 
-        <!-- Terminal block -->
+        <!-- Terminal block (gradient bg + border = visual depth) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@color/bg_inset"
-            android:padding="14dp"
-            android:layout_marginBottom="24dp">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/accent_dim"
-                android:alpha="0.3"
-                android:layout_marginBottom="8dp" />
+            android:background="@drawable/bg_terminal"
+            android:padding="16dp"
+            android:layout_marginBottom="20dp"
+            android:elevation="2dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -96,7 +88,7 @@
                 android:text="// 粘贴到 Termux 执行"
                 android:textColor="@color/ink_3"
                 android:textSize="11sp"
-                android:layout_marginBottom="6dp" />
+                android:layout_marginBottom="8dp" />
 
             <TextView
                 android:id="@+id/installCmd"
@@ -105,36 +97,25 @@
                 android:fontFamily="monospace"
                 android:text="$ curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.sh | bash"
                 android:textColor="@color/accent"
-                android:textSize="11sp"
-                android:lineSpacingExtra="3dp" />
+                android:textSize="12sp"
+                android:lineSpacingExtra="2dp" />
 
         </LinearLayout>
 
-        <!-- Status message (hidden by default, shown during install) -->
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:lineSpacingExtra="4dp"
-            android:text=""
-            android:textColor="@color/ink_2"
-            android:textSize="14sp"
-            android:layout_marginBottom="16dp"
-            android:visibility="gone" />
-
-        <!-- Primary CTA -->
+        <!-- Primary CTA (elevated, accent bg) -->
         <Button
             android:id="@+id/actionButton"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:background="@color/accent"
+            android:background="@drawable/bg_button_primary"
             android:text="复制命令并打开 Termux"
             android:textColor="@color/bg_void"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:elevation="6dp"
+            android:stateListAnimator="@animator/button_press" />
 
-        <!-- Secondary link -->
+        <!-- Secondary link (diminished) -->
         <Button
             android:id="@+id/hintButton"
             style="@style/Widget.Material3.Button.TextButton"
@@ -145,24 +126,34 @@
             android:textColor="@color/ink_2"
             android:textSize="14sp" />
 
+        <!-- Divider between primary zone and secondary zone -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp"
+            android:background="@color/line" />
+
+        <!-- Control Panel button (surface, secondary emphasis) -->
         <Button
             android:id="@+id/openWebUiButton"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_marginTop="8dp"
-            android:background="@color/bg_surface"
+            android:background="@drawable/bg_button_surface"
             android:text="打开控制面板"
             android:textColor="@color/accent"
             android:textSize="14sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="monospace"
+            android:elevation="1dp" />
 
-        <!-- Nav link -->
+        <!-- Help nav (text only, tertiary) -->
         <Button
             android:id="@+id/helpButton"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:layout_marginTop="4dp"
             android:fontFamily="monospace"
             android:text="~ /常用操作"
             android:textColor="@color/ink_3"

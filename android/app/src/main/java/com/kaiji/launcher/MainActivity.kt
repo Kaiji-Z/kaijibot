@@ -28,28 +28,12 @@ class MainActivity : AppCompatActivity() {
         private const val TERMUX_PACKAGE = "com.termux"
         private const val INSTALL_CMD =
             "curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.sh | bash"
-        private const val ASCII_ART =
-            "██╗  ██╗ █████╗ ██╗     ██╗██╗██████╗  ██████╗ ████████╗\n" +
-            "██║ ██╔╝██╔══██╗██║     ██║██║██╔══██╗██╔═══██╗╚══██╔══╝\n" +
-            "█████╔╝ ███████║██║     ██║██║██████╔╝██║   ██║   ██║   \n" +
-            "██╔═██╗ ██╔══██║██║██   ██║██║██╔══██╗██║   ██║   ██║   \n" +
-            "██║  ██╗██║  ██║██║╚█████╔╝██║██████╔╝╚██████╔╝   ██║   \n" +
-            "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚════╝ ╚═╝╚═════╝  ╚═════╝    ╚═╝   "
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<TextView>(R.id.asciiArt).let { tv ->
-            tv.text = ASCII_ART
-            val screenWidth = resources.displayMetrics.widthPixels
-            val horizontalPaddingPx = (40 * resources.displayMetrics.density).toInt()
-            val availableWidth = screenWidth - horizontalPaddingPx
-            // monospace char width ≈ 0.6 × font-size; ASCII art is 56 chars wide
-            val fontSize = (availableWidth / (56 * 0.6)).toFloat().coerceIn(4f, 16f)
-            tv.textSize = fontSize
-        }
         statusText = findViewById(R.id.statusText)
         actionButton = findViewById(R.id.actionButton)
         hintButton = findViewById(R.id.hintButton)
