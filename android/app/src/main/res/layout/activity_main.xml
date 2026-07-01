@@ -145,6 +145,17 @@
             android:textColor="@color/ink_2"
             android:textSize="14sp" />
 
+        <Button
+            android:id="@+id/openWebUiButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@color/bg_surface"
+            android:text="打开控制面板"
+            android:textColor="@color/accent"
+            android:textSize="14sp"
+            android:fontFamily="monospace" />
+
         <!-- Nav link -->
         <Button
             android:id="@+id/helpButton"

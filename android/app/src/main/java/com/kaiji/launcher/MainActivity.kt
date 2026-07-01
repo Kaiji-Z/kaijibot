@@ -59,6 +59,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, HelpActivity::class.java))
         }
 
+        findViewById<android.widget.Button>(R.id.openWebUiButton).setOnClickListener {
+            startActivity(Intent(this, WebUiActivity::class.java))
+        }
+
         updateState()
     }
 
