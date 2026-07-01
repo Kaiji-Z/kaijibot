@@ -262,6 +262,30 @@
     overflow-y: visible;
   }
 
+  .two-col-layout:not(.two-col-layout--detail) .two-col-layout__detail {
+    display: none;
+  }
+
+  .two-col-layout--detail .two-col-layout__sidebar {
+    display: none;
+  }
+
+  .two-col-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: var(--bg-hover);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+
   .shell--chat .content {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }

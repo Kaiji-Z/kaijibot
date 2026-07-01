@@ -265,5 +265,7 @@ export function renderInsights(props: InsightsProps) {
       headerTitle: "用户",
     }),
     detailContent,
+    !!hasSelection,
+    () => props.onUserSelect("", ""),
   );
 }

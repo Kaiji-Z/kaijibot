@@ -385,6 +385,7 @@ export function renderEvolution(props: EvolutionProps) {
     return renderTwoColumnLayout(
       sidebar,
       renderEmptyDetail("请选择一个用户查看进化记录", "点击左侧用户卡片查看进化历史。"),
+      false,
     );
   }
 
@@ -422,5 +423,5 @@ export function renderEvolution(props: EvolutionProps) {
     </div>
   `;
 
-  return renderTwoColumnLayout(sidebar, rightPanel);
+  return renderTwoColumnLayout(sidebar, rightPanel, true, () => props.onUserSelect("", ""));
 }

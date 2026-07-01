@@ -97,6 +97,10 @@
   overflow-y: auto;
 }
 
+.two-col-back {
+  display: none;
+}
+
 /* ===========================================
    Deck Bar (bottom navigation)
    =========================================== */

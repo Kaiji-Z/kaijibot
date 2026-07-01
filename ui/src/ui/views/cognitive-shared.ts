@@ -182,11 +182,23 @@ export function renderEmptyDetail(title: string, subtitle: string): unknown {
 
 // ── Two-column layout wrapper ─────────────────────────────────────
 
-export function renderTwoColumnLayout(sidebar: unknown, detail: unknown): unknown {
+export function renderTwoColumnLayout(
+  sidebar: unknown,
+  detail: unknown,
+  detailActive = false,
+  onBack?: () => void,
+): unknown {
   return html`
-    <section class="two-col-layout">
-      ${sidebar}
-      <div class="two-col-layout__detail">${detail}</div>
+    <section class="two-col-layout ${detailActive ? "two-col-layout--detail" : ""}">
+      <div class="two-col-layout__sidebar">${sidebar}</div>
+      <div class="two-col-layout__detail">
+        ${detailActive && onBack
+          ? html`<button class="two-col-back" @click=${onBack} aria-label="Back to list">
+              ←
+            </button>`
+          : nothing}
+        ${detail}
+      </div>
     </section>
   `;
 }
