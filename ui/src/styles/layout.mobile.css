@@ -259,12 +259,13 @@
   }
 
   .two-col-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
   .two-col-layout__detail {
     overflow-y: visible;
+    min-width: 0;
   }
 
   .two-col-layout:not(.two-col-layout--detail) .two-col-layout__detail {
@@ -763,6 +764,15 @@
   .filters button,
   .filters .pill {
     min-height: 44px;
+  }
+
+  /* Break long unbreakable text (file paths, URLs, session keys) */
+  .card,
+  .stack,
+  .two-col-layout__detail,
+  .text-mono {
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 }
 
