@@ -1026,35 +1026,67 @@
     display: none;
   }
 
-  .chip-dropdown {
-    min-width: 200px;
-    max-width: calc(100vw - 20px);
-    max-height: 240px;
-  }
-
-  .chip-dropdown__item {
-    min-height: 44px;
-    padding: 10px;
-    font-size: 0.85rem;
-  }
-
-  .session-chip__trigger,
-  .model-chip__trigger,
-  .thinking-chip__trigger {
-    font-size: 0.72rem;
-    max-width: 12ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-height: 44px;
-  }
-
   .agent-chat__input {
-    margin: 0 8px 10px;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 6px 8px;
+    margin: 0;
+  }
+
+  .agent-chat__toolbar,
+  .agent-chat__toolbar-left,
+  .agent-chat__toolbar-right {
+    display: contents;
   }
 
   .agent-chat__input > textarea {
-    min-height: 44px;
+    flex: 1;
+    order: 2;
+    min-height: 36px;
+    max-height: 100px;
     font-size: 16px;
+    padding: 8px 10px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .agent-chat__input-btn {
+    order: 1;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 50%;
+  }
+
+  .agent-chat__input-btn:nth-of-type(2) {
+    display: none;
+  }
+
+  .input-settings-wrapper {
+    order: 3;
+    flex-shrink: 0;
+  }
+
+  .input-settings-wrapper .agent-chat__input-btn {
+    order: unset;
+  }
+
+  .chat-send-btn {
+    order: 4;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 50%;
+  }
+
+  .agent-chat__token-count {
+    display: none;
   }
 
   .agent-chat__toolbar-right .btn--ghost,
@@ -1065,7 +1097,12 @@
   .input-settings-popover {
     left: 0;
     transform: none;
-    min-width: 220px;
+    min-width: 240px;
+    max-width: calc(100vw - 20px);
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    bottom: calc(100% + 6px);
     animation: popover-in-mobile var(--duration-fast) var(--ease-out);
   }
 
