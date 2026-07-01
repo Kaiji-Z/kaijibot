@@ -423,5 +423,5 @@ export function renderEvolution(props: EvolutionProps) {
     </div>
   `;
 
-  return renderTwoColumnLayout(sidebar, rightPanel, true, () => props.onUserSelect("", ""));
+  return renderTwoColumnLayout(sidebar, rightPanel, true, () => props.onUserSelect("", ""), `${props.agentId ?? ""} / ${props.userId ?? ""}`);
 }

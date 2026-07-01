@@ -205,7 +205,7 @@ export function renderHistory(props: HistoryProps) {
 
         <div class="two-col-layout__detail">
           ${props.selectedKey
-            ? html`<button class="two-col-back" @click=${() => props.onSelectSession(null)} aria-label="Back to list">←</button>`
+            ? html`<div class="two-col-back-bar" @click=${() => props.onSelectSession(null)}><span class="two-col-back-bar__arrow" aria-hidden="true"></span><span class="two-col-back-bar__context">${props.selectedKey}</span></div>`
             : nothing}
           <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
             ${props.selectedKey == null

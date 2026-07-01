@@ -267,5 +267,6 @@ export function renderInsights(props: InsightsProps) {
     detailContent,
     !!hasSelection,
     () => props.onUserSelect("", ""),
+    `${props.agentId ?? ""} / ${props.userId ?? ""}`,
   );
 }

@@ -346,5 +346,5 @@ export function renderCognitive(props: CognitiveProps) {
         "Click a user card on the left to explore their cognitive profile.",
       );
 
-  return renderTwoColumnLayout(sidebar, detailContent, !!detail, () => props.onUserSelect("", ""));
+  return renderTwoColumnLayout(sidebar, detailContent, !!detail, () => props.onUserSelect("", ""), `${props.agentId ?? ""} / ${props.userId ?? ""}`);
 }

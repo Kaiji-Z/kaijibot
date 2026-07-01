@@ -187,15 +187,19 @@ export function renderTwoColumnLayout(
   detail: unknown,
   detailActive = false,
   onBack?: () => void,
+  contextLabel?: string,
 ): unknown {
   return html`
     <section class="two-col-layout ${detailActive ? "two-col-layout--detail" : ""}">
       <div class="two-col-layout__sidebar">${sidebar}</div>
       <div class="two-col-layout__detail">
         ${detailActive && onBack
-          ? html`<button class="two-col-back" @click=${onBack} aria-label="Back to list">
-              ←
-            </button>`
+          ? html`<div class="two-col-back-bar" @click=${onBack}>
+              <span class="two-col-back-bar__arrow" aria-hidden="true"></span>
+              ${contextLabel
+                ? html`<span class="two-col-back-bar__context">${contextLabel}</span>`
+                : nothing}
+            </div>`
           : nothing}
         ${detail}
       </div>
