@@ -1084,6 +1084,40 @@
   margin-bottom: 8px;
 }
 
+.skills-group > summary.skills-group-label {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.skills-group > summary.skills-group-label::-webkit-details-marker {
+  display: none;
+}
+
+.skills-group > summary.skills-group-label::before {
+  content: "▸";
+  font-size: 10px;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.skills-group[open] > summary.skills-group-label::before {
+  transform: rotate(90deg);
+}
+
+.skills-group > .skills-card-grid {
+  margin-top: 6px;
+}
+
+@media (max-width: 768px) {
+  .skills-group > summary.skills-group-label {
+    min-height: 44px;
+    padding: 10px 0;
+  }
+}
+
 .skills-group-label {
   font-weight: 600;
   font-size: 13px;

@@ -78,14 +78,14 @@ function renderInstalledPanel(props: SkillsManagerProps) {
       <div class="stack" style="margin-top: 8px;">
         ${groups.map(
           (group) => html`
-            <div class="skills-group">
-              <div class="skills-group-label">
+            <details class="skills-group">
+              <summary class="skills-group-label">
                 ${group.label} <span class="text-muted">(${group.skills.length})</span>
-              </div>
+              </summary>
               <div class="skills-card-grid">
                 ${group.skills.map((skill) => renderInstalledSkillCard(skill, props))}
               </div>
-            </div>
+            </details>
           `,
         )}
       </div>

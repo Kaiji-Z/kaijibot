@@ -952,6 +952,47 @@
   background: var(--accent-subtle);
 }
 
+.input-settings-popover__selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.input-settings-popover__selector-row:hover {
+  background: var(--accent-subtle);
+}
+
+.input-settings-popover__select {
+  margin-left: auto;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  max-width: 140px;
+  cursor: pointer;
+}
+
+.input-settings-popover__select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.input-settings-popover__select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-settings-popover__divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
 .input-settings-popover__toggle-icon {
   display: flex;
   align-items: center;
@@ -1120,6 +1161,17 @@
   .input-settings-popover__toggle-row {
     min-height: 44px;
     padding: 10px 10px;
+  }
+
+  .input-settings-popover__selector-row {
+    min-height: 44px;
+    padding: 10px 10px;
+  }
+
+  .input-settings-popover__select {
+    font-size: 16px;
+    min-height: 36px;
+    max-width: 160px;
   }
 
   .input-settings-popover__switch {

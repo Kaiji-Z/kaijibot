@@ -1108,6 +1108,42 @@ export function renderInputSettingsPopover(
       </span>
     </label>
   `;
+  const modelState = resolveChatModelSelectState(state);
+  const thinkingState = resolveChatThinkingSelectState(state);
+  const sessionGroups = resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult);
+  const selectorRow = (
+    icon: unknown,
+    label: string,
+    value: string,
+    options: { value: string; label: string }[],
+    onChange: (v: string) => void,
+    disabled = false,
+  ) => html`
+    <label class="input-settings-popover__selector-row">
+      <span class="input-settings-popover__toggle-icon">${icon}</span>
+      <span class="input-settings-popover__toggle-label">${label}</span>
+      <select
+        class="input-settings-popover__select"
+        .value=${value}
+        ?disabled=${disabled}
+        @change=${(e: Event) => onChange((e.target as HTMLSelectElement).value)}
+      >
+        ${options.map(
+          (o) =>
+            html`<option value=${o.value} ?selected=${o.value === value}>${o.label}</option>`,
+        )}
+      </select>
+    </label>
+  `;
+  const modelOptions = [
+    { value: "", label: modelState.defaultLabel },
+    ...modelState.options,
+  ];
+  const thinkingOptions = [
+    { value: "", label: thinkingState.defaultLabel },
+    ...thinkingState.options,
+  ];
+  const flatSessions = sessionGroups.flatMap((g) => g.options);
   return html`
     <div class="input-settings-wrapper">
       <button
@@ -1124,6 +1160,31 @@ export function renderInputSettingsPopover(
       ${open
         ? html`
             <div class="input-settings-popover" @click=${(e: Event) => e.stopPropagation()}>
+              ${selectorRow(
+                icons.brain,
+                "Model",
+                modelState.currentOverride,
+                modelOptions,
+                (v) => void switchChatModel(state, v),
+                !state.connected,
+              )}
+              ${selectorRow(
+                icons.settings,
+                "Thinking",
+                thinkingState.currentOverride,
+                thinkingOptions,
+                (v) => void switchChatThinkingLevel(state, v),
+                !state.connected,
+              )}
+              ${selectorRow(
+                icons.messageSquare,
+                "Session",
+                state.sessionKey,
+                flatSessions.map((s) => ({ value: s.key, label: s.label })),
+                (v) => switchChatSession(state, v),
+                !state.connected,
+              )}
+              <div class="input-settings-popover__divider"></div>
               ${toggleRow(icons.brain, "Show thinking", showThinking, () =>
                 state.applySettings({
                   ...state.settings,
