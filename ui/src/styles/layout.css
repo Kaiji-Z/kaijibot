@@ -375,7 +375,7 @@
   border-right: 1px solid var(--sidebar-border);
   overflow: hidden;
   z-index: 40;
-  transition: transform var(--duration-normal) var(--ease-out);
+  transition: width var(--duration-normal) var(--ease-out);
 }
 
 .shell--nav-collapsed .shell-nav {
@@ -461,7 +461,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: transform var(--duration-normal) var(--ease-out);
+  transition: padding var(--duration-normal) var(--ease-out);
 }
 
 .shell-nav__brand-ascii {
