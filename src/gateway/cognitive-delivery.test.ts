@@ -94,6 +94,32 @@ describe("findSessionKeyForUserId", () => {
     const result = findSessionKeyForUserId(undefined, "any-user");
     expect(result).toBeUndefined();
   });
+
+  it("falls back to main session for operator userId", () => {
+    const storePath = writeSessionStore({
+      "agent:main:main": { lastChannel: "webchat", lastTo: "operator" },
+    });
+    const result = findSessionKeyForUserId(makeCfg(storePath), "operator");
+    expect(result).toBe("agent:main:main");
+  });
+
+  it("operator fallback skips subagent and cron main sessions", () => {
+    const storePath = writeSessionStore({
+      "agent:main:subagent:main": { lastChannel: "feishu" },
+      "agent:main:cron:main": { lastChannel: "feishu" },
+      "agent:main:main": { lastChannel: "webchat", lastTo: "operator" },
+    });
+    const result = findSessionKeyForUserId(makeCfg(storePath), "operator");
+    expect(result).toBe("agent:main:main");
+  });
+
+  it("operator fallback returns undefined when no main session exists", () => {
+    const storePath = writeSessionStore({
+      "agent:main:feishu:direct:ou_abc": { lastChannel: "feishu" },
+    });
+    const result = findSessionKeyForUserId(makeCfg(storePath), "operator");
+    expect(result).toBeUndefined();
+  });
 });
 
 describe("resolveCognitiveDeliveryTarget", () => {

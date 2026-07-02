@@ -2228,7 +2228,6 @@ export async function runEmbeddedAttempt(
 
                 const configDir = resolveConfigDir();
                 const store = new PersonaStore(configDir);
-                // TUI/admin sessions have no senderId → skip persona extraction entirely
                 const userId = senderId;
                 if (!userId) {
                   return;

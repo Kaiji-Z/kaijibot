@@ -13,6 +13,7 @@ import { dispatchInboundMessage } from "../../auto-reply/dispatch.js";
 import { createReplyDispatcher } from "../../auto-reply/reply/reply-dispatcher.js";
 import type { MsgContext } from "../../auto-reply/templating.js";
 import type { ReplyPayload } from "../../auto-reply/types.js";
+import { resolveOperatorSenderId } from "../../cognitive/identity.js";
 import { resolveSessionFilePath } from "../../config/sessions.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { jsonUtf8Bytes } from "../../infra/json-utf8-bytes.js";
@@ -738,6 +739,21 @@ function shouldDropAssistantHistoryMessage(message: unknown): boolean {
   return !hasAssistantNonTextContent(message);
 }
 
+function shouldDropSystemHistoryMessage(message: unknown): boolean {
+  if (!message || typeof message !== "object") {
+    return false;
+  }
+  if ((message as { role?: unknown }).role !== "system") {
+    return false;
+  }
+  // Keep compaction markers — they're rendered as dividers by the UI.
+  const meta = (message as { __kaijibot?: { kind?: unknown } }).__kaijibot;
+  if (meta && meta.kind === "compaction") {
+    return false;
+  }
+  return true;
+}
+
 export function sanitizeChatHistoryMessages(messages: unknown[], maxChars: number): unknown[] {
   if (messages.length === 0) {
     return messages;
@@ -745,6 +761,12 @@ export function sanitizeChatHistoryMessages(messages: unknown[], maxChars: numbe
   let changed = false;
   const next: unknown[] = [];
   for (const message of messages) {
+    // Drop system-role messages (e.g. leaked prompt fragments) but keep
+    // compaction markers which are synthetic dividers, not real messages.
+    if (shouldDropSystemHistoryMessage(message)) {
+      changed = true;
+      continue;
+    }
     // Drop raw control-token replies before any maxChars truncation can make
     // an exact token look like partial user-visible text.
     if (shouldDropAssistantHistoryMessage(message)) {
@@ -1668,7 +1690,7 @@ export const chatHandlers: GatewayRequestHandlers = {
         ChatType: "direct",
         CommandAuthorized: true,
         MessageSid: clientRunId,
-        SenderId: clientInfo?.id,
+        SenderId: resolveOperatorSenderId(clientInfo?.id) ?? clientInfo?.id,
         SenderName: clientInfo?.displayName,
         SenderUsername: clientInfo?.displayName,
         GatewayClientScopes: client?.connect?.scopes,

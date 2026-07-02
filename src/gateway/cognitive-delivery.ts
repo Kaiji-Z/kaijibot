@@ -1,3 +1,4 @@
+import { OPERATOR_USER_ID } from "../cognitive/identity.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { resolveStorePath } from "../config/sessions/paths.js";
 import { loadSessionStore } from "../config/sessions/store-load.js";
@@ -32,6 +33,17 @@ export function findSessionKeyForUserId(
     }
     if (key.endsWith(`:${userId}`)) {
       return key;
+    }
+  }
+
+  if (userId === OPERATOR_USER_ID) {
+    for (const key of Object.keys(store)) {
+      if (isSubagentSessionKey(key) || isCronSessionKey(key)) {
+        continue;
+      }
+      if (key.endsWith(":main")) {
+        return key;
+      }
     }
   }
 

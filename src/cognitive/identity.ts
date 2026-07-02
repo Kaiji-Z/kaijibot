@@ -1,0 +1,40 @@
+/**
+ * Identity constants and helpers for cognitive system user resolution.
+ *
+ * The local operator (Control UI / TUI) is a first-class user with userId
+ * "operator". All cognitive subsystems (persona, correction, evolution,
+ * fragments) store per-agent data under this userId, giving the operator a
+ * fully isolated cognitive profile per agent.
+ */
+
+/** The canonical userId for local operator sessions (Control UI / TUI). */
+export const OPERATOR_USER_ID = "operator";
+
+/**
+ * Gateway client IDs that represent the local machine operator.
+ * When a session originates from one of these clients, the SenderId is
+ * mapped to {@link OPERATOR_USER_ID} so the cognitive system treats it as
+ * a stable, first-class user identity.
+ *
+ * These mirror GATEWAY_CLIENT_IDS.CONTROL_UI / TUI in
+ * `src/gateway/protocol/client-info.ts`. Cognitive layer cannot import from
+ * gateway protocol (architecture boundary), so the values are duplicated
+ * here. A test in identity.test.ts verifies they match.
+ */
+const OPERATOR_CLIENT_IDS: ReadonlySet<string> = new Set(["kaijibot-control-ui", "kaijibot-tui"]);
+
+/**
+ * If the sender is a local operator client (Control UI / TUI), returns
+ * the canonical operator userId. Otherwise returns undefined.
+ *
+ * Call sites should use the result as a fallback:
+ * ```ts
+ * SenderId: resolveOperatorSenderId(rawId) ?? rawId
+ * ```
+ */
+export function resolveOperatorSenderId(senderId?: string | null): string | undefined {
+  if (senderId && OPERATOR_CLIENT_IDS.has(senderId)) {
+    return OPERATOR_USER_ID;
+  }
+  return undefined;
+}

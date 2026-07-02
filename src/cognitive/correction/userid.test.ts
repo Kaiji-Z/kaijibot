@@ -40,4 +40,12 @@ describe("resolveCorrectionUserId", () => {
       "ou_second",
     );
   });
+
+  it("resolves 'operator' from deliveryTo for Control UI / TUI sessions", () => {
+    expect(resolveCorrectionUserId("agent:main:main", "operator")).toBe("operator");
+  });
+
+  it("resolves 'operator' even without sessionKey", () => {
+    expect(resolveCorrectionUserId(undefined, "operator")).toBe("operator");
+  });
 });
