@@ -265,7 +265,7 @@ class WebUiActivity : AppCompatActivity() {
             view: WebView?,
             detail: RenderProcessGoneDetail?,
         ): Boolean {
-            Log.e("KaijiBot", "WebView renderer gone: reason=${detail?.reason}")
+            Log.e("KaijiBot", "WebView renderer gone: didCrash=${detail?.didCrash()}")
             rendererCrashed = true
             runOnUiThread {
                 if (isFinishing || isDestroyed) {
