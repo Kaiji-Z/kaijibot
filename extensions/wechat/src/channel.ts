@@ -214,6 +214,69 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       configured: account.configured,
     }),
   },
+  setupWizard: {
+    channel: "wechat",
+    status: {
+      configuredLabel: "configured",
+      unconfiguredLabel: "needs QR login",
+      configuredHint: "connected",
+      unconfiguredHint: "scan QR to bind",
+      configuredScore: 2,
+      unconfiguredScore: 0,
+      resolveConfigured: ({ cfg, accountId }) => {
+        const ids = listWeixinAccountIds(cfg);
+        if (ids.length === 0) { return false; }
+        if (accountId) {
+          return resolveWeixinAccount(cfg, accountId).configured;
+        }
+        return ids.some((id) => resolveWeixinAccount(cfg, id).configured);
+      },
+      resolveStatusLines: async ({ cfg, configured }) => {
+        if (!configured) { return ["WeChat: needs QR login (scan to bind)"]; }
+        const ids = listWeixinAccountIds(cfg);
+        const count = ids.length;
+        return [`WeChat: ${count} account${count > 1 ? "s" : ""} connected`];
+      },
+    },
+    credentials: [],
+    finalize: async ({ cfg, accountId }) => {
+      const startResult = await startWeixinLoginWithQr({
+        accountId: accountId ?? undefined,
+        apiBaseUrl: DEFAULT_BASE_URL,
+        botType: DEFAULT_ILINK_BOT_TYPE,
+      });
+
+      if (!startResult.qrcodeUrl) {
+        throw new Error(startResult.message);
+      }
+
+      await displayQRCode(startResult.qrcodeUrl);
+
+      const waitResult = await waitForWeixinLogin({
+        sessionKey: startResult.sessionKey,
+        apiBaseUrl: DEFAULT_BASE_URL,
+        timeoutMs: 480_000,
+      });
+
+      if (waitResult.connected && waitResult.botToken && waitResult.accountId) {
+        const normalizedId = normalizeAccountId(waitResult.accountId);
+        saveWeixinAccount(normalizedId, {
+          token: waitResult.botToken,
+          baseUrl: waitResult.baseUrl,
+          userId: waitResult.userId,
+        });
+        registerWeixinAccountId(normalizedId);
+        if (waitResult.userId) {
+          clearStaleAccountsForUserId(normalizedId, waitResult.userId, clearContextTokensForAccount);
+        }
+        void triggerWeixinChannelReload();
+        return { cfg, accountId: normalizedId };
+      } else if (waitResult.alreadyConnected) {
+        return { cfg, accountId: accountId ?? "default" };
+      }
+      throw new Error(waitResult.message);
+    },
+  },
   outbound: {
     deliveryMode: "direct",
     textChunkLimit: 4000,
