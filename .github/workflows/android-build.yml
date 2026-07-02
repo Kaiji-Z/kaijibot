@@ -55,7 +55,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ! gh release view launcher > /dev/null 2>&1; then
-            gh release create launcher --title "KaijiBot Launcher APK" --notes "Android 一键安装包（内置 Termux）。安装后打开，按提示操作即可。不需要更新此 APK — 它会自动安装最新版 KaijiBot。"
+            gh release create launcher --title "KaijiBot Launcher APK" --latest --notes "Android 一键安装包（内置 Termux）。安装后打开，按提示操作即可。不需要更新此 APK — 它会自动安装最新版 KaijiBot。"
+          else
+            gh release edit launcher --latest
           fi
           gh release upload launcher kaijibot-launcher.apk --clobber
 
