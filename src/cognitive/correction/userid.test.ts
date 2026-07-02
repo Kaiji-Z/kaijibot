@@ -6,8 +6,10 @@ describe("resolveCorrectionUserId", () => {
     expect(resolveCorrectionUserId("agent:main:feishu:direct:ou_abc123")).toBe("ou_abc123");
   });
 
-  it("extracts ou_xxx from feishu group session key", () => {
-    expect(resolveCorrectionUserId("agent:main:feishu:group:oc_xxx:ou_abc123")).toBe("ou_abc123");
+  it("extracts ou_xxx from feishu group session key with :sender:", () => {
+    expect(resolveCorrectionUserId("agent:main:feishu:group:oc_xxx:sender:ou_abc123")).toBe(
+      "ou_abc123",
+    );
   });
 
   it("strips user: prefix from deliveryTo", () => {
@@ -23,16 +25,16 @@ describe("resolveCorrectionUserId", () => {
     expect(resolveCorrectionUserId(undefined, undefined)).toBeNull();
   });
 
-  it("returns null when tail is 'main'", () => {
-    expect(resolveCorrectionUserId("agent:main:feishu:direct:main")).toBeNull();
+  it("resolves operator when tail is 'main'", () => {
+    expect(resolveCorrectionUserId("agent:main:feishu:direct:main")).toBe("operator");
   });
 
-  it("returns null when tail has no ou_ prefix", () => {
-    expect(resolveCorrectionUserId("agent:main:feishu:direct:someuser")).toBeNull();
+  it("resolves non-ou_ tail as userId (channel-agnostic)", () => {
+    expect(resolveCorrectionUserId("agent:main:feishu:direct:someuser")).toBe("someuser");
   });
 
-  it("falls back to parts[1] with ou_ prefix", () => {
-    expect(resolveCorrectionUserId("agent:ou_def456:other")).toBe("ou_def456");
+  it("uses tail as userId for agent:xxx:other format", () => {
+    expect(resolveCorrectionUserId("agent:ou_def456:other")).toBe("other");
   });
 
   it("prefers deliveryTo over sessionKey", () => {

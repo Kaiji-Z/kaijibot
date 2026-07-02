@@ -44,3 +44,36 @@ export function resolveOperatorSenderId(senderId?: string | null): string | unde
   }
   return undefined;
 }
+
+/**
+ * Unified cognitive userId resolver. ALL cognitive subsystems should use this.
+ *
+ * Channel-agnostic: no ou_ prefix check, works with feishu, wechat, and any
+ * future channel.
+ *
+ * Resolution priority:
+ *  1. senderId (conversation-time path) — mapped via resolveOperatorSenderId,
+ *     otherwise passed through as-is.
+ *  2. sessionKey tail (background path) — "main" → operator, any other non-empty
+ *     tail → returned as-is. Group sessions without :sender: → null (tail is a
+ *     group ID, not a user ID).
+ */
+export function resolveCognitiveUserId(
+  sessionKey?: string,
+  senderId?: string | null,
+): string | null {
+  if (senderId) {
+    return resolveOperatorSenderId(senderId) ?? senderId;
+  }
+  if (!sessionKey) {
+    return null;
+  }
+  const tail = sessionKey.split(":").pop();
+  if (!tail) {
+    return null;
+  }
+  if (sessionKey.includes(":group:") && !sessionKey.includes(":sender:")) {
+    return null;
+  }
+  return tail === "main" ? OPERATOR_USER_ID : tail;
+}

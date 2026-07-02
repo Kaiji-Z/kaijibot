@@ -13,6 +13,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { resolveCognitiveUserId } from "../cognitive/identity.js";
 
 type SessionStoreEntry = {
   sessionId: string;
@@ -52,16 +53,7 @@ function extractSessionIdFromFileName(fileName: string): string {
  *   agent:ou_xxx:rest → ou_xxx (fallback)
  */
 function extractUserIdFromSessionKey(sessionKey: string): string | null {
-  const parts = sessionKey.split(":");
-  const tail = parts[parts.length - 1];
-  if (tail && tail !== "main" && tail.startsWith("ou_")) {
-    return tail;
-  }
-  // Fallback: agent:ou_xxx:rest → ou_xxx
-  if (parts.length >= 3 && parts[1] && parts[1] !== "main") {
-    return parts[1];
-  }
-  return null;
+  return resolveCognitiveUserId(sessionKey);
 }
 
 async function loadSessionStore(sessionsDir: string): Promise<SessionStore> {

@@ -8,6 +8,7 @@ import {
   resolveStorePath,
 } from "../../config/sessions/inbound.runtime.js";
 import { buildAgentSessionKey, type RoutePeer } from "../../routing/resolve-route.js";
+import { resolveEffectiveDmScope } from "../../routing/session-key.js";
 import { resolveAgentIdFromSessionKey } from "../../routing/session-key.js";
 import { normalizeLowercaseStringOrEmpty } from "../../shared/string-coerce.js";
 import type { ResolvedMessagingTarget } from "./target-resolver.js";
@@ -88,7 +89,7 @@ function buildBaseSessionKey(params: {
     channel: params.channel,
     accountId: params.accountId,
     peer: params.peer,
-    dmScope: params.cfg.session?.dmScope ?? "main",
+    dmScope: resolveEffectiveDmScope(params.cfg),
     identityLinks: params.cfg.session?.identityLinks,
   });
 }

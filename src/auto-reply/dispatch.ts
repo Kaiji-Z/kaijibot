@@ -1,3 +1,4 @@
+import { resolveCognitiveUserId } from "../cognitive/identity.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import type { DispatchFromConfigResult } from "./reply/dispatch-from-config.js";
@@ -18,22 +19,11 @@ const log = createSubsystemLogger("auto-reply/dispatch");
 export type DispatchInboundResult = DispatchFromConfigResult;
 
 /**
- * Extract a feishu user id (ou_xxx) from a session key.
- * Mirrors the logic in memory-host-sdk/consolidation-userid.ts (not exported there).
- *   agent:main:feishu:direct:ou_xxx → ou_xxx
- *   agent:main:feishu:group:oc_xxx:...:sender:ou_xxx → ou_xxx
- *   agent:ou_xxx:rest → ou_xxx (fallback)
+ * Extract a userId from a session key + sender context.
+ * Delegates to the unified resolveCognitiveUserId (channel-agnostic).
  */
-function extractUserIdFromSessionKey(sessionKey: string): string | null {
-  const parts = sessionKey.split(":");
-  const tail = parts[parts.length - 1];
-  if (tail && tail !== "main" && tail.startsWith("ou_")) {
-    return tail;
-  }
-  if (parts.length >= 3 && parts[1] && parts[1] !== "main") {
-    return parts[1];
-  }
-  return null;
+function extractUserIdFromSessionKey(sessionKey: string, senderId?: string | null): string | null {
+  return resolveCognitiveUserId(sessionKey, senderId);
 }
 
 /**
@@ -55,7 +45,7 @@ async function detectInsightReplyFeedback(params: {
     return;
   }
 
-  const userId = extractUserIdFromSessionKey(sessionKey);
+  const userId = extractUserIdFromSessionKey(sessionKey, params.ctx.SenderId);
   if (!userId) {
     return;
   }

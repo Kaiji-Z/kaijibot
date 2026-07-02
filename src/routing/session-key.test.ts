@@ -164,3 +164,43 @@ describe("isValidAgentId", () => {
     expect(isValidAgentId(input)).toBe(expected);
   });
 });
+
+describe("resolveEffectiveDmScope", () => {
+  it("promotes to per-peer when feishu channel is configured (S9)", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    const cfg = {
+      session: { dmScope: "main" },
+      channels: { feishu: { appId: "cli_xxx", appSecret: "secret" } },
+    } as never;
+    expect(resolveEffectiveDmScope(cfg)).toBe("per-peer");
+  });
+
+  it("returns main when no channels configured (S10)", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    const cfg = { session: { dmScope: "main" } } as never;
+    expect(resolveEffectiveDmScope(cfg)).toBe("main");
+  });
+
+  it("respects explicit per-channel-peer (S11)", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    const cfg = {
+      session: { dmScope: "per-channel-peer" },
+      channels: { feishu: { appId: "cli_xxx" } },
+    } as never;
+    expect(resolveEffectiveDmScope(cfg)).toBe("per-channel-peer");
+  });
+
+  it("promotes when wechat channel configured", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    const cfg = {
+      session: {},
+      channels: { wechat: { appId: "wx_xxx", token: "tok" } },
+    } as never;
+    expect(resolveEffectiveDmScope(cfg)).toBe("per-peer");
+  });
+
+  it("returns main for undefined config", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    expect(resolveEffectiveDmScope(undefined)).toBe("main");
+  });
+});

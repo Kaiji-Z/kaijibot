@@ -210,12 +210,12 @@ describe("Phase 1: hard-trigger signal generation via evaluateHardTrigger", () =
   it("skips when no userId can be resolved from sessionKey", async () => {
     await evaluateHardTrigger({
       toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
-      sessionKey: "agent:main:main",
+      sessionKey: "agent:main:feishu:group:oc_nosender",
       trigger: "user",
       started: Date.now() - 5000,
     });
 
-    expect(peekSystemEventEntries("agent:main:main")).toHaveLength(0);
+    expect(peekSystemEventEntries("agent:main:feishu:group:oc_nosender")).toHaveLength(0);
     expect(mockRequestHeartbeatNow).not.toHaveBeenCalled();
   });
 });
@@ -541,7 +541,7 @@ describe("Phase 3.5: tool entry point — evaluate_skill_evolution", () => {
     const { createEvolutionSuggestTool } =
       await import("../../agents/tools/evolution-suggest-tool.js");
     const tool = createEvolutionSuggestTool({
-      sessionKey: "agent:main:main",
+      sessionKey: "agent:main:feishu:group:oc_nosender",
     });
 
     const result = await tool!.execute("tc-no-user", {

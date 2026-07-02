@@ -1,41 +1,20 @@
 /**
- * Unified userId resolution for the correction pipeline.
- * Both Path A (agent tool) and Path B (post-session extraction) must
- * agree with the read path (sessionCtx.SenderId) to avoid orphaned records.
+ * Correction-pipeline userId resolution.
+ *
+ * Delegates to {@link resolveCognitiveUserId} for sessionKey-based resolution.
+ * The deliveryTo parameter is kept for backward compatibility with agent tools
+ * that pass the reply delivery target — it is stripped of channel prefixes and
+ * used as a userId hint before falling back to sessionKey resolution.
  */
 
-/**
- * Resolve a userId from session key and/or delivery target.
- * Priority:
- *  1. deliveryTo — strip user:/feishu: prefix, validate not "main"
- *  2. sessionKey tail — must be a valid ou_xxx open_id
- *  3. sessionKey parts[1] fallback
- */
+import { resolveCognitiveUserId, resolveOperatorSenderId } from "../identity.js";
+
 export function resolveCorrectionUserId(sessionKey?: string, deliveryTo?: string): string | null {
-  // 1. Try deliveryTo with prefix stripping
   if (deliveryTo) {
-    const stripped = deliveryTo.replace(/^(user:|feishu:)/, "");
+    const stripped = deliveryTo.replace(/^(user:|feishu:|webchat:|wechat:)/, "");
     if (stripped && stripped !== "main") {
-      return stripped;
+      return resolveOperatorSenderId(stripped) ?? stripped;
     }
   }
-
-  if (!sessionKey) {
-    return null;
-  }
-
-  const parts = sessionKey.split(":");
-
-  // 2. Try tail — must look like ou_xxx (feishu open_id)
-  const tail = parts[parts.length - 1];
-  if (tail && tail !== "main" && tail.startsWith("ou_")) {
-    return tail;
-  }
-
-  // 3. Fallback: parts[1] for agent:ou_xxx:rest format
-  if (parts.length >= 3 && parts[1] && parts[1] !== "main" && parts[1]!.startsWith("ou_")) {
-    return parts[1];
-  }
-
-  return null;
+  return resolveCognitiveUserId(sessionKey);
 }

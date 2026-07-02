@@ -198,4 +198,40 @@ describe("resolveUserIdForSessionFile", () => {
     const userId = await resolveUserIdForSessionFile(path.join(dir, ""));
     expect(userId).toBeNull();
   });
+
+  it("resolves operator from main session key (S12)", async () => {
+    await withSessionDir(
+      async (dir) => {
+        await fs.writeFile(
+          path.join(dir, "sessions.json"),
+          JSON.stringify({
+            "agent:main:main": { sessionId: "session-abc123" },
+          }),
+        );
+        await fs.writeFile(path.join(dir, "session-abc123.jsonl"), "");
+      },
+      async (dir, fileName) => {
+        const userId = await resolveUserIdForSessionFile(path.join(dir, fileName));
+        expect(userId).toBe("operator");
+      },
+    );
+  });
+
+  it("resolves wechat userId — channel-agnostic (S3)", async () => {
+    await withSessionDir(
+      async (dir) => {
+        await fs.writeFile(
+          path.join(dir, "sessions.json"),
+          JSON.stringify({
+            "agent:main:wechat:direct:wx_charlie": { sessionId: "session-abc123" },
+          }),
+        );
+        await fs.writeFile(path.join(dir, "session-abc123.jsonl"), "");
+      },
+      async (dir, fileName) => {
+        const userId = await resolveUserIdForSessionFile(path.join(dir, fileName));
+        expect(userId).toBe("wx_charlie");
+      },
+    );
+  });
 });

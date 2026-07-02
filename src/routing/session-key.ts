@@ -117,6 +117,36 @@ export function sanitizeAgentId(value: string | undefined | null): string {
   return normalizeAgentId(value);
 }
 
+export type DmScopeValue = "main" | "per-peer" | "per-channel-peer" | "per-account-channel-peer";
+
+export type DmScopeConfig = {
+  session?: { dmScope?: string | null } | undefined;
+  channels?: Record<string, unknown> | undefined;
+};
+
+export function resolveEffectiveDmScope(cfg: DmScopeConfig | undefined): DmScopeValue {
+  const configured = cfg?.session?.dmScope ?? "main";
+  if (configured !== "main") {
+    return configured as DmScopeValue;
+  }
+  const channels = cfg?.channels;
+  if (!channels) {
+    return "main";
+  }
+  for (const [key, value] of Object.entries(channels)) {
+    if (key === "defaults" || key === "modelByChannel") {
+      continue;
+    }
+    if (value && typeof value === "object") {
+      const chan = value as Record<string, unknown>;
+      if (chan.appId || chan.token || chan.botToken) {
+        return "per-peer";
+      }
+    }
+  }
+  return "main";
+}
+
 export function buildAgentMainSessionKey(params: {
   agentId: string;
   mainKey?: string | undefined;

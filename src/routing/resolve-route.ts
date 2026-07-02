@@ -6,6 +6,7 @@ import { shouldLogVerbose } from "../globals.js";
 import { logDebug } from "../logger.js";
 import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
 import { listBindings } from "./bindings.js";
+import { resolveEffectiveDmScope } from "./session-key.js";
 import {
   buildAgentMainSessionKey,
   buildAgentPeerSessionKey,
@@ -642,7 +643,7 @@ export function resolveAgentRoute(input: ResolveAgentRouteInput): ResolvedAgentR
   const teamId = normalizeId(input.teamId);
   const memberRoleIds = input.memberRoleIds ?? [];
   const memberRoleIdSet = new Set(memberRoleIds);
-  const dmScope = input.cfg.session?.dmScope ?? "main";
+  const dmScope = resolveEffectiveDmScope(input.cfg);
   const identityLinks = input.cfg.session?.identityLinks;
   const shouldLogDebug = shouldLogVerbose();
   const parentPeer = input.parentPeer
