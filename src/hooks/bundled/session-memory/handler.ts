@@ -366,7 +366,10 @@ const saveSessionToMemory: HookHandler = async (event) => {
           sessionKey: event.sessionKey,
         });
         if (hasCorrectionSignals(sessionContent)) {
-          const userId = resolveCorrectionUserId(event.sessionKey);
+          const userId = resolveCorrectionUserId(
+            event.sessionKey,
+            (context.senderId as string | undefined) ?? undefined,
+          );
           if (userId) {
             const { createBackgroundGenerateText } =
               await import("../../../cognitive/evolution/standalone-generate.js");

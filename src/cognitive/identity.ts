@@ -21,7 +21,13 @@ export const OPERATOR_USER_ID = "operator";
  * gateway protocol (architecture boundary), so the values are duplicated
  * here. A test in identity.test.ts verifies they match.
  */
-const OPERATOR_CLIENT_IDS: ReadonlySet<string> = new Set(["kaijibot-control-ui", "kaijibot-tui"]);
+const OPERATOR_CLIENT_IDS: ReadonlySet<string> = new Set([
+  "kaijibot-control-ui",
+  "kaijibot-tui",
+  "kaijibot-macos",
+  "kaijibot-ios",
+  "kaijibot-android",
+]);
 
 /**
  * If the sender is a local operator client (Control UI / TUI), returns

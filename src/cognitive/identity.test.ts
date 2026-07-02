@@ -10,6 +10,18 @@ describe("resolveOperatorSenderId", () => {
     expect(resolveOperatorSenderId("kaijibot-tui")).toBe(OPERATOR_USER_ID);
   });
 
+  it("maps macOS app client id to operator", () => {
+    expect(resolveOperatorSenderId("kaijibot-macos")).toBe(OPERATOR_USER_ID);
+  });
+
+  it("maps iOS app client id to operator", () => {
+    expect(resolveOperatorSenderId("kaijibot-ios")).toBe(OPERATOR_USER_ID);
+  });
+
+  it("maps Android app client id to operator", () => {
+    expect(resolveOperatorSenderId("kaijibot-android")).toBe(OPERATOR_USER_ID);
+  });
+
   it("returns undefined for feishu user id", () => {
     expect(resolveOperatorSenderId("ou_abc123")).toBeUndefined();
   });
