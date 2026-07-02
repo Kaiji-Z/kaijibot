@@ -1185,7 +1185,13 @@ export function renderApp(state: AppViewState) {
                   state.historySearchQuery = query;
                   (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
                 },
-                onSelectSession: (key: string) => {
+                onSelectSession: (key: string | null) => {
+                  if (!key) {
+                    state.historySelectedKey = null;
+                    state.historyMessages = [];
+                    (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                    return;
+                  }
                   import("./controllers/history.ts").then((c) => {
                     void c.loadSessionMessages(
                       state as Parameters<typeof c.loadSessionMessages>[0],

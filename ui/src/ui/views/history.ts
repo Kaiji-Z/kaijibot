@@ -21,7 +21,7 @@ export type HistoryProps = {
   preview: unknown | null;
   messages: TranscriptMessage[];
   onSearch: (query: string) => void;
-  onSelectSession: (key: string) => void;
+  onSelectSession: (key: string | null) => void;
   onRefresh: () => void;
   onDeleteSession: (key: string) => void;
 };
@@ -91,20 +91,24 @@ function formatRelativeTime(ts: number | null | undefined): string {
  * label. The raw key is still used as the data/value attribute — this only
  * controls the display text shown to the user.
  */
-function formatSessionLabel(key: string): string {
-  // Parse patterns like "agent:main:main", "agent:main:cron:uuid", "agent:main:ou_xxx"
+function formatSessionLabel(key: string | null): string {
+  if (!key) {
+    return "";
+  }
   const parts = key.split(":");
   if (parts.length >= 2) {
-    const agent = parts[1]; // e.g. "main"
+    const agent = parts[1];
     if (parts.length >= 3) {
       const third = parts[2];
-      // If it's "main" or a simple session name, show "agent / session"
-      if (third === "main") return `${agent} / main`;
-      // If it starts with "ou_" (feishu user ID), show "agent / user"
-      if (third.startsWith("ou_")) return `${agent} / ${third.slice(0, 12)}…`;
-      // If it's "cron" + UUID, show "agent / 定时任务"
-      if (third === "cron") return `${agent} / 定时任务`;
-      // Generic: show agent + truncated third part
+      if (third === "main") {
+        return `${agent} / main`;
+      }
+      if (third.startsWith("ou_")) {
+        return `${agent} / ${third.slice(0, 12)}…`;
+      }
+      if (third === "cron") {
+        return `${agent} / 定时任务`;
+      }
       return `${agent} / ${third.slice(0, 20)}`;
     }
     return agent;

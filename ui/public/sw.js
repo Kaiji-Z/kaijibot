@@ -34,12 +34,16 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   // Only handle GET from same origin
-  if (request.method !== "GET") return;
+  if (request.method !== "GET") {
+    return;
+  }
 
   const url = new URL(request.url);
 
   // Skip cross-origin
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   // Skip API, avatar, and websocket upgrades — let the app handle these
   if (
