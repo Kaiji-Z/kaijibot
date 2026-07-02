@@ -31,6 +31,14 @@ class WebUiActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Catch uncaught exceptions to prevent silent force-close
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("KaijiBot", "Uncaught exception in ${thread.name}", throwable)
+            previousHandler?.uncaughtException(thread, throwable)
+        }
+        super.onCreate(savedInstanceState)
+
         val root = SwipeRefreshLayout(this).apply {
             setBackgroundColor(Color.parseColor("#06080F"))
             setOnRefreshListener { reload() }
@@ -59,7 +67,6 @@ class WebUiActivity : AppCompatActivity() {
                     }
                 }
             }
-            setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
         }
         container.addView(webView)
 
@@ -140,7 +147,14 @@ class WebUiActivity : AppCompatActivity() {
 
             runOnUiThread {
                 if (reachable) {
-                    webView.loadUrl("http://127.0.0.1:18789/")
+                    try {
+                        Log.i("KaijiBot", "Gateway reachable, loading WebView")
+                        webView.loadUrl("http://127.0.0.1:18789/")
+                    } catch (e: Exception) {
+                        Log.e("KaijiBot", "WebView loadUrl crashed", e)
+                        loadingView.visibility = View.GONE
+                        errorView.visibility = View.VISIBLE
+                    }
                 } else {
                     loadingView.visibility = View.GONE
                     errorView.visibility = View.VISIBLE
