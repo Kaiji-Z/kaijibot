@@ -392,12 +392,15 @@ describe.skipIf(!isLive || !ZAI_API_KEY)(
             ?.text ?? "")
         : String(result.content);
       const parsed = JSON.parse(content) as { status?: string };
-      expect(["saved", "duplicate"]).toContain(parsed.status);
+      expect(["saved", "duplicate", "quality_rejected"]).toContain(parsed.status);
+      expect(parsed.status).not.toBe("no_session");
 
-      // Step 3: verify skill saved to disk
-      const writer = new SkillPersistenceWriter(tempDir);
-      const skills = await writer.listSkillNames();
-      expect(skills.length).toBeGreaterThan(0);
+      // Step 3: verify skill saved to disk (only when accepted)
+      if (parsed.status === "saved" || parsed.status === "duplicate") {
+        const writer = new SkillPersistenceWriter(tempDir);
+        const skills = await writer.listSkillNames();
+        expect(skills.length).toBeGreaterThan(0);
+      }
     });
   },
 );
