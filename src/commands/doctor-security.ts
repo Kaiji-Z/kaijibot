@@ -8,6 +8,7 @@ import { resolveGatewayAuth } from "../gateway/auth.js";
 import { isLoopbackHost, resolveGatewayBindHost } from "../gateway/net.js";
 import { resolveExecPolicyScopeSnapshot } from "../infra/exec-approvals-effective.js";
 import { loadExecApprovals, type ExecAsk, type ExecSecurity } from "../infra/exec-approvals.js";
+import { resolveEffectiveDmScope } from "../routing/session-key.js";
 import { resolveDmAllowState } from "../security/dm-policy-shared.js";
 import { normalizeOptionalString } from "../shared/string-coerce.js";
 import { note } from "../terminal/note.js";
@@ -269,7 +270,7 @@ export async function noteSecurityWarnings(cfg: KaijiBotConfig) {
       allowFrom: params.allowFrom,
       normalizeEntry: params.normalizeEntry,
     });
-    const dmScope = cfg.session?.dmScope ?? "main";
+    const dmScope = resolveEffectiveDmScope(cfg);
 
     if (dmPolicy === "open") {
       const allowFromPath = `${params.allowFromPath}allowFrom`;

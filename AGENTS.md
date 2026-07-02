@@ -18,7 +18,7 @@ KaijiBot is an independent project — a proactive cognitive AI assistant with a
   - `evolution/` — agent-driven self-evolution: hard-trigger detects complex tasks (≥3 tool calls), enqueues system event for agent to evaluate; LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
   - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
-  - `correction/` — error-correction self-evolution: dual-path detection (agent self-report via `record_correction` tool + post-session LLM extraction on `/new`/`/reset`), `CorrectionStore` with Jaccard-based dedup and reinforcement (TTL=90d, MAX=50, threshold=0.6), system prompt injection via `context-writer.ts` (top 15 corrections sorted by reinforcement count). Persistence at `~/.kaijibot/cognitive/corrections/{userId}.json`
+  - `correction/` — error-correction self-evolution: dual-path detection (agent self-report via `record_correction` tool + post-session LLM extraction on `/new`/`/reset`), `CorrectionStore` with Jaccard-based dedup and reinforcement (TTL=90d, MAX=50, threshold=0.6), system prompt injection via `context-writer.ts` (top 15 corrections sorted by reinforcement count). Persistence at `~/.kaijibot/cognitive/corrections/{agentId}/{userId}.json`
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
 - **`src/infra/openclaw-migrator/`** — OpenClaw → KaijiBot migration: auto-detect OpenClaw installation, import agents/workspace/skills/config with dry-run support, onboard wizard integration
@@ -106,6 +106,25 @@ Async pipelines (not triggered by user messages):
 - **Skill evolution**: heartbeat triggers agent turn on evolution signal → Agent decides whether to create a skill
 
 ## Cognitive System Architecture
+
+### Identity Resolution
+
+The cognitive system identifies users through a single unified function: `resolveCognitiveUserId(sessionKey?, senderId?)` in `src/cognitive/identity.ts`. Channel-agnostic — no `ou_` prefix check, works with feishu, wechat, and any future channel.
+
+**Resolution rules (priority order):**
+1. `senderId` present (conversation-time path) → `resolveOperatorSenderId(senderId) ?? senderId`
+2. `sessionKey` tail === `"main"` → `OPERATOR_USER_ID` (`"operator"`)
+3. Group session without `:sender:` → `null` (tail is a group ID, not a user ID)
+4. Otherwise → tail returned as-is (any format: `ou_xxx`, `wx_xxx`, etc.)
+
+**Operator identity:** Control UI, TUI, and mobile apps (macOS/iOS/Android) are mapped to `userId = "operator"` at the gateway boundary (`chat.ts` SenderId mapping). The operator has a fully isolated cognitive profile per agent.
+
+**dmScope adaptive:** `resolveEffectiveDmScope(cfg)` in `src/routing/session-key.ts` automatically promotes `dmScope` from `"main"` to `"per-peer"` when any channel has credentials configured. This ensures per-user session isolation without requiring manual configuration. Explicit dmScope settings are always respected.
+
+**All cognitive subsystems use the same storage dimensions:**
+- Persona/Correction/Evolution/Fragments: `cognitive/{subsystem}/{agentId}/{userId}.json` — agent × user isolation
+- Skills/Memory: workspace-isolated (per-agent, no userId dimension)
+- AuditLog/Effectiveness: global
 
 ### Proactive Insight Pipeline
 
@@ -232,7 +251,7 @@ Path A: Agent self-report          Path B: Post-session extraction
 - `findSimilar(userId, domain, text)` — token-level Jaccard similarity
 - `listActive(userId)` — returns records within TTL, sorted by `reinforcedCount` desc
 - `removeStale()` — deletes records older than TTL
-- Atomic file write to `~/.kaijibot/cognitive/corrections/{userId}.json`
+- Atomic file write to `~/.kaijibot/cognitive/corrections/{agentId}/{userId}.json`
 
 **Agent tool**: `record_correction` — called when agent recognizes it made a mistake; returns `saved` or `reinforced` status
 
@@ -391,13 +410,14 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
 - Evolution config: `cognitive.evolution.enabled` (dead fields removed: minComplexity, errorComplexityThreshold, minTrustScore, clawhub\*)
 - Correction config: enabled by default when `cognitive.enabled` is true; no separate config key
+- dmScope adaptive: `session.dmScope` defaults to `"main"`, but automatically promotes to `"per-peer"` when any channel has credentials configured (feishu, wechat, etc.). Explicit settings are always respected.
 - Consolidation config: `memory.consolidation.enabled` (default `true`), `memory.consolidation.cron` (default `0 3 * * *`), `memory.consolidation.concurrency` (default 2), `memory.consolidation.batchSize` (default 4000), `memory.consolidation.lookbackDays` (default 7), `memory.consolidation.timezone`
-- Correction data stored at `~/.kaijibot/cognitive/corrections/{userId}.json`. Schema: CorrectionStoreData with records array, each CorrectionRecord has id, domain, trigger, mistake, correction, provenance, reinforcedCount, createdAt, lastReinforced.
+- Correction data stored at `~/.kaijibot/cognitive/corrections/{agentId}/{userId}.json`. Schema: CorrectionStoreData with records array, each CorrectionRecord has id, domain, trigger, mistake, correction, provenance, reinforcedCount, createdAt, lastReinforced.
 - Web search: `EXA_API_KEY` / `TAVILY_API_KEY` env vars or scoped credentials in config
 - Env-source precedence: process env → `./.env` → `~/.kaijibot/.env` → `kaijibot.json` env block.
 - Credentials stored at `~/.kaijibot/credentials/`.
 - Persona data stored at `~/.kaijibot/cognitive/persona/{agentId}/{userId}.json` (per-agent subdirectory). Schema includes TypedInsights with category-aware decay and InterestPhase lifecycle per domain.
-- Evolution records stored at `~/.kaijibot/cognitive/evolution/{userId}.json`; skills at `~/.kaijibot/skills/{name}/SKILL.md`.
+- Evolution records stored at `~/.kaijibot/cognitive/evolution/{agentId}/{userId}.json`; skills at `~/.kaijibot/skills/{name}/SKILL.md`.
 - Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl`.
 - Never commit real phone numbers, API keys, or live config values.
 

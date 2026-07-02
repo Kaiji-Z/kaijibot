@@ -10,6 +10,7 @@ import { formatCliCommand } from "../cli/command-format.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { isDangerousNameMatchingEnabled } from "../config/dangerous-name-matching.js";
 import { formatErrorMessage } from "../infra/errors.js";
+import { resolveEffectiveDmScope } from "../routing/session-key.js";
 import type { SecurityAuditFinding, SecurityAuditSeverity } from "./audit.js";
 import { resolveDmAllowState } from "./dm-policy-shared.js";
 
@@ -209,7 +210,7 @@ export async function collectChannelSecurityFindings(params: {
       allowFrom: input.allowFrom,
       normalizeEntry: input.normalizeEntry,
     });
-    const dmScope = params.cfg.session?.dmScope ?? "main";
+    const dmScope = resolveEffectiveDmScope(params.cfg);
 
     if (input.dmPolicy === "open") {
       const allowFromKey = `${input.allowFromPath}allowFrom`;
