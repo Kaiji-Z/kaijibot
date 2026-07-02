@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.net.http.SslError
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.webkit.SslErrorHandler
