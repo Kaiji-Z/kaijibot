@@ -236,8 +236,13 @@ function serveResolvedFile(res: ServerResponse, filePath: string, body: Buffer) 
   res.end(body);
 }
 
-function serveResolvedIndexHtml(res: ServerResponse, body: string) {
-  const hashes = computeInlineScriptHashes(body);
+function serveResolvedIndexHtml(res: ServerResponse, body: string, localToken?: string) {
+  let html = body;
+  if (localToken) {
+    const inject = `<script>if(location.hash.indexOf("token=")===-1){location.hash="token=${localToken}";}</script>`;
+    html = html.replace("</head>", `${inject}</head>`);
+  }
+  const hashes = computeInlineScriptHashes(html);
   if (hashes.length > 0) {
     res.setHeader(
       "Content-Security-Policy",
@@ -246,7 +251,7 @@ function serveResolvedIndexHtml(res: ServerResponse, body: string) {
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
-  res.end(body);
+  res.end(html);
 }
 
 function isExpectedSafePathError(error: unknown): boolean {
@@ -382,6 +387,15 @@ export function handleControlUiHttpRequest(
     return true;
   }
 
+  const isLocalClient = (() => {
+    const addr = req.socket.remoteAddress;
+    return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
+  })();
+  const auth = opts?.config?.gateway?.auth;
+  const rawToken = auth?.mode === "token" ? auth.token : undefined;
+  const localToken =
+    isLocalClient && typeof rawToken === "string" ? rawToken : undefined;
+
   const root =
     rootState?.kind === "resolved" || rootState?.kind === "bundled"
       ? rootState.path
@@ -451,7 +465,7 @@ export function handleControlUiHttpRequest(
         return true;
       }
       if (path.basename(safeFile.path) === "index.html") {
-        serveResolvedIndexHtml(res, fs.readFileSync(safeFile.fd, "utf8"));
+        serveResolvedIndexHtml(res, fs.readFileSync(safeFile.fd, "utf8"), localToken);
         return true;
       }
       serveResolvedFile(res, safeFile.path, fs.readFileSync(safeFile.fd));
@@ -479,7 +493,7 @@ export function handleControlUiHttpRequest(
       if (respondHeadForFile(req, res, safeIndex.path)) {
         return true;
       }
-      serveResolvedIndexHtml(res, fs.readFileSync(safeIndex.fd, "utf8"));
+      serveResolvedIndexHtml(res, fs.readFileSync(safeIndex.fd, "utf8"), localToken);
       return true;
     } finally {
       fs.closeSync(safeIndex.fd);
