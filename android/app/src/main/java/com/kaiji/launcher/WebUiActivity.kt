@@ -62,8 +62,12 @@ class WebUiActivity : AppCompatActivity() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     if (newProgress >= 100) {
                         swipeRefresh.isRefreshing = false
-                        loadingView.visibility = View.GONE
-                        webView.visibility = View.VISIBLE
+                        webView.postDelayed({
+                            if (!isFinishing && !isDestroyed) {
+                                loadingView.visibility = View.GONE
+                                webView.visibility = View.VISIBLE
+                            }
+                        }, 800)
                     }
                 }
             }
@@ -213,8 +217,12 @@ class WebUiActivity : AppCompatActivity() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     if (newProgress >= 100) {
                         swipeRefresh.isRefreshing = false
-                        loadingView.visibility = View.GONE
-                        webView.visibility = View.VISIBLE
+                        webView.postDelayed({
+                            if (!isFinishing && !isDestroyed) {
+                                loadingView.visibility = View.GONE
+                                webView.visibility = View.VISIBLE
+                            }
+                        }, 800)
                     }
                 }
             }
