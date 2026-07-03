@@ -4,8 +4,10 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -13,14 +15,53 @@ import androidx.browser.customtabs.CustomTabsIntent
 
 class WebUiActivity : AppCompatActivity() {
 
+    private lateinit var loadingView: View
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!checkGateway()) {
-            showError()
-            return
+        loadingView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#06080F"))
+            addView(ProgressBar(this@WebUiActivity).apply {
+                indeterminateTintList =
+                    android.content.res.ColorStateList.valueOf(Color.parseColor("#00D4AA"))
+            })
+            addView(TextView(this@WebUiActivity).apply {
+                text = "正在连接网关…"
+                setTextColor(Color.parseColor("#8A8D96"))
+                textSize = 14f
+                setPadding(0, 48, 0, 0)
+            })
         }
+        setContentView(loadingView)
 
+        Thread {
+            val reachable = try {
+                val socket = java.net.Socket()
+                try {
+                    socket.connect(java.net.InetSocketAddress("127.0.0.1", 18789), 2000)
+                    true
+                } finally {
+                    socket.close()
+                }
+            } catch (_: Exception) {
+                false
+            }
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (reachable) {
+                    launchCustomTabs()
+                } else {
+                    showError()
+                }
+            }
+        }.start()
+    }
+
+    private fun launchCustomTabs() {
         try {
             val intent = CustomTabsIntent.Builder()
                 .setToolbarColor(Color.parseColor("#06080F"))
@@ -28,8 +69,6 @@ class WebUiActivity : AppCompatActivity() {
                 .setShowTitle(false)
                 .setUrlBarHidingEnabled(false)
                 .build()
-
-            intent.intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_HISTORY)
 
             try {
                 intent.launchUrl(this, Uri.parse("http://127.0.0.1:18789/"))
@@ -41,20 +80,6 @@ class WebUiActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "无法打开控制面板: ${e.message}", Toast.LENGTH_LONG).show()
             finish()
-        }
-    }
-
-    private fun checkGateway(): Boolean {
-        return try {
-            val socket = java.net.Socket()
-            try {
-                socket.connect(java.net.InetSocketAddress("127.0.0.1", 18789), 2000)
-                true
-            } finally {
-                socket.close()
-            }
-        } catch (_: Exception) {
-            false
         }
     }
 
