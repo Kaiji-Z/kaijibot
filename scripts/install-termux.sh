@@ -40,8 +40,8 @@ info "更新软件源..."
 apt-get update $APT_OPTS || true
 apt-get upgrade $APT_OPTS || true
 
-info "安装 Node.js..."
-apt-get install $APT_OPTS nodejs-lts
+info "安装 Node.js 和依赖工具..."
+apt-get install $APT_OPTS nodejs-lts lsof
 
 npm config set fetch-retries 5
 npm config set fetch-retry-mintimeout 20000
