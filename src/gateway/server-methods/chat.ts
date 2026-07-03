@@ -754,6 +754,35 @@ function shouldDropSystemHistoryMessage(message: unknown): boolean {
   return true;
 }
 
+/**
+ * Detect user-role messages that are actually system-event injections
+ * (heartbeat/evolution turns). These have their body text prepended with
+ * "System: [timestamp]" by drainFormattedSystemEvents + prependEvents,
+ * and should not be visible in the chat UI.
+ */
+function shouldDropSystemEventUserMessage(message: unknown): boolean {
+  if (!message || typeof message !== "object") {
+    return false;
+  }
+  if ((message as { role?: unknown }).role !== "user") {
+    return false;
+  }
+  const content = (message as { content?: unknown }).content;
+  let text: string;
+  if (typeof content === "string") {
+    text = content;
+  } else if (Array.isArray(content)) {
+    const firstText = content.find(
+      (b): b is { type: string; text: string } =>
+        b && typeof b === "object" && (b as { type?: string }).type === "text",
+    );
+    text = firstText?.text ?? "";
+  } else {
+    return false;
+  }
+  return text.trimStart().startsWith("System: [");
+}
+
 export function sanitizeChatHistoryMessages(messages: unknown[], maxChars: number): unknown[] {
   if (messages.length === 0) {
     return messages;
@@ -764,6 +793,10 @@ export function sanitizeChatHistoryMessages(messages: unknown[], maxChars: numbe
     // Drop system-role messages (e.g. leaked prompt fragments) but keep
     // compaction markers which are synthetic dividers, not real messages.
     if (shouldDropSystemHistoryMessage(message)) {
+      changed = true;
+      continue;
+    }
+    if (shouldDropSystemEventUserMessage(message)) {
       changed = true;
       continue;
     }
