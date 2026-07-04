@@ -2,7 +2,7 @@
 // Strategy: cache static assets (cache-first), network-first for navigations
 // with cached index.html fallback. API and websocket requests are never intercepted.
 
-const CACHE_VERSION = "kaijibot-shell-v1";
+const CACHE_VERSION = "kaijibot-shell-v2";
 const APP_SHELL = ["./", "./manifest.webmanifest"];
 
 // --- Install: precache minimal shell ---
@@ -59,6 +59,27 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(() => caches.match("./")),
+    );
+    return;
+  }
+
+  // Manifest and icons: network-first (so icon updates are always picked up)
+  if (
+    url.pathname.endsWith("/manifest.webmanifest") ||
+    url.pathname.startsWith("/icon-") ||
+    url.pathname.startsWith("/apple-touch-icon") ||
+    url.pathname.startsWith("/favicon")
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request)),
     );
     return;
   }
