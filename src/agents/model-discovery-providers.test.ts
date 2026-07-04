@@ -128,6 +128,38 @@ describe("R16 fetchGoogleModelIds", () => {
   });
 });
 
+describe("R16b fetchGoogleModelIds — error paths", () => {
+  it("returns [] on non-200 without throwing", async () => {
+    const mockFetch = mockFetchJson(JSON.stringify({ error: "forbidden" }), 403);
+    const ids = await fetchGoogleModelIds({
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+    expect(ids).toEqual([]);
+  });
+
+  it("returns [] on invalid JSON without throwing", async () => {
+    const mockFetch = mockFetchJson("not json", 200);
+    const ids = await fetchGoogleModelIds({
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+    expect(ids).toEqual([]);
+  });
+
+  it("returns [] when fetch rejects", async () => {
+    const mockFetch = vi.fn<typeof fetch>().mockRejectedValue(new Error("network down"));
+    const ids = await fetchGoogleModelIds({
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+    expect(ids).toEqual([]);
+  });
+});
+
 describe("R17 fetchAnthropicModelIds", () => {
   it("extracts ids and sends x-api-key + anthropic-version headers", async () => {
     const mockFetch = vi.fn<typeof fetch>().mockResolvedValue(
@@ -153,6 +185,38 @@ describe("R17 fetchAnthropicModelIds", () => {
         }),
       }),
     );
+  });
+});
+
+describe("R17b fetchAnthropicModelIds — error paths", () => {
+  it("returns [] on non-200 without throwing", async () => {
+    const mockFetch = mockFetchJson(JSON.stringify({ error: "unauthorized" }), 401);
+    const ids = await fetchAnthropicModelIds({
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+    expect(ids).toEqual([]);
+  });
+
+  it("returns [] on invalid JSON without throwing", async () => {
+    const mockFetch = mockFetchJson("not json", 200);
+    const ids = await fetchAnthropicModelIds({
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+    expect(ids).toEqual([]);
+  });
+
+  it("returns [] when fetch rejects", async () => {
+    const mockFetch = vi.fn<typeof fetch>().mockRejectedValue(new Error("timeout"));
+    const ids = await fetchAnthropicModelIds({
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+    expect(ids).toEqual([]);
   });
 });
 

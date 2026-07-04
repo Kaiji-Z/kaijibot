@@ -23,13 +23,18 @@ vi.mock("./model-auth-env.js", () => ({
   resolveEnvApiKey: vi.fn(),
 }));
 
+vi.mock("@earendil-works/pi-ai", () => ({
+  getEnvApiKey: vi.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports — after mocks are in place.
 // ---------------------------------------------------------------------------
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getEnvApiKey } from "@earendil-works/pi-ai";
 import { resolveEnvApiKey } from "./model-auth-env.js";
 import type { ModelCatalogEntry } from "./model-catalog.js";
 import {
@@ -106,6 +111,7 @@ beforeEach(() => {
   vi.mocked(fetchProviderModelIds).mockReset();
   vi.mocked(findFamilyEntry).mockReset();
   vi.mocked(resolveEnvApiKey).mockReset();
+  vi.mocked(getEnvApiKey).mockReset();
 });
 
 afterEach(() => {
@@ -492,5 +498,191 @@ describe("Provider disk cache", () => {
     expect(fetchProviderModelIds).toHaveBeenCalledTimes(1);
     expect(result.discoveredCount).toBe(1);
     expect(result.entries[0]?.id).toBe("glm-stale-fallback");
+  });
+});
+
+describe("Auth fallback: getEnvApiKey from pi-ai", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "auth-fb-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("uses getEnvApiKey fallback when resolveEnvApiKey returns null", async () => {
+    vi.mocked(readModelsDevDiskCache).mockResolvedValue(warmDiskCache());
+    vi.mocked(buildModelsDevIndex).mockReturnValue(mockIndex());
+    vi.mocked(lookupModelMetadata).mockReturnValue(null);
+    vi.mocked(findFamilyEntry).mockReturnValue(null);
+    vi.mocked(resolveEnvApiKey).mockReturnValue(null);
+    vi.mocked(getEnvApiKey).mockReturnValue("pi-ai-fallback-key");
+    vi.mocked(fetchProviderModelIds).mockResolvedValue(["fallback-discovered-model"]);
+
+    const result = await discoverLiveModels({
+      agentDir: tempDir,
+      env: {},
+      existingCatalog: [],
+      providerRuntimeInfo: zaiRuntime(),
+    });
+
+    expect(getEnvApiKey).toHaveBeenCalledWith("zai");
+    expect(fetchProviderModelIds).toHaveBeenCalledTimes(1);
+    expect(result.discoveredCount).toBe(1);
+    expect(result.entries[0]?.id).toBe("fallback-discovered-model");
+  });
+
+  it("skips provider when both resolveEnvApiKey and getEnvApiKey return null", async () => {
+    vi.mocked(readModelsDevDiskCache).mockResolvedValue(warmDiskCache());
+    vi.mocked(buildModelsDevIndex).mockReturnValue(mockIndex());
+    vi.mocked(resolveEnvApiKey).mockReturnValue(null);
+    vi.mocked(getEnvApiKey).mockReturnValue(undefined);
+
+    const result = await discoverLiveModels({
+      agentDir: tempDir,
+      env: {},
+      existingCatalog: [],
+      providerRuntimeInfo: zaiRuntime(),
+    });
+
+    expect(fetchProviderModelIds).not.toHaveBeenCalled();
+    expect(result).toBe(EMPTY_LIVE_RESULT);
+  });
+});
+
+describe("models.dev stale-serve path", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "stale-md-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("serves stale models.dev cache while triggering background refresh", async () => {
+    const staleTime = Date.now() - 25 * 60 * 60 * 1000;
+    vi.mocked(readModelsDevDiskCache).mockResolvedValue({
+      catalog: { zai: { id: "zai", models: { "glm-5": { id: "glm-5", name: "GLM-5" } } } },
+      fetchedAt: staleTime,
+    });
+    vi.mocked(buildModelsDevIndex).mockReturnValue(mockIndex());
+    vi.mocked(lookupModelMetadata).mockReturnValue(null);
+    vi.mocked(findFamilyEntry).mockReturnValue(null);
+    vi.mocked(resolveEnvApiKey).mockReturnValue({ apiKey: "k", source: "env" });
+    vi.mocked(fetchProviderModelIds).mockResolvedValue(["glm-stale-served"]);
+
+    await discoverLiveModels({
+      agentDir: tempDir,
+      env: {},
+      existingCatalog: [],
+      providerRuntimeInfo: zaiRuntime(),
+    });
+
+    expect(triggerModelsDevBackgroundRefresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Provider cache write readback", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "cache-rb-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("writes fetched model IDs to disk cache after fresh fetch", async () => {
+    vi.mocked(readModelsDevDiskCache).mockResolvedValue(warmDiskCache());
+    vi.mocked(buildModelsDevIndex).mockReturnValue(mockIndex());
+    vi.mocked(lookupModelMetadata).mockReturnValue(null);
+    vi.mocked(findFamilyEntry).mockReturnValue(null);
+    vi.mocked(resolveEnvApiKey).mockReturnValue({ apiKey: "k", source: "env" });
+    vi.mocked(fetchProviderModelIds).mockResolvedValue(["written-to-cache"]);
+
+    await discoverLiveModels({
+      agentDir: tempDir,
+      env: {},
+      existingCatalog: [],
+      providerRuntimeInfo: zaiRuntime(),
+    });
+
+    const cacheFile = join(tempDir, "cache", "provider-models.json");
+    const cached = JSON.parse(readFileSync(cacheFile, "utf-8")) as {
+      providers: Record<string, { modelIds: string[]; fetchedAt: number }>;
+    };
+    expect(cached.providers.zai?.modelIds).toEqual(["written-to-cache"]);
+    expect(cached.providers.zai?.fetchedAt).toBeGreaterThan(0);
+  });
+});
+
+describe("Multi-provider mixed cache", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "multi-pc-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("serves fresh provider from cache while fetching stale one", async () => {
+    vi.mocked(readModelsDevDiskCache).mockResolvedValue(warmDiskCache());
+    vi.mocked(buildModelsDevIndex).mockReturnValue(mockIndex());
+    vi.mocked(lookupModelMetadata).mockReturnValue(null);
+    vi.mocked(findFamilyEntry).mockReturnValue(null);
+    vi.mocked(resolveEnvApiKey).mockReturnValue({ apiKey: "k", source: "env" });
+
+    vi.mocked(fetchProviderModelIds).mockImplementation(async (params) => {
+      if (params.provider === "stale-provider") {
+        return ["stale-fresh-model"];
+      }
+      return [];
+    });
+
+    mkdirSync(join(tempDir, "cache"), { recursive: true });
+    writeFileSync(
+      join(tempDir, "cache", "provider-models.json"),
+      JSON.stringify({
+        providers: {
+          "fresh-provider": {
+            modelIds: ["fresh-cached-model"],
+            fetchedAt: Date.now(),
+          },
+          "stale-provider": {
+            modelIds: ["stale-old-model"],
+            fetchedAt: Date.now() - 13 * 60 * 60 * 1000,
+          },
+        },
+      }),
+    );
+
+    const runtime = new Map<string, ProviderRuntimeInfo>([
+      [
+        "fresh-provider",
+        { provider: "fresh-provider", baseUrl: "https://a.test/v1", api: "openai-completions" },
+      ],
+      [
+        "stale-provider",
+        { provider: "stale-provider", baseUrl: "https://b.test/v1", api: "openai-completions" },
+      ],
+    ]);
+
+    const result = await discoverLiveModels({
+      agentDir: tempDir,
+      env: {},
+      existingCatalog: [],
+      providerRuntimeInfo: runtime,
+    });
+
+    const ids = result.entries.map((e) => e.id).toSorted();
+    expect(ids).toEqual(["fresh-cached-model", "stale-fresh-model"]);
+    expect(fetchProviderModelIds).toHaveBeenCalledTimes(1);
   });
 });
