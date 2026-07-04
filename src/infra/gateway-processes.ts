@@ -46,8 +46,31 @@ export function findVerifiedGatewayListenerPidsOnPortSync(port: number): number[
       ? readWindowsListeningPidsOnPortSync(port)
       : findUnixGatewayPidsOnPortSync(port);
 
-  return Array.from(new Set(rawPids))
+  let pids = Array.from(new Set(rawPids))
     .filter((pid): pid is number => Number.isFinite(pid) && pid > 0 && pid !== process.pid)
+    .filter((pid) => {
+      const args = readGatewayProcessArgsSync(pid);
+      return args != null && isGatewayArgv(args, { allowGatewayBinary: true });
+    });
+
+  if (pids.length === 0 && process.platform === "android") {
+    pids = findGatewayPidsViaProcScan();
+  }
+
+  return pids;
+}
+
+function findGatewayPidsViaProcScan(): number[] {
+  let entries: string[];
+  try {
+    entries = fsSync.readdirSync("/proc");
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((entry) => /^\d+$/.test(entry))
+    .map((entry) => Number(entry))
+    .filter((pid) => pid > 0 && pid !== process.pid)
     .filter((pid) => {
       const args = readGatewayProcessArgsSync(pid);
       return args != null && isGatewayArgv(args, { allowGatewayBinary: true });
