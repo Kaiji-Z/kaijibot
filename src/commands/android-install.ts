@@ -277,6 +277,25 @@ async function writeBootScript(runtime: OutputRuntimeEnv): Promise<void> {
     // best-effort; writeTextAtomic already attempted chmod
   }
   runtime.log(`  ${theme.success("✓")} Boot script written: ${theme.accent(bootPath)}`);
+
+  const kaijiDir = path.join(os.homedir(), ".kaijibot");
+  const startScriptPath = path.join(kaijiDir, "start-gateway.sh");
+  const startScriptBody = [
+    "#!/data/data/com.termux/files/usr/bin/bash",
+    "termux-wake-lock 2>/dev/null",
+    `kaijibot gateway --port ${GATEWAY_PORT} >> ~/.kaijibot/gateway.log 2>&1 &`,
+    "",
+  ].join("\n");
+  await writeTextAtomic(startScriptPath, startScriptBody, {
+    mode: BOOT_SCRIPT_MODE,
+    ensureDirMode: 0o755,
+  });
+  try {
+    await fs.chmod(startScriptPath, BOOT_SCRIPT_MODE);
+  } catch {
+    // best-effort
+  }
+  runtime.log(`  ${theme.success("✓")} Start script written: ${theme.accent(startScriptPath)}`);
 }
 
 async function writeBashrcAutostart(runtime: OutputRuntimeEnv): Promise<void> {
