@@ -283,7 +283,7 @@ async function writeBootScript(runtime: OutputRuntimeEnv): Promise<void> {
   const startScriptBody = [
     "#!/data/data/com.termux/files/usr/bin/bash",
     "termux-wake-lock 2>/dev/null",
-    `kaijibot gateway --port ${GATEWAY_PORT} >> ~/.kaijibot/gateway.log 2>&1 &`,
+    `nohup kaijibot gateway --port ${GATEWAY_PORT} >> ~/.kaijibot/gateway.log 2>&1 &`,
     "",
   ].join("\n");
   await writeTextAtomic(startScriptPath, startScriptBody, {
