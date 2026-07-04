@@ -32,6 +32,7 @@ export interface ProviderRuntimeInfo {
   provider: string;
   baseUrl?: string;
   api?: string;
+  apiKey?: string;
 }
 
 export interface DiscoverLiveModelsParams {
@@ -271,7 +272,7 @@ export async function discoverLiveModels(
         continue;
       }
       const auth = resolveEnvApiKey(provider, params.env ?? process.env);
-      const apiKey = auth?.apiKey ?? getEnvApiKey(provider);
+      const apiKey = info.apiKey ?? auth?.apiKey ?? getEnvApiKey(provider);
       if (!apiKey) {
         continue;
       }

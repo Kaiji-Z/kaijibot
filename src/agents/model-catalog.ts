@@ -158,7 +158,7 @@ export async function loadModelCatalog(params?: {
       logStage("registry-read", `entries=${entries.length}`);
       const providerRuntimeInfo = new Map<
         string,
-        { provider: string; baseUrl?: string; api?: string }
+        { provider: string; baseUrl?: string; api?: string; apiKey?: string }
       >();
       for (const entry of entries) {
         const id = normalizeOptionalString(String(entry?.id ?? "")) ?? "";
@@ -188,6 +188,18 @@ export async function loadModelCatalog(params?: {
         const reasoning = typeof entry?.reasoning === "boolean" ? entry.reasoning : undefined;
         const input = Array.isArray(entry?.input) ? entry.input : undefined;
         models.push({ id, name, provider, contextWindow, reasoning, input });
+      }
+      for (const [provider, info] of providerRuntimeInfo) {
+        if (info.baseUrl && info.api) {
+          try {
+            const key = await authStorage.getApiKey?.(provider);
+            if (key) {
+              providerRuntimeInfo.set(provider, { ...info, apiKey: key });
+            }
+          } catch {
+            // ignore — discoverLiveModels falls back to env var resolution
+          }
+        }
       }
       const supplemental = await augmentModelCatalogWithProviderPlugins({
         config: cfg,
