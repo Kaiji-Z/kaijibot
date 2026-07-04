@@ -5,6 +5,7 @@ import { resetLogger, setLoggerOverride } from "../logging/logger.js";
 type PiSdkModule = typeof import("./pi-model-discovery.js");
 
 let __setModelCatalogImportForTest: typeof import("./model-catalog.js").__setModelCatalogImportForTest;
+let __setLiveDiscoveryForTest: typeof import("./model-catalog.js").__setLiveDiscoveryForTest;
 let findModelInCatalog: typeof import("./model-catalog.js").findModelInCatalog;
 let loadModelCatalog: typeof import("./model-catalog.js").loadModelCatalog;
 let resetModelCatalogCacheForTest: typeof import("./model-catalog.js").resetModelCatalogCacheForTest;
@@ -69,6 +70,7 @@ describe("loadModelCatalog", () => {
 
     ({
       __setModelCatalogImportForTest,
+      __setLiveDiscoveryForTest,
       findModelInCatalog,
       loadModelCatalog,
       resetModelCatalogCacheForTest,
@@ -385,5 +387,45 @@ describe("loadModelCatalog", () => {
       id: "glm-5",
       name: "GLM-5",
     });
+  });
+
+  it("merges live-discovered models with dedup", async () => {
+    mockSingleOpenAiCatalogModel();
+    __setLiveDiscoveryForTest(
+      async () =>
+        ({
+          discoverLiveModels: vi.fn().mockResolvedValue({
+            entries: [
+              { id: "gpt-9-future", name: "GPT 9", provider: "openai" },
+              { id: "gpt-4.1", name: "GPT-4.1", provider: "openai" }, // dup — should be filtered
+            ],
+            discoveredCount: 2,
+          }),
+        }) as unknown as typeof import("./model-discovery-live.js"),
+    );
+
+    const catalog = await loadModelCatalog();
+    const ids = catalog.filter((m) => m.provider === "openai").map((m) => m.id);
+    expect(ids).toContain("gpt-4.1");
+    expect(ids).toContain("gpt-9-future");
+    // gpt-4.1 should appear only once (dedup)
+    expect(ids.filter((x) => x === "gpt-4.1")).toHaveLength(1);
+
+    __setLiveDiscoveryForTest();
+  });
+
+  it("live discovery failure does not break catalog", async () => {
+    setLoggerOverride({ level: "silent", consoleLevel: "warn" });
+    mockSingleOpenAiCatalogModel();
+    __setLiveDiscoveryForTest(async () => {
+      throw new Error("live discovery module failed to load");
+    });
+
+    const catalog = await loadModelCatalog();
+    // Catalog still has the pi-ai model
+    expect(catalog.length).toBeGreaterThan(0);
+    expect(catalog.some((m) => m.id === "gpt-4.1")).toBe(true);
+
+    __setLiveDiscoveryForTest();
   });
 });

@@ -30,6 +30,8 @@ type DiscoveredModel = {
   contextWindow?: number;
   reasoning?: boolean;
   input?: ModelInputType[];
+  baseUrl?: string;
+  api?: string;
 };
 
 type PiSdkModule = typeof import("./pi-model-discovery.js");
@@ -49,6 +51,10 @@ const defaultImportPiSdk = () => import("./pi-model-discovery-runtime.js");
 let importPiSdk = defaultImportPiSdk;
 let modelSuppressionPromise: Promise<typeof import("./model-suppression.runtime.js")> | undefined;
 
+type LiveDiscoveryModule = typeof import("./model-discovery-live.js");
+const defaultImportLiveDiscovery = () => import("./model-discovery-live.runtime.js");
+let importLiveDiscovery = defaultImportLiveDiscovery;
+
 function shouldLogModelCatalogTiming(): boolean {
   return process.env.KAIJIBOT_DEBUG_INGRESS_TIMING === "1";
 }
@@ -62,6 +68,7 @@ export function resetModelCatalogCacheForTest() {
   modelCatalogPromise = null;
   hasLoggedModelCatalogError = false;
   importPiSdk = defaultImportPiSdk;
+  importLiveDiscovery = defaultImportLiveDiscovery;
 }
 
 /**
@@ -76,6 +83,11 @@ export function invalidateModelCatalog() {
 // Test-only escape hatch: allow mocking the dynamic import to simulate transient failures.
 export function __setModelCatalogImportForTest(loader?: () => Promise<PiSdkModule>) {
   importPiSdk = loader ?? defaultImportPiSdk;
+}
+
+// Test-only escape hatch: allow mocking the live discovery module import.
+export function __setLiveDiscoveryForTest(loader?: () => Promise<LiveDiscoveryModule>) {
+  importLiveDiscovery = loader ?? defaultImportLiveDiscovery;
 }
 
 function instantiatePiModelRegistry(
@@ -144,6 +156,10 @@ export async function loadModelCatalog(params?: {
       logStage("registry-ready");
       const entries = Array.isArray(registry) ? registry : registry.getAll();
       logStage("registry-read", `entries=${entries.length}`);
+      const providerRuntimeInfo = new Map<
+        string,
+        { provider: string; baseUrl?: string; api?: string }
+      >();
       for (const entry of entries) {
         const id = normalizeOptionalString(String(entry?.id ?? "")) ?? "";
         if (!id) {
@@ -152,6 +168,14 @@ export async function loadModelCatalog(params?: {
         const provider = normalizeOptionalString(String(entry?.provider ?? "")) ?? "";
         if (!provider) {
           continue;
+        }
+        if (!providerRuntimeInfo.has(provider)) {
+          const baseUrl =
+            typeof entry?.baseUrl === "string" && entry.baseUrl ? entry.baseUrl : undefined;
+          const api = typeof entry?.api === "string" && entry.api ? entry.api : undefined;
+          if (baseUrl || api) {
+            providerRuntimeInfo.set(provider, { provider, baseUrl, api });
+          }
         }
         if (shouldSuppressBuiltInModel({ provider, id, config: cfg })) {
           continue;
@@ -192,6 +216,39 @@ export async function loadModelCatalog(params?: {
         }
       }
       logStage("plugin-models-merged", `entries=${models.length}`);
+
+      try {
+        const liveModule = await importLiveDiscovery();
+        const liveResult = await liveModule.discoverLiveModels({
+          agentDir,
+          env: process.env,
+          existingCatalog: models,
+          providerRuntimeInfo,
+        });
+        if (liveResult.entries.length > 0) {
+          const seen = new Set(
+            models.map(
+              (entry) =>
+                `${normalizeLowercaseStringOrEmpty(entry.provider)}::${normalizeLowercaseStringOrEmpty(entry.id)}`,
+            ),
+          );
+          for (const entry of liveResult.entries) {
+            const key = `${normalizeLowercaseStringOrEmpty(entry.provider)}::${normalizeLowercaseStringOrEmpty(entry.id)}`;
+            if (seen.has(key)) {
+              continue;
+            }
+            models.push(entry);
+            seen.add(key);
+          }
+        }
+        logStage("live-discovery-merged", `added=${liveResult.entries.length}`);
+      } catch (liveError) {
+        logStage("live-discovery-skipped");
+        if (!hasLoggedModelCatalogError) {
+          hasLoggedModelCatalogError = true;
+          log.warn(`Live model discovery skipped: ${String(liveError)}`);
+        }
+      }
 
       if (models.length === 0) {
         // If we found nothing, don't cache this result so we can try again.
