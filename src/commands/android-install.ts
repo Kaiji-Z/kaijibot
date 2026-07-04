@@ -441,13 +441,22 @@ async function runOnboard(runtime: OutputRuntimeEnv, opts: AndroidInstallOptions
 async function startGateway(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log("");
   runtime.log(theme.heading("Starting Gateway..."));
+
+  const existingPid = runText("pgrep", ["-f", "kaijibot"]);
+  if (existingPid.length > 0) {
+    runtime.log(`  Stopping existing gateway (PID ${existingPid})...`);
+    run("bash", ["-c", "pkill -f kaijibot-gateway 2>/dev/null; pkill -f 'kaijibot gateway' 2>/dev/null"]);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    runtime.log(`  ${theme.success("✓")} Stopped old gateway`);
+  }
+
   spawnSync("termux-wake-lock", [], { stdio: "ignore" });
   const logPath = path.join(os.homedir(), ".kaijibot", "gateway.log");
   spawnSync("bash", ["-c", `nohup kaijibot gateway --port ${GATEWAY_PORT} >> "${logPath}" 2>&1 &`], {
     stdio: "ignore",
   });
   await new Promise((resolve) => setTimeout(resolve, 3000));
-  const alive = runText("pgrep", ["-f", "kaijibot gateway"]);
+  const alive = runText("pgrep", ["-f", "kaijibot"]);
   if (alive.length > 0) {
     runtime.log(`  ${theme.success("✓")} Gateway started on port ${GATEWAY_PORT}`);
     runtime.log(`  ${theme.muted("    Logs: tail -f ~/.kaijibot/gateway.log")}`);
