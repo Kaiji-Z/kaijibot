@@ -240,8 +240,8 @@ export async function statusCommand(
 
   const nodeOnlyGateway = await loadStatusNodeModeModule().then(({ resolveNodeOnlyGatewayInfo }) =>
     resolveNodeOnlyGatewayInfo({
-      daemon,
-      node: nodeDaemon,
+      daemon: daemon ?? { installed: null },
+      node: nodeDaemon ?? { installed: null },
     }),
   );
   const pairingRecovery = resolvePairingRecoveryContext({
@@ -270,8 +270,8 @@ export async function statusCommand(
       gatewayProbeAuthWarning,
       gatewaySelf,
     },
-    gatewayService: daemon,
-    nodeService: nodeDaemon,
+    gatewayService: daemon ?? { label: "Gateway", installed: null, loadedText: "no service manager" },
+    nodeService: nodeDaemon ?? { label: "Node", installed: null, loadedText: "no service manager" },
     nodeOnlyGateway,
   });
   const lines = await buildStatusCommandReportLines(

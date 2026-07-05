@@ -1,5 +1,5 @@
 import type { KaijiBotConfig } from "../../../config/config.js";
-import { resolveGatewayService } from "../../../daemon/service.js";
+import { tryResolveGatewayService } from "../../../daemon/service.js";
 import { isSystemdUserServiceAvailable } from "../../../daemon/systemd.js";
 import type { RuntimeEnv } from "../../../runtime.js";
 import { buildGatewayInstallPlan, gatewayInstallErrorHint } from "../../daemon-install-helpers.js";
@@ -43,7 +43,13 @@ export async function installGatewayDaemonNonInteractive(params: {
     return { installed: false };
   }
 
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    runtime.log(
+      `Service install not supported on ${process.platform}; skipping daemon install.`,
+    );
+    return { installed: false, skippedReason: "systemd-user-unavailable" };
+  }
   const tokenResolution = await resolveGatewayInstallToken({
     config: params.nextConfig,
     env: process.env,

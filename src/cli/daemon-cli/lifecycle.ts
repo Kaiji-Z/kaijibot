@@ -1,6 +1,6 @@
 import { isRestartEnabled } from "../../config/commands.js";
 import { readBestEffortConfig, resolveGatewayPort } from "../../config/config.js";
-import { resolveGatewayService, tryResolveGatewayService } from "../../daemon/service.js";
+import { tryResolveGatewayService } from "../../daemon/service.js";
 import { probeGateway } from "../../gateway/probe.js";
 import {
   findVerifiedGatewayListenerPidsOnPortSync,
@@ -137,9 +137,16 @@ async function restartGatewayWithoutServiceManager(port: number) {
 }
 
 export async function runDaemonUninstall(opts: DaemonLifecycleOptions = {}) {
+  const service = tryResolveGatewayService();
+  if (!service) {
+    defaultRuntime.log(
+      `No service manager on ${process.platform}. Nothing to uninstall.`,
+    );
+    return;
+  }
   return await runServiceUninstall({
     serviceNoun: "Gateway",
-    service: resolveGatewayService(),
+    service,
     opts,
     stopBeforeUninstall: true,
     assertNotLoadedAfterUninstall: true,

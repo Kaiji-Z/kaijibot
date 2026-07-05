@@ -33,8 +33,8 @@ export async function statusAllCommand(
     progress.setLabel("Checking services…");
     const [daemon, nodeService] = await resolveStatusServiceSummaries();
     const nodeOnlyGateway = await resolveNodeOnlyGatewayInfo({
-      daemon,
-      node: nodeService,
+      daemon: daemon ?? { installed: null },
+      node: nodeService ?? { installed: null },
     });
     progress.tick();
     const lines = await buildStatusAllReportLines({

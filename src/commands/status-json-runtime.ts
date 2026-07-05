@@ -76,8 +76,8 @@ export async function resolveStatusJsonOutput(params: {
     summary: scan.summary,
     surface: buildStatusOverviewSurfaceFromScan({
       scan: scan as never,
-      gatewayService,
-      nodeService,
+      gatewayService: gatewayService ?? { label: "Gateway", installed: null, loadedText: "no service manager" },
+      nodeService: nodeService ?? { label: "Node", installed: null, loadedText: "no service manager" },
     }),
     osSummary: scan.osSummary,
     memory: scan.memory,

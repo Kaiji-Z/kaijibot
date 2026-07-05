@@ -6,8 +6,7 @@ import {
   resolveNodeSystemdServiceName,
   resolveNodeWindowsTaskName,
 } from "./constants.js";
-import type { GatewayService, GatewayServiceInstallArgs } from "./service.js";
-import { resolveGatewayService } from "./service.js";
+import { tryResolveGatewayService, type GatewayService, type GatewayServiceInstallArgs } from "./service.js";
 
 function withNodeServiceEnv(
   env: Record<string, string | undefined>,
@@ -41,8 +40,11 @@ function withNodeInstallEnv(args: GatewayServiceInstallArgs): GatewayServiceInst
   };
 }
 
-export function resolveNodeService(): GatewayService {
-  const base = resolveGatewayService();
+export function resolveNodeService(): GatewayService | null {
+  const base = tryResolveGatewayService();
+  if (!base) {
+    return null;
+  }
   return {
     ...base,
     stage: async (args) => {

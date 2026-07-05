@@ -2,7 +2,7 @@ import path from "node:path";
 import { cancel, confirm, isCancel, multiselect } from "@clack/prompts";
 import { formatCliCommand } from "../cli/command-format.js";
 import { isNixMode } from "../config/config.js";
-import { resolveGatewayService } from "../daemon/service.js";
+import { tryResolveGatewayService } from "../daemon/service.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { stylePromptHint, stylePromptMessage, stylePromptTitle } from "../terminal/prompt-style.js";
 import { resolveHomeDir } from "../utils.js";
@@ -57,7 +57,11 @@ async function stopAndUninstallService(runtime: RuntimeEnv): Promise<boolean> {
     runtime.error("Nix mode detected; service uninstall is disabled.");
     return false;
   }
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    runtime.log(`No service manager on ${process.platform}; skipping service uninstall.`);
+    return true;
+  }
   let loaded = false;
   try {
     loaded = await service.isLoaded({ env: process.env });

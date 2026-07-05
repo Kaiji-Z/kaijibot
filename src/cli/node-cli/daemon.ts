@@ -106,6 +106,10 @@ export async function runNodeDaemonInstall(opts: NodeDaemonInstallOptions) {
   }
 
   const service = resolveNodeService();
+  if (!service) {
+    fail(`Node service not supported on ${process.platform}.`);
+    return;
+  }
   let loaded = false;
   try {
     loaded = await service.isLoaded({ env: process.env });
@@ -170,9 +174,13 @@ export async function runNodeDaemonInstall(opts: NodeDaemonInstallOptions) {
 }
 
 export async function runNodeDaemonUninstall(opts: NodeDaemonLifecycleOptions = {}) {
+  const service = resolveNodeService();
+  if (!service) {
+    return;
+  }
   return await runServiceUninstall({
     serviceNoun: "Node",
-    service: resolveNodeService(),
+    service,
     opts,
     stopBeforeUninstall: false,
     assertNotLoadedAfterUninstall: false,
@@ -180,27 +188,39 @@ export async function runNodeDaemonUninstall(opts: NodeDaemonLifecycleOptions = 
 }
 
 export async function runNodeDaemonStart(opts: NodeDaemonLifecycleOptions = {}) {
+  const service = resolveNodeService();
+  if (!service) {
+    return;
+  }
   return await runServiceStart({
     serviceNoun: "Node",
-    service: resolveNodeService(),
+    service,
     renderStartHints: renderNodeServiceStartHints,
     opts,
   });
 }
 
 export async function runNodeDaemonRestart(opts: NodeDaemonLifecycleOptions = {}) {
+  const service = resolveNodeService();
+  if (!service) {
+    return;
+  }
   await runServiceRestart({
     serviceNoun: "Node",
-    service: resolveNodeService(),
+    service,
     renderStartHints: renderNodeServiceStartHints,
     opts,
   });
 }
 
 export async function runNodeDaemonStop(opts: NodeDaemonLifecycleOptions = {}) {
+  const service = resolveNodeService();
+  if (!service) {
+    return;
+  }
   return await runServiceStop({
     serviceNoun: "Node",
-    service: resolveNodeService(),
+    service,
     opts,
   });
 }
@@ -208,6 +228,9 @@ export async function runNodeDaemonStop(opts: NodeDaemonLifecycleOptions = {}) {
 export async function runNodeDaemonStatus(opts: NodeDaemonStatusOptions = {}) {
   const json = Boolean(opts.json);
   const service = resolveNodeService();
+  if (!service) {
+    return;
+  }
   const [loaded, command, runtime] = await Promise.all([
     service.isLoaded({ env: process.env }).catch(() => false),
     service.readCommand(process.env).catch(() => null),

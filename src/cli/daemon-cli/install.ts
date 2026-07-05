@@ -6,7 +6,7 @@ import {
 } from "../../commands/daemon-runtime.js";
 import { resolveGatewayInstallToken } from "../../commands/gateway-install-token.js";
 import { readBestEffortConfig, resolveGatewayPort } from "../../config/config.js";
-import { resolveGatewayService } from "../../daemon/service.js";
+import { tryResolveGatewayService } from "../../daemon/service.js";
 import { isNonFatalSystemdInstallProbeError } from "../../daemon/systemd.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatCliCommand } from "../command-format.js";
@@ -54,7 +54,13 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
     return;
   }
 
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    defaultRuntime.log(
+      `Gateway service install not supported on ${process.platform}.`,
+    );
+    return;
+  }
   let loaded = false;
   let existingServiceEnv: Record<string, string> | undefined;
   try {
@@ -154,7 +160,7 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
 }
 
 async function gatewayServiceNeedsAutoNodeExtraCaCertsRefresh(params: {
-  service: ReturnType<typeof resolveGatewayService>;
+  service: NonNullable<ReturnType<typeof tryResolveGatewayService>>;
   env: Record<string, string | undefined>;
 }): Promise<boolean> {
   try {

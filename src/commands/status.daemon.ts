@@ -1,5 +1,5 @@
 import { resolveNodeService } from "../daemon/node-service.js";
-import { resolveGatewayService } from "../daemon/service.js";
+import { tryResolveGatewayService } from "../daemon/service.js";
 import { formatDaemonRuntimeShort } from "./status.format.js";
 import { readServiceStatusSummary } from "./status.service-summary.js";
 
@@ -16,9 +16,29 @@ type DaemonStatusSummary = {
 
 async function buildDaemonStatusSummary(
   serviceLabel: "gateway" | "node",
-): Promise<DaemonStatusSummary> {
-  const service = serviceLabel === "gateway" ? resolveGatewayService() : resolveNodeService();
-  const fallbackLabel = serviceLabel === "gateway" ? "Daemon" : "Node";
+): Promise<DaemonStatusSummary | null> {
+  if (serviceLabel === "gateway") {
+    const service = tryResolveGatewayService();
+    if (!service) {
+      return null;
+    }
+    const summary = await readServiceStatusSummary(service, "Daemon");
+    return {
+      label: summary.label,
+      installed: summary.installed,
+      loaded: summary.loaded,
+      managedByKaijiBot: summary.managedByKaijiBot,
+      externallyManaged: summary.externallyManaged,
+      loadedText: summary.loadedText,
+      runtime: summary.runtime,
+      runtimeShort: formatDaemonRuntimeShort(summary.runtime),
+    };
+  }
+  const service = resolveNodeService();
+  if (!service) {
+    return null;
+  }
+  const fallbackLabel = "Node";
   const summary = await readServiceStatusSummary(service, fallbackLabel);
   return {
     label: summary.label,
@@ -32,10 +52,10 @@ async function buildDaemonStatusSummary(
   };
 }
 
-export async function getDaemonStatusSummary(): Promise<DaemonStatusSummary> {
+export async function getDaemonStatusSummary(): Promise<DaemonStatusSummary | null> {
   return await buildDaemonStatusSummary("gateway");
 }
 
-export async function getNodeDaemonStatusSummary(): Promise<DaemonStatusSummary> {
+export async function getNodeDaemonStatusSummary(): Promise<DaemonStatusSummary | null> {
   return await buildDaemonStatusSummary("node");
 }

@@ -1,7 +1,7 @@
 import { cancel, confirm, isCancel } from "@clack/prompts";
 import { formatCliCommand } from "../cli/command-format.js";
 import { isNixMode } from "../config/config.js";
-import { resolveGatewayService } from "../daemon/service.js";
+import { tryResolveGatewayService } from "../daemon/service.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { selectStyled } from "../terminal/prompt-select-styled.js";
 import { stylePromptMessage, stylePromptTitle } from "../terminal/prompt-style.js";
@@ -26,7 +26,10 @@ async function stopGatewayIfRunning(runtime: RuntimeEnv) {
   if (isNixMode) {
     return;
   }
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    return;
+  }
   let loaded = false;
   try {
     loaded = await service.isLoaded({ env: process.env });

@@ -1,6 +1,6 @@
 import { withProgress } from "../cli/progress.js";
 import { loadConfig } from "../config/config.js";
-import { describeGatewayServiceRestart, resolveGatewayService } from "../daemon/service.js";
+import { describeGatewayServiceRestart, tryResolveGatewayService } from "../daemon/service.js";
 import { isNonFatalSystemdInstallProbeError } from "../daemon/systemd.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import type { RuntimeEnv } from "../runtime.js";
@@ -21,7 +21,10 @@ export async function maybeInstallDaemon(params: {
   port: number;
   daemonRuntime?: GatewayDaemonRuntime;
 }) {
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    return;
+  }
   let loaded = false;
   try {
     loaded = await service.isLoaded({ env: process.env });

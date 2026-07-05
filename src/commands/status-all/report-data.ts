@@ -170,8 +170,8 @@ export async function buildStatusAllReportData(params: {
 
   const overviewSurface: StatusOverviewSurface = buildStatusOverviewSurfaceFromOverview({
     overview: params.overview,
-    gatewayService: params.daemon,
-    nodeService: params.nodeService,
+    gatewayService: params.daemon ?? { label: "Gateway", installed: null, loadedText: "no service manager" },
+    nodeService: params.nodeService ?? { label: "Node", installed: null, loadedText: "no service manager" },
     nodeOnlyGateway: params.nodeOnlyGateway,
   });
   const overviewRows = buildStatusAllOverviewRows({
