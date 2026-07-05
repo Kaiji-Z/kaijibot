@@ -12,6 +12,7 @@ vi.mock("../media/store.js", async () => {
     saveMediaBuffer: vi.fn().mockResolvedValue({
       id: "mock-media-id.png",
       path: "/tmp/mock-media/mock-media-id.png",
+      size: 100,
     }),
     deleteMediaBuffer: vi.fn().mockResolvedValue(undefined),
   };
@@ -271,7 +272,7 @@ describe("parseMessageWithAttachments — text-only model (supportsImages: false
   it("cleans up saved files on failure", async () => {
     const { saveMediaBuffer, deleteMediaBuffer } = await import("../media/store.js");
     vi.mocked(saveMediaBuffer)
-      .mockResolvedValueOnce({ id: "first.png", path: "/tmp/first.png" })
+      .mockResolvedValueOnce({ id: "first.png", path: "/tmp/first.png", size: 100 })
       .mockRejectedValueOnce(new Error("disk full"));
 
     await expect(

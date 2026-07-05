@@ -389,6 +389,34 @@ if ($scriptDir -and (Test-Path -LiteralPath $scriptDir)) {
 
 exit $status
 `;
+    } else if (platform === "android") {
+      const port =
+        Number.isFinite(gatewayPort) && gatewayPort > 0 ? gatewayPort : DEFAULT_GATEWAY_PORT;
+      filename = `kaijibot-restart-${timestamp}.sh`;
+      scriptContent = `#!/bin/sh
+# Standalone restart script for Termux/Android.
+# Wait briefly to ensure file locks are released after update.
+sleep 1
+printf '[%s] kaijibot restart attempt source=update platform=android\\n' "$(date -u +%FT%TZ)" >&2
+pkill -f 'kaijibot-gateway' 2>/dev/null
+pkill -f 'kaijibot gateway' 2>/dev/null
+sleep 2
+if [ -f "$HOME/.kaijibot/start-gateway.sh" ]; then
+  . "$HOME/.kaijibot/start-gateway.sh"
+  status=0
+  printf '[%s] kaijibot restart done source=update via=start-gateway.sh\\n' "$(date -u +%FT%TZ)" >&2
+else
+  termux-wake-lock 2>/dev/null
+  nohup kaijibot gateway --port ${port} >> "$HOME/.kaijibot/gateway.log" 2>&1 &
+  status=0
+  printf '[%s] kaijibot restart done source=update via=nohup port=${port}\\n' "$(date -u +%FT%TZ)" >&2
+fi
+# Self-cleanup
+script_dir=$(dirname "$0")
+rm -f "$0"
+rmdir "$script_dir" 2>/dev/null || true
+exit "$status"
+`;
     } else {
       return null;
     }
