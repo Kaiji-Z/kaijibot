@@ -5,6 +5,18 @@ import {
   parseMessageWithAttachments,
 } from "./chat-attachments.js";
 
+vi.mock("../media/store.js", async () => {
+  const actual = await vi.importActual<typeof import("../media/store.js")>("../media/store.js");
+  return {
+    ...actual,
+    saveMediaBuffer: vi.fn().mockResolvedValue({
+      id: "mock-media-id.png",
+      path: "/tmp/mock-media/mock-media-id.png",
+    }),
+    deleteMediaBuffer: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 const PNG_1x1 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
 
@@ -176,5 +188,103 @@ describe("shared attachment validation", () => {
     } finally {
       fromSpy.mockRestore();
     }
+  });
+});
+
+describe("parseMessageWithAttachments — text-only model (supportsImages: false)", () => {
+  it("saves images to disk and adds [image attached: path] marker", async () => {
+    const logs: string[] = [];
+    const parsed = await parseMessageWithAttachments(
+      "what is this",
+      [
+        {
+          type: "image",
+          mimeType: "image/png",
+          fileName: "screenshot.png",
+          content: PNG_1x1,
+        },
+      ],
+      {
+        supportsImages: false,
+        log: { warn: (m) => logs.push(m) },
+      },
+    );
+
+    expect(parsed.images).toHaveLength(0);
+    expect(parsed.imageOrder).toEqual(["offloaded"]);
+    expect(parsed.offloadedRefs).toHaveLength(1);
+    expect(parsed.offloadedRefs[0]?.path).toBe("/tmp/mock-media/mock-media-id.png");
+    expect(parsed.message).toContain("[image attached: /tmp/mock-media/mock-media-id.png]");
+    expect(parsed.message).toContain("what is this");
+    expect(logs.some((l) => /saved to disk/i.test(l))).toBe(true);
+  });
+
+  it("returns empty when no valid images", async () => {
+    const parsed = await parseMessageWithAttachments(
+      "hello",
+      [
+        {
+          type: "file",
+          mimeType: "application/pdf",
+          fileName: "doc.pdf",
+          content: Buffer.from("%PDF-1.4\n").toString("base64"),
+        },
+      ],
+      {
+        supportsImages: false,
+        log: { warn: () => {} },
+      },
+    );
+
+    expect(parsed.images).toHaveLength(0);
+    expect(parsed.offloadedRefs).toHaveLength(0);
+    expect(parsed.message).toBe("hello");
+  });
+
+  it("saves multiple images and adds marker for each", async () => {
+    const parsed = await parseMessageWithAttachments(
+      "compare these",
+      [
+        {
+          type: "image",
+          mimeType: "image/png",
+          fileName: "a.png",
+          content: PNG_1x1,
+        },
+        {
+          type: "image",
+          mimeType: "image/png",
+          fileName: "b.png",
+          content: PNG_1x1,
+        },
+      ],
+      { supportsImages: false, log: { warn: () => {} } },
+    );
+
+    expect(parsed.images).toHaveLength(0);
+    expect(parsed.offloadedRefs).toHaveLength(2);
+    expect(parsed.message).toContain("[image attached: /tmp/mock-media/mock-media-id.png]");
+    const markers = parsed.message.match(/\[image attached:/g);
+    expect(markers).toHaveLength(2);
+  });
+
+  it("cleans up saved files on failure", async () => {
+    const { saveMediaBuffer, deleteMediaBuffer } = await import("../media/store.js");
+    vi.mocked(saveMediaBuffer)
+      .mockResolvedValueOnce({ id: "first.png", path: "/tmp/first.png" })
+      .mockRejectedValueOnce(new Error("disk full"));
+
+    await expect(
+      parseMessageWithAttachments(
+        "x",
+        [
+          { type: "image", mimeType: "image/png", fileName: "a.png", content: PNG_1x1 },
+          { type: "image", mimeType: "image/png", fileName: "b.png", content: PNG_1x1 },
+        ],
+        { supportsImages: false, log: { warn: () => {} } },
+      ),
+    ).rejects.toThrow(/disk full/);
+
+    expect(vi.mocked(deleteMediaBuffer)).toHaveBeenCalledWith("first.png", "inbound");
   });
 });

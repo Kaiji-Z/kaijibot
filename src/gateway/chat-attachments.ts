@@ -271,12 +271,10 @@ function validateAttachmentBase64OrThrow(
  * because they are not passed inline to the model.
  *
  * ## Text-only model runs
- * Pass `supportsImages: false` for text-only model runs so that no media://
- * markers are injected into prompt text.
- *
- * ⚠️  Call sites in chat.ts, agent.ts, and server-node-events.ts MUST be
- * updated to pass `supportsImages: modelSupportsImages(model)`. Until they do,
- * text-only model runs receive unresolvable media:// markers in their prompt.
+ * Pass `supportsImages: false` for text-only models. Images are saved to disk
+ * and `[image attached: /absolute/path]` markers are appended to the message
+ * text. The agent can then use the `image` tool to analyze them. No inline
+ * image blocks are returned (`images` array is empty).
  *
  * ## Cleanup on failure
  * On any parse failure after files have already been offloaded, best-effort
@@ -304,26 +302,112 @@ export async function parseMessageWithAttachments(
     return { message, images: [], imageOrder: [], offloadedRefs: [] };
   }
 
-  // For text-only models drop all attachments cleanly. Do not save files or
-  // inject media:// markers that would never be resolved and would leak
-  // internal path references into the model's prompt.
-  if (opts?.supportsImages === false) {
-    if (attachments.length > 0) {
-      log?.warn(
-        `parseMessageWithAttachments: ${attachments.length} attachment(s) dropped — model does not support images`,
-      );
-    }
-    return { message, images: [], imageOrder: [], offloadedRefs: [] };
-  }
-
   const images: ChatImageContent[] = [];
   const imageOrder: PromptImageOrderEntry[] = [];
   const offloadedRefs: OffloadedRef[] = [];
   let updatedMessage = message;
 
-  // Track IDs of files saved during this request for cleanup if a later
-  // attachment fails validation and the entire parse is aborted.
   const savedMediaIds: string[] = [];
+
+  if (opts?.supportsImages === false) {
+    try {
+      for (const [idx, att] of attachments.entries()) {
+        if (!att) {
+          continue;
+        }
+
+        const normalized = normalizeAttachment(att, idx, {
+          stripDataUrlPrefix: true,
+          requireImageMime: false,
+        });
+        const { base64: b64, label, mime } = normalized;
+
+        if (!isValidBase64(b64)) {
+          throw new Error(`attachment ${label}: invalid base64 content`);
+        }
+
+        const sizeBytes = estimateBase64DecodedBytes(b64);
+        if (sizeBytes <= 0) {
+          log?.warn(`attachment ${label}: estimated size is zero, dropping`);
+          continue;
+        }
+        if (sizeBytes > maxBytes) {
+          throw new Error(
+            `attachment ${label}: exceeds size limit (${sizeBytes} > ${maxBytes} bytes)`,
+          );
+        }
+
+        const providedMime = normalizeMime(mime);
+        const sniffedMime = normalizeMime(await sniffMimeFromBase64(b64));
+
+        if (sniffedMime && !isImageMime(sniffedMime)) {
+          log?.warn(`attachment ${label}: detected non-image (${sniffedMime}), dropping`);
+          continue;
+        }
+        if (!sniffedMime && !isImageMime(providedMime)) {
+          log?.warn(`attachment ${label}: unable to detect image mime type, dropping`);
+          continue;
+        }
+
+        const finalMime = sniffedMime ?? providedMime ?? mime;
+
+        const buffer = Buffer.from(b64, "base64");
+        verifyDecodedSize(buffer, sizeBytes, label);
+
+        const labelWithExt = ensureExtension(label, finalMime);
+
+        try {
+          const rawResult = await saveMediaBuffer(
+            buffer,
+            finalMime,
+            "inbound",
+            maxBytes,
+            labelWithExt,
+          );
+          const savedMedia = assertSavedMedia(rawResult, label);
+          savedMediaIds.push(savedMedia.id);
+
+          const filePath = savedMedia.path ?? "";
+          if (filePath) {
+            updatedMessage += `\n[image attached: ${filePath}]`;
+          }
+
+          offloadedRefs.push({
+            mediaRef: `media://inbound/${savedMedia.id}`,
+            id: savedMedia.id,
+            path: filePath,
+            mimeType: finalMime,
+            label,
+          });
+          imageOrder.push("offloaded");
+        } catch (err) {
+          throw new MediaOffloadError(
+            `[Gateway Error] Failed to save media for text-only model: ${formatErrorMessage(err)}`,
+            { cause: err },
+          );
+        }
+      }
+    } catch (err) {
+      await Promise.allSettled(
+        savedMediaIds.map((id) => deleteMediaBuffer(id, "inbound")),
+      );
+      throw err;
+    }
+
+    const savedCount = offloadedRefs.length;
+    if (savedCount > 0) {
+      log?.warn(
+        `parseMessageWithAttachments: ${savedCount} attachment(s) saved to disk — model does not support images, agent should use image tool`,
+      );
+    }
+
+    return {
+      message: updatedMessage !== message ? updatedMessage.trimEnd() : message,
+      images: [],
+      imageOrder,
+      offloadedRefs,
+    };
+  }
 
   try {
     for (const [idx, att] of attachments.entries()) {
