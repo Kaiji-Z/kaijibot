@@ -12,7 +12,7 @@ import {
   launchAgentPlistExists,
   repairLaunchAgentBootstrap,
 } from "../daemon/launchd.js";
-import { describeGatewayServiceRestart, resolveGatewayService } from "../daemon/service.js";
+import { describeGatewayServiceRestart, tryResolveGatewayService } from "../daemon/service.js";
 import { renderSystemdUnavailableHints } from "../daemon/systemd-hints.js";
 import { isSystemdUserServiceAvailable } from "../daemon/systemd.js";
 import { formatPortDiagnostics, inspectPortUsage } from "../infra/ports.js";
@@ -98,7 +98,10 @@ export async function maybeRepairGatewayDaemon(params: {
     return;
   }
 
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    return;
+  }
   // systemd can throw in containers/WSL; treat as "not loaded" and fall back to hints.
   let loaded = false;
   try {

@@ -18,7 +18,7 @@ import {
   readEmbeddedGatewayToken,
   SERVICE_AUDIT_CODES,
 } from "../daemon/service-audit.js";
-import { resolveGatewayService } from "../daemon/service.js";
+import { tryResolveGatewayService } from "../daemon/service.js";
 import { uninstallLegacySystemdUnits } from "../daemon/systemd.js";
 import type { RuntimeEnv } from "../runtime.js";
 import {
@@ -211,7 +211,11 @@ export async function maybeRepairGatewayServiceConfig(
     return;
   }
 
-  const service = resolveGatewayService();
+  const service = tryResolveGatewayService();
+  if (!service) {
+    note(`No service manager on ${process.platform}; skipped service audit.`, "Gateway");
+    return;
+  }
   let command: Awaited<ReturnType<typeof service.readCommand>> | null = null;
   try {
     command = await service.readCommand(process.env);
