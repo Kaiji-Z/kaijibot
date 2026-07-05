@@ -56,15 +56,6 @@ case "$TZ_PROP" in
     ;;
 esac
 
-info "检查现有 gateway 进程..."
-if pgrep -f "kaijibot" > /dev/null 2>&1; then
-  info "停止正在运行的 gateway..."
-  pkill -f kaijibot-gateway 2>/dev/null || true
-  pkill -f "kaijibot gateway" 2>/dev/null || true
-  sleep 2
-  ok "已停止旧 gateway"
-fi
-
 info "获取最新版本号..."
 KB_VER=$(curl -fsSL --connect-timeout 15 https://registry.npmjs.org/kaijibot/latest 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || true)
 
