@@ -59,8 +59,8 @@ esac
 info "检查现有 gateway 进程..."
 if pgrep -f "kaijibot" > /dev/null 2>&1; then
   info "停止正在运行的 gateway..."
-  pkill -f kaijibot-gateway 2>/dev/null
-  pkill -f "kaijibot gateway" 2>/dev/null
+  pkill -f kaijibot-gateway 2>/dev/null || true
+  pkill -f "kaijibot gateway" 2>/dev/null || true
   sleep 2
   ok "已停止旧 gateway"
 fi
