@@ -982,10 +982,12 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
   );
   if (shouldRestart) {
     try {
-      restartScriptPath = await prepareRestartScript(process.env, gatewayPort);
       const service = tryResolveGatewayService();
       if (service && (await service.isLoaded({ env: process.env }))) {
+        restartScriptPath = await prepareRestartScript(process.env, gatewayPort);
         refreshGatewayServiceEnv = true;
+      } else if (!service) {
+        restartScriptPath = await prepareRestartScript(process.env, gatewayPort);
       }
     } catch {
       // Ignore errors during pre-check; fallback to standard restart
