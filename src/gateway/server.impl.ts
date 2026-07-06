@@ -1546,45 +1546,57 @@ export async function startGatewayServer(
 
                 let deliveryMessageId: string | undefined;
                 try {
-                  const { resolveCognitiveDeliveryTarget } =
+                  const { resolveCognitiveDeliveryTarget, findSessionKeyForUserId } =
                     await import("./cognitive-delivery.js");
                   const { deliverOutboundPayloads } = await import("../infra/outbound/deliver.js");
                   const { buildOutboundSessionContext } =
                     await import("../infra/outbound/session-context.js");
 
-                  const target = resolveCognitiveDeliveryTarget(cfgAtStart, userId);
-                  if (!target) {
-                    log.info(
-                      `cognitive insight: no routable session for ${userId}, skipping delivery`,
-                    );
-                    return;
-                  }
-
                   const insightText = candidate.content;
-                  const session = buildOutboundSessionContext({
-                    cfg: cfgAtStart,
-                    sessionKey: target.sessionKey,
-                  });
+                  const target = resolveCognitiveDeliveryTarget(cfgAtStart, userId);
 
-                  const results = await deliverOutboundPayloads({
-                    cfg: cfgAtStart,
-                    channel: target.channel,
-                    to: target.to,
-                    accountId: target.accountId,
-                    payloads: [{ text: insightText }],
-                    session,
-                    mirror: {
+                  if (target && target.channel !== "webchat") {
+                    const session = buildOutboundSessionContext({
+                      cfg: cfgAtStart,
                       sessionKey: target.sessionKey,
-                      agentId,
-                      text: insightText,
-                      idempotencyKey: `cognitive-insight-${Date.now()}`,
-                    },
-                    bestEffort: true,
-                  });
-                  deliveryMessageId = results[0]?.messageId;
-                  log.info(`cognitive insight delivered to ${userId} via ${target.channel}`, {
-                    deliveryMessageId,
-                  });
+                    });
+
+                    const results = await deliverOutboundPayloads({
+                      cfg: cfgAtStart,
+                      channel: target.channel,
+                      to: target.to,
+                      accountId: target.accountId,
+                      payloads: [{ text: insightText }],
+                      session,
+                      mirror: {
+                        sessionKey: target.sessionKey,
+                        agentId,
+                        text: insightText,
+                        idempotencyKey: `cognitive-insight-${Date.now()}`,
+                      },
+                      bestEffort: true,
+                    });
+                    deliveryMessageId = results[0]?.messageId;
+                    log.info(`cognitive insight delivered to ${userId} via ${target.channel}`, {
+                      deliveryMessageId,
+                    });
+                  } else {
+                    const sessionKey =
+                      target?.sessionKey ?? findSessionKeyForUserId(cfgAtStart, userId);
+                    if (sessionKey) {
+                      const { enqueueSystemEvent } = await import("../infra/system-events.js");
+                      const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
+                      enqueueSystemEvent(`[Cognitive Insight] ${insightText}`, { sessionKey });
+                      requestHeartbeatNow({ reason: "cognitive-insight", sessionKey });
+                      log.info(`cognitive insight enqueued for heartbeat delivery to ${userId}`, {
+                        sessionKey,
+                      });
+                    } else {
+                      log.info(
+                        `cognitive insight: no routable session for ${userId}, skipping delivery`,
+                      );
+                    }
+                  }
                 } catch (err) {
                   log.warn(`cognitive insight delivery failed: ${String(err)}`);
                 }
@@ -2068,18 +2080,14 @@ export async function startGatewayServer(
     if (!minimalTestGateway) {
       void (async () => {
         try {
-          const { resolveWikiConfig, resolveEffectiveVaultRoot } = await import(
-            "../../extensions/knowledge-wiki/src/config.js"
-          );
-          const { runWikiIngestAllAgents } = await import(
-            "../../extensions/knowledge-wiki/src/ingest.js"
-          );
-          const { resolveConsolidationWorkspaces } = await import(
-            "../memory-host-sdk/consolidation.js",
-          );
-          const { createStandaloneGenerateText } = await import(
-            "../cognitive/evolution/standalone-generate.js",
-          );
+          const { resolveWikiConfig, resolveEffectiveVaultRoot } =
+            await import("../../extensions/knowledge-wiki/src/config.js");
+          const { runWikiIngestAllAgents } =
+            await import("../../extensions/knowledge-wiki/src/ingest.js");
+          const { resolveConsolidationWorkspaces } =
+            await import("../memory-host-sdk/consolidation.js");
+          const { createStandaloneGenerateText } =
+            await import("../cognitive/evolution/standalone-generate.js");
           const { Cron } = await import("croner");
 
           const wikiConfig = resolveWikiConfig(

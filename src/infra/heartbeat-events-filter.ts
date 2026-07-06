@@ -92,6 +92,18 @@ export function isEvolutionSignalEvent(evt: string): boolean {
   return evt.includes("[Evolution Signal]");
 }
 
+export function isInsightEvent(evt: string): boolean {
+  return evt.includes("[Cognitive Insight]");
+}
+
+export function buildInsightEventPrompt(): string {
+  return [
+    "一条主动洞察已生成（内容在系统消息中）。请用自然的方式将其分享给用户。",
+    "保持原意但可以用你自己的语言表达，让它读起来像对话而非推送通知。",
+    "如果洞察包含来源链接，保留它们。",
+  ].join("\n");
+}
+
 export function buildEvolutionEventPrompt(opts?: { deliverToUser?: boolean }): string {
   const deliverToUser = opts?.deliverToUser ?? true;
   if (!deliverToUser) {

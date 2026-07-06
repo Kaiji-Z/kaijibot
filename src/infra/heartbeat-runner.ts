@@ -60,10 +60,12 @@ import { formatErrorMessage, hasErrnoCode } from "./errors.js";
 import { isWithinActiveHours } from "./heartbeat-active-hours.js";
 import {
   buildEvolutionEventPrompt,
+  buildInsightEventPrompt,
   buildExecEventPrompt,
   buildCronEventPrompt,
   isCronSystemEvent,
   isEvolutionSignalEvent,
+  isInsightEvent,
   isExecCompletionEvent,
 } from "./heartbeat-events-filter.js";
 import { emitHeartbeatEvent, resolveIndicatorType } from "./heartbeat-events.js";
@@ -538,7 +540,8 @@ async function resolveHeartbeatPreflight(params: {
     reasonFlags.isCronEventReason ||
     shouldInspectWakePendingEvents ||
     hasTaggedCronEvents ||
-    pendingEventEntries.some((e) => isEvolutionSignalEvent(e.text));
+    pendingEventEntries.some((e) => isEvolutionSignalEvent(e.text)) ||
+    pendingEventEntries.some((e) => isInsightEvent(e.text));
   const shouldBypassFileGates =
     reasonFlags.isExecEventReason ||
     reasonFlags.isCronEventReason ||
@@ -595,6 +598,7 @@ type HeartbeatPromptResolution = {
   hasExecCompletion: boolean;
   hasCronEvents: boolean;
   hasEvolutionSignal: boolean;
+  hasInsightEvent: boolean;
 };
 
 function appendHeartbeatWorkspacePathHint(prompt: string, workspaceDir: string): string {
@@ -632,6 +636,7 @@ function resolveHeartbeatRunPrompt(params: {
   const hasExecCompletion = pendingEvents.some(isExecCompletionEvent);
   const hasCronEvents = cronEvents.length > 0;
   const hasEvolutionSignal = pendingEvents.some(isEvolutionSignalEvent);
+  const hasInsightEvent = pendingEvents.some(isInsightEvent);
 
   // If tasks are defined, build a batched prompt with due tasks
   if (params.preflight.tasks && params.preflight.tasks.length > 0) {
@@ -661,7 +666,13 @@ After completing all due tasks, reply HEARTBEAT_OK.`;
           prompt += `\n\nAdditional context from HEARTBEAT.md:\n${directives}`;
         }
       }
-      return { prompt, hasExecCompletion: false, hasCronEvents: false, hasEvolutionSignal: false };
+      return {
+        prompt,
+        hasExecCompletion: false,
+        hasCronEvents: false,
+        hasEvolutionSignal: false,
+        hasInsightEvent: false,
+      };
     }
     // No tasks due - skip this heartbeat to avoid wasteful API calls
     return {
@@ -669,20 +680,23 @@ After completing all due tasks, reply HEARTBEAT_OK.`;
       hasExecCompletion: false,
       hasCronEvents: false,
       hasEvolutionSignal: false,
+      hasInsightEvent: false,
     };
   }
 
   // Fallback to original behavior
   const basePrompt = hasEvolutionSignal
     ? buildEvolutionEventPrompt({ deliverToUser: params.canRelayToUser })
-    : hasExecCompletion
-      ? buildExecEventPrompt({ deliverToUser: params.canRelayToUser })
-      : hasCronEvents
-        ? buildCronEventPrompt(cronEvents, { deliverToUser: params.canRelayToUser })
-        : resolveHeartbeatPrompt(params.cfg, params.heartbeat);
+    : hasInsightEvent
+      ? buildInsightEventPrompt()
+      : hasExecCompletion
+        ? buildExecEventPrompt({ deliverToUser: params.canRelayToUser })
+        : hasCronEvents
+          ? buildCronEventPrompt(cronEvents, { deliverToUser: params.canRelayToUser })
+          : resolveHeartbeatPrompt(params.cfg, params.heartbeat);
   const prompt = appendHeartbeatWorkspacePathHint(basePrompt, params.workspaceDir);
 
-  return { prompt, hasExecCompletion, hasCronEvents, hasEvolutionSignal };
+  return { prompt, hasExecCompletion, hasCronEvents, hasEvolutionSignal, hasInsightEvent };
 }
 
 export async function runHeartbeatOnce(opts: {
@@ -763,7 +777,8 @@ export async function runHeartbeatOnce(opts: {
   const isolatedExplicit = heartbeat?.isolatedSession;
   const useIsolatedSession =
     (isolatedExplicit === true || (isolatedExplicit == null && !preflight.isWakeReason)) &&
-    opts.reason !== "cognitive-evolution";
+    opts.reason !== "cognitive-evolution" &&
+    opts.reason !== "cognitive-insight";
   const delivery = resolveHeartbeatDeliveryTarget({
     cfg,
     entry,
@@ -805,7 +820,7 @@ export async function runHeartbeatOnce(opts: {
     delivery.channel !== "none" && delivery.to && visibility.showAlerts,
   );
   const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
-  const { prompt, hasExecCompletion, hasCronEvents, hasEvolutionSignal } =
+  const { prompt, hasExecCompletion, hasCronEvents, hasEvolutionSignal, hasInsightEvent } =
     resolveHeartbeatRunPrompt({
       cfg,
       heartbeat,
@@ -929,13 +944,16 @@ export async function runHeartbeatOnce(opts: {
     MessageThreadId: delivery.threadId,
     Provider: hasEvolutionSignal
       ? "evolution-event"
-      : hasExecCompletion
-        ? "exec-event"
-        : hasCronEvents
-          ? "cron-event"
-          : "heartbeat",
+      : hasInsightEvent
+        ? "insight-event"
+        : hasExecCompletion
+          ? "exec-event"
+          : hasCronEvents
+            ? "cron-event"
+            : "heartbeat",
     SessionKey: runSessionKey,
-    ForceSenderIsOwnerFalse: hasExecCompletion || hasUntrustedPendingEvents || hasEvolutionSignal,
+    ForceSenderIsOwnerFalse:
+      hasExecCompletion || hasUntrustedPendingEvents || hasEvolutionSignal || hasInsightEvent,
   };
   if (!visibility.showAlerts && !visibility.showOk && !visibility.useIndicator) {
     emitHeartbeatEvent({
@@ -1041,7 +1059,7 @@ export async function runHeartbeatOnce(opts: {
     // For exec completion and evolution signal events, don't skip even if the
     // response looks like HEARTBEAT_OK. Fall back to the original reply text.
     const eventFallbackText =
-      (hasExecCompletion || hasEvolutionSignal) &&
+      (hasExecCompletion || hasEvolutionSignal || hasInsightEvent) &&
       !normalized.text.trim() &&
       replyPayload.text?.trim()
         ? replyPayload.text.trim()
