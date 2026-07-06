@@ -7,6 +7,7 @@ import {
   generateInsightCandidatesLLM,
   buildInsightPrompt,
   buildSurpriseInsightPrompt,
+  buildPatternInsightPrompt,
   buildVoiceSection,
   extractKeyTerms,
   buildSearchQuery,
@@ -1591,11 +1592,11 @@ describe("matchWebResultsToDomainsLLM", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Voice section and communicationStyle
+// Tone removal verification — pipeline delegates tone to heartbeat agent
 // ---------------------------------------------------------------------------
 
 describe("buildVoiceSection", () => {
-  it("includes casual tone instruction when formality is casual", () => {
+  it("returns empty string (tone delegated to heartbeat)", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
@@ -1607,113 +1608,37 @@ describe("buildVoiceSection", () => {
         },
       },
     });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("casual");
-    expect(section).toContain("你 not 您");
-  });
-
-  it("includes formal tone instruction when formality is formal", () => {
-    const persona = makePersona({
-      identity: {
-        ...makePersona().identity,
-        communicationStyle: {
-          formality: "formal",
-          verbosity: "detailed",
-          technicalLevel: "beginner",
-          preferredLanguage: "zh",
-        },
-      },
-    });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("professional but warm");
-    expect(section).toContain("您");
-  });
-
-  it("includes expert instruction when technicalLevel is expert", () => {
-    const persona = makePersona({
-      identity: {
-        ...makePersona().identity,
-        communicationStyle: {
-          formality: "casual",
-          verbosity: "concise",
-          technicalLevel: "expert",
-          preferredLanguage: "zh",
-        },
-      },
-    });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("deep technical literacy");
-    expect(section).toContain("technical terms freely");
-  });
-
-  it("includes beginner instruction when technicalLevel is beginner", () => {
-    const persona = makePersona({
-      identity: {
-        ...makePersona().identity,
-        communicationStyle: {
-          formality: "mixed",
-          verbosity: "moderate",
-          technicalLevel: "beginner",
-          preferredLanguage: "zh",
-        },
-      },
-    });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("Explain technical concepts briefly");
-    expect(section).toContain("Avoid jargon");
-  });
-
-  it("includes concise instruction when verbosity is concise", () => {
-    const persona = makePersona({
-      identity: {
-        ...makePersona().identity,
-        communicationStyle: {
-          formality: "casual",
-          verbosity: "concise",
-          technicalLevel: "expert",
-          preferredLanguage: "zh",
-        },
-      },
-    });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("1-2 sentences maximum");
-    expect(section).toContain("Every word earns its place");
-  });
-
-  it("includes detailed instruction when verbosity is detailed", () => {
-    const persona = makePersona({
-      identity: {
-        ...makePersona().identity,
-        communicationStyle: {
-          formality: "formal",
-          verbosity: "detailed",
-          technicalLevel: "intermediate",
-          preferredLanguage: "zh",
-        },
-      },
-    });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("2-3 sentences");
-    expect(section).toContain("self-contained");
-  });
-
-  it("uses 'the user' when no displayName", () => {
-    const persona = makePersona({
-      identity: { ...makePersona().identity, displayName: undefined },
-    });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("the user");
-  });
-
-  it("uses displayName when available", () => {
-    const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Kaiji" } });
-    const section = buildVoiceSection(persona);
-    expect(section).toContain("Kaiji");
+    expect(buildVoiceSection(persona)).toBe("");
   });
 });
 
-describe("buildInsightPrompt — communicationStyle", () => {
-  it("includes communicationStyle in prompt when available", () => {
+describe("tone removal from insight prompts", () => {
+  it("buildInsightPrompt does NOT include soulContent", () => {
+    const { prompt } = buildInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      undefined,
+      "## YOUR PERSONALITY AND VOICE\nYou are witty and sarcastic.",
+    );
+    expect(prompt).not.toContain("YOUR PERSONALITY AND VOICE");
+    expect(prompt).not.toContain("witty");
+  });
+
+  it("buildInsightPrompt does NOT include emotional stances", () => {
+    const { prompt } = buildInsightPrompt(makePersona(), makeInput());
+    expect(prompt).not.toContain("YOUR MOOD RIGHT NOW");
+  });
+
+  it("buildInsightPrompt does NOT include 'your own voice' directives", () => {
+    const { prompt } = buildInsightPrompt(makePersona(), makeInput());
+    expect(prompt).not.toContain("your own voice");
+    expect(prompt).not.toContain("Speak naturally");
+    expect(prompt).not.toContain("like you're messaging a friend");
+  });
+
+  it("buildInsightPrompt does NOT include communicationStyle directives", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
@@ -1726,27 +1651,57 @@ describe("buildInsightPrompt — communicationStyle", () => {
       },
     });
     const { prompt } = buildInsightPrompt(persona, makeInput());
-    expect(prompt).toContain("casual");
-    expect(prompt).toContain("1-2 sentences maximum");
-    expect(prompt).toContain("deep technical literacy");
+    expect(prompt).not.toContain("casual");
+    expect(prompt).not.toContain("1-2 sentences maximum");
+    expect(prompt).not.toContain("deep technical literacy");
   });
 
-  it("includes diverse few-shot examples", () => {
+  it("buildInsightPrompt still includes content quality elements", () => {
     const { prompt } = buildInsightPrompt(makePersona(), makeInput());
     expect(prompt).toContain("EXAMPLES of ideal insights");
     expect(prompt).toContain("Do NOT copy their structure");
   });
 
-  it("has voice section at top of prompt", () => {
-    const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Alice" } });
-    const { prompt } = buildInsightPrompt(persona, makeInput());
-    const firstLine = prompt.split("\n")[0]!;
-    expect(firstLine).toContain("Alice");
+  it("buildSurpriseInsightPrompt does NOT include soulContent", () => {
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+      "zh",
+      undefined,
+      "## YOUR PERSONALITY AND VOICE\nBe dramatic.",
+    );
+    expect(prompt).not.toContain("YOUR PERSONALITY AND VOICE");
+    expect(prompt).not.toContain("dramatic");
   });
-});
 
-describe("buildSurpriseInsightPrompt — communicationStyle", () => {
-  it("includes communicationStyle in surprise prompt when available", () => {
+  it("buildSurpriseInsightPrompt does NOT include emotional stances", () => {
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+    expect(prompt).not.toContain("YOUR MOOD RIGHT NOW");
+  });
+
+  it("buildSurpriseInsightPrompt does NOT include 'your own voice' directives", () => {
+    const { prompt } = buildSurpriseInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      TEST_STRATEGY,
+    );
+    expect(prompt).not.toContain("your own voice");
+    expect(prompt).not.toContain("Speak naturally");
+    expect(prompt).not.toContain("like you're messaging a friend");
+  });
+
+  it("buildSurpriseInsightPrompt does NOT include communicationStyle directives", () => {
     const persona = makePersona({
       identity: {
         ...makePersona().identity,
@@ -1759,12 +1714,11 @@ describe("buildSurpriseInsightPrompt — communicationStyle", () => {
       },
     });
     const { prompt } = buildSurpriseInsightPrompt(persona, makeInput(), [], [], TEST_STRATEGY);
-    expect(prompt).toContain("professional but warm");
-    expect(prompt).toContain("2-3 sentences");
-    expect(prompt).toContain("Avoid jargon");
+    expect(prompt).not.toContain("professional but warm");
+    expect(prompt).not.toContain("Avoid jargon");
   });
 
-  it("includes few-shot examples in surprise prompt", () => {
+  it("buildSurpriseInsightPrompt still includes content quality elements", () => {
     const { prompt } = buildSurpriseInsightPrompt(
       makePersona(),
       makeInput(),
@@ -1773,13 +1727,39 @@ describe("buildSurpriseInsightPrompt — communicationStyle", () => {
       TEST_STRATEGY,
     );
     expect(prompt).toContain("EXAMPLES of ideal insights");
-    expect(prompt).toContain("Context:");
+    expect(prompt).toContain("Do NOT copy their structure");
   });
 
-  it("has voice section at top of surprise prompt", () => {
-    const persona = makePersona({ identity: { ...makePersona().identity, displayName: "Bob" } });
-    const { prompt } = buildSurpriseInsightPrompt(persona, makeInput(), [], [], TEST_STRATEGY);
-    const firstLine = prompt.split("\n")[0]!;
-    expect(firstLine).toContain("Bob");
+  it("buildPatternInsightPrompt does NOT include soulContent or tone directives", () => {
+    const { prompt } = buildPatternInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      "## YOUR PERSONALITY AND VOICE\nBe warm.",
+    );
+    expect(prompt).not.toContain("YOUR PERSONALITY AND VOICE");
+    expect(prompt).not.toContain("your own voice");
+    expect(prompt).not.toContain("YOUR MOOD RIGHT NOW");
+    expect(prompt).not.toContain("Speak naturally");
+  });
+
+  it("buildPatternInsightPrompt still includes content quality elements", () => {
+    const { prompt } = buildPatternInsightPrompt(makePersona(), makeInput(), []);
+    expect(prompt).toContain("EXAMPLES");
+    expect(prompt).toContain("Do NOT copy their structure");
+  });
+
+  it("identityContext IS still included (user background, not tone)", () => {
+    const { prompt } = buildInsightPrompt(
+      makePersona(),
+      makeInput(),
+      [],
+      [],
+      undefined,
+      undefined,
+      "## USER BACKGROUND\nExpert in distributed systems.",
+    );
+    expect(prompt).toContain("USER BACKGROUND");
+    expect(prompt).toContain("distributed systems");
   });
 });

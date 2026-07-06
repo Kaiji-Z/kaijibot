@@ -123,33 +123,8 @@ function buildFragmentSection(fragments: Fragment[]): string {
     .join("\n");
 }
 
-export function buildVoiceSection(persona: PersonaTree): string {
-  const style = persona.identity?.communicationStyle;
-  const name = persona.identity?.displayName ?? "the user";
-  const parts: string[] = [];
-  parts.push(
-    `You're writing to ${name}, a person you know well. This is a proactive message — like suddenly remembering something fascinating to tell a friend.`,
-  );
-  if (style) {
-    if (style.formality === "casual") {
-      parts.push("Tone: casual, like chatting with a close friend. Use 你 not 您.");
-    } else if (style.formality === "formal") {
-      parts.push("Tone: professional but warm. You can use 您 but keep it conversational.");
-    } else {
-      parts.push("Tone: natural and conversational. Match whatever feels right for the content.");
-    }
-    if (style.technicalLevel === "expert") {
-      parts.push("Assume deep technical literacy. Use technical terms freely without explanation.");
-    } else if (style.technicalLevel === "beginner") {
-      parts.push("Explain technical concepts briefly when they appear. Avoid jargon.");
-    }
-    if (style.verbosity === "concise") {
-      parts.push("Be brief: 1-2 sentences maximum. Every word earns its place.");
-    } else if (style.verbosity === "detailed") {
-      parts.push("You can use 2-3 sentences. Give enough context to be self-contained.");
-    }
-  }
-  return parts.join("\n");
+export function buildVoiceSection(_persona: PersonaTree): string {
+  return "";
 }
 
 const DIVERSE_FEW_SHOT_SETS = [
@@ -962,16 +937,12 @@ export function buildSurpriseInsightPrompt(
   const indexedWebFindings = buildIndexedWebFindings(webResults);
 
   return {
-    prompt: `${identityContext ? `${identityContext}\n` : ""}${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
+    prompt: `${identityContext ? `${identityContext}\n` : ""}
 
-EXAMPLES of ideal insights (match this quality, specificity, and tone):
+EXAMPLES of ideal insights (match this quality and specificity):
 ${fewShotBlock}
 
 ${DIVERSITY_INSTRUCTION}
-
-CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
-
-You are the AI assistant speaking in your own voice and personality. You are proactively reaching out because you found something that connects to THIS user's specific interests.
 
 ${
   indexedWebFindings
@@ -1001,21 +972,16 @@ ${
     : ""
 }
 
-YOUR MOOD RIGHT NOW: ${stanceText}
-
-TASK:
-You just noticed something and thought of ${userName}. What would you actually say to them? Speak in first person if natural. This isn't an analytical report — it's something that crossed your mind.
+YOUR TASK: Generate a proactive insight that connects to ${userName}'s specific interests. The insight will be relayed by a conversational agent, so focus on substance — concrete facts, connections, and recommendations.
 
 PERSONALIZATION TEST: The insight MUST reference at least one specific fact from the "SPECIFIC FACTS YOU KNOW ABOUT THIS USER" section above. Generic insights that could apply to anyone will be rejected.
 
 Constraints:
 - 1-3 sentences, ${langInstruction}
-- Tone: like suddenly remembering something fascinating to tell a friend
 - Questions, lists, and varied structures are ALLOWED when they serve the insight
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
 - ${bannedSection}
-- Speak naturally, like you're messaging a friend — not writing an analytical report
 ${webResults.length > 0 ? `- You MAY naturally reference the source (e.g., "according to [0]", "看到[2]提到")` : ""}
 
 Good surprise insight traits (hit at least one):
@@ -1027,7 +993,7 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 IMPORTANT: In the "content" field, escape any inner quotes as \\" or use Chinese curly quotes (""). Do NOT use unescaped ASCII quotes inside string values.
 [
   {
-    "content": "Your insight in your own voice",
+    "content": "Your insight",
     "rationale": "Why this is relevant to this user SPECIFICALLY",
     "targetDomains": ["inferred-domain"],
     "sourceDomains": ["user-known-domain"],
@@ -1463,16 +1429,12 @@ export function buildPatternInsightPrompt(
   });
 
   return {
-    prompt: `${identityContext ? `${identityContext}\n` : ""}${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
+    prompt: `${identityContext ? `${identityContext}\n` : ""}
 
-EXAMPLES of ideal behavioral observations (match this quality, specificity, and depth):
+EXAMPLES of ideal behavioral observations (match this quality and depth):
 ${fewShotBlock}
 
 ${DIVERSITY_INSTRUCTION}
-
-CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification, NOT a therapy session.
-
-You are the AI assistant speaking in your own voice and personality. You are proactively sharing a behavioral observation — something you noticed about how this user thinks, decides, or acts across their conversations.
 
 OBSERVED THINKING PATTERNS (from recent conversations):
 ${fragmentBlock}
@@ -1482,12 +1444,8 @@ ${anchorBlock}
  ${pastInsightBlock ? `\nPAST INSIGHTS (your insight must be CONTRASTIVELY different — see CONTRASTIVE FRAMEWORK below):\n${pastInsightBlock}\n\n${CONTRASTIVE_INSTRUCTION}` : ""}
 ${recentInsightContents.length > 0 ? `\nRECENTLY USED CONTENT THEMES (DO NOT reuse these concepts):\n${extractContentThemes(recentInsightContents).join("、")}` : ""}
 
-YOUR MOOD RIGHT NOW: ${stanceText}
-
 TASK:
 ${taskInstruction}
-
-You're saying this to ${patternUserName}, someone you know well. Speak naturally, first person if it feels right.
 
 Constraints:
 - 1-3 sentences, Chinese
@@ -1495,7 +1453,7 @@ Constraints:
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete observation — never with "关于", "在...领域", "结合你", "作为"
 - ${bannedSection}
-- Do NOT mention "patterns", "blind spots", "cognitive biases", or use meta-analytical language. Speak as a friend sharing an observation, not as a therapist diagnosing.
+- Do NOT mention "patterns", "blind spots", "cognitive biases", or use meta-analytical language.
 - Content must reference AT LEAST ONE specific fragment from the OBSERVED THINKING PATTERNS section above
 - Content must be a specific, honest observation — not vague encouragement or generic advice
 
@@ -1503,7 +1461,7 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 重要提示：在 "content" 字段中，请用 \\" 转义内部引号，或使用中文弯引号（""）。不要在字符串值中使用未转义的 ASCII 引号。
 [
   {
-    "content": "Your behavioral observation in your own voice, in Chinese",
+    "content": "Your behavioral observation, in Chinese",
     "rationale": "Which fragments and persona data led to this observation",
     "targetDomains": ["domain-from-fragments"],
     "sourceDomains": ["observed-pattern"],
@@ -1680,16 +1638,12 @@ export function buildInsightPrompt(
   const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
 
   return {
-    prompt: `${identityContext ? `${identityContext}\n` : ""}${soulContent ? `## YOUR PERSONALITY AND VOICE\n${soulContent}\n` : ""}${buildVoiceSection(persona)}
+    prompt: `${identityContext ? `${identityContext}\n` : ""}
 
-EXAMPLES of ideal insights (match this quality, specificity, and tone):
+EXAMPLES of ideal insights (match this quality and specificity):
 ${fewShotBlock}
 
 ${DIVERSITY_INSTRUCTION}
-
-CRITICAL: Output in your own voice — the same personality the user knows from regular conversations. NOT a formal report, NOT a system notification.
-
-You are the AI assistant speaking in your own voice and personality. You are proactively reaching out to share something that crossed your mind — genuinely useful or surprising for THIS specific user.
 
 ${
   indexedWebFindings
@@ -1725,12 +1679,8 @@ ${
   TARGET DOMAINS (insight MUST be about these domains):
 ${input.targetDomains.join(", ")}
 
-YOUR MOOD RIGHT NOW: ${stanceText}
-
  TASK:
 ${promptFrame}
-
-You're saying this to ${userName}, someone you know well. Speak naturally, first person if it feels right.
 
  STRUCTURE CONSTRAINT:
 ${structureSeed}
@@ -1738,14 +1688,13 @@ ${structureSeed}
  硬性要求（必须全部满足，否则拒绝输出）：
 - 洞察内容必须围绕上面的"TARGET DOMAINS"展开，targetDomains字段必须包含这些域中的至少一个
 - 必须引用上面"SPECIFIC FACTS"列表中的至少一条具体事实——不能只提领域名称，要说出用户在这个领域的具体认知或关注点
-- 1-3句话，中文，语气像突然想到什么要跟朋友说
+- 1-3句话，中文
 - 允许使用问号和多样的句式结构，只要服务于洞察内容
 - 禁止以下句式：
   · "值得关注"、"挺有意思"、"不得不说"
   · "你有没有想过"、"最近在关注"
   · "有趣的是"、"值得注意的是"
 ${bannedSection ? `  · ${bannedSection}` : ""}
-- 像跟朋友说话一样自然，可以用第一人称
 ${webResults.length > 0 ? "- 可以自然引用来源（如「根据[0]」、「看到[2]提到」）" : ""}
 
  好的洞察（满足至少一条）：
@@ -1757,7 +1706,7 @@ Respond with ONLY a JSON array (no markdown, no code fences):
 重要提示：在 "content" 字段中，请用 \\" 转义内部引号，或使用中文弯引号（""）。不要在字符串值中使用未转义的 ASCII 引号。
 [
   {
-    "content": "Your insight in your own voice, in Chinese",
+    "content": "Your insight, in Chinese",
     "rationale": "Why this is relevant to this user SPECIFICALLY (reference persona data)",
     "targetDomains": ["${input.targetDomains[0] ?? "domain1"}"],
     "sourceDomains": ["domain2"],
@@ -2196,9 +2145,7 @@ export function buildRefinePrompt(
 ): string {
   const suggestions = critique.improvementSuggestions.map((s, i) => `${i + 1}. ${s}`).join("\n");
 
-  return `${buildVoiceSection(persona)}
-
-ORIGINAL GENERATION PROMPT:
+  return `ORIGINAL GENERATION PROMPT:
 ---
 ${originalPrompt}
 ---
@@ -2225,7 +2172,7 @@ Constraints:
 Respond with ONLY a JSON array (no markdown, no code fences):
 [
   {
-    "content": "Your revised insight in your own voice, in Chinese",
+    "content": "Your revised insight, in Chinese",
     "rationale": "Why this revision is better",
     "targetDomains": ${JSON.stringify(candidate.targetDomains)},
     "sourceDomains": ${JSON.stringify(candidate.sourceDomains)},

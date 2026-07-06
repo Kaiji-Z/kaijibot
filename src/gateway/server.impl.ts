@@ -1570,15 +1570,9 @@ export async function startGatewayServer(
             },
             {
               insightGenerator: async (persona, input, options) => {
-                const soulContent = await loadSoulContentForInsight({
-                  config: cfgAtStart,
-                  agentId: defaultAgentId,
-                  workspaceDir: defaultWorkspaceDir,
-                });
                 const identityContext = await loadIdentityContextForInsight(defaultWorkspaceDir);
                 const enrichedInput = {
                   ...input,
-                  ...(soulContent ? { soulContent } : {}),
                   ...(identityContext ? { identityContext } : {}),
                 };
                 return generateInsightCandidatesLLM(
@@ -1589,7 +1583,6 @@ export async function startGatewayServer(
                   {
                     maxCandidates: options?.maxCandidates,
                     timeout: 20_000,
-                    systemContext: workspacePersonaContext || undefined,
                   },
                 );
               },
