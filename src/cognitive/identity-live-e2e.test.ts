@@ -404,3 +404,93 @@ describe.skipIf(!isLive || !ZAI_API_KEY)(
     });
   },
 );
+
+// ===========================================================================
+// Phase 1f: Insight delivery via heartbeat (no LLM)
+// ===========================================================================
+describe("Phase 1f: insight heartbeat delivery chain", () => {
+  it("isInsightEvent detects [Cognitive Insight] marker", async () => {
+    const { isInsightEvent } = await import("../infra/heartbeat-events-filter.js");
+    expect(isInsightEvent("System: [ts] [Cognitive Insight] some insight text")).toBe(true);
+    expect(isInsightEvent("[Evolution Signal] something")).toBe(false);
+    expect(isInsightEvent("regular message")).toBe(false);
+  });
+
+  it("buildInsightEventPrompt returns non-empty relay instruction", async () => {
+    const { buildInsightEventPrompt } = await import("../infra/heartbeat-events-filter.js");
+    const prompt = buildInsightEventPrompt();
+    expect(prompt).toContain("洞察");
+    expect(prompt.length).toBeGreaterThan(20);
+  });
+
+  it("enqueueSystemEvent + drainFormattedSystemEvents produces correct format", async () => {
+    const { enqueueSystemEvent } = await import("../infra/system-events.js");
+
+    const sessionKey = "agent:main:main";
+    const insightText = "你最近关注的 Rust 和嵌入式有个交叉点值得看看";
+    enqueueSystemEvent(`[Cognitive Insight] ${insightText}`, { sessionKey });
+
+    const { drainFormattedSystemEvents } =
+      await import("../auto-reply/reply/session-system-events.js");
+    const block = await drainFormattedSystemEvents({
+      cfg: {} as never,
+      sessionKey,
+      isMainSession: true,
+      isNewSession: false,
+    });
+    expect(block).toBeDefined();
+    expect(block!).toContain("[Cognitive Insight]");
+    expect(block!).toContain(insightText);
+    expect(block!).toContain("System:");
+  });
+
+  it("shouldDropSystemEventUserMessage filters insight system event from chat history", async () => {
+    const { sanitizeChatHistoryMessages } = await import("../gateway/server-methods/chat.js");
+
+    const messages = [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text:
+              "System: [2026-07-04 10:00:00 GMT+8] [Cognitive Insight] Rust RTOS article\n" +
+              "System:\nSystem: 一条主动洞察已生成",
+          },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "嘿，还记得你之前聊过 Rust 吗？" }],
+      },
+      {
+        role: "user",
+        content: [{ type: "text", text: "帮我查天气" }],
+      },
+    ];
+
+    const result = sanitizeChatHistoryMessages(messages, 10000);
+    const userMsgs = result.filter((m) => (m as { role?: string }).role === "user");
+    expect(userMsgs).toHaveLength(1);
+    expect((userMsgs[0] as { content: Array<{ text: string }> }).content[0]!.text).toBe(
+      "帮我查天气",
+    );
+    expect(result).toHaveLength(2);
+  });
+
+  it("findSessionKeyForUserId resolves operator session for insight delivery", async () => {
+    const { findSessionKeyForUserId } = await import("../gateway/cognitive-delivery.js");
+
+    const sessionsDir = join(tempDir, "sessions", "main");
+    mkdirSync(sessionsDir, { recursive: true });
+    writeFileSync(
+      join(sessionsDir, "sessions.json"),
+      JSON.stringify({
+        "agent:main:main": { sessionId: "s1", lastChannel: "webchat" },
+      }),
+    );
+
+    const cfg = { session: { store: join(sessionsDir, "sessions.json") } } as never;
+    expect(findSessionKeyForUserId(cfg, "operator")).toBe("agent:main:main");
+  });
+});
