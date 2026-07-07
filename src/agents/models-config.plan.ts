@@ -5,6 +5,7 @@ import {
   mergeWithExistingProviderSecrets,
   type ExistingProviderConfig,
 } from "./models-config.merge.js";
+import { resolveDiscoveryOverrides } from "./models-config.overrides.js";
 import {
   applyNativeStreamingUsageCompat,
   enforceSourceManagedProviderSecrets,
@@ -145,7 +146,9 @@ export async function planKaijiBotModelsJsonWithDeps(
       secretRefManagedProviders,
     }) ?? mergedProviders;
   const finalProviders = applyNativeStreamingUsageCompat(secretEnforcedProviders);
-  const nextContents = `${JSON.stringify({ providers: finalProviders }, null, 2)}\n`;
+  const discoveryOverrides = await resolveDiscoveryOverrides(agentDir);
+  const providersWithOverrides = applyDiscoveryOverrides(finalProviders, discoveryOverrides);
+  const nextContents = `${JSON.stringify({ providers: providersWithOverrides }, null, 2)}\n`;
 
   if (params.existingRaw === nextContents) {
     return { action: "noop" };
@@ -161,4 +164,23 @@ export async function planKaijiBotModelsJson(
   params: Parameters<typeof planKaijiBotModelsJsonWithDeps>[0],
 ): Promise<ModelsJsonPlan> {
   return planKaijiBotModelsJsonWithDeps(params);
+}
+
+function applyDiscoveryOverrides(
+  providers: Record<string, ProviderConfig>,
+  overrides: Record<string, Record<string, unknown>>,
+): Record<string, ProviderConfig & { modelOverrides?: Record<string, unknown> }> {
+  if (Object.keys(overrides).length === 0) {
+    return providers;
+  }
+  const result: Record<string, ProviderConfig & { modelOverrides?: Record<string, unknown> }> = {};
+  for (const [key, provider] of Object.entries(providers)) {
+    const modelOverrides = overrides[key];
+    if (modelOverrides && Object.keys(modelOverrides).length > 0) {
+      result[key] = { ...provider, modelOverrides };
+    } else {
+      result[key] = provider;
+    }
+  }
+  return result;
 }

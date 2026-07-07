@@ -46,6 +46,12 @@ async function buildModelsJsonFingerprint(params: {
     path.join(params.agentDir, "auth-profiles.json"),
   );
   const modelsFileMtimeMs = await readFileMtimeMs(path.join(params.agentDir, "models.json"));
+  const modelsDevCacheMtimeMs = await readFileMtimeMs(
+    path.join(params.agentDir, "cache", "models-dev.json"),
+  );
+  const providerModelsCacheMtimeMs = await readFileMtimeMs(
+    path.join(params.agentDir, "cache", "provider-models.json"),
+  );
   const envShape = createConfigRuntimeEnv(params.config, {});
   return stableStringify({
     config: params.config,
@@ -53,6 +59,8 @@ async function buildModelsJsonFingerprint(params: {
     envShape,
     authProfilesMtimeMs,
     modelsFileMtimeMs,
+    modelsDevCacheMtimeMs,
+    providerModelsCacheMtimeMs,
   });
 }
 
