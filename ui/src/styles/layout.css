@@ -477,6 +477,8 @@
   flex: 1;
   min-width: 0;
   opacity: 0.85;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
   transition: opacity var(--duration-normal) var(--ease-out);
 }
 
