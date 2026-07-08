@@ -7,6 +7,12 @@
  * fully isolated cognitive profile per agent.
  */
 
+import {
+  isCronSessionKey,
+  isHeartbeatSessionKey,
+  isSubagentSessionKey,
+} from "../sessions/session-key-utils.js";
+
 /** The canonical userId for local operator sessions (Control UI / TUI). */
 export const OPERATOR_USER_ID = "operator";
 
@@ -55,8 +61,8 @@ export function resolveOperatorSenderId(senderId?: string | null): string | unde
  *  1. senderId (conversation-time path) — mapped via resolveOperatorSenderId,
  *     otherwise passed through as-is.
  *  2. sessionKey tail (background path) — "main" → operator, any other non-empty
- *     tail → returned as-is. Group sessions without :sender: → null (tail is a
- *     group ID, not a user ID).
+ *     tail → returned as-is. System sessions (cron, heartbeat, subagent) and
+ *     group sessions without :sender: → null (tail is not a user ID).
  */
 export function resolveCognitiveUserId(
   sessionKey?: string,
@@ -66,6 +72,13 @@ export function resolveCognitiveUserId(
     return resolveOperatorSenderId(senderId) ?? senderId;
   }
   if (!sessionKey) {
+    return null;
+  }
+  if (
+    isCronSessionKey(sessionKey) ||
+    isHeartbeatSessionKey(sessionKey) ||
+    isSubagentSessionKey(sessionKey)
+  ) {
     return null;
   }
   const tail = sessionKey.split(":").pop();

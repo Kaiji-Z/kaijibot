@@ -97,4 +97,18 @@ describe("resolveCognitiveUserId", () => {
   it("resolves per-peer DM without channel prefix", () => {
     expect(resolveCognitiveUserId("agent:main:direct:ou_perpeer")).toBe("ou_perpeer");
   });
+
+  it("returns null for cron session key", () => {
+    expect(
+      resolveCognitiveUserId("agent:main:cron:0ca024e4-7440-4e71-a499-86b69fa6c0fb"),
+    ).toBeNull();
+  });
+
+  it("returns null for heartbeat session key", () => {
+    expect(resolveCognitiveUserId("agent:main:feishu:direct:ou_xxx:heartbeat")).toBeNull();
+  });
+
+  it("returns null for subagent session key", () => {
+    expect(resolveCognitiveUserId("agent:main:subagent:task-123")).toBeNull();
+  });
 });
