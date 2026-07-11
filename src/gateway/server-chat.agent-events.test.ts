@@ -1434,4 +1434,72 @@ describe("agent event handler", () => {
       "Disk usage crossed 95 percent on /data and needs cleanup now.",
     );
   });
+
+  it("broadcasts final chat event for wake heartbeat with real content", () => {
+    vi.mocked(loadConfig).mockReturnValue({
+      agents: { defaults: { heartbeat: { ackMaxChars: 10 } } },
+    });
+
+    const { broadcast, chatRunState, handler } = createHarness({ now: 5_000 });
+    chatRunState.registry.add("run-evolution", {
+      sessionKey: "session-evolution",
+      clientRunId: "client-evolution",
+    });
+    registerAgentRunContext("run-evolution", {
+      sessionKey: "session-evolution",
+      isHeartbeat: true,
+      isControlUiVisible: true,
+      verboseLevel: "off",
+    });
+
+    handler({
+      runId: "run-evolution",
+      seq: 1,
+      stream: "assistant",
+      ts: Date.now(),
+      data: {
+        text: "HEARTBEAT_OK I noticed you ran several tools. I created a skill for this workflow.",
+      },
+    });
+
+    emitLifecycleEnd(handler, "run-evolution");
+
+    const finalPayload = expectSingleFinalChatPayload(broadcast) as {
+      message?: { content?: Array<{ text?: string }> };
+    };
+    expect(finalPayload.message?.content?.[0]?.text).toBe(
+      "I noticed you ran several tools. I created a skill for this workflow.",
+    );
+  });
+
+  it("suppresses wake heartbeat final when reply is pure ack token", () => {
+    const { broadcast, chatRunState, handler } = createHarness({ now: 6_000 });
+    chatRunState.registry.add("run-insight", {
+      sessionKey: "session-insight",
+      clientRunId: "client-insight",
+    });
+    registerAgentRunContext("run-insight", {
+      sessionKey: "session-insight",
+      isHeartbeat: true,
+      isControlUiVisible: true,
+      verboseLevel: "off",
+    });
+
+    handler({
+      runId: "run-insight",
+      seq: 1,
+      stream: "assistant",
+      ts: Date.now(),
+      data: {
+        text: "HEARTBEAT_OK Read HEARTBEAT.md if it exists (workspace context). Follow it strictly.",
+      },
+    });
+
+    emitLifecycleEnd(handler, "run-insight");
+
+    const finalPayload = expectSingleFinalChatPayload(broadcast) as {
+      message?: unknown;
+    };
+    expect(finalPayload.message).toBeUndefined();
+  });
 });
