@@ -605,11 +605,20 @@ export async function runAgentTurnWithFallback(params: {
     didNotifyAgentRunStart = true;
     params.opts?.onAgentRunStart?.(runId);
   };
-  const shouldSurfaceToControlUi = isInternalMessageChannel(
-    params.followupRun.run.messageProvider ??
-      params.sessionCtx.Surface ??
-      params.sessionCtx.Provider,
-  );
+  // Wake-triggered heartbeats (evolution signals, cognitive insights) should be
+  // visible in Control UI. Without this, the agent event handler skips chat
+  // final events because isControlUiVisible is false for non-webchat channels,
+  // and the user must refresh to see heartbeat replies.
+  const isWakeHeartbeatProvider =
+    params.sessionCtx.Provider === "evolution-event" ||
+    params.sessionCtx.Provider === "insight-event";
+  const shouldSurfaceToControlUi =
+    isWakeHeartbeatProvider ||
+    isInternalMessageChannel(
+      params.followupRun.run.messageProvider ??
+        params.sessionCtx.Surface ??
+        params.sessionCtx.Provider,
+    );
   if (params.sessionKey) {
     registerAgentRunContext(runId, {
       sessionKey: params.sessionKey,
