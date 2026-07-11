@@ -935,6 +935,12 @@ export async function startGatewayServer(
     channelManager,
     startedAt: serverStartedAt,
   });
+  try {
+    const { ensureContextWindowCacheLoaded } = await import("../agents/context.js");
+    await ensureContextWindowCacheLoaded();
+  } catch {
+    // Best-effort: session defaults will fall back to DEFAULT_CONTEXT_TOKENS.
+  }
   log.info("starting HTTP server...");
   const {
     canvasHost,
