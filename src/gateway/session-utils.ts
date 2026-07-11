@@ -1303,17 +1303,16 @@ export function buildGatewaySessionRow(params: {
       entry,
     }) ?? resolveNonNegativeNumber(transcriptUsage?.estimatedCostUsd);
   const contextTokens =
-    resolvePositiveNumber(entry?.contextTokens) ??
-    resolvePositiveNumber(transcriptUsage?.contextTokens) ??
     resolvePositiveNumber(
       resolveContextTokensForModel({
         cfg,
         provider: modelProvider,
         model,
-        // Gateway/session listing is read-only; don't start async model discovery.
         allowAsyncLoad: false,
       }),
-    );
+    ) ??
+    resolvePositiveNumber(entry?.contextTokens) ??
+    resolvePositiveNumber(transcriptUsage?.contextTokens);
 
   let derivedTitle: string | undefined;
   let lastMessagePreview: string | undefined;
