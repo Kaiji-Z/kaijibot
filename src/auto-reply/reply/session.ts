@@ -404,7 +404,11 @@ export async function initSessionState(params: {
   // session continuity. Forcing freshEntry=true prevents accidental data loss.
   // See #58409 for details on silent session reset bug.
   const isSystemEvent =
-    ctx.Provider === "heartbeat" || ctx.Provider === "cron-event" || ctx.Provider === "exec-event";
+    ctx.Provider === "heartbeat" ||
+    ctx.Provider === "cron-event" ||
+    ctx.Provider === "exec-event" ||
+    ctx.Provider === "evolution-event" ||
+    ctx.Provider === "insight-event";
   const entryFreshness = entry
     ? isSystemEvent
       ? ({ fresh: true } satisfies SessionFreshness)
