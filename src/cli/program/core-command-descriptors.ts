@@ -1,3 +1,4 @@
+import { t } from "../i18n/translate.js";
 import { defineCommandDescriptorCatalog } from "./command-descriptor-utils.js";
 import type { NamedCommandDescriptor } from "./command-group-descriptors.js";
 
@@ -6,98 +7,97 @@ export type CoreCliCommandDescriptor = NamedCommandDescriptor;
 const coreCliCommandCatalog = defineCommandDescriptorCatalog([
   {
     name: "setup",
-    description: "Initialize local config and agent workspace",
+    description: t("cli.commands.setup.description"),
     hasSubcommands: false,
   },
   {
     name: "onboard",
-    description: "Interactive onboarding for gateway, workspace, and skills",
+    description: t("cli.commands.onboard.description"),
     hasSubcommands: false,
   },
   {
     name: "configure",
-    description: "Interactive configuration for credentials, channels, gateway, and agent defaults",
+    description: t("cli.commands.configure.description"),
     hasSubcommands: false,
   },
   {
     name: "config",
-    description:
-      "Non-interactive config helpers (get/set/unset/file/validate). Default: starts guided setup.",
+    description: t("cli.commands.config.description"),
     hasSubcommands: true,
   },
   {
     name: "backup",
-    description: "Create and verify local backup archives for KaijiBot state",
+    description: t("cli.commands.backup.description"),
     hasSubcommands: true,
   },
   {
     name: "doctor",
-    description: "Health checks + quick fixes for the gateway and channels",
+    description: t("cli.commands.doctor.description"),
     hasSubcommands: false,
   },
   {
     name: "dashboard",
-    description: "Open the Control UI with your current token",
+    description: t("cli.commands.dashboard.description"),
     hasSubcommands: false,
   },
   {
     name: "reset",
-    description: "Reset local config/state (keeps the CLI installed)",
+    description: t("cli.commands.reset.description"),
     hasSubcommands: false,
   },
   {
     name: "uninstall",
-    description: "Uninstall the gateway service + local data (CLI remains)",
+    description: t("cli.commands.uninstall.description"),
     hasSubcommands: false,
   },
   {
     name: "migrate",
-    description: "Migrate data from OpenClaw or legacy installations to KaijiBot",
+    description: t("cli.commands.migrate.description"),
     hasSubcommands: false,
   },
   {
     name: "android-install",
-    description: "Set up KaijiBot on Android/Termux (auto-installs packages, boot script, battery settings)",
+    description: t("cli.commands.android-install.description"),
     hasSubcommands: false,
   },
   {
     name: "message",
-    description: "Send, read, and manage messages",
+    description: t("cli.commands.message.description"),
     hasSubcommands: true,
   },
   {
     name: "mcp",
-    description: "Manage KaijiBot MCP config and channel bridge",
+    description: t("cli.commands.mcp.description"),
     hasSubcommands: true,
   },
   {
     name: "agent",
-    description: "Run one agent turn via the Gateway",
+    description: t("cli.commands.agent.description"),
     hasSubcommands: false,
   },
   {
     name: "agents",
-    description: "Manage isolated agents (workspaces, auth, routing)",
+    description: t("cli.commands.agents.description"),
     hasSubcommands: true,
   },
   {
     name: "status",
-    description: "Show channel health and recent session recipients",
+    description: t("cli.commands.status.description"),
     hasSubcommands: false,
   },
   {
     name: "health",
-    description: "Fetch health from the running gateway",
+    description: t("cli.commands.health.description"),
     hasSubcommands: false,
   },
   {
     name: "sessions",
-    description: "List stored conversation sessions",
+    description: t("cli.commands.sessions.description"),
     hasSubcommands: true,
   },
   {
     name: "tasks",
-    description: "Inspect durable background task state",
+    description: t("cli.commands.tasks.description"),
     hasSubcommands: true,
   },
 ] as const satisfies ReadonlyArray<CoreCliCommandDescriptor>);

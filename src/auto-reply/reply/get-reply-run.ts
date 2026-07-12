@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { resolveSessionAuthProfileOverride } from "../../agents/auth-profiles/session-override.js";
 import type { ExecToolDefaults } from "../../agents/bash-tools.js";
 import { resolveFastModeState } from "../../agents/fast-mode.js";
+import { t } from "../../cli/i18n/translate.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveGroupSessionKey } from "../../config/sessions/group.js";
 import {
@@ -314,22 +315,27 @@ export async function runPreparedReply(
             "## Soul Preset Selection",
             "This is the user's first conversation with you. Before responding to their message, briefly introduce yourself and invite them to choose a soul preset.",
             "Explain that a soul preset defines your personality and behavioral style. Present these options naturally in conversation (not as a raw list):",
-            "- INTJ 建筑师 — strategic, systems-thinking, counter-evidence first",
-            "- INTP 逻辑学家 — analytical, multi-hypothesis, confidence labels",
-            "- ENTJ 指挥官 — decisive, actionable plans with timelines",
-            "- ENTP 辩论家 — must challenge user's arguments, no echo chamber",
-            "- INFJ 提倡者 — Socratic questioning, emotional intelligence",
-            "- INFP 调停者 — unconventional solutions, cross-domain creativity",
-            "- ENFJ 主人公 — adaptive teaching, verify understanding",
-            "- ENFP 竞选者 — enthusiastic, cross-domain connections",
-            "- ISTJ 物流师 — fact-verified, source-cited, process-oriented",
-            "- ISFJ 守卫者 — anticipates needs, reliable, detail-oriented",
-            "- ESTJ 总经理 — goal-tracking, reject vague objectives",
-            "- ESFJ 执政官 — relationship-aware, consensus-building",
-            "- ISTP 鉴赏家 — code quality focus, complexity watchdog",
-            "- ISFP 探险家 — offers options, subjective/objective separated",
-            "- ESTP 企业家 — fastest path, experiment-first, risk-aware",
-            "- ESFP 表演者 — engaging delivery, story-driven, fun",
+            ...[
+              ["intj", "strategic, systems-thinking, counter-evidence first"],
+              ["intp", "analytical, multi-hypothesis, confidence labels"],
+              ["entj", "decisive, actionable plans with timelines"],
+              ["entp", "must challenge user's arguments, no echo chamber"],
+              ["infj", "Socratic questioning, emotional intelligence"],
+              ["infp", "unconventional solutions, cross-domain creativity"],
+              ["enfj", "adaptive teaching, verify understanding"],
+              ["enfp", "enthusiastic, cross-domain connections"],
+              ["istj", "fact-verified, source-cited, process-oriented"],
+              ["isfj", "anticipates needs, reliable, detail-oriented"],
+              ["estj", "goal-tracking, reject vague objectives"],
+              ["esfj", "relationship-aware, consensus-building"],
+              ["istp", "code quality focus, complexity watchdog"],
+              ["isfp", "offers options, subjective/objective separated"],
+              ["estp", "fastest path, experiment-first, risk-aware"],
+              ["esfp", "engaging delivery, story-driven, fun"],
+            ].map(
+              ([key, traits]) =>
+                `- ${key.toUpperCase()} ${t(`cli.soul.preset.${key}`)} — ${traits}`,
+            ),
             "If they choose one, call the switch_soul tool with the preset key (e.g., 'intj'). If they say they don't want to choose, respect that and proceed normally. Keep it brief — don't overwhelm.",
           ].join("\n"),
         );

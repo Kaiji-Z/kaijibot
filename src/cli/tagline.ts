@@ -1,61 +1,35 @@
-const DEFAULT_TAGLINE = "认知驱动，主动思考。";
+import { cliI18n } from "./i18n/translate.js";
+
 export type TaglineMode = "random" | "default" | "off";
 
-const HOLIDAY_TAGLINES = {
-  newYear: "新年新认知——愿你的思维模型持续迭代，偏差逐年缩小。",
-  lunarNewYear: "春节快乐——愿你的知识图谱像烟花一样绚烂，洞察力像红包一样丰厚。",
-  christmas: "圣诞快乐——愿每个想法都像圣诞树上的灯，串联起来照亮整个思维空间。",
-  eid: "开斋节吉庆——愿你的认知边界不断扩展，像晨光一样温暖而开阔。",
-  diwali: "排灯节快乐——愿知识的灯火驱散无知的黑暗，照亮每一条思维路径。",
-  easter: "复活节快乐——愿你不断发现隐藏的认知彩蛋，每一次探索都有意外收获。",
-  hanukkah: "光明节快乐——八夜八次认知升级，每一天都比昨天更明亮。",
-  halloween: "万圣节快乐——勇敢面对思维中的幽灵，最深的恐惧往往藏着最真的洞见。",
-  thanksgiving: "感恩节快乐——感谢每一个让你重新思考的观点，认知的成长源于拥抱不同。",
-  valentines: "情人节快乐——最好的陪伴是帮你思考得更好，而不是替你思考。",
-} as const;
+/**
+ * Identifier for a holiday that has a tagline. Rules are keyed by ID rather
+ * than by tagline text so that locale switches do not break rule lookup.
+ */
+type HolidayId =
+  | "newYear"
+  | "lunarNewYear"
+  | "christmas"
+  | "eid"
+  | "diwali"
+  | "easter"
+  | "hanukkah"
+  | "halloween"
+  | "thanksgiving"
+  | "valentines";
 
-const TAGLINES: string[] = [
-  "真正的智能不是知道所有答案，而是知道该问什么问题。",
-  "每一次对话都是一次认知升级。",
-  "思维的边界，就是世界的边界。",
-  "最好的助手不是替你思考，而是帮你思考得更好。",
-  "知识不是力量，连接知识的能力才是。",
-  "提问的深度决定了认知的高度。",
-  "学习不是填满水桶，而是点燃火焰。",
-  "你看到的不是世界本身，而是你的思维模型对世界的投影。",
-  "好的问题比好的答案更有价值。",
-  "认知的盲区，正是成长的起点。",
-  "每一个不曾起舞的日子，都是对思维的辜负。",
-  "碎片化的信息不等于碎片化的认知——关键在于连接。",
-  "当你开始质疑自己的假设，你就开始真正地思考了。",
-  "真正的理解是能把复杂的事情讲给外行听懂。",
-  "灵感不是等来的，是在持续思考中偶然相遇的。",
-  "你的注意力在哪里，你的认知世界就在哪里。",
-  "跨界的碰撞，往往能产生最耀眼的火花。",
-  "思考的质量取决于你愿意推翻多少个旧想法。",
-  "知识的复利是最强大的复利——每天进步一点点，十年后不可估量。",
-  "不要害怕改变观点——那说明你在学习。",
-  "深度思考的人，看到的是树背后的森林，森林背后的生态。",
-  "智慧不是知识的堆砌，而是知道什么可以忽略。",
-  "每一段经历都是训练数据，关键是你怎么从中学习。",
-  "认知的最高境界，是知道自己的无知。",
-  "好的工具放大你的能力，更好的工具改变你的思维方式。",
-  "真正的对话不是交换观点，而是共同创造新的理解。",
-  "在信息过载的时代，过滤比获取更重要。",
-  "思考需要勇气——因为思考意味着可能改变自己。",
-  "最好的学习方式，是把学到的东西用自己的话讲出来。",
-  "人工智能不是取代你思考，而是帮你思考得更快、更远、更深。",
-  HOLIDAY_TAGLINES.newYear,
-  HOLIDAY_TAGLINES.lunarNewYear,
-  HOLIDAY_TAGLINES.christmas,
-  HOLIDAY_TAGLINES.eid,
-  HOLIDAY_TAGLINES.diwali,
-  HOLIDAY_TAGLINES.easter,
-  HOLIDAY_TAGLINES.hanukkah,
-  HOLIDAY_TAGLINES.halloween,
-  HOLIDAY_TAGLINES.thanksgiving,
-  HOLIDAY_TAGLINES.valentines,
-];
+/**
+ * A single entry in the tagline pool. Philosophical entries have no
+ * `holidayId`; holiday entries do, and are only active on their dates.
+ */
+interface TaglineEntry {
+  /** Stable identifier used for KAIJIBOT_TAGLINE_INDEX lookup. */
+  id: string;
+  /** Localized text, resolved from the CLI i18n bundle. */
+  text: string;
+  /** When set, the entry is active only when the holiday rule returns true. */
+  holidayId?: HolidayId;
+}
 
 type HolidayRule = (date: Date) => boolean;
 
@@ -121,10 +95,15 @@ const isFourthThursdayOfNovember: HolidayRule = (date) => {
   return parts.day === fourthThursday;
 };
 
-const HOLIDAY_RULES = new Map<string, HolidayRule>([
-  [HOLIDAY_TAGLINES.newYear, onMonthDay(0, 1)],
+/**
+ * Holiday activation rules, keyed by {@link HolidayId}. Lookup is decoupled
+ * from the localized tagline text so a locale switch never breaks rule
+ * resolution.
+ */
+const HOLIDAY_RULES_BY_ID = new Map<HolidayId, HolidayRule>([
+  ["newYear", onMonthDay(0, 1)],
   [
-    HOLIDAY_TAGLINES.lunarNewYear,
+    "lunarNewYear",
     onSpecificDates(
       [
         [2025, 0, 29],
@@ -135,7 +114,7 @@ const HOLIDAY_RULES = new Map<string, HolidayRule>([
     ),
   ],
   [
-    HOLIDAY_TAGLINES.eid,
+    "eid",
     onSpecificDates(
       [
         [2025, 2, 30],
@@ -147,7 +126,7 @@ const HOLIDAY_RULES = new Map<string, HolidayRule>([
     ),
   ],
   [
-    HOLIDAY_TAGLINES.diwali,
+    "diwali",
     onSpecificDates(
       [
         [2025, 9, 20],
@@ -158,7 +137,7 @@ const HOLIDAY_RULES = new Map<string, HolidayRule>([
     ),
   ],
   [
-    HOLIDAY_TAGLINES.easter,
+    "easter",
     onSpecificDates(
       [
         [2025, 3, 20],
@@ -169,25 +148,63 @@ const HOLIDAY_RULES = new Map<string, HolidayRule>([
     ),
   ],
   [
-    HOLIDAY_TAGLINES.hanukkah,
+    "hanukkah",
     inYearWindow([
       { year: 2025, month: 11, day: 15, duration: 8 },
       { year: 2026, month: 11, day: 5, duration: 8 },
       { year: 2027, month: 11, day: 25, duration: 8 },
     ]),
   ],
-  [HOLIDAY_TAGLINES.halloween, onMonthDay(9, 31)],
-  [HOLIDAY_TAGLINES.thanksgiving, isFourthThursdayOfNovember],
-  [HOLIDAY_TAGLINES.valentines, onMonthDay(1, 14)],
-  [HOLIDAY_TAGLINES.christmas, onMonthDay(11, 25)],
+  ["halloween", onMonthDay(9, 31)],
+  ["thanksgiving", isFourthThursdayOfNovember],
+  ["valentines", onMonthDay(1, 14)],
+  ["christmas", onMonthDay(11, 25)],
 ]);
 
-function isTaglineActive(tagline: string, date: Date): boolean {
-  const rule = HOLIDAY_RULES.get(tagline);
-  if (!rule) {
+/** Holiday IDs in the order they appear in the tagline pool. */
+const HOLIDAY_ORDER: readonly HolidayId[] = [
+  "newYear",
+  "lunarNewYear",
+  "christmas",
+  "eid",
+  "diwali",
+  "easter",
+  "hanukkah",
+  "halloween",
+  "thanksgiving",
+  "valentines",
+];
+
+const PHILOSOPHICAL_COUNT = 30;
+
+/**
+ * Build the tagline pool for the active locale. The shape is deterministic
+ * regardless of locale: 30 philosophical entries followed by 10 holiday
+ * entries in {@link HOLIDAY_ORDER}. Indices stay stable across locale
+ * switches so `KAIJIBOT_TAGLINE_INDEX` continues to behave predictably.
+ */
+function buildTaglinePool(): TaglineEntry[] {
+  const philosophical: TaglineEntry[] = [];
+  for (let i = 0; i < PHILOSOPHICAL_COUNT; i++) {
+    philosophical.push({
+      id: `p${i}`,
+      text: cliI18n.t(`cli.tagline.philosophical.${i}`),
+    });
+  }
+  const holidays: TaglineEntry[] = HOLIDAY_ORDER.map((holidayId) => ({
+    id: `h-${holidayId}`,
+    text: cliI18n.t(`cli.tagline.holiday.${holidayId}`),
+    holidayId,
+  }));
+  return [...philosophical, ...holidays];
+}
+
+function isTaglineActive(entry: TaglineEntry, date: Date): boolean {
+  if (!entry.holidayId) {
     return true;
   }
-  return rule(date);
+  const rule = HOLIDAY_RULES_BY_ID.get(entry.holidayId);
+  return rule ? rule(date) : true;
 }
 
 export interface TaglineOptions {
@@ -197,13 +214,19 @@ export interface TaglineOptions {
   mode?: TaglineMode;
 }
 
+/**
+ * Returns the list of currently active taglines. Holiday entries are
+ * filtered out unless their rule matches "today". The pool is rebuilt on
+ * every call so locale changes take effect immediately.
+ */
 export function activeTaglines(options: TaglineOptions = {}): string[] {
-  if (TAGLINES.length === 0) {
-    return [DEFAULT_TAGLINE];
-  }
+  const pool = buildTaglinePool();
   const today = options.now ? options.now() : new Date();
-  const filtered = TAGLINES.filter((tagline) => isTaglineActive(tagline, today));
-  return filtered.length > 0 ? filtered : TAGLINES;
+  const filtered = pool.filter((entry) => isTaglineActive(entry, today));
+  if (filtered.length === 0) {
+    return pool.map((entry) => entry.text);
+  }
+  return filtered.map((entry) => entry.text);
 }
 
 export function pickTagline(options: TaglineOptions = {}): string {
@@ -211,15 +234,16 @@ export function pickTagline(options: TaglineOptions = {}): string {
     return "";
   }
   if (options.mode === "default") {
-    return DEFAULT_TAGLINE;
+    return cliI18n.t("cli.tagline.default");
   }
   const env = options.env ?? process.env;
   const override = env?.KAIJIBOT_TAGLINE_INDEX;
   if (override !== undefined) {
     const parsed = Number.parseInt(override, 10);
     if (!Number.isNaN(parsed) && parsed >= 0) {
-      const pool = TAGLINES.length > 0 ? TAGLINES : [DEFAULT_TAGLINE];
-      return pool[parsed % pool.length];
+      const pool = buildTaglinePool();
+      const entry = pool[parsed % pool.length];
+      return entry ? entry.text : cliI18n.t("cli.tagline.default");
     }
   }
   const pool = activeTaglines(options);
@@ -228,4 +252,25 @@ export function pickTagline(options: TaglineOptions = {}): string {
   return pool[index];
 }
 
-export { TAGLINES, HOLIDAY_RULES, DEFAULT_TAGLINE };
+/**
+ * Returns the holiday-tagline text for `id` in the active locale. Exposed
+ * for callers that want to inspect specific holidays directly.
+ */
+export function getHolidayTagline(id: HolidayId): string {
+  return cliI18n.t(`cli.tagline.holiday.${id}`);
+}
+
+/**
+ * Read-only view of the holiday rules, keyed by holiday ID. Exposed for
+ * tooling that needs to enumerate active holidays without touching the
+ * localized strings.
+ */
+export const HOLIDAY_RULES: ReadonlyMap<HolidayId, HolidayRule> = HOLIDAY_RULES_BY_ID;
+
+/**
+ * Returns the default tagline for the active locale. Replaces the old
+ * `DEFAULT_TAGLINE` string constant.
+ */
+export function getDefaultTagline(): string {
+  return cliI18n.t("cli.tagline.default");
+}

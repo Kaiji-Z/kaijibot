@@ -9,6 +9,7 @@ import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
+import { t } from "./i18n/translate.js";
 
 type RunOpts = { allowFailure?: boolean; inherit?: boolean };
 
@@ -106,7 +107,7 @@ export function registerDnsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/dns.md")}\n`,
+        `\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/dns", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/dns.md")}\n`,
     );
 
   dns
@@ -135,7 +136,7 @@ export function registerDnsCli(program: Command) {
       const zonePath = getWideAreaZonePath(wideAreaDomain);
 
       const tableWidth = getTerminalTableWidth();
-      defaultRuntime.log(theme.heading("DNS setup"));
+      defaultRuntime.log(theme.heading(t("cli.dns.setup.title")));
       defaultRuntime.log(
         renderTable({
           width: tableWidth,
@@ -154,27 +155,27 @@ export function registerDnsCli(program: Command) {
         }).trimEnd(),
       );
       defaultRuntime.log("");
-      defaultRuntime.log(
-        theme.heading(
-          "Recommended config ($KAIJIBOT_CONFIG_PATH, default ~/.kaijibot/kaijibot.json):",
-        ),
-      );
+      defaultRuntime.log(theme.heading(t("cli.dns.setup.recommendedConfig")));
       defaultRuntime.writeJson({
         gateway: { bind: "auto" },
         discovery: { wideArea: { enabled: true, domain: wideAreaDomain } },
       });
       defaultRuntime.log("");
-      defaultRuntime.log(theme.heading("Tailscale admin (DNS → Nameservers):"));
+      defaultRuntime.log(theme.heading(t("cli.dns.setup.tailscaleAdmin")));
       defaultRuntime.log(
-        theme.muted(`- Add nameserver: ${tailnetIPv4 ?? "<this machine's tailnet IPv4>"}`),
+        theme.muted(
+          t("cli.dns.setup.addNameserver", {
+            ip: tailnetIPv4 ?? t("cli.dns.setup.thisMachineIpv4"),
+          }),
+        ),
       );
       defaultRuntime.log(
-        theme.muted(`- Restrict to domain (Split DNS): ${wideAreaDomain.replace(/\.$/, "")}`),
+        theme.muted(t("cli.dns.setup.splitDns", { domain: wideAreaDomain.replace(/\.$/, "") })),
       );
 
       if (!opts.apply) {
         defaultRuntime.log("");
-        defaultRuntime.log(theme.muted("Run with --apply to install CoreDNS and configure it."));
+        defaultRuntime.log(theme.muted(t("cli.dns.setup.runWithApply")));
         return;
       }
 
@@ -244,18 +245,14 @@ export function registerDnsCli(program: Command) {
       }
 
       defaultRuntime.log("");
-      defaultRuntime.log(theme.heading("Starting CoreDNS (sudo)…"));
+      defaultRuntime.log(theme.heading(t("cli.dns.setup.startingCoreDNS")));
       run("sudo", ["brew", "services", "restart", "coredns"], {
         inherit: true,
       });
 
       if (cfg.discovery?.wideArea?.enabled !== true) {
         defaultRuntime.log("");
-        defaultRuntime.log(
-          theme.muted(
-            "Note: enable discovery.wideArea.enabled in the active KaijiBot config ($KAIJIBOT_CONFIG_PATH, default ~/.kaijibot/kaijibot.json) on the gateway and restart the gateway so it writes the DNS-SD zone.",
-          ),
-        );
+        defaultRuntime.log(theme.muted(t("cli.dns.setup.noteEnableDiscovery")));
       }
     });
 }

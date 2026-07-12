@@ -35,6 +35,7 @@ import {
 } from "../../shared/string-coerce.js";
 import { formatCliCommand } from "../command-format.js";
 import { inheritOptionFromParent } from "../command-options.js";
+import { t } from "../i18n/translate.js";
 import { forceFreePortAndWait, waitForPortBindable } from "../ports.js";
 import { withProgress } from "../progress.js";
 import { ensureDevGatewayConfig } from "./dev.js";
@@ -106,9 +107,7 @@ const GATEWAY_AUTH_MODES: readonly GatewayAuthMode[] = [
 const GATEWAY_TAILSCALE_MODES: readonly GatewayTailscaleMode[] = ["off", "serve", "funnel"];
 
 function warnInlinePasswordFlag() {
-  defaultRuntime.error(
-    "Warning: --password can be exposed via process listings. Prefer --password-file or KAIJIBOT_GATEWAY_PASSWORD.",
-  );
+  defaultRuntime.error(t("cli.gateway.run.warningPassword"));
 }
 
 function resolveGatewayPasswordOption(opts: GatewayRunOpts): string | undefined {
@@ -182,23 +181,24 @@ function getGatewayStartGuardErrors(params: {
     return [];
   }
   if (!params.configExists) {
-    return [
-      `Missing config. Run \`${formatCliCommand("kaijibot setup")}\` or set gateway.mode=local (or pass --allow-unconfigured).`,
-    ];
+    return [t("cli.gateway.run.guard.missingConfig", { cmd: formatCliCommand("kaijibot setup") })];
   }
   if (params.mode === undefined) {
     return [
       [
-        "Gateway start blocked: existing config is missing gateway.mode.",
-        "Treat this as suspicious or clobbered config.",
-        `Re-run \`${formatCliCommand("kaijibot onboard --mode local")}\` or \`${formatCliCommand("kaijibot setup")}\`, set gateway.mode=local manually, or pass --allow-unconfigured.`,
+        t("cli.gateway.run.guard.blockedMissingMode"),
+        t("cli.gateway.run.guard.blockedMissingModeHint"),
+        t("cli.gateway.run.guard.blockedMissingModeAction", {
+          onboard: formatCliCommand("kaijibot onboard --mode local"),
+          setup: formatCliCommand("kaijibot setup"),
+        }),
       ].join(" "),
-      `Config write audit: ${params.configAuditPath}`,
+      t("cli.gateway.run.guard.configAudit", { path: params.configAuditPath }),
     ];
   }
   return [
-    `Gateway start blocked: set gateway.mode=local (current: ${params.mode}) or pass --allow-unconfigured.`,
-    `Config write audit: ${params.configAuditPath}`,
+    t("cli.gateway.run.guard.blockedWrongMode", { mode: params.mode }),
+    t("cli.gateway.run.guard.configAudit", { path: params.configAuditPath }),
   ];
 }
 
@@ -244,7 +244,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const isDevProfile = normalizeOptionalLowercaseString(process.env.KAIJIBOT_PROFILE) === "dev";
   const devMode = Boolean(opts.dev) || isDevProfile;
   if (opts.reset && !devMode) {
-    defaultRuntime.error("Use --reset with --dev.");
+    defaultRuntime.error(t("cli.gateway.run.resetRequiresDev"));
     defaultRuntime.exit(1);
     return;
   }
@@ -263,7 +263,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     wsLogRaw !== "compact" &&
     wsLogRaw !== "full"
   ) {
-    defaultRuntime.error('Invalid --ws-log (use "auto", "full", "compact")');
+    defaultRuntime.error(t("cli.gateway.run.invalidWsLog"));
     defaultRuntime.exit(1);
   }
   setGatewayWsLogStyle(wsLogStyle);
@@ -280,7 +280,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   // (channels, plugins, HTTP stack, etc.). Show a spinner so the user sees
   // progress instead of a silent 15-20 s pause (especially on Windows/NTFS).
   const { startGatewayServer } = await withProgress(
-    { label: "Loading gateway modules…", indeterminate: true },
+    { label: t("cli.gateway.run.loadingModules"), indeterminate: true },
     async () => import("../../gateway/server.js"),
   );
 
@@ -295,12 +295,12 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   maybeLogPendingControlUiBuild(cfg);
   const portOverride = parsePort(opts.port);
   if (opts.port !== undefined && portOverride === null) {
-    defaultRuntime.error("Invalid port");
+    defaultRuntime.error(t("cli.gateway.run.invalidPort"));
     defaultRuntime.exit(1);
   }
   const port = portOverride ?? resolveGatewayPort(cfg);
   if (!Number.isFinite(port) || port <= 0) {
-    defaultRuntime.error("Invalid port");
+    defaultRuntime.error(t("cli.gateway.run.invalidPort"));
     defaultRuntime.exit(1);
   }
   // Only capture the *explicit* bind value here.  The container-aware
@@ -311,7 +311,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     toOptionString(opts.bind) ?? cfg.gateway?.bind,
   );
   if (bindExplicitRawStr !== undefined && !VALID_BIND_MODES.has(bindExplicitRawStr)) {
-    defaultRuntime.error('Invalid --bind (use "loopback", "lan", "tailnet", "auto", or "custom")');
+    defaultRuntime.error(t("cli.gateway.run.invalidBind"));
     defaultRuntime.exit(1);
     return;
   }
@@ -378,7 +378,9 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const authModeRaw = toOptionString(opts.auth);
   const authMode = parseEnumOption(authModeRaw, GATEWAY_AUTH_MODES);
   if (authModeRaw && !authMode) {
-    defaultRuntime.error(`Invalid --auth (use ${formatModeErrorList(GATEWAY_AUTH_MODES)})`);
+    defaultRuntime.error(
+      t("cli.gateway.run.invalidAuth", { modes: formatModeErrorList(GATEWAY_AUTH_MODES) }),
+    );
     defaultRuntime.exit(1);
     return;
   }
@@ -386,7 +388,9 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const tailscaleMode = parseEnumOption(tailscaleRaw, GATEWAY_TAILSCALE_MODES);
   if (tailscaleRaw && !tailscaleMode) {
     defaultRuntime.error(
-      `Invalid --tailscale (use ${formatModeErrorList(GATEWAY_TAILSCALE_MODES)})`,
+      t("cli.gateway.run.invalidTailscale", {
+        modes: formatModeErrorList(GATEWAY_TAILSCALE_MODES),
+      }),
     );
     defaultRuntime.exit(1);
     return;
@@ -470,18 +474,16 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const canBootstrapToken = resolvedAuthMode === "token" && !tokenConfigured;
   const authHints: string[] = [];
   if (miskeys.hasGatewayToken) {
-    authHints.push('Found "gateway.token" in config. Use "gateway.auth.token" instead.');
+    authHints.push(t("cli.gateway.run.hint.gatewayTokenMiskey"));
   }
   if (miskeys.hasRemoteToken) {
-    authHints.push(
-      '"gateway.remote.token" is for remote CLI calls; it does not enable local gateway auth.',
-    );
+    authHints.push(t("cli.gateway.run.hint.remoteTokenMiskey"));
   }
   if (resolvedAuthMode === "password" && !passwordConfigured) {
     defaultRuntime.error(
       [
-        "Gateway auth is set to password, but no password is configured.",
-        "Set gateway.auth.password (or KAIJIBOT_GATEWAY_PASSWORD), or pass --password.",
+        t("cli.gateway.run.error.passwordNotConfigured"),
+        t("cli.gateway.run.error.passwordNotConfiguredHint"),
         ...authHints,
       ]
         .filter(Boolean)
@@ -503,15 +505,10 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   ) {
     defaultRuntime.error(
       [
-        `Refusing to bind gateway to ${bind} without auth.`,
+        t("cli.gateway.run.error.refusingBind", { bind }),
         ...(isContainerEnvironment()
-          ? [
-              "Container environment detected \u2014 the gateway defaults to bind=auto (0.0.0.0) for port-forwarding compatibility.",
-              "Set KAIJIBOT_GATEWAY_TOKEN or KAIJIBOT_GATEWAY_PASSWORD, or pass --token/--password to start with auth.",
-            ]
-          : [
-              "Set gateway.auth.token/password (or KAIJIBOT_GATEWAY_TOKEN/KAIJIBOT_GATEWAY_PASSWORD) or pass --token/--password.",
-            ]),
+          ? [t("cli.gateway.run.error.containerDetected"), t("cli.gateway.run.error.containerHint")]
+          : [t("cli.gateway.run.error.bindHint")]),
         ...authHints,
       ]
         .filter(Boolean)
@@ -566,7 +563,10 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     if (isGatewayLockError(err)) {
       const errMessage = formatErrorMessage(err);
       defaultRuntime.error(
-        `Gateway failed to start: ${errMessage}\nIf the gateway is supervised, stop it with: ${formatCliCommand("kaijibot gateway stop")}`,
+        t("cli.gateway.run.error.failedToStart", {
+          message: errMessage,
+          cmd: formatCliCommand("kaijibot gateway stop"),
+        }),
       );
       try {
         const diagnostics = await inspectPortUsage(port);
@@ -582,7 +582,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       defaultRuntime.exit(isHealthyGatewayLockError(err) ? 0 : 1);
       return;
     }
-    defaultRuntime.error(`Gateway failed to start: ${String(err)}`);
+    defaultRuntime.error(t("cli.gateway.run.error.failedToStartGeneric", { message: String(err) }));
     defaultRuntime.exit(1);
   }
 }

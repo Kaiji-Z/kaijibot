@@ -1,3 +1,5 @@
+import { t } from "../cli/i18n/translate.js";
+
 export type GatewayDaemonRuntime = "node" | "bun";
 
 export const DEFAULT_GATEWAY_DAEMON_RUNTIME: GatewayDaemonRuntime = "node";
@@ -10,7 +12,7 @@ export const GATEWAY_DAEMON_RUNTIME_OPTIONS: Array<{
   {
     value: "node",
     label: "Node (recommended)",
-    hint: "Node 运行时稳定性最佳，推荐使用。",
+    hint: t("cli.daemonRuntime.nodeHint"),
   },
 ];
 

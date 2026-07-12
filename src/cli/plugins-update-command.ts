@@ -6,6 +6,7 @@ import { parseRegistryNpmSpec } from "../infra/npm-registry-spec.js";
 import { updateNpmInstalledPlugins } from "../plugins/update.js";
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
+import { t } from "./i18n/translate.js";
 import {
   extractInstalledNpmHookPackageName,
   extractInstalledNpmPackageName,
@@ -110,10 +111,10 @@ export async function runPluginUpdateCommand(params: {
 
   if (pluginSelection.pluginIds.length === 0 && hookSelection.hookIds.length === 0) {
     if (params.opts.all) {
-      defaultRuntime.log("No tracked plugins or hook packs to update.");
+      defaultRuntime.log(t("cli.plugins.update.noTracked"));
       return;
     }
-    defaultRuntime.error("Provide a plugin or hook-pack id, or use --all.");
+    defaultRuntime.error(t("cli.plugins.update.provideIdOrAll"));
     return defaultRuntime.exit(1);
   }
 
@@ -190,6 +191,6 @@ export async function runPluginUpdateCommand(params: {
       nextConfig: hookResult.config,
       baseHash: (await sourceSnapshotPromise)?.hash,
     });
-    defaultRuntime.log("Restart the gateway to load plugins and hooks.");
+    defaultRuntime.log(t("cli.plugins.update.restartGateway"));
   }
 }

@@ -18,6 +18,7 @@ import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
 import { runCommandWithRuntime } from "../cli-utils.js";
 import { formatHelpExamples } from "../help-format.js";
+import { t } from "../i18n/translate.js";
 import { parsePositiveIntOrUndefined } from "./helpers.js";
 
 function resolveVerbose(opts: { verbose?: boolean; debug?: boolean }): boolean {
@@ -27,7 +28,7 @@ function resolveVerbose(opts: { verbose?: boolean; debug?: boolean }): boolean {
 function parseTimeoutMs(timeout: unknown): number | null | undefined {
   const parsed = parsePositiveIntOrUndefined(timeout);
   if (timeout !== undefined && parsed === undefined) {
-    defaultRuntime.error("--timeout must be a positive integer (milliseconds)");
+    defaultRuntime.error(t("cli.statusHealth.error.timeoutPositiveInt"));
     defaultRuntime.exit(1);
     return null;
   }
@@ -63,7 +64,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+        `\n${theme.heading(t("cli.statusHealth.examples"))}\n${formatHelpExamples([
           ["kaijibot status", "Show channel health + session summary."],
           ["kaijibot status --all", "Full diagnosis (read-only)."],
           ["kaijibot status --json", "Machine-readable output."],
@@ -78,7 +79,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/status", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/status.md")}\n`,
+        `\n${theme.muted(t("cli.statusHealth.docs"))} ${formatDocsLink("/cli/status", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/status.md")}\n`,
     )
     .action(async (opts) => {
       await runWithVerboseAndTimeout(opts, async ({ verbose, timeoutMs }) => {
@@ -106,7 +107,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/health", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/health.md")}\n`,
+        `\n${theme.muted(t("cli.statusHealth.docs"))} ${formatDocsLink("/cli/health", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/health.md")}\n`,
     )
     .action(async (opts) => {
       await runWithVerboseAndTimeout(opts, async ({ verbose, timeoutMs }) => {
@@ -133,21 +134,19 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+        `\n${theme.heading(t("cli.statusHealth.examples"))}\n${formatHelpExamples([
           ["kaijibot sessions", "List all sessions."],
           ["kaijibot sessions --agent work", "List sessions for one agent."],
           ["kaijibot sessions --all-agents", "Aggregate sessions across agents."],
           ["kaijibot sessions --active 120", "Only last 2 hours."],
           ["kaijibot sessions --json", "Machine-readable output."],
           ["kaijibot sessions --store ./tmp/sessions.json", "Use a specific session store."],
-        ])}\n\n${theme.muted(
-          "Shows token usage per session when the agent reports it; set agents.defaults.contextTokens to cap the window and show %.",
-        )}`,
+        ])}\n\n${theme.muted(t("cli.statusHealth.sessionsHint"))}`,
     )
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/sessions", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sessions.md")}\n`,
+        `\n${theme.muted(t("cli.statusHealth.docs"))} ${formatDocsLink("/cli/sessions", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/sessions.md")}\n`,
     )
     .action(async (opts) => {
       setVerbose(Boolean(opts.verbose));
@@ -182,7 +181,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+        `\n${theme.heading(t("cli.statusHealth.examples"))}\n${formatHelpExamples([
           ["kaijibot sessions cleanup --dry-run", "Preview stale/cap cleanup."],
           [
             "kaijibot sessions cleanup --dry-run --fix-missing",

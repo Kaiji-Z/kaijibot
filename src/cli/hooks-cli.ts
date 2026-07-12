@@ -18,6 +18,7 @@ import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { shortenHomePath } from "../utils.js";
 import { formatCliCommand } from "./command-format.js";
+import { t } from "./i18n/translate.js";
 import { runPluginInstallCommand } from "./plugins-install-command.js";
 import { runPluginUpdateCommand } from "./plugins-update-command.js";
 
@@ -99,12 +100,12 @@ function buildConfigWithHookEnabled(params: {
 
 function formatHookStatus(hook: HookStatusEntry): string {
   if (hook.loadable) {
-    return theme.success("✓ ready");
+    return theme.success(t("cli.hooks.status.ready"));
   }
   if (!hook.enabledByConfig) {
-    return theme.warn("⏸ disabled");
+    return theme.warn(t("cli.hooks.status.disabled"));
   }
-  return theme.error("✗ missing");
+  return theme.error(t("cli.hooks.status.missing"));
 }
 
 function formatHookName(hook: HookStatusEntry): string {
@@ -193,8 +194,8 @@ export function formatHooksList(report: HookStatusReport, opts: HooksListOptions
 
   if (hooks.length === 0) {
     const message = opts.eligible
-      ? `No eligible hooks found. Run \`${formatCliCommand("kaijibot hooks list")}\` to see all hooks.`
-      : "No hooks found.";
+      ? t("cli.hooks.list.noEligible", { cmd: formatCliCommand("kaijibot hooks list") })
+      : t("cli.hooks.list.empty");
     return message;
   }
 
@@ -223,7 +224,7 @@ export function formatHooksList(report: HookStatusReport, opts: HooksListOptions
 
   const lines: string[] = [];
   lines.push(
-    `${theme.heading("Hooks")} ${theme.muted(`(${eligible.length}/${hooks.length} ready)`)}`,
+    `${theme.heading(t("cli.hooks.heading.hooks"))} ${theme.muted(`(${eligible.length}/${hooks.length} ready)`)}`,
   );
   lines.push(
     renderTable({
@@ -249,7 +250,10 @@ export function formatHookInfo(
     if (opts.json) {
       return JSON.stringify({ error: "not found", hook: hookName }, null, 2);
     }
-    return `Hook "${hookName}" not found. Run \`${formatCliCommand("kaijibot hooks list")}\` to see available hooks.`;
+    return t("cli.hooks.info.notFound", {
+      name: hookName,
+      cmd: formatCliCommand("kaijibot hooks list"),
+    });
   }
 
   if (opts.json) {
@@ -267,10 +271,10 @@ export function formatHookInfo(
   const lines: string[] = [];
   const emoji = hook.emoji ?? "🔗";
   const status = hook.loadable
-    ? theme.success("✓ Ready")
+    ? theme.success(t("cli.hooks.status.readyInfo"))
     : !hook.enabledByConfig
-      ? theme.warn("⏸ Disabled")
-      : theme.error("✗ Missing requirements");
+      ? theme.warn(t("cli.hooks.status.disabledInfo"))
+      : theme.error(t("cli.hooks.status.missingInfo"));
 
   lines.push(`${emoji} ${theme.heading(hook.name)} ${status}`);
   lines.push("");
@@ -278,25 +282,27 @@ export function formatHookInfo(
   lines.push("");
 
   // Details
-  lines.push(theme.heading("Details:"));
+  lines.push(theme.heading(t("cli.hooks.heading.details")));
   if (hook.managedByPlugin) {
-    lines.push(`${theme.muted("  Source:")} ${hook.source} (${hook.pluginId ?? "unknown"})`);
+    lines.push(
+      `${theme.muted(t("cli.hooks.label.source"))} ${hook.source} (${hook.pluginId ?? "unknown"})`,
+    );
   } else {
-    lines.push(`${theme.muted("  Source:")} ${hook.source}`);
+    lines.push(`${theme.muted(t("cli.hooks.label.source"))} ${hook.source}`);
   }
-  lines.push(`${theme.muted("  Path:")} ${shortenHomePath(hook.filePath)}`);
-  lines.push(`${theme.muted("  Handler:")} ${shortenHomePath(hook.handlerPath)}`);
+  lines.push(`${theme.muted(t("cli.hooks.label.path"))} ${shortenHomePath(hook.filePath)}`);
+  lines.push(`${theme.muted(t("cli.hooks.label.handler"))} ${shortenHomePath(hook.handlerPath)}`);
   if (hook.homepage) {
-    lines.push(`${theme.muted("  Homepage:")} ${hook.homepage}`);
+    lines.push(`${theme.muted(t("cli.hooks.label.homepage"))} ${hook.homepage}`);
   }
   if (hook.events.length > 0) {
-    lines.push(`${theme.muted("  Events:")} ${hook.events.join(", ")}`);
+    lines.push(`${theme.muted(t("cli.hooks.label.events"))} ${hook.events.join(", ")}`);
   }
   if (hook.managedByPlugin) {
-    lines.push(theme.muted("  Managed by plugin; enable/disable via hooks CLI not available."));
+    lines.push(theme.muted(t("cli.hooks.info.managedByPlugin")));
   }
   if (hook.blockedReason) {
-    lines.push(`${theme.muted("  Blocked reason:")} ${hook.blockedReason}`);
+    lines.push(`${theme.muted(t("cli.hooks.label.blockedReason"))} ${hook.blockedReason}`);
   }
 
   // Requirements
@@ -309,40 +315,40 @@ export function formatHookInfo(
 
   if (hasRequirements) {
     lines.push("");
-    lines.push(theme.heading("Requirements:"));
+    lines.push(theme.heading(t("cli.hooks.heading.requirements")));
     if (hook.requirements.bins.length > 0) {
       const binsStatus = hook.requirements.bins.map((bin) => {
         const missing = hook.missing.bins.includes(bin);
         return missing ? theme.error(`✗ ${bin}`) : theme.success(`✓ ${bin}`);
       });
-      lines.push(`${theme.muted("  Binaries:")} ${binsStatus.join(", ")}`);
+      lines.push(`${theme.muted(t("cli.hooks.label.binaries"))} ${binsStatus.join(", ")}`);
     }
     if (hook.requirements.anyBins.length > 0) {
       const anyBinsStatus =
         hook.missing.anyBins.length > 0
           ? theme.error(`✗ (any of: ${hook.requirements.anyBins.join(", ")})`)
           : theme.success(`✓ (any of: ${hook.requirements.anyBins.join(", ")})`);
-      lines.push(`${theme.muted("  Any binary:")} ${anyBinsStatus}`);
+      lines.push(`${theme.muted(t("cli.hooks.label.anyBinary"))} ${anyBinsStatus}`);
     }
     if (hook.requirements.env.length > 0) {
       const envStatus = hook.requirements.env.map((env) => {
         const missing = hook.missing.env.includes(env);
         return missing ? theme.error(`✗ ${env}`) : theme.success(`✓ ${env}`);
       });
-      lines.push(`${theme.muted("  Environment:")} ${envStatus.join(", ")}`);
+      lines.push(`${theme.muted(t("cli.hooks.label.environment"))} ${envStatus.join(", ")}`);
     }
     if (hook.requirements.config.length > 0) {
       const configStatus = hook.configChecks.map((check) => {
         return check.satisfied ? theme.success(`✓ ${check.path}`) : theme.error(`✗ ${check.path}`);
       });
-      lines.push(`${theme.muted("  Config:")} ${configStatus.join(", ")}`);
+      lines.push(`${theme.muted(t("cli.hooks.label.config"))} ${configStatus.join(", ")}`);
     }
     if (hook.requirements.os.length > 0) {
       const osStatus =
         hook.missing.os.length > 0
           ? theme.error(`✗ (${hook.requirements.os.join(", ")})`)
           : theme.success(`✓ (${hook.requirements.os.join(", ")})`);
-      lines.push(`${theme.muted("  OS:")} ${osStatus}`);
+      lines.push(`${theme.muted(t("cli.hooks.label.os"))} ${osStatus}`);
     }
   }
 
@@ -379,15 +385,15 @@ export function formatHooksCheck(report: HookStatusReport, opts: HooksCheckOptio
   const notEligible = report.hooks.filter((h) => !h.loadable);
 
   const lines: string[] = [];
-  lines.push(theme.heading("Hooks Status"));
+  lines.push(theme.heading(t("cli.hooks.heading.hooksStatus")));
   lines.push("");
-  lines.push(`${theme.muted("Total hooks:")} ${report.hooks.length}`);
-  lines.push(`${theme.success("Ready:")} ${eligible.length}`);
-  lines.push(`${theme.warn("Not ready:")} ${notEligible.length}`);
+  lines.push(`${theme.muted(t("cli.hooks.label.total"))} ${report.hooks.length}`);
+  lines.push(`${theme.success(t("cli.hooks.label.ready"))} ${eligible.length}`);
+  lines.push(`${theme.warn(t("cli.hooks.label.notReady"))} ${notEligible.length}`);
 
   if (notEligible.length > 0) {
     lines.push("");
-    lines.push(theme.heading("Hooks not ready:"));
+    lines.push(theme.heading(t("cli.hooks.heading.notReady")));
     for (const hook of notEligible) {
       const reasons = [];
       if (hook.blockedReason && hook.blockedReason !== "missing requirements") {
@@ -431,7 +437,7 @@ export async function enableHook(hookName: string): Promise<void> {
     ...(snapshot.hash !== undefined ? { baseHash: snapshot.hash } : {}),
   });
   defaultRuntime.log(
-    `${theme.success("✓")} Enabled hook: ${hook.emoji ?? "🔗"} ${theme.command(hookName)}`,
+    `${theme.success(t("cli.hooks.enable.icon"))} ${t("cli.hooks.enable.success", { emoji: hook.emoji ?? "🔗", name: theme.command(hookName) })}`,
   );
 }
 
@@ -446,7 +452,7 @@ export async function disableHook(hookName: string): Promise<void> {
     ...(snapshot.hash !== undefined ? { baseHash: snapshot.hash } : {}),
   });
   defaultRuntime.log(
-    `${theme.warn("⏸")} Disabled hook: ${hook.emoji ?? "🔗"} ${theme.command(hookName)}`,
+    `${theme.warn(t("cli.hooks.disable.icon"))} ${t("cli.hooks.disable.success", { emoji: hook.emoji ?? "🔗", name: theme.command(hookName) })}`,
   );
 }
 
@@ -523,9 +529,7 @@ export function registerHooksCli(program: Command): void {
     .option("-l, --link", "Link a local path instead of copying", false)
     .option("--pin", "Record npm installs as exact resolved <name>@<version>", false)
     .action(async (raw: string, opts: { link?: boolean; pin?: boolean }) => {
-      defaultRuntime.log(
-        theme.warn("`kaijibot hooks install` is deprecated; use `kaijibot plugins install`."),
-      );
+      defaultRuntime.log(theme.warn(t("cli.hooks.install.deprecated")));
       await runPluginInstallCommand({ raw, opts });
     });
 
@@ -536,9 +540,7 @@ export function registerHooksCli(program: Command): void {
     .option("--all", "Update all tracked hooks", false)
     .option("--dry-run", "Show what would change without writing", false)
     .action(async (id: string | undefined, opts: HooksUpdateOptions) => {
-      defaultRuntime.log(
-        theme.warn("`kaijibot hooks update` is deprecated; use `kaijibot plugins update`."),
-      );
+      defaultRuntime.log(theme.warn(t("cli.hooks.update.deprecated")));
       await runPluginUpdateCommand({ id, opts });
     });
 

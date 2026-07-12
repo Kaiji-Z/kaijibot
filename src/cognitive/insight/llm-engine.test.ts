@@ -1619,6 +1619,7 @@ describe("tone removal from insight prompts", () => {
       makeInput(),
       [],
       [],
+      "zh",
       undefined,
       "## YOUR PERSONALITY AND VOICE\nYou are witty and sarcastic.",
     );
@@ -1735,6 +1736,7 @@ describe("tone removal from insight prompts", () => {
       makePersona(),
       makeInput(),
       [],
+      "zh",
       "## YOUR PERSONALITY AND VOICE\nBe warm.",
     );
     expect(prompt).not.toContain("YOUR PERSONALITY AND VOICE");
@@ -1755,6 +1757,7 @@ describe("tone removal from insight prompts", () => {
       makeInput(),
       [],
       [],
+      "zh",
       undefined,
       undefined,
       "## USER BACKGROUND\nExpert in distributed systems.",

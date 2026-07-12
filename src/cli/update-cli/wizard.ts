@@ -11,6 +11,7 @@ import { selectStyled } from "../../terminal/prompt-select-styled.js";
 import { stylePromptMessage } from "../../terminal/prompt-style.js";
 import { theme } from "../../terminal/theme.js";
 import { pathExists } from "../../utils.js";
+import { t } from "../i18n/translate.js";
 import {
   isEmptyDir,
   isGitCheckout,
@@ -23,9 +24,7 @@ import { updateCommand } from "./update-command.js";
 
 export async function updateWizardCommand(opts: UpdateWizardOptions = {}): Promise<void> {
   if (!process.stdin.isTTY) {
-    defaultRuntime.error(
-      "Update wizard requires a TTY. Use `kaijibot update --channel <stable|beta|dev>` instead.",
-    );
+    defaultRuntime.error(t("cli.update.wizard.requiresTty"));
     defaultRuntime.exit(1);
     return;
   }
@@ -64,34 +63,34 @@ export async function updateWizardCommand(opts: UpdateWizardOptions = {}): Promi
   });
 
   const pickedChannel = await selectStyled({
-    message: "Update channel",
+    message: t("cli.update.wizard.channelSelect"),
     options: [
       {
         value: "keep",
-        label: `Keep current (${channelInfo.channel})`,
+        label: t("cli.update.wizard.keepCurrent", { channel: channelInfo.channel }),
         hint: channelLabel,
       },
       {
         value: "stable",
-        label: "Stable",
-        hint: "Tagged releases (npm latest)",
+        label: t("cli.update.wizard.stable"),
+        hint: t("cli.update.wizard.stableHint"),
       },
       {
         value: "beta",
-        label: "Beta",
-        hint: "Prereleases (npm beta)",
+        label: t("cli.update.wizard.beta"),
+        hint: t("cli.update.wizard.betaHint"),
       },
       {
         value: "dev",
-        label: "Dev",
-        hint: "Git main",
+        label: t("cli.update.wizard.dev"),
+        hint: t("cli.update.wizard.devHint"),
       },
     ],
     initialValue: "keep",
   });
 
   if (isCancel(pickedChannel)) {
-    defaultRuntime.log(theme.muted("Update cancelled."));
+    defaultRuntime.log(theme.muted(t("cli.update.wizard.cancelled")));
     defaultRuntime.exit(0);
     return;
   }
@@ -115,13 +114,11 @@ export async function updateWizardCommand(opts: UpdateWizardOptions = {}): Promi
       }
 
       const ok = await confirm({
-        message: stylePromptMessage(
-          `Create a git checkout at ${gitDir}? (override via KAIJIBOT_GIT_DIR)`,
-        ),
+        message: stylePromptMessage(t("cli.update.wizard.createGitCheckout", { dir: gitDir })),
         initialValue: true,
       });
       if (isCancel(ok) || !ok) {
-        defaultRuntime.log(theme.muted("Update cancelled."));
+        defaultRuntime.log(theme.muted(t("cli.update.wizard.cancelled")));
         defaultRuntime.exit(0);
         return;
       }
@@ -129,11 +126,11 @@ export async function updateWizardCommand(opts: UpdateWizardOptions = {}): Promi
   }
 
   const restart = await confirm({
-    message: stylePromptMessage("Restart the gateway service after update?"),
+    message: stylePromptMessage(t("cli.update.wizard.restartPrompt")),
     initialValue: true,
   });
   if (isCancel(restart)) {
-    defaultRuntime.log(theme.muted("Update cancelled."));
+    defaultRuntime.log(theme.muted(t("cli.update.wizard.cancelled")));
     defaultRuntime.exit(0);
     return;
   }

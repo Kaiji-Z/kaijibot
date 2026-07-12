@@ -12,6 +12,14 @@ import { prepareSimpleCompletionModel } from "../../agents/simple-completion-run
 import { loadSoulPresetContent } from "../../agents/soul-preset.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import {
+  DEFAULT_COGNITIVE_LOCALE,
+  detectCognitiveLocale,
+  L,
+  pickLocalized,
+  type CognitiveLocale,
+  type LocalizableString,
+} from "../cognitive-locale.js";
 import { pickPromptVariant } from "../feedback/preference-learner.js";
 import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
 import { isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
@@ -207,27 +215,55 @@ const DIVERSE_FEW_SHOT_SETS = [
   },
 ] as const;
 
-const DIVERSITY_INSTRUCTION = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user. 禁止使用"你做X时用的正是Y哲学概念"或"X本质上就是Y"这类类比框架作为主要结构。当哲学确实是最佳角度时直接说哲学内容，不要用"你用的正是"句式包装。`;
+const DIVERSITY_INSTRUCTION_ZH = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user. 禁止使用"你做X时用的正是Y哲学概念"或"X本质上就是Y"这类类比框架作为主要结构。当哲学确实是最佳角度时直接说哲学内容，不要用"你用的正是"句式包装。`;
 
-const EMOTIONAL_STANCES = [
-  "你刚发现一个东西，迫不及待想跟{name}分享。直接说，像发消息一样。",
-  "你对某个观点有疑虑，想直接跟{name}提出来。诚实但不攻击。",
-  "你注意到一个有趣的模式，安静地跟{name}说出来。不要分析，只说观察到的。",
-  "你看到一个意想不到的连接，兴奋但不太确定。带着不确定感说。",
-  "你想挑战{name}的一个假设。直接但尊重。",
-  "你刚想到一件可能对{name}有帮助的事。像朋友给建议，不像系统推送。",
+const DIVERSITY_INSTRUCTION_EN = `These examples demonstrate the expected QUALITY LEVEL and DEPTH of observation. Do NOT copy their structure, sentence pattern, or opening style. Each insight must be uniquely shaped by the specific user data and fragments you see. Every insight should feel like it could ONLY be about THIS specific user. Do NOT use "what you're doing with X is exactly the Y philosophy" or "X is essentially Y" analogy frameworks as the main structure. When philosophy genuinely is the best angle, state the philosophical content directly — don't dress it up in "what you're using is" phrasing.`;
+
+function diversityInstructionFor(locale: CognitiveLocale): string {
+  return locale === "en" ? DIVERSITY_INSTRUCTION_EN : DIVERSITY_INSTRUCTION_ZH;
+}
+
+const EMOTIONAL_STANCES: readonly LocalizableString[] = [
+  L(
+    "你刚发现一个东西，迫不及待想跟{name}分享。直接说，像发消息一样。",
+    "You just discovered something and can't wait to share it with {name}. Say it directly, like sending a message.",
+  ),
+  L(
+    "你对某个观点有疑虑，想直接跟{name}提出来。诚实但不攻击。",
+    "You have doubts about a view and want to raise them directly with {name}. Honest but not combative.",
+  ),
+  L(
+    "你注意到一个有趣的模式，安静地跟{name}说出来。不要分析，只说观察到的。",
+    "You noticed an interesting pattern. Say it quietly to {name}. No analysis — just the observation.",
+  ),
+  L(
+    "你看到一个意想不到的连接，兴奋但不太确定。带着不确定感说。",
+    "You see an unexpected connection — excited but not sure. Speak with that uncertainty.",
+  ),
+  L(
+    "你想挑战{name}的一个假设。直接但尊重。",
+    "You want to challenge one of {name}'s assumptions. Direct but respectful.",
+  ),
+  L(
+    "你刚想到一件可能对{name}有帮助的事。像朋友给建议，不像系统推送。",
+    "You just thought of something that might help {name}. Like a friend giving advice, not a system push.",
+  ),
 ];
 
-function selectEmotionalStance(seed: number, recent?: number[]): { index: number; text: string } {
+function selectEmotionalStance(
+  seed: number,
+  recent: number[] | undefined,
+  locale: CognitiveLocale = DEFAULT_COGNITIVE_LOCALE,
+): { index: number; text: string } {
   const used = new Set(recent ?? []);
   for (let offset = 0; offset < EMOTIONAL_STANCES.length; offset++) {
     const idx = (seed + offset) % EMOTIONAL_STANCES.length;
     if (!used.has(idx)) {
-      return { index: idx, text: EMOTIONAL_STANCES[idx]! };
+      return { index: idx, text: pickLocalized(EMOTIONAL_STANCES[idx]!, locale) };
     }
   }
   const idx = seed % EMOTIONAL_STANCES.length;
-  return { index: idx, text: EMOTIONAL_STANCES[idx]! };
+  return { index: idx, text: pickLocalized(EMOTIONAL_STANCES[idx]!, locale) };
 }
 
 export const CONTRASTIVE_INSTRUCTION = `CONTRASTIVE FRAMEWORK — your insight MUST be genuinely NEW relative to past insights:
@@ -332,12 +368,15 @@ export async function generateInsightCandidatesLLM(
 ): Promise<InsightCandidate[]> {
   const maxCandidates = options?.maxCandidates ?? 3;
   const mode = input.mode ?? "extend";
+  const outputLanguage = config.cognitive?.insight?.outputLanguage ?? detectOutputLanguage(persona);
+  const locale: CognitiveLocale = outputLanguage === "en" ? "en" : DEFAULT_COGNITIVE_LOCALE;
 
   if (mode === "pattern") {
     const { prompt, variant } = buildPatternInsightPrompt(
       persona,
       input,
       input.recentInsightContents,
+      locale,
       input.soulContent,
       input.identityContext,
     );
@@ -506,8 +545,6 @@ export async function generateInsightCandidatesLLM(
     }
   }
 
-  const outputLanguage = config.cognitive?.insight?.outputLanguage ?? detectOutputLanguage(persona);
-
   let webSnippetByDomain: Map<string, string[]> | undefined;
   if (webResults.length > 0) {
     const keywordMap = buildDomainKeywordMap(persona.domains);
@@ -545,6 +582,7 @@ export async function generateInsightCandidatesLLM(
           input,
           webResults,
           input.recentInsightContents,
+          locale,
           webSnippetByDomain,
           input.soulContent,
           input.identityContext,
@@ -661,15 +699,7 @@ async function generateExtendMode(
 }
 
 function detectOutputLanguage(persona: PersonaTree): string {
-  const lang =
-    persona.identity?.primaryLanguage ?? persona.identity?.communicationStyle?.preferredLanguage;
-  if (lang === "en") {
-    return "en";
-  }
-  if (lang === "mixed") {
-    return "zh";
-  }
-  return "zh";
+  return detectCognitiveLocale(persona);
 }
 
 /**
@@ -877,7 +907,7 @@ export function buildSurpriseInsightPrompt(
   identityContext?: string,
 ): PromptBuildResult {
   void webSnippetByDomain;
-
+  const locale: CognitiveLocale = outputLanguage === "en" ? "en" : DEFAULT_COGNITIVE_LOCALE;
   const sortedDomainEntries = Object.entries(persona.domains).toSorted(
     ([, a], [, b]) => b.lastMentioned - a.lastMentioned,
   );
@@ -931,7 +961,7 @@ export function buildSurpriseInsightPrompt(
     (e) => `Context: ${e.context}\n中文: ${e.chinese}\nEnglish: ${e.english}`,
   ).join("\n\n");
 
-  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances);
+  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances, locale);
   const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
 
   const indexedWebFindings = buildIndexedWebFindings(webResults);
@@ -942,7 +972,7 @@ export function buildSurpriseInsightPrompt(
 EXAMPLES of ideal insights (match this quality and specificity):
 ${fewShotBlock}
 
-${DIVERSITY_INSTRUCTION}
+${diversityInstructionFor(locale)}
 
 ${
   indexedWebFindings
@@ -1019,64 +1049,152 @@ function pickRandom<T>(arr: readonly T[]): T | undefined {
   return arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : undefined;
 }
 
+type PromptFrameFn = (topic: string, extra: PromptFrameExtra, locale: CognitiveLocale) => string;
+
 /** Prompt framework variants — each anchors on specific persona data to avoid generic output. */
-const PROMPT_FRAMES = [
+const PROMPT_FRAMES: readonly PromptFrameFn[] = [
   // 0: Extend a known keyInsight
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     const insight = pickRandom(extra.keyInsights);
     if (insight) {
-      return `你了解到用户对"${insight}"有独到理解。从这个具体的认知出发，说出一个被大多数人忽略的延伸方向或实际应用场景。不要解释这个认知本身，直接说延伸的部分。`;
+      return pickLocalized(
+        L(
+          `你了解到用户对"${insight}"有独到理解。从这个具体的认知出发，说出一个被大多数人忽略的延伸方向或实际应用场景。不要解释这个认知本身，直接说延伸的部分。`,
+          `You know the user has a unique understanding of "${insight}". Starting from this specific insight, state an extension direction or practical application scenario that most people overlook. Don't explain the insight itself — go straight to the extension.`,
+        ),
+        locale,
+      );
     }
-    return `针对${topic}，你有一个具体的观察，能直接指导下一步行动。直接说出来。`;
+    return pickLocalized(
+      L(
+        `针对${topic}，你有一个具体的观察，能直接指导下一步行动。直接说出来。`,
+        `For ${topic}, you have a specific observation that can directly guide the next action. State it directly.`,
+      ),
+      locale,
+    );
   },
   // 1: Cross-domain with concrete anchor
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     if (extra.domains.length >= 2 && extra.keyInsights.length >= 2) {
-      return `用户同时在${topic}和${extra.domains[extra.domains.length - 1]!}两个方向有积累。你看到了一条具体的关联线索，实际的、可操作的交集。直接把这条线索说出来。`;
+      const otherDomain = extra.domains[extra.domains.length - 1]!;
+      return pickLocalized(
+        L(
+          `用户同时在${topic}和${otherDomain}两个方向有积累。你看到了一条具体的关联线索，实际的、可操作的交集。直接把这条线索说出来。`,
+          `The user has built depth in both ${topic} and ${otherDomain}. You see a specific connecting thread — a practical, actionable intersection. State the thread directly.`,
+        ),
+        locale,
+      );
     }
-    return `在${topic}方向上，用户目前的理解里有一个盲区。你看到了，直接指出来，不要铺垫。`;
+    return pickLocalized(
+      L(
+        `在${topic}方向上，用户目前的理解里有一个盲区。你看到了，直接指出来，不要铺垫。`,
+        `In the ${topic} direction, the user's current understanding has a blind spot. You see it — point it out directly without preamble.`,
+      ),
+      locale,
+    );
   },
   // 2: Concrete change or case related to user's focus
-  (topic: string, _extra: PromptFrameExtra) => {
-    return `你刚注意到${topic}领域一个具体的变化或案例，直接关系到用户之前提到的关注点。简洁地说出来。`;
+  (topic, _extra, locale) => {
+    return pickLocalized(
+      L(
+        `你刚注意到${topic}领域一个具体的变化或案例，直接关系到用户之前提到的关注点。简洁地说出来。`,
+        `You just noticed a specific change or case in the ${topic} field, directly relevant to what the user mentioned caring about. State it concisely.`,
+      ),
+      locale,
+    );
   },
   // 3: Challenge assumption using a keyInsight
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     const insight = pickRandom(extra.keyInsights);
     if (insight) {
-      return `基于"${insight}"这个认知，常见的做法里有一个效率或思路上的问题。你有一个更好的替代方案——说出来，说清楚为什么更好。`;
+      return pickLocalized(
+        L(
+          `基于"${insight}"这个认知，常见的做法里有一个效率或思路上的问题。你有一个更好的替代方案——说出来，说清楚为什么更好。`,
+          `Based on the insight "${insight}", there's an efficiency or reasoning problem in the common approach. You have a better alternative — state it and explain why it's better.`,
+        ),
+        locale,
+      );
     }
-    return `关于${topic}，你有一个来自实践的具体经验，跟大多数人的做法不一样。分享这个经验。`;
+    return pickLocalized(
+      L(
+        `关于${topic}，你有一个来自实践的具体经验，跟大多数人的做法不一样。分享这个经验。`,
+        `Regarding ${topic}, you have a specific experience from practice that differs from what most people do. Share it.`,
+      ),
+      locale,
+    );
   },
   // 4: Practical recommendation tied to recentFocus
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     const focus = extra.recentFocus.length > 0 ? pickRandom(extra.recentFocus)! : topic;
-    return `用户最近在看${focus}相关的东西。你恰好知道一个具体的工具、方法或资源能直接帮上忙。推荐它，说清楚为什么适合现在的阶段。`;
+    return pickLocalized(
+      L(
+        `用户最近在看${focus}相关的东西。你恰好知道一个具体的工具、方法或资源能直接帮上忙。推荐它，说清楚为什么适合现在的阶段。`,
+        `The user has been looking at ${focus}-related things recently. You happen to know a specific tool, method, or resource that can directly help. Recommend it and explain why it fits their current stage.`,
+      ),
+      locale,
+    );
   },
   // 5: Counter-intuitive fact
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     const insight = pickRandom(extra.keyInsights);
     if (insight) {
-      return `关于"${insight}"，有一个反直觉的事实。你把它说出来，用事实本身说话，不要加"有趣的是"之类的评论。`;
+      return pickLocalized(
+        L(
+          `关于"${insight}"，有一个反直觉的事实。你把它说出来，用事实本身说话，不要加"有趣的是"之类的评论。`,
+          `About "${insight}", there's a counter-intuitive fact. State it and let the fact speak for itself — don't add "interestingly" or similar commentary.`,
+        ),
+        locale,
+      );
     }
-    return `在${topic}领域，你发现了一条被低估的技术路径或思路。说出它是什么，以及为什么被低估。`;
+    return pickLocalized(
+      L(
+        `在${topic}领域，你发现了一条被低估的技术路径或思路。说出它是什么，以及为什么被低估。`,
+        `In the ${topic} field, you've found an underappreciated technical path or idea. State what it is and why it's underappreciated.`,
+      ),
+      locale,
+    );
   },
   // 6: Hidden connection between topic and recentFocus
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     if (extra.recentFocus.length >= 1) {
       const focus = extra.recentFocus[Math.min(extra.recentFocus.length - 1, 1)]!;
-      return `${topic}和${focus}之间有一条暗线，具体的工程方案或技术选型上有共通之处。直接说出这条暗线是什么。`;
+      return pickLocalized(
+        L(
+          `${topic}和${focus}之间有一条暗线，具体的工程方案或技术选型上有共通之处。直接说出这条暗线是什么。`,
+          `There's a hidden thread between ${topic} and ${focus} — a concrete commonality in engineering approach or technology choice. State this thread directly.`,
+        ),
+        locale,
+      );
     }
-    return `你注意到${topic}领域有一个正在发生但还没被广泛讨论的变化。说出它是什么。`;
+    return pickLocalized(
+      L(
+        `你注意到${topic}领域有一个正在发生但还没被广泛讨论的变化。说出它是什么。`,
+        `You've noticed a change happening in the ${topic} field that isn't widely discussed yet. State what it is.`,
+      ),
+      locale,
+    );
   },
   // 7: Cross-domain method transfer
-  (topic: string, extra: PromptFrameExtra) => {
+  (topic, extra, locale) => {
     if (extra.domains.length >= 2) {
-      return `把${extra.domains[extra.domains.length - 1]!}里的一个成熟做法，迁移到${topic}的场景中。说出具体的迁移方案和预期效果。`;
+      const otherDomain = extra.domains[extra.domains.length - 1]!;
+      return pickLocalized(
+        L(
+          `把${otherDomain}里的一个成熟做法，迁移到${topic}的场景中。说出具体的迁移方案和预期效果。`,
+          `Take a mature practice from ${otherDomain} and transfer it to the ${topic} context. State the specific transfer plan and expected effect.`,
+        ),
+        locale,
+      );
     }
-    return `给${topic}方向一个具体的、可以直接执行的下一步建议。`;
+    return pickLocalized(
+      L(
+        `给${topic}方向一个具体的、可以直接执行的下一步建议。`,
+        `Give a specific, directly actionable next-step suggestion for the ${topic} direction.`,
+      ),
+      locale,
+    );
   },
-] as const;
+];
 
 function pickPromptFrame(
   topics: string[],
@@ -1084,9 +1202,11 @@ function pickPromptFrame(
   keyInsights: string[],
   recentFocus: string[],
   userName: string,
-  feedbackProfile?: InsightEngineInput["feedbackProfile"],
+  feedbackProfile: InsightEngineInput["feedbackProfile"] | undefined,
+  locale: CognitiveLocale = DEFAULT_COGNITIVE_LOCALE,
 ): { text: string; frameIndex: number } {
-  const topic = topics.length > 0 ? topics[0]! : "你的兴趣领域";
+  const defaultTopic = pickLocalized(L("你的兴趣领域", "your area of interest"), locale);
+  const topic = topics.length > 0 ? topics[0]! : defaultTopic;
   const frameIdx = feedbackProfile
     ? pickPromptVariant(
         feedbackProfile,
@@ -1095,21 +1215,42 @@ function pickPromptFrame(
     : Math.floor(Math.random() * PROMPT_FRAMES.length);
   const frame = PROMPT_FRAMES[frameIdx]!;
   return {
-    text: frame(topic, { domains: domainNames, keyInsights, recentFocus, userName }),
+    text: frame(topic, { domains: domainNames, keyInsights, recentFocus, userName }, locale),
     frameIndex: frameIdx,
   };
 }
 
-const STRUCTURE_SEEDS = [
-  "这次用一个具体的事实或数据点开头，不要用观点开头。",
-  "这次先说结论或判断，再说原因，不要反过来。",
-  "这次直接给一个可执行的建议，不要做分析。",
-  "这次说一个具体的案例或例子，不要抽象概括。",
-  "这次用一个反直觉的陈述开头。",
-  "这次提出一个具体的技术选择或方案，说明为什么选它。",
-  "这次指出一个常见的误区或错误做法，然后给出正确的方式。",
-  "这次说一个具体的、可以直接执行的方法或方案。",
-] as const;
+const STRUCTURE_SEEDS: readonly LocalizableString[] = [
+  L(
+    "这次用一个具体的事实或数据点开头，不要用观点开头。",
+    "This time open with a concrete fact or data point, not an opinion.",
+  ),
+  L(
+    "这次先说结论或判断，再说原因，不要反过来。",
+    "This time state the conclusion or judgment first, then the reasoning — not the reverse.",
+  ),
+  L(
+    "这次直接给一个可执行的建议，不要做分析。",
+    "This time give a directly actionable suggestion, no analysis.",
+  ),
+  L(
+    "这次说一个具体的案例或例子，不要抽象概括。",
+    "This time state a concrete case or example, no abstract generalization.",
+  ),
+  L("这次用一个反直觉的陈述开头。", "This time open with a counter-intuitive statement."),
+  L(
+    "这次提出一个具体的技术选择或方案，说明为什么选它。",
+    "This time propose a specific technology choice or approach, and explain why you picked it.",
+  ),
+  L(
+    "这次指出一个常见的误区或错误做法，然后给出正确的方式。",
+    "This time point out a common misconception or wrong practice, then give the correct approach.",
+  ),
+  L(
+    "这次说一个具体的、可以直接执行的方法或方案。",
+    "This time state a specific, directly actionable method or plan.",
+  ),
+];
 
 function getTimeTag(lastMentioned: number): string {
   const hoursAgo = (Date.now() - lastMentioned) / (60 * 60 * 1000);
@@ -1359,6 +1500,7 @@ export function buildPatternInsightPrompt(
   persona: PersonaTree,
   input: InsightEngineInput,
   recentInsightContents: string[],
+  locale: CognitiveLocale = DEFAULT_COGNITIVE_LOCALE,
   soulContent?: string,
   identityContext?: string,
 ): PromptBuildResult {
@@ -1411,7 +1553,7 @@ export function buildPatternInsightPrompt(
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
   const patternUserName = persona.identity?.displayName || "";
-  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances);
+  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances, locale);
   const stanceText = stance.text.replace(/\{name\}/g, patternUserName || "the user");
 
   const patternFrameIdx = input.feedbackProfile
@@ -1434,7 +1576,7 @@ export function buildPatternInsightPrompt(
 EXAMPLES of ideal behavioral observations (match this quality and depth):
 ${fewShotBlock}
 
-${DIVERSITY_INSTRUCTION}
+${diversityInstructionFor(locale)}
 
 OBSERVED THINKING PATTERNS (from recent conversations):
 ${fragmentBlock}
@@ -1485,6 +1627,7 @@ export function buildInsightPrompt(
   input: InsightEngineInput,
   webResults: WebSearchResult[] = [],
   recentInsightContents: string[] = [],
+  locale: CognitiveLocale = DEFAULT_COGNITIVE_LOCALE,
   webSnippetByDomain?: Map<string, string[]>,
   soulContent?: string,
   identityContext?: string,
@@ -1611,6 +1754,7 @@ export function buildInsightPrompt(
     persona.recentFocus,
     userName,
     input.feedbackProfile,
+    locale,
   );
 
   const structureSeedIdx = input.feedbackProfile
@@ -1619,7 +1763,7 @@ export function buildInsightPrompt(
         STRUCTURE_SEEDS.map((_, i) => `seed:${i}`),
       )
     : Math.floor(Math.random() * STRUCTURE_SEEDS.length);
-  const structureSeed = STRUCTURE_SEEDS[structureSeedIdx]!;
+  const structureSeed = pickLocalized(STRUCTURE_SEEDS[structureSeedIdx]!, locale);
 
   const fewShotIdx = input.feedbackProfile
     ? pickPromptVariant(
@@ -1634,7 +1778,7 @@ export function buildInsightPrompt(
   const fragments = input.fragments ?? [];
   const fragmentSection = buildFragmentSection(fragments);
 
-  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances);
+  const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances, locale);
   const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
 
   return {
@@ -1643,7 +1787,7 @@ export function buildInsightPrompt(
 EXAMPLES of ideal insights (match this quality and specificity):
 ${fewShotBlock}
 
-${DIVERSITY_INSTRUCTION}
+${diversityInstructionFor(locale)}
 
 ${
   indexedWebFindings

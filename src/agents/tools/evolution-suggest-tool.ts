@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
+import { t } from "../../cli/i18n/translate.js";
 import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import type { AnyAgentTool } from "./common.js";
@@ -180,7 +181,9 @@ export function createEvolutionSuggestTool(deps: {
             status: "duplicate",
             existingSkills,
             duplicateExisting,
-            suggestionText: `发现和已有技能「${duplicateExisting}」太相似，跳过创建。建议用 patch_skill 改进已有技能。`,
+            suggestionText: t("cli.tool.evolution.duplicateSuggestion", {
+              name: duplicateExisting,
+            }),
           });
         }
 
@@ -226,7 +229,9 @@ export function createEvolutionSuggestTool(deps: {
               score: quality.score,
               issues: quality.issues,
               critique: quality.critique,
-              suggestionText: `技能质量不达标（${quality.score.toFixed(2)}），已跳过创建。`,
+              suggestionText: t("cli.tool.evolution.qualityRejectedSuggestion", {
+                score: quality.score.toFixed(2),
+              }),
             });
           }
           draft = refinedDraft;
@@ -294,7 +299,10 @@ export function createEvolutionSuggestTool(deps: {
           savedPath,
           description: draft.description,
           existingSkills,
-          suggestionText: `我自主进化了，创建了一个技能「${draft.name}」—— ${draft.description}。如果不需要，可以说「删除技能 ${draft.name}」来移除。`,
+          suggestionText: t("cli.tool.evolution.savedSuggestion", {
+            name: draft.name,
+            description: draft.description,
+          }),
         });
       } catch (err) {
         return textResult(`Skill creation failed: ${String(err)}`, { status: "error" });

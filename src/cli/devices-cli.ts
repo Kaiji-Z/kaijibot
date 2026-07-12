@@ -17,6 +17,7 @@ import {
 import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../utils/message-channel.js";
+import { t } from "./i18n/translate.js";
 import { withProgress } from "./progress.js";
 
 type DevicesRpcOpts = {
@@ -67,7 +68,7 @@ type DevicePairingList = {
   paired?: PairedDevice[];
 };
 
-const FALLBACK_NOTICE = "Direct scope access failed; using local fallback.";
+const FALLBACK_NOTICE = t("cli.devices.fallbackNotice");
 
 const devicesCallOpts = (cmd: Command, defaults?: { timeoutMs?: number }) =>
   cmd
@@ -243,7 +244,7 @@ function resolveRequiredDeviceRole(
   if (deviceId && role) {
     return { deviceId, role };
   }
-  defaultRuntime.error("--device and --role required");
+  defaultRuntime.error(t("cli.devices.error.deviceAndRoleRequired"));
   defaultRuntime.exit(1);
   return null;
 }
@@ -264,7 +265,7 @@ export function registerDevicesCli(program: Command) {
         if (list.pending?.length) {
           const tableWidth = getTerminalTableWidth();
           defaultRuntime.log(
-            `${theme.heading("Pending")} ${theme.muted(`(${list.pending.length})`)}`,
+            `${theme.heading(t("cli.devices.list.pending"))} ${theme.muted(`(${list.pending.length})`)}`,
           );
           defaultRuntime.log(
             renderTable({
@@ -293,7 +294,7 @@ export function registerDevicesCli(program: Command) {
         if (list.paired?.length) {
           const tableWidth = getTerminalTableWidth();
           defaultRuntime.log(
-            `${theme.heading("Paired")} ${theme.muted(`(${list.paired.length})`)}`,
+            `${theme.heading(t("cli.devices.list.paired"))} ${theme.muted(`(${list.paired.length})`)}`,
           );
           defaultRuntime.log(
             renderTable({
@@ -316,7 +317,7 @@ export function registerDevicesCli(program: Command) {
           );
         }
         if (!list.pending?.length && !list.paired?.length) {
-          defaultRuntime.log(theme.muted("No device pairing entries."));
+          defaultRuntime.log(theme.muted(t("cli.devices.list.noEntries")));
         }
       }),
   );
@@ -329,7 +330,7 @@ export function registerDevicesCli(program: Command) {
       .action(async (deviceId: string, opts: DevicesRpcOpts) => {
         const trimmed = deviceId.trim();
         if (!trimmed) {
-          defaultRuntime.error("deviceId is required");
+          defaultRuntime.error(t("cli.devices.error.deviceIdRequired"));
           defaultRuntime.exit(1);
           return;
         }
@@ -338,7 +339,9 @@ export function registerDevicesCli(program: Command) {
           defaultRuntime.writeJson(result);
           return;
         }
-        defaultRuntime.log(`${theme.warn("Removed")} ${theme.command(trimmed)}`);
+        defaultRuntime.log(
+          `${theme.warn(t("cli.devices.action.removed"))} ${theme.command(trimmed)}`,
+        );
       }),
   );
 
@@ -350,7 +353,7 @@ export function registerDevicesCli(program: Command) {
       .option("--yes", "Confirm destructive clear", false)
       .action(async (opts: DevicesRpcOpts) => {
         if (!opts.yes) {
-          defaultRuntime.error("Refusing to clear pairing table without --yes");
+          defaultRuntime.error(t("cli.devices.error.refuseClearWithoutYes"));
           defaultRuntime.exit(1);
           return;
         }
@@ -385,11 +388,11 @@ export function registerDevicesCli(program: Command) {
           return;
         }
         defaultRuntime.log(
-          `${theme.warn("Cleared")} ${removedDeviceIds.length} paired device${removedDeviceIds.length === 1 ? "" : "s"}`,
+          `${theme.warn(t("cli.devices.action.cleared"))} ${t("cli.devices.action.clearedCount", { count: removedDeviceIds.length, s: removedDeviceIds.length === 1 ? "" : "s" })}`,
         );
         if (opts.pending) {
           defaultRuntime.log(
-            `${theme.warn("Rejected")} ${rejectedRequestIds.length} pending request${rejectedRequestIds.length === 1 ? "" : "s"}`,
+            `${theme.warn(t("cli.devices.action.rejected"))} ${t("cli.devices.action.rejectedCount", { count: rejectedRequestIds.length, s: rejectedRequestIds.length === 1 ? "" : "s" })}`,
           );
         }
       }),
@@ -408,13 +411,13 @@ export function registerDevicesCli(program: Command) {
           resolvedRequestId = latest?.requestId?.trim();
         }
         if (!resolvedRequestId) {
-          defaultRuntime.error("No pending device pairing requests to approve");
+          defaultRuntime.error(t("cli.devices.error.noPendingRequests"));
           defaultRuntime.exit(1);
           return;
         }
         const result = await approvePairingWithFallback(opts, resolvedRequestId);
         if (!result) {
-          defaultRuntime.error("unknown requestId");
+          defaultRuntime.error(t("cli.devices.error.unknownRequestId"));
           defaultRuntime.exit(1);
           return;
         }
@@ -424,7 +427,7 @@ export function registerDevicesCli(program: Command) {
         }
         const deviceId = (result as { device?: { deviceId?: string } })?.device?.deviceId;
         defaultRuntime.log(
-          `${theme.success("Approved")} ${theme.command(deviceId ?? "ok")} ${theme.muted(`(${resolvedRequestId})`)}`,
+          `${theme.success(t("cli.devices.action.approved"))} ${theme.command(deviceId ?? "ok")} ${theme.muted(`(${resolvedRequestId})`)}`,
         );
       }),
   );
@@ -441,7 +444,9 @@ export function registerDevicesCli(program: Command) {
           return;
         }
         const deviceId = (result as { deviceId?: string })?.deviceId;
-        defaultRuntime.log(`${theme.warn("Rejected")} ${theme.command(deviceId ?? "ok")}`);
+        defaultRuntime.log(
+          `${theme.warn(t("cli.devices.action.rejected"))} ${theme.command(deviceId ?? "ok")}`,
+        );
       }),
   );
 

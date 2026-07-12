@@ -18,6 +18,7 @@ import {
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
 import { shortenHomePath } from "../utils.js";
+import { t } from "./i18n/translate.js";
 import { looksLikeLocalInstallSpec } from "./install-spec.js";
 import { resolvePinnedNpmInstallRecordForCli } from "./npm-resolution.js";
 import {
@@ -128,7 +129,9 @@ async function tryInstallHookPackFromLocalPath(params: {
         installPath: params.resolvedPath,
         version: probe.version,
       },
-      successMessage: `Linked hook pack path: ${shortenHomePath(params.resolvedPath)}`,
+      successMessage: t("cli.plugins.install.linkedHookPack", {
+        path: shortenHomePath(params.resolvedPath),
+      }),
     });
     return { ok: true };
   }
@@ -218,16 +221,12 @@ async function loadConfigFromSnapshotForInstall(
   request: PluginInstallRequestContext,
 ): Promise<KaijiBotConfig> {
   if (resolvePluginInstallInvalidConfigPolicy(request) !== "allow-bundled-recovery") {
-    throw buildInvalidPluginInstallConfigError(
-      "Config invalid; run `kaijibot doctor --fix` before installing plugins.",
-    );
+    throw buildInvalidPluginInstallConfigError(t("cli.plugins.install.configInvalid"));
   }
   const snapshot = await readConfigFileSnapshot();
   const parsed = (snapshot.parsed ?? {}) as Record<string, unknown>;
   if (!snapshot.exists || Object.keys(parsed).length === 0) {
-    throw buildInvalidPluginInstallConfigError(
-      "Config file could not be parsed; run `kaijibot doctor` to repair it.",
-    );
+    throw buildInvalidPluginInstallConfigError(t("cli.plugins.install.configUnparseable"));
   }
   if (
     snapshot.legacyIssues.length > 0 ||
@@ -236,7 +235,7 @@ async function loadConfigFromSnapshotForInstall(
   ) {
     const pluginLabel = request.bundledPluginId ?? "the requested plugin";
     throw buildInvalidPluginInstallConfigError(
-      `Config invalid outside the bundled recovery path for ${pluginLabel}; run \`kaijibot doctor --fix\` before reinstalling it.`,
+      t("cli.plugins.install.configInvalidBundledRecovery", { plugin: pluginLabel }),
     );
   }
   let nextConfig = snapshot.config;
@@ -284,16 +283,16 @@ export async function runPluginInstallCommand(params: {
   };
   if (opts.marketplace) {
     if (opts.link) {
-      defaultRuntime.error("`--link` is not supported with `--marketplace`.");
+      defaultRuntime.error(t("cli.plugins.install.linkNotMarketplace"));
       return defaultRuntime.exit(1);
     }
     if (opts.pin) {
-      defaultRuntime.error("`--pin` is not supported with `--marketplace`.");
+      defaultRuntime.error(t("cli.plugins.install.pinNotMarketplace"));
       return defaultRuntime.exit(1);
     }
   }
   if (opts.link && opts.force) {
-    defaultRuntime.error("`--force` is not supported with `--link`.");
+    defaultRuntime.error(t("cli.plugins.install.forceNotLink"));
     return defaultRuntime.exit(1);
   }
   const requestResolution = resolvePluginInstallRequestContext({
@@ -390,7 +389,7 @@ export async function runPluginInstallCommand(params: {
           installPath: resolved,
           version: probe.version,
         },
-        successMessage: `Linked plugin path: ${shortenHomePath(resolved)}`,
+        successMessage: t("cli.plugins.install.linkedPlugin", { path: shortenHomePath(resolved) }),
       });
       return;
     }
@@ -433,7 +432,7 @@ export async function runPluginInstallCommand(params: {
   }
 
   if (opts.link) {
-    defaultRuntime.error("`--link` requires a local path.");
+    defaultRuntime.error(t("cli.plugins.install.linkRequiresPath"));
     return defaultRuntime.exit(1);
   }
 
@@ -449,7 +448,7 @@ export async function runPluginInstallCommand(params: {
       ".zip",
     ])
   ) {
-    defaultRuntime.error(`Path not found: ${resolved}`);
+    defaultRuntime.error(t("cli.plugins.install.pathNotFound", { path: resolved }));
     return defaultRuntime.exit(1);
   }
 

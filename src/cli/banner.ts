@@ -3,6 +3,7 @@ import { visibleWidth } from "../terminal/ansi.js";
 import { isRich, theme } from "../terminal/theme.js";
 import { hasRootVersionAlias } from "./argv.js";
 import { parseTaglineMode, readCliBannerTaglineMode } from "./banner-config-lite.js";
+import { t } from "./i18n/translate.js";
 import { pickTagline, type TaglineMode, type TaglineOptions } from "./tagline.js";
 
 type BannerOptions = TaglineOptions & {
@@ -47,10 +48,10 @@ function resolveTaglineMode(options: BannerOptions): TaglineMode | undefined {
 export function formatCliBannerLine(version: string, options: BannerOptions = {}): string {
   const commit =
     options.commit ?? resolveCommitHash({ env: options.env, moduleUrl: import.meta.url });
-  const commitLabel = commit ?? "unknown";
+  const commitLabel = commit ?? t("cli.banner.commitUnknown");
   const tagline = pickTagline({ ...options, mode: resolveTaglineMode(options) });
   const rich = options.richTty ?? isRich();
-  const title = "👾 KaijiBot";
+  const title = t("cli.banner.title");
   const prefix = "👾 ";
   const columns = options.columns ?? process.stdout.columns ?? 120;
   const plainBaseLine = `${title} ${version} (${commitLabel})`;

@@ -5,6 +5,7 @@ import {
   select as clackSelect,
   text as clackText,
 } from "@clack/prompts";
+import { t } from "../cli/i18n/translate.js";
 import { normalizeStringEntries } from "../shared/string-normalization.js";
 import { stylePromptHint, stylePromptMessage, stylePromptTitle } from "../terminal/prompt-style.js";
 
@@ -62,7 +63,7 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
   {
     value: "channels",
     label: "Channels",
-    hint: "配置飞书等消息渠道及默认设置",
+    hint: t("cli.configure.channels.sectionHint"),
   },
   { value: "plugins", label: "Plugins", hint: "Configure plugin settings (sandbox, tools, etc.)" },
   { value: "skills", label: "Skills", hint: "Install/enable workspace skills" },

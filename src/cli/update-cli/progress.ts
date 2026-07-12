@@ -8,33 +8,35 @@ import type {
 import { defaultRuntime } from "../../runtime.js";
 import { normalizeLowercaseStringOrEmpty } from "../../shared/string-coerce.js";
 import { theme } from "../../terminal/theme.js";
+import { t } from "../i18n/translate.js";
 import type { UpdateCommandOptions } from "./shared.js";
 
-const STEP_LABELS: Record<string, string> = {
-  "clean check": "Working directory is clean",
-  "upstream check": "Upstream branch exists",
-  "git fetch": "Fetching latest changes",
-  "git rebase": "Rebasing onto target commit",
-  "git rev-parse @{upstream}": "Resolving upstream commit",
-  "git rev-list": "Enumerating candidate commits",
-  "git clone": "Cloning git checkout",
-  "preflight worktree": "Preparing preflight worktree",
-  "preflight cleanup": "Cleaning preflight worktree",
-  "deps install": "Installing dependencies",
-  build: "Building",
-  "ui:build": "Building UI assets",
-  "ui:build (post-doctor repair)": "Restoring missing UI assets",
-  "ui assets verify": "Validating UI assets",
-  "kaijibot doctor entry": "Checking doctor entrypoint",
-  "kaijibot doctor": "Running doctor checks",
-  "git rev-parse HEAD (after)": "Verifying update",
-  "global update": "Updating via package manager",
-  "global update (omit optional)": "Retrying update without optional deps",
-  "global install": "Installing global package",
+const STEP_LABEL_KEYS: Record<string, string> = {
+  "clean check": "cli.update.step.cleanCheck",
+  "upstream check": "cli.update.step.upstreamCheck",
+  "git fetch": "cli.update.step.gitFetch",
+  "git rebase": "cli.update.step.gitRebase",
+  "git rev-parse @{upstream}": "cli.update.step.revParseUpstream",
+  "git rev-list": "cli.update.step.gitRevList",
+  "git clone": "cli.update.step.gitClone",
+  "preflight worktree": "cli.update.step.preflightWorktree",
+  "preflight cleanup": "cli.update.step.preflightCleanup",
+  "deps install": "cli.update.step.depsInstall",
+  build: "cli.update.step.build",
+  "ui:build": "cli.update.step.uiBuild",
+  "ui:build (post-doctor repair)": "cli.update.step.uiBuildPostDoctor",
+  "ui assets verify": "cli.update.step.uiAssetsVerify",
+  "kaijibot doctor entry": "cli.update.step.doctorEntry",
+  "kaijibot doctor": "cli.update.step.doctor",
+  "git rev-parse HEAD (after)": "cli.update.step.revParseHeadAfter",
+  "global update": "cli.update.step.globalUpdate",
+  "global update (omit optional)": "cli.update.step.globalUpdateOmitOptional",
+  "global install": "cli.update.step.globalInstall",
 };
 
 function getStepLabel(step: UpdateStepInfo): string {
-  return STEP_LABELS[step.name] ?? step.name;
+  const key = STEP_LABEL_KEYS[step.name];
+  return key ? t(key) : step.name;
 }
 
 export function inferUpdateFailureHints(result: UpdateRunResult): string[] {
@@ -42,27 +44,21 @@ export function inferUpdateFailureHints(result: UpdateRunResult): string[] {
     return [];
   }
   if (result.reason === "pnpm-corepack-missing") {
-    return [
-      "This pnpm checkout could not auto-enable pnpm because corepack is missing.",
-      "Install pnpm manually or install Node with corepack available, then rerun the update command.",
-    ];
+    return [t("cli.update.hint.corepackMissing"), t("cli.update.hint.corepackMissingAction")];
   }
   if (result.reason === "pnpm-corepack-enable-failed") {
     return [
-      "This pnpm checkout could not auto-enable pnpm via corepack.",
-      "Run `corepack enable` manually or install pnpm manually, then rerun the update command.",
+      t("cli.update.hint.corepackEnableFailed"),
+      t("cli.update.hint.corepackEnableFailedAction"),
     ];
   }
   if (result.reason === "pnpm-npm-bootstrap-failed") {
-    return [
-      "This pnpm checkout could not bootstrap pnpm from npm automatically.",
-      "Install pnpm manually, then rerun the update command.",
-    ];
+    return [t("cli.update.hint.npmBootstrapFailed"), t("cli.update.hint.npmBootstrapFailedAction")];
   }
   if (result.reason === "preferred-manager-unavailable") {
     return [
-      "This checkout requires its declared package manager and the updater could not find it.",
-      "Install the missing package manager manually, then rerun the update command.",
+      t("cli.update.hint.preferredManagerUnavailable"),
+      t("cli.update.hint.preferredManagerUnavailableAction"),
     ];
   }
   if (result.mode !== "npm") {
@@ -77,20 +73,16 @@ export function inferUpdateFailureHints(result: UpdateRunResult): string[] {
   const hints: string[] = [];
 
   if (failedStep.name.startsWith("global update") && stderr.includes("eacces")) {
-    hints.push(
-      "Detected permission failure (EACCES). Re-run with a writable global prefix or sudo (for system-managed Node installs).",
-    );
-    hints.push("Example: npm config set prefix ~/.local && npm i -g kaijibot@latest");
+    hints.push(t("cli.update.hint.eaccesDetected"));
+    hints.push(t("cli.update.hint.eaccesExample"));
   }
 
   if (
     failedStep.name.startsWith("global update") &&
     (stderr.includes("node-gyp") || stderr.includes("prebuild"))
   ) {
-    hints.push(
-      "Detected native optional dependency build failure. The updater retries with --omit=optional automatically.",
-    );
-    hints.push("If it still fails: npm i -g kaijibot@latest --omit=optional");
+    hints.push(t("cli.update.hint.nativeDepFailure"));
+    hints.push(t("cli.update.hint.nativeDepExample"));
   }
 
   return hints;
@@ -175,27 +167,27 @@ export function printResult(result: UpdateRunResult, opts: PrintResultOptions): 
 
   defaultRuntime.log("");
   defaultRuntime.log(
-    `${theme.heading("Update Result:")} ${statusColor(result.status.toUpperCase())}`,
+    `${theme.heading(t("cli.update.result.heading"))} ${statusColor(result.status.toUpperCase())}`,
   );
   if (result.root) {
-    defaultRuntime.log(`  Root: ${theme.muted(result.root)}`);
+    defaultRuntime.log(`  ${t("cli.update.result.root")}: ${theme.muted(result.root)}`);
   }
   if (result.reason) {
-    defaultRuntime.log(`  Reason: ${theme.muted(result.reason)}`);
+    defaultRuntime.log(`  ${t("cli.update.result.reason")}: ${theme.muted(result.reason)}`);
   }
 
   if (result.before?.version || result.before?.sha) {
     const before = result.before.version ?? result.before.sha?.slice(0, 8) ?? "";
-    defaultRuntime.log(`  Before: ${theme.muted(before)}`);
+    defaultRuntime.log(`  ${t("cli.update.result.before")}: ${theme.muted(before)}`);
   }
   if (result.after?.version || result.after?.sha) {
     const after = result.after.version ?? result.after.sha?.slice(0, 8) ?? "";
-    defaultRuntime.log(`  After: ${theme.muted(after)}`);
+    defaultRuntime.log(`  ${t("cli.update.result.after")}: ${theme.muted(after)}`);
   }
 
   if (!opts.hideSteps && result.steps.length > 0) {
     defaultRuntime.log("");
-    defaultRuntime.log(theme.heading("Steps:"));
+    defaultRuntime.log(theme.heading(t("cli.update.result.steps")));
     for (const step of result.steps) {
       const status = formatStepStatus(step.exitCode);
       const duration = theme.muted(`(${formatDurationPrecise(step.durationMs)})`);
@@ -215,12 +207,14 @@ export function printResult(result: UpdateRunResult, opts: PrintResultOptions): 
   const hints = inferUpdateFailureHints(result);
   if (hints.length > 0) {
     defaultRuntime.log("");
-    defaultRuntime.log(theme.heading("Recovery hints:"));
+    defaultRuntime.log(theme.heading(t("cli.update.result.recoveryHints")));
     for (const hint of hints) {
       defaultRuntime.log(`  - ${theme.warn(hint)}`);
     }
   }
 
   defaultRuntime.log("");
-  defaultRuntime.log(`Total time: ${theme.muted(formatDurationPrecise(result.durationMs))}`);
+  defaultRuntime.log(
+    `${t("cli.update.result.totalTime")}: ${theme.muted(formatDurationPrecise(result.durationMs))}`,
+  );
 }

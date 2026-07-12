@@ -17,6 +17,7 @@ import { formatDocsLink } from "../terminal/links.js";
 import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { formatCliCommand } from "./command-format.js";
+import { t } from "./i18n/translate.js";
 
 /** Parse channel, allowing extension channels not in core registry. */
 function parseChannel(raw: unknown, channels: PairingChannel[]): PairingChannel {
@@ -53,7 +54,7 @@ export function registerPairingCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/pairing", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/pairing.md")}\n`,
+        `\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/pairing", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/pairing.md")}\n`,
     );
 
   pairing
@@ -80,13 +81,13 @@ export function registerPairingCli(program: Command) {
         return;
       }
       if (requests.length === 0) {
-        defaultRuntime.log(theme.muted(`No pending ${channel} pairing requests.`));
+        defaultRuntime.log(theme.muted(t("cli.pairing.list.empty", { channel })));
         return;
       }
       const idLabel = resolvePairingIdLabel(channel);
       const tableWidth = getTerminalTableWidth();
       defaultRuntime.log(
-        `${theme.heading("Pairing requests")} ${theme.muted(`(${requests.length})`)}`,
+        `${theme.heading(t("cli.pairing.list.header"))} ${theme.muted(`(${requests.length})`)}`,
       );
       defaultRuntime.log(
         renderTable({
@@ -156,14 +157,16 @@ export function registerPairingCli(program: Command) {
       }
 
       defaultRuntime.log(
-        `${theme.success("Approved")} ${theme.muted(channel)} sender ${theme.command(approved.id)}.`,
+        `${theme.success(t("cli.pairing.approve.approved"))} ${theme.muted(channel)} ${t("cli.pairing.approve.sender")} ${theme.command(approved.id)}.`,
       );
 
       if (!opts.notify) {
         return;
       }
       await notifyApproved(channel, approved.id).catch((err) => {
-        defaultRuntime.log(theme.warn(`Failed to notify requester: ${String(err)}`));
+        defaultRuntime.log(
+          theme.warn(t("cli.pairing.approve.notifyFailed", { error: String(err) })),
+        );
       });
     });
 }

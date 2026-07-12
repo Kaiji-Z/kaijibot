@@ -1,4 +1,5 @@
 import type { ChannelId } from "../channels/plugins/types.js";
+import type { CliLocale } from "../cli/i18n/types.js";
 import type { SecretInputMode } from "../plugins/provider-auth-types.js";
 import type { GatewayDaemonRuntime } from "./daemon-runtime.js";
 
@@ -34,6 +35,7 @@ type OnboardDynamicProviderOptions = {
 
 export type OnboardOptions = OnboardDynamicProviderOptions & {
   mode?: OnboardMode;
+  locale?: CliLocale;
   /** "manual" is an alias for "advanced". */
   flow?: "quickstart" | "advanced" | "manual";
   workspace?: string;

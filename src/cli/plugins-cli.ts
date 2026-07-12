@@ -29,6 +29,7 @@ import { sanitizeTerminalText } from "../terminal/safe-text.js";
 import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { shortenHomeInString, shortenHomePath } from "../utils.js";
+import { t } from "./i18n/translate.js";
 import {
   applySlotSelectionForPlugin,
   createPluginInstallLogger,
@@ -238,7 +239,7 @@ export function registerPluginsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/plugins", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/plugins.md")}\n`,
+        `\n${theme.muted(t("cli.plugins.docs"))} ${formatDocsLink("/cli/plugins", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/plugins.md")}\n`,
     );
 
   plugins
@@ -264,13 +265,13 @@ export function registerPluginsCli(program: Command) {
       }
 
       if (list.length === 0) {
-        defaultRuntime.log(theme.muted("No plugins found."));
+        defaultRuntime.log(theme.muted(t("cli.plugins.list.noPlugins")));
         return;
       }
 
       const loaded = list.filter((p) => p.status === "loaded").length;
       defaultRuntime.log(
-        `${theme.heading("Plugins")} ${theme.muted(`(${loaded}/${list.length} loaded)`)}`,
+        `${theme.heading(t("cli.plugins.list.header"))} ${theme.muted(t("cli.plugins.list.loadedCount", { loaded, total: list.length }))}`,
       );
 
       if (!opts.verbose) {
@@ -302,7 +303,7 @@ export function registerPluginsCli(program: Command) {
         });
 
         if (usedRoots.size > 0) {
-          defaultRuntime.log(theme.muted("Source roots:"));
+          defaultRuntime.log(theme.muted(t("cli.plugins.list.sourceRoots")));
           for (const key of ["stock", "workspace", "global"] as const) {
             if (!usedRoots.has(key)) {
               continue;
@@ -353,7 +354,7 @@ export function registerPluginsCli(program: Command) {
       const report = buildPluginDiagnosticsReport({ config: cfg });
       if (opts.all) {
         if (id) {
-          defaultRuntime.error("Pass either a plugin id or --all, not both.");
+          defaultRuntime.error(t("cli.plugins.inspect.passIdOrAll"));
           return defaultRuntime.exit(1);
         }
         const inspectAll = buildAllPluginInspectReports({
@@ -419,7 +420,7 @@ export function registerPluginsCli(program: Command) {
       }
 
       if (!id) {
-        defaultRuntime.error("Provide a plugin id or use --all.");
+        defaultRuntime.error(t("cli.plugins.inspect.provideIdOrAll"));
         return defaultRuntime.exit(1);
       }
 
@@ -451,30 +452,42 @@ export function registerPluginsCli(program: Command) {
         lines.push(inspect.plugin.description);
       }
       lines.push("");
-      lines.push(`${theme.muted("Status:")} ${inspect.plugin.status}`);
+      lines.push(`${theme.muted(t("cli.plugins.inspect.status"))} ${inspect.plugin.status}`);
       if (inspect.plugin.failurePhase) {
-        lines.push(`${theme.muted("Failure phase:")} ${inspect.plugin.failurePhase}`);
+        lines.push(
+          `${theme.muted(t("cli.plugins.inspect.failurePhase"))} ${inspect.plugin.failurePhase}`,
+        );
       }
       if (inspect.plugin.failedAt) {
-        lines.push(`${theme.muted("Failed at:")} ${inspect.plugin.failedAt.toISOString()}`);
+        lines.push(
+          `${theme.muted(t("cli.plugins.inspect.failedAt"))} ${inspect.plugin.failedAt.toISOString()}`,
+        );
       }
-      lines.push(`${theme.muted("Format:")} ${inspect.plugin.format ?? "kaijibot"}`);
-      if (inspect.plugin.bundleFormat) {
-        lines.push(`${theme.muted("Bundle format:")} ${inspect.plugin.bundleFormat}`);
-      }
-      lines.push(`${theme.muted("Source:")} ${shortenHomeInString(inspect.plugin.source)}`);
-      lines.push(`${theme.muted("Origin:")} ${inspect.plugin.origin}`);
-      if (inspect.plugin.version) {
-        lines.push(`${theme.muted("Version:")} ${inspect.plugin.version}`);
-      }
-      lines.push(`${theme.muted("Shape:")} ${inspect.shape}`);
-      lines.push(`${theme.muted("Capability mode:")} ${inspect.capabilityMode}`);
       lines.push(
-        `${theme.muted("Legacy before_agent_start:")} ${inspect.usesLegacyBeforeAgentStart ? "yes" : "no"}`,
+        `${theme.muted(t("cli.plugins.inspect.format"))} ${inspect.plugin.format ?? "kaijibot"}`,
+      );
+      if (inspect.plugin.bundleFormat) {
+        lines.push(
+          `${theme.muted(t("cli.plugins.inspect.bundleFormat"))} ${inspect.plugin.bundleFormat}`,
+        );
+      }
+      lines.push(
+        `${theme.muted(t("cli.plugins.inspect.source"))} ${shortenHomeInString(inspect.plugin.source)}`,
+      );
+      lines.push(`${theme.muted(t("cli.plugins.inspect.origin"))} ${inspect.plugin.origin}`);
+      if (inspect.plugin.version) {
+        lines.push(`${theme.muted(t("cli.plugins.inspect.version"))} ${inspect.plugin.version}`);
+      }
+      lines.push(`${theme.muted(t("cli.plugins.inspect.shape"))} ${inspect.shape}`);
+      lines.push(
+        `${theme.muted(t("cli.plugins.inspect.capabilityMode"))} ${inspect.capabilityMode}`,
+      );
+      lines.push(
+        `${theme.muted(t("cli.plugins.inspect.legacyBeforeAgentStart"))} ${inspect.usesLegacyBeforeAgentStart ? "yes" : "no"}`,
       );
       if (inspect.bundleCapabilities.length > 0) {
         lines.push(
-          `${theme.muted("Bundle capabilities:")} ${inspect.bundleCapabilities.join(", ")}`,
+          `${theme.muted(t("cli.plugins.inspect.bundleCapabilities"))} ${inspect.bundleCapabilities.join(", ")}`,
         );
       }
       lines.push(
@@ -563,7 +576,7 @@ export function registerPluginsCli(program: Command) {
       );
       lines.push(...formatInspectSection("Install", formatInstallLines(install)));
       if (inspect.plugin.error) {
-        lines.push("", `${theme.error("Error:")} ${inspect.plugin.error}`);
+        lines.push("", `${theme.error(t("cli.plugins.inspect.error"))} ${inspect.plugin.error}`);
       }
       defaultRuntime.log(lines.join("\n"));
     });
@@ -585,12 +598,12 @@ export function registerPluginsCli(program: Command) {
       });
       logSlotWarnings(slotResult.warnings);
       if (enableResult.enabled) {
-        defaultRuntime.log(`Enabled plugin "${id}". Restart the gateway to apply.`);
+        defaultRuntime.log(t("cli.plugins.enable.success", { id }));
         return;
       }
       defaultRuntime.log(
         theme.warn(
-          `Plugin "${id}" could not be enabled (${enableResult.reason ?? "unknown reason"}).`,
+          t("cli.plugins.enable.couldNotEnable", { id, reason: enableResult.reason ?? "" }),
         ),
       );
     });
@@ -607,7 +620,7 @@ export function registerPluginsCli(program: Command) {
         nextConfig: next,
         ...(snapshot.hash !== undefined ? { baseHash: snapshot.hash } : {}),
       });
-      defaultRuntime.log(`Disabled plugin "${id}". Restart the gateway to apply.`);
+      defaultRuntime.log(t("cli.plugins.disable.success", { id }));
     });
 
   plugins
@@ -626,7 +639,7 @@ export function registerPluginsCli(program: Command) {
       const keepFiles = Boolean(opts.keepFiles || opts.keepConfig);
 
       if (opts.keepConfig) {
-        defaultRuntime.log(theme.warn("`--keep-config` is deprecated, use `--keep-files`."));
+        defaultRuntime.log(theme.warn(t("cli.plugins.uninstall.keepConfigDeprecated")));
       }
 
       const { plugin, pluginId } = resolvePluginUninstallId({
@@ -639,11 +652,9 @@ export function registerPluginsCli(program: Command) {
 
       if (!hasEntry && !hasInstall) {
         if (plugin) {
-          defaultRuntime.error(
-            `Plugin "${pluginId}" is not managed by plugins config/install records and cannot be uninstalled.`,
-          );
+          defaultRuntime.error(t("cli.plugins.uninstall.notManaged", { id: pluginId }));
         } else {
-          defaultRuntime.error(`Plugin not found: ${id}`);
+          defaultRuntime.error(t("cli.plugins.uninstall.notFound", { id }));
         }
         return defaultRuntime.exit(1);
       }
@@ -693,19 +704,23 @@ export function registerPluginsCli(program: Command) {
 
       const pluginName = plugin?.name || pluginId;
       defaultRuntime.log(
-        `Plugin: ${theme.command(pluginName)}${pluginName !== pluginId ? theme.muted(` (${pluginId})`) : ""}`,
+        `${t("cli.plugins.uninstall.pluginLabel")} ${theme.command(pluginName)}${pluginName !== pluginId ? theme.muted(` (${pluginId})`) : ""}`,
       );
-      defaultRuntime.log(`Will remove: ${preview.length > 0 ? preview.join(", ") : "(nothing)"}`);
+      defaultRuntime.log(
+        t("cli.plugins.uninstall.willRemove", {
+          items: preview.length > 0 ? preview.join(", ") : "(nothing)",
+        }),
+      );
 
       if (opts.dryRun) {
-        defaultRuntime.log(theme.muted("Dry run, no changes made."));
+        defaultRuntime.log(theme.muted(t("cli.plugins.uninstall.dryRun")));
         return;
       }
 
       if (!opts.force) {
         const confirmed = await promptYesNo(`Uninstall plugin "${pluginId}"?`);
         if (!confirmed) {
-          defaultRuntime.log("Cancelled.");
+          defaultRuntime.log(t("cli.plugins.uninstall.cancelled"));
           return;
         }
       }
@@ -755,9 +770,12 @@ export function registerPluginsCli(program: Command) {
       }
 
       defaultRuntime.log(
-        `Uninstalled plugin "${pluginId}". Removed: ${removed.length > 0 ? removed.join(", ") : "nothing"}.`,
+        t("cli.plugins.uninstall.uninstalled", {
+          id: pluginId,
+          items: removed.length > 0 ? removed.join(", ") : "nothing",
+        }),
       );
-      defaultRuntime.log("Restart the gateway to apply changes.");
+      defaultRuntime.log(t("cli.plugins.uninstall.restart"));
     });
 
   plugins
@@ -821,13 +839,13 @@ export function registerPluginsCli(program: Command) {
       const compatibility = buildPluginCompatibilityNotices({ report });
 
       if (errors.length === 0 && diags.length === 0 && compatibility.length === 0) {
-        defaultRuntime.log("No plugin issues detected.");
+        defaultRuntime.log(t("cli.plugins.doctor.noIssues"));
         return;
       }
 
       const lines: string[] = [];
       if (errors.length > 0) {
-        lines.push(theme.error("Plugin errors:"));
+        lines.push(theme.error(t("cli.plugins.doctor.errors")));
         for (const entry of errors) {
           const phase = entry.failurePhase ? ` [${entry.failurePhase}]` : "";
           lines.push(`- ${entry.id}${phase}: ${entry.error ?? "failed to load"} (${entry.source})`);
@@ -837,7 +855,7 @@ export function registerPluginsCli(program: Command) {
         if (lines.length > 0) {
           lines.push("");
         }
-        lines.push(theme.warn("Diagnostics:"));
+        lines.push(theme.warn(t("cli.plugins.doctor.diagnostics")));
         for (const diag of diags) {
           const target = diag.pluginId ? `${diag.pluginId}: ` : "";
           lines.push(`- ${target}${diag.message}`);
@@ -847,7 +865,7 @@ export function registerPluginsCli(program: Command) {
         if (lines.length > 0) {
           lines.push("");
         }
-        lines.push(theme.warn("Compatibility:"));
+        lines.push(theme.warn(t("cli.plugins.doctor.compatibility")));
         for (const notice of compatibility) {
           const marker = notice.severity === "warn" ? theme.warn("warn") : theme.muted("info");
           lines.push(`- ${formatPluginCompatibilityNotice(notice)} [${marker}]`);
@@ -858,7 +876,7 @@ export function registerPluginsCli(program: Command) {
         "gitee.com/kaiji1126/kaijibot/blob/main/docs/plugin.md",
       );
       lines.push("");
-      lines.push(`${theme.muted("Docs:")} ${docs}`);
+      lines.push(`${theme.muted(t("cli.plugins.docs"))} ${docs}`);
       defaultRuntime.log(lines.join("\n"));
     });
 
@@ -892,12 +910,12 @@ export function registerPluginsCli(program: Command) {
       }
 
       if (result.manifest.plugins.length === 0) {
-        defaultRuntime.log(`No plugins found in marketplace ${result.sourceLabel}.`);
+        defaultRuntime.log(t("cli.plugins.marketplace.noPlugins", { source: result.sourceLabel }));
         return;
       }
 
       defaultRuntime.log(
-        `${theme.heading("Marketplace")} ${theme.muted(result.manifest.name ?? result.sourceLabel)}`,
+        `${theme.heading(t("cli.plugins.marketplace.header"))} ${theme.muted(result.manifest.name ?? result.sourceLabel)}`,
       );
       for (const plugin of result.manifest.plugins) {
         const suffix = plugin.version ? theme.muted(` v${plugin.version}`) : "";

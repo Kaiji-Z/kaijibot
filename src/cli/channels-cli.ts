@@ -8,6 +8,7 @@ import { formatCliChannelOptions } from "./channel-options.js";
 import { runCommandWithRuntime } from "./cli-utils.js";
 import { hasExplicitOptions } from "./command-options.js";
 import { formatHelpExamples } from "./help-format.js";
+import { t } from "./i18n/translate.js";
 
 const optionNamesAdd = [
   "channel",
@@ -68,7 +69,7 @@ export function registerChannelsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+        `\n${theme.heading(t("cli.help.heading.examples"))}\n${formatHelpExamples([
           ["kaijibot channels list", "List configured channels and auth profiles."],
           ["kaijibot channels status --probe", "Run channel status checks and probes."],
           [
@@ -76,7 +77,7 @@ export function registerChannelsCli(program: Command) {
             "Add or update a channel account non-interactively.",
           ],
           ["kaijibot channels login --channel feishu", "Link a Feishu account."],
-        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
+        ])}\n\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink(
           "/cli/channels",
           "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/channels.md",
         )}\n`,
@@ -236,7 +237,7 @@ export function registerChannelsCli(program: Command) {
           },
           defaultRuntime,
         );
-      }, "Channel login failed");
+      }, t("cli.channels.login.failed"));
     });
 
   channels
@@ -253,6 +254,6 @@ export function registerChannelsCli(program: Command) {
           },
           defaultRuntime,
         );
-      }, "Channel logout failed");
+      }, t("cli.channels.logout.failed"));
     });
 }

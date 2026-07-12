@@ -112,6 +112,7 @@ Async pipelines (not triggered by user messages):
 The cognitive system identifies users through a single unified function: `resolveCognitiveUserId(sessionKey?, senderId?)` in `src/cognitive/identity.ts`. Channel-agnostic — no `ou_` prefix check, works with feishu, wechat, and any future channel.
 
 **Resolution rules (priority order):**
+
 1. `senderId` present (conversation-time path) → `resolveOperatorSenderId(senderId) ?? senderId`
 2. `sessionKey` tail === `"main"` → `OPERATOR_USER_ID` (`"operator"`)
 3. Group session without `:sender:` → `null` (tail is a group ID, not a user ID)
@@ -122,6 +123,7 @@ The cognitive system identifies users through a single unified function: `resolv
 **dmScope adaptive:** `resolveEffectiveDmScope(cfg)` in `src/routing/session-key.ts` automatically promotes `dmScope` from `"main"` to `"per-peer"` when any channel has credentials configured. This ensures per-user session isolation without requiring manual configuration. Explicit dmScope settings are always respected.
 
 **All cognitive subsystems use the same storage dimensions:**
+
 - Persona/Correction/Evolution/Fragments: `cognitive/{subsystem}/{agentId}/{userId}.json` — agent × user isolation
 - Skills/Memory: workspace-isolated (per-agent, no userId dimension)
 - AuditLog/Effectiveness: global
@@ -403,7 +405,7 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 ## Config and Environment
 
 - Config lives in `~/.kaijibot/kaijibot.json`. CLI: `kaijibot config set <key> <value>`.
-- Default model: `zai/glm-5-turbo`. Set via `kaijibot config set agent.model "zai/glm-5-turbo"`.
+- Set model via `kaijibot config set agent.model "<provider>/<model>"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
 - Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)

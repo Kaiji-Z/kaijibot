@@ -67,6 +67,7 @@ import {
 } from "../web-search/runtime.js";
 import { runCommandWithRuntime } from "./cli-utils.js";
 import { createDefaultDeps } from "./deps.js";
+import { t } from "./i18n/translate.js";
 import { collectOption } from "./program/helpers.js";
 
 type CapabilityTransport = "local" | "gateway";
@@ -358,13 +359,21 @@ function emitJsonOrText(
 function formatEnvelopeForText(value: unknown): string {
   const envelope = value as CapabilityEnvelope;
   if (!envelope.ok) {
-    return `${envelope.capability} failed: ${envelope.error ?? "unknown error"}`;
+    return t("cli.capability.envelope.failed", {
+      capability: envelope.capability,
+      error: envelope.error ?? t("cli.capability.envelope.unknownError"),
+    });
   }
   const lines = [
-    `${envelope.capability} via ${envelope.transport}`,
-    ...(envelope.provider ? [`provider: ${envelope.provider}`] : []),
-    ...(envelope.model ? [`model: ${envelope.model}`] : []),
-    `outputs: ${String(envelope.outputs.length)}`,
+    t("cli.capability.envelope.summary", {
+      capability: envelope.capability,
+      transport: envelope.transport,
+    }),
+    ...(envelope.provider
+      ? [t("cli.capability.envelope.providerLabel", { provider: envelope.provider })]
+      : []),
+    ...(envelope.model ? [t("cli.capability.envelope.modelLabel", { model: envelope.model })] : []),
+    t("cli.capability.envelope.outputs", { count: String(envelope.outputs.length) }),
   ];
   for (const output of envelope.outputs) {
     const pathValue = typeof output.path === "string" ? output.path : undefined;
@@ -1152,8 +1161,8 @@ function ensureMemoryEmbeddingProvidersRegistered(): void {
 function registerCapabilityListAndInspect(capability: Command) {
   capability
     .command("list")
-    .description("List canonical capability ids and supported transports")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.list"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = CAPABILITY_METADATA.map((entry) => ({
@@ -1167,9 +1176,9 @@ function registerCapabilityListAndInspect(capability: Command) {
 
   capability
     .command("inspect")
-    .description("Inspect one canonical capability id")
-    .requiredOption("--name <capability>", "Capability id")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.inspect"))
+    .requiredOption("--name <capability>", t("cli.capability.opt.capabilityId"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const entry = findCapabilityMetadata(String(opts.name));
@@ -1187,27 +1196,25 @@ export function registerCapabilityCli(program: Command) {
   const capability = program
     .command("infer")
     .alias("capability")
-    .description("Run provider-backed inference commands through a stable CLI surface")
+    .description(t("cli.capability.desc.infer"))
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/infer", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/infer.md")}\n`,
+        `\n${theme.muted(t("cli.capability.docs"))} ${formatDocsLink("/cli/infer", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/infer.md")}\n`,
     );
 
   registerCapabilityListAndInspect(capability);
 
-  const model = capability
-    .command("model")
-    .description("Text inference and model catalog commands");
+  const model = capability.command("model").description(t("cli.capability.desc.model"));
 
   model
     .command("run")
-    .description("Run a one-shot model turn")
-    .requiredOption("--prompt <text>", "Prompt text")
-    .option("--model <provider/model>", "Model override")
-    .option("--local", "Force local execution", false)
-    .option("--gateway", "Force gateway execution", false)
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.modelRun"))
+    .requiredOption("--prompt <text>", t("cli.capability.opt.promptText"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--local", t("cli.capability.opt.forceLocal"), false)
+    .option("--gateway", t("cli.capability.opt.forceGateway"), false)
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const transport = resolveTransport({
@@ -1227,8 +1234,8 @@ export function registerCapabilityCli(program: Command) {
 
   model
     .command("list")
-    .description("List known models")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.modelList"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await loadModelCatalog({ config: loadConfig() });
@@ -1238,9 +1245,9 @@ export function registerCapabilityCli(program: Command) {
 
   model
     .command("inspect")
-    .description("Inspect one model catalog entry")
-    .requiredOption("--model <provider/model>", "Model id")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.modelInspect"))
+    .requiredOption("--model <provider/model>", t("cli.capability.opt.modelId"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const target = normalizeStringifiedOptionalString(opts.model) ?? "";
@@ -1259,8 +1266,8 @@ export function registerCapabilityCli(program: Command) {
 
   model
     .command("providers")
-    .description("List model providers from the catalog")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.modelProviders"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await buildModelProviders();
@@ -1268,12 +1275,12 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const modelAuth = model.command("auth").description("Provider auth helpers");
+  const modelAuth = model.command("auth").description(t("cli.capability.desc.modelAuth"));
 
   modelAuth
     .command("login")
-    .description("Run provider auth login")
-    .requiredOption("--provider <id>", "Provider id")
+    .description(t("cli.capability.desc.modelAuthLogin"))
+    .requiredOption("--provider <id>", t("cli.capability.opt.providerId"))
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         await modelsAuthLoginCommand({ provider: String(opts.provider) }, defaultRuntime);
@@ -1282,9 +1289,9 @@ export function registerCapabilityCli(program: Command) {
 
   modelAuth
     .command("logout")
-    .description("Remove saved auth profiles for one provider")
-    .requiredOption("--provider <id>", "Provider id")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.modelAuthLogout"))
+    .requiredOption("--provider <id>", t("cli.capability.opt.providerId"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runModelAuthLogout(String(opts.provider));
@@ -1296,8 +1303,8 @@ export function registerCapabilityCli(program: Command) {
 
   modelAuth
     .command("status")
-    .description("Show configured auth state")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.modelAuthStatus"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runModelAuthStatus();
@@ -1307,19 +1314,19 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const image = capability.command("image").description("Image generation and description");
+  const image = capability.command("image").description(t("cli.capability.desc.image"));
 
   image
     .command("generate")
-    .description("Generate images")
-    .requiredOption("--prompt <text>", "Prompt text")
-    .option("--model <provider/model>", "Model override")
+    .description(t("cli.capability.desc.imageGenerate"))
+    .requiredOption("--prompt <text>", t("cli.capability.opt.promptText"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
     .option("--count <n>", "Number of images")
-    .option("--size <size>", "Size hint like 1024x1024")
-    .option("--aspect-ratio <ratio>", "Aspect ratio hint like 16:9")
-    .option("--resolution <value>", "Resolution hint: 1K, 2K, or 4K")
-    .option("--output <path>", "Output path")
-    .option("--json", "Output JSON", false)
+    .option("--size <size>", t("cli.capability.opt.size"))
+    .option("--aspect-ratio <ratio>", t("cli.capability.opt.aspectRatio"))
+    .option("--resolution <value>", t("cli.capability.opt.resolution"))
+    .option("--output <path>", t("cli.capability.opt.outputPath"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runImageGenerate({
@@ -1338,12 +1345,12 @@ export function registerCapabilityCli(program: Command) {
 
   image
     .command("edit")
-    .description("Edit images with one or more input files")
-    .requiredOption("--file <path>", "Input file", collectOption, [])
-    .requiredOption("--prompt <text>", "Prompt text")
-    .option("--model <provider/model>", "Model override")
-    .option("--output <path>", "Output path")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.imageEdit"))
+    .requiredOption("--file <path>", t("cli.capability.opt.inputFile"), collectOption, [])
+    .requiredOption("--prompt <text>", t("cli.capability.opt.promptText"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--output <path>", t("cli.capability.opt.outputPath"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const files = Array.isArray(opts.file) ? (opts.file as string[]) : [String(opts.file)];
@@ -1360,10 +1367,10 @@ export function registerCapabilityCli(program: Command) {
 
   image
     .command("describe")
-    .description("Describe one image file")
-    .requiredOption("--file <path>", "Image file")
-    .option("--model <provider/model>", "Model override")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.imageDescribe"))
+    .requiredOption("--file <path>", t("cli.capability.opt.imageFile"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runImageDescribe({
@@ -1377,10 +1384,10 @@ export function registerCapabilityCli(program: Command) {
 
   image
     .command("describe-many")
-    .description("Describe multiple image files")
-    .requiredOption("--file <path>", "Image file", collectOption, [])
-    .option("--model <provider/model>", "Model override")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.imageDescribeMany"))
+    .requiredOption("--file <path>", t("cli.capability.opt.imageFile"), collectOption, [])
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runImageDescribe({
@@ -1394,8 +1401,8 @@ export function registerCapabilityCli(program: Command) {
 
   image
     .command("providers")
-    .description("List image generation providers")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.imageProviders"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const cfg = loadConfig();
@@ -1418,16 +1425,16 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const audio = capability.command("audio").description("Audio transcription");
+  const audio = capability.command("audio").description(t("cli.capability.desc.audio"));
 
   audio
     .command("transcribe")
-    .description("Transcribe one audio file")
-    .requiredOption("--file <path>", "Audio file")
+    .description(t("cli.capability.desc.audioTranscribe"))
+    .requiredOption("--file <path>", t("cli.capability.opt.audioFile"))
     .option("--language <code>", "Language hint")
-    .option("--prompt <text>", "Prompt hint")
-    .option("--model <provider/model>", "Model override")
-    .option("--json", "Output JSON", false)
+    .option("--prompt <text>", t("cli.capability.opt.promptText"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runAudioTranscribe({
@@ -1442,8 +1449,8 @@ export function registerCapabilityCli(program: Command) {
 
   audio
     .command("providers")
-    .description("List audio transcription providers")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.audioProviders"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const cfg = loadConfig();
@@ -1461,19 +1468,19 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const tts = capability.command("tts").description("Text to speech");
+  const tts = capability.command("tts").description(t("cli.capability.desc.tts"));
 
   tts
     .command("convert")
-    .description("Convert text to speech")
-    .requiredOption("--text <text>", "Input text")
-    .option("--channel <id>", "Channel hint")
-    .option("--voice <id>", "Voice hint")
-    .option("--model <provider/model>", "Model override")
-    .option("--output <path>", "Output path")
-    .option("--local", "Force local execution", false)
-    .option("--gateway", "Force gateway execution", false)
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.ttsConvert"))
+    .requiredOption("--text <text>", t("cli.capability.opt.inputText"))
+    .option("--channel <id>", t("cli.capability.opt.channelHint"))
+    .option("--voice <id>", t("cli.capability.opt.voiceHint"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--output <path>", t("cli.capability.opt.outputPath"))
+    .option("--local", t("cli.capability.opt.forceLocal"), false)
+    .option("--gateway", t("cli.capability.opt.forceGateway"), false)
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const transport = resolveTransport({
@@ -1501,9 +1508,9 @@ export function registerCapabilityCli(program: Command) {
 
   tts
     .command("voices")
-    .description("List voices for a TTS provider")
-    .option("--provider <id>", "Speech provider id")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.ttsVoices"))
+    .option("--provider <id>", t("cli.capability.opt.speechProviderId"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const voices = await runTtsVoices(opts.provider as string | undefined);
@@ -1513,10 +1520,10 @@ export function registerCapabilityCli(program: Command) {
 
   tts
     .command("providers")
-    .description("List speech providers")
-    .option("--local", "Force local execution", false)
-    .option("--gateway", "Force gateway execution", false)
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.ttsProviders"))
+    .option("--local", t("cli.capability.opt.forceLocal"), false)
+    .option("--gateway", t("cli.capability.opt.forceGateway"), false)
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const transport = resolveTransport({
@@ -1534,9 +1541,9 @@ export function registerCapabilityCli(program: Command) {
 
   tts
     .command("status")
-    .description("Show TTS status")
-    .option("--gateway", "Force gateway execution", false)
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.ttsStatus"))
+    .option("--gateway", t("cli.capability.opt.forceGateway"), false)
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const transport = resolveTransport({
@@ -1560,10 +1567,14 @@ export function registerCapabilityCli(program: Command) {
   ] as const) {
     tts
       .command(commandName)
-      .description(`${commandName === "enable" ? "Enable" : "Disable"} TTS`)
-      .option("--local", "Force local execution", false)
-      .option("--gateway", "Force gateway execution", false)
-      .option("--json", "Output JSON", false)
+      .description(
+        commandName === "enable"
+          ? t("cli.capability.desc.ttsEnable")
+          : t("cli.capability.desc.ttsDisable"),
+      )
+      .option("--local", t("cli.capability.opt.forceLocal"), false)
+      .option("--gateway", t("cli.capability.opt.forceGateway"), false)
+      .option("--json", t("cli.capability.opt.outputJson"), false)
       .action(async (opts) => {
         await runCommandWithRuntime(defaultRuntime, async () => {
           const transport = resolveTransport({
@@ -1585,11 +1596,11 @@ export function registerCapabilityCli(program: Command) {
 
   tts
     .command("set-provider")
-    .description("Set the active TTS provider")
-    .requiredOption("--provider <id>", "Speech provider id")
-    .option("--local", "Force local execution", false)
-    .option("--gateway", "Force gateway execution", false)
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.ttsSetProvider"))
+    .requiredOption("--provider <id>", t("cli.capability.opt.speechProviderId"))
+    .option("--local", t("cli.capability.opt.forceLocal"), false)
+    .option("--gateway", t("cli.capability.opt.forceGateway"), false)
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const transport = resolveTransport({
@@ -1609,15 +1620,15 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const video = capability.command("video").description("Video generation and description");
+  const video = capability.command("video").description(t("cli.capability.desc.video"));
 
   video
     .command("generate")
-    .description("Generate video")
-    .requiredOption("--prompt <text>", "Prompt text")
-    .option("--model <provider/model>", "Model override")
-    .option("--output <path>", "Output path")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.videoGenerate"))
+    .requiredOption("--prompt <text>", t("cli.capability.opt.promptText"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--output <path>", t("cli.capability.opt.outputPath"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runVideoGenerate({
@@ -1631,10 +1642,10 @@ export function registerCapabilityCli(program: Command) {
 
   video
     .command("describe")
-    .description("Describe one video file")
-    .requiredOption("--file <path>", "Video file")
-    .option("--model <provider/model>", "Model override")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.videoDescribe"))
+    .requiredOption("--file <path>", t("cli.capability.opt.videoFile"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runVideoDescribe({
@@ -1647,8 +1658,8 @@ export function registerCapabilityCli(program: Command) {
 
   video
     .command("providers")
-    .description("List video generation and description providers")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.videoProviders"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const cfg = loadConfig();
@@ -1685,15 +1696,15 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const web = capability.command("web").description("Web capabilities");
+  const web = capability.command("web").description(t("cli.capability.desc.web"));
 
   web
     .command("search")
-    .description("Run web search")
-    .requiredOption("--query <text>", "Search query")
-    .option("--provider <id>", "Provider id")
-    .option("--limit <n>", "Result limit")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.webSearch"))
+    .requiredOption("--query <text>", t("cli.capability.opt.searchQuery"))
+    .option("--provider <id>", t("cli.capability.opt.providerId"))
+    .option("--limit <n>", t("cli.capability.opt.resultLimit"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runWebSearchCommand({
@@ -1707,11 +1718,11 @@ export function registerCapabilityCli(program: Command) {
 
   web
     .command("fetch")
-    .description("Fetch one URL")
-    .requiredOption("--url <url>", "URL")
-    .option("--provider <id>", "Provider id")
-    .option("--format <format>", "Format hint")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.webFetch"))
+    .requiredOption("--url <url>", t("cli.capability.opt.url"))
+    .option("--provider <id>", t("cli.capability.opt.providerId"))
+    .option("--format <format>", t("cli.capability.opt.formatHint"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runWebFetchCommand({
@@ -1725,8 +1736,8 @@ export function registerCapabilityCli(program: Command) {
 
   web
     .command("providers")
-    .description("List web providers")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.webProviders"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const cfg = loadConfig();
@@ -1760,15 +1771,15 @@ export function registerCapabilityCli(program: Command) {
       });
     });
 
-  const embedding = capability.command("embedding").description("Embedding providers");
+  const embedding = capability.command("embedding").description(t("cli.capability.desc.embedding"));
 
   embedding
     .command("create")
-    .description("Create embeddings")
-    .requiredOption("--text <text>", "Input text", collectOption, [])
-    .option("--provider <id>", "Provider id")
-    .option("--model <provider/model>", "Model override")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.embeddingCreate"))
+    .requiredOption("--text <text>", t("cli.capability.opt.inputText"), collectOption, [])
+    .option("--provider <id>", t("cli.capability.opt.providerId"))
+    .option("--model <provider/model>", t("cli.capability.opt.modelOverride"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         const result = await runMemoryEmbeddingCreate({
@@ -1782,8 +1793,8 @@ export function registerCapabilityCli(program: Command) {
 
   embedding
     .command("providers")
-    .description("List embedding providers")
-    .option("--json", "Output JSON", false)
+    .description(t("cli.capability.desc.embeddingProviders"))
+    .option("--json", t("cli.capability.opt.outputJson"), false)
     .action(async (opts) => {
       await runCommandWithRuntime(defaultRuntime, async () => {
         ensureMemoryEmbeddingProvidersRegistered();

@@ -6,6 +6,7 @@ import { escapeRegExp } from "../../utils.js";
 import { hasFlag, hasRootVersionAlias } from "../argv.js";
 import { formatCliBannerLine, hasEmittedCliBanner } from "../banner.js";
 import { replaceCliName, resolveCliName } from "../cli-name.js";
+import { t } from "../i18n/translate.js";
 import { CLI_LOG_LEVEL_VALUES, parseCliLogLevelOption } from "../log-level-option.js";
 import type { ProgramContext } from "./context.js";
 import { getCoreCliCommandsWithSubcommands } from "./core-command-descriptors.js";
@@ -17,32 +18,15 @@ const ROOT_COMMANDS_WITH_SUBCOMMANDS = new Set([
   ...getCoreCliCommandsWithSubcommands(),
   ...getSubCliCommandsWithSubcommands(),
 ]);
-const ROOT_COMMANDS_HINT =
-  "Hint: commands suffixed with * have subcommands. Run <command> --help for details.";
+const HELP_EXAMPLE_COUNT = 9;
 
-const EXAMPLES = [
-  ["kaijibot models --help", "Show detailed help for the models command."],
-  [
-    "kaijibot channels login --verbose",
-    "Link personal WhatsApp Web and show QR + connection logs.",
-  ],
-  [
-    'kaijibot message send --target +15555550123 --message "Hi" --json',
-    "Send via your web session and print JSON result.",
-  ],
-  ["kaijibot gateway --port 18789", "Run the WebSocket Gateway locally."],
-  ["kaijibot --dev gateway", "Run a dev Gateway (isolated state/config) on ws://127.0.0.1:19001."],
-  ["kaijibot gateway --force", "Kill anything bound to the default gateway port, then start it."],
-  ["kaijibot gateway ...", "Gateway control via WebSocket."],
-  [
-    'kaijibot agent --to +15555550123 --message "Run summary" --deliver',
-    "Talk directly to the agent using the Gateway; optionally send the WhatsApp reply.",
-  ],
-  [
-    'kaijibot message send --channel feishu --target ou_xxx --message "Hi"',
-    "Send via your Telegram bot.",
-  ],
-] as const;
+function resolveHelpExamples(): Array<readonly [string, string]> {
+  const examples: Array<readonly [string, string]> = [];
+  for (let i = 0; i < HELP_EXAMPLE_COUNT; i++) {
+    examples.push([t(`cli.help.example.${i}.command`), t(`cli.help.example.${i}.description`)]);
+  }
+  return examples;
+}
 
 export function configureProgramHelp(program: Command, ctx: ProgramContext) {
   program
@@ -90,7 +74,10 @@ export function configureProgramHelp(program: Command, ctx: ProgramContext) {
       "m",
     ).test(output);
     if (isRootHelp && /^Commands:/m.test(output)) {
-      output = output.replace(/^Commands:/m, `Commands:\n  ${theme.muted(ROOT_COMMANDS_HINT)}`);
+      output = output.replace(
+        /^Commands:/m,
+        `Commands:\n  ${theme.muted(t("cli.help.hint.subcommands"))}`,
+      );
     }
 
     return output
@@ -130,15 +117,18 @@ export function configureProgramHelp(program: Command, ctx: ProgramContext) {
     return `\n${line}\n`;
   });
 
-  const fmtExamples = EXAMPLES.map(
-    ([cmd, desc]) => `  ${theme.command(replaceCliName(cmd, CLI_NAME))}\n    ${theme.muted(desc)}`,
-  ).join("\n");
+  const fmtExamples = resolveHelpExamples()
+    .map(
+      ([cmd, desc]) =>
+        `  ${theme.command(replaceCliName(cmd, CLI_NAME))}\n    ${theme.muted(desc)}`,
+    )
+    .join("\n");
 
   program.addHelpText("afterAll", ({ command }) => {
     if (command !== program) {
       return "";
     }
     const docs = formatDocsLink("/cli", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli.md");
-    return `\n${theme.heading("Examples:")}\n${fmtExamples}\n\n${theme.muted("Docs:")} ${docs}\n`;
+    return `\n${theme.heading(t("cli.help.heading.examples"))}\n${fmtExamples}\n\n${theme.muted(t("cli.help.heading.docs"))} ${docs}\n`;
   });
 }

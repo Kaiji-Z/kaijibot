@@ -10,6 +10,7 @@ import { isSecretsApplyPlan, type SecretsApplyPlan } from "../secrets/plan.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { theme } from "../terminal/theme.js";
 import { addGatewayClientOptions, callGatewayFromCli, type GatewayRpcOpts } from "./gateway-rpc.js";
+import { t } from "./i18n/translate.js";
 
 type SecretsReloadOptions = GatewayRpcOpts & { json?: boolean };
 type SecretsAuditOptions = {
@@ -71,10 +72,10 @@ export function registerSecretsCli(program: Command) {
         (result as { warningCount?: unknown } | undefined)?.warningCount ?? 0,
       );
       if (Number.isFinite(warningCount) && warningCount > 0) {
-        defaultRuntime.log(`Secrets reloaded with ${warningCount} warning(s).`);
+        defaultRuntime.log(t("cli.secrets.reload.warning", { count: warningCount }));
         return;
       }
-      defaultRuntime.log("Secrets reloaded.");
+      defaultRuntime.log(t("cli.secrets.reload.success"));
     } catch (err) {
       defaultRuntime.error(danger(String(err)));
       defaultRuntime.exit(1);
@@ -100,7 +101,13 @@ export function registerSecretsCli(program: Command) {
           defaultRuntime.writeJson(report);
         } else {
           defaultRuntime.log(
-            `Secrets audit: ${report.status}. plaintext=${report.summary.plaintextCount}, unresolved=${report.summary.unresolvedRefCount}, shadowed=${report.summary.shadowedRefCount}, legacy=${report.summary.legacyResidueCount}.`,
+            t("cli.secrets.audit.summary", {
+              status: report.status,
+              plaintext: report.summary.plaintextCount,
+              unresolved: report.summary.unresolvedRefCount,
+              shadowed: report.summary.shadowedRefCount,
+              legacy: report.summary.legacyResidueCount,
+            }),
           );
           if (report.findings.length > 0) {
             for (const finding of report.findings.slice(0, 20)) {
@@ -109,12 +116,14 @@ export function registerSecretsCli(program: Command) {
               );
             }
             if (report.findings.length > 20) {
-              defaultRuntime.log(`... ${report.findings.length - 20} more finding(s).`);
+              defaultRuntime.log(
+                t("cli.secrets.audit.moreFindings", { count: report.findings.length - 20 }),
+              );
             }
           }
           if (report.resolution.skippedExecRefs > 0) {
             defaultRuntime.log(
-              `Audit note: skipped ${report.resolution.skippedExecRefs} exec SecretRef resolvability check(s). Re-run with --allow-exec to execute exec providers during audit.`,
+              t("cli.secrets.audit.skippedExecRefs", { count: report.resolution.skippedExecRefs }),
             );
           }
         }
@@ -168,11 +177,15 @@ export function registerSecretsCli(program: Command) {
           });
         } else {
           defaultRuntime.log(
-            `Preflight: changed=${configured.preflight.changed}, files=${configured.preflight.changedFiles.length}, warnings=${configured.preflight.warningCount}.`,
+            t("cli.secrets.configure.preflightSummary", {
+              changed: String(configured.preflight.changed),
+              files: configured.preflight.changedFiles.length,
+              warnings: configured.preflight.warningCount,
+            }),
           );
           if (configured.preflight.warningCount > 0) {
             for (const warning of configured.preflight.warnings) {
-              defaultRuntime.log(`- warning: ${warning}`);
+              defaultRuntime.log(t("cli.secrets.configure.warningLine", { warning }));
             }
           }
           if (
@@ -180,23 +193,29 @@ export function registerSecretsCli(program: Command) {
             configured.preflight.skippedExecRefs > 0
           ) {
             defaultRuntime.log(
-              `Preflight note: skipped ${configured.preflight.skippedExecRefs} exec SecretRef resolvability check(s). Re-run with --allow-exec to execute exec providers during preflight.`,
+              t("cli.secrets.configure.preflightSkippedExecRefs", {
+                count: configured.preflight.skippedExecRefs,
+              }),
             );
           }
           const providerUpserts = Object.keys(configured.plan.providerUpserts ?? {}).length;
           const providerDeletes = configured.plan.providerDeletes?.length ?? 0;
           defaultRuntime.log(
-            `Plan: targets=${configured.plan.targets.length}, providerUpserts=${providerUpserts}, providerDeletes=${providerDeletes}.`,
+            t("cli.secrets.configure.planSummary", {
+              targets: configured.plan.targets.length,
+              providerUpserts,
+              providerDeletes,
+            }),
           );
           if (opts.planOut) {
-            defaultRuntime.log(`Plan written to ${opts.planOut}`);
+            defaultRuntime.log(t("cli.secrets.configure.planWritten", { path: opts.planOut }));
           }
         }
 
         let shouldApply = Boolean(opts.apply);
         if (!shouldApply && !opts.json) {
           const approved = await confirm({
-            message: "Apply this plan now?",
+            message: t("cli.secrets.configure.applyPrompt"),
             initialValue: true,
           });
           if (typeof approved === "boolean") {
@@ -207,12 +226,11 @@ export function registerSecretsCli(program: Command) {
           const needsIrreversiblePrompt = Boolean(opts.apply);
           if (needsIrreversiblePrompt && !opts.yes && !opts.json) {
             const confirmed = await confirm({
-              message:
-                "This migration is one-way for migrated plaintext values. Continue with apply?",
+              message: t("cli.secrets.configure.irreversiblePrompt"),
               initialValue: true,
             });
             if (confirmed !== true) {
-              defaultRuntime.log("Apply cancelled.");
+              defaultRuntime.log(t("cli.secrets.configure.applyCancelled"));
               return;
             }
           }
@@ -227,8 +245,8 @@ export function registerSecretsCli(program: Command) {
           }
           defaultRuntime.log(
             result.changed
-              ? `Secrets applied. Updated ${result.changedFiles.length} file(s).`
-              : "Secrets apply: no changes.",
+              ? t("cli.secrets.apply.success", { count: result.changedFiles.length })
+              : t("cli.secrets.apply.noChanges"),
           );
         }
       } catch (err) {
@@ -259,20 +277,20 @@ export function registerSecretsCli(program: Command) {
         if (opts.dryRun) {
           defaultRuntime.log(
             result.changed
-              ? `Secrets apply dry run: ${result.changedFiles.length} file(s) would change.`
-              : "Secrets apply dry run: no changes.",
+              ? t("cli.secrets.apply.dryRunChanges", { count: result.changedFiles.length })
+              : t("cli.secrets.apply.dryRunNoChanges"),
           );
           if (!result.checks.resolvabilityComplete && result.skippedExecRefs > 0) {
             defaultRuntime.log(
-              `Secrets apply dry-run note: skipped ${result.skippedExecRefs} exec SecretRef resolvability check(s). Re-run with --allow-exec to execute exec providers during dry-run.`,
+              t("cli.secrets.apply.dryRunSkippedExecRefs", { count: result.skippedExecRefs }),
             );
           }
           return;
         }
         defaultRuntime.log(
           result.changed
-            ? `Secrets applied. Updated ${result.changedFiles.length} file(s).`
-            : "Secrets apply: no changes.",
+            ? t("cli.secrets.apply.success", { count: result.changedFiles.length })
+            : t("cli.secrets.apply.noChanges"),
         );
       } catch (err) {
         defaultRuntime.error(danger(String(err)));

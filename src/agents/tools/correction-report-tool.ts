@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Type } from "typebox";
+import { t } from "../../cli/i18n/translate.js";
 import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
@@ -10,7 +11,9 @@ const log = createSubsystemLogger("correction-tool");
 
 export const RecordCorrectionSchema = Type.Object({
   domain: Type.String({ description: "Cognitive domain (e.g. 'feishu-doc', 'code-review')" }),
-  trigger: Type.String({ description: "When this correction applies (e.g. '创建飞书文档')" }),
+  trigger: Type.String({
+    description: "When this correction applies (e.g. 'when creating Feishu docs')",
+  }),
   mistake: Type.String({ description: "What was done wrong" }),
   correction: Type.String({ description: "The correct approach" }),
 });
@@ -28,10 +31,7 @@ export function createCorrectionReportTool(deps: {
   return {
     name: "record_correction",
     label: "Record Correction",
-    description:
-      "当你发现自己犯了错误并纠正了，或者用户指出了你的错误，调用此工具记录纠正。" +
-      "记录的纠正会在未来的对话中自动注入系统提示，帮助你避免重复同样的错误。" +
-      "不需要每次都调用——只在犯实质性错误时记录。",
+    description: t("cli.tool.correction.description"),
     parameters: RecordCorrectionSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
       const params = rawParams as {
@@ -76,7 +76,7 @@ export function createCorrectionReportTool(deps: {
             status: "reinforced",
             id: record.id,
             domain: record.domain,
-            message: "已强化已有的纠错记录，下次对话会自动提醒。",
+            message: t("cli.tool.correction.reinforcedMessage"),
           });
         }
 
@@ -84,7 +84,7 @@ export function createCorrectionReportTool(deps: {
           status: "saved",
           id: record.id,
           domain: record.domain,
-          message: "已记录纠错，下次对话会自动提醒避免此错误。",
+          message: t("cli.tool.correction.savedMessage"),
         });
       } catch (err) {
         return textResult(`Correction recording failed: ${String(err)}`, { status: "error" });

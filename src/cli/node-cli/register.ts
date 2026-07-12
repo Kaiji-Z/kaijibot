@@ -6,6 +6,7 @@ import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
 import { parsePort } from "../daemon-cli/shared.js";
 import { formatHelpExamples } from "../help-format.js";
+import { t } from "../i18n/translate.js";
 import {
   runNodeDaemonInstall,
   runNodeDaemonRestart,
@@ -26,7 +27,7 @@ export function registerNodeCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+        `\n${theme.heading(t("cli.help.heading.examples"))}\n${formatHelpExamples([
           [
             "kaijibot node run --host 127.0.0.1 --port 18789",
             "Run the node host in the foreground.",
@@ -34,7 +35,7 @@ export function registerNodeCli(program: Command) {
           ["kaijibot node status", "Check node host service status."],
           ["kaijibot node install", "Install the node host service."],
           ["kaijibot node restart", "Restart the installed node host service."],
-        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/node", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/node.md")}\n`,
+        ])}\n\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/node", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/node.md")}\n`,
     );
 
   node

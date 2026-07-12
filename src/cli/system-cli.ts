@@ -6,6 +6,7 @@ import { formatDocsLink } from "../terminal/links.js";
 import { theme } from "../terminal/theme.js";
 import type { GatewayRpcOpts } from "./gateway-rpc.js";
 import { addGatewayClientOptions, callGatewayFromCli } from "./gateway-rpc.js";
+import { t } from "./i18n/translate.js";
 
 type SystemEventOpts = GatewayRpcOpts & { text?: string; mode?: string; json?: boolean };
 type SystemGatewayOpts = GatewayRpcOpts & { json?: boolean };
@@ -46,7 +47,7 @@ export function registerSystemCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/system", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/system.md")}\n`,
+        `\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/system", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/system.md")}\n`,
     );
 
   addGatewayClientOptions(

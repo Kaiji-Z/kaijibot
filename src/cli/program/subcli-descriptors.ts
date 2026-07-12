@@ -1,155 +1,156 @@
+import { t } from "../i18n/translate.js";
 import { defineCommandDescriptorCatalog } from "./command-descriptor-utils.js";
 import type { NamedCommandDescriptor } from "./command-group-descriptors.js";
 
 export type SubCliDescriptor = NamedCommandDescriptor;
 
 const subCliCommandCatalog = defineCommandDescriptorCatalog([
-  { name: "acp", description: "Agent Control Protocol tools", hasSubcommands: true },
+  { name: "acp", description: t("cli.commands.acp.description"), hasSubcommands: true },
   {
     name: "gateway",
-    description: "Run, inspect, and query the WebSocket Gateway",
+    description: t("cli.commands.gateway.description"),
     hasSubcommands: true,
   },
-  { name: "daemon", description: "Gateway service (legacy alias)", hasSubcommands: true },
-  { name: "logs", description: "Tail gateway file logs via RPC", hasSubcommands: false },
+  { name: "daemon", description: t("cli.commands.daemon.description"), hasSubcommands: true },
+  { name: "logs", description: t("cli.commands.logs.description"), hasSubcommands: false },
   {
     name: "system",
-    description: "System events, heartbeat, and presence",
+    description: t("cli.commands.system.description"),
     hasSubcommands: true,
   },
   {
     name: "models",
-    description: "Discover, scan, and configure models",
+    description: t("cli.commands.models.description"),
     hasSubcommands: true,
   },
   {
     name: "infer",
-    description: "Run provider-backed inference commands",
+    description: t("cli.commands.infer.description"),
     hasSubcommands: true,
   },
   {
     name: "capability",
-    description: "Run provider-backed inference commands (fallback alias: infer)",
+    description: t("cli.commands.capability.description"),
     hasSubcommands: true,
   },
   {
     name: "approvals",
-    description: "Manage exec approvals (gateway or node host)",
+    description: t("cli.commands.approvals.description"),
     hasSubcommands: true,
   },
   {
     name: "nodes",
-    description: "Manage gateway-owned node pairing and node commands",
+    description: t("cli.commands.nodes.description"),
     hasSubcommands: true,
   },
   {
     name: "devices",
-    description: "Device pairing + token management",
+    description: t("cli.commands.devices.description"),
     hasSubcommands: true,
   },
   {
     name: "node",
-    description: "Run and manage the headless node host service",
+    description: t("cli.commands.node.description"),
     hasSubcommands: true,
   },
   {
     name: "sandbox",
-    description: "Manage sandbox containers for agent isolation",
+    description: t("cli.commands.sandbox.description"),
     hasSubcommands: true,
   },
   {
     name: "tui",
-    description: "Open a terminal UI connected to the Gateway",
+    description: t("cli.commands.tui.description"),
     hasSubcommands: false,
   },
   {
     name: "cron",
-    description: "Manage cron jobs via the Gateway scheduler",
+    description: t("cli.commands.cron.description"),
     hasSubcommands: true,
   },
   {
     name: "dns",
-    description: "DNS helpers for wide-area discovery (Tailscale + CoreDNS)",
+    description: t("cli.commands.dns.description"),
     hasSubcommands: true,
   },
   {
     name: "docs",
-    description: "Search the live KaijiBot docs",
+    description: t("cli.commands.docs.description"),
     hasSubcommands: false,
   },
   {
     name: "qa",
-    description: "Run QA scenarios and launch the private QA debugger UI",
+    description: t("cli.commands.qa.description"),
     hasSubcommands: true,
   },
   {
     name: "hooks",
-    description: "Manage internal agent hooks",
+    description: t("cli.commands.hooks.description"),
     hasSubcommands: true,
   },
   {
     name: "webhooks",
-    description: "Webhook helpers and integrations",
+    description: t("cli.commands.webhooks.description"),
     hasSubcommands: true,
   },
   {
     name: "qr",
-    description: "Generate mobile pairing QR/setup code",
+    description: t("cli.commands.qr.description"),
     hasSubcommands: false,
   },
   {
     name: "clawbot",
-    description: "Legacy clawbot command aliases",
+    description: t("cli.commands.clawbot.description"),
     hasSubcommands: true,
   },
   {
     name: "pairing",
-    description: "Secure DM pairing (approve inbound requests)",
+    description: t("cli.commands.pairing.description"),
     hasSubcommands: true,
   },
   {
     name: "plugins",
-    description: "Manage KaijiBot plugins and extensions",
+    description: t("cli.commands.plugins.description"),
     hasSubcommands: true,
   },
   {
     name: "channels",
-    description: "Manage connected chat channels (Telegram, Discord, etc.)",
+    description: t("cli.commands.channels.description"),
     hasSubcommands: true,
   },
   {
     name: "directory",
-    description: "Lookup contact and group IDs (self, peers, groups) for supported chat channels",
+    description: t("cli.commands.directory.description"),
     hasSubcommands: true,
   },
   {
     name: "security",
-    description: "Security tools and local config audits",
+    description: t("cli.commands.security.description"),
     hasSubcommands: true,
   },
   {
     name: "secrets",
-    description: "Secrets runtime reload controls",
+    description: t("cli.commands.secrets.description"),
     hasSubcommands: true,
   },
   {
     name: "skills",
-    description: "List and inspect available skills",
+    description: t("cli.commands.skills.description"),
     hasSubcommands: true,
   },
   {
     name: "soul",
-    description: "Manage soul presets (MBTI-based personality profiles)",
+    description: t("cli.commands.soul.description"),
     hasSubcommands: true,
   },
   {
     name: "update",
-    description: "Update KaijiBot and inspect update channel status",
+    description: t("cli.commands.update.description"),
     hasSubcommands: true,
   },
   {
     name: "completion",
-    description: "Generate shell completion script",
+    description: t("cli.commands.completion.description"),
     hasSubcommands: false,
   },
 ] as const satisfies ReadonlyArray<SubCliDescriptor>);

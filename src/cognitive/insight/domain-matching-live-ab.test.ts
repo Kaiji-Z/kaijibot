@@ -385,6 +385,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
           input,
           webResults,
           persona.feedbackProfile.recentInsightContents,
+          "zh",
           keywordMatched, // Group A: keyword-matched domain snippets
         );
 
@@ -393,6 +394,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
           input,
           webResults,
           persona.feedbackProfile.recentInsightContents,
+          "zh",
           llmMatched, // Group B: LLM-matched domain snippets
         );
 

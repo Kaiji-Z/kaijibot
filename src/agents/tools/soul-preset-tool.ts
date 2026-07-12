@@ -1,4 +1,5 @@
 import { Type } from "typebox";
+import { t } from "../../cli/i18n/translate.js";
 import { removeSoulFromConfig, setSoulInConfig } from "../../config/soul-config-helpers.js";
 import type { SoulPreset } from "../../config/types.soul.js";
 import type { AnyAgentTool } from "./common.js";
@@ -11,34 +12,16 @@ export const SwitchSoulSchema = Type.Object({
   }),
 });
 
-const SOUL_PRESET_NAMES: Record<string, string> = {
-  intj: "建筑师 (Architect)",
-  intp: "逻辑学家 (Logician)",
-  entj: "指挥官 (Commander)",
-  entp: "辩论家 (Debater)",
-  infj: "提倡者 (Advocate)",
-  infp: "调停者 (Mediator)",
-  enfj: "主人公 (Protagonist)",
-  enfp: "竞选者 (Campaigner)",
-  istj: "物流师 (Logistician)",
-  isfj: "守卫者 (Defender)",
-  estj: "总经理 (Executive)",
-  esfj: "执政官 (Consul)",
-  istp: "鉴赏家 (Virtuoso)",
-  isfp: "探险家 (Adventurer)",
-  estp: "企业家 (Entrepreneur)",
-  esfp: "表演者 (Entertainer)",
-};
+function soulPresetName(preset: string): string {
+  return t(`cli.soul.preset.${preset}`);
+}
 
 export function createSwitchSoulTool(opts?: { agentId?: string }): AnyAgentTool {
   const agentId = opts?.agentId;
   return {
     name: "switch_soul",
     label: "Switch Soul Preset",
-    description:
-      "切换灵魂预设。当用户要求改变你的性格或切换灵魂时使用。" +
-      "可用的预设: intj, intp, entj, entp, infj, infp, enfj, enfp, istj, isfj, estj, esfj, istp, isfp, estp, esfp。" +
-      "传入 'default' 恢复默认灵魂。",
+    description: t("cli.tool.soul.description"),
     parameters: SwitchSoulSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
       const params = rawParams as { preset: string };
@@ -64,15 +47,33 @@ export function createSwitchSoulTool(opts?: { agentId?: string }): AnyAgentTool 
 
           return jsonResult({
             status: "reset",
-            message: "灵魂预设已移除，下一条消息起恢复默认灵魂。",
+            message: t("cli.tool.soul.resetMessage"),
           });
         }
 
-        if (!SOUL_PRESET_NAMES[preset]) {
-          const validKeys = Object.keys(SOUL_PRESET_NAMES).join(", ");
-          return textResult(`Unknown soul preset: "${preset}". Valid presets: ${validKeys}`, {
-            status: "invalid",
-          });
+        const validPresets = [
+          "intj",
+          "intp",
+          "entj",
+          "entp",
+          "infj",
+          "infp",
+          "enfj",
+          "enfp",
+          "istj",
+          "isfj",
+          "estj",
+          "esfj",
+          "istp",
+          "isfp",
+          "estp",
+          "esfp",
+        ];
+        if (!validPresets.includes(preset)) {
+          return textResult(
+            `Unknown soul preset: "${preset}". Valid presets: ${validPresets.join(", ")}`,
+            { status: "invalid" },
+          );
         }
 
         const snapshot = await readConfigFileSnapshot();
@@ -81,12 +82,15 @@ export function createSwitchSoulTool(opts?: { agentId?: string }): AnyAgentTool 
         await replaceConfigFile({ nextConfig: sourceConfig });
         clearAllBootstrapSnapshots();
 
-        const name = SOUL_PRESET_NAMES[preset];
+        const name = soulPresetName(preset);
         return jsonResult({
           status: "switched",
           preset,
           name,
-          message: `灵魂预设已切换为 ${preset.toUpperCase()} — ${name}。下一条消息起生效。`,
+          message: t("cli.tool.soul.switchedMessage", {
+            preset: preset.toUpperCase(),
+            name,
+          }),
         });
       } catch (err) {
         return textResult(`Soul switch failed: ${String(err)}`, { status: "error" });

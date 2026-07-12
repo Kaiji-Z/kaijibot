@@ -1,4 +1,10 @@
 import { randomUUID } from "node:crypto";
+import {
+  DEFAULT_COGNITIVE_LOCALE,
+  L,
+  pickLocalized,
+  type CognitiveLocale,
+} from "../cognitive-locale.js";
 import type { CorrectionRecord } from "./types.js";
 
 const CORRECTION_SIGNAL_PATTERNS: RegExp[] = [
@@ -118,10 +124,11 @@ export function hasCorrectionSignals(transcript: string): boolean {
 export async function extractCorrectionsFromTranscript(
   transcript: string,
   generateText: (prompt: string) => Promise<string>,
+  locale: CognitiveLocale = DEFAULT_COGNITIVE_LOCALE,
 ): Promise<CorrectionRecord[]> {
   const cappedTranscript = transcript.length > 16_000 ? transcript.slice(0, 16_000) : transcript;
 
-  const prompt = buildExtractionPrompt(cappedTranscript);
+  const prompt = buildExtractionPrompt(cappedTranscript, locale);
 
   try {
     const raw = await generateText(prompt);
@@ -144,8 +151,7 @@ export async function extractCorrectionsFromTranscript(
   }
 }
 
-function buildExtractionPrompt(transcript: string): string {
-  return `分析以下对话记录，提取所有用户对助手行为的纠正。一个纠正发生在以下情况：
+const EXTRACTION_PROMPT_ZH = `分析以下对话记录，提取所有用户对助手行为的纠正。一个纠正发生在以下情况：
 1. 用户告诉助手它做错了某事
 2. 助手道歉并纠正了自己的行为
 3. 用户建议了更好的做法
@@ -162,7 +168,31 @@ function buildExtractionPrompt(transcript: string): string {
 如果没有发现纠正，输出空数组 []。
 
 对话记录：
-${transcript}`;
+{transcript}`;
+
+const EXTRACTION_PROMPT_EN = `Analyze the following conversation transcript and extract every case where the user corrected the assistant's behavior. A correction occurs when:
+1. The user tells the assistant it did something wrong.
+2. The assistant apologizes and corrects itself.
+3. The user suggests a better approach.
+
+For each correction, provide:
+- domain: the relevant domain (e.g. "feishu-doc", "code-review", "general")
+- trigger: when this correction should apply (e.g. "when creating Feishu docs")
+- mistake: what the assistant did wrong (concise, one sentence)
+- correction: what the correct approach is (concise, one sentence)
+
+Output only a JSON array, nothing else:
+[{"domain":"...","trigger":"...","mistake":"...","correction":"..."}]
+
+If no corrections are found, output an empty array [].
+
+Conversation transcript:
+{transcript}`;
+
+const EXTRACTION_PROMPT = L(EXTRACTION_PROMPT_ZH, EXTRACTION_PROMPT_EN);
+
+function buildExtractionPrompt(transcript: string, locale: CognitiveLocale): string {
+  return pickLocalized(EXTRACTION_PROMPT, locale).replace("{transcript}", transcript);
 }
 
 function parseExtractionResponse(

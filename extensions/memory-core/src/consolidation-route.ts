@@ -67,7 +67,6 @@ const CORRECTION_KEYWORDS = [
   "应该是",
   "修正",
   "改错",
-  "不对",
 ];
 
 function looksLikeCorrection(evidence: string): boolean {

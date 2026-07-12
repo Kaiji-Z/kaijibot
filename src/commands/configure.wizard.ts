@@ -1,6 +1,7 @@
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
 import { formatCliCommand } from "../cli/command-format.js";
+import { t } from "../cli/i18n/translate.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { readConfigFileSnapshot, replaceConfigFile, resolveGatewayPort } from "../config/config.js";
 import { logConfigUpdated } from "../config/logging.js";
@@ -119,13 +120,15 @@ async function promptConfigureSection(
 ): Promise<ConfigureSectionChoice> {
   return guardCancel(
     await select<ConfigureSectionChoice>({
-      message: "选择要配置的分区",
+      message: t("cli.configure.sectionSelect.message"),
       options: [
         ...CONFIGURE_SECTION_OPTIONS,
         {
           value: "__continue",
-          label: "继续",
-          hint: hasSelection ? "完成" : "暂时跳过",
+          label: t("cli.configure.sectionSelect.continueLabel"),
+          hint: hasSelection
+            ? t("cli.configure.sectionSelect.finishHint")
+            : t("cli.configure.sectionSelect.skipHint"),
         },
       ],
       initialValue: CONFIGURE_SECTION_OPTIONS[0]?.value,
@@ -137,16 +140,16 @@ async function promptConfigureSection(
 async function promptChannelMode(runtime: RuntimeEnv): Promise<ChannelsWizardMode> {
   return guardCancel(
     await select({
-      message: "消息渠道",
+      message: t("cli.configure.channels.message"),
       options: [
         {
           value: "configure",
-          label: "配置/关联",
+          label: t("cli.configure.channels.configureLabel"),
           hint: "Add/update channels; disable unselected accounts",
         },
         {
           value: "remove",
-          label: "移除渠道配置",
+          label: t("cli.configure.channels.removeLabel"),
           hint: "Delete channel tokens/settings from kaijibot.json",
         },
       ],
@@ -180,7 +183,7 @@ async function promptWebToolsConfig(
 
   const enableSearch = guardCancel(
     await confirm({
-      message: "启用 web_search？",
+      message: t("cli.configure.webSearch.enableMessage"),
       initialValue: existingSearch?.enabled ?? searchProviderOptions.length > 0,
     }),
     runtime,
@@ -211,7 +214,7 @@ async function promptWebToolsConfig(
 
       const enableCodexNative = guardCancel(
         await confirm({
-          message: "为支持 Codex 的模型启用原生 Codex 网络搜索？",
+          message: t("cli.configure.webSearch.codexEnableMessage"),
           initialValue: existingSearch?.openaiCodex?.enabled === true,
         }),
         runtime,
@@ -220,7 +223,7 @@ async function promptWebToolsConfig(
       if (enableCodexNative) {
         const codexMode = guardCancel(
           await select({
-            message: "Codex 原生网络搜索模式",
+            message: t("cli.configure.webSearch.codexModeMessage"),
             options: [
               {
                 value: "cached",
@@ -247,7 +250,7 @@ async function promptWebToolsConfig(
         };
         configureManagedProvider = guardCancel(
           await confirm({
-            message: "现在配置或更换托管的网络搜索服务？",
+            message: t("cli.configure.webSearch.hostedMessage"),
             initialValue: Boolean(existingSearch?.provider),
           }),
           runtime,
@@ -295,7 +298,7 @@ async function promptWebToolsConfig(
 
   const enableFetch = guardCancel(
     await confirm({
-      message: "启用 web_fetch（无需密钥的 HTTP 抓取）？",
+      message: t("cli.configure.webFetch.enableMessage"),
       initialValue: existingFetch?.enabled ?? true,
     }),
     runtime,
@@ -324,7 +327,11 @@ export async function runConfigureWizard(
   runtime: RuntimeEnv = defaultRuntime,
 ) {
   try {
-    intro(opts.command === "update" ? "KaijiBot 更新向导" : "KaijiBot 配置");
+    intro(
+      opts.command === "update"
+        ? t("cli.configure.intro.update")
+        : t("cli.configure.intro.configure"),
+    );
     const prompter = createClackPrompter();
 
     const snapshot = await readConfigFileSnapshot();
@@ -347,7 +354,11 @@ export async function runConfigureWizard(
         );
       }
       if (!snapshot.valid) {
-        outro(`配置无效。运行 \`${formatCliCommand("kaijibot doctor")}\` 修复后重新执行配置。`);
+        outro(
+          t("cli.configure.invalidConfigOutro", {
+            doctorCmd: formatCliCommand("kaijibot doctor"),
+          }),
+        );
         runtime.exit(1);
         return;
       }
@@ -384,18 +395,18 @@ export async function runConfigureWizard(
 
     const mode = guardCancel(
       await select({
-        message: "网关运行在哪里？",
+        message: t("cli.configure.gatewayLocation.message"),
         options: [
           {
             value: "local",
-            label: "本地（本机）",
+            label: t("cli.configure.gatewayLocation.localLabel"),
             hint: localProbe.ok
               ? `Gateway reachable (${localUrl})`
               : `No gateway detected (${localUrl})`,
           },
           {
             value: "remote",
-            label: "远程（仅信息）",
+            label: t("cli.configure.gatewayLocation.remoteLabel"),
             hint: !remoteUrl
               ? "No remote URL configured yet"
               : remoteProbe?.ok
@@ -419,7 +430,7 @@ export async function runConfigureWizard(
       });
       currentBaseHash = undefined;
       logConfigUpdated(runtime);
-      outro("远程网关已配置。");
+      outro(t("cli.configure.remoteConfigOutro"));
       return;
     }
 
@@ -457,7 +468,7 @@ export async function runConfigureWizard(
     const configureWorkspace = async () => {
       const workspaceInput = guardCancel(
         await text({
-          message: "工作空间目录",
+          message: t("cli.configure.workspace.message"),
           initialValue: workspaceDir,
         }),
         runtime,
@@ -522,7 +533,7 @@ export async function runConfigureWizard(
     const promptDaemonPort = async () => {
       const portInput = guardCancel(
         await text({
-          message: "服务安装的网关端口",
+          message: t("cli.configure.daemonPort.message"),
           initialValue: String(gatewayPort),
           validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
         }),
@@ -534,7 +545,7 @@ export async function runConfigureWizard(
     if (opts.sections) {
       const selected = opts.sections;
       if (!selected || selected.length === 0) {
-        outro("未选择任何更改。");
+        outro(t("cli.configure.noChanges"));
         return;
       }
 
@@ -660,10 +671,10 @@ export async function runConfigureWizard(
       if (!ranSection) {
         if (didSetGatewayMode) {
           await persistConfig();
-          outro("网关模式已设为本地。");
+          outro(t("cli.configure.gatewayLocalSetOutro"));
           return;
         }
-        outro("未选择任何更改。");
+        outro(t("cli.configure.noChanges"));
         return;
       }
     }
@@ -728,7 +739,7 @@ export async function runConfigureWizard(
       "Control UI",
     );
 
-    outro("配置完成。");
+    outro(t("cli.configure.completeOutro"));
   } catch (err) {
     if (err instanceof WizardCancelledError) {
       runtime.exit(1);

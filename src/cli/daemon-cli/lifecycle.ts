@@ -12,6 +12,7 @@ import { defaultRuntime } from "../../runtime.js";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
 import { theme } from "../../terminal/theme.js";
 import { formatCliCommand } from "../command-format.js";
+import { t } from "../i18n/translate.js";
 import { recoverInstalledLaunchAgent } from "./launchd-recovery.js";
 import {
   runServiceRestart,
@@ -139,9 +140,7 @@ async function restartGatewayWithoutServiceManager(port: number) {
 export async function runDaemonUninstall(opts: DaemonLifecycleOptions = {}) {
   const service = tryResolveGatewayService();
   if (!service) {
-    defaultRuntime.log(
-      `No service manager on ${process.platform}. Nothing to uninstall.`,
-    );
+    defaultRuntime.log(t("cli.daemon.uninstall.noServiceManager", { platform: process.platform }));
     return;
   }
   return await runServiceUninstall({
@@ -158,7 +157,10 @@ export async function runDaemonStart(opts: DaemonLifecycleOptions = {}) {
   if (!service) {
     defaultRuntime.log(
       theme.warn(
-        `No service manager on ${process.platform}. Start the gateway directly: ${formatCliCommand("kaijibot gateway")}`,
+        t("cli.daemon.start.noServiceManager", {
+          platform: process.platform,
+          cmd: formatCliCommand("kaijibot gateway"),
+        }),
       ),
     );
     return false;
@@ -187,7 +189,7 @@ export async function runDaemonStop(opts: DaemonLifecycleOptions = {}) {
       defaultRuntime.log(theme.success(handled.message));
       return true;
     }
-    defaultRuntime.log(theme.muted("Gateway is not running."));
+    defaultRuntime.log(theme.muted(t("cli.daemon.stop.notRunning")));
     return false;
   }
   await runServiceStop({
@@ -220,7 +222,10 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
       if (!json) {
         defaultRuntime.log(
           theme.warn(
-            `No gateway process found on port ${restartPort}. Start it with ${formatCliCommand("kaijibot gateway")}.`,
+            t("cli.daemon.restart.noProcess", {
+              port: restartPort,
+              cmd: formatCliCommand("kaijibot gateway"),
+            }),
           ),
         );
       }
@@ -238,7 +243,10 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
       return true;
     }
     const diagnostics = renderGatewayPortHealthDiagnostics(health);
-    const timeoutLine = `Timed out after ${restartWaitSeconds}s waiting for gateway port ${restartPort} to become healthy.`;
+    const timeoutLine = t("cli.daemon.restart.timeoutPort", {
+      seconds: restartWaitSeconds,
+      port: restartPort,
+    });
     if (!json) {
       defaultRuntime.log(theme.warn(timeoutLine));
       for (const line of diagnostics) {
@@ -281,7 +289,10 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
         }
 
         const diagnostics = renderGatewayPortHealthDiagnostics(health);
-        const timeoutLine = `Timed out after ${restartWaitSeconds}s waiting for gateway port ${restartPort} to become healthy.`;
+        const timeoutLine = t("cli.daemon.restart.timeoutPort", {
+          seconds: restartWaitSeconds,
+          port: restartPort,
+        });
         if (!json) {
           defaultRuntime.log(theme.warn(timeoutLine));
           for (const line of diagnostics) {
@@ -311,7 +322,7 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
         warnings.push(staleMsg);
         if (!json) {
           defaultRuntime.log(theme.warn(staleMsg));
-          defaultRuntime.log(theme.muted("Stopping stale process(es) and retrying restart..."));
+          defaultRuntime.log(theme.muted(t("cli.daemon.restart.stoppingStale")));
         }
 
         await terminateStaleGatewayPids(health.staleGatewayPids);

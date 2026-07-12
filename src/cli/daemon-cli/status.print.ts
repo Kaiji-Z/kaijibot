@@ -16,6 +16,7 @@ import { defaultRuntime } from "../../runtime.js";
 import { colorize } from "../../terminal/theme.js";
 import { shortenHomePath } from "../../utils.js";
 import { formatCliCommand } from "../command-format.js";
+import { t } from "../i18n/translate.js";
 import {
   createCliStatusTextStyles,
   filterDaemonEnv,
@@ -65,74 +66,81 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   const serviceStatus = service.loaded
     ? okText(service.loadedText)
     : warnText(service.notLoadedText);
-  defaultRuntime.log(`${label("Service:")} ${accent(service.label)} (${serviceStatus})`);
+  defaultRuntime.log(
+    `${label(t("cli.daemon.label.service"))} ${accent(service.label)} (${serviceStatus})`,
+  );
   if (status.logFile) {
-    defaultRuntime.log(`${label("File logs:")} ${infoText(shortenHomePath(status.logFile))}`);
+    defaultRuntime.log(
+      `${label(t("cli.daemon.label.fileLogs"))} ${infoText(shortenHomePath(status.logFile))}`,
+    );
   }
   if (service.command?.programArguments?.length) {
     defaultRuntime.log(
-      `${label("Command:")} ${infoText(service.command.programArguments.join(" "))}`,
+      `${label(t("cli.daemon.label.command"))} ${infoText(service.command.programArguments.join(" "))}`,
     );
   }
   if (service.command?.sourcePath) {
     defaultRuntime.log(
-      `${label("Service file:")} ${infoText(shortenHomePath(service.command.sourcePath))}`,
+      `${label(t("cli.daemon.label.serviceFile"))} ${infoText(shortenHomePath(service.command.sourcePath))}`,
     );
   }
   if (service.command?.workingDirectory) {
     defaultRuntime.log(
-      `${label("Working dir:")} ${infoText(shortenHomePath(service.command.workingDirectory))}`,
+      `${label(t("cli.daemon.label.workingDir"))} ${infoText(shortenHomePath(service.command.workingDirectory))}`,
     );
   }
   const daemonEnvLines = safeDaemonEnv(service.command?.environment);
   if (daemonEnvLines.length > 0) {
-    defaultRuntime.log(`${label("Service env:")} ${daemonEnvLines.join(" ")}`);
+    defaultRuntime.log(`${label(t("cli.daemon.label.serviceEnv"))} ${daemonEnvLines.join(" ")}`);
   }
   spacer();
 
   if (service.configAudit?.issues.length) {
-    defaultRuntime.error(warnText("Service config looks out of date or non-standard."));
+    defaultRuntime.error(warnText(t("cli.daemon.status.configOutdated")));
     for (const issue of service.configAudit.issues) {
       const detail = issue.detail ? ` (${issue.detail})` : "";
-      defaultRuntime.error(`${warnText("Service config issue:")} ${issue.message}${detail}`);
+      defaultRuntime.error(
+        `${warnText(t("cli.daemon.status.configIssue"))} ${issue.message}${detail}`,
+      );
     }
     defaultRuntime.error(
       warnText(
-        `Recommendation: run "${formatCliCommand("kaijibot doctor")}" (or "${formatCliCommand("kaijibot doctor --repair")}").`,
+        t("cli.daemon.status.recommendation", {
+          doctorCmd: formatCliCommand("kaijibot doctor"),
+          doctorRepairCmd: formatCliCommand("kaijibot doctor --repair"),
+        }),
       ),
     );
   }
 
   if (status.config) {
     const cliCfg = `${shortenHomePath(status.config.cli.path)}${status.config.cli.exists ? "" : " (missing)"}${status.config.cli.valid ? "" : " (invalid)"}`;
-    defaultRuntime.log(`${label("Config (cli):")} ${infoText(cliCfg)}`);
+    defaultRuntime.log(`${label(t("cli.daemon.label.configCli"))} ${infoText(cliCfg)}`);
     if (!status.config.cli.valid && status.config.cli.issues?.length) {
       for (const issue of status.config.cli.issues.slice(0, 5)) {
         defaultRuntime.error(
-          `${errorText("Config issue:")} ${formatConfigIssueLine(issue, "", { normalizeRoot: true })}`,
+          `${errorText(t("cli.daemon.status.configIssueLabel"))} ${formatConfigIssueLine(issue, "", { normalizeRoot: true })}`,
         );
       }
     }
     if (status.config.daemon) {
       const daemonCfg = `${shortenHomePath(status.config.daemon.path)}${status.config.daemon.exists ? "" : " (missing)"}${status.config.daemon.valid ? "" : " (invalid)"}`;
-      defaultRuntime.log(`${label("Config (service):")} ${infoText(daemonCfg)}`);
+      defaultRuntime.log(`${label(t("cli.daemon.label.configService"))} ${infoText(daemonCfg)}`);
       if (!status.config.daemon.valid && status.config.daemon.issues?.length) {
         for (const issue of status.config.daemon.issues.slice(0, 5)) {
           defaultRuntime.error(
-            `${errorText("Service config issue:")} ${formatConfigIssueLine(issue, "", { normalizeRoot: true })}`,
+            `${errorText(t("cli.daemon.status.serviceConfigIssueLabel"))} ${formatConfigIssueLine(issue, "", { normalizeRoot: true })}`,
           );
         }
       }
     }
     if (status.config.mismatch) {
+      defaultRuntime.error(errorText(t("cli.daemon.status.rootCause")));
       defaultRuntime.error(
         errorText(
-          "Root cause: CLI and service are using different config paths (likely a profile/state-dir mismatch).",
-        ),
-      );
-      defaultRuntime.error(
-        errorText(
-          `Fix: rerun \`${formatCliCommand("kaijibot gateway install --force")}\` from the same --profile / KAIJIBOT_STATE_DIR you expect.`,
+          t("cli.daemon.status.fixConfigMismatch", {
+            gatewayInstallCmd: formatCliCommand("kaijibot gateway install --force"),
+          }),
         ),
       );
     }
@@ -142,12 +150,16 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   if (status.gateway) {
     const bindHost = status.gateway.bindHost ?? "n/a";
     defaultRuntime.log(
-      `${label("Gateway:")} bind=${infoText(status.gateway.bindMode)} (${infoText(bindHost)}), port=${infoText(String(status.gateway.port))} (${infoText(status.gateway.portSource)})`,
+      `${label(t("cli.daemon.label.gateway"))} bind=${infoText(status.gateway.bindMode)} (${infoText(bindHost)}), port=${infoText(String(status.gateway.port))} (${infoText(status.gateway.portSource)})`,
     );
-    defaultRuntime.log(`${label("Probe target:")} ${infoText(status.gateway.probeUrl)}`);
+    defaultRuntime.log(
+      `${label(t("cli.daemon.label.probeTarget"))} ${infoText(status.gateway.probeUrl)}`,
+    );
     const controlUiEnabled = status.config?.daemon?.controlUi?.enabled ?? true;
     if (!controlUiEnabled) {
-      defaultRuntime.log(`${label("Dashboard:")} ${warnText("disabled")}`);
+      defaultRuntime.log(
+        `${label(t("cli.daemon.label.dashboard"))} ${warnText(t("cli.daemon.status.dashboardDisabled"))}`,
+      );
     } else {
       const links = resolveControlUiLinks({
         port: status.gateway.port,
@@ -155,10 +167,12 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
         customBindHost: status.gateway.customBindHost,
         basePath: status.config?.daemon?.controlUi?.basePath,
       });
-      defaultRuntime.log(`${label("Dashboard:")} ${infoText(links.httpUrl)}`);
+      defaultRuntime.log(`${label(t("cli.daemon.label.dashboard"))} ${infoText(links.httpUrl)}`);
     }
     if (status.gateway.probeNote) {
-      defaultRuntime.log(`${label("Probe note:")} ${infoText(status.gateway.probeNote)}`);
+      defaultRuntime.log(
+        `${label(t("cli.daemon.label.probeNote"))} ${infoText(status.gateway.probeNote)}`,
+      );
     }
     spacer();
   }
@@ -166,24 +180,30 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   const runtimeLine = formatRuntimeStatus(service.runtime);
   if (runtimeLine) {
     const runtimeColor = resolveRuntimeStatusColor(service.runtime?.status);
-    defaultRuntime.log(`${label("Runtime:")} ${colorize(rich, runtimeColor, runtimeLine)}`);
+    defaultRuntime.log(
+      `${label(t("cli.daemon.label.runtime"))} ${colorize(rich, runtimeColor, runtimeLine)}`,
+    );
   }
 
   if (rpc && !rpc.ok && service.loaded && service.runtime?.status === "running") {
-    defaultRuntime.log(
-      warnText("Warm-up: launch agents can take a few seconds. Try again shortly."),
-    );
+    defaultRuntime.log(warnText(t("cli.daemon.status.warmUp")));
   }
   if (rpc) {
     if (rpc.ok) {
-      defaultRuntime.log(`${label("RPC probe:")} ${okText("ok")}`);
+      defaultRuntime.log(
+        `${label(t("cli.daemon.label.rpcProbe"))} ${okText(t("cli.daemon.status.rpcOk"))}`,
+      );
     } else {
-      defaultRuntime.error(`${label("RPC probe:")} ${errorText("failed")}`);
+      defaultRuntime.error(
+        `${label(t("cli.daemon.label.rpcProbe"))} ${errorText(t("cli.daemon.status.rpcFailed"))}`,
+      );
       if (rpc.authWarning) {
-        defaultRuntime.error(`${label("RPC auth:")} ${warnText(rpc.authWarning)}`);
+        defaultRuntime.error(
+          `${label(t("cli.daemon.label.rpcAuth"))} ${warnText(rpc.authWarning)}`,
+        );
       }
       if (rpc.url) {
-        defaultRuntime.error(`${label("RPC target:")} ${rpc.url}`);
+        defaultRuntime.error(`${label(t("cli.daemon.label.rpcTarget"))} ${rpc.url}`);
       }
       const lines = String(rpc.error ?? "unknown")
         .split(/\r?\n/)
@@ -203,12 +223,17 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   ) {
     defaultRuntime.error(
       errorText(
-        `Gateway runtime PID does not own the listening port. Other gateway process(es) are listening: ${status.health.staleGatewayPids.join(", ")}`,
+        t("cli.daemon.status.pidNotOwningPort", {
+          pids: status.health.staleGatewayPids.join(", "),
+        }),
       ),
     );
     defaultRuntime.error(
       errorText(
-        `Fix: run ${formatCliCommand("kaijibot gateway restart")} and re-check with ${formatCliCommand("kaijibot gateway status --deep")}.`,
+        t("cli.daemon.status.fixPidNotOwning", {
+          gatewayRestartCmd: formatCliCommand("kaijibot gateway restart"),
+          gatewayStatusCmd: formatCliCommand("kaijibot gateway status --deep"),
+        }),
       ),
     );
     spacer();
@@ -220,7 +245,7 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     const container = Boolean(
       resolveDaemonContainerContext(service.command?.environment ?? process.env),
     );
-    defaultRuntime.error(errorText("systemd user services unavailable."));
+    defaultRuntime.error(errorText(t("cli.daemon.status.systemdUnavailable")));
     for (const hint of renderSystemdUnavailableHints({
       wsl: isWSLEnv(),
       kind: classifySystemdUnavailableDetail(service.runtime?.detail),
@@ -232,14 +257,12 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   }
 
   if (service.runtime?.missingUnit) {
-    defaultRuntime.error(errorText("Service unit not found."));
+    defaultRuntime.error(errorText(t("cli.daemon.status.serviceUnitNotFound")));
     for (const hint of renderRuntimeHints(service.runtime, process.env, status.logFile)) {
       defaultRuntime.error(errorText(hint));
     }
   } else if (service.loaded && service.runtime?.status === "stopped") {
-    defaultRuntime.error(
-      errorText("Service is loaded but not running (likely exited immediately)."),
-    );
+    defaultRuntime.error(errorText(t("cli.daemon.status.serviceLoadedNotRunning")));
     for (const hint of renderRuntimeHints(
       service.runtime,
       service.command?.environment ?? process.env,
@@ -254,12 +277,14 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     const env = service.command?.environment ?? process.env;
     const labelValue = resolveGatewayLaunchAgentLabel(env.KAIJIBOT_PROFILE);
     defaultRuntime.error(
-      errorText(
-        `LaunchAgent label cached but plist missing. Clear with: launchctl bootout gui/$UID/${labelValue}`,
-      ),
+      errorText(t("cli.daemon.status.cachedLabelMissing", { label: labelValue })),
     );
     defaultRuntime.error(
-      errorText(`Then reinstall: ${formatCliCommand("kaijibot gateway install")}`),
+      errorText(
+        t("cli.daemon.status.reinstallAfterClear", {
+          gatewayInstallCmd: formatCliCommand("kaijibot gateway install"),
+        }),
+      ),
     );
     spacer();
   }
@@ -271,13 +296,13 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   if (status.port) {
     const addrs = resolvePortListeningAddresses(status);
     if (addrs.length > 0) {
-      defaultRuntime.log(`${label("Listening:")} ${infoText(addrs.join(", "))}`);
+      defaultRuntime.log(`${label(t("cli.daemon.label.listening"))} ${infoText(addrs.join(", "))}`);
     }
   }
 
   if (status.portCli && status.portCli.port !== status.port?.port) {
     defaultRuntime.log(
-      `${label("Note:")} CLI config resolves gateway port=${status.portCli.port} (${status.portCli.status}).`,
+      `${label(t("cli.daemon.label.note"))} CLI config resolves gateway port=${status.portCli.port} (${status.portCli.status}).`,
     );
   }
 
@@ -288,10 +313,10 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     status.port.status !== "busy"
   ) {
     defaultRuntime.error(
-      errorText(`Gateway port ${status.port.port} is not listening (service appears running).`),
+      errorText(t("cli.daemon.status.portNotListening", { port: status.port.port })),
     );
     if (status.lastError) {
-      defaultRuntime.error(`${errorText("Last gateway error:")} ${status.lastError}`);
+      defaultRuntime.error(`${errorText(t("cli.daemon.status.lastError"))} ${status.lastError}`);
     }
     if (process.platform === "linux") {
       const env = service.command?.environment ?? process.env;
@@ -301,39 +326,37 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
       );
     } else if (process.platform === "darwin") {
       const logs = resolveGatewayLogPaths(service.command?.environment ?? process.env);
-      defaultRuntime.error(`${errorText("Logs:")} ${shortenHomePath(logs.stdoutPath)}`);
-      defaultRuntime.error(`${errorText("Errors:")} ${shortenHomePath(logs.stderrPath)}`);
+      defaultRuntime.error(
+        `${errorText(t("cli.daemon.status.logs"))} ${shortenHomePath(logs.stdoutPath)}`,
+      );
+      defaultRuntime.error(
+        `${errorText(t("cli.daemon.status.errors"))} ${shortenHomePath(logs.stderrPath)}`,
+      );
     }
     spacer();
   }
 
   if (extraServices.length > 0) {
-    defaultRuntime.error(errorText("Other gateway-like services detected (best effort):"));
+    defaultRuntime.error(errorText(t("cli.daemon.status.otherServicesDetected")));
     for (const svc of extraServices) {
       defaultRuntime.error(`- ${errorText(svc.label)} (${svc.scope}, ${svc.detail})`);
     }
     for (const hint of renderGatewayServiceCleanupHints()) {
-      defaultRuntime.error(`${errorText("Cleanup hint:")} ${hint}`);
+      defaultRuntime.error(`${errorText(t("cli.daemon.status.cleanupHint"))} ${hint}`);
     }
     spacer();
   }
 
   if (extraServices.length > 0) {
-    defaultRuntime.error(
-      errorText(
-        "Recommendation: run a single gateway per machine for most setups. One gateway supports multiple agents (see docs: /gateway#multiple-gateways-same-host).",
-      ),
-    );
-    defaultRuntime.error(
-      errorText(
-        "If you need multiple gateways (e.g., a rescue bot on the same host), isolate ports + config/state (see docs: /gateway#multiple-gateways-same-host).",
-      ),
-    );
+    defaultRuntime.error(errorText(t("cli.daemon.status.singleGatewayRecommendation")));
+    defaultRuntime.error(errorText(t("cli.daemon.status.multipleGatewaysNote")));
     spacer();
   }
 
-  defaultRuntime.log(`${label("Troubles:")} run ${formatCliCommand("kaijibot status")}`);
   defaultRuntime.log(
-    `${label("Troubleshooting:")} https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/troubleshooting.md`,
+    `${label(t("cli.daemon.label.troubles"))} run ${formatCliCommand("kaijibot status")}`,
+  );
+  defaultRuntime.log(
+    `${label(t("cli.daemon.label.troubleshooting"))} ${t("cli.daemon.troubleshootingUrl")}`,
   );
 }

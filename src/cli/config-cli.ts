@@ -55,6 +55,7 @@ import {
   type ConfigSetOptions,
 } from "./config-set-input.js";
 import { resolveConfigSetMode } from "./config-set-parser.js";
+import { t } from "./i18n/translate.js";
 import { setCommandJsonMode } from "./program/json-mode.js";
 
 type PathSegment = string;
@@ -326,11 +327,11 @@ async function loadValidConfig(runtime: RuntimeEnv = defaultRuntime) {
   if (snapshot.valid) {
     return snapshot;
   }
-  runtime.error(`Config invalid at ${shortenHomePath(snapshot.path)}.`);
+  runtime.error(t("cli.config.load.invalidAt", { path: shortenHomePath(snapshot.path) }));
   for (const line of formatConfigIssueLines(snapshot.issues, "-", { normalizeRoot: true })) {
     runtime.error(line);
   }
-  runtime.error(formatDoctorHint("to repair, then retry."));
+  runtime.error(formatDoctorHint(t("cli.config.load.repairHint")));
   runtime.exit(1);
   return snapshot;
 }
@@ -1139,13 +1140,11 @@ export async function runConfigSet(opts: {
     }
     if (operations.length === 1) {
       runtime.log(
-        info(
-          `Updated ${toDotPath(operations[0]?.requestedPath ?? [])}. Restart the gateway to apply.`,
-        ),
+        info(t("cli.config.set.updated", { path: toDotPath(operations[0]?.requestedPath ?? []) })),
       );
       return;
     }
-    runtime.log(info(`Updated ${operations.length} config paths. Restart the gateway to apply.`));
+    runtime.log(info(t("cli.config.set.updatedMultiple", { count: operations.length })));
   } catch (err) {
     if (
       opts.cliOptions.dryRun &&
@@ -1169,7 +1168,7 @@ export async function runConfigGet(opts: { path: string; json?: boolean; runtime
     const redacted = redactConfigObject(snapshot.config);
     const res = getAtPath(redacted, parsedPath);
     if (!res.found) {
-      runtime.error(danger(`Config path not found: ${opts.path}`));
+      runtime.error(danger(t("cli.config.get.pathNotFound", { path: opts.path })));
       runtime.exit(1);
       return;
     }
@@ -1203,7 +1202,7 @@ export async function runConfigUnset(opts: { path: string; runtime?: RuntimeEnv 
     const next = structuredClone(snapshot.resolved) as Record<string, unknown>;
     const removed = unsetAtPath(next, parsedPath);
     if (!removed) {
-      runtime.error(danger(`Config path not found: ${opts.path}`));
+      runtime.error(danger(t("cli.config.unset.pathNotFound", { path: opts.path })));
       runtime.exit(1);
       return;
     }
@@ -1212,7 +1211,7 @@ export async function runConfigUnset(opts: { path: string; runtime?: RuntimeEnv 
       ...(snapshot.hash !== undefined ? { baseHash: snapshot.hash } : {}),
       writeOptions: { unsetPaths: [parsedPath] },
     });
-    runtime.log(info(`Removed ${opts.path}. Restart the gateway to apply.`));
+    runtime.log(info(t("cli.config.unset.removed", { path: opts.path })));
   } catch (err) {
     runtime.error(danger(String(err)));
     runtime.exit(1);
@@ -1267,7 +1266,7 @@ export async function runConfigValidate(opts: { json?: boolean; runtime?: Runtim
       if (opts.json) {
         writeRuntimeJson(runtime, { valid: false, path: outputPath, error: "file not found" }, 0);
       } else {
-        runtime.error(danger(`Config file not found: ${shortPath}`));
+        runtime.error(danger(t("cli.config.validate.fileNotFound", { path: shortPath })));
       }
       runtime.exit(1);
       return;
@@ -1279,12 +1278,12 @@ export async function runConfigValidate(opts: { json?: boolean; runtime?: Runtim
       if (opts.json) {
         writeRuntimeJson(runtime, { valid: false, path: outputPath, issues });
       } else {
-        runtime.error(danger(`Config invalid at ${shortPath}:`));
+        runtime.error(danger(t("cli.config.validate.invalidAt", { path: shortPath })));
         for (const line of formatConfigIssueLines(issues, danger("×"), { normalizeRoot: true })) {
           runtime.error(`  ${line}`);
         }
         runtime.error("");
-        runtime.error(formatDoctorHint("to repair, or fix the keys above manually."));
+        runtime.error(formatDoctorHint(t("cli.config.validate.repairHint")));
       }
       runtime.exit(1);
       return;
@@ -1293,7 +1292,7 @@ export async function runConfigValidate(opts: { json?: boolean; runtime?: Runtim
     if (opts.json) {
       writeRuntimeJson(runtime, { valid: true, path: outputPath }, 0);
     } else {
-      runtime.log(success(`Config valid: ${shortPath}`));
+      runtime.log(success(t("cli.config.validate.valid", { path: shortPath })));
     }
   } catch (err) {
     if (opts.json) {
@@ -1314,7 +1313,7 @@ export function registerConfigCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/config", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/config.md")}\n`,
+        `\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/config", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/config.md")}\n`,
     )
     .option(
       "--section <section>",

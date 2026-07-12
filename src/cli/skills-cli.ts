@@ -11,6 +11,7 @@ import { defaultRuntime } from "../runtime.js";
 import { normalizeOptionalString } from "../shared/string-coerce.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { theme } from "../terminal/theme.js";
+import { t } from "./i18n/translate.js";
 import { formatSkillInfo, formatSkillsCheck, formatSkillsList } from "./skills-cli.format.js";
 
 export type {
@@ -76,7 +77,7 @@ export function registerSkillsCli(program: Command) {
           return;
         }
         if (results.length === 0) {
-          defaultRuntime.log("No ClawHub skills found.");
+          defaultRuntime.log(t("cli.skills.search.empty"));
           return;
         }
         for (const entry of results) {
@@ -113,7 +114,13 @@ export function registerSkillsCli(program: Command) {
           defaultRuntime.exit(1);
           return;
         }
-        defaultRuntime.log(`Installed ${result.slug}@${result.version} -> ${result.targetDir}`);
+        defaultRuntime.log(
+          t("cli.skills.install.success", {
+            slug: result.slug,
+            version: result.version,
+            targetDir: result.targetDir,
+          }),
+        );
       } catch (err) {
         defaultRuntime.error(String(err));
         defaultRuntime.exit(1);
@@ -128,19 +135,19 @@ export function registerSkillsCli(program: Command) {
     .action(async (slug: string | undefined, opts: { all?: boolean }) => {
       try {
         if (!slug && !opts.all) {
-          defaultRuntime.error("Provide a skill slug or use --all.");
+          defaultRuntime.error(t("cli.skills.update.provideSlugOrAll"));
           defaultRuntime.exit(1);
           return;
         }
         if (slug && opts.all) {
-          defaultRuntime.error("Use either a skill slug or --all.");
+          defaultRuntime.error(t("cli.skills.update.slugOrAll"));
           defaultRuntime.exit(1);
           return;
         }
         const workspaceDir = resolveActiveWorkspaceDir();
         const tracked = await readTrackedClawHubSkillSlugs(workspaceDir);
         if (opts.all && tracked.length === 0) {
-          defaultRuntime.log("No tracked ClawHub skills to update.");
+          defaultRuntime.log(t("cli.skills.update.noTracked"));
           return;
         }
         const results = await updateSkillsFromClawHub({
@@ -157,11 +164,17 @@ export function registerSkillsCli(program: Command) {
           }
           if (result.changed) {
             defaultRuntime.log(
-              `Updated ${result.slug}: ${result.previousVersion ?? "unknown"} -> ${result.version}`,
+              t("cli.skills.update.updated", {
+                slug: result.slug,
+                previousVersion: result.previousVersion ?? "unknown",
+                version: result.version,
+              }),
             );
             continue;
           }
-          defaultRuntime.log(`${result.slug} already at ${result.version}`);
+          defaultRuntime.log(
+            t("cli.skills.update.alreadyAt", { slug: result.slug, version: result.version }),
+          );
         }
       } catch (err) {
         defaultRuntime.error(String(err));

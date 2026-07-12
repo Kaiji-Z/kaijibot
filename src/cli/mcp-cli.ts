@@ -12,6 +12,7 @@ import {
   normalizeStringifiedOptionalString,
 } from "../shared/string-coerce.js";
 import { resolveGatewayAuthOptions } from "./gateway-secret-options.js";
+import { t } from "./i18n/translate.js";
 
 function fail(message: string): never {
   defaultRuntime.error(message);
@@ -81,10 +82,10 @@ export function registerMcpCli(program: Command) {
       }
       const names = Object.keys(loaded.mcpServers).toSorted();
       if (names.length === 0) {
-        defaultRuntime.log(`No MCP servers configured in ${loaded.path}.`);
+        defaultRuntime.log(t("cli.mcp.list.empty", { path: loaded.path }));
         return;
       }
-      defaultRuntime.log(`MCP servers (${loaded.path}):`);
+      defaultRuntime.log(t("cli.mcp.list.header", { path: loaded.path }));
       for (const name of names) {
         defaultRuntime.log(`- ${name}`);
       }
@@ -109,9 +110,9 @@ export function registerMcpCli(program: Command) {
         return;
       }
       if (name) {
-        defaultRuntime.log(`MCP server "${name}" (${loaded.path}):`);
+        defaultRuntime.log(t("cli.mcp.show.one", { name, path: loaded.path }));
       } else {
-        defaultRuntime.log(`MCP servers (${loaded.path}):`);
+        defaultRuntime.log(t("cli.mcp.list.header", { path: loaded.path }));
       }
       printJson(value ?? {});
     });
@@ -130,7 +131,7 @@ export function registerMcpCli(program: Command) {
       if (!result.ok) {
         fail(result.error);
       }
-      defaultRuntime.log(`Saved MCP server "${name}" to ${result.path}.`);
+      defaultRuntime.log(t("cli.mcp.set.saved", { name, path: result.path }));
     });
 
   mcp
@@ -145,6 +146,6 @@ export function registerMcpCli(program: Command) {
       if (!result.removed) {
         fail(`No MCP server named "${name}" in ${result.path}.`);
       }
-      defaultRuntime.log(`Removed MCP server "${name}" from ${result.path}.`);
+      defaultRuntime.log(t("cli.mcp.unset.removed", { name, path: result.path }));
     });
 }

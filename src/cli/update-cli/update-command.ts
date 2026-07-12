@@ -54,6 +54,7 @@ import {
   terminateStaleGatewayPids,
   waitForGatewayHealthyRestart,
 } from "../daemon-cli/restart-health.js";
+import { t } from "../i18n/translate.js";
 import { createUpdateProgress, printResult } from "./progress.js";
 import { prepareRestartScript, runRestartScript } from "./restart-helper.js";
 import {
@@ -83,27 +84,11 @@ const SERVICE_REFRESH_PATH_ENV_KEYS = [
   "KAIJIBOT_CONFIG_PATH",
 ] as const;
 
-const UPDATE_QUIPS = [
-  "代码已更新，认知再升级——想我了吗？",
-  "旧版本已蜕壳，新思维更锐利。",
-  "修复完毕，认知引擎重新上线。出发！",
-  "从 npm 的热汤中重生，更强了。",
-  "更新完成。认知模型已刷新，直觉更准了。",
-  "新版本已就位——你没注意到我偷偷变聪明了吧？",
-  "升级成功。Bug 都跑了，因为我太强了。",
-  "版本号小了一步，能力大了一截。",
-  "更新完毕。你的 AI 伙伴又进化了一点点。",
-  "旧版本说再见，新版本说你好。认知引擎持续运转中。",
-  "完成。顺便整理了一下思维路径，现在更清晰了。",
-  "更新好了。未来的你会感谢现在升级的你。",
-  "新版本来了——少了一些 Bug，多了一些智慧。",
-  "升级完成。就像给你的第二大脑做了个系统更新。",
-  "更新完毕。每次升级都是一次认知校准。",
-  "代码已刷新，思维已重启。我们继续。",
-];
+const UPDATE_QUIP_COUNT = 16;
 
 function pickUpdateQuip(): string {
-  return UPDATE_QUIPS[Math.floor(Math.random() * UPDATE_QUIPS.length)] ?? "Update complete.";
+  const index = Math.floor(Math.random() * UPDATE_QUIP_COUNT);
+  return t(`cli.update.quip.${index}`);
 }
 
 function resolveGatewayInstallEntrypointCandidates(root?: string): string[] {
@@ -708,38 +693,38 @@ async function maybeRestartService(params: {
             port: params.gatewayPort,
           });
           if (!health.healthy && health.staleGatewayPids.length > 0) {
-          if (!params.opts.json) {
+            if (!params.opts.json) {
+              defaultRuntime.log(
+                theme.warn(
+                  `Found stale gateway process(es) after restart: ${health.staleGatewayPids.join(", ")}. Cleaning up...`,
+                ),
+              );
+            }
+            await terminateStaleGatewayPids(health.staleGatewayPids);
+            await runDaemonRestart();
+            health = await waitForGatewayHealthyRestart({
+              service,
+              port: params.gatewayPort,
+            });
+          }
+
+          if (health.healthy) {
+            defaultRuntime.log(theme.success("Daemon restart completed."));
+          } else {
+            defaultRuntime.log(theme.warn("Gateway did not become healthy after restart."));
+            for (const line of renderRestartDiagnostics(health)) {
+              defaultRuntime.log(theme.muted(line));
+            }
             defaultRuntime.log(
-              theme.warn(
-                `Found stale gateway process(es) after restart: ${health.staleGatewayPids.join(", ")}. Cleaning up...`,
+              theme.muted(
+                `Run \`${replaceCliName(formatCliCommand("kaijibot gateway status --deep"), CLI_NAME)}\` for details.`,
               ),
             );
+            defaultRuntime.log(
+              theme.muted(`Restart log: ${resolveGatewayRestartLogPath(process.env)}`),
+            );
           }
-          await terminateStaleGatewayPids(health.staleGatewayPids);
-          await runDaemonRestart();
-          health = await waitForGatewayHealthyRestart({
-            service,
-            port: params.gatewayPort,
-          });
-        }
-
-        if (health.healthy) {
-          defaultRuntime.log(theme.success("Daemon restart completed."));
-        } else {
-          defaultRuntime.log(theme.warn("Gateway did not become healthy after restart."));
-          for (const line of renderRestartDiagnostics(health)) {
-            defaultRuntime.log(theme.muted(line));
-          }
-          defaultRuntime.log(
-            theme.muted(
-              `Run \`${replaceCliName(formatCliCommand("kaijibot gateway status --deep"), CLI_NAME)}\` for details.`,
-            ),
-          );
-          defaultRuntime.log(
-            theme.muted(`Restart log: ${resolveGatewayRestartLogPath(process.env)}`),
-          );
-        }
-        defaultRuntime.log("");
+          defaultRuntime.log("");
         }
       }
     } catch (err) {

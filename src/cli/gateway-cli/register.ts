@@ -14,6 +14,7 @@ import { runCommandWithRuntime } from "../cli-utils.js";
 import { inheritOptionFromParent } from "../command-options.js";
 import { addGatewayServiceCommands } from "../daemon-cli.js";
 import { formatHelpExamples } from "../help-format.js";
+import { t } from "../i18n/translate.js";
 import { withProgress } from "../progress.js";
 import { callGatewayCli, gatewayCallOpts } from "./call.js";
 import type { GatewayDiscoverOpts } from "./discover.js";
@@ -64,13 +65,13 @@ function renderCostUsageSummary(summary: CostUsageSummary, days: number, rich: b
   const totalCost = formatUsd(summary.totals.totalCost) ?? "$0.00";
   const totalTokens = formatTokenCount(summary.totals.totalTokens) ?? "0";
   const lines = [
-    colorize(rich, theme.heading, `Usage cost (${days} days)`),
-    `${colorize(rich, theme.muted, "Total:")} ${totalCost} · ${totalTokens} tokens`,
+    colorize(rich, theme.heading, t("cli.gateway.usageCost.title", { days })),
+    `${colorize(rich, theme.muted, t("cli.gateway.usageCost.total"))} ${totalCost} · ${totalTokens} tokens`,
   ];
 
   if (summary.totals.missingCostEntries > 0) {
     lines.push(
-      `${colorize(rich, theme.muted, "Missing entries:")} ${summary.totals.missingCostEntries}`,
+      `${colorize(rich, theme.muted, t("cli.gateway.usageCost.missingEntries"))} ${summary.totals.missingCostEntries}`,
     );
   }
 
@@ -79,7 +80,7 @@ function renderCostUsageSummary(summary: CostUsageSummary, days: number, rich: b
     const latestCost = formatUsd(latest.totalCost) ?? "$0.00";
     const latestTokens = formatTokenCount(latest.totalTokens) ?? "0";
     lines.push(
-      `${colorize(rich, theme.muted, "Latest day:")} ${latest.date} · ${latestCost} · ${latestTokens} tokens`,
+      `${colorize(rich, theme.muted, t("cli.gateway.usageCost.latestDay"))} ${latest.date} · ${latestCost} · ${latestTokens} tokens`,
     );
   }
 
@@ -94,12 +95,12 @@ export function registerGatewayCli(program: Command) {
       .addHelpText(
         "after",
         () =>
-          `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+          `\n${theme.heading(t("cli.help.heading.examples"))}\n${formatHelpExamples([
             ["kaijibot gateway run", "Run the gateway in the foreground."],
             ["kaijibot gateway status", "Show service status and probe reachability."],
             ["kaijibot gateway discover", "Find local and wide-area gateway beacons."],
             ["kaijibot gateway call health", "Call a gateway RPC method directly."],
-          ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/gateway", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/gateway.md")}\n`,
+          ])}\n\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/gateway", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/gateway.md")}\n`,
       ),
   );
 
@@ -129,10 +130,10 @@ export function registerGatewayCli(program: Command) {
           }
           const rich = isRich();
           defaultRuntime.log(
-            `${colorize(rich, theme.heading, "Gateway call")}: ${colorize(rich, theme.muted, String(method))}`,
+            `${colorize(rich, theme.heading, t("cli.gateway.call.title"))}: ${colorize(rich, theme.muted, String(method))}`,
           );
           defaultRuntime.writeJson(result);
-        }, "Gateway call failed");
+        }, t("cli.gateway.call.failed"));
       }),
   );
 
@@ -156,7 +157,7 @@ export function registerGatewayCli(program: Command) {
           for (const line of renderCostUsageSummary(summary, days, rich)) {
             defaultRuntime.log(line);
           }
-        }, "Gateway usage cost failed");
+        }, t("cli.gateway.usageCost.failed"));
       }),
   );
 
@@ -176,9 +177,9 @@ export function registerGatewayCli(program: Command) {
           const rich = isRich();
           const obj: Record<string, unknown> = result && typeof result === "object" ? result : {};
           const durationMs = typeof obj.durationMs === "number" ? obj.durationMs : null;
-          defaultRuntime.log(colorize(rich, theme.heading, "Gateway Health"));
+          defaultRuntime.log(colorize(rich, theme.heading, t("cli.gateway.health.title")));
           defaultRuntime.log(
-            `${colorize(rich, theme.success, "OK")}${durationMs != null ? ` (${durationMs}ms)` : ""}`,
+            `${colorize(rich, theme.success, t("cli.gateway.health.ok"))}${durationMs != null ? ` (${durationMs}ms)` : ""}`,
           );
           if (obj.channels && typeof obj.channels === "object") {
             for (const line of formatHealthChannelLines(obj as HealthSummary)) {
@@ -222,7 +223,7 @@ export function registerGatewayCli(program: Command) {
         const domains = ["local.", ...(wideAreaDomain ? [wideAreaDomain] : [])];
         const beacons = await withProgress(
           {
-            label: "Scanning for gateways…",
+            label: t("cli.gateway.discovery.scanning"),
             indeterminate: true,
             enabled: opts.json !== true,
             delayMs: 0,
@@ -252,12 +253,15 @@ export function registerGatewayCli(program: Command) {
         }
 
         const rich = isRich();
-        defaultRuntime.log(colorize(rich, theme.heading, "Gateway Discovery"));
+        defaultRuntime.log(colorize(rich, theme.heading, t("cli.gateway.discovery.title")));
         defaultRuntime.log(
           colorize(
             rich,
             theme.muted,
-            `Found ${deduped.length} gateway(s) · domains: ${domains.join(", ")}`,
+            t("cli.gateway.discovery.found", {
+              count: deduped.length,
+              domains: domains.join(", "),
+            }),
           ),
         );
         if (deduped.length === 0) {
@@ -269,6 +273,6 @@ export function registerGatewayCli(program: Command) {
             defaultRuntime.log(line);
           }
         }
-      }, "gateway discover failed");
+      }, t("cli.gateway.discovery.failed"));
     });
 }

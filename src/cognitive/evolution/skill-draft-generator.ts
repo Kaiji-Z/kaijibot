@@ -1,4 +1,13 @@
+import {
+  DEFAULT_COGNITIVE_LOCALE,
+  L,
+  pickLocalized,
+  type CognitiveLocale,
+} from "../cognitive-locale.js";
 import type { EvolutionCandidate, SkillDraft } from "./types.js";
+
+const TRIGGER_OPERATION = L("操作", "operation");
+const TRIGGER_WORKFLOW = L("流程", "workflow");
 
 export function toKebabCase(input: string): string {
   return input
@@ -30,17 +39,17 @@ function generateDescription(candidate: EvolutionCandidate): string {
   return raw.slice(0, MAX_DESCRIPTION_LENGTH - 1) + "…";
 }
 
-function generateTriggerPhrases(candidate: EvolutionCandidate): string[] {
+function generateTriggerPhrases(candidate: EvolutionCandidate, locale: CognitiveLocale): string[] {
   const phrases: string[] = [];
   const domain = candidate.domain;
   const tools = candidate.toolCalls;
 
   if (tools.length > 0) {
-    phrases.push(`${tools[0]} 操作`);
+    phrases.push(`${tools[0]} ${pickLocalized(TRIGGER_OPERATION, locale)}`);
     phrases.push(`${tools[0]} task`);
   }
 
-  phrases.push(`${domain} 流程`);
+  phrases.push(`${domain} ${pickLocalized(TRIGGER_WORKFLOW, locale)}`);
   phrases.push(`${domain} workflow`);
   phrases.push(`${domain} operations`);
 
@@ -91,11 +100,14 @@ function generateBodyMarkdown(candidate: EvolutionCandidate): string {
   return lines.join("\n");
 }
 
-export function generateSkillDraft(candidate: EvolutionCandidate): SkillDraft {
+export function generateSkillDraft(
+  candidate: EvolutionCandidate,
+  locale: CognitiveLocale = DEFAULT_COGNITIVE_LOCALE,
+): SkillDraft {
   return {
     name: generateName(candidate),
     description: generateDescription(candidate),
-    triggerPhrases: generateTriggerPhrases(candidate),
+    triggerPhrases: generateTriggerPhrases(candidate, locale),
     bodyMarkdown: generateBodyMarkdown(candidate),
   };
 }

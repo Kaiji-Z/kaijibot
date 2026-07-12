@@ -9,30 +9,16 @@ import { SOUL_PRESETS, type SoulPreset } from "../config/types.soul.js";
 import { danger } from "../globals.js";
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
+import { t } from "./i18n/translate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PRESETS_DIR = existsSync(join(__dirname, "soul-presets"))
   ? join(__dirname, "soul-presets")
   : join(__dirname, "..", "soul-presets");
 
-const SOUL_PRESET_NAMES: Record<SoulPreset, string> = {
-  intj: "建筑师 (Architect)",
-  intp: "逻辑学家 (Logician)",
-  entj: "指挥官 (Commander)",
-  entp: "辩论家 (Debater)",
-  infj: "提倡者 (Advocate)",
-  infp: "调停者 (Mediator)",
-  enfj: "主人公 (Protagonist)",
-  enfp: "竞选者 (Campaigner)",
-  istj: "物流师 (Logistician)",
-  isfj: "守卫者 (Defender)",
-  estj: "总经理 (Executive)",
-  esfj: "执政官 (Consul)",
-  istp: "鉴赏家 (Virtuoso)",
-  isfp: "探险家 (Adventurer)",
-  estp: "企业家 (Entrepreneur)",
-  esfp: "表演者 (Entertainer)",
-};
+function soulPresetName(preset: SoulPreset): string {
+  return t(`cli.soul.preset.${preset}`);
+}
 
 type MutableConfig = Record<string, unknown> & {
   agents?: {
@@ -88,7 +74,7 @@ async function runSoulList(agentId?: string): Promise<void> {
   );
 
   for (const key of SOUL_PRESETS) {
-    const name = SOUL_PRESET_NAMES[key];
+    const name = soulPresetName(key);
     const isCurrent = key === currentPreset;
     const prefix = isCurrent ? theme.accent("→") : " ";
     const suffix = isCurrent ? ` ${theme.muted("(current)")}` : "";
@@ -121,7 +107,7 @@ async function runSoulGet(agentId?: string): Promise<void> {
     return;
   }
 
-  const name = SOUL_PRESET_NAMES[currentPreset];
+  const name = soulPresetName(currentPreset);
   defaultRuntime.log(
     `Current soul preset: ${theme.heading(currentPreset.toUpperCase())} — ${theme.success(name)} [agent: ${effectiveAgentId}]`,
   );
@@ -147,7 +133,7 @@ async function runSoulSet(presetInput: string, agentId?: string): Promise<void> 
 
   await replaceConfigFile({ nextConfig: sourceConfig });
 
-  const name = SOUL_PRESET_NAMES[preset];
+  const name = soulPresetName(preset);
   defaultRuntime.log(
     `Soul preset set to ${theme.heading(preset.toUpperCase())} — ${theme.success(name)} [agent: ${effectiveAgentId}]`,
   );

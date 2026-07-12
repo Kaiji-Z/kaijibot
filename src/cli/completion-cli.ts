@@ -15,6 +15,7 @@ import {
   buildFishOptionCompletionLine,
   buildFishSubcommandCompletionLine,
 } from "./completion-fish.js";
+import { t } from "./i18n/translate.js";
 import { getCoreCliCommandNames, registerCoreCliByName } from "./program/command-registry.js";
 import { getProgramContext } from "./program/program-context.js";
 import { getSubCliEntries, registerSubCliByName } from "./program/register.subclis.js";
@@ -239,7 +240,7 @@ export function registerCompletionCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/completion", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/completion.md")}\n`,
+        `\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink("/cli/completion", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/completion.md")}\n`,
     )
     .addOption(
       new Option("-s, --shell <shell>", "Shell to generate completion for (default: zsh)").choices(
@@ -316,7 +317,7 @@ export async function installCompletion(shell: string, yes: boolean, binName = "
 
   const isShellSupported = isCompletionShell(shell);
   if (!isShellSupported) {
-    console.error(`Automated installation not supported for ${shell} yet.`);
+    console.error(t("cli.completion.install.unsupported", { shell }));
     return;
   }
 
@@ -324,9 +325,7 @@ export async function installCompletion(shell: string, yes: boolean, binName = "
   const cachePath = resolveCompletionCachePath(shell, binName);
   const cacheExists = await pathExists(cachePath);
   if (!cacheExists) {
-    console.error(
-      `Completion cache not found at ${cachePath}. Run \`${binName} completion --write-state\` first.`,
-    );
+    console.error(t("cli.completion.install.cacheNotFound", { path: cachePath, bin: binName }));
     return;
   }
 
@@ -346,7 +345,7 @@ export async function installCompletion(shell: string, yes: boolean, binName = "
     profilePath = path.join(home, ".config", "fish", "config.fish");
     sourceLine = formatCompletionSourceLine("fish", binName, cachePath);
   } else {
-    console.error(`Automated installation not supported for ${shell} yet.`);
+    console.error(t("cli.completion.install.unsupported", { shell }));
     return;
   }
 
@@ -356,7 +355,7 @@ export async function installCompletion(shell: string, yes: boolean, binName = "
       await fs.access(profilePath);
     } catch {
       if (!yes) {
-        console.warn(`Profile not found at ${profilePath}. Created a new one.`);
+        console.warn(t("cli.completion.install.profileNotFound", { path: profilePath }));
       }
       await fs.mkdir(path.dirname(profilePath), { recursive: true });
       await fs.writeFile(profilePath, "", "utf-8");
@@ -366,22 +365,24 @@ export async function installCompletion(shell: string, yes: boolean, binName = "
     const update = updateCompletionProfile(content, binName, cachePath, sourceLine);
     if (!update.changed) {
       if (!yes) {
-        console.log(`Completion already installed in ${profilePath}`);
+        console.log(t("cli.completion.install.alreadyInstalled", { path: profilePath }));
       }
       return;
     }
 
     if (!yes) {
-      const action = update.hadExisting ? "Updating" : "Installing";
-      console.log(`${action} completion in ${profilePath}...`);
+      const action = update.hadExisting
+        ? t("cli.completion.install.updating")
+        : t("cli.completion.install.installing");
+      console.log(`${action} ${profilePath}...`);
     }
 
     await fs.writeFile(profilePath, update.next, "utf-8");
     if (!yes) {
-      console.log(`Completion installed. Restart your shell or run: source ${profilePath}`);
+      console.log(t("cli.completion.install.done", { path: profilePath }));
     }
   } catch (err) {
-    console.error(`Failed to install completion: ${err as string}`);
+    console.error(t("cli.completion.install.failed", { error: String(err) }));
   }
 }
 

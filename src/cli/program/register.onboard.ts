@@ -17,6 +17,8 @@ import { defaultRuntime } from "../../runtime.js";
 import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
 import { runCommandWithRuntime } from "../cli-utils.js";
+import { resolveCliLocale } from "../i18n/registry.js";
+import { initCliI18n, t } from "../i18n/translate.js";
 
 function resolveInstallDaemonFlag(
   command: unknown,
@@ -63,84 +65,73 @@ function pickOnboardProviderAuthOptionValues(
 export function registerOnboardCommand(program: Command) {
   const command = program
     .command("onboard")
-    .description("Interactive onboarding for the gateway, workspace, and skills")
+    .description(t("cli.commands.onboard.description"))
     .addHelpText(
       "after",
       () =>
         `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/onboard", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/onboard.md")}\n`,
     )
-    .option("--workspace <dir>", "Agent workspace directory (default: ~/.kaijibot/workspace)")
+    .option("--workspace <dir>", t("cli.commands.onboard.options.workspace"))
+    .option("--reset", t("cli.commands.onboard.options.reset"))
+    .option("--reset-scope <scope>", t("cli.commands.onboard.options.resetScope"))
+    .option("--non-interactive", t("cli.commands.onboard.options.nonInteractive"), false)
+    .option("--accept-risk", t("cli.commands.onboard.options.acceptRisk"), false)
+    .option("--flow <flow>", t("cli.commands.onboard.options.flow"))
+    .option("--mode <mode>", t("cli.commands.onboard.options.mode"))
     .option(
-      "--reset",
-      "Reset config + credentials + sessions before running onboard (workspace only with --reset-scope full)",
+      "--auth-choice <choice>",
+      t("cli.commands.onboard.options.authChoice", { choices: AUTH_CHOICE_HELP }),
     )
-    .option("--reset-scope <scope>", "Reset scope: config|config+creds+sessions|full")
-    .option("--non-interactive", "Run without prompts", false)
+    .option("--token-provider <id>", t("cli.commands.onboard.options.tokenProvider"))
+    .option("--token <token>", t("cli.commands.onboard.options.token"))
+    .option("--token-profile-id <id>", t("cli.commands.onboard.options.tokenProfileId"))
+    .option("--token-expires-in <duration>", t("cli.commands.onboard.options.tokenExpiresIn"))
+    .option("--secret-input-mode <mode>", t("cli.commands.onboard.options.secretInputMode"))
     .option(
-      "--accept-risk",
-      "Acknowledge that agents are powerful and full system access is risky (required for --non-interactive)",
-      false,
+      "--cloudflare-ai-gateway-account-id <id>",
+      t("cli.commands.onboard.options.cloudflareAiGatewayAccountId"),
     )
-    .option("--flow <flow>", "Onboard flow: quickstart|advanced|manual")
-    .option("--mode <mode>", "Onboard mode: local|remote")
-    .option("--auth-choice <choice>", `Auth: ${AUTH_CHOICE_HELP}`)
     .option(
-      "--token-provider <id>",
-      "Token provider id (non-interactive; used with --auth-choice token)",
-    )
-    .option("--token <token>", "Token value (non-interactive; used with --auth-choice token)")
-    .option(
-      "--token-profile-id <id>",
-      "Auth profile id (non-interactive; default: <provider>:manual)",
-    )
-    .option("--token-expires-in <duration>", "Optional token expiry duration (e.g. 365d, 12h)")
-    .option(
-      "--secret-input-mode <mode>",
-      "API key persistence mode: plaintext|ref (default: plaintext)",
-    )
-    .option("--cloudflare-ai-gateway-account-id <id>", "Cloudflare Account ID")
-    .option("--cloudflare-ai-gateway-gateway-id <id>", "Cloudflare AI Gateway ID");
+      "--cloudflare-ai-gateway-gateway-id <id>",
+      t("cli.commands.onboard.options.cloudflareAiGatewayGatewayId"),
+    );
 
   for (const providerFlag of ONBOARD_AUTH_FLAGS) {
     command.option(providerFlag.cliOption, providerFlag.description);
   }
 
   command
-    .option("--custom-base-url <url>", "Custom provider base URL")
-    .option("--custom-api-key <key>", "Custom provider API key (optional)")
-    .option("--custom-model-id <id>", "Custom provider model ID")
-    .option("--custom-provider-id <id>", "Custom provider ID (optional; auto-derived by default)")
-    .option(
-      "--custom-compatibility <mode>",
-      "Custom provider API compatibility: openai|anthropic (default: openai)",
-    )
-    .option("--gateway-port <port>", "Gateway port")
-    .option("--gateway-bind <mode>", "Gateway bind: loopback|tailnet|lan|auto|custom")
-    .option("--gateway-auth <mode>", "Gateway auth: token|password")
-    .option("--gateway-token <token>", "Gateway token (token auth)")
-    .option(
-      "--gateway-token-ref-env <name>",
-      "Gateway token SecretRef env var name (token auth; e.g. KAIJIBOT_GATEWAY_TOKEN)",
-    )
-    .option("--gateway-password <password>", "Gateway password (password auth)")
-    .option("--remote-url <url>", "Remote Gateway WebSocket URL")
-    .option("--remote-token <token>", "Remote Gateway token (optional)")
-    .option("--tailscale <mode>", "Tailscale: off|serve|funnel")
-    .option("--tailscale-reset-on-exit", "Reset tailscale serve/funnel on exit")
-    .option("--install-daemon", "Install gateway service")
-    .option("--no-install-daemon", "Skip gateway service install")
-    .option("--skip-daemon", "Skip gateway service install")
-    .option("--daemon-runtime <runtime>", "Daemon runtime: node|bun")
-    .option("--skip-channels", "Skip channel setup")
-    .option("--skip-skills", "Skip skills setup")
-    .option("--skip-search", "Skip search provider setup")
-    .option("--skip-health", "Skip health check")
-    .option("--skip-ui", "Skip Control UI/TUI prompts")
-    .option("--node-manager <name>", "Node manager for skills: npm|pnpm|bun")
-    .option("--json", "Output JSON summary", false);
+    .option("--custom-base-url <url>", t("cli.commands.onboard.options.customBaseUrl"))
+    .option("--custom-api-key <key>", t("cli.commands.onboard.options.customApiKey"))
+    .option("--custom-model-id <id>", t("cli.commands.onboard.options.customModelId"))
+    .option("--custom-provider-id <id>", t("cli.commands.onboard.options.customProviderId"))
+    .option("--custom-compatibility <mode>", t("cli.commands.onboard.options.customCompatibility"))
+    .option("--gateway-port <port>", t("cli.commands.onboard.options.gatewayPort"))
+    .option("--gateway-bind <mode>", t("cli.commands.onboard.options.gatewayBind"))
+    .option("--gateway-auth <mode>", t("cli.commands.onboard.options.gatewayAuth"))
+    .option("--gateway-token <token>", t("cli.commands.onboard.options.gatewayToken"))
+    .option("--gateway-token-ref-env <name>", t("cli.commands.onboard.options.gatewayTokenRefEnv"))
+    .option("--gateway-password <password>", t("cli.commands.onboard.options.gatewayPassword"))
+    .option("--remote-url <url>", t("cli.commands.onboard.options.remoteUrl"))
+    .option("--remote-token <token>", t("cli.commands.onboard.options.remoteToken"))
+    .option("--tailscale <mode>", t("cli.commands.onboard.options.tailscale"))
+    .option("--tailscale-reset-on-exit", t("cli.commands.onboard.options.tailscaleResetOnExit"))
+    .option("--install-daemon", t("cli.commands.onboard.options.installDaemon"))
+    .option("--no-install-daemon", t("cli.commands.onboard.options.noInstallDaemon"))
+    .option("--skip-daemon", t("cli.commands.onboard.options.skipDaemon"))
+    .option("--daemon-runtime <runtime>", t("cli.commands.onboard.options.daemonRuntime"))
+    .option("--skip-channels", t("cli.commands.onboard.options.skipChannels"))
+    .option("--skip-skills", t("cli.commands.onboard.options.skipSkills"))
+    .option("--skip-search", t("cli.commands.onboard.options.skipSearch"))
+    .option("--skip-health", t("cli.commands.onboard.options.skipHealth"))
+    .option("--skip-ui", t("cli.commands.onboard.options.skipUi"))
+    .option("--node-manager <name>", t("cli.commands.onboard.options.nodeManager"))
+    .option("--json", t("cli.commands.onboard.options.json"), false);
 
   command.action(async (opts, commandRuntime) => {
     await runCommandWithRuntime(defaultRuntime, async () => {
+      const locale = resolveCliLocale(process.env);
+      initCliI18n({ locale });
       const installDaemon = resolveInstallDaemonFlag(commandRuntime, {
         installDaemon: Boolean(opts.installDaemon),
       });
@@ -151,6 +142,7 @@ export function registerOnboardCommand(program: Command) {
       );
       await setupWizardCommand(
         {
+          locale,
           workspace: opts.workspace as string | undefined,
           nonInteractive: Boolean(opts.nonInteractive),
           acceptRisk: Boolean(opts.acceptRisk),

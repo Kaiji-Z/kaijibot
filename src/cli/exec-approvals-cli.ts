@@ -20,6 +20,7 @@ import { formatDocsLink } from "../terminal/links.js";
 import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { isRich, theme } from "../terminal/theme.js";
 import { callGatewayFromCli } from "./gateway-rpc.js";
+import { t } from "./i18n/translate.js";
 import { nodesCallOpts, resolveNodeId } from "./nodes-cli/rpc.js";
 import type { NodesRpcOpts } from "./nodes-cli/types.js";
 
@@ -127,12 +128,12 @@ async function loadWritableSnapshotTarget(opts: ExecApprovalsCliOpts): Promise<{
 }> {
   const { snapshot, nodeId, source } = await loadSnapshotTarget(opts);
   if (source === "local") {
-    defaultRuntime.log(theme.muted("Writing local approvals."));
+    defaultRuntime.log(theme.muted(t("cli.execApprovals.writingLocal")));
   }
   const targetLabel = source === "local" ? "local" : nodeId ? `node:${nodeId}` : "gateway";
   const baseHash = snapshot.hash;
   if (!baseHash) {
-    exitWithError("Exec approvals hash missing; reload and retry.");
+    exitWithError(t("cli.execApprovals.error.hashMissing"));
   }
   return { snapshot, nodeId, source, targetLabel, baseHash };
 }
@@ -153,7 +154,7 @@ async function saveSnapshotTargeted(params: {
     defaultRuntime.writeJson(next, 0);
     return;
   }
-  defaultRuntime.log(theme.muted(`Target: ${params.targetLabel}`));
+  defaultRuntime.log(theme.muted(t("cli.execApprovals.target", { target: params.targetLabel })));
   renderApprovalsSnapshot(next, params.targetLabel);
 }
 
@@ -227,9 +228,9 @@ function renderEffectivePolicy(params: { report: EffectivePolicyReport }) {
     return;
   }
   defaultRuntime.log("");
-  defaultRuntime.log(heading("Effective Policy"));
+  defaultRuntime.log(heading(t("cli.execApprovals.effectivePolicy")));
   if (params.report.scopes.length === 0) {
-    defaultRuntime.log(muted(params.report.note ?? "No effective policy details available."));
+    defaultRuntime.log(muted(params.report.note ?? t("cli.execApprovals.noEffectivePolicy")));
     return;
   }
   const rows = params.report.scopes.map((summary) => ({
@@ -253,7 +254,7 @@ function renderEffectivePolicy(params: { report: EffectivePolicyReport }) {
     }).trimEnd(),
   );
   defaultRuntime.log("");
-  defaultRuntime.log(muted(`Precedence: ${params.report.note}`));
+  defaultRuntime.log(muted(t("cli.execApprovals.precedence", { note: params.report.note ?? "" })));
 }
 
 function renderApprovalsSnapshot(snapshot: ExecApprovalsSnapshot, targetLabel: string) {
@@ -305,7 +306,7 @@ function renderApprovalsSnapshot(snapshot: ExecApprovalsSnapshot, targetLabel: s
     { Field: "Allowlist", Value: String(allowlistRows.length) },
   ];
 
-  defaultRuntime.log(heading("Approvals"));
+  defaultRuntime.log(heading(t("cli.execApprovals.approvals")));
   defaultRuntime.log(
     renderTable({
       width: tableWidth,
@@ -319,12 +320,12 @@ function renderApprovalsSnapshot(snapshot: ExecApprovalsSnapshot, targetLabel: s
 
   if (allowlistRows.length === 0) {
     defaultRuntime.log("");
-    defaultRuntime.log(muted("No allowlist entries."));
+    defaultRuntime.log(muted(t("cli.execApprovals.noAllowlistEntries")));
     return;
   }
 
   defaultRuntime.log("");
-  defaultRuntime.log(heading("Allowlist"));
+  defaultRuntime.log(heading(t("cli.execApprovals.allowlist")));
   defaultRuntime.log(
     renderTable({
       width: tableWidth,
@@ -412,7 +413,10 @@ async function runAllowlistMutation(
   mutate: AllowlistMutation,
 ): Promise<void> {
   try {
-    const trimmedPattern = requireTrimmedNonEmpty(pattern, "Pattern required.");
+    const trimmedPattern = requireTrimmedNonEmpty(
+      pattern,
+      t("cli.execApprovals.error.patternRequired"),
+    );
     const context = await loadWritableAllowlistAgent(opts);
     const shouldSave = await mutate({ ...context, trimmedPattern });
     if (!shouldSave) {
@@ -462,7 +466,7 @@ export function registerExecApprovalsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/approvals.md")}\n`,
+        `\n${theme.muted(t("cli.execApprovals.docs"))} ${formatDocsLink("/cli/approvals", "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/approvals.md")}\n`,
     );
 
   const getCmd = approvals
@@ -487,7 +491,7 @@ export function registerExecApprovalsCli(program: Command) {
 
         const muted = (text: string) => (isRich() ? theme.muted(text) : text);
         if (source === "local") {
-          defaultRuntime.log(muted("Showing local approvals."));
+          defaultRuntime.log(muted(t("cli.execApprovals.showingLocal")));
           defaultRuntime.log("");
         }
         const targetLabel = source === "local" ? "local" : nodeId ? `node:${nodeId}` : "gateway";
@@ -510,10 +514,10 @@ export function registerExecApprovalsCli(program: Command) {
     .action(async (opts: ExecApprovalsCliOpts) => {
       try {
         if (!opts.file && !opts.stdin) {
-          exitWithError("Provide --file or --stdin.");
+          exitWithError(t("cli.execApprovals.error.provideFileOrStdin"));
         }
         if (opts.file && opts.stdin) {
-          exitWithError("Use either --file or --stdin (not both).");
+          exitWithError(t("cli.execApprovals.error.useEitherFileOrStdin"));
         }
         const { source, nodeId, targetLabel, baseHash } = await loadWritableSnapshotTarget(opts);
         const raw = opts.stdin ? await readStdin() : await fs.readFile(String(opts.file), "utf8");
@@ -521,7 +525,7 @@ export function registerExecApprovalsCli(program: Command) {
         try {
           file = JSON5.parse(raw);
         } catch (err) {
-          exitWithError(`Failed to parse approvals JSON: ${String(err)}`);
+          exitWithError(t("cli.execApprovals.error.parseFailed", { error: String(err) }));
         }
         file.version = 1;
         await saveSnapshotTargeted({ opts, source, nodeId, file, baseHash, targetLabel });
@@ -538,7 +542,7 @@ export function registerExecApprovalsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatExample(
+        `\n${theme.heading(t("cli.execApprovals.examples"))}\n${formatExample(
           'kaijibot approvals allowlist add "~/Projects/**/bin/rg"',
           "Allowlist a local binary pattern for the main agent.",
         )}\n${formatExample(
@@ -559,7 +563,7 @@ export function registerExecApprovalsCli(program: Command) {
     description: "Add a glob pattern to an allowlist",
     mutate: ({ trimmedPattern, file, agent, agentKey, allowlistEntries }) => {
       if (allowlistEntries.some((entry) => normalizeAllowlistEntry(entry) === trimmedPattern)) {
-        defaultRuntime.log("Already allowlisted.");
+        defaultRuntime.log(t("cli.execApprovals.mutation.alreadyAllowlisted"));
         return false;
       }
       allowlistEntries.push({ pattern: trimmedPattern, lastUsedAt: Date.now() });
@@ -578,7 +582,7 @@ export function registerExecApprovalsCli(program: Command) {
         (entry) => normalizeAllowlistEntry(entry) !== trimmedPattern,
       );
       if (nextEntries.length === allowlistEntries.length) {
-        defaultRuntime.log("Pattern not found.");
+        defaultRuntime.log(t("cli.execApprovals.mutation.patternNotFound"));
         return false;
       }
       if (nextEntries.length === 0) {

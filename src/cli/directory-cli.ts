@@ -15,6 +15,7 @@ import { formatDocsLink } from "../terminal/links.js";
 import { getTerminalTableWidth, renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { formatHelpExamples } from "./help-format.js";
+import { t } from "./i18n/translate.js";
 
 function parseLimit(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -75,7 +76,7 @@ export function registerDirectoryCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+        `\n${theme.heading(t("cli.help.heading.examples"))}\n${formatHelpExamples([
           ["kaijibot directory self --channel feishu", "Show the connected account identity."],
           [
             'kaijibot directory peers list --channel feishu --query "kaiji"',
@@ -86,7 +87,7 @@ export function registerDirectoryCli(program: Command) {
             "kaijibot directory groups members --channel feishu --group-id <chat-id>",
             "List members for a specific group.",
           ],
-        ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
+        ])}\n\n${theme.muted(t("cli.help.heading.docs"))} ${formatDocsLink(
           "/cli/directory",
           "gitee.com/kaiji1126/kaijibot/blob/main/docs/cli/directory.md",
         )}\n`,
@@ -202,11 +203,11 @@ export function registerDirectoryCli(program: Command) {
           return;
         }
         if (!result) {
-          defaultRuntime.log(theme.muted("Not available."));
+          defaultRuntime.log(theme.muted(t("cli.directory.self.notAvailable")));
           return;
         }
         const tableWidth = getTerminalTableWidth();
-        defaultRuntime.log(theme.heading("Self"));
+        defaultRuntime.log(theme.heading(t("cli.directory.self.title")));
         defaultRuntime.log(
           renderTable({
             width: tableWidth,
@@ -234,8 +235,8 @@ export function registerDirectoryCli(program: Command) {
           opts,
           action: "listPeers",
           unsupported: "peers",
-          title: "Peers",
-          emptyMessage: "No peers found.",
+          title: t("cli.directory.peers.title"),
+          emptyMessage: t("cli.directory.peers.empty"),
         });
       } catch (err) {
         defaultRuntime.error(danger(String(err)));
@@ -253,8 +254,8 @@ export function registerDirectoryCli(program: Command) {
           opts,
           action: "listGroups",
           unsupported: "groups",
-          title: "Groups",
-          emptyMessage: "No groups found.",
+          title: t("cli.directory.groups.title"),
+          emptyMessage: t("cli.directory.groups.empty"),
         });
       } catch (err) {
         defaultRuntime.error(danger(String(err)));
@@ -295,8 +296,8 @@ export function registerDirectoryCli(program: Command) {
           return;
         }
         printDirectoryList({
-          title: "Group Members",
-          emptyMessage: "No group members found.",
+          title: t("cli.directory.groupMembers.title"),
+          emptyMessage: t("cli.directory.groupMembers.empty"),
           entries: result,
         });
       } catch (err) {
