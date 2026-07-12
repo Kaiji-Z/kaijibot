@@ -2,7 +2,7 @@
 
 > **Your AI assistant reaches out to you — not the other way around.**
 
-Pluggable provider/channel architecture · Cognitive layer turns AI from reactive to proactive · 35+ LLM providers
+Pluggable provider/channel architecture · Cognitive layer turns AI from reactive to proactive · 40+ LLM providers · 17+ messaging channels · Auto locale switching (EN/zh)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
@@ -14,21 +14,22 @@ Pluggable provider/channel architecture · Cognitive layer turns AI from reactiv
 
 Every AI assistant you've used follows the same pattern: you ask, it answers. You stop asking, it goes silent.
 
-KaijiBot is different. After a few conversations on Feishu, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
+KaijiBot is different. After a few conversations on Feishu / Telegram / Discord, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
 
-|                        | Typical Chatbot                        | KaijiBot                                                                  |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------- |
-| **Interaction**        | Reactive — you ask, it answers         | Proactive insights + normal Q&A                                           |
-| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences                  |
-| **Timing Awareness**   | Doesn't care what you're doing         | Respects active hours, trust level, conversation cadence                  |
-| **Chinese Support**    | English-first, Chinese often breaks    | Chinese-native: pattern routing, persona extraction optimized for Chinese |
-| **Integration**        | Requires Web/SDK integration           | Feishu is the terminal — just send a message                              |
+|                        | Typical Chatbot                        | KaijiBot                                                                             |
+| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Interaction**        | Reactive — you ask, it answers         | Proactive insights + normal Q&A                                                      |
+| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences                             |
+| **Timing Awareness**   | Doesn't care what you're doing         | Respects active hours, trust level, conversation cadence                             |
+| **Chinese Support**    | English-first, Chinese often breaks    | Chinese-native: pattern routing, persona extraction optimized for Chinese            |
+| **Localization**       | UI hardcoded in one language           | CLI / wizard / cognitive prompts auto-detect system locale, switch between EN and zh |
+| **Integration**        | Requires Web/SDK integration           | Feishu · Telegram · Discord · WeChat · Slack and 17+ channels                        |
 
 ## ✨ Core Features
 
 ### 🔮 Cognitive Engine — From Reactive Replies to Proactive Insights
 
-You've been chatting with KaijiBot about AI architecture and distributed systems. Next week, it sends you a message unprompted:
+You've been chatting with KaijiBot on Feishu / Telegram about AI architecture and distributed systems. Next week, it sends you a message unprompted:
 
 > "Saw a recent article on using eBPF for distributed tracing — combining it with the observability direction you've been exploring, this might spark some ideas."
 
@@ -76,13 +77,28 @@ Not locked into any single provider. Switch between domestic and international a
 
 | China                                          | International                                   | Aggregator / Self-hosted                           |
 | ---------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
-| Zhipu GLM · DeepSeek · Qwen · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
+| DeepSeek · Qwen · Kimi · MiniMax · Zhipu GLM … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
 
 Switch models with a single command:
 
 ```bash
 kaijibot config set agent.model "deepseek/deepseek-chat"
 kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
+```
+
+### 🌐 Auto Locale Switching (EN / zh)
+
+CLI output, onboarding wizard, and cognitive layer prompts all switch automatically based on system language:
+
+- **CLI** — Detects `LANG` / `LC_ALL` environment variables. Banner, help text, command descriptions, wizard dialogue all switch between English and Chinese.
+- **Cognitive Layer** — Based on `preferredLanguage` in the user's Persona, insight generation prompts, correction injection, and evolution signals are all locale-aware.
+- **Docs** — Automated translation pipeline for 13 languages (zh / ja / ko / es / pt-BR / de / fr / ar / it / tr / uk / id / pl).
+
+```bash
+export LANG=en_US.UTF-8   # English
+export LANG=zh_CN.UTF-8   # Chinese
+# Or override explicitly:
+export KAIJIBOT_CLI_LOCALE=en
 ```
 
 ### 🛠️ Full Agent
@@ -164,14 +180,14 @@ kaijibot gateway --port 18789 --verbose
 
 ## ⚙️ Configuration
 
-**Required**: At least one LLM provider API key + Feishu bot credentials.
+**Required**: At least one LLM provider API key + at least one messaging channel credential.
 
 ```bash
 # LLM API Key — pick one provider, uncomment the corresponding line
-# export ZAI_API_KEY="your-key"              # Zhipu GLM
 # export DEEPSEEK_API_KEY="your-key"         # DeepSeek
 # export ANTHROPIC_API_KEY="your-key"        # Claude
 # export GOOGLE_API_KEY="your-key"           # Gemini
+# export ZAI_API_KEY="your-key"              # Zhipu GLM
 
 # Feishu channel
 kaijibot config set channels.feishu.appId "your-app-id"

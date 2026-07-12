@@ -2,7 +2,7 @@
 
 > **你的 AI 助手会主动找你聊天，而不是干等着你提问。**
 
-可插拔 provider/channel 架构 · 认知层让 AI 从被动变主动 · 35+ LLM 提供商
+可插拔 provider/channel 架构 · 认知层让 AI 从被动变主动 · 40+ LLM 提供商 · 17+ 消息渠道 · CLI 中英自动切换
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
@@ -14,21 +14,22 @@
 
 你用过的 AI 助手都一个模式：你问，它答。你不问，它就安静地待在那里。
 
-KaijiBot 不一样。它在飞书里跟你聊了几次之后，会开始**主动**给你发消息。不是广告，不是提醒喝水，而是你真正可能感兴趣的东西。
+KaijiBot 不一样。它在飞书 / Telegram / Discord 里跟你聊了几次之后，会开始**主动**给你发消息。不是广告，不是提醒喝水，而是你真正可能感兴趣的东西。
 
-|              | 普通聊天机器人       | KaijiBot                                       |
-| ------------ | -------------------- | ---------------------------------------------- |
-| **交互方式** | 你问它才答           | 主动推送洞察 + 正常对话                        |
-| **用户理解** | 无状态，每次从零开始 | 持续学习你的兴趣、领域、偏好                   |
-| **时机感知** | 不管你在干嘛         | 尊重活跃时段、信任阶段、对话频率               |
-| **中文支持** | 英文优先，中文常掉队 | 中文原生优化，模式路由、画像提取均针对中文设计 |
-| **渠道集成** | 需要 Web/SDK 接入    | 飞书即终端，发消息就能用                       |
+|                | 普通聊天机器人       | KaijiBot                                                |
+| -------------- | -------------------- | ------------------------------------------------------- |
+| **交互方式**   | 你问它才答           | 主动推送洞察 + 正常对话                                 |
+| **用户理解**   | 无状态，每次从零开始 | 持续学习你的兴趣、领域、偏好                            |
+| **时机感知**   | 不管你在干嘛         | 尊重活跃时段、信任阶段、对话频率                        |
+| **中文支持**   | 英文优先，中文常掉队 | 中文原生优化，模式路由、画像提取均针对中文设计          |
+| **多语言适配** | 界面写死单一语言     | CLI / 向导 / 认知层 prompt 自动检测系统语言，中英文切换 |
+| **渠道集成**   | 需要 Web/SDK 接入    | 飞书 · Telegram · Discord · 微信 · Slack 等 17+ 渠道    |
 
 ## ✨ 核心特性
 
 ### 🔮 认知引擎 — 从被动回复到主动洞察
 
-你在飞书里跟 KaijiBot 聊了几次 AI 架构和分布式系统，下周它主动发来一条消息：
+你在飞书 / Telegram 里跟 KaijiBot 聊了几次 AI 架构和分布式系统，下周它主动发来一条消息：
 
 > "最近看到一篇关于用 eBPF 做分布式追踪的文章，结合你之前关注的可观测性方向，可能有启发。"
 
@@ -76,13 +77,28 @@ AI 助手每次新建会话都犯同样的错？KaijiBot 不会。它有一套�
 
 | 国内                                              | 国际主流                                        | 聚合 / 自部署                                      |
 | ------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
-| 智谱 GLM · DeepSeek · 通义千问 · Kimi · MiniMax … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
+| DeepSeek · 通义千问 · Kimi · MiniMax · 智谱 GLM … | Claude · Gemini · Grok · Mistral · Perplexity … | OpenRouter · Together · Ollama · LMStudio · vLLM … |
 
 切换模型只需一行：
 
 ```bash
 kaijibot config set agent.model "deepseek/deepseek-chat"
 kaijibot config set agent.model "anthropic/claude-sonnet-4-20250514"
+```
+
+### 🌐 中英自动切换
+
+CLI 界面、配置向导、认知层 prompt 全部根据系统语言自动切换：
+
+- **CLI** — 检测 `LANG` / `LC_ALL` 环境变量，banner、帮助文本、命令描述、向导对话自动中英文
+- **认知层** — 根据 Persona 中的 `preferredLanguage`，洞察生成 prompt、纠错注入、进化信号全部 locale 感知
+- **文档** — 13 种语言的自动翻译流水线（zh / ja / ko / es / pt-BR / de / fr / ar / it / tr / uk / id / pl）
+
+```bash
+export LANG=zh_CN.UTF-8   # 中文
+export LANG=en_US.UTF-8   # English
+# 或显式指定：
+export KAIJIBOT_CLI_LOCALE=zh-CN
 ```
 
 ### 🛠️ 完整智能体
@@ -108,10 +124,10 @@ kaijibot skills install <skill-name>
 
 开始前你需要准备：
 
-| 条件 | 说明 | 获取方式 |
-|------|------|----------|
-| **LLM API Key** | 至少一个 AI 提供商的密钥 | [智谱 GLM](https://open.bigmodel.cn/) · [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) 任选其一 |
-| **飞书账号** | 用于收发消息 | [open.feishu.cn](https://open.feishu.cn/) 注册即可，向导支持扫码自动创建机器人 |
+| 条件            | 说明                     | 获取方式                                                                                                                                                                                                                                  |
+| --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **LLM API Key** | 至少一个 AI 提供商的密钥 | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) 任选其一 |
+| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· 也支持 Telegram / Discord / 微信 / Slack 等                                                                                                                                |
 
 ### 安装（推荐方式）
 
@@ -199,14 +215,14 @@ kaijibot onboard   # 交互式向导
 
 ### 配置
 
-**必需**：至少一个 LLM 提供商的 API Key + 飞书机器人凭证。
+**必需**：至少一个 LLM 提供商的 API Key + 至少一个消息渠道凭证。
 
 ```bash
 # LLM API Key — 任选一个提供商，取消对应行的注释
-# export ZAI_API_KEY="your-key"              # 智谱 GLM
 # export DEEPSEEK_API_KEY="your-key"         # DeepSeek
 # export ANTHROPIC_API_KEY="your-key"        # Claude
 # export GOOGLE_API_KEY="your-key"           # Gemini
+# export ZAI_API_KEY="your-key"              # 智谱 GLM
 
 # 飞书频道（也可在向导中扫码自动配置）
 kaijibot config set channels.feishu.appId "your-app-id"
