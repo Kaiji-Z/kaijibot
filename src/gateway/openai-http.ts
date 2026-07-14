@@ -527,6 +527,53 @@ export async function handleOpenAiHttpRequest(
 
       const content = resolveAgentResponseText(result);
 
+      const sessionResetRequested = req.headers["x-kaijibot-session-reset"] === "true";
+      let memoryGenerated = false;
+      if (sessionResetRequested) {
+        try {
+          const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
+          const { getRuntimeConfigSnapshot } = await import("../config/runtime-snapshot.js");
+          const { resolveStateDir } = await import("../config/paths.js");
+          const { triggerInternalHook, createInternalHookEvent } = await import("../hooks/internal-hooks.js");
+          const nodePath = await import("node:path");
+          const nodeFs = await import("node:fs/promises");
+
+          const cfg = getRuntimeConfigSnapshot();
+          if (!cfg) throw new Error("config snapshot not available");
+
+          const stateDir = resolveStateDir();
+          const sessionsDir = nodePath.join(stateDir, "agents", agentId, "sessions");
+          const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+
+          const dirEntries = await nodeFs.readdir(sessionsDir).catch(() => [] as string[]);
+          const candidates: Array<{ name: string; path: string; msgCount: number }> = [];
+          for (const f of dirEntries) {
+            if (!f.endsWith(".jsonl") || f.includes(".reset.")) continue;
+            const filePath = nodePath.join(sessionsDir, f);
+            try {
+              const fileContent = await nodeFs.readFile(filePath, "utf-8");
+              const msgCount = fileContent.split("\n").filter(l => l.includes('"type":"message"') && l.includes('"role":"user"')).length;
+              if (msgCount > 0) candidates.push({ name: f, path: filePath, msgCount });
+            } catch {}
+          }
+          candidates.sort((a, b) => b.msgCount - a.msgCount);
+
+          if (candidates.length > 0) {
+            const latest = candidates[0]!;
+            const sessionId = latest.name.replace(".jsonl", "");
+            const internalEvent = createInternalHookEvent("command", "new", sessionKey, {
+              workspaceDir,
+              cfg,
+              previousSessionEntry: { sessionId, sessionFile: latest.path },
+            });
+            await triggerInternalHook(internalEvent);
+            memoryGenerated = true;
+          }
+        } catch (err) {
+          logWarn(`session-reset hook trigger failed: ${String(err)}`);
+        }
+      }
+
       sendJson(res, 200, {
         id: runId,
         object: "chat.completion",
@@ -540,6 +587,7 @@ export async function handleOpenAiHttpRequest(
           },
         ],
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        ...(sessionResetRequested ? { x_kaijibot_memory_generated: memoryGenerated } : {}),
       });
     } catch (err) {
       if (abortController.signal.aborted) {
