@@ -14,3 +14,7 @@ export {
   listRealtimeTranscriptionProviders,
   normalizeRealtimeTranscriptionProviderId,
 } from "../realtime-transcription/provider-registry.js";
+
+export function createRealtimeTranscriptionWebSocketSession(): never {
+  throw new Error("not implemented in this build");
+}

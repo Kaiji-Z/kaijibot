@@ -61,3 +61,10 @@ export {
   classifyMemoryMultimodalPath,
   getMemoryMultimodalExtensions,
 } from "./host/multimodal.js";
+export { createRemoteEmbeddingProvider } from "./host/embeddings-remote-provider.js";
+export { resolveRemoteEmbeddingClient } from "./host/embeddings-remote-provider.js";
+export { normalizeEmbeddingModelWithPrefixes } from "./host/embeddings-model-normalize.js";
+
+export function isMissingEmbeddingApiKeyError(err: unknown): boolean {
+  return err instanceof Error && /missing.*api.*key|api.*key.*required/i.test(err.message);
+}

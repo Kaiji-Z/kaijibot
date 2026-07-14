@@ -99,3 +99,7 @@ export function scheduleCleanup(
   }, delayMs);
   timer.unref();
 }
+
+export function createOpenAiCompatibleSpeechProvider(): never {
+  throw new Error("not implemented in this build");
+}

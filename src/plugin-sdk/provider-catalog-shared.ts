@@ -140,3 +140,7 @@ export function applyProviderNativeStreamingUsageCompat(params: {
     ? withStreamingUsageCompat(params.providerConfig)
     : params.providerConfig;
 }
+
+export function getCachedLiveCatalogValue<T>(): T | undefined {
+  return undefined;
+}

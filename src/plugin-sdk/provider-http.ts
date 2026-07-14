@@ -34,3 +34,25 @@ export {
   resolveProviderRequestCapabilities,
   resolveProviderRequestPolicy,
 } from "../agents/provider-attribution.js";
+
+export function createProviderOperationDeadline(): { deadline: number } {
+  return { deadline: Date.now() + 300_000 };
+}
+export function resolveProviderOperationTimeoutMs(): number {
+  return 300_000;
+}
+export function sanitizeConfiguredModelProviderRequest<T>(req: T): T {
+  return req;
+}
+export function waitProviderOperationPollInterval(): Promise<void> {
+  return Promise.resolve();
+}
+export function createProviderOperationTimeoutResolver(): () => number {
+  return () => 300_000;
+}
+export async function fetchProviderDownloadResponse(): Promise<Response> {
+  throw new Error("not implemented in this build");
+}
+export async function pollProviderOperationJson(): Promise<unknown> {
+  throw new Error("not implemented in this build");
+}
