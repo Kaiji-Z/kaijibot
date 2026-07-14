@@ -415,6 +415,73 @@ describe("chunkMarkdown", () => {
     const chunks = chunkMarkdown(longLatinLine, { tokens: 200, overlap: 0 });
     expect(chunks.length).toBeLessThanOrEqual(5);
   });
+
+  const TURN_RE = /^\*{0,2}(?:user|assistant)\*{0,2}:\s/i;
+
+  it("splits dialogue files at conversation turn boundaries", () => {
+    const content = [
+      "---",
+      "date: 2026-07-14",
+      "type: dialogue",
+      "---",
+      "",
+      "user: I bought a Samsung 55-inch TV.",
+      "assistant: Great choice! Here are some tips:",
+      "1. Use a level when wall mounting",
+      "2. Consider a soundbar",
+      "",
+      "user: My cat Luna is 9 months old.",
+      "assistant: Luna sounds adorable!",
+    ].join("\n");
+
+    const chunks = chunkMarkdown(content, { tokens: 400, overlap: 0 });
+
+    const turnChunks = chunks.filter((c) => TURN_RE.test(c.text.split("\n")[0] ?? ""));
+    expect(turnChunks.length).toBeGreaterThanOrEqual(4);
+
+    const userChunks = turnChunks.filter((c) => c.text.startsWith("user:"));
+    expect(userChunks.length).toBe(2);
+    expect(userChunks[0]!.text).toContain("Samsung 55-inch TV");
+    expect(userChunks[1]!.text).toContain("Luna is 9 months old");
+
+    const assistantChunks = turnChunks.filter((c) => c.text.startsWith("assistant:"));
+    expect(assistantChunks.length).toBe(2);
+    expect(assistantChunks[0]!.text).toContain("wall mounting");
+    expect(assistantChunks[0]!.text).toContain("soundbar");
+  });
+
+  it("does not affect non-dialogue files without turn markers", () => {
+    const content = [
+      "# Topic: Pets",
+      "",
+      "User has a cat named Luna, 9 months old.",
+      "User also has a golden retriever named Max.",
+      "The user prefers morning walks.",
+    ].join("\n");
+
+    const chunks = chunkMarkdown(content, { tokens: 400, overlap: 0 });
+
+    for (const chunk of chunks) {
+      expect(TURN_RE.test(chunk.text.split("\n")[0] ?? "")).toBe(false);
+    }
+    expect(chunks[0]!.text).toContain("Topic: Pets");
+    expect(chunks[0]!.text).toContain("golden retriever");
+  });
+
+  it("handles bold **User**: and **Assistant**: markers", () => {
+    const content = [
+      "**User**: I graduated with a Business Administration degree.",
+      "**Assistant**: Congratulations!",
+      "**User**: My cat Luna is 9 months old.",
+    ].join("\n");
+
+    const chunks = chunkMarkdown(content, { tokens: 400, overlap: 0 });
+
+    const turnChunks = chunks.filter((c) => TURN_RE.test(c.text.split("\n")[0] ?? ""));
+    expect(turnChunks.length).toBe(3);
+    expect(turnChunks[0]!.text).toContain("Business Administration");
+    expect(turnChunks[2]!.text).toContain("Luna is 9 months old");
+  });
 });
 
 describe("remapChunkLines", () => {

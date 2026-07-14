@@ -672,7 +672,7 @@ function isValidKeyword(token: string): boolean {
  * For Chinese, we do character-based splitting since we don't have a proper segmenter.
  * For English, we split on whitespace and punctuation.
  */
-function tokenize(text: string, opts?: { ftsTokenizer?: "unicode61" | "trigram" }): string[] {
+function tokenize(text: string, opts?: { ftsTokenizer?: "unicode61" | "trigram" | "porter" }): string[] {
   const useTrigram = opts?.ftsTokenizer === "trigram";
   const tokens: string[] = [];
   const normalized = normalizeLowercaseStringOrEmpty(text);
@@ -747,7 +747,7 @@ function tokenize(text: string, opts?: { ftsTokenizer?: "unicode61" | "trigram" 
  */
 export function extractKeywords(
   query: string,
-  opts?: { ftsTokenizer?: "unicode61" | "trigram" },
+  opts?: { ftsTokenizer?: "unicode61" | "trigram" | "porter" },
 ): string[] {
   const tokens = tokenize(query, opts);
   const keywords: string[] = [];
@@ -782,7 +782,7 @@ export function extractKeywords(
  */
 export function expandQueryForFts(
   query: string,
-  opts?: { ftsTokenizer?: "unicode61" | "trigram" },
+  opts?: { ftsTokenizer?: "unicode61" | "trigram" | "porter" },
 ): {
   original: string;
   keywords: string[];
@@ -811,7 +811,7 @@ export type LlmQueryExpander = (query: string) => Promise<string[]>;
 export async function expandQueryWithLlm(
   query: string,
   llmExpander?: LlmQueryExpander,
-  opts?: { ftsTokenizer?: "unicode61" | "trigram" },
+  opts?: { ftsTokenizer?: "unicode61" | "trigram" | "porter" },
 ): Promise<string[]> {
   // If LLM expander is provided, try it first
   if (llmExpander) {

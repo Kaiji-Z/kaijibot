@@ -45,7 +45,7 @@ export type ResolvedMemorySearchConfig = {
     driver: "sqlite";
     path: string;
     fts: {
-      tokenizer: "unicode61" | "trigram";
+      tokenizer: "unicode61" | "trigram" | "porter";
     };
     vector: {
       enabled: boolean;
@@ -213,7 +213,7 @@ function mergeConfig(
       overrides?.store?.vector?.extensionPath ?? defaults?.store?.vector?.extensionPath,
   };
   const fts = {
-    tokenizer: overrides?.store?.fts?.tokenizer ?? defaults?.store?.fts?.tokenizer ?? "unicode61",
+    tokenizer: (overrides?.store?.fts?.tokenizer ?? defaults?.store?.fts?.tokenizer ?? "porter") as "unicode61" | "trigram" | "porter",
   };
   const store = {
     driver: overrides?.store?.driver ?? defaults?.store?.driver ?? "sqlite",

@@ -339,6 +339,8 @@ export async function buildMultimodalChunkForIndexing(
   };
 }
 
+const DIALOGUE_TURN_RE = /^\*{0,2}(?:user|assistant)\*{0,2}:\s/i;
+
 export function chunkMarkdown(
   content: string,
   chunking: { tokens: number; overlap: number },
@@ -401,6 +403,13 @@ export function chunkMarkdown(
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? "";
     const lineNo = i + 1;
+
+    if (DIALOGUE_TURN_RE.test(line) && current.length > 0) {
+      flush();
+      current = [];
+      currentChars = 0;
+    }
+
     const segments: string[] = [];
     if (line.length === 0) {
       segments.push("");

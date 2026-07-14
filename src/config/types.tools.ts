@@ -397,8 +397,8 @@ export type MemorySearchConfig = {
     driver?: "sqlite";
     path?: string;
     fts?: {
-      /** FTS5 tokenizer (default: "unicode61"). Use "trigram" for CJK text support. */
-      tokenizer?: "unicode61" | "trigram";
+      /** FTS5 tokenizer (default: "porter"). Use "unicode61" for no stemming, "trigram" for substring matching. */
+      tokenizer?: "unicode61" | "trigram" | "porter";
     };
     vector?: {
       /** Enable sqlite-vec extension for vector search (default: true). */

@@ -72,7 +72,7 @@ function buildMatchQueryFromTerms(terms: string[]): string | null {
 
 function planKeywordSearch(params: {
   query: string;
-  ftsTokenizer?: "unicode61" | "trigram";
+  ftsTokenizer?: "unicode61" | "trigram" | "porter";
   buildFtsQuery: (raw: string) => string | null;
 }): { matchQuery: string | null; substringTerms: string[] } {
   if (params.ftsTokenizer !== "trigram") {
@@ -228,7 +228,7 @@ export async function searchKeyword(params: {
   ftsTable: string;
   providerModel: string | undefined;
   query: string;
-  ftsTokenizer?: "unicode61" | "trigram";
+  ftsTokenizer?: "unicode61" | "trigram" | "porter";
   limit: number;
   snippetMaxChars: number;
   sourceFilter: { sql: string; params: SearchSource[] };

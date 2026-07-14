@@ -7,7 +7,7 @@ export function ensureMemoryIndexSchema(params: {
   cacheEnabled: boolean;
   ftsTable: string;
   ftsEnabled: boolean;
-  ftsTokenizer?: "unicode61" | "trigram";
+  ftsTokenizer?: "unicode61" | "trigram" | "porter";
 }): { ftsAvailable: boolean; ftsError?: string } {
   params.db.exec(`
     CREATE TABLE IF NOT EXISTS meta (
@@ -60,8 +60,13 @@ export function ensureMemoryIndexSchema(params: {
   let ftsError: string | undefined;
   if (params.ftsEnabled) {
     try {
-      const tokenizer = params.ftsTokenizer ?? "unicode61";
-      const tokenizeClause = tokenizer === "trigram" ? `, tokenize='trigram case_sensitive 0'` : "";
+      const tokenizer = params.ftsTokenizer ?? "porter";
+      const tokenizeClause =
+        tokenizer === "trigram"
+          ? `, tokenize='trigram case_sensitive 0'`
+          : tokenizer === "porter"
+            ? `, tokenize='porter unicode61'`
+            : "";
       params.db.exec(
         `CREATE VIRTUAL TABLE IF NOT EXISTS ${params.ftsTable} USING fts5(\n` +
           `  text,\n` +

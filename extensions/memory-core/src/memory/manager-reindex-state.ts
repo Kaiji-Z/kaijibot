@@ -98,6 +98,6 @@ export function shouldRunFullMemoryReindex(params: {
     meta.chunkTokens !== params.chunkTokens ||
     meta.chunkOverlap !== params.chunkOverlap ||
     (params.vectorReady && !meta.vectorDims) ||
-    (meta.ftsTokenizer ?? "unicode61") !== params.ftsTokenizer
+    (meta.ftsTokenizer ?? "porter") !== (params.ftsTokenizer ?? "porter")
   );
 }
