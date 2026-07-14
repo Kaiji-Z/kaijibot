@@ -24,9 +24,15 @@ type ToolItemEventPayload = {
 };
 
 function normalizeToolStatus(status?: string): string {
-  if (status === "completed") {return "completed";}
-  if (status === "failed") {return "failed";}
-  if (status === "blocked") {return "blocked";}
+  if (status === "completed") {
+    return "completed";
+  }
+  if (status === "failed") {
+    return "failed";
+  }
+  if (status === "blocked") {
+    return "blocked";
+  }
   return "unknown";
 }
 
@@ -54,7 +60,9 @@ export class WeixinReplyProgressSender {
   }
 
   private enqueueMessage(item: MessageItem, label: string): void {
-    if (this.finalized) {return;}
+    if (this.finalized) {
+      return;
+    }
     this.sendChain = this.sendChain
       .then(async () => {
         await sendMessageItemWeixin({
@@ -72,9 +80,15 @@ export class WeixinReplyProgressSender {
   }
 
   private handleToolItemEvent(payload: ToolItemEventPayload): void {
-    if (this.finalized) {return;}
-    if (payload.kind !== "tool") {return;}
-    if (payload.phase !== "start" && payload.phase !== "end") {return;}
+    if (this.finalized) {
+      return;
+    }
+    if (payload.kind !== "tool") {
+      return;
+    }
+    if (payload.phase !== "start" && payload.phase !== "end") {
+      return;
+    }
 
     const now = Date.now();
     const toolName = payload.name?.trim() || payload.title?.trim() || "tool";
@@ -112,7 +126,9 @@ export class WeixinReplyProgressSender {
   }
 
   async finalize(): Promise<void> {
-    if (this.finalized) {return;}
+    if (this.finalized) {
+      return;
+    }
     this.finalized = true;
     try {
       await this.sendChain;

@@ -95,15 +95,21 @@ export function buildDotSource(graph: MapGraph): string {
   lines.push('  node [shape=box, fontname="serif", fontsize=14, style=filled];');
   lines.push("  edge [color=gray70];");
   for (const node of graph.nodes) {
-    if (node == null || typeof node.id !== "string" || typeof node.label !== "string") {continue;}
+    if (node == null || typeof node.id !== "string" || typeof node.label !== "string") {
+      continue;
+    }
     const id = escapeDotString(node.id);
     const label = escapeDotString(node.label);
     const gray = strengthToGray(node.strength);
     lines.push(`  "${id}" [label="${label}", fillcolor="gray${gray}"];`);
   }
   for (const edge of graph.edges) {
-    if (edge == null || typeof edge.from !== "string" || typeof edge.to !== "string") {continue;}
-    if (edge.from === edge.to) {continue;}
+    if (edge == null || typeof edge.from !== "string" || typeof edge.to !== "string") {
+      continue;
+    }
+    if (edge.from === edge.to) {
+      continue;
+    }
     const from = escapeDotString(edge.from);
     const to = escapeDotString(edge.to);
     lines.push(`  "${from}" -> "${to}";`);
@@ -122,7 +128,9 @@ export function buildDotSource(graph: MapGraph): string {
  * per render is wasteful.
  */
 export function probeDotCapability(): boolean {
-  if (dotAvailableCache !== null) {return dotAvailableCache;}
+  if (dotAvailableCache !== null) {
+    return dotAvailableCache;
+  }
   try {
     execFileSync("dot", ["-V"], {
       timeout: DOT_PROBE_TIMEOUT_MS,
@@ -220,7 +228,9 @@ function escapeXml(s: string): string {
 /** Truncate to `max` Unicode code points, appending an ellipsis if shortened. */
 function truncateLabel(s: string, max: number): string {
   const chars = Array.from(s);
-  if (chars.length <= max) {return s;}
+  if (chars.length <= max) {
+    return s;
+  }
   return chars.slice(0, Math.max(0, max - 1)).join("") + "\u2026";
 }
 
@@ -271,10 +281,14 @@ export function buildHandrolledSvg(graph: MapGraph, width = DEFAULT_WIDTH): stri
   // Edges first so node boxes draw on top.
   const edges = Array.isArray(graph.edges) ? graph.edges : [];
   for (const edge of edges) {
-    if (edge == null || typeof edge.from !== "string" || typeof edge.to !== "string") {continue;}
+    if (edge == null || typeof edge.from !== "string" || typeof edge.to !== "string") {
+      continue;
+    }
     const a = pos.get(edge.from);
     const b = pos.get(edge.to);
-    if (a === undefined || b === undefined) {continue;}
+    if (a === undefined || b === undefined) {
+      continue;
+    }
     parts.push(
       `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="gray" stroke-width="1"/>`,
     );
@@ -282,7 +296,9 @@ export function buildHandrolledSvg(graph: MapGraph, width = DEFAULT_WIDTH): stri
 
   for (const node of validNodes) {
     const p = pos.get(node.id);
-    if (p === undefined) {continue;}
+    if (p === undefined) {
+      continue;
+    }
     const gray = strengthToGray(node.strength);
     const label = escapeXml(truncateLabel(node.label, LABEL_MAX_CHARS));
     const boxW = 120;
@@ -319,7 +335,9 @@ async function rasterize(svgBuffer: Buffer, width: number): Promise<Buffer> {
 
 /** Coerce arbitrary input into a well-formed (possibly empty) MapGraph. */
 function sanitizeGraph(graph: MapGraph): MapGraph {
-  if (graph == null || typeof graph !== "object") {return EMPTY_GRAPH;}
+  if (graph == null || typeof graph !== "object") {
+    return EMPTY_GRAPH;
+  }
   const rawNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
   const rawEdges = Array.isArray(graph.edges) ? graph.edges : [];
   const nodes = rawNodes.filter(
@@ -385,10 +403,7 @@ async function resolveSvg(
  * empty graphs). The returned `capability` records which tier produced the
  * final image for operator visibility.
  */
-export async function renderGraphPng(
-  graph: MapGraph,
-  opts?: RenderOpts,
-): Promise<RenderResult> {
+export async function renderGraphPng(graph: MapGraph, opts?: RenderOpts): Promise<RenderResult> {
   const width = opts?.pngWidth ?? DEFAULT_WIDTH;
   const safeGraph = sanitizeGraph(graph);
 

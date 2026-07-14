@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { FleetState, type AgentEventPayload } from "./fleet-state.js";
 import { attachAgentEventCollector, type SubscribeFn } from "./event-collector.js";
+import { FleetState, type AgentEventPayload } from "./fleet-state.js";
 
 interface MockSubscribe {
   subscribe: SubscribeFn;

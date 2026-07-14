@@ -116,7 +116,9 @@ function renderDetail(persona: PersonaTree): unknown {
     <div style="display:grid;gap:16px;">
       <!-- Identity section -->
       <div class="card">
-        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <h4
+          style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);"
+        >
           Identity
         </h4>
         <div style="display:grid;gap:10px;">
@@ -161,7 +163,9 @@ function renderDetail(persona: PersonaTree): unknown {
 
       <!-- Trust & Rapport -->
       <div class="card">
-        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <h4
+          style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);"
+        >
           Trust & Rapport
         </h4>
         <div style="display:grid;gap:10px;">
@@ -201,7 +205,9 @@ function renderDetail(persona: PersonaTree): unknown {
 
       <!-- Domain map -->
       <div class="card">
-        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <h4
+          style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);"
+        >
           Domain Map
           <span class="muted" style="font-weight:400;font-size:13px;margin-left:6px;"
             >${domainEntries.length} domains</span
@@ -267,7 +273,9 @@ function renderDetail(persona: PersonaTree): unknown {
       ${recentFocus.length > 0
         ? html`
             <div class="card">
-              <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
+              <h4
+                style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);"
+              >
                 Recent Focus
               </h4>
               <div class="chip-row">
@@ -279,7 +287,9 @@ function renderDetail(persona: PersonaTree): unknown {
 
       <!-- Lifecycle -->
       <div class="card">
-        <h4 style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <h4
+          style="font-size:17px;font-weight:700;margin:0 0 14px;color:var(--text-strong);padding-bottom:10px;border-bottom:1px solid var(--border);"
+        >
           Lifecycle
         </h4>
         <div style="display:grid;gap:8px;">

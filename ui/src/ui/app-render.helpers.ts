@@ -1129,16 +1129,12 @@ export function renderInputSettingsPopover(
         @change=${(e: Event) => onChange((e.target as HTMLSelectElement).value)}
       >
         ${options.map(
-          (o) =>
-            html`<option value=${o.value} ?selected=${o.value === value}>${o.label}</option>`,
+          (o) => html`<option value=${o.value} ?selected=${o.value === value}>${o.label}</option>`,
         )}
       </select>
     </label>
   `;
-  const modelOptions = [
-    { value: "", label: modelState.defaultLabel },
-    ...modelState.options,
-  ];
+  const modelOptions = [{ value: "", label: modelState.defaultLabel }, ...modelState.options];
   const thinkingOptions = [
     { value: "", label: thinkingState.defaultLabel },
     ...thinkingState.options,

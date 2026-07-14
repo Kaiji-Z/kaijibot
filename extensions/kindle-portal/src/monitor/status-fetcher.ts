@@ -14,7 +14,11 @@ import type { ProviderQuota, CognitiveStats } from "../types.js";
 export interface GatewayStatus {
   readonly version: string;
   readonly uptime: number;
-  readonly agents: readonly { readonly id: string; readonly model?: string; readonly default?: boolean }[];
+  readonly agents: readonly {
+    readonly id: string;
+    readonly model?: string;
+    readonly default?: boolean;
+  }[];
   readonly usage: {
     readonly today: { readonly totalTokens: number; readonly totalCost: number } | null;
     readonly month: { readonly totalTokens: number; readonly totalCost: number } | null;

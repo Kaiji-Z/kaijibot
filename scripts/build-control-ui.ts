@@ -4,11 +4,11 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const viteBin = path.resolve(repoRoot, "node_modules", ".bin", "vite");
-const result = spawnSync(
-  process.execPath,
-  [viteBin, "build"],
-  { cwd: path.resolve(repoRoot, "ui"), stdio: "inherit", env: process.env },
-);
+const result = spawnSync(process.execPath, [viteBin, "build"], {
+  cwd: path.resolve(repoRoot, "ui"),
+  stdio: "inherit",
+  env: process.env,
+});
 
 const indexPath = path.resolve(repoRoot, "dist", "control-ui", "index.html");
 

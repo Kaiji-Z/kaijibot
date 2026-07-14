@@ -21,103 +21,103 @@
 
 export const SHARED_CSS: string =
   // ── Base ──────────────────────────────────────────────────────────────
-  "body { margin: 0; padding: 10px 12px; background: #fff; color: #000;"
-  + ' font-family: "Bookerly", "Palatino", "Times", serif;'
-  + " font-size: 30px; line-height: 1.4; }"
-  + "\n"
+  "body { margin: 0; padding: 10px 12px; background: #fff; color: #000;" +
+  ' font-family: "Bookerly", "Palatino", "Times", serif;' +
+  " font-size: 30px; line-height: 1.4; }" +
+  "\n" +
   // ── Clearfix (float layout helper) ────────────────────────────────────
-  + '.clearfix::after { content: ""; display: block; clear: both; }'
-  + "\n"
+  '.clearfix::after { content: ""; display: block; clear: both; }' +
+  "\n" +
   // ── Tab bar (Monitor / Map navigation) ────────────────────────────────
-  + ".tabs { border-bottom: 3px solid #000; margin-bottom: 12px; padding: 0; }"
-  + "\n"
-  + ".tab { display: inline-block; padding: 8px 20px; margin-right: 4px;"
-  + " font-size: 0.73em; font-weight: bold; text-decoration: none;"
-  + " color: #666; border: 2px solid #ccc; border-bottom: none; }"
-  + "\n"
-  + ".tab-active { color: #000; border: 2px solid #000; border-bottom: 3px solid #fff;"
-  + " position: relative; top: 1px; background: #fff; }"
-  + "\n"
+  ".tabs { border-bottom: 3px solid #000; margin-bottom: 12px; padding: 0; }" +
+  "\n" +
+  ".tab { display: inline-block; padding: 8px 20px; margin-right: 4px;" +
+  " font-size: 0.73em; font-weight: bold; text-decoration: none;" +
+  " color: #666; border: 2px solid #ccc; border-bottom: none; }" +
+  "\n" +
+  ".tab-active { color: #000; border: 2px solid #000; border-bottom: 3px solid #fff;" +
+  " position: relative; top: 1px; background: #fff; }" +
+  "\n" +
   // ── Header bar ────────────────────────────────────────────────────────
-  + ".header { border-bottom: 3px solid #000; padding: 4px 0 10px;"
-  + " margin-bottom: 10px; }"
-  + "\n"
-  + ".title { font-size: 1.27em; font-weight: bold; margin: 0 0 4px;"
-  + " line-height: 1.2; letter-spacing: 0.3px; }"
-  + "\n"
-  + ".meta { font-size: 0.82em; color: #333; line-height: 1.5; }"
-  + "\n"
+  ".header { border-bottom: 3px solid #000; padding: 4px 0 10px;" +
+  " margin-bottom: 10px; }" +
+  "\n" +
+  ".title { font-size: 1.27em; font-weight: bold; margin: 0 0 4px;" +
+  " line-height: 1.2; letter-spacing: 0.3px; }" +
+  "\n" +
+  ".meta { font-size: 0.82em; color: #333; line-height: 1.5; }" +
+  "\n" +
   // ── Zoom controls (float right in header) ─────────────────────────────
-  + ".zoom-bar { float: right; margin-left: 10px; }"
-  + "\n"
-  + ".zoom-btn { min-width: 40px; min-height: 40px; padding: 5px 10px;"
-  + " margin-left: 4px; border: 2px solid #000; background: #fff; color: #000;"
-  + ' font-family: "Bookerly", "Palatino", "Times", serif;'
-  + " font-size: 1em; font-weight: bold; line-height: 1.2;"
-  + " text-align: center; cursor: pointer; }"
-  + "\n"
+  ".zoom-bar { float: right; margin-left: 10px; }" +
+  "\n" +
+  ".zoom-btn { min-width: 40px; min-height: 40px; padding: 5px 10px;" +
+  " margin-left: 4px; border: 2px solid #000; background: #fff; color: #000;" +
+  ' font-family: "Bookerly", "Palatino", "Times", serif;' +
+  " font-size: 1em; font-weight: bold; line-height: 1.2;" +
+  " text-align: center; cursor: pointer; }" +
+  "\n" +
   // ── Inline badge (ACTIVE/IDLE indicator in header meta) ───────────────
-  + ".badge { font-weight: bold; white-space: nowrap; }"
-  + "\n"
-  + ".status-icon { font-size: 1.09em; font-weight: bold;"
-  + " letter-spacing: 0.5px; white-space: nowrap; }"
-  + "\n"
+  ".badge { font-weight: bold; white-space: nowrap; }" +
+  "\n" +
+  ".status-icon { font-size: 1.09em; font-weight: bold;" +
+  " letter-spacing: 0.5px; white-space: nowrap; }" +
+  "\n" +
   // ── Metrics row (2 floated boxes: tokens + cost) ──────────────────────
-  + ".metrics-row { border: 2px solid #000; margin: 8px 0; }"
-  + "\n"
-  + ".metric { float: left; width: 50%; text-align: center; padding: 10px 0;"
-  + " border-right: 1px solid #ccc; box-sizing: border-box; }"
-  + "\n"
-  + ".metric-quarter { width: 50%; }"
-  + "\n"
-  + ".metric-quarter .metric-num { font-size: 1.2em; }"
-  + "\n"
-  + ".metric-num { font-size: 1.36em; font-weight: bold; line-height: 1.1; }"
-  + "\n"
-  + ".metric-label { font-size: 0.73em; color: #666; }"
-  + "\n"
+  ".metrics-row { border: 2px solid #000; margin: 8px 0; }" +
+  "\n" +
+  ".metric { float: left; width: 50%; text-align: center; padding: 10px 0;" +
+  " border-right: 1px solid #ccc; box-sizing: border-box; }" +
+  "\n" +
+  ".metric-quarter { width: 50%; }" +
+  "\n" +
+  ".metric-quarter .metric-num { font-size: 1.2em; }" +
+  "\n" +
+  ".metric-num { font-size: 1.36em; font-weight: bold; line-height: 1.1; }" +
+  "\n" +
+  ".metric-label { font-size: 0.73em; color: #666; }" +
+  "\n" +
   // ── Provider quota section (progress bar) ─────────────────────────────
-  + ".quota-section { border: 2px solid #000; padding: 14px; margin: 8px 0;"
-  + " background: #fff; }"
-  + "\n"
-  + ".quota-label { font-size: 0.82em; font-weight: bold; margin-bottom: 4px; }"
-  + "\n"
-  + ".quota-window { margin: 6px 0; }"
-  + "\n"
-  + ".quota-window-label { font-size: 0.73em; color: #333; margin-bottom: 2px; }"
-  + "\n"
-  + ".quota-bar { border: 2px solid #000; height: 30px; background: #fff;"
-  + " overflow: hidden; }"
-  + "\n"
-  + ".quota-fill { background: #000; height: 100%; }"
-  + "\n"
+  ".quota-section { border: 2px solid #000; padding: 14px; margin: 8px 0;" +
+  " background: #fff; }" +
+  "\n" +
+  ".quota-label { font-size: 0.82em; font-weight: bold; margin-bottom: 4px; }" +
+  "\n" +
+  ".quota-window { margin: 6px 0; }" +
+  "\n" +
+  ".quota-window-label { font-size: 0.73em; color: #333; margin-bottom: 2px; }" +
+  "\n" +
+  ".quota-bar { border: 2px solid #000; height: 30px; background: #fff;" +
+  " overflow: hidden; }" +
+  "\n" +
+  ".quota-fill { background: #000; height: 100%; }" +
+  "\n" +
   // ── Section ───────────────────────────────────────────────────────────
-  + ".section { border-top: 2px solid #000; padding: 10px 0; margin-top: 6px; }"
-  + "\n"
+  ".section { border-top: 2px solid #000; padding: 10px 0; margin-top: 6px; }" +
+  "\n" +
   // ── Agent card (registered agents list — idle vs active) ──────────────
-  + ".agent-card { border: 2px solid #000; padding: 14px; margin: 8px 0;"
-  + " background: #fff; }"
-  + "\n"
-  + ".agent-card.idle { border-color: #ccc; color: #666; }"
-  + "\n"
-  + ".agent-card.active { border-left: 6px solid #000; }"
-  + "\n"
-  + ".agent-id { font-size: 1em; font-weight: bold; }"
-  + "\n"
-  + ".agent-status { float: right; font-size: 0.73em; font-weight: bold; }"
-  + "\n"
-  + ".agent-model { font-size: 0.6em; color: #666; margin-top: 4px; }"
-  + "\n"
+  ".agent-card { border: 2px solid #000; padding: 14px; margin: 8px 0;" +
+  " background: #fff; }" +
+  "\n" +
+  ".agent-card.idle { border-color: #ccc; color: #666; }" +
+  "\n" +
+  ".agent-card.active { border-left: 6px solid #000; }" +
+  "\n" +
+  ".agent-id { font-size: 1em; font-weight: bold; }" +
+  "\n" +
+  ".agent-status { float: right; font-size: 0.73em; font-weight: bold; }" +
+  "\n" +
+  ".agent-model { font-size: 0.6em; color: #666; margin-top: 4px; }" +
+  "\n" +
   // ── Empty state ───────────────────────────────────────────────────────
-  + ".empty { font-size: 1em; color: #333; padding: 24px 0;"
-  + " text-align: center; border: 2px dashed #ccc; margin: 8px 0;"
-  + " font-style: italic; }"
-  + "\n"
+  ".empty { font-size: 1em; color: #333; padding: 24px 0;" +
+  " text-align: center; border: 2px dashed #ccc; margin: 8px 0;" +
+  " font-style: italic; }" +
+  "\n" +
   // ── Navigation ────────────────────────────────────────────────────────
-  + ".nav { margin: 8px 0; font-size: 0.82em; }"
-  + "\n"
-  + ".nav a { color: #000; text-decoration: underline; font-weight: bold; }"
-  + "\n"
+  ".nav { margin: 8px 0; font-size: 0.82em; }" +
+  "\n" +
+  ".nav a { color: #000; text-decoration: underline; font-weight: bold; }" +
+  "\n" +
   // ── Footer ────────────────────────────────────────────────────────────
-  + ".footer { border-top: 2px solid #000; margin-top: 10px;"
-  + " padding-top: 6px; font-size: 0.82em; color: #666; }";
+  ".footer { border-top: 2px solid #000; margin-top: 10px;" +
+  " padding-top: 6px; font-size: 0.82em; color: #666; }";

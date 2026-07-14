@@ -238,9 +238,46 @@ export TAVILY_API_KEY="your-key"
 
 配置文件位于 `~/.kaijibot/kaijibot.json`，支持热重载。认知系统可通过 `cognitive.enabled: false` 关闭。详细配置参考 `AGENTS.md`。
 
+## 🏗️ 与 OpenClaw 的关系
+
+KaijiBot 最初 fork 自 [OpenClaw](https://github.com/openclaw/openclaw)（OpenRouter 全球 Token 消耗榜首的通用 AI Agent，382K+ GitHub stars），但已发展为独立项目。**KaijiBot 做了三件事，不只是"OpenClaw + 认知层"**：
+
+### 1. 加固并简化基座
+
+OpenClaw 是一个面向全球、多渠道、多语言的庞大项目。KaijiBot 在它的基础上做了基座层面的收敛：
+
+- **类型系统现代化** — 从 AJV/JSON Schema 验证器迁移到 TypeBox，运行时与编译时类型统一
+- **依赖跟进** — pi-ai SDK 0.65.2→0.79.4，跟上 LLM 抽象层的快速演进
+- **代码质量整治** — 修复上游遗留的 1220 处 lint 错误（覆盖 191 个文件）
+- **关键 Bug 修复** — 修复 Windows 上双 Gateway 竞争条件、Android 渲染崩溃等上游问题
+- **Plugin SDK 补完** — 补齐 13 个上游缺失的 plugin-sdk 子路径导出
+- **原生模块加载** — `.js` 插件走原生 `require` 快速路径，`.ts` 走 jiti 兜底
+
+### 2. 重写记忆层
+
+OpenClaw 原有的「dreaming」式记忆整合被替换为 **memory consolidation engine**：
+
+- 每日 cron 扫描历史会话，LLM 抽取结构化知识（领域知识、行为模式、偏好、目标）
+- Jaccard 去重，避免重复条目堆积
+- 路由分发到 `PersonaStore` / `FragmentStore` / `CorrectionStore` + MEMORY.md 内联区
+- 类别感知（domain_knowledge / behavioral_pattern / stated_preference / goal_or_aspiration）路由到不同 inline section
+- MEMORY.md 8KB 预算自动平衡，高频内容内联，低频内容存指针
+
+### 3. 加入认知层（KaijiBot 的差异化）
+
+- **Persona 画像系统** — TypedInsight 6 类别 + 类别感知衰减半衰期
+- **主动洞察生成** — PRISM cost-sensitive gate + SIRI search-identify-resolve loop
+- **自我进化** — Agent 驱动的技能生成（代码层只做噪音过滤，由 Agent 判断价值）
+- **纠错自进化** — 双路径检测（Agent 自报 + 会话结束 LLM 抽取）+ Jaccard 去重 + 系统提示注入
+- **兴趣生命周期** — emergent → stable → declining → dormant → revived
+
+> 想要精简的 OpenClaw 体验？配置里设 `cognitive.enabled: false` 即可关闭整个认知层，回到「加固基座 + 重写记忆层」的状态——这本身已经比上游 OpenClaw 在记忆和稳定性上更进一步。
+
+KaijiBot 持续从上游同步关键修复和架构改进（参见 commit 历史中的 `sync from upstream OpenClaw` 系列）。如果你只想用 OpenClaw 基础功能 + 改进的记忆层，不想用认知层，这也是完全支持的用法。
+
 ## 致谢
 
-基于 [OpenClaw](https://github.com/openclaw/openclaw) 开源项目开发。
+KaijiBot 站在 [OpenClaw](https://github.com/openclaw/openclaw)（由 Peter Steinberger 和社区构建）的肩膀上。OpenClaw 提供了 Gateway 架构、Plugin SDK 边界、Agent 循环、多渠道接入和完整的工具生态——这些是 KaijiBot 能够专注于认知层的地基。
 
 ### 学术研究
 

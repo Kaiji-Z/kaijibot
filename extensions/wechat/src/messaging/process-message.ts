@@ -53,7 +53,9 @@ export type ProcessMessageDeps = {
 
 /** Extract text body from item_list (for slash command detection). */
 function extractTextBody(itemList?: import("../api/types.js").MessageItem[]): string {
-  if (!itemList?.length) {return "";}
+  if (!itemList?.length) {
+    return "";
+  }
   for (const item of itemList) {
     if (item.type === MessageItemType.TEXT && item.text_item?.text != null) {
       return String(item.text_item.text);
@@ -190,7 +192,9 @@ export async function processOneMessage(
       /** Pairing: framework credentials `*-allowFrom.json`, with account `userId` fallback for legacy installs. */
       readAllowFromStore: async () => {
         const fromStore = readFrameworkAllowFromList(deps.accountId);
-        if (fromStore.length > 0) {return fromStore;}
+        if (fromStore.length > 0) {
+          return fromStore;
+        }
         const uid = loadWeixinAccount(deps.accountId)?.userId?.trim();
         return uid ? [uid] : [];
       },

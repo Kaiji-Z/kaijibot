@@ -82,9 +82,7 @@ describe("queryWiki", () => {
   it("finds pages matching the query in body", async () => {
     const result = await queryWiki(path.join(TMP, "wiki"), "eBPF");
     expect(result.matchedPages.length).toBeGreaterThan(0);
-    const hasEbpf = result.matchedPages.some((m) =>
-      m.snippet.toLowerCase().includes("ebpf"),
-    );
+    const hasEbpf = result.matchedPages.some((m) => m.snippet.toLowerCase().includes("ebpf"));
     expect(hasEbpf).toBe(true);
   });
 
@@ -101,9 +99,7 @@ describe("queryWiki", () => {
   it("sorts results by score descending", async () => {
     const result = await queryWiki(path.join(TMP, "wiki"), "Rust");
     for (let i = 1; i < result.matchedPages.length; i++) {
-      expect(result.matchedPages[i]!.score).toBeLessThanOrEqual(
-        result.matchedPages[i - 1]!.score,
-      );
+      expect(result.matchedPages[i]!.score).toBeLessThanOrEqual(result.matchedPages[i - 1]!.score);
     }
   });
 

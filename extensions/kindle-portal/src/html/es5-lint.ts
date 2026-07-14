@@ -99,7 +99,9 @@ export function lintKindleHtml(html: string): LintIssue[] {
 
   // Sort by line ascending, then token alphabetically
   issues.sort((a, b) => {
-    if (a.line !== b.line) {return a.line - b.line;}
+    if (a.line !== b.line) {
+      return a.line - b.line;
+    }
     return a.token.localeCompare(b.token);
   });
 

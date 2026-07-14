@@ -7,18 +7,18 @@
  * `ApiHandlerContext`.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { FleetState } from "../monitor/fleet-state.js";
 import type { KindleConfig } from "../config.js";
-import type { PngCapability } from "../types.js";
-import type { LoadSessionStore } from "../monitor/scope-resolver.js";
-import { buildFleetSnapshot } from "../monitor/snapshot-source.js";
-import { resolveActiveUser } from "../monitor/scope-resolver.js";
 import { buildMapGraph } from "../map/graph-builder.js";
 import { readPersona } from "../map/persona-reader.js";
 import { readWikiGraph } from "../map/wiki-reader.js";
-import { readCognitiveStats } from "../monitor/cognitive-reader.js";
 import { readAllAgents } from "../monitor/agent-reader.js";
+import { readCognitiveStats } from "../monitor/cognitive-reader.js";
+import type { FleetState } from "../monitor/fleet-state.js";
+import type { LoadSessionStore } from "../monitor/scope-resolver.js";
+import { resolveActiveUser } from "../monitor/scope-resolver.js";
+import { buildFleetSnapshot } from "../monitor/snapshot-source.js";
 import { fetchGatewayStatus } from "../monitor/status-fetcher.js";
+import type { PngCapability } from "../types.js";
 
 // ── Public types ──
 
@@ -143,9 +143,7 @@ export async function handleMapJson(
 
     const persona = await readPersona(ctx.stateDir, user.agentId, user.userId);
 
-    const wiki = ctx.cfg.showWiki
-      ? await readWikiGraph(ctx.workspaceDir)
-      : null;
+    const wiki = ctx.cfg.showWiki ? await readWikiGraph(ctx.workspaceDir) : null;
 
     const graph = buildMapGraph(persona, wiki, {
       maxDomains: ctx.cfg.maxDomains,

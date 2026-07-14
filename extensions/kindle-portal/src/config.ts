@@ -59,7 +59,8 @@ export type NormalizedConfigIssue = { path: (string | number)[]; message: string
  * Validate input and apply defaults. Throws z.ZodError on invalid values.
  */
 export function resolveKindleConfig(pluginConfig: unknown): KindleConfig {
-  const parsed = pluginConfig === undefined ? undefined : KINDLE_PORTAL_CONFIG_SOURCE.parse(pluginConfig);
+  const parsed =
+    pluginConfig === undefined ? undefined : KINDLE_PORTAL_CONFIG_SOURCE.parse(pluginConfig);
   return applyDefaults(parsed);
 }
 
@@ -87,7 +88,8 @@ function applyDefaults(input: KindleConfigInput | undefined): KindleConfig {
   return {
     enabled: input?.enabled ?? KINDLE_PORTAL_DEFAULTS.enabled,
     accessToken: rawToken && rawToken.length > 0 ? rawToken : undefined,
-    refreshIntervalSeconds: input?.refreshIntervalSeconds ?? KINDLE_PORTAL_DEFAULTS.refreshIntervalSeconds,
+    refreshIntervalSeconds:
+      input?.refreshIntervalSeconds ?? KINDLE_PORTAL_DEFAULTS.refreshIntervalSeconds,
     mapRefreshSeconds: input?.mapRefreshSeconds ?? KINDLE_PORTAL_DEFAULTS.mapRefreshSeconds,
     scope: input?.scope ?? KINDLE_PORTAL_DEFAULTS.scope,
     userId: input?.userId,
@@ -97,12 +99,15 @@ function applyDefaults(input: KindleConfigInput | undefined): KindleConfig {
   };
 }
 
-function normalizeIssues(issues: Iterable<{ path: PropertyKey[]; message: string }>): NormalizedConfigIssue[] {
+function normalizeIssues(
+  issues: Iterable<{ path: PropertyKey[]; message: string }>,
+): NormalizedConfigIssue[] {
   const out: NormalizedConfigIssue[] = [];
   for (const issue of issues) {
     out.push({
       path: issue.path.filter(
-        (segment): segment is string | number => typeof segment === "string" || typeof segment === "number",
+        (segment): segment is string | number =>
+          typeof segment === "string" || typeof segment === "number",
       ),
       message: issue.message,
     });

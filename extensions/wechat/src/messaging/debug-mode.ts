@@ -24,7 +24,9 @@ function loadState(): DebugModeState {
   try {
     const raw = fs.readFileSync(resolveDebugModePath(), "utf-8");
     const parsed = JSON.parse(raw) as DebugModeState;
-    if (parsed && typeof parsed.accounts === "object") {return parsed;}
+    if (parsed && typeof parsed.accounts === "object") {
+      return parsed;
+    }
   } catch {
     // missing or corrupt — start fresh
   }

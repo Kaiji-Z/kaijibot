@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeStrength } from "./strength.js";
 import type { PersonaDomainNode } from "../types.js";
+import { computeStrength } from "./strength.js";
 
 describe("computeStrength", () => {
   it("stable + depth 5 + rec 10 → ~1.0", () => {

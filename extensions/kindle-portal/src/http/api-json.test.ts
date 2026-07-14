@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { FleetState } from "../monitor/fleet-state.js";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import type { KindleConfig } from "../config.js";
-import type { PngCapability } from "../types.js";
+import type { FleetState } from "../monitor/fleet-state.js";
 import type { LoadSessionStore } from "../monitor/scope-resolver.js";
+import type { PngCapability } from "../types.js";
 import { handleFleetJson, handleMapJson, defaultSendJson } from "./api-json.js";
 
 // ── Minimal fake types for test (no `as any`) ──
@@ -162,7 +162,10 @@ describe("handleFleetJson", () => {
     defaultSendJson(asRes(rawRes), 200, body);
 
     expect(rawRes.statusCode).toBe(200);
-    expect(rawRes.setHeader).toHaveBeenCalledWith("Content-Type", "application/json; charset=utf-8");
+    expect(rawRes.setHeader).toHaveBeenCalledWith(
+      "Content-Type",
+      "application/json; charset=utf-8",
+    );
     expect(rawRes.end).toHaveBeenCalledOnce();
     const endArg = rawRes.end.mock.calls[0]![0];
     expect(() => JSON.parse(endArg as string)).not.toThrow();
@@ -184,7 +187,10 @@ describe("handleFleetJson", () => {
     await handleFleetJson(fakeReq(), res, ctx);
 
     expect(rawRes.statusCode).toBe(200);
-    expect(rawRes.setHeader).toHaveBeenCalledWith("Content-Type", "application/json; charset=utf-8");
+    expect(rawRes.setHeader).toHaveBeenCalledWith(
+      "Content-Type",
+      "application/json; charset=utf-8",
+    );
     expect(rawRes.end).toHaveBeenCalledOnce();
   });
 });
@@ -386,7 +392,10 @@ describe("handleMapJson", () => {
     await handleMapJson(fakeReq(), res, ctx);
 
     expect(rawRes.statusCode).toBe(200);
-    expect(rawRes.setHeader).toHaveBeenCalledWith("Content-Type", "application/json; charset=utf-8");
+    expect(rawRes.setHeader).toHaveBeenCalledWith(
+      "Content-Type",
+      "application/json; charset=utf-8",
+    );
     expect(rawRes.end).toHaveBeenCalledOnce();
   });
 });

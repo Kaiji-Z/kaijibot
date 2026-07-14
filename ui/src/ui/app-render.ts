@@ -1074,7 +1074,9 @@ export function renderApp(state: AppViewState) {
                       void c.loadEvolutionRecords(
                         state as Parameters<typeof c.loadEvolutionRecords>[0],
                       );
-                      void c.loadEvolutionAudit(state as Parameters<typeof c.loadEvolutionAudit>[0]);
+                      void c.loadEvolutionAudit(
+                        state as Parameters<typeof c.loadEvolutionAudit>[0],
+                      );
                     });
                   }
                 },

@@ -45,9 +45,7 @@ export async function installGatewayDaemonNonInteractive(params: {
 
   const service = tryResolveGatewayService();
   if (!service) {
-    runtime.log(
-      `Service install not supported on ${process.platform}; skipping daemon install.`,
-    );
+    runtime.log(`Service install not supported on ${process.platform}; skipping daemon install.`);
     return { installed: false, skippedReason: "systemd-user-unavailable" };
   }
   const tokenResolution = await resolveGatewayInstallToken({

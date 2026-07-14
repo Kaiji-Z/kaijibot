@@ -25,9 +25,7 @@ export async function appendWikiLogMarkdown(
   const date = entry.timestamp.slice(0, 10);
   const time = entry.timestamp.slice(11, 19);
   const source = entry.sourcePath ? ` | ${entry.sourcePath}` : "";
-  const details = entry.details && entry.details.length > 0
-    ? ` | ${entry.details.join(", ")}`
-    : "";
+  const details = entry.details && entry.details.length > 0 ? ` | ${entry.details.join(", ")}` : "";
   const line = `## [${date} ${time}] ${entry.type}${source}${details}\n\n`;
   await fs.mkdir(path.dirname(logPath), { recursive: true });
   await fs.appendFile(logPath, line, "utf8");

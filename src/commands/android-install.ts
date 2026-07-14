@@ -42,7 +42,10 @@ const BASHRC_AUTOSTART_BODY = [
   "",
 ].join("\n");
 
-const DEFAULT_SPAWN_OPTIONS: SpawnSyncOptions = { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
+const DEFAULT_SPAWN_OPTIONS: SpawnSyncOptions = {
+  encoding: "utf8",
+  stdio: ["ignore", "pipe", "pipe"],
+};
 
 export async function runAndroidInstall(
   runtime: OutputRuntimeEnv,
@@ -53,7 +56,7 @@ export async function runAndroidInstall(
 
   if (!isTermux()) {
     runtime.error(
-      "This command must be run inside Termux on Android (process.platform must be \"android\" with a Termux PREFIX).",
+      'This command must be run inside Termux on Android (process.platform must be "android" with a Termux PREFIX).',
     );
     runtime.exit(1);
     return;
@@ -79,7 +82,11 @@ function isTermux(): boolean {
   return process.platform === "android" && Boolean(process.env.PREFIX?.includes("com.termux"));
 }
 
-function run(cmd: string, args: readonly string[], options: SpawnSyncOptions = {}): SpawnSyncReturns<string | Buffer> {
+function run(
+  cmd: string,
+  args: readonly string[],
+  options: SpawnSyncOptions = {},
+): SpawnSyncReturns<string | Buffer> {
   return spawnSync(cmd, args as string[], { ...DEFAULT_SPAWN_OPTIONS, ...options });
 }
 
@@ -149,7 +156,12 @@ async function switchTermuxMirror(runtime: OutputRuntimeEnv): Promise<void> {
     runtime.log(`  ${theme.success("✓")} Termux default mirror (non-China timezone)`);
     return;
   }
-  const sourcesPath = path.join(process.env.PREFIX ?? "/data/data/com.termux/files/usr", "etc", "apt", "sources.list");
+  const sourcesPath = path.join(
+    process.env.PREFIX ?? "/data/data/com.termux/files/usr",
+    "etc",
+    "apt",
+    "sources.list",
+  );
   runtime.log(`  → Setting Termux mirror to TUNA (China)`);
   await writeTextAtomic(
     sourcesPath,
@@ -169,7 +181,9 @@ async function ensureNode(runtime: OutputRuntimeEnv): Promise<void> {
   const versionText = runText("node", ["--version"]);
   const major = parseNodeMajor(versionText);
   if (major !== null && major >= MIN_NODE_MAJOR) {
-    runtime.log(`  ${theme.success("✓")} Node.js ${theme.accent(`v${versionText.replace(/^v/, "")}`)} (>= ${MIN_NODE_MAJOR})`);
+    runtime.log(
+      `  ${theme.success("✓")} Node.js ${theme.accent(`v${versionText.replace(/^v/, "")}`)} (>= ${MIN_NODE_MAJOR})`,
+    );
     return;
   }
 
@@ -244,7 +258,9 @@ async function ensureKaijiBot(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log(`  ${theme.warn("→")} KaijiBot CLI not found. Installing via npm...`);
   const install = run("npm", ["install", "-g", "kaijibot", "--force"], { stdio: "inherit" });
   if (install.error || install.status !== 0) {
-    runtime.error(`Failed to install KaijiBot. Run ${theme.command("npm install -g kaijibot --force")} manually.`);
+    runtime.error(
+      `Failed to install KaijiBot. Run ${theme.command("npm install -g kaijibot --force")} manually.`,
+    );
     runtime.exit(1);
     return;
   }
@@ -254,7 +270,9 @@ async function ensureKaijiBot(runtime: OutputRuntimeEnv): Promise<void> {
 async function installSharpWasm32(runtime: OutputRuntimeEnv): Promise<void> {
   runtime.log(`  ${theme.warn("→")} Installing @img/sharp-wasm32 (image processing)...`);
   const registry = isChinaTimezone() ? ["--registry=https://registry.npmmirror.com"] : [];
-  const result = run("npm", ["install", "-g", "@img/sharp-wasm32", "--force", ...registry], { stdio: "inherit" });
+  const result = run("npm", ["install", "-g", "@img/sharp-wasm32", "--force", ...registry], {
+    stdio: "inherit",
+  });
   if (result.error || result.status !== 0) {
     runtime.log(
       `  ${theme.warn("⚠")} Could not install @img/sharp-wasm32 (image features may be limited). Retry with ${theme.command("npm install -g @img/sharp-wasm32 --force")}.`,
@@ -312,18 +330,27 @@ async function writeBashrcAutostart(runtime: OutputRuntimeEnv): Promise<void> {
     return;
   }
 
-  const updated = existing.length === 0 || existing.endsWith("\n")
-    ? `${existing}${BASHRC_AUTOSTART_BODY}`
-    : `${existing}\n${BASHRC_AUTOSTART_BODY}`;
+  const updated =
+    existing.length === 0 || existing.endsWith("\n")
+      ? `${existing}${BASHRC_AUTOSTART_BODY}`
+      : `${existing}\n${BASHRC_AUTOSTART_BODY}`;
   await writeTextAtomic(bashrcPath, updated, { mode: 0o644 });
-  runtime.log(`  ${theme.success("✓")} .bashrc autostart configured (open Termux = gateway starts)`);
+  runtime.log(
+    `  ${theme.success("✓")} .bashrc autostart configured (open Termux = gateway starts)`,
+  );
 }
 
 function triggerBatteryDialog(runtime: OutputRuntimeEnv): void {
   runtime.log(`  ${theme.warn("→")} Opening battery optimization settings...`);
   const result = spawnSync(
     "am",
-    ["start", "-a", "android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS", "-d", "package:com.termux"],
+    [
+      "start",
+      "-a",
+      "android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+      "-d",
+      "package:com.termux",
+    ],
     { stdio: "ignore" },
   );
   if (result.status === 0) {
@@ -336,7 +363,9 @@ function triggerBatteryDialog(runtime: OutputRuntimeEnv): void {
 function printBatteryHint(runtime: OutputRuntimeEnv): void {
   const manufacturer = detectManufacturer();
   const instructions = batteryInstructionsFor(manufacturer);
-  runtime.log(`  ${theme.muted(`OEM: ${manufacturer || "unknown"} — if the dialog didn't open, manually:`)}`);
+  runtime.log(
+    `  ${theme.muted(`OEM: ${manufacturer || "unknown"} — if the dialog didn't open, manually:`)}`,
+  );
   for (const line of instructions) {
     runtime.log(`    ${line}`);
   }
@@ -355,7 +384,9 @@ function checkTermuxBoot(runtime: OutputRuntimeEnv): void {
   runtime.log(
     `  ${theme.warn("⚠")} Without Termux:Boot the gateway will NOT auto-start on device reboot.`,
   );
-  runtime.log(`  Install it from F-Droid: ${theme.command("https://f-droid.org/packages/com.termux.boot/")}`);
+  runtime.log(
+    `  Install it from F-Droid: ${theme.command("https://f-droid.org/packages/com.termux.boot/")}`,
+  );
   runtime.log(`  Then open it once and tap "Allow" when it requests permissions.`);
   runtime.log("");
 }
@@ -378,7 +409,7 @@ function batteryInstructionsFor(manufacturer: string): string[] {
       return [
         "Settings → Apps → Termux → Battery → Unrestricted",
         "Settings → Apps → Termux:Boot → Battery → Unrestricted",
-        "Disable \"Put unused apps to sleep\": Settings → Battery → App power management",
+        'Disable "Put unused apps to sleep": Settings → Battery → App power management',
       ];
     case "huawei":
     case "honor":
@@ -412,7 +443,7 @@ function batteryInstructionsFor(manufacturer: string): string[] {
       return [
         "Settings → Apps → Termux → Battery → Unrestricted / Don't optimize",
         "Settings → Apps → Termux:Boot → Battery → Unrestricted / Don't optimize",
-        "If your OEM has a separate \"autostart\" or \"app launch\" menu, enable both apps there.",
+        'If your OEM has a separate "autostart" or "app launch" menu, enable both apps there.',
       ];
   }
 }
@@ -431,14 +462,15 @@ async function ensureAllowExternalApps(runtime: OutputRuntimeEnv): Promise<void>
     return;
   }
 
-  const appended = existing.length === 0 || existing.endsWith("\n")
-    ? `${existing}allow-external-apps=true\n`
-    : `${existing}\nallow-external-apps=true\n`;
+  const appended =
+    existing.length === 0 || existing.endsWith("\n")
+      ? `${existing}allow-external-apps=true\n`
+      : `${existing}\nallow-external-apps=true\n`;
   await writeTextAtomic(propsPath, appended, { mode: PROPS_FILE_MODE, ensureDirMode: 0o700 });
-  runtime.log(`  ${theme.success("✓")} allow-external-apps=true appended to ${theme.accent(propsPath)}`);
   runtime.log(
-    `  ${theme.muted("    Reload with: ")}${theme.command("termux-reload-settings")}`,
+    `  ${theme.success("✓")} allow-external-apps=true appended to ${theme.accent(propsPath)}`,
   );
+  runtime.log(`  ${theme.muted("    Reload with: ")}${theme.command("termux-reload-settings")}`);
 }
 
 async function runOnboard(runtime: OutputRuntimeEnv, opts: AndroidInstallOptions): Promise<void> {
@@ -447,13 +479,17 @@ async function runOnboard(runtime: OutputRuntimeEnv, opts: AndroidInstallOptions
   runtime.log(`  ${theme.muted("Configure your LLM API key and Feishu bot.")}`);
 
   if (opts.nonInteractive) {
-    runtime.log(`  Skipping onboard (--non-interactive). Run ${theme.command("kaijibot onboard")} later.`);
+    runtime.log(
+      `  Skipping onboard (--non-interactive). Run ${theme.command("kaijibot onboard")} later.`,
+    );
     return;
   }
 
   const result = run("kaijibot", ["onboard"], { stdio: "inherit" });
   if (result.error || (result.status !== null && result.status !== 0)) {
-    runtime.log(`  ${theme.warn("⚠")} onboard exited with an error. Re-run: ${theme.command("kaijibot onboard")}`);
+    runtime.log(
+      `  ${theme.warn("⚠")} onboard exited with an error. Re-run: ${theme.command("kaijibot onboard")}`,
+    );
   }
 }
 
@@ -464,16 +500,23 @@ async function startGateway(runtime: OutputRuntimeEnv): Promise<void> {
   const existingPid = runText("pgrep", ["-f", "kaijibot"]);
   if (existingPid.length > 0) {
     runtime.log(`  Stopping existing gateway (PID ${existingPid})...`);
-    run("bash", ["-c", "pkill -f kaijibot-gateway 2>/dev/null; pkill -f 'kaijibot gateway' 2>/dev/null"]);
+    run("bash", [
+      "-c",
+      "pkill -f kaijibot-gateway 2>/dev/null; pkill -f 'kaijibot gateway' 2>/dev/null",
+    ]);
     await new Promise((resolve) => setTimeout(resolve, 2000));
     runtime.log(`  ${theme.success("✓")} Stopped old gateway`);
   }
 
   spawnSync("termux-wake-lock", [], { stdio: "ignore" });
   const logPath = path.join(os.homedir(), ".kaijibot", "gateway.log");
-  spawnSync("bash", ["-c", `nohup kaijibot gateway --port ${GATEWAY_PORT} >> "${logPath}" 2>&1 &`], {
-    stdio: "ignore",
-  });
+  spawnSync(
+    "bash",
+    ["-c", `nohup kaijibot gateway --port ${GATEWAY_PORT} >> "${logPath}" 2>&1 &`],
+    {
+      stdio: "ignore",
+    },
+  );
   await new Promise((resolve) => setTimeout(resolve, 3000));
   const alive = runText("pgrep", ["-f", "kaijibot"]);
   if (alive.length > 0) {
@@ -482,6 +525,8 @@ async function startGateway(runtime: OutputRuntimeEnv): Promise<void> {
   } else {
     runtime.log(`  ${theme.warn("⚠")} Gateway may not have started. Check logs:`);
     runtime.log(`  ${theme.muted("    tail -20 ~/.kaijibot/gateway.log")}`);
-    runtime.log(`  ${theme.muted(`    Or start manually: kaijibot gateway --port ${GATEWAY_PORT}`)}`);
+    runtime.log(
+      `  ${theme.muted(`    Or start manually: kaijibot gateway --port ${GATEWAY_PORT}`)}`,
+    );
   }
 }

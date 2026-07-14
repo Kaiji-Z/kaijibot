@@ -45,10 +45,14 @@ function resolveAccountIndexPath(): string {
 export function listIndexedWeixinAccountIds(): string[] {
   const filePath = resolveAccountIndexPath();
   try {
-    if (!fs.existsSync(filePath)) {return [];}
+    if (!fs.existsSync(filePath)) {
+      return [];
+    }
     const raw = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {return [];}
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
     return parsed.filter((id): id is string => typeof id === "string" && id.trim() !== "");
   } catch {
     return [];
@@ -61,7 +65,9 @@ export function registerWeixinAccountId(accountId: string): void {
   fs.mkdirSync(dir, { recursive: true });
 
   const existing = listIndexedWeixinAccountIds();
-  if (existing.includes(accountId)) {return;}
+  if (existing.includes(accountId)) {
+    return;
+  }
 
   const updated = [...existing, accountId];
   fs.writeFileSync(resolveAccountIndexPath(), JSON.stringify(updated, null, 2), "utf-8");
@@ -88,10 +94,14 @@ export function clearStaleAccountsForUserId(
   userId: string,
   onClearContextTokens?: (accountId: string) => void,
 ): void {
-  if (!userId) {return;}
+  if (!userId) {
+    return;
+  }
   const allIds = listIndexedWeixinAccountIds();
   for (const id of allIds) {
-    if (id === currentAccountId) {continue;}
+    if (id === currentAccountId) {
+      continue;
+    }
     const data = loadWeixinAccount(id);
     if (data?.userId?.trim() === userId) {
       logger.info(
@@ -131,7 +141,9 @@ function resolveAccountPath(accountId: string): string {
 function loadLegacyToken(): string | undefined {
   const legacyPath = path.join(resolveStateDir(), "credentials", "wechat", "credentials.json");
   try {
-    if (!fs.existsSync(legacyPath)) {return undefined;}
+    if (!fs.existsSync(legacyPath)) {
+      return undefined;
+    }
     const raw = fs.readFileSync(legacyPath, "utf-8");
     const parsed = JSON.parse(raw) as { token?: string };
     return typeof parsed.token === "string" ? parsed.token : undefined;
@@ -155,19 +167,25 @@ function readAccountFile(filePath: string): WeixinAccountData | null {
 export function loadWeixinAccount(accountId: string): WeixinAccountData | null {
   // Primary: try given accountId (normalized IDs written after this change).
   const primary = readAccountFile(resolveAccountPath(accountId));
-  if (primary) {return primary;}
+  if (primary) {
+    return primary;
+  }
 
   // Compatibility: if the given ID is normalized, derive the old raw filename
   // (e.g. "b0f5860fdecb-im-bot" → "b0f5860fdecb@im.bot") for existing installs.
   const rawId = deriveRawAccountId(accountId);
   if (rawId) {
     const compat = readAccountFile(resolveAccountPath(rawId));
-    if (compat) {return compat;}
+    if (compat) {
+      return compat;
+    }
   }
 
   // Legacy fallback: read token from old single-account credentials file.
   const token = loadLegacyToken();
-  if (token) {return { token };}
+  if (token) {
+    return { token };
+  }
 
   return null;
 }
@@ -243,7 +261,9 @@ export function clearWeixinAccount(accountId: string): void {
  */
 function resolveConfigPath(): string {
   const envPath = process.env.KAIJIBOT_CONFIG?.trim();
-  if (envPath) {return envPath;}
+  if (envPath) {
+    return envPath;
+  }
   return path.join(resolveStateDir(), "kaijibot.json");
 }
 
@@ -257,7 +277,9 @@ function resolveConfigPath(): string {
 let cachedRouteTagSection: Record<string, unknown> | null | undefined;
 
 function loadRouteTagSection(): Record<string, unknown> | null {
-  if (cachedRouteTagSection !== undefined) {return cachedRouteTagSection;}
+  if (cachedRouteTagSection !== undefined) {
+    return cachedRouteTagSection;
+  }
   try {
     const configPath = resolveConfigPath();
     if (!fs.existsSync(configPath)) {
@@ -278,14 +300,22 @@ function loadRouteTagSection(): Record<string, unknown> | null {
 
 export function loadConfigRouteTag(accountId?: string): string | undefined {
   const section = loadRouteTagSection();
-  if (!section) {return undefined;}
+  if (!section) {
+    return undefined;
+  }
   if (accountId) {
     const accounts = section.accounts as Record<string, Record<string, unknown>> | undefined;
     const tag = accounts?.[accountId]?.routeTag;
-    if (typeof tag === "number") {return String(tag);}
-    if (typeof tag === "string" && tag.trim()) {return tag.trim();}
+    if (typeof tag === "number") {
+      return String(tag);
+    }
+    if (typeof tag === "string" && tag.trim()) {
+      return tag.trim();
+    }
   }
-  if (typeof section.routeTag === "number") {return String(section.routeTag);}
+  if (typeof section.routeTag === "number") {
+    return String(section.routeTag);
+  }
   return typeof section.routeTag === "string" && section.routeTag.trim()
     ? section.routeTag.trim()
     : undefined;
@@ -298,7 +328,9 @@ export function loadConfigRouteTag(accountId?: string): string | undefined {
  */
 export function loadConfigBotAgent(): string | undefined {
   const section = loadRouteTagSection();
-  if (!section) {return undefined;}
+  if (!section) {
+    return undefined;
+  }
   const value = section.botAgent;
   return typeof value === "string" && value.trim() ? value : undefined;
 }

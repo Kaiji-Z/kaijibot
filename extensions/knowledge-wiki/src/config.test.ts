@@ -44,10 +44,7 @@ describe("resolveWikiConfig", () => {
   });
 
   it("expands ~ in vault path override", () => {
-    const config = resolveWikiConfig(
-      { vault: { path: "~/my-wiki" } },
-      { homedir: "/home/test" },
-    );
+    const config = resolveWikiConfig({ vault: { path: "~/my-wiki" } }, { homedir: "/home/test" });
     expect(config.vault.path).toBe("/home/test/my-wiki");
   });
 

@@ -1,13 +1,13 @@
 import { Type } from "typebox";
 import type { AnyAgentTool } from "../api.js";
-import type { WikiConfig } from "./config.js";
 import type { GenerateTextFn } from "./compiler.js";
+import type { WikiConfig } from "./config.js";
 import { ingestAll, ingestFile } from "./ingest.js";
-import { queryWiki } from "./query.js";
 import { lintWiki } from "./lint.js";
+import { queryWiki } from "./query.js";
+import { scanWorkspace } from "./scanner.js";
 import { resolveWikiStatus, renderWikiStatus } from "./status.js";
 import { initializeWikiVault } from "./vault.js";
-import { scanWorkspace } from "./scanner.js";
 
 const WikiStatusSchema = Type.Object({}, { additionalProperties: false });
 const WikiQuerySchema = Type.Object(
@@ -52,11 +52,7 @@ export function createWikiQueryTool(ctx: WikiToolContext): AnyAgentTool {
     parameters: WikiQuerySchema,
     execute: async (_toolCallId, rawParams) => {
       const params = rawParams as { query: string; maxResults?: number };
-      const result = await queryWiki(
-        ctx.vaultRoot,
-        params.query,
-        params.maxResults ?? 10,
-      );
+      const result = await queryWiki(ctx.vaultRoot, params.query, params.maxResults ?? 10);
       const text =
         result.matchedPages.length === 0
           ? "No wiki results found."
@@ -89,9 +85,7 @@ export function createWikiIngestTool(ctx: WikiToolContext): AnyAgentTool {
 
       if (params.sourcePath) {
         const scanResult = await scanWorkspace(ctx.workspaceDir, ctx.config);
-        const source = scanResult.files.find(
-          (f) => f.relativePath === params.sourcePath,
-        );
+        const source = scanResult.files.find((f) => f.relativePath === params.sourcePath);
         if (!source) {
           return {
             content: [
@@ -103,12 +97,7 @@ export function createWikiIngestTool(ctx: WikiToolContext): AnyAgentTool {
             details: { error: "file not found" },
           };
         }
-        const result = await ingestFile(
-          ctx.vaultRoot,
-          source,
-          generateText,
-          ctx.config,
-        );
+        const result = await ingestFile(ctx.vaultRoot, source, generateText, ctx.config);
         return {
           content: [
             {
@@ -122,12 +111,7 @@ export function createWikiIngestTool(ctx: WikiToolContext): AnyAgentTool {
         };
       }
 
-      const result = await ingestAll(
-        ctx.workspaceDir,
-        ctx.vaultRoot,
-        generateText,
-        ctx.config,
-      );
+      const result = await ingestAll(ctx.workspaceDir, ctx.vaultRoot, generateText, ctx.config);
       return {
         content: [
           {
@@ -157,10 +141,7 @@ export function createWikiLintTool(ctx: WikiToolContext): AnyAgentTool {
               `Issues: ${report.issues.length}`,
               ...report.issues
                 .slice(0, 10)
-                .map(
-                  (i) =>
-                    `[${i.severity}] ${i.category}: ${i.description} (${i.pagePath})`,
-                ),
+                .map((i) => `[${i.severity}] ${i.category}: ${i.description} (${i.pagePath})`),
             ].join("\n");
       return {
         content: [{ type: "text", text: summary }],

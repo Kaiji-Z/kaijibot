@@ -79,7 +79,9 @@ vi.mock("../../config/commands.js", () => ({
   isRestartEnabled: (config?: { commands?: unknown }) => isRestartEnabled(config),
 }));
 
-const tryResolveGatewayService = vi.hoisted(() => vi.fn<() => typeof service | null>(() => service));
+const tryResolveGatewayService = vi.hoisted(() =>
+  vi.fn<() => typeof service | null>(() => service),
+);
 
 vi.mock("../../daemon/service.js", () => ({
   resolveGatewayService: () => service,

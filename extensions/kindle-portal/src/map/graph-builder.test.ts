@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { buildMapGraph, type WikiData } from "./graph-builder.js";
 import type {
   PersonaTree,
   PersonaDomainNode,
@@ -7,6 +6,7 @@ import type {
   WikiNode,
   WikiEdge,
 } from "../types.js";
+import { buildMapGraph, type WikiData } from "./graph-builder.js";
 
 /**
  * Build a PersonaDomainNode with sensible strength defaults.
@@ -147,8 +147,7 @@ describe("buildMapGraph", () => {
     const wiki = makeWiki([{ id: "rust", label: "Rust", kind: "entity" }]);
     const g = buildMapGraph(persona, wiki, { maxDomains: 20, showWiki: true });
     const edge = g.edges.find(
-      (e) =>
-        e.from === "rust programming" && e.to === "rust" && e.label === "wiki",
+      (e) => e.from === "rust programming" && e.to === "rust" && e.label === "wiki",
     );
     expect(edge).toBeDefined();
   });
@@ -239,9 +238,7 @@ describe("buildMapGraph", () => {
     const persona = makePersona({ 机器学习: makeDomain() });
     const wiki = makeWiki([{ id: "ml", label: "机器学习", kind: "concept" }]);
     const g = buildMapGraph(persona, wiki, { maxDomains: 20, showWiki: true });
-    const edge = g.edges.find(
-      (e) => e.from === "机器学习" && e.to === "ml" && e.label === "wiki",
-    );
+    const edge = g.edges.find((e) => e.from === "机器学习" && e.to === "ml" && e.label === "wiki");
     expect(edge).toBeDefined();
   });
 });

@@ -10,7 +10,9 @@ import { logger } from "../util/logger.js";
  */
 function resolveCredentialsDir(): string {
   const override = process.env.KAIJIBOT_OAUTH_DIR?.trim();
-  if (override) {return override;}
+  if (override) {
+    return override;
+  }
   return path.join(resolveStateDir(), "credentials");
 }
 
@@ -19,9 +21,13 @@ function resolveCredentialsDir(): string {
  */
 function safeKey(raw: string): string {
   const trimmed = raw.trim().toLowerCase();
-  if (!trimmed) {throw new Error("invalid key for allowFrom path");}
+  if (!trimmed) {
+    throw new Error("invalid key for allowFrom path");
+  }
   const safe = trimmed.replace(/[\\/:*?"<>|]/g, "_").replace(/\.\./g, "_");
-  if (!safe || safe === "_") {throw new Error("invalid key for allowFrom path");}
+  if (!safe || safe === "_") {
+    throw new Error("invalid key for allowFrom path");
+  }
   return safe;
 }
 
@@ -48,7 +54,9 @@ type AllowFromFileContent = {
 export function readFrameworkAllowFromList(accountId: string): string[] {
   const filePath = resolveFrameworkAllowFromPath(accountId);
   try {
-    if (!fs.existsSync(filePath)) {return [];}
+    if (!fs.existsSync(filePath)) {
+      return [];
+    }
     const raw = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(raw) as AllowFromFileContent;
     if (Array.isArray(parsed.allowFrom)) {
@@ -81,7 +89,9 @@ export async function registerUserInFrameworkStore(params: {
 }): Promise<{ changed: boolean }> {
   const { accountId, userId } = params;
   const trimmedUserId = userId.trim();
-  if (!trimmedUserId) {return { changed: false };}
+  if (!trimmedUserId) {
+    return { changed: false };
+  }
 
   const filePath = resolveFrameworkAllowFromPath(accountId);
 

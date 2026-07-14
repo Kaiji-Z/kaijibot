@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { FileStateEntry, FileStateMap } from "./types.js";
 import {
   computeContentHash,
   isFileChanged,
@@ -11,6 +10,7 @@ import {
   saveFileState,
   updateEntry,
 } from "./file-state.js";
+import type { FileStateEntry, FileStateMap } from "./types.js";
 
 describe("computeContentHash", () => {
   it("returns a consistent SHA-256 hex string (same content -> same hash)", () => {
@@ -96,7 +96,10 @@ describe("isFileChanged", () => {
 
   it("returns false for an unchanged hash", () => {
     const state = new Map<string, FileStateEntry>([
-      ["kept.md", { path: "kept.md", hash: "abc", lastIngestedAt: "2025-01-01T00:00:00.000Z", pageIds: [] }],
+      [
+        "kept.md",
+        { path: "kept.md", hash: "abc", lastIngestedAt: "2025-01-01T00:00:00.000Z", pageIds: [] },
+      ],
     ]);
 
     expect(isFileChanged(state, "kept.md", "abc")).toBe(false);
@@ -104,7 +107,15 @@ describe("isFileChanged", () => {
 
   it("returns true for a changed hash", () => {
     const state = new Map<string, FileStateEntry>([
-      ["changed.md", { path: "changed.md", hash: "old", lastIngestedAt: "2025-01-01T00:00:00.000Z", pageIds: [] }],
+      [
+        "changed.md",
+        {
+          path: "changed.md",
+          hash: "old",
+          lastIngestedAt: "2025-01-01T00:00:00.000Z",
+          pageIds: [],
+        },
+      ],
     ]);
 
     expect(isFileChanged(state, "changed.md", "new")).toBe(true);

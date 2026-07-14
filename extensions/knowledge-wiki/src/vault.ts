@@ -34,9 +34,7 @@ export type InitVaultResult = {
   createdFiles: string[];
 };
 
-export async function initializeWikiVault(
-  vaultRoot: string,
-): Promise<InitVaultResult> {
+export async function initializeWikiVault(vaultRoot: string): Promise<InitVaultResult> {
   const createdDirs: string[] = [];
   const createdFiles: string[] = [];
 

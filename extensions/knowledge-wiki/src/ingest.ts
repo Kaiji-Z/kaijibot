@@ -1,7 +1,6 @@
 import path from "node:path";
+import { extractFromSource, type GenerateTextFn } from "./compiler.js";
 import type { WikiConfig } from "./config.js";
-import type { IngestResult, SourceFile } from "./types.js";
-import { readFileContent, scanWorkspace } from "./scanner.js";
 import {
   computeContentHash,
   isFileChanged,
@@ -9,16 +8,17 @@ import {
   saveFileState,
   updateEntry,
 } from "./file-state.js";
-import { extractFromSource, type GenerateTextFn } from "./compiler.js";
+import { appendWikiLog } from "./log.js";
+import { readFileContent, scanWorkspace } from "./scanner.js";
+import type { IngestResult, SourceFile } from "./types.js";
+import type { FileStateEntry } from "./types.js";
+import { initializeWikiVault } from "./vault.js";
 import {
   writeConceptPage,
   writeEntityPage,
   writeIndexPage,
   writeSummaryPage,
 } from "./wiki-writer.js";
-import { appendWikiLog } from "./log.js";
-import { initializeWikiVault } from "./vault.js";
-import type { FileStateEntry } from "./types.js";
 
 export type IngestAllResult = {
   readonly ingested: readonly IngestResult[];
@@ -63,11 +63,7 @@ export async function ingestFile(
     };
   }
 
-  const summaryPage = await writeSummaryPage(
-    vaultRoot,
-    source.relativePath,
-    extraction,
-  );
+  const summaryPage = await writeSummaryPage(vaultRoot, source.relativePath, extraction);
 
   const entityPages: string[] = [];
   for (const entity of extraction.entities) {

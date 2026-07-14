@@ -7,7 +7,14 @@ import {
 } from "kaijibot/plugin-sdk/text-runtime";
 import YAML from "yaml";
 
-export const WIKI_PAGE_KINDS = ["entity", "concept", "source", "synthesis", "report", "summary"] as const;
+export const WIKI_PAGE_KINDS = [
+  "entity",
+  "concept",
+  "source",
+  "synthesis",
+  "report",
+  "summary",
+] as const;
 export const WIKI_RELATED_START_MARKER = "<!-- kaijibot:wiki:related:start -->";
 export const WIKI_RELATED_END_MARKER = "<!-- kaijibot:wiki:related:end -->";
 

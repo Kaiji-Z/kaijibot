@@ -19,7 +19,9 @@ export function pauseSession(accountId: string): void {
 /** Returns `true` when the bot is still within its one-hour cooldown window. */
 export function isSessionPaused(accountId: string): boolean {
   const until = pauseUntilMap.get(accountId);
-  if (until === undefined) {return false;}
+  if (until === undefined) {
+    return false;
+  }
   if (Date.now() >= until) {
     pauseUntilMap.delete(accountId);
     return false;
@@ -30,7 +32,9 @@ export function isSessionPaused(accountId: string): boolean {
 /** Milliseconds remaining until the pause expires (0 when not paused). */
 export function getRemainingPauseMs(accountId: string): number {
   const until = pauseUntilMap.get(accountId);
-  if (until === undefined) {return 0;}
+  if (until === undefined) {
+    return 0;
+  }
   const remaining = until - Date.now();
   if (remaining <= 0) {
     pauseUntilMap.delete(accountId);

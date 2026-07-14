@@ -159,5 +159,11 @@ export function renderCorrections(props: CorrectionsProps) {
     `;
   }
 
-  return renderTwoColumnLayout(sidebar, detail, !!props.userId, () => props.onUserSelect("", ""), `${props.agentId ?? ""} / ${props.userId ?? ""}`);
+  return renderTwoColumnLayout(
+    sidebar,
+    detail,
+    !!props.userId,
+    () => props.onUserSelect("", ""),
+    `${props.agentId ?? ""} / ${props.userId ?? ""}`,
+  );
 }

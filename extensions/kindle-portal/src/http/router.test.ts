@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
-import type { FleetState } from "../monitor/fleet-state.js";
 import type { KindleConfig } from "../config.js";
+import type { FleetState } from "../monitor/fleet-state.js";
 import type { LoadSessionStore } from "../monitor/scope-resolver.js";
 import {
   createKindleHttpHandler,
@@ -408,8 +408,7 @@ describe("createKindleHttpHandler — error handling", () => {
 
 describe("isKindleUserAgent", () => {
   it("classic Kindle UA → true", () => {
-    const ua =
-      "Mozilla/5.0 (X11;; U; Linux armv7l; en-us) AppleWebKit/534.26 Kindle/3.0";
+    const ua = "Mozilla/5.0 (X11;; U; Linux armv7l; en-us) AppleWebKit/534.26 Kindle/3.0";
     expect(isKindleUserAgent(ua)).toBe(true);
   });
 
@@ -422,8 +421,7 @@ describe("isKindleUserAgent", () => {
   });
 
   it("Chrome UA → false", () => {
-    const ua =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0 Safari/537.36";
+    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0 Safari/537.36";
     expect(isKindleUserAgent(ua)).toBe(false);
   });
 
@@ -459,9 +457,7 @@ describe("createRootRedirectHandler", () => {
   });
 
   it("Kindle UA + accessToken configured → 302 with token query appended", async () => {
-    const handler = createRootRedirectHandler(
-      fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) }),
-    );
+    const handler = createRootRedirectHandler(fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) }));
     const res = fakeRes();
     const req = fakeReq({
       remoteAddress: "192.168.1.5",
@@ -472,10 +468,7 @@ describe("createRootRedirectHandler", () => {
     await handler(req, asRes(res));
 
     expect(res.statusCode).toBe(302);
-    expect(res.setHeader).toHaveBeenCalledWith(
-      "Location",
-      "/kindle/?token=s3cret",
-    );
+    expect(res.setHeader).toHaveBeenCalledWith("Location", "/kindle/?token=s3cret");
   });
 
   it("non-Kindle UA → returns false (pass through, no response written)", async () => {
@@ -540,9 +533,7 @@ describe("createShortPathHandler", () => {
   });
 
   it("/k non-loopback without token + accessToken set → 403", async () => {
-    const handler = createShortPathHandler(
-      fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) }),
-    );
+    const handler = createShortPathHandler(fakeCtx({ cfg: fakeCfg({ accessToken: "s3cret" }) }));
     const res = fakeRes();
     const req = fakeReq({ remoteAddress: "192.168.1.5", url: "/k" });
 

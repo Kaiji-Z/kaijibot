@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { parseWikiMarkdown } from "./markdown.js";
 import type { WikiConfig } from "./config.js";
+import { parseWikiMarkdown } from "./markdown.js";
 
 const MAX_DIGEST_CLAIMS = 8;
 const MAX_RECENT_ENTRIES = 5;
@@ -15,10 +15,7 @@ export type DigestResult = {
   readonly hasWiki: boolean;
 };
 
-export async function buildDigest(
-  vaultRoot: string,
-  config: WikiConfig,
-): Promise<DigestResult> {
+export async function buildDigest(vaultRoot: string, config: WikiConfig): Promise<DigestResult> {
   if (!config.enabled) {
     return { section: "", sourceCount: 0, pageCount: 0, claimCount: 0, hasWiki: false };
   }
@@ -118,12 +115,8 @@ async function collectTopClaims(vaultRoot: string): Promise<TopClaim[]> {
     try {
       const content = await readFile(path.join(summariesDir, entry), "utf8");
       const parsed = parseWikiMarkdown(content);
-      const claims = Array.isArray(parsed.frontmatter.claims)
-        ? parsed.frontmatter.claims
-        : [];
-      const title = typeof parsed.frontmatter.title === "string"
-        ? parsed.frontmatter.title
-        : entry;
+      const claims = Array.isArray(parsed.frontmatter.claims) ? parsed.frontmatter.claims : [];
+      const title = typeof parsed.frontmatter.title === "string" ? parsed.frontmatter.title : entry;
 
       for (const claim of claims) {
         if (typeof claim !== "object" || claim === null) {
@@ -143,9 +136,7 @@ async function collectTopClaims(vaultRoot: string): Promise<TopClaim[]> {
     }
   }
 
-  return allClaims
-    .toSorted((a, b) => b.confidence - a.confidence)
-    .slice(0, MAX_DIGEST_CLAIMS);
+  return allClaims.toSorted((a, b) => b.confidence - a.confidence).slice(0, MAX_DIGEST_CLAIMS);
 }
 
 async function readRecentLog(vaultRoot: string): Promise<string[]> {

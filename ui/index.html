@@ -61,9 +61,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(
-            function () {},
-          );
+          navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
         });
       }
       customElements.whenDefined("kaijibot-app").then(function () {
@@ -73,18 +71,27 @@
     </script>
     <style>
       #initial-loader {
-        position: fixed; inset: 0; z-index: 9999;
-        display: flex; align-items: center; justify-content: center;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: #06080f;
       }
       .initial-loader__spinner {
-        width: 32px; height: 32px;
+        width: 32px;
+        height: 32px;
         border: 3px solid #1c2030;
         border-top-color: #00d4aa;
         border-radius: 50%;
         animation: initial-spin 0.7s linear infinite;
       }
-      @keyframes initial-spin { to { transform: rotate(360deg); } }
+      @keyframes initial-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
     </style>
   </head>
   <body>

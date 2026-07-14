@@ -1,19 +1,23 @@
 import { mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import type { GenerateTextFn } from "./compiler.js";
+import { resolveWikiConfig } from "./config.js";
+import type { WikiConfig } from "./config.js";
+import { loadFileState } from "./file-state.js";
 import { ingestFile, ingestAll, runWikiIngestAllAgents } from "./ingest.js";
 import { initializeWikiVault } from "./vault.js";
-import { loadFileState } from "./file-state.js";
-import { resolveWikiConfig } from "./config.js";
-import type { GenerateTextFn } from "./compiler.js";
-import type { WikiConfig } from "./config.js";
 
 const TMP = path.join(process.cwd(), ".tmp-ingest-test");
 
 const MOCK_LLM_RESPONSE = JSON.stringify({
   summary: "This document describes a distributed tracing system built with Rust and eBPF.",
   claims: [
-    { text: "The system uses Rust for zero-cost abstractions", confidence: 0.9, category: "technical_decision" },
+    {
+      text: "The system uses Rust for zero-cost abstractions",
+      confidence: 0.9,
+      category: "technical_decision",
+    },
     { text: "Latency target is under 100ms", confidence: 0.85, category: "constraint" },
   ],
   entities: [
@@ -21,12 +25,14 @@ const MOCK_LLM_RESPONSE = JSON.stringify({
     { name: "eBPF", type: "technology", description: "Kernel-level tracing technology" },
   ],
   concepts: [
-    { name: "Zero-cost abstractions", description: "Compile-time abstractions with no runtime overhead", relatedTo: ["Rust"] },
+    {
+      name: "Zero-cost abstractions",
+      description: "Compile-time abstractions with no runtime overhead",
+      relatedTo: ["Rust"],
+    },
   ],
   topics: ["distributed-systems", "tracing"],
-  relationships: [
-    { from: "System", to: "Rust", type: "uses" },
-  ],
+  relationships: [{ from: "System", to: "Rust", type: "uses" }],
 });
 
 const mockGenerateText: GenerateTextFn = async () => MOCK_LLM_RESPONSE;
@@ -67,12 +73,7 @@ describe("ingestFile", () => {
       mtimeMs: Date.now(),
     };
 
-    const result = await ingestFile(
-      path.join(TMP, "wiki"),
-      source,
-      mockGenerateText,
-      config,
-    );
+    const result = await ingestFile(path.join(TMP, "wiki"), source, mockGenerateText, config);
 
     expect(result.skipped).toBe(false);
     expect(result.sourcePath).toBe("docs/architecture.md");
@@ -109,10 +110,7 @@ describe("ingestFile", () => {
 
     await ingestFile(path.join(TMP, "wiki"), source, mockGenerateText, config);
 
-    const rustPage = await readFile(
-      path.join(TMP, "wiki", "entities", "rust.md"),
-      "utf8",
-    );
+    const rustPage = await readFile(path.join(TMP, "wiki", "entities", "rust.md"), "utf8");
     expect(rustPage).toContain("pageType: entity");
     expect(rustPage).toContain("Systems programming language");
   });
@@ -126,12 +124,7 @@ describe("ingestFile", () => {
     };
 
     await ingestFile(path.join(TMP, "wiki"), source, mockGenerateText, config);
-    const result2 = await ingestFile(
-      path.join(TMP, "wiki"),
-      source,
-      mockGenerateText,
-      config,
-    );
+    const result2 = await ingestFile(path.join(TMP, "wiki"), source, mockGenerateText, config);
 
     expect(result2.skipped).toBe(true);
     expect(result2.claimsAdded).toBe(0);
@@ -187,10 +180,7 @@ describe("ingestFile", () => {
     await ingestFile(path.join(TMP, "wiki"), source1, mockGenerateText, config);
     await ingestFile(path.join(TMP, "wiki"), source2, mockGenerateText, config);
 
-    const rustPage = await readFile(
-      path.join(TMP, "wiki", "entities", "rust.md"),
-      "utf8",
-    );
+    const rustPage = await readFile(path.join(TMP, "wiki", "entities", "rust.md"), "utf8");
     expect(rustPage).toContain("docs-architecture");
     expect(rustPage).toContain("notes-meeting");
   });
@@ -220,12 +210,7 @@ describe("ingestAll", () => {
   });
 
   it("updates index.md after batch ingest", async () => {
-    await ingestAll(
-      path.join(TMP, "workspace"),
-      path.join(TMP, "wiki"),
-      mockGenerateText,
-      config,
-    );
+    await ingestAll(path.join(TMP, "workspace"), path.join(TMP, "wiki"), mockGenerateText, config);
 
     const { readdir: debugReaddir } = await import("node:fs/promises");
     const summaries = await debugReaddir(path.join(TMP, "wiki", "summaries")).catch(() => []);
@@ -235,22 +220,14 @@ describe("ingestAll", () => {
     expect(entities.length).toBeGreaterThan(0);
     expect(concepts.length).toBeGreaterThan(0);
 
-    const indexContent = await readFile(
-      path.join(TMP, "wiki", "index.md"),
-      "utf8",
-    );
+    const indexContent = await readFile(path.join(TMP, "wiki", "index.md"), "utf8");
     expect(indexContent).toContain("Summar");
     expect(indexContent).toContain("Entit");
     expect(indexContent).toContain("Concept");
   });
 
   it("skips unchanged files on second run", async () => {
-    await ingestAll(
-      path.join(TMP, "workspace"),
-      path.join(TMP, "wiki"),
-      mockGenerateText,
-      config,
-    );
+    await ingestAll(path.join(TMP, "workspace"), path.join(TMP, "wiki"), mockGenerateText, config);
 
     const result2 = await ingestAll(
       path.join(TMP, "workspace"),
@@ -354,9 +331,7 @@ describe("runWikiIngestAllAgents", () => {
   });
 
   it("reports skipped files for unchanged workspaces on second run", async () => {
-    const workspaces = [
-      { workspaceDir: path.join(TMP, "workspace"), agentIds: ["main"] },
-    ];
+    const workspaces = [{ workspaceDir: path.join(TMP, "workspace"), agentIds: ["main"] }];
     await runWikiIngestAllAgents({
       workspaces,
       resolveVaultRoot: (ws) => path.join(ws, "wiki"),

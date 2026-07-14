@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createWizardPrompter as buildWizardPrompter } from "../../test/helpers/wizard-prompter.js";
 import { DEFAULT_BOOTSTRAP_FILENAME } from "../agents/workspace.js";
+import { initCliI18n } from "../cli/i18n/translate.js";
 import type { PluginCompatibilityNotice } from "../plugins/status.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter, WizardSelectParams } from "./prompts.js";
@@ -252,6 +253,10 @@ function createRuntime(opts?: { throwsOnExit?: boolean }): RuntimeEnv {
     exit: vi.fn(),
   };
 }
+
+beforeAll(() => {
+  initCliI18n({ locale: "zh-CN" });
+});
 
 describe("showPrerequisiteChecklist", () => {
   it("displays a checklist mentioning API Key and 飞书, then asks for confirmation", async () => {
@@ -778,9 +783,8 @@ describe("runSetupWizard", () => {
     );
     expect(providerNoteIndex).toBeGreaterThanOrEqual(0);
 
-    const noteCallOrders = (
-      note as unknown as { mock: { invocationCallOrder: number[] } }
-    ).mock.invocationCallOrder;
+    const noteCallOrders = (note as unknown as { mock: { invocationCallOrder: number[] } }).mock
+      .invocationCallOrder;
     const providerNoteOrder = noteCallOrders[providerNoteIndex];
     const authOrder = promptAuthChoiceGrouped.mock.invocationCallOrder[0];
     expect(authOrder).toBeDefined();

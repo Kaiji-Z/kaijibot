@@ -6,12 +6,11 @@
  */
 
 import { describe, it, expect } from "vitest";
+import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 import { lintKindleHtml } from "./es5-lint.js";
-
 // map-template will be imported once implemented
 import { renderMapHtml } from "./map-template.js";
 import { renderMonitorHtml } from "./monitor-template.js";
-import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 
 describe("renderMapHtml", () => {
   it("map html passes lintKindleHtml", () => {
@@ -135,7 +134,7 @@ describe("renderMapHtml", () => {
     });
     expect(html).toContain("token=s3cret");
     expect(html).toContain('href="/kindle/?token=s3cret"');
-    expect(html).toContain("src=\"/kindle/api/map.svg?zoom=50&token=s3cret");
+    expect(html).toContain('src="/kindle/api/map.svg?zoom=50&token=s3cret');
   });
 
   it("omits token query when accessToken undefined", () => {
@@ -414,9 +413,7 @@ describe("renderMonitorHtml", () => {
   });
 
   it("marks registered agent as ACTIVE when snapshot has matching agentId", () => {
-    const agents: RegisteredAgent[] = [
-      makeRegisteredAgent({ id: "main", status: "idle" }),
-    ];
+    const agents: RegisteredAgent[] = [makeRegisteredAgent({ id: "main", status: "idle" })];
     const snap = snapshotWith([makeAgent({ agentId: "main", sessionLabel: "A1" })]);
     const html = renderMonitorHtml(snap, cfg, agents);
     expect(html).toContain("agent-card active");
@@ -425,25 +422,19 @@ describe("renderMonitorHtml", () => {
   });
 
   it("shows idle registered agent with IDLE marker", () => {
-    const agents: RegisteredAgent[] = [
-      makeRegisteredAgent({ id: "testagent", status: "idle" }),
-    ];
+    const agents: RegisteredAgent[] = [makeRegisteredAgent({ id: "testagent", status: "idle" })];
     const html = renderMonitorHtml(emptySnapshot, cfg, agents);
     expect(html).toContain("\u25cb IDLE");
   });
 
   it("renders session count for registered agents", () => {
-    const agents: RegisteredAgent[] = [
-      makeRegisteredAgent({ id: "main", sessionCount: 42 }),
-    ];
+    const agents: RegisteredAgent[] = [makeRegisteredAgent({ id: "main", sessionCount: 42 })];
     const html = renderMonitorHtml(emptySnapshot, cfg, agents);
     expect(html).toContain("42 sessions");
   });
 
   it("renders '1 session' singular for single-session agent", () => {
-    const agents: RegisteredAgent[] = [
-      makeRegisteredAgent({ id: "testagent", sessionCount: 1 }),
-    ];
+    const agents: RegisteredAgent[] = [makeRegisteredAgent({ id: "testagent", sessionCount: 1 })];
     const html = renderMonitorHtml(emptySnapshot, cfg, agents);
     expect(html).toContain("1 session");
   });

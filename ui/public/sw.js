@@ -7,9 +7,7 @@ const APP_SHELL = ["./", "./manifest.webmanifest"];
 
 // --- Install: precache minimal shell ---
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL)),
-  );
+  event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 
@@ -19,11 +17,7 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => k !== CACHE_VERSION)
-            .map((k) => caches.delete(k)),
-        ),
+        Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))),
       )
       .then(() => self.clients.claim()),
   );
@@ -57,9 +51,7 @@ self.addEventListener("fetch", (event) => {
 
   // Navigations: network-first, fall back to cached shell
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match("./")),
-    );
+    event.respondWith(fetch(request).catch(() => caches.match("./")));
     return;
   }
 

@@ -6,7 +6,12 @@ import {
   slugifyWikiSegment,
   type WikiClaim,
 } from "./markdown.js";
-import type { ExtractionResult, ExtractedEntity, ExtractedConcept, ExtractedRelationship } from "./types.js";
+import type {
+  ExtractionResult,
+  ExtractedEntity,
+  ExtractedConcept,
+  ExtractedRelationship,
+} from "./types.js";
 
 async function atomicWrite(filePath: string, content: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -53,15 +58,15 @@ export async function writeSummaryPage(
     .map((c) => `[[${slugifyWikiSegment(c.name)}]]`)
     .join(", ");
 
-  const relationshipLines = extraction.relationships.length > 0
-    ? extraction.relationships.map(
-        (r) => `- [[${slugifyWikiSegment(r.from)}]] ${r.type} [[${slugifyWikiSegment(r.to)}]]`,
-      )
-    : [];
+  const relationshipLines =
+    extraction.relationships.length > 0
+      ? extraction.relationships.map(
+          (r) => `- [[${slugifyWikiSegment(r.from)}]] ${r.type} [[${slugifyWikiSegment(r.to)}]]`,
+        )
+      : [];
 
-  const topicTags = extraction.topics.length > 0
-    ? extraction.topics.map((t) => `#${t}`).join(" ")
-    : "";
+  const topicTags =
+    extraction.topics.length > 0 ? extraction.topics.map((t) => `#${t}`).join(" ") : "";
 
   const body = [
     `# ${sourcePath}`,
@@ -72,13 +77,11 @@ export async function writeSummaryPage(
     entityLinks ? `**Entities:** ${entityLinks}` : "",
     conceptLinks ? `**Concepts:** ${conceptLinks}` : "",
     "",
-    relationshipLines.length > 0
-      ? ["## Connections", ...relationshipLines, ""].join("\n")
-      : "",
+    relationshipLines.length > 0 ? ["## Connections", ...relationshipLines, ""].join("\n") : "",
     "## Key Claims",
-    ...extraction.claims.slice(0, 10).map(
-      (c) => `- (${(c.confidence * 100).toFixed(0)}%) ${c.text}`,
-    ),
+    ...extraction.claims
+      .slice(0, 10)
+      .map((c) => `- (${(c.confidence * 100).toFixed(0)}%) ${c.text}`),
     "",
     topicTags ? `**Topics:** ${topicTags}` : "",
     "",
@@ -117,9 +120,7 @@ export async function writeEntityPage(
   const entitySlug = slugifyWikiSegment(entity.name);
   const connectionLines = (relationships ?? [])
     .filter(
-      (r) =>
-        slugifyWikiSegment(r.from) === entitySlug ||
-        slugifyWikiSegment(r.to) === entitySlug,
+      (r) => slugifyWikiSegment(r.from) === entitySlug || slugifyWikiSegment(r.to) === entitySlug,
     )
     .map((r) => {
       const otherSlug =
@@ -137,9 +138,8 @@ export async function writeEntityPage(
       existingSourceIds.push(sourceLink);
     }
 
-    const connectionBlock = connectionLines.length > 0
-      ? `\n**Connections:**\n${connectionLines.join("\n")}\n`
-      : "\n";
+    const connectionBlock =
+      connectionLines.length > 0 ? `\n**Connections:**\n${connectionLines.join("\n")}\n` : "\n";
     const mergedBody = `${parsed.body.trimEnd()}
 
 ---
@@ -164,9 +164,7 @@ ${connectionBlock}`;
       "",
       entity.description,
       "",
-      connectionLines.length > 0
-        ? `**Connections:**\n${connectionLines.join("\n")}`
-        : "",
+      connectionLines.length > 0 ? `**Connections:**\n${connectionLines.join("\n")}` : "",
       "",
       `**Sources:** ${sourceLink}`,
     ]
@@ -205,9 +203,7 @@ export async function writeConceptPage(
   const conceptSlug = slugifyWikiSegment(concept.name);
   const connectionLines = (relationships ?? [])
     .filter(
-      (r) =>
-        slugifyWikiSegment(r.from) === conceptSlug ||
-        slugifyWikiSegment(r.to) === conceptSlug,
+      (r) => slugifyWikiSegment(r.from) === conceptSlug || slugifyWikiSegment(r.to) === conceptSlug,
     )
     .map((r) => {
       const otherSlug =
@@ -225,9 +221,8 @@ export async function writeConceptPage(
       existingSourceIds.push(sourceLink);
     }
 
-    const conceptConnectionBlock = connectionLines.length > 0
-      ? `\n**Connections:**\n${connectionLines.join("\n")}\n`
-      : "\n";
+    const conceptConnectionBlock =
+      connectionLines.length > 0 ? `\n**Connections:**\n${connectionLines.join("\n")}\n` : "\n";
     const mergedBody = `${parsed.body.trimEnd()}
 
 ---
@@ -244,17 +239,13 @@ ${conceptConnectionBlock}`;
     });
     await atomicWrite(absolutePath, content);
   } else {
-    const relatedLinks = concept.relatedTo
-      ?.map((r) => `[[${slugifyWikiSegment(r)}]]`)
-      .join(", ");
+    const relatedLinks = concept.relatedTo?.map((r) => `[[${slugifyWikiSegment(r)}]]`).join(", ");
     const body = [
       `# ${concept.name}`,
       "",
       concept.description,
       "",
-      connectionLines.length > 0
-        ? `**Connections:**\n${connectionLines.join("\n")}`
-        : "",
+      connectionLines.length > 0 ? `**Connections:**\n${connectionLines.join("\n")}` : "",
       "",
       `**Sources:** ${sourceLink}`,
       relatedLinks ? `**Related:** ${relatedLinks}` : "",
@@ -278,9 +269,7 @@ ${conceptConnectionBlock}`;
   return relativePath;
 }
 
-export async function writeIndexPage(
-  vaultRoot: string,
-): Promise<void> {
+export async function writeIndexPage(vaultRoot: string): Promise<void> {
   const indexPath = path.join(vaultRoot, "index.md");
   const dirs = ["summaries", "entities", "concepts"] as const;
   const byType = new Map<string, Array<{ path: string; title: string; type: string }>>();

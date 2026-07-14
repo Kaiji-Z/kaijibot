@@ -30,7 +30,9 @@ const DEFAULT_LOG_LEVEL = "INFO";
 
 function resolveMinLevel(): number {
   const env = process.env.KAIJIBOT_LOG_LEVEL?.toUpperCase();
-  if (env && env in LEVEL_IDS) {return LEVEL_IDS[env];}
+  if (env && env in LEVEL_IDS) {
+    return LEVEL_IDS[env];
+  }
   return LEVEL_IDS[DEFAULT_LOG_LEVEL];
 }
 
@@ -85,7 +87,9 @@ function buildLoggerName(accountId?: string): string {
 
 function writeLog(level: string, message: string, accountId?: string): void {
   const levelId = LEVEL_IDS[level] ?? LEVEL_IDS.INFO;
-  if (levelId < minLevelId) {return;}
+  if (levelId < minLevelId) {
+    return;
+  }
 
   const now = new Date();
   const loggerName = buildLoggerName(accountId);

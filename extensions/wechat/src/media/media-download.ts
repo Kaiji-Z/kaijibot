@@ -36,7 +36,9 @@ export async function downloadMediaFromItem(
 
   if (item.type === MessageItemType.IMAGE) {
     const img = item.image_item;
-    if (!img?.media?.encrypt_query_param && !img?.media?.full_url) {return result;}
+    if (!img?.media?.encrypt_query_param && !img?.media?.full_url) {
+      return result;
+    }
     const aesKeyBase64 = img.aeskey
       ? Buffer.from(img.aeskey, "hex").toString("base64")
       : img.media.aes_key;
@@ -67,8 +69,9 @@ export async function downloadMediaFromItem(
     }
   } else if (item.type === MessageItemType.VOICE) {
     const voice = item.voice_item;
-    if ((!voice?.media?.encrypt_query_param && !voice?.media?.full_url) || !voice?.media?.aes_key)
-      {return result;}
+    if ((!voice?.media?.encrypt_query_param && !voice?.media?.full_url) || !voice?.media?.aes_key) {
+      return result;
+    }
     try {
       const silkBuf = await downloadAndDecryptBuffer(
         voice.media.encrypt_query_param ?? "",
@@ -99,8 +102,9 @@ export async function downloadMediaFromItem(
     if (
       (!fileItem?.media?.encrypt_query_param && !fileItem?.media?.full_url) ||
       !fileItem?.media?.aes_key
-    )
-      {return result;}
+    ) {
+      return result;
+    }
     try {
       const buf = await downloadAndDecryptBuffer(
         fileItem.media.encrypt_query_param ?? "",
@@ -129,8 +133,9 @@ export async function downloadMediaFromItem(
     if (
       (!videoItem?.media?.encrypt_query_param && !videoItem?.media?.full_url) ||
       !videoItem?.media?.aes_key
-    )
-      {return result;}
+    ) {
+      return result;
+    }
     try {
       const buf = await downloadAndDecryptBuffer(
         videoItem.media.encrypt_query_param ?? "",

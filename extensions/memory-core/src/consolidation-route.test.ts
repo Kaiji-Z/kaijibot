@@ -438,14 +438,12 @@ describe("routeToStores", () => {
       {
         agentId: "agent-a",
         userId: "user-1",
-        item: makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "A1" })
-          .item,
+        item: makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "A1" }).item,
       },
       {
         agentId: "agent-a",
         userId: "user-1",
-        item: makeRouteItem({ category: "stated_preference", confidence: 0.8, content: "A2" })
-          .item,
+        item: makeRouteItem({ category: "stated_preference", confidence: 0.8, content: "A2" }).item,
       },
       {
         agentId: "agent-b",

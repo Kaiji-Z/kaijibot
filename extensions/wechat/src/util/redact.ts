@@ -6,8 +6,12 @@ const DEFAULT_TOKEN_PREFIX_LEN = 6;
  * Returns `""` for empty/undefined input.
  */
 export function truncate(s: string | undefined, max: number): string {
-  if (!s) {return "";}
-  if (s.length <= max) {return s;}
+  if (!s) {
+    return "";
+  }
+  if (s.length <= max) {
+    return s;
+  }
   return `${s.slice(0, max)}…(len=${s.length})`;
 }
 
@@ -19,8 +23,12 @@ export function redactToken(
   token: string | undefined,
   prefixLen = DEFAULT_TOKEN_PREFIX_LEN,
 ): string {
-  if (!token) {return "(none)";}
-  if (token.length <= prefixLen) {return `****(len=${token.length})`;}
+  if (!token) {
+    return "(none)";
+  }
+  if (token.length <= prefixLen) {
+    return `****(len=${token.length})`;
+  }
   return `${token.slice(0, prefixLen)}…(len=${token.length})`;
 }
 
@@ -29,13 +37,17 @@ export function redactToken(
  * Redacts known sensitive fields before truncation.
  */
 export function redactBody(body: string | undefined, maxLen = DEFAULT_BODY_MAX_LEN): string {
-  if (!body) {return "(empty)";}
+  if (!body) {
+    return "(empty)";
+  }
   // Mask values of known sensitive JSON keys: "key":"value" → "key":"<redacted>"
   const redacted = body.replace(
     /"(context_token|bot_token|token|authorization|Authorization)"\s*:\s*"[^"]*"/g,
     '"$1":"<redacted>"',
   );
-  if (redacted.length <= maxLen) {return redacted;}
+  if (redacted.length <= maxLen) {
+    return redacted;
+  }
   return `${redacted.slice(0, maxLen)}…(truncated, totalLen=${redacted.length})`;
 }
 

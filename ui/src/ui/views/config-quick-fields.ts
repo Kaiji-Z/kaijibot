@@ -536,10 +536,7 @@ function renderCognitiveModelSelect(props: ConfigProps): TemplateResult | typeof
     return html`<div class="config-model-selector__loading">${t("common.loading")}</div>`;
   }
 
-  const options =
-    favorited.length > 0
-      ? favorited
-      : catalog.slice(0, 20);
+  const options = favorited.length > 0 ? favorited : catalog.slice(0, 20);
 
   return html`
     <select
@@ -547,10 +544,7 @@ function renderCognitiveModelSelect(props: ConfigProps): TemplateResult | typeof
       ?disabled=${props.loading}
       @change=${(e: Event) => {
         const value = (e.target as HTMLSelectElement).value;
-        props.onFormPatch(
-          ["cognitive", "insight", "inferenceModel"],
-          value || undefined,
-        );
+        props.onFormPatch(["cognitive", "insight", "inferenceModel"], value || undefined);
       }}
     >
       <option value="" ?selected=${!currentModel}>使用默认模型</option>

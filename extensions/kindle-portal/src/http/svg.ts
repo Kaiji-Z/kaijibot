@@ -20,12 +20,12 @@
  * SVG output is cacheable for 5 min to ease repeated refreshes.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ApiHandlerContext } from "./api-json.js";
-import { resolveActiveUser } from "../monitor/scope-resolver.js";
+import { renderMapGraphSvg } from "../html/svg-graph.js";
+import { buildMapGraph } from "../map/graph-builder.js";
 import { readPersona } from "../map/persona-reader.js";
 import { readWikiGraph } from "../map/wiki-reader.js";
-import { buildMapGraph } from "../map/graph-builder.js";
-import { renderMapGraphSvg } from "../html/svg-graph.js";
+import { resolveActiveUser } from "../monitor/scope-resolver.js";
+import type { ApiHandlerContext } from "./api-json.js";
 
 const SVG_CONTENT_TYPE = "image/svg+xml; charset=utf-8";
 const SVG_CACHE = "public, max-age=300";
@@ -109,10 +109,7 @@ export async function handleMapSvg(
     const persona = await readPersona(ctx.stateDir, user.agentId, user.userId);
     // Only read the wiki vault when both the config and the URL flag enable
     // it. Skips disk I/O when the wiki layer is not requested.
-    const wiki =
-      ctx.cfg.showWiki && showWikiLayer
-        ? await readWikiGraph(ctx.workspaceDir)
-        : null;
+    const wiki = ctx.cfg.showWiki && showWikiLayer ? await readWikiGraph(ctx.workspaceDir) : null;
     const graph = buildMapGraph(persona, wiki, {
       maxDomains: ctx.cfg.maxDomains,
       showWiki: ctx.cfg.showWiki,

@@ -270,7 +270,11 @@ export async function statusCommand(
       gatewayProbeAuthWarning,
       gatewaySelf,
     },
-    gatewayService: daemon ?? { label: "Gateway", installed: null, loadedText: "no service manager" },
+    gatewayService: daemon ?? {
+      label: "Gateway",
+      installed: null,
+      loadedText: "no service manager",
+    },
     nodeService: nodeDaemon ?? { label: "Node", installed: null, loadedText: "no service manager" },
     nodeOnlyGateway,
   });

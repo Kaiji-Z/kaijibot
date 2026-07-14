@@ -67,7 +67,9 @@ export async function uploadBufferToCdn(params: {
       break;
     } catch (err) {
       lastError = err;
-      if (err instanceof Error && err.message.includes("client error")) {throw err;}
+      if (err instanceof Error && err.message.includes("client error")) {
+        throw err;
+      }
       const cause =
         (err as NodeJS.ErrnoException).cause ?? (err as NodeJS.ErrnoException).code ?? "";
       if (attempt < UPLOAD_MAX_RETRIES) {

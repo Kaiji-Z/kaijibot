@@ -192,8 +192,8 @@ describe("kindle_setup tool", () => {
     await tool.execute("call-2", {});
 
     const written = await getWrittenConfig();
-    const entry = (written as Record<string, unknown>)
-      .plugins as Record<string, unknown>
+    const entry = (written as Record<string, unknown>).plugins as
+      | Record<string, unknown>
       | undefined;
     const entries = entry?.entries as Record<string, unknown> | undefined;
     const kindleEntry = entries?.["kindle-portal"] as Record<string, unknown> | undefined;
@@ -335,7 +335,10 @@ describe("kindle_status tool", () => {
   });
 
   it("includes bind in details", async () => {
-    setConfigRead({ gateway: { bind: "lan" }, plugins: { entries: { "kindle-portal": { enabled: true } } } });
+    setConfigRead({
+      gateway: { bind: "lan" },
+      plugins: { entries: { "kindle-portal": { enabled: true } } },
+    });
     const tool = createKindleStatusTool();
     const result = await tool.execute("status-6", {});
 

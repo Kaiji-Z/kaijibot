@@ -1,9 +1,9 @@
 import path from "node:path";
-
-import type { ChannelPlugin, KaijiBotConfig, PluginRuntime } from "kaijibot/plugin-sdk/core";
 import { normalizeAccountId } from "kaijibot/plugin-sdk/account-id";
+import type { ChannelPlugin, KaijiBotConfig, PluginRuntime } from "kaijibot/plugin-sdk/core";
 import { resolvePreferredKaijiBotTmpDir } from "kaijibot/plugin-sdk/infra-runtime";
-
+import { notifyStop, notifyStart } from "./api/api.js";
+import { assertSessionActive } from "./api/session-guard.js";
 import {
   registerWeixinAccountId,
   loadWeixinAccount,
@@ -15,10 +15,6 @@ import {
   DEFAULT_BASE_URL,
 } from "./auth/accounts.js";
 import type { ResolvedWeixinAccount } from "./auth/accounts.js";
-import { notifyStop, notifyStart } from "./api/api.js";
-import { assertSessionActive } from "./api/session-guard.js";
-import { getContextToken, findAccountIdsByContextToken, restoreContextTokens, clearContextTokensForAccount } from "./messaging/inbound.js";
-import { logger } from "./util/logger.js";
 import {
   DEFAULT_ILINK_BOT_TYPE,
   startWeixinLoginWithQr,
@@ -26,13 +22,23 @@ import {
   displayQRCode,
 } from "./auth/login-qr.js";
 import type { WeixinQrStartResult, WeixinQrWaitResult } from "./auth/login-qr.js";
+import { downloadRemoteImageToTemp } from "./cdn/upload.js";
+import {
+  getContextToken,
+  findAccountIdsByContextToken,
+  restoreContextTokens,
+  clearContextTokensForAccount,
+} from "./messaging/inbound.js";
 // Lazy-imported inside startAccount to avoid pulling in the monitor -> process-message ->
 // command-auth chain during plugin registration, which can re-enter plugin/provider registry
 // resolution before the account actually starts.
-import { applyWeixinMessageSendingHook, emitWeixinMessageSent } from "./messaging/outbound-hooks.js";
+import {
+  applyWeixinMessageSendingHook,
+  emitWeixinMessageSent,
+} from "./messaging/outbound-hooks.js";
 import { sendWeixinMediaFile } from "./messaging/send-media.js";
 import { sendMessageWeixin, StreamingMarkdownFilter } from "./messaging/send.js";
-import { downloadRemoteImageToTemp } from "./cdn/upload.js";
+import { logger } from "./util/logger.js";
 
 /** Returns true when mediaUrl refers to a local filesystem path (absolute or relative). */
 function isLocalFilePath(mediaUrl: string): boolean {
@@ -44,13 +50,20 @@ function isRemoteUrl(mediaUrl: string): boolean {
   return mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://");
 }
 
-const MEDIA_OUTBOUND_TEMP_DIR = path.join(resolvePreferredKaijiBotTmpDir(), "weixin/media/outbound-temp");
+const MEDIA_OUTBOUND_TEMP_DIR = path.join(
+  resolvePreferredKaijiBotTmpDir(),
+  "weixin/media/outbound-temp",
+);
 
 /** Resolve any local path scheme to an absolute filesystem path. */
 function resolveLocalPath(mediaUrl: string): string {
-  if (mediaUrl.startsWith("file://")) {return new URL(mediaUrl).pathname;}
+  if (mediaUrl.startsWith("file://")) {
+    return new URL(mediaUrl).pathname;
+  }
   // Resolve any relative path (./foo, ../foo, .kaijibot/foo, foo/bar) against cwd
-  if (!path.isAbsolute(mediaUrl)) {return path.resolve(mediaUrl);}
+  if (!path.isAbsolute(mediaUrl)) {
+    return path.resolve(mediaUrl);
+  }
   return mediaUrl;
 }
 
@@ -63,10 +76,7 @@ function resolveLocalPath(mediaUrl: string): string {
  *   2. Single account → use it directly
  *   3. No match → throw a descriptive error
  */
-function resolveOutboundAccountId(
-  cfg: KaijiBotConfig,
-  to: string,
-): string {
+function resolveOutboundAccountId(cfg: KaijiBotConfig, to: string): string {
   const allIds = listWeixinAccountIds(cfg);
 
   if (allIds.length === 0) {
@@ -94,15 +104,15 @@ function resolveOutboundAccountId(
     );
     throw new Error(
       `weixin: ambiguous account for to=${to} ` +
-      `(${matched.length} accounts have active sessions with this recipient: ${matched.join(", ")}). ` +
-      `Specify accountId in the delivery config to disambiguate.`,
+        `(${matched.length} accounts have active sessions with this recipient: ${matched.join(", ")}). ` +
+        `Specify accountId in the delivery config to disambiguate.`,
     );
   }
 
   throw new Error(
     `weixin: cannot determine which account to use for to=${to} ` +
-    `(${allIds.length} accounts registered, none has an active session with this recipient). ` +
-    `Specify accountId in the delivery config, or ensure the recipient has recently messaged the bot.`,
+      `(${allIds.length} accounts registered, none has an active session with this recipient). ` +
+      `Specify accountId in the delivery config, or ensure the recipient has recently messaged the bot.`,
   );
 }
 
@@ -121,7 +131,9 @@ async function sendWeixinOutbound(params: {
     throw new Error("weixin not configured: please run `kaijibot channels login --channel wechat`");
   }
   if (!params.contextToken) {
-    aLog.warn(`sendWeixinOutbound: contextToken missing for to=${params.to}, sending without context`);
+    aLog.warn(
+      `sendWeixinOutbound: contextToken missing for to=${params.to}, sending without context`,
+    );
   }
   const f = new StreamingMarkdownFilter();
   const rawText = params.text ?? "";
@@ -139,15 +151,30 @@ async function sendWeixinOutbound(params: {
   filteredText = sendingResult.text;
 
   try {
-    const result = await sendMessageWeixin({ to: params.to, text: filteredText, opts: {
-      baseUrl: account.baseUrl,
-      token: account.token,
-      contextToken: params.contextToken,
-    }});
-    emitWeixinMessageSent({ to: params.to, content: filteredText, success: true, accountId: account.accountId });
+    const result = await sendMessageWeixin({
+      to: params.to,
+      text: filteredText,
+      opts: {
+        baseUrl: account.baseUrl,
+        token: account.token,
+        contextToken: params.contextToken,
+      },
+    });
+    emitWeixinMessageSent({
+      to: params.to,
+      content: filteredText,
+      success: true,
+      accountId: account.accountId,
+    });
     return { channel: "wechat", messageId: result.messageId };
   } catch (err) {
-    emitWeixinMessageSent({ to: params.to, content: filteredText, success: false, error: String(err), accountId: account.accountId });
+    emitWeixinMessageSent({
+      to: params.to,
+      content: filteredText,
+      success: false,
+      error: String(err),
+      accountId: account.accountId,
+    });
     throw err;
   }
 }
@@ -225,14 +252,18 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       unconfiguredScore: 0,
       resolveConfigured: ({ cfg, accountId }) => {
         const ids = listWeixinAccountIds(cfg);
-        if (ids.length === 0) { return false; }
+        if (ids.length === 0) {
+          return false;
+        }
         if (accountId) {
           return resolveWeixinAccount(cfg, accountId).configured;
         }
         return ids.some((id) => resolveWeixinAccount(cfg, id).configured);
       },
       resolveStatusLines: async ({ cfg, configured }) => {
-        if (!configured) { return ["WeChat: needs QR login (scan to bind)"]; }
+        if (!configured) {
+          return ["WeChat: needs QR login (scan to bind)"];
+        }
         const ids = listWeixinAccountIds(cfg);
         const count = ids.length;
         return [`WeChat: ${count} account${count > 1 ? "s" : ""} connected`];
@@ -267,7 +298,11 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         });
         registerWeixinAccountId(normalizedId);
         if (waitResult.userId) {
-          clearStaleAccountsForUserId(normalizedId, waitResult.userId, clearContextTokensForAccount);
+          clearStaleAccountsForUserId(
+            normalizedId,
+            waitResult.userId,
+            clearContextTokensForAccount,
+          );
         }
         void triggerWeixinChannelReload();
         return { cfg, accountId: normalizedId };
@@ -337,25 +372,51 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
             opts: { baseUrl: account.baseUrl, token: account.token, contextToken },
             cdnBaseUrl: account.cdnBaseUrl,
           });
-          emitWeixinMessageSent({ to: ctx.to, content: text, success: true, accountId: account.accountId });
+          emitWeixinMessageSent({
+            to: ctx.to,
+            content: text,
+            success: true,
+            accountId: account.accountId,
+          });
           return { channel: "wechat", messageId: result.messageId };
         } catch (err) {
-          emitWeixinMessageSent({ to: ctx.to, content: text, success: false, error: String(err), accountId: account.accountId });
+          emitWeixinMessageSent({
+            to: ctx.to,
+            content: text,
+            success: false,
+            error: String(err),
+            accountId: account.accountId,
+          });
           throw err;
         }
       }
 
       const contextToken = getContextToken(account.accountId, ctx.to);
       try {
-        const result = await sendMessageWeixin({ to: ctx.to, text, opts: {
-          baseUrl: account.baseUrl,
-          token: account.token,
-          contextToken,
-        }});
-        emitWeixinMessageSent({ to: ctx.to, content: text, success: true, accountId: account.accountId });
+        const result = await sendMessageWeixin({
+          to: ctx.to,
+          text,
+          opts: {
+            baseUrl: account.baseUrl,
+            token: account.token,
+            contextToken,
+          },
+        });
+        emitWeixinMessageSent({
+          to: ctx.to,
+          content: text,
+          success: true,
+          accountId: account.accountId,
+        });
         return { channel: "wechat", messageId: result.messageId };
       } catch (err) {
-        emitWeixinMessageSent({ to: ctx.to, content: text, success: false, error: String(err), accountId: account.accountId });
+        emitWeixinMessageSent({
+          to: ctx.to,
+          content: text,
+          success: false,
+          error: String(err),
+          accountId: account.accountId,
+        });
         throw err;
       }
     },
@@ -432,7 +493,11 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           });
           registerWeixinAccountId(normalizedId);
           if (waitResult.userId) {
-            clearStaleAccountsForUserId(normalizedId, waitResult.userId, clearContextTokensForAccount);
+            clearStaleAccountsForUserId(
+              normalizedId,
+              waitResult.userId,
+              clearContextTokensForAccount,
+            );
           }
           void triggerWeixinChannelReload();
           log(`\n已将此 KaijiBot 连接到微信。`);

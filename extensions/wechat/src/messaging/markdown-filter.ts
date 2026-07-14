@@ -49,18 +49,24 @@ export class StreamingMarkdownFilter {
       const sFence = this.fence;
       const sInl = this.inl;
 
-      if (this.fence) {out += this.pumpFence(eof);}
-      else if (this.inl) {out += this.pumpInline(eof);}
-      else if (this.sol) {out += this.pumpSOL(eof);}
-      else {out += this.pumpBody(eof);}
+      if (this.fence) {
+        out += this.pumpFence(eof);
+      } else if (this.inl) {
+        out += this.pumpInline(eof);
+      } else if (this.sol) {
+        out += this.pumpSOL(eof);
+      } else {
+        out += this.pumpBody(eof);
+      }
 
       if (
         this.buf.length === sLen &&
         this.sol === sSol &&
         this.fence === sFence &&
         this.inl === sInl
-      )
-        {break;}
+      ) {
+        break;
+      }
     }
 
     if (eof && this.inl) {
@@ -80,7 +86,9 @@ export class StreamingMarkdownFilter {
   /** Inside a code fence: pass content and markers through verbatim. */
   private pumpFence(eof: boolean): string {
     if (this.sol) {
-      if (this.buf.length < 3 && !eof) {return "";}
+      if (this.buf.length < 3 && !eof) {
+        return "";
+      }
       if (this.buf.startsWith("```")) {
         const nl = this.buf.indexOf("\n", 3);
         if (nl !== -1) {
@@ -122,7 +130,9 @@ export class StreamingMarkdownFilter {
     }
 
     if (b[0] === "`") {
-      if (b.length < 3 && !eof) {return "";}
+      if (b.length < 3 && !eof) {
+        return "";
+      }
       if (b.startsWith("```")) {
         const nl = b.indexOf("\n", 3);
         if (nl !== -1) {
@@ -149,8 +159,12 @@ export class StreamingMarkdownFilter {
 
     if (b[0] === "#") {
       let n = 0;
-      while (n < b.length && b[n] === "#") {n++;}
-      if (n === b.length && !eof) {return "";}
+      while (n < b.length && b[n] === "#") {
+        n++;
+      }
+      if (n === b.length && !eof) {
+        return "";
+      }
       if (n >= 5 && n <= 6 && n < b.length && b[n] === " ") {
         this.buf = b.slice(n + 1);
         this.sol = false;
@@ -161,7 +175,9 @@ export class StreamingMarkdownFilter {
     }
 
     if (b[0] === " " || b[0] === "\t") {
-      if (b.search(/[^ \t]/) === -1 && !eof) {return "";}
+      if (b.search(/[^ \t]/) === -1 && !eof) {
+        return "";
+      }
       this.sol = false;
       return "";
     }
@@ -169,12 +185,18 @@ export class StreamingMarkdownFilter {
     if (b[0] === "-" || b[0] === "*" || b[0] === "_") {
       const ch = b[0];
       let j = 0;
-      while (j < b.length && (b[j] === ch || b[j] === " ")) {j++;}
-      if (j === b.length && !eof) {return "";}
+      while (j < b.length && (b[j] === ch || b[j] === " ")) {
+        j++;
+      }
+      if (j === b.length && !eof) {
+        return "";
+      }
       if (j === b.length || b[j] === "\n") {
         let count = 0;
         for (let k = 0; k < j; k++) {
-          if (b[k] === ch) { count++; }
+          if (b[k] === ch) {
+            count++;
+          }
         }
         if (count >= 3) {
           if (j < b.length) {
@@ -261,11 +283,17 @@ export class StreamingMarkdownFilter {
 
     let hold = 0;
     if (!eof) {
-      if (this.buf.endsWith("**")) {hold = 2;}
-      else if (this.buf.endsWith("__")) {hold = 2;}
-      else if (this.buf.endsWith("*")) {hold = 1;}
-      else if (this.buf.endsWith("_")) {hold = 1;}
-      else if (this.buf.endsWith("!")) {hold = 1;}
+      if (this.buf.endsWith("**")) {
+        hold = 2;
+      } else if (this.buf.endsWith("__")) {
+        hold = 2;
+      } else if (this.buf.endsWith("*")) {
+        hold = 1;
+      } else if (this.buf.endsWith("_")) {
+        hold = 1;
+      } else if (this.buf.endsWith("!")) {
+        hold = 1;
+      }
     }
     out += this.buf.slice(0, this.buf.length - hold);
     this.buf = hold > 0 ? this.buf.slice(-hold) : "";
@@ -274,7 +302,9 @@ export class StreamingMarkdownFilter {
 
   /** Accumulate inline content until closing marker is found. */
   private pumpInline(_eof: boolean): string {
-    if (!this.inl) {return "";}
+    if (!this.inl) {
+      return "";
+    }
     this.inl.acc += this.buf;
     this.buf = "";
 
@@ -285,7 +315,9 @@ export class StreamingMarkdownFilter {
           const content = this.inl.acc.slice(0, idx);
           this.buf = this.inl.acc.slice(idx + 3);
           this.inl = null;
-          if (StreamingMarkdownFilter.containsCJK(content)) {return content;}
+          if (StreamingMarkdownFilter.containsCJK(content)) {
+            return content;
+          }
           return `***${content}***`;
         }
         return "";
@@ -296,7 +328,9 @@ export class StreamingMarkdownFilter {
           const content = this.inl.acc.slice(0, idx);
           this.buf = this.inl.acc.slice(idx + 3);
           this.inl = null;
-          if (StreamingMarkdownFilter.containsCJK(content)) {return content;}
+          if (StreamingMarkdownFilter.containsCJK(content)) {
+            return content;
+          }
           return `___${content}___`;
         }
         return "";
@@ -318,7 +352,9 @@ export class StreamingMarkdownFilter {
             const content = this.inl.acc.slice(0, j);
             this.buf = this.inl.acc.slice(j + 1);
             this.inl = null;
-            if (StreamingMarkdownFilter.containsCJK(content)) {return content;}
+            if (StreamingMarkdownFilter.containsCJK(content)) {
+              return content;
+            }
             return `*${content}*`;
           }
         }
@@ -341,7 +377,9 @@ export class StreamingMarkdownFilter {
             const content = this.inl.acc.slice(0, j);
             this.buf = this.inl.acc.slice(j + 1);
             this.inl = null;
-            if (StreamingMarkdownFilter.containsCJK(content)) {return content;}
+            if (StreamingMarkdownFilter.containsCJK(content)) {
+              return content;
+            }
             return `_${content}_`;
           }
         }
@@ -349,8 +387,12 @@ export class StreamingMarkdownFilter {
       }
       case "image": {
         const cb = this.inl.acc.indexOf("]");
-        if (cb === -1) {return "";}
-        if (cb + 1 >= this.inl.acc.length) {return "";}
+        if (cb === -1) {
+          return "";
+        }
+        if (cb + 1 >= this.inl.acc.length) {
+          return "";
+        }
         if (this.inl.acc[cb + 1] !== "(") {
           const r = "![" + this.inl.acc.slice(0, cb + 1);
           this.buf = this.inl.acc.slice(cb + 1);

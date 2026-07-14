@@ -29,8 +29,7 @@ export function computeStrength(node: PersonaDomainNode): number {
   const depth = node.depth ?? 0;
   const depthNorm = Math.min(depth / 5, 1);
 
-  const rec =
-    node.recurrence ?? node.evidenceCount ?? node.insights?.length ?? 0;
+  const rec = node.recurrence ?? node.evidenceCount ?? node.insights?.length ?? 0;
   const recNorm = Math.min(rec / 10, 1);
 
   const raw = depthNorm * 0.5 + recNorm * 0.3 + phaseWeight * 0.2;

@@ -56,9 +56,7 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
 
   const service = tryResolveGatewayService();
   if (!service) {
-    defaultRuntime.log(
-      `Gateway service install not supported on ${process.platform}.`,
-    );
+    defaultRuntime.log(`Gateway service install not supported on ${process.platform}.`);
     return;
   }
   let loaded = false;

@@ -9,9 +9,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...real,
-    writeFile: vi.fn((...a: Parameters<typeof real.writeFile>) =>
-      real.writeFile(...a),
-    ),
+    writeFile: vi.fn((...a: Parameters<typeof real.writeFile>) => real.writeFile(...a)),
     mkdir: vi.fn((...a: Parameters<typeof real.mkdir>) => real.mkdir(...a)),
     unlink: vi.fn((...a: Parameters<typeof real.unlink>) => real.unlink(...a)),
     rename: vi.fn((...a: Parameters<typeof real.rename>) => real.rename(...a)),
@@ -46,11 +44,7 @@ describe("readPersona", () => {
     await rm(tmp, { recursive: true, force: true });
   });
 
-  async function writePersona(
-    agentId: string,
-    userId: string,
-    content: string,
-  ): Promise<string> {
+  async function writePersona(agentId: string, userId: string, content: string): Promise<string> {
     const dir = join(tmp, "cognitive", "persona", agentId);
     await mkdir(dir, { recursive: true });
     const file = join(dir, `${userId}.json`);
@@ -61,15 +55,19 @@ describe("readPersona", () => {
   }
 
   it("reads valid persona with 3 domains", async () => {
-    await writePersona("agent-a", "ou_1", JSON.stringify({
-      identity: { displayName: "Kaiji" },
-      coreTraits: { 称呼: "Kaiji" },
-      domains: {
-        rust: { phase: "stable", depth: 3, recurrence: 5 },
-        distributed: { phase: "emergent", depth: 1, recurrence: 2 },
-        ml: { phase: "dormant", depth: 0, recurrence: 0 },
-      },
-    }));
+    await writePersona(
+      "agent-a",
+      "ou_1",
+      JSON.stringify({
+        identity: { displayName: "Kaiji" },
+        coreTraits: { 称呼: "Kaiji" },
+        domains: {
+          rust: { phase: "stable", depth: 3, recurrence: 5 },
+          distributed: { phase: "emergent", depth: 1, recurrence: 2 },
+          ml: { phase: "dormant", depth: 0, recurrence: 0 },
+        },
+      }),
+    );
     const tree = await readPersona(tmp, "agent-a", "ou_1");
     expect(tree).not.toBeNull();
     expect(Object.keys(tree!.domains)).toHaveLength(3);
@@ -79,10 +77,14 @@ describe("readPersona", () => {
   });
 
   it("preserves identity.displayName", async () => {
-    await writePersona("agent-a", "ou_1", JSON.stringify({
-      identity: { displayName: "Kaiji" },
-      domains: { x: { phase: "stable" } },
-    }));
+    await writePersona(
+      "agent-a",
+      "ou_1",
+      JSON.stringify({
+        identity: { displayName: "Kaiji" },
+        domains: { x: { phase: "stable" } },
+      }),
+    );
     const tree = await readPersona(tmp, "agent-a", "ou_1");
     expect(tree?.identity?.displayName).toBe("Kaiji");
   });
@@ -112,25 +114,31 @@ describe("readPersona", () => {
   });
 
   it("tolerates extra fields", async () => {
-    await writePersona("agent-a", "ou_1", JSON.stringify({
-      identity: { displayName: "K", extra: "ignored" },
-      domains: { x: { phase: "stable", unknownField: 123 } },
-      extraTopLevel: { foo: 1 },
-    }));
+    await writePersona(
+      "agent-a",
+      "ou_1",
+      JSON.stringify({
+        identity: { displayName: "K", extra: "ignored" },
+        domains: { x: { phase: "stable", unknownField: 123 } },
+        extraTopLevel: { foo: 1 },
+      }),
+    );
     const tree = await readPersona(tmp, "agent-a", "ou_1");
     expect(tree).not.toBeNull();
     expect(tree!.domains.x).toBeDefined();
     // Extra fields tolerated (cast carefully)
-    expect(
-      (tree!.domains.x as unknown as { unknownField: number }).unknownField,
-    ).toBe(123);
+    expect((tree!.domains.x as unknown as { unknownField: number }).unknownField).toBe(123);
   });
 
   it("NEVER writes: spies on fs.promises.writeFile/mkdir/unlink/rename", async () => {
-    await writePersona("agent-a", "ou_1", JSON.stringify({
-      identity: { displayName: "K" },
-      domains: { x: { phase: "stable" } },
-    }));
+    await writePersona(
+      "agent-a",
+      "ou_1",
+      JSON.stringify({
+        identity: { displayName: "K" },
+        domains: { x: { phase: "stable" } },
+      }),
+    );
     // Sanity check: read succeeds
     const tree = await readPersona(tmp, "agent-a", "ou_1");
     expect(tree).not.toBeNull();

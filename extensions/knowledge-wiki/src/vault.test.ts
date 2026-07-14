@@ -23,7 +23,9 @@ describe("initializeWikiVault", () => {
     for (const dir of ["summaries", "entities", "concepts"]) {
       await expect(access(path.join(TMP, "wiki", dir))).resolves.toBeUndefined();
     }
-    await expect(access(path.join(TMP, "wiki", ".kaijibot-wiki", "cache"))).resolves.toBeUndefined();
+    await expect(
+      access(path.join(TMP, "wiki", ".kaijibot-wiki", "cache")),
+    ).resolves.toBeUndefined();
   });
 
   it("creates seed files on first init", async () => {

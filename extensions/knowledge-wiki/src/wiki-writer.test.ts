@@ -24,9 +24,7 @@ const testExtraction: ExtractionResult = {
     { name: "Zero-cost abstractions", description: "Abstractions with no runtime overhead" },
   ],
   topics: ["rust", "performance"],
-  relationships: [
-    { from: "Rust", to: "Zero-cost abstractions", type: "part-of" },
-  ],
+  relationships: [{ from: "Rust", to: "Zero-cost abstractions", type: "part-of" }],
 };
 
 const rustEntity: ExtractedEntity = {
@@ -159,11 +157,7 @@ describe("wiki-writer", () => {
 
     it("merges a second source into an existing concept page", async () => {
       await writeConceptPage(vaultRoot, zeroCostConcept, "notes/rust.md");
-      const relativePath = await writeConceptPage(
-        vaultRoot,
-        zeroCostConcept,
-        "docs/rust-guide.md",
-      );
+      const relativePath = await writeConceptPage(vaultRoot, zeroCostConcept, "docs/rust-guide.md");
       const content = await readFile(path.join(vaultRoot, relativePath), "utf8");
       const parsed = parseWikiMarkdown(content);
 

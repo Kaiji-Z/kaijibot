@@ -306,8 +306,7 @@ function renderQuickSettings(props: ConfigProps) {
     const value = getValueAtPath(props.formValue, entry.path);
 
     if (schemaType(nodeSchema) === "boolean") {
-      const enabled =
-        value === true || (value === undefined && nodeSchema.default === true);
+      const enabled = value === true || (value === undefined && nodeSchema.default === true);
       const control = renderStatusToggleRow({
         label: entry.label,
         enabled,

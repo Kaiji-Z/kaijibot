@@ -66,8 +66,7 @@ const STYLE_CROSS_EDGE = 'stroke="#666" stroke-width="1" stroke-dasharray="3,2"'
 // Wiki-to-wiki: thin faint (secondary relationship).
 const STYLE_WIKI_EDGE = 'stroke="#ccc" stroke-width="0.5"';
 
-const EMPTY_MESSAGE =
-  "No persona data yet. Chat with KaijiBot to build your cognitive map.";
+const EMPTY_MESSAGE = "No persona data yet. Chat with KaijiBot to build your cognitive map.";
 
 /** Escape a string for safe inclusion in XML/SVG text content and attributes. */
 function escapeXml(s: string): string {
@@ -144,7 +143,9 @@ export function computeForceLayout(
 ): Map<string, Pt> {
   const result = new Map<string, Pt>();
   const n = nodes.length;
-  if (n === 0) {return result;}
+  if (n === 0) {
+    return result;
+  }
 
   // Optimal distance between nodes — balances repulsion and attraction.
   const k = Math.sqrt((width * height) / n) * K_SCALE;
@@ -162,7 +163,9 @@ export function computeForceLayout(
 
   // Build id → array-index lookup and resolve edges to index pairs.
   const idToIdx = new Map<string, number>();
-  for (let i = 0; i < n; i++) {idToIdx.set(nodes[i].id, i);}
+  for (let i = 0; i < n; i++) {
+    idToIdx.set(nodes[i].id, i);
+  }
   const edgePairs: Array<[number, number]> = [];
   for (const e of edges) {
     const a = idToIdx.get(e.from);
@@ -189,7 +192,9 @@ export function computeForceLayout(
         const dx = xs[i] - xs[j];
         const dy = ys[i] - ys[j];
         let dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 0.1) {dist = 0.1;} // avoid division by zero
+        if (dist < 0.1) {
+          dist = 0.1;
+        } // avoid division by zero
         const force = (k * k) / dist;
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -207,7 +212,9 @@ export function computeForceLayout(
       const dx = xs[i] - xs[j];
       const dy = ys[i] - ys[j];
       let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 0.1) {dist = 0.1;}
+      if (dist < 0.1) {
+        dist = 0.1;
+      }
       const force = (dist * dist) / k;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
@@ -230,7 +237,9 @@ export function computeForceLayout(
       const dx = dispX[i];
       const dy = dispY[i];
       let dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 0.1) {dist = 0.1;}
+      if (dist < 0.1) {
+        dist = 0.1;
+      }
       const limited = Math.min(dist, temperature);
       xs[i] += (dx / dist) * limited;
       ys[i] += (dy / dist) * limited;
@@ -278,8 +287,7 @@ function buildSvgRootOpen(zoomFactor: number): string {
 // White background rect — the FIRST child of the SVG root. Kindle's SVG
 // renderer (used when the SVG is loaded via <img src="...svg">) ignores CSS
 // `background:#fff` on the root element, so we paint a full-canvas rect.
-const SVG_BG_RECT =
-  '<rect width="' + CANVAS_W + '" height="' + CANVAS_H + '" fill="#fff"/>';
+const SVG_BG_RECT = '<rect width="' + CANVAS_W + '" height="' + CANVAS_H + '" fill="#fff"/>';
 
 /**
  * Render a domain node as an SVG fragment: filled circle + bold label.
@@ -413,8 +421,11 @@ export function renderMapGraphSvg(
   const domainNodes: MapNode[] = [];
   const wikiNodesAll: MapNode[] = [];
   for (const n of nodes) {
-    if (n.kind === "domain") {domainNodes.push(n);}
-    else {wikiNodesAll.push(n);}
+    if (n.kind === "domain") {
+      domainNodes.push(n);
+    } else {
+      wikiNodesAll.push(n);
+    }
   }
 
   // Slice wiki nodes to prevent Kindle DOM overload (see MAX_WIKI_NODES).
@@ -439,14 +450,14 @@ export function renderMapGraphSvg(
   // All visible nodes participate in one simulation so connected nodes
   // cluster together regardless of kind. When wiki is off, only domain
   // nodes participate (lighter layout, fewer repulsive pairs).
-  const layoutNodes: MapNode[] = includeWiki
-    ? [...domainNodes, ...wikiNodes]
-    : domainNodes;
+  const layoutNodes: MapNode[] = includeWiki ? [...domainNodes, ...wikiNodes] : domainNodes;
   const pos = computeForceLayout(layoutNodes, graph.edges, CANVAS_W, CANVAS_H);
 
   // Kind set for edge classification.
   const isDomainId = new Set<string>();
-  for (const d of domainNodes) {isDomainId.add(d.id);}
+  for (const d of domainNodes) {
+    isDomainId.add(d.id);
+  }
 
   // ── Classify edges by endpoint kinds, dropping any that reference
   //    filtered (out-of-cap) wiki nodes. ──
@@ -456,7 +467,9 @@ export function renderMapGraphSvg(
   for (const e of graph.edges) {
     const a = pos.get(e.from);
     const b = pos.get(e.to);
-    if (a === undefined || b === undefined) {continue;} // dropped node
+    if (a === undefined || b === undefined) {
+      continue;
+    } // dropped node
     const aDom = isDomainId.has(e.from);
     const bDom = isDomainId.has(e.to);
     if (aDom && bDom) {
@@ -472,14 +485,18 @@ export function renderMapGraphSvg(
   const domainNodeSvg: string[] = [];
   for (const d of domainNodes) {
     const p = pos.get(d.id);
-    if (p !== undefined) {domainNodeSvg.push(renderDomainNode(d, p.x, p.y));}
+    if (p !== undefined) {
+      domainNodeSvg.push(renderDomainNode(d, p.x, p.y));
+    }
   }
 
   // ── Render wiki node fragments ──
   const wikiNodeSvg: string[] = [];
   for (const w of wikiNodes) {
     const p = pos.get(w.id);
-    if (p !== undefined) {wikiNodeSvg.push(renderWikiNode(w, p.x, p.y));}
+    if (p !== undefined) {
+      wikiNodeSvg.push(renderWikiNode(w, p.x, p.y));
+    }
   }
 
   // Domain layer: edges first (under nodes), then nodes.

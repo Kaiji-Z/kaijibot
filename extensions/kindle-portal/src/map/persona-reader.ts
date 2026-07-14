@@ -25,13 +25,7 @@ export async function readPersona(
   agentId: string,
   userId: string,
 ): Promise<PersonaTree | null> {
-  const file = path.join(
-    stateDir,
-    "cognitive",
-    "persona",
-    agentId,
-    `${userId}.json`,
-  );
+  const file = path.join(stateDir, "cognitive", "persona", agentId, `${userId}.json`);
 
   let raw: string;
   try {
@@ -48,9 +42,13 @@ export async function readPersona(
     return null;
   }
 
-  if (typeof data !== "object" || data === null) {return null;}
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
   const obj = data as Record<string, unknown>;
-  if (typeof obj.domains !== "object" || obj.domains === null) {return null;}
+  if (typeof obj.domains !== "object" || obj.domains === null) {
+    return null;
+  }
 
   // Cast carefully: additional fields are tolerated by the structural type.
   return data as PersonaTree;

@@ -53,7 +53,9 @@ function readSyncBufFile(filePath: string): string | undefined {
  */
 export function loadGetUpdatesBuf(filePath: string): string | undefined {
   const value = readSyncBufFile(filePath);
-  if (value !== undefined) {return value;}
+  if (value !== undefined) {
+    return value;
+  }
 
   // Compat: if given path uses a normalized accountId (e.g. "b0f5860fdecb-im-bot.sync.json"),
   // also try the old raw-ID filename (e.g. "b0f5860fdecb@im.bot.sync.json").
@@ -62,7 +64,9 @@ export function loadGetUpdatesBuf(filePath: string): string | undefined {
   if (rawId) {
     const compatPath = path.join(resolveAccountsDir(), `${rawId}.sync.json`);
     const compatValue = readSyncBufFile(compatPath);
-    if (compatValue !== undefined) {return compatValue;}
+    if (compatValue !== undefined) {
+      return compatValue;
+    }
   }
 
   // Legacy fallback: old single-account installs stored syncbuf without accountId.

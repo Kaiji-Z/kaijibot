@@ -348,7 +348,9 @@ export async function gatherDaemonStatus(
   const [loaded, runtime] = service
     ? await Promise.all([
         service.isLoaded({ env: serviceEnv }).catch(() => false),
-        service.readRuntime(serviceEnv).catch((err) => ({ status: "unknown", detail: String(err) })),
+        service
+          .readRuntime(serviceEnv)
+          .catch((err) => ({ status: "unknown", detail: String(err) })),
       ])
     : [false, { status: "unknown", detail: "no service manager" }];
   const configAudit = command

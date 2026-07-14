@@ -167,8 +167,9 @@ function renderSessionCard(
         ? html`<div
             class="text-muted"
             style="font-size:0.8em; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-            >${label}</div
-          >`
+          >
+            ${label}
+          </div>`
         : nothing}
     </div>
   `;
@@ -244,7 +245,12 @@ export function renderHistory(props: HistoryProps) {
 
         <div class="two-col-layout__detail">
           ${props.selectedKey
-            ? html`<div class="two-col-back-bar" @click=${() => props.onSelectSession(null)}><span class="two-col-back-bar__arrow" aria-hidden="true"></span><span class="two-col-back-bar__context">${formatSessionLabel(props.selectedKey)}</span></div>`
+            ? html`<div class="two-col-back-bar" @click=${() => props.onSelectSession(null)}>
+                <span class="two-col-back-bar__arrow" aria-hidden="true"></span
+                ><span class="two-col-back-bar__context"
+                  >${formatSessionLabel(props.selectedKey)}</span
+                >
+              </div>`
             : nothing}
           <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
             ${props.selectedKey == null

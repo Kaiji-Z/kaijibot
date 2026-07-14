@@ -7,13 +7,13 @@
  * unit-testable without a plugin runtime.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ApiHandlerContext } from "./api-json.js";
-import { buildFleetSnapshot } from "../monitor/snapshot-source.js";
-import { readAllAgents } from "../monitor/agent-reader.js";
-import { fetchGatewayStatus } from "../monitor/status-fetcher.js";
-import { readCognitiveStats } from "../monitor/cognitive-reader.js";
-import { renderMonitorHtml } from "../html/monitor-template.js";
 import { renderMapHtml } from "../html/map-template.js";
+import { renderMonitorHtml } from "../html/monitor-template.js";
+import { readAllAgents } from "../monitor/agent-reader.js";
+import { readCognitiveStats } from "../monitor/cognitive-reader.js";
+import { buildFleetSnapshot } from "../monitor/snapshot-source.js";
+import { fetchGatewayStatus } from "../monitor/status-fetcher.js";
+import type { ApiHandlerContext } from "./api-json.js";
 
 const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 const NO_STORE = "no-store, max-age=0";

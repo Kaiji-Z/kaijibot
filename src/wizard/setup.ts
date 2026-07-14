@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import { formatCliCommand } from "../cli/command-format.js";
+import { t } from "../cli/i18n/translate.js";
 import type {
   GatewayAuthChoice,
   OnboardMode,
@@ -76,24 +77,10 @@ async function requireRiskAcknowledgement(params: {
     return;
   }
 
-  await params.prompter.note(
-    [
-      "欢迎使用 KaijiBot 👾",
-      "",
-      "KaijiBot 是一个具备系统访问能力的 AI 助手：",
-      "- 可以读写文件、执行命令、搜索网络",
-      "- 会随对话逐渐学习你的偏好和兴趣（认知系统）",
-      "- 可能会主动联系你分享有价值的洞察",
-      "",
-      "安全提示：",
-      "- 请勿在不可信的网络环境中暴露 Gateway",
-      "- 不要把 API Key 或敏感信息放在 agent 可访问的路径下",
-    ].join("\n"),
-    "安全须知",
-  );
+  await params.prompter.note(t("cli.wizard.welcome.body"), t("cli.wizard.welcome.title"));
 
   const ok = await params.prompter.confirm({
-    message: "我已了解以上内容，继续配置？",
+    message: t("cli.wizard.welcome.confirmPrompt"),
     initialValue: true,
   });
   if (!ok) {
@@ -102,31 +89,9 @@ async function requireRiskAcknowledgement(params: {
 }
 
 export async function showPrerequisiteChecklist(prompter: WizardPrompter): Promise<boolean> {
-  await prompter.note(
-    [
-      "开始前请准备好以下条件：",
-      "",
-      "  1. LLM API Key（必需）",
-      "     任选一个 AI 提供商注册并创建 API Key：",
-      "     智谱 GLM：https://open.bigmodel.cn/",
-      "     DeepSeek：https://platform.deepseek.com/",
-      "     Anthropic Claude：https://console.anthropic.com/",
-      "     Google Gemini：https://aistudio.google.com/apikey",
-      "     通义千问：https://dashscope.console.aliyun.com/",
-      "",
-      "  2. 飞书账号（必需）",
-      "     向导中可选「扫码自动创建飞书机器人」，10 秒搞定",
-      "     或手动在 https://open.feishu.cn/ 创建企业自建应用",
-      "",
-      "  3. Node.js 22+ 环境",
-      "     如通过一键安装脚本运行，会自动安装",
-      "",
-      "准备好后继续配置。",
-    ].join("\n"),
-    "📋 配置前准备",
-  );
+  await prompter.note(t("cli.wizard.prereq.body"), t("cli.wizard.prereq.title"));
   return prompter.confirm({
-    message: "我已准备好以上条件，继续配置？",
+    message: t("cli.wizard.prereq.confirmPrompt"),
     initialValue: true,
   });
 }
@@ -161,12 +126,12 @@ export async function runSetupWizard(
 ) {
   const onboardHelpers = await import("../commands/onboard-helpers.js");
   onboardHelpers.printWizardHeader(runtime);
-  await prompter.intro("KaijiBot 配置向导");
+  await prompter.intro(t("cli.wizard.intro"));
 
   if (opts.acceptRisk !== true) {
     const prereqOk = await showPrerequisiteChecklist(prompter);
     if (!prereqOk) {
-      await prompter.outro("配置已取消。准备好后再来吧！");
+      await prompter.outro(t("cli.wizard.cancelledOutro"));
       return;
     }
   }
@@ -193,7 +158,7 @@ export async function runSetupWizard(
       );
     }
     await prompter.outro(
-      `配置无效。运行 \`${formatCliCommand("kaijibot doctor")}\` 修复后重新执行配置。`,
+      t("cli.wizard.invalidConfigOutro", { doctorCmd: formatCliCommand("kaijibot doctor") }),
     );
     runtime.exit(1);
     return;
@@ -282,7 +247,7 @@ export async function runSetupWizard(
     normalizedExplicitFlow !== "quickstart" &&
     normalizedExplicitFlow !== "advanced"
   ) {
-    runtime.error("无效的 --flow 参数（请使用 quickstart、manual 或 advanced）。");
+    runtime.error(t("cli.wizard.flow.invalidError"));
     runtime.exit(1);
     return;
   }
@@ -293,10 +258,14 @@ export async function runSetupWizard(
   let flow: WizardFlow =
     explicitFlow ??
     (await prompter.select({
-      message: "配置模式",
+      message: t("cli.wizard.flowSelect.message"),
       options: [
-        { value: "quickstart", label: "快速配置", hint: quickstartHint },
-        { value: "advanced", label: "手动配置", hint: manualHint },
+        {
+          value: "quickstart",
+          label: t("cli.wizard.flowSelect.quickstartLabel"),
+          hint: quickstartHint,
+        },
+        { value: "advanced", label: t("cli.wizard.flowSelect.advancedLabel"), hint: manualHint },
       ],
       initialValue: "quickstart",
     }));
@@ -316,11 +285,11 @@ export async function runSetupWizard(
     );
 
     const action = await prompter.select({
-      message: "配置处理方式",
+      message: t("cli.wizard.existingConfig.message"),
       options: [
-        { value: "keep", label: "使用现有配置" },
-        { value: "modify", label: "更新配置" },
-        { value: "reset", label: "重置" },
+        { value: "keep", label: t("cli.wizard.existingConfig.keepLabel") },
+        { value: "modify", label: t("cli.wizard.existingConfig.modifyLabel") },
+        { value: "reset", label: t("cli.wizard.existingConfig.resetLabel") },
       ],
     });
 
@@ -328,16 +297,16 @@ export async function runSetupWizard(
       const workspaceDefault =
         baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE;
       const resetScope = (await prompter.select({
-        message: "重置范围",
+        message: t("cli.wizard.resetScope.message"),
         options: [
-          { value: "config", label: "仅配置" },
+          { value: "config", label: t("cli.wizard.resetScope.configOnlyLabel") },
           {
             value: "config+creds+sessions",
-            label: "配置 + 凭证 + 会话",
+            label: t("cli.wizard.resetScope.configCredsSessionsLabel"),
           },
           {
             value: "full",
-            label: "完全重置（配置 + 凭证 + 会话 + 工作空间）",
+            label: t("cli.wizard.resetScope.fullLabel"),
           },
         ],
       })) as ResetScope;
@@ -531,18 +500,18 @@ export async function runSetupWizard(
     (flow === "quickstart"
       ? "local"
       : ((await prompter.select({
-          message: "你想配置什么？",
+          message: t("cli.wizard.modeSelect.message"),
           options: [
             {
               value: "local",
-              label: "本地网关（本机）",
+              label: t("cli.wizard.modeSelect.localLabel"),
               hint: localProbe.ok
                 ? `Gateway reachable (${localUrl})`
                 : `No gateway detected (${localUrl})`,
             },
             {
               value: "remote",
-              label: "远程网关（仅信息）",
+              label: t("cli.wizard.modeSelect.remoteLabel"),
               hint: !remoteUrl
                 ? "No remote URL configured yet"
                 : remoteProbe?.ok
@@ -561,7 +530,7 @@ export async function runSetupWizard(
     nextConfig = onboardHelpers.applyWizardMetadata(nextConfig, { command: "onboard", mode });
     await writeConfigFile(nextConfig);
     logConfigUpdated(runtime);
-    await prompter.outro("远程网关已配置。");
+    await prompter.outro(t("cli.wizard.remoteConfig.outro"));
     return;
   }
 
@@ -570,7 +539,7 @@ export async function runSetupWizard(
     (flow === "quickstart"
       ? (baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE)
       : await prompter.text({
-          message: "工作空间目录",
+          message: t("cli.wizard.workspace.message"),
           initialValue: baseConfig.agents?.defaults?.workspace ?? onboardHelpers.DEFAULT_WORKSPACE,
         }));
 
@@ -586,18 +555,7 @@ export async function runSetupWizard(
     await import("../commands/auth-choice.js");
   const { applyPrimaryModel, promptDefaultModel } = await import("../commands/model-picker.js");
 
-  await prompter.note(
-    [
-      "选择你的 AI 提供商。如需注册 API Key：",
-      "",
-      "  智谱 GLM：https://open.bigmodel.cn/",
-      "  DeepSeek：https://platform.deepseek.com/",
-      "  Anthropic Claude：https://console.anthropic.com/",
-      "  Google Gemini：https://aistudio.google.com/apikey",
-      "  通义千问：https://dashscope.console.aliyun.com/",
-    ].join("\n"),
-    "🔑 AI 提供商",
-  );
+  await prompter.note(t("cli.wizard.providerSelect.body"), t("cli.wizard.providerSelect.title"));
 
   const authStore = ensureAuthProfileStore(undefined, {
     allowKeychainPrompt: false,

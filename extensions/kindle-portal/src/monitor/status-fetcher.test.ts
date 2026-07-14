@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  fetchGatewayStatus,
-  resetStatusCache,
-  type GatewayStatus,
-} from "./status-fetcher.js";
+import { fetchGatewayStatus, resetStatusCache, type GatewayStatus } from "./status-fetcher.js";
 
 const DEFAULT_URL = "http://127.0.0.1:18789/api/status";
 

@@ -59,7 +59,11 @@ function toolRunning(
   };
 }
 
-function toolDone(runId: string, status: "completed" | "failed" = "completed", ts = 3000): AgentEventPayload {
+function toolDone(
+  runId: string,
+  status: "completed" | "failed" = "completed",
+  ts = 3000,
+): AgentEventPayload {
   return { stream: "tool", runId, data: { status }, ts };
 }
 
@@ -71,8 +75,16 @@ function thinkingStream(runId: string, ts = 2600): AgentEventPayload {
   return { stream: "thinking", runId, data: {}, ts };
 }
 
-function lifecycleEnd(runId: string, opts: { stopReason?: string; ts?: number } = {}): AgentEventPayload {
-  return { stream: "lifecycle", runId, data: { phase: "end", stopReason: opts.stopReason }, ts: opts.ts ?? 4000 };
+function lifecycleEnd(
+  runId: string,
+  opts: { stopReason?: string; ts?: number } = {},
+): AgentEventPayload {
+  return {
+    stream: "lifecycle",
+    runId,
+    data: { phase: "end", stopReason: opts.stopReason },
+    ts: opts.ts ?? 4000,
+  };
 }
 
 function errorStream(
@@ -90,7 +102,9 @@ function errorStream(
 describe("FleetState lifecycle + transitions", () => {
   it("lifecycle.start creates thinking record", () => {
     const s = new FleetState();
-    s.applyEvent(start("r1", { sessionKey: "sess-a", agentId: "ag-1", model: "glm-5", provider: "zai" }));
+    s.applyEvent(
+      start("r1", { sessionKey: "sess-a", agentId: "ag-1", model: "glm-5", provider: "zai" }),
+    );
     const snap = s.snapshot();
     expect(snap.active).toHaveLength(1);
     const rec = snap.active[0];
@@ -391,7 +405,11 @@ describe("FleetState defensive guards", () => {
     expect(() => s.applyEvent(withUndefinedData)).not.toThrow();
 
     // 2. missing stream
-    const missingStream = { runId: "r2", data: { phase: "start" }, ts: 1 } as unknown as AgentEventPayload;
+    const missingStream = {
+      runId: "r2",
+      data: { phase: "start" },
+      ts: 1,
+    } as unknown as AgentEventPayload;
     expect(() => s.applyEvent(missingStream)).not.toThrow();
 
     // 3. null payload

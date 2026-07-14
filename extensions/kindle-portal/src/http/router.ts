@@ -15,13 +15,13 @@
  * the context they were designed for in T10.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { authorize } from "./auth.js";
 import {
   handleFleetJson,
   handleMapJson,
   handleCognitiveJson,
   type ApiHandlerContext,
 } from "./api-json.js";
+import { authorize } from "./auth.js";
 import { handleMonitorHtml, handleMapHtml } from "./pages.js";
 import { handleMapPng } from "./png.js";
 import { handleMapSvg } from "./svg.js";
@@ -43,10 +43,7 @@ const INTERNAL_ERROR_BODY = "Internal error";
 export function createKindleHttpHandler(
   ctx: RouterContext,
 ): (req: IncomingMessage, res: ServerResponse) => Promise<boolean> {
-  return async function handler(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<boolean> {
+  return async function handler(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
     const rawUrl = req.url ?? "/";
 
     // ── Path-traversal protection ──
@@ -137,7 +134,9 @@ export function createKindleHttpHandler(
  * The armv fallback covers non-Kindle-branded e-readers on the same engine.
  */
 export function isKindleUserAgent(userAgent: string | undefined): boolean {
-  if (!userAgent) {return false;}
+  if (!userAgent) {
+    return false;
+  }
   const ua = userAgent.toLowerCase();
   return ua.includes("kindle") || ua.includes("linux armv");
 }
@@ -148,10 +147,7 @@ export function isKindleUserAgent(userAgent: string | undefined): boolean {
  * Non-Kindle UA → returns `false` (pass-through to next registered handler).
  */
 export function createRootRedirectHandler(ctx: RouterContext) {
-  return async function handler(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<boolean> {
+  return async function handler(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
     if (!isKindleUserAgent(req.headers["user-agent"])) {
       return false;
     }
@@ -170,10 +166,7 @@ export function createRootRedirectHandler(ctx: RouterContext) {
  * (loopback always allowed; `?token=` required on LAN when configured).
  */
 export function createShortPathHandler(ctx: RouterContext) {
-  return async function handler(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<boolean> {
+  return async function handler(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
     const auth = authorize(req, {
       accessToken: ctx.cfg.accessToken,
       loopbackAllowed: true,

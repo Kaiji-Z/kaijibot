@@ -15,6 +15,7 @@ MEMORY.md                                 Extract concepts      concepts/cap-the
 ```
 
 Three layers:
+
 - **Raw sources** — your workspace files (.md, .txt). Immutable. The LLM reads but never modifies them.
 - **Wiki** — LLM-generated markdown pages. Summaries, entity pages, concept pages, cross-references. The LLM owns this layer entirely.
 - **Schema** — `AGENTS.md` in the wiki root, governing how the LLM maintains the wiki.
@@ -89,4 +90,3 @@ The wiki output is native Obsidian format. Open `workspace/wiki/` as an Obsidian
 - `wiki.query` — Search the wiki
 - `wiki.lint` — Health report
 - `wiki.ingest` — Trigger ingestion
-

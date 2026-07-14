@@ -35,9 +35,18 @@ export const DEFAULT_WIKI_MAX_CLAIMS = 20;
 
 export const DEFAULT_SCAN_EXTENSIONS = [".md", ".txt", ".rst"] as const;
 export const DEFAULT_EXCLUDE_DIRS = [
-  ".git", "node_modules", ".kaijibot", "wiki", "sessions",
-  ".pnpm-store", ".venv", "venv", "dist", "build",
-  "skills", ".agents",
+  ".git",
+  "node_modules",
+  ".kaijibot",
+  "wiki",
+  "sessions",
+  ".pnpm-store",
+  ".venv",
+  "venv",
+  "dist",
+  "build",
+  "skills",
+  ".agents",
 ] as const;
 export const DEFAULT_EXCLUDE_PATTERNS = [
   "memory/\\d{4}-\\d{2}-\\d{2}\\.md$",
@@ -80,20 +89,26 @@ export function resolveEffectiveVaultRoot(
 const WikiConfigSource = z.strictObject({
   enabled: z.boolean().optional(),
   cron: z.string().optional(),
-  vault: z.strictObject({
-    path: z.string().optional(),
-  }).optional(),
-  scan: z.strictObject({
-    extensions: z.array(z.string()).optional(),
-    excludeDirs: z.array(z.string()).optional(),
-    excludePatterns: z.array(z.string()).optional(),
-    maxFileSize: z.number().int().positive().optional(),
-    includeMemoryCurated: z.boolean().optional(),
-  }).optional(),
-  extraction: z.strictObject({
-    minConfidence: z.number().min(0).max(1).optional(),
-    maxClaimsPerPage: z.number().int().positive().optional(),
-  }).optional(),
+  vault: z
+    .strictObject({
+      path: z.string().optional(),
+    })
+    .optional(),
+  scan: z
+    .strictObject({
+      extensions: z.array(z.string()).optional(),
+      excludeDirs: z.array(z.string()).optional(),
+      excludePatterns: z.array(z.string()).optional(),
+      maxFileSize: z.number().int().positive().optional(),
+      includeMemoryCurated: z.boolean().optional(),
+    })
+    .optional(),
+  extraction: z
+    .strictObject({
+      minConfidence: z.number().min(0).max(1).optional(),
+      maxClaimsPerPage: z.number().int().positive().optional(),
+    })
+    .optional(),
 });
 
 type WikiConfigInput = z.infer<typeof WikiConfigSource>;
@@ -112,9 +127,7 @@ export function resolveWikiConfig(
     enabled: safeConfig.enabled ?? DEFAULT_WIKI_ENABLED,
     cron: safeConfig.cron ?? DEFAULT_WIKI_CRON,
     vault: {
-      path: safeConfig.vault?.path
-        ? expandHomePath(safeConfig.vault.path, homedir)
-        : "",
+      path: safeConfig.vault?.path ? expandHomePath(safeConfig.vault.path, homedir) : "",
     },
     scan: {
       extensions: safeConfig.scan?.extensions ?? [...DEFAULT_SCAN_EXTENSIONS],

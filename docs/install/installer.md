@@ -12,12 +12,12 @@ title: "Installation Guide"
 KaijiBot supports multiple installation methods. Pick the one that suits your environment.
 （KaijiBot 支持多种安装方式，按需选择。）
 
-| Method | Command | Best for |
-| ------ | ------- | -------- |
-| **One-click install** (recommended / 推荐) | `curl -fsSL ... \| bash` | Most users, fastest path |
-| **npm install** | `npm install -g kaijibot` | Users with Node.js already installed |
-| **Docker** | `docker compose up -d` | Containerized / headless deployments |
-| **Build from source** | `git clone` + `pnpm build` | Contributors and custom builds |
+| Method                                     | Command                    | Best for                             |
+| ------------------------------------------ | -------------------------- | ------------------------------------ |
+| **One-click install** (recommended / 推荐) | `curl -fsSL ... \| bash`   | Most users, fastest path             |
+| **npm install**                            | `npm install -g kaijibot`  | Users with Node.js already installed |
+| **Docker**                                 | `docker compose up -d`     | Containerized / headless deployments |
+| **Build from source**                      | `git clone` + `pnpm build` | Contributors and custom builds       |
 
 ## Prerequisites
 

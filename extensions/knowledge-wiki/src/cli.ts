@@ -1,9 +1,9 @@
 import type { Command } from "commander";
-import type { WikiConfig } from "./config.js";
 import type { GenerateTextFn } from "./compiler.js";
+import type { WikiConfig } from "./config.js";
 import { ingestAll } from "./ingest.js";
-import { queryWiki } from "./query.js";
 import { lintWiki } from "./lint.js";
+import { queryWiki } from "./query.js";
 import { resolveWikiStatus, renderWikiStatus } from "./status.js";
 import { initializeWikiVault } from "./vault.js";
 
@@ -14,13 +14,8 @@ export type CliDeps = {
   getGenerateText: () => Promise<GenerateTextFn>;
 };
 
-export function registerWikiCli(
-  program: Command,
-  deps: CliDeps,
-): void {
-  const wiki = program
-    .command("wiki")
-    .description("LLM-compiled knowledge wiki");
+export function registerWikiCli(program: Command, deps: CliDeps): void {
+  const wiki = program.command("wiki").description("LLM-compiled knowledge wiki");
 
   const resolveFromOpts = (opts: { workspaceDir?: string }) => {
     const workspaceDir = opts.workspaceDir ?? deps.defaultWorkspaceDir;
@@ -68,12 +63,7 @@ export function registerWikiCli(
       const { workspaceDir, vaultRoot } = resolveFromOpts(opts);
       await initializeWikiVault(vaultRoot);
       const generateText = await deps.getGenerateText();
-      const result = await ingestAll(
-        workspaceDir,
-        vaultRoot,
-        generateText,
-        deps.config,
-      );
+      const result = await ingestAll(workspaceDir, vaultRoot, generateText, deps.config);
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
       } else {
@@ -91,28 +81,23 @@ export function registerWikiCli(
     .description("Search the compiled wiki")
     .option("--json", "Print JSON")
     .option("--workspace-dir <dir>", "Agent workspace directory")
-    .action(
-      async (
-        search: string,
-        opts: { json?: boolean; workspaceDir?: string },
-      ) => {
-        const { vaultRoot } = resolveFromOpts(opts);
-        const result = await queryWiki(vaultRoot, search);
-        if (opts.json) {
-          console.log(JSON.stringify(result, null, 2));
-        } else {
-          if (result.matchedPages.length === 0) {
-            console.log("No results.");
-            return;
-          }
-          for (const m of result.matchedPages) {
-            console.log(`  ${m.title} (${m.pageType}, score: ${m.score})`);
-            console.log(`    ${m.snippet}`);
-            console.log("");
-          }
+    .action(async (search: string, opts: { json?: boolean; workspaceDir?: string }) => {
+      const { vaultRoot } = resolveFromOpts(opts);
+      const result = await queryWiki(vaultRoot, search);
+      if (opts.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        if (result.matchedPages.length === 0) {
+          console.log("No results.");
+          return;
         }
-      },
-    );
+        for (const m of result.matchedPages) {
+          console.log(`  ${m.title} (${m.pageType}, score: ${m.score})`);
+          console.log(`    ${m.snippet}`);
+          console.log("");
+        }
+      }
+    });
 
   wiki
     .command("lint")
@@ -125,7 +110,9 @@ export function registerWikiCli(
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {
-        console.log(`Issues: ${report.issues.length} (${report.totalPages} pages, ${report.totalClaims} claims)`);
+        console.log(
+          `Issues: ${report.issues.length} (${report.totalPages} pages, ${report.totalClaims} claims)`,
+        );
         for (const issue of report.issues.slice(0, 20)) {
           console.log(`  [${issue.severity}] ${issue.category}: ${issue.description}`);
         }

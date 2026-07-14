@@ -8,18 +8,14 @@
  * touching the filesystem or the LLM.
  */
 import { describe, it, expect } from "vitest";
-import { renderMapGraphSvg, computeForceLayout, MAX_WIKI_NODES } from "./svg-graph.js";
 import type { MapGraph, MapNode } from "../types.js";
+import { renderMapGraphSvg, computeForceLayout, MAX_WIKI_NODES } from "./svg-graph.js";
 
 function domain(id: string, label: string, strength: number): MapNode {
   return { id, label, kind: "domain", strength };
 }
 
-function wiki(
-  id: string,
-  label: string,
-  kind: "concept" | "entity" = "concept",
-): MapNode {
+function wiki(id: string, label: string, kind: "concept" | "entity" = "concept"): MapNode {
   return { id, label, kind, strength: 0.5 };
 }
 
@@ -74,10 +70,7 @@ describe("renderMapGraphSvg — svg root", () => {
   });
 
   it("scales physical dimensions with zoom (zoom=50 → 1200x1800)", () => {
-    const svg = renderMapGraphSvg(
-      { nodes: [domain("a", "A", 0.5)], edges: [] },
-      { zoom: 50 },
-    );
+    const svg = renderMapGraphSvg({ nodes: [domain("a", "A", 0.5)], edges: [] }, { zoom: 50 });
     expect(svg).toContain('width="1200"');
     expect(svg).toContain('height="1800"');
     // viewBox stays fixed at the full canvas.
@@ -85,10 +78,7 @@ describe("renderMapGraphSvg — svg root", () => {
   });
 
   it("scales physical dimensions with zoom (zoom=200 → 4800x7200)", () => {
-    const svg = renderMapGraphSvg(
-      { nodes: [domain("a", "A", 0.5)], edges: [] },
-      { zoom: 200 },
-    );
+    const svg = renderMapGraphSvg({ nodes: [domain("a", "A", 0.5)], edges: [] }, { zoom: 200 });
     expect(svg).toContain('width="4800"');
     expect(svg).toContain('height="7200"');
   });
@@ -213,7 +203,10 @@ describe("renderMapGraphSvg — force-directed positioning", () => {
   it("produces deterministic output (same input → same SVG)", () => {
     const g: MapGraph = {
       nodes: [domain("a", "A", 0.8), domain("b", "B", 0.6), domain("c", "C", 0.4)],
-      edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+      ],
     };
     const svg1 = renderMapGraphSvg(g);
     const svg2 = renderMapGraphSvg(g);

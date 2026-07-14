@@ -44,9 +44,7 @@ export function createWikiPromptSectionBuilder(config: WikiConfig) {
       );
     }
     if (hasLint) {
-      lines.push(
-        "Use `wiki_lint` to health-check the wiki for contradictions and stale claims.",
-      );
+      lines.push("Use `wiki_lint` to health-check the wiki for contradictions and stale claims.");
     }
 
     return lines;
@@ -59,10 +57,7 @@ function readIndexStats(vaultRoot: string): {
   concepts: number;
 } | null {
   try {
-    const indexContent = readFileSync(
-      path.join(vaultRoot, "index.md"),
-      "utf8",
-    );
+    const indexContent = readFileSync(path.join(vaultRoot, "index.md"), "utf8");
     const summaries = (indexContent.match(/summaries\//g) ?? []).length;
     const entities = (indexContent.match(/entities\//g) ?? []).length;
     const concepts = (indexContent.match(/concepts\//g) ?? []).length;

@@ -1,3 +1,7 @@
+import { promises as fs, type Dirent } from "node:fs";
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
+import os from "node:os";
+import path from "node:path";
 /**
  * E2E verification for the Kindle Portal plugin (Task T13).
  *
@@ -25,18 +29,13 @@
  * persist after the run — they are the deliverable.
  */
 import { afterEach, beforeEach, afterAll, describe, expect, it } from "vitest";
-import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
-import { promises as fs, type Dirent } from "node:fs";
-import path from "node:path";
-import os from "node:os";
-
+import { resolveKindleConfig } from "../src/config.js";
+import type { KindleConfig } from "../src/config.js";
+import { lintKindleHtml } from "../src/html/es5-lint.js";
+import { createKindleHttpHandler, type RouterContext } from "../src/http/router.js";
 import { FleetState } from "../src/monitor/fleet-state.js";
 import type { AgentEventPayload } from "../src/monitor/fleet-state.js";
-import { resolveKindleConfig } from "../src/config.js";
-import { createKindleHttpHandler, type RouterContext } from "../src/http/router.js";
-import { lintKindleHtml } from "../src/html/es5-lint.js";
 import type { LoadSessionStore } from "../src/monitor/scope-resolver.js";
-import type { KindleConfig } from "../src/config.js";
 import type { FleetSnapshot } from "../src/types.js";
 
 // ── Constants ──
@@ -154,7 +153,9 @@ function bootServer(context: RouterContext): Promise<{ server: Server; baseUrl: 
 
 /** Close the server and wait for the socket to release. */
 function closeServer(srv: Server | null): Promise<void> {
-  if (srv === null) {return Promise.resolve();}
+  if (srv === null) {
+    return Promise.resolve();
+  }
   return new Promise((resolve) => {
     srv.close(() => resolve());
   });
@@ -295,8 +296,15 @@ describe("Kindle Portal E2E — Option A: in-process HTTP server", () => {
     expect(disabledCfg.enabled).toBe(false);
 
     const passThroughHandler = createKindleHttpHandler(ctx);
-    const fakeReq = { url: "/some-other-route", socket: { remoteAddress: "127.0.0.1" } } as unknown as IncomingMessage;
-    const fakeRes = { statusCode: 0, setHeader: () => {}, end: () => {} } as unknown as ServerResponse;
+    const fakeReq = {
+      url: "/some-other-route",
+      socket: { remoteAddress: "127.0.0.1" },
+    } as unknown as IncomingMessage;
+    const fakeRes = {
+      statusCode: 0,
+      setHeader: () => {},
+      end: () => {},
+    } as unknown as ServerResponse;
     const handled = await passThroughHandler(fakeReq, fakeRes);
     expect(handled).toBe(false);
   });
@@ -560,13 +568,7 @@ describe("Kindle Portal E2E — Option A: in-process HTTP server", () => {
 describe("Kindle Portal E2E — artifact inventory", () => {
   it("5 core artifacts always exist; screenshot present when Chromium available", async () => {
     const files = await listArtifacts();
-    const coreRequired = [
-      "monitor.html",
-      "map.html",
-      "fleet.json",
-      "map.json",
-      "map.png",
-    ];
+    const coreRequired = ["monitor.html", "map.html", "fleet.json", "map.json", "map.png"];
     for (const name of coreRequired) {
       expect(files).toContain(name);
       const stat = await fs.stat(path.join(ARTIFACT_DIR, name));

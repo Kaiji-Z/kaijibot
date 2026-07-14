@@ -14,10 +14,12 @@ vi.mock("@clack/prompts", () => ({
   confirm: hoisted.confirm,
   isCancel: (v: unknown) => v === Symbol.for("clack-cancel") || v === undefined,
 }));
-vi.mock("node:fs/promises", () => ({ default: { readFile: hoisted.readFile, chmod: hoisted.chmod } }));
+vi.mock("node:fs/promises", () => ({
+  default: { readFile: hoisted.readFile, chmod: hoisted.chmod },
+}));
 
-import { runAndroidInstall } from "./android-install.js";
 import type { OutputRuntimeEnv } from "../runtime.js";
+import { runAndroidInstall } from "./android-install.js";
 
 type SpawnArgs = readonly string[];
 
@@ -25,7 +27,11 @@ function stdoutResult(stdout: string, status = 0) {
   return { status, stdout, stderr: "", signal: null, pid: 0, output: [stdout, "", ""] };
 }
 
-function makeRuntime(captured: { logs: string[]; errors: string[]; exits: number[] }): OutputRuntimeEnv {
+function makeRuntime(captured: {
+  logs: string[];
+  errors: string[];
+  exits: number[];
+}): OutputRuntimeEnv {
   return {
     log: (...args: unknown[]) => {
       captured.logs.push(args.map(String).join(" "));
@@ -44,7 +50,10 @@ function makeRuntime(captured: { logs: string[]; errors: string[]; exits: number
   };
 }
 
-function defaultSpawnMap(call: { cmd: string; args: SpawnArgs }): { status: number; stdout: string } {
+function defaultSpawnMap(call: { cmd: string; args: SpawnArgs }): {
+  status: number;
+  stdout: string;
+} {
   const { cmd, args } = call;
   if (cmd === "node" && args[0] === "--version") {
     return { status: 0, stdout: "v22.5.0\n" };
@@ -210,7 +219,9 @@ describe("runAndroidInstall - node version handling", () => {
     setupSpawn(({ cmd, args }) => {
       if (cmd === "node" && args[0] === "--version") {
         nodeCall += 1;
-        return nodeCall === 1 ? { status: 0, stdout: "v18.0.0\n" } : { status: 0, stdout: "v22.0.0\n" };
+        return nodeCall === 1
+          ? { status: 0, stdout: "v18.0.0\n" }
+          : { status: 0, stdout: "v22.0.0\n" };
       }
       return defaultSpawnMap({ cmd, args });
     });

@@ -146,14 +146,14 @@ describe("lintKindleHtml", () => {
 
   it("allowlist suppresses const for 5 lines", () => {
     const html = [
-      "<!-- kindle-allow: const  -->",        // line 1 (marker, sets suppress=5)
-      "var x = 1;",                            // line 2 (suppress=4)
-      "const y = 2;",                          // line 3 (suppress=3, so suppressed)
-      "var a = 3;",                            // line 4 (suppress=2)
-      "var b = 4;",                            // line 5 (suppress=1)
-      "var c = 5;",                            // line 6 (suppress=0)
-      "",                                      // line 7 (suppress=0)
-      "const z = 3;",                          // line 8 (suppress=0, flagged)
+      "<!-- kindle-allow: const  -->", // line 1 (marker, sets suppress=5)
+      "var x = 1;", // line 2 (suppress=4)
+      "const y = 2;", // line 3 (suppress=3, so suppressed)
+      "var a = 3;", // line 4 (suppress=2)
+      "var b = 4;", // line 5 (suppress=1)
+      "var c = 5;", // line 6 (suppress=0)
+      "", // line 7 (suppress=0)
+      "const z = 3;", // line 8 (suppress=0, flagged)
     ].join("\n");
     const issues = lintKindleHtml(html);
     // line 3 suppressed, line 8 flagged
@@ -164,9 +164,9 @@ describe("lintKindleHtml", () => {
 
   it("allowlist only suppresses specified token", () => {
     const html = [
-      "<!-- kindle-allow: const  -->",         // line 1
-      "const x = 1;",                          // line 2 (suppressed)
-      "let y = 2;",                             // line 3 (NOT suppressed — different token)
+      "<!-- kindle-allow: const  -->", // line 1
+      "const x = 1;", // line 2 (suppressed)
+      "let y = 2;", // line 3 (NOT suppressed — different token)
     ].join("\n");
     const issues = lintKindleHtml(html);
     expect(issues).toHaveLength(1);
@@ -178,9 +178,9 @@ describe("lintKindleHtml", () => {
 
   it("returns issues sorted by line then token", () => {
     const html = [
-      "let a = 1;",                             // line 1
-      "const b = 2;",                           // line 2
-      "fetch('/x');",                           // line 3
+      "let a = 1;", // line 1
+      "const b = 2;", // line 2
+      "fetch('/x');", // line 3
     ].join("\n");
     const issues = lintKindleHtml(html);
     expect(issues).toHaveLength(3);
@@ -216,11 +216,11 @@ describe("lintKindleHtml", () => {
 
   it("multi-line HTML with mixed issues", () => {
     const html = [
-      "<div style='float:left'>ok</div>",       // line 1: clean
-      "<script>let x = 1;</script>",             // line 2: let
-      "<div style='display:flex'>ok</div>",       // line 3: display:flex (no matching token — clean)
-      "<script>const y = 2;</script>",           // line 4: const
-      "<script>fetch('/api');</script>",         // line 5: fetch(
+      "<div style='float:left'>ok</div>", // line 1: clean
+      "<script>let x = 1;</script>", // line 2: let
+      "<div style='display:flex'>ok</div>", // line 3: display:flex (no matching token — clean)
+      "<script>const y = 2;</script>", // line 4: const
+      "<script>fetch('/api');</script>", // line 5: fetch(
     ].join("\n");
     const issues = lintKindleHtml(html);
     expect(issues.length).toBeGreaterThanOrEqual(3);

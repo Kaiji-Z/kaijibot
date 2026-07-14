@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import type { SourceFile } from "./types.js";
 import type { WikiConfig } from "./config.js";
+import type { SourceFile } from "./types.js";
 
 const HARDCODED_EXCLUDE_DIRS = new Set([
   ".git",
@@ -35,10 +35,7 @@ export type ScanResult = {
   readonly errors: readonly string[];
 };
 
-export async function scanWorkspace(
-  workspaceDir: string,
-  config: WikiConfig,
-): Promise<ScanResult> {
+export async function scanWorkspace(workspaceDir: string, config: WikiConfig): Promise<ScanResult> {
   const allowedExtensions = new Set(config.scan.extensions);
   const excludeDirs = new Set([...HARDCODED_EXCLUDE_DIRS, ...config.scan.excludeDirs]);
   const excludePatterns: RegExp[] = [

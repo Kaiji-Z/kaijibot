@@ -203,9 +203,46 @@ export TAVILY_API_KEY="your-key"
 
 Config file at `~/.kaijibot/kaijibot.json`, supports hot reload. Cognitive system can be disabled via `cognitive.enabled: false`. For detailed configuration, see `AGENTS.md`.
 
+## 🏗️ Relationship with OpenClaw
+
+KaijiBot was originally forked from [OpenClaw](https://github.com/openclaw/openclaw) (the general-purpose AI agent ranked #1 globally on OpenRouter by token consumption, 382K+ GitHub stars), but has evolved into an independent project. **KaijiBot does three things, not just "OpenClaw + cognitive layer"**:
+
+### 1. Hardened and simplified the base
+
+OpenClaw is a massive project built for a global, multi-channel, multilingual audience. KaijiBot consolidates the base layer on top of it:
+
+- **Type system modernization** — migrated from AJV/JSON Schema validators to TypeBox, unifying runtime and compile-time types
+- **Dependency tracking** — pi-ai SDK 0.65.2→0.79.4, keeping pace with the LLM abstraction layer's rapid evolution
+- **Code quality cleanup** — fixed 1220 pre-existing lint errors inherited from upstream (across 191 files)
+- **Critical bug fixes** — resolved upstream issues like the Windows dual-gateway race condition and Android rendering crashes
+- **Plugin SDK completion** — backfilled 13 missing plugin-sdk subpath barrels from upstream
+- **Native module loading** — `.js` plugins take the native `require` fast path, `.ts` falls back to jiti
+
+### 2. Rewrote the memory layer
+
+OpenClaw's original "dreaming"-style memory consolidation was replaced with a **memory consolidation engine**:
+
+- Daily cron scans historical sessions, LLM extracts structured knowledge (domain knowledge, behavioral patterns, preferences, goals)
+- Jaccard deduplication prevents redundant entries from accumulating
+- Routes to `PersonaStore` / `FragmentStore` / `CorrectionStore` + MEMORY.md inline sections
+- Category-aware routing (domain_knowledge / behavioral_pattern / stated_preference / goal_or_aspiration) → different inline sections
+- MEMORY.md 8KB budget auto-balancing — high-frequency content inlined, low-frequency content kept as pointers
+
+### 3. Added the cognitive layer (KaijiBot's differentiator)
+
+- **Persona profile system** — TypedInsight 6 categories + category-aware decay half-lives
+- **Proactive insight generation** — PRISM cost-sensitive gate + SIRI search-identify-resolve loop
+- **Self-evolution** — Agent-driven skill generation (code layer does noise filtering only; the Agent judges value)
+- **Correction self-evolution** — dual-path detection (Agent self-report + post-session LLM extraction) + Jaccard dedup + system prompt injection
+- **Interest lifecycle** — emergent → stable → declining → dormant → revived
+
+> Want a slimmed-down OpenClaw experience? Set `cognitive.enabled: false` in config to disable the entire cognitive layer, falling back to the "hardened base + rewritten memory layer" state — which is already a step beyond upstream OpenClaw in memory and stability.
+
+KaijiBot continuously syncs critical fixes and architectural improvements from upstream (see the `sync from upstream OpenClaw` commit series in git history). If you only want the OpenClaw base + improved memory layer without the cognitive layer, that's a fully supported usage.
+
 ## Acknowledgments
 
-Built on the [OpenClaw](https://github.com/openclaw/openclaw) open-source project.
+KaijiBot stands on the shoulders of [OpenClaw](https://github.com/openclaw/openclaw) (built by Peter Steinberger and the community). OpenClaw provides the Gateway architecture, Plugin SDK boundaries, agent loop, multi-channel integrations, and a complete tool ecosystem — these are the foundation that lets KaijiBot focus on the cognitive layer.
 
 ### Academic Research
 

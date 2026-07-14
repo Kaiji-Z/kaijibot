@@ -41,7 +41,10 @@ export function isGatewayArgv(args: string[], opts?: { allowGatewayBinary?: bool
   const normalized = args.map(normalizeProcArg);
 
   const exe = (normalized[0] ?? "").replace(/\.(bat|cmd|exe)$/i, "");
-  if (opts?.allowGatewayBinary === true && (exe === "kaijibot-gateway" || exe.endsWith("/kaijibot-gateway"))) {
+  if (
+    opts?.allowGatewayBinary === true &&
+    (exe === "kaijibot-gateway" || exe.endsWith("/kaijibot-gateway"))
+  ) {
     return true;
   }
 
@@ -61,8 +64,5 @@ export function isGatewayArgv(args: string[], opts?: { allowGatewayBinary?: bool
     return true;
   }
 
-  return (
-    exe.endsWith("/kaijibot") ||
-    exe === "kaijibot"
-  );
+  return exe.endsWith("/kaijibot") || exe === "kaijibot";
 }

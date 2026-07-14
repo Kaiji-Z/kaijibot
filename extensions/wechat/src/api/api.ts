@@ -44,7 +44,9 @@ interface PackageJson {
  * (e.g. nested `node_modules/<dep>/package.json`); only ours is accepted.
  */
 function isOwnPackageJson(parsed: PackageJson): boolean {
-  if (parsed.ilink_appid !== undefined) {return true;}
+  if (parsed.ilink_appid !== undefined) {
+    return true;
+  }
   return typeof parsed.name === "string" && parsed.name.includes("wechat");
 }
 
@@ -128,9 +130,13 @@ const BOT_AGENT_MAX_LEN = 256;
  * the result exceeds the length cap after truncation.
  */
 export function sanitizeBotAgent(raw: string | undefined): string {
-  if (!raw || typeof raw !== "string") {return DEFAULT_BOT_AGENT;}
+  if (!raw || typeof raw !== "string") {
+    return DEFAULT_BOT_AGENT;
+  }
   const trimmed = raw.trim();
-  if (!trimmed) {return DEFAULT_BOT_AGENT;}
+  if (!trimmed) {
+    return DEFAULT_BOT_AGENT;
+  }
 
   const productRe = /^[A-Za-z0-9_.-]{1,32}\/[A-Za-z0-9_.+-]{1,32}$/;
   const commentCharRe = /^[\x20-\x27\x2A-\x7E]{1,64}$/;
@@ -178,19 +184,27 @@ export function sanitizeBotAgent(raw: string | undefined): string {
       pendingProduct = tok;
     }
   }
-  if (pendingProduct) {accepted.push(pendingProduct);}
+  if (pendingProduct) {
+    accepted.push(pendingProduct);
+  }
 
-  if (accepted.length === 0) {return DEFAULT_BOT_AGENT;}
+  if (accepted.length === 0) {
+    return DEFAULT_BOT_AGENT;
+  }
 
   const joined = accepted.join(" ");
-  if (Buffer.byteLength(joined, "utf-8") <= BOT_AGENT_MAX_LEN) {return joined;}
+  if (Buffer.byteLength(joined, "utf-8") <= BOT_AGENT_MAX_LEN) {
+    return joined;
+  }
 
   // Truncate by dropping trailing tokens until under the cap.
   const truncated: string[] = [];
   let len = 0;
   for (const t of accepted) {
     const add = (truncated.length === 0 ? 0 : 1) + Buffer.byteLength(t, "utf-8");
-    if (len + add > BOT_AGENT_MAX_LEN) {break;}
+    if (len + add > BOT_AGENT_MAX_LEN) {
+      break;
+    }
     truncated.push(t);
     len += add;
   }
@@ -330,7 +344,9 @@ export async function apiGetFetch(params: {
       headers: hdrs,
       ...(controller ? { signal: controller.signal } : {}),
     });
-    if (t !== undefined) {clearTimeout(t);}
+    if (t !== undefined) {
+      clearTimeout(t);
+    }
     const rawText = await res.text();
     logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
     if (!res.ok) {
@@ -338,7 +354,9 @@ export async function apiGetFetch(params: {
     }
     return rawText;
   } catch (err) {
-    if (t !== undefined) {clearTimeout(t);}
+    if (t !== undefined) {
+      clearTimeout(t);
+    }
     const classified = classifyFetchError(err);
     logger.error(
       `${params.label}: GET fetch failed url=${redactUrl(url.toString())} timeoutMs=${timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${String(err)}`,
@@ -414,7 +432,9 @@ export async function apiPostFetch(params: {
       body: params.body,
       ...(signal ? { signal } : {}),
     });
-    if (t !== undefined) {clearTimeout(t);}
+    if (t !== undefined) {
+      clearTimeout(t);
+    }
     const rawText = await res.text();
     logger.debug(`${params.label} status=${res.status} raw=${redactBody(rawText)}`);
     if (!res.ok) {
@@ -422,7 +442,9 @@ export async function apiPostFetch(params: {
     }
     return rawText;
   } catch (err) {
-    if (t !== undefined) {clearTimeout(t);}
+    if (t !== undefined) {
+      clearTimeout(t);
+    }
     const classified = classifyFetchError(err);
     logger.error(
       `${params.label}: POST fetch failed url=${redactUrl(url.toString())} timeoutMs=${params.timeoutMs ?? "none"} type=${classified.type} description=${classified.description}${classified.code ? ` code=${classified.code}` : ""} error=${String(err)}`,

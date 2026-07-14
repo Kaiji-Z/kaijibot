@@ -36,11 +36,7 @@ describeOrSkip("Knowledge Wiki — Live E2E (real LLM)", () => {
 Rust + eBPF 的组合在性能和安全性上都满足了需求。
 `;
 
-    await writeFile(
-      path.join(TMP, "workspace", "docs", "architecture.md"),
-      fixtureContent,
-      "utf8",
-    );
+    await writeFile(path.join(TMP, "workspace", "docs", "architecture.md"), fixtureContent, "utf8");
 
     const { initializeWikiVault } = await import("./vault.js");
     const { resolveWikiConfig } = await import("./config.js");
@@ -52,9 +48,7 @@ Rust + eBPF 的组合在性能和安全性上都满足了需求。
     const config = resolveWikiConfig(undefined);
     await initializeWikiVault(vaultRoot);
 
-    const { createStandaloneGenerateText } = await import(
-      "kaijibot/plugin-sdk/generate-text"
-    );
+    const { createStandaloneGenerateText } = await import("kaijibot/plugin-sdk/generate-text");
 
     let generateText;
     try {
@@ -62,20 +56,21 @@ Rust + eBPF 的组合在性能和安全性上都满足了需求。
       const os = await import("node:os");
       const cfgPath = path.join(os.homedir(), ".kaijibot", "kaijibot.json");
       const rawCfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-      generateText = await createStandaloneGenerateText(rawCfg, { maxTokens: 4000, timeout: 120_000 });
+      generateText = await createStandaloneGenerateText(rawCfg, {
+        maxTokens: 4000,
+        timeout: 120_000,
+      });
     } catch {
-      generateText = await createStandaloneGenerateText({
-        agents: { defaults: { model: "zai/glm-5-turbo" } },
-        providers: { zai: { apiKey: ZAI_API_KEY! } },
-      } as never, { maxTokens: 4000, timeout: 120_000 });
+      generateText = await createStandaloneGenerateText(
+        {
+          agents: { defaults: { model: "zai/glm-5-turbo" } },
+          providers: { zai: { apiKey: ZAI_API_KEY! } },
+        } as never,
+        { maxTokens: 4000, timeout: 120_000 },
+      );
     }
 
-    const result = await ingestAll(
-      path.join(TMP, "workspace"),
-      vaultRoot,
-      generateText,
-      config,
-    );
+    const result = await ingestAll(path.join(TMP, "workspace"), vaultRoot, generateText, config);
 
     expect(result.errors).toHaveLength(0);
     expect(result.ingested.length).toBe(1);
@@ -85,32 +80,21 @@ Rust + eBPF 的组合在性能和安全性上都满足了需求。
     expect(ingested.entityPages.length).toBeGreaterThan(0);
     expect(ingested.summaryPage).toContain("summaries/");
 
-    const summaryContent = await readFile(
-      path.join(vaultRoot, ingested.summaryPage),
-      "utf8",
-    );
+    const summaryContent = await readFile(path.join(vaultRoot, ingested.summaryPage), "utf8");
     expect(summaryContent).toContain("pageType: summary");
     expect(summaryContent.length).toBeGreaterThan(50);
 
-    const indexContent = await readFile(
-      path.join(vaultRoot, "index.md"),
-      "utf8",
-    );
+    const indexContent = await readFile(path.join(vaultRoot, "index.md"), "utf8");
     expect(indexContent).toContain("summaries/");
 
-    const logContent = await readFile(
-      path.join(vaultRoot, "log.md"),
-      "utf8",
-    );
+    const logContent = await readFile(path.join(vaultRoot, "log.md"), "utf8");
     expect(logContent).toContain("ingest");
     expect(logContent).toContain("architecture.md");
 
     const queryResult = await queryWiki(vaultRoot, "Rust");
     expect(queryResult.matchedPages.length).toBeGreaterThan(0);
 
-    const rustMatch = queryResult.matchedPages.find(
-      (m) => m.title.toLowerCase().includes("rust"),
-    );
+    const rustMatch = queryResult.matchedPages.find((m) => m.title.toLowerCase().includes("rust"));
     expect(rustMatch).toBeDefined();
 
     const lintReport = await lintWiki(vaultRoot);

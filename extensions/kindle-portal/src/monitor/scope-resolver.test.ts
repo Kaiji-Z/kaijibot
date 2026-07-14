@@ -152,15 +152,11 @@ describe("resolveActiveUser", () => {
         agents: [
           {
             agentId: "agent-a",
-            sessions: [
-              { sessionKey: "agent:other:ou_zzz@feishu", updatedAt: 1000 },
-            ],
+            sessions: [{ sessionKey: "agent:other:ou_zzz@feishu", updatedAt: 1000 }],
           },
           {
             agentId: "agent-b",
-            sessions: [
-              { sessionKey: "agent:main:feishu:direct:ou_abc@feishu", updatedAt: 2000 },
-            ],
+            sessions: [{ sessionKey: "agent:main:feishu:direct:ou_abc@feishu", updatedAt: 2000 }],
           },
         ],
       };
@@ -176,9 +172,7 @@ describe("resolveActiveUser", () => {
         agents: [
           {
             agentId: "agent-a",
-            sessions: [
-              { sessionKey: "agent:main:ou_other@feishu", updatedAt: 1000 },
-            ],
+            sessions: [{ sessionKey: "agent:main:ou_other@feishu", updatedAt: 1000 }],
           },
         ],
       };
@@ -194,9 +188,7 @@ describe("resolveActiveUser", () => {
         agents: [
           {
             agentId: "agent-a",
-            sessions: [
-              { sessionKey: "agent:main:ou_abc@feishu", updatedAt: 1000 },
-            ],
+            sessions: [{ sessionKey: "agent:main:ou_abc@feishu", updatedAt: 1000 }],
           },
         ],
       };
@@ -214,9 +206,7 @@ describe("resolveActiveUser", () => {
         agents: [
           {
             agentId: "agent-a",
-            sessions: [
-              { sessionKey: "agent:main:ou_abc@feishu", updatedAt: 1000 },
-            ],
+            sessions: [{ sessionKey: "agent:main:ou_abc@feishu", updatedAt: 1000 }],
           },
         ],
       };

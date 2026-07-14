@@ -1,19 +1,11 @@
-import { describe, it, expect } from "vitest";
 import type { IncomingMessage } from "node:http";
-import {
-  authorize,
-  isLoopbackAddress,
-  safeEqualSecret,
-  type AuthorizeOptions,
-} from "./auth.js";
+import { describe, it, expect } from "vitest";
+import { authorize, isLoopbackAddress, safeEqualSecret, type AuthorizeOptions } from "./auth.js";
 
 // ── Helpers ──
 
 /** Build a minimal IncomingMessage with controllable socket + url. */
-function fakeReq(opts: {
-  remoteAddress?: string | undefined;
-  url?: string;
-}): IncomingMessage {
+function fakeReq(opts: { remoteAddress?: string | undefined; url?: string }): IncomingMessage {
   return {
     socket: { remoteAddress: opts.remoteAddress },
     url: opts.url ?? "/",
@@ -113,18 +105,12 @@ describe("authorize", () => {
     });
 
     it("::ffff:127.0.0.1 (IPv4-mapped) always allowed", () => {
-      const res = authorize(
-        fakeReq({ remoteAddress: "::ffff:127.0.0.1" }),
-        LOOPBACK_OPTS,
-      );
+      const res = authorize(fakeReq({ remoteAddress: "::ffff:127.0.0.1" }), LOOPBACK_OPTS);
       expect(res).toEqual({ ok: true });
     });
 
     it("loopback bypasses even when accessToken is configured (token not required)", () => {
-      const res = authorize(
-        fakeReq({ remoteAddress: "127.0.0.1" }),
-        TOKEN_OPTS("s3cret"),
-      );
+      const res = authorize(fakeReq({ remoteAddress: "127.0.0.1" }), TOKEN_OPTS("s3cret"));
       expect(res).toEqual({ ok: true });
     });
   });

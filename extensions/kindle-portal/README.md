@@ -57,17 +57,17 @@ A server-rendered PNG showing the user's persona domains and (optionally) knowle
 
 All keys live under `plugins.entries.kindle-portal.config` in `~/.kaijibot/kaijibot.json`.
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `enabled` | boolean | `false` | Master toggle. When false, no HTTP routes are registered. |
-| `accessToken` | string | (unset) | Optional shared secret. Non-loopback requests need `?token=<value>`. Loopback is always allowed. |
-| `refreshIntervalSeconds` | number | `15` | Monitor page XHR polling interval. Floor of 15 enforced. |
-| `mapRefreshSeconds` | number | `300` | Map page meta-refresh interval. PNG rendering is expensive; keep at 60 or above. |
-| `scope` | string | `"last-active"` | Which user's persona to visualize. One of `last-active`, `all-users`, `specific-user`. |
-| `userId` | string | (unset) | Feishu open_id (ou_xxx). Required when scope is `specific-user`. |
-| `showWiki` | boolean | `true` | Overlay knowledge-wiki concept/entity nodes on the cognitive map. |
-| `maxDomains` | number | `20` | Max persona domain nodes on the map (range 5-50). Top by strength. |
-| `pngWidth` | number | `758` | Rendered PNG width in pixels (range 400-1072). 758 fits the Paperwhite viewport. |
+| Key                      | Type    | Default         | Description                                                                                      |
+| ------------------------ | ------- | --------------- | ------------------------------------------------------------------------------------------------ |
+| `enabled`                | boolean | `false`         | Master toggle. When false, no HTTP routes are registered.                                        |
+| `accessToken`            | string  | (unset)         | Optional shared secret. Non-loopback requests need `?token=<value>`. Loopback is always allowed. |
+| `refreshIntervalSeconds` | number  | `15`            | Monitor page XHR polling interval. Floor of 15 enforced.                                         |
+| `mapRefreshSeconds`      | number  | `300`           | Map page meta-refresh interval. PNG rendering is expensive; keep at 60 or above.                 |
+| `scope`                  | string  | `"last-active"` | Which user's persona to visualize. One of `last-active`, `all-users`, `specific-user`.           |
+| `userId`                 | string  | (unset)         | Feishu open_id (ou_xxx). Required when scope is `specific-user`.                                 |
+| `showWiki`               | boolean | `true`          | Overlay knowledge-wiki concept/entity nodes on the cognitive map.                                |
+| `maxDomains`             | number  | `20`            | Max persona domain nodes on the map (range 5-50). Top by strength.                               |
+| `pngWidth`               | number  | `758`           | Rendered PNG width in pixels (range 400-1072). 758 fits the Paperwhite viewport.                 |
 
 ### Example Configuration
 
@@ -145,22 +145,27 @@ The dashboard targets Kindle firmware 5.16.3 and earlier, which use an older Web
 ## Troubleshooting
 
 **Blank page on Kindle**
+
 - Check that the gateway is running and the plugin is enabled. You should see `kindle-portal` routes registered in the gateway startup log.
 - Verify the URL includes `?token=` if `accessToken` is configured.
 - Make sure the Kindle is on the same network as the gateway machine.
 
 **Monitor shows no agents**
+
 - The monitor only shows agents that have active sessions. Start a conversation in Feishu to create one.
 - If you have sessions but see nothing, check that the agent events are reaching the gateway. The monitor subscribes to gateway agent events.
 
 **Map is blank or shows no nodes**
+
 - The map needs persona data. Chat with KaijiBot a few times so the cognitive system builds a persona profile. Check that `~/.kaijibot/cognitive/persona/` has JSON files for your user.
 - If `scope` is `specific-user`, verify that `userId` is set to the correct Feishu open_id.
 
 **E-ink ghosting on the map**
+
 - The map page uses meta-refresh to reload the PNG periodically. E-ink ghosting from the previous render is normal and clears on the next full refresh. Increase `mapRefreshSeconds` to reduce refresh frequency.
 
 **Slow map rendering**
+
 - Install native graphviz (`apt install graphviz`). The WASM fallback is slower, and the hand-rolled SVG tier is slowest.
 - Reduce `maxDomains` to lower the graph complexity.
 

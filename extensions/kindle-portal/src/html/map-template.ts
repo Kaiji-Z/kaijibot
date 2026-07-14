@@ -123,9 +123,7 @@ export function renderMapHtml(
   for (var i = 0; i < ZOOM_LEVELS.length; i++) {
     var lvl = ZOOM_LEVELS[i];
     var cls = lvl === zoom ? 'zoom-link active"' : 'zoom-link"';
-    zoomLinkParts.push(
-      '<a class="' + cls + ' href="' + linkHref(lvl, wiki) + '">' + lvl + "%</a>",
-    );
+    zoomLinkParts.push('<a class="' + cls + ' href="' + linkHref(lvl, wiki) + '">' + lvl + "%</a>");
   }
   var zoomLinks = zoomLinkParts.join(" ");
 
@@ -151,67 +149,83 @@ export function renderMapHtml(
   var monitorTabHref = "/kindle/" + tq;
 
   return (
-    "<!DOCTYPE html>"
-    + '<html lang="en">'
-    + "<head>"
-    + '<meta charset="utf-8">'
-    + '<meta http-equiv="refresh" content="' + sec + '">'
-    + "<title>KaijiBot Knowledge Graph</title>"
-    + "<style>"
-    + 'body { font-family: "Bookerly", "Palatino", serif; font-size: 24px;'
-    + " margin: 0; padding: 8px; background: #fff; color: #000;"
-    + " line-height: 1.3; }"
-    + ".tabs { border-bottom: 3px solid #000; margin-bottom: 12px; padding: 0; }"
-    + ".tab { display: inline-block; padding: 8px 20px; font-size: 16px;"
-    + ' font-weight: bold; text-decoration: none; color: #666;'
-    + " border: 2px solid #ccc; border-bottom: none; }"
-    + ".tab-active { color: #000; border: 2px solid #000;"
-    + " border-bottom: 3px solid #fff; }"
-    + ".title { font-size: 22px; font-weight: bold; margin: 8px 0 4px 0; }"
-    + ".zoom-links { margin: 8px 0; font-size: 18px; }"
-    + '.zoom-links a { margin-right: 12px; color: #000; text-decoration: underline; }'
-    + ".zoom-links .active { font-weight: bold; font-size: 22px; }"
-    + ".cognitive-stats { margin: 4px 0 8px 0; font-size: 16px; color: #444; }"
-    + ".scroller { overflow: auto; width: 100%; height: 800px;"
-    + " border: 1px solid #999; background: #eee; }"
-    + ".scroller img { display: block; }"
-    + ".footer { border-top: 1px solid #999; margin-top: 8px; padding-top: 4px;"
-    + " font-size: 14px; color: #555; }"
-    + ".note { color: #555; font-size: 14px; margin-top: 4px; }"
-    + "</style>"
-    + "</head>"
-    + "<body>"
+    "<!DOCTYPE html>" +
+    '<html lang="en">' +
+    "<head>" +
+    '<meta charset="utf-8">' +
+    '<meta http-equiv="refresh" content="' +
+    sec +
+    '">' +
+    "<title>KaijiBot Knowledge Graph</title>" +
+    "<style>" +
+    'body { font-family: "Bookerly", "Palatino", serif; font-size: 24px;' +
+    " margin: 0; padding: 8px; background: #fff; color: #000;" +
+    " line-height: 1.3; }" +
+    ".tabs { border-bottom: 3px solid #000; margin-bottom: 12px; padding: 0; }" +
+    ".tab { display: inline-block; padding: 8px 20px; font-size: 16px;" +
+    " font-weight: bold; text-decoration: none; color: #666;" +
+    " border: 2px solid #ccc; border-bottom: none; }" +
+    ".tab-active { color: #000; border: 2px solid #000;" +
+    " border-bottom: 3px solid #fff; }" +
+    ".title { font-size: 22px; font-weight: bold; margin: 8px 0 4px 0; }" +
+    ".zoom-links { margin: 8px 0; font-size: 18px; }" +
+    ".zoom-links a { margin-right: 12px; color: #000; text-decoration: underline; }" +
+    ".zoom-links .active { font-weight: bold; font-size: 22px; }" +
+    ".cognitive-stats { margin: 4px 0 8px 0; font-size: 16px; color: #444; }" +
+    ".scroller { overflow: auto; width: 100%; height: 800px;" +
+    " border: 1px solid #999; background: #eee; }" +
+    ".scroller img { display: block; }" +
+    ".footer { border-top: 1px solid #999; margin-top: 8px; padding-top: 4px;" +
+    " font-size: 14px; color: #555; }" +
+    ".note { color: #555; font-size: 14px; margin-top: 4px; }" +
+    "</style>" +
+    "</head>" +
+    "<body>" +
     // ── Tab bar (Monitor | Map) ──
-    + '<div class="tabs">'
-    + '<a class="tab" href="' + monitorTabHref + '">Monitor</a>'
-    + '<span class="tab tab-active">Map</span>'
-    + "</div>"
+    '<div class="tabs">' +
+    '<a class="tab" href="' +
+    monitorTabHref +
+    '">Monitor</a>' +
+    '<span class="tab tab-active">Map</span>' +
+    "</div>" +
     // ── Title ──
-    + '<div class="title">Knowledge Graph</div>'
+    '<div class="title">Knowledge Graph</div>' +
     // ── Zoom + Wiki controls (all plain <a> links — no JS) ──
-    + '<div class="zoom-links">'
-    + zoomLinks
-    + ' | <a class="zoom-link' + (wiki ? " active" : "") + '"'
-    + ' href="' + wikiHref + '">' + wikiLabel + "</a>"
-    + "</div>"
+    '<div class="zoom-links">' +
+    zoomLinks +
+    ' | <a class="zoom-link' +
+    (wiki ? " active" : "") +
+    '"' +
+    ' href="' +
+    wikiHref +
+    '">' +
+    wikiLabel +
+    "</a>" +
+    "</div>" +
     // ── Cognitive stats (optional) ──
-    + cognitiveStatsLine
+    cognitiveStatsLine +
     // ── Scrollable SVG container ──
     // The img has NO width style — it uses the SVG's natural dimensions
     // (which change with the zoom param). At zoom=100 the SVG is 2400x3600
     // and this container scrolls.
-    + '<div class="scroller">'
-    + '<img src="' + svgSrc + '" alt="Knowledge graph" />'
-    + "</div>"
+    '<div class="scroller">' +
+    '<img src="' +
+    svgSrc +
+    '" alt="Knowledge graph" />' +
+    "</div>" +
     // ── Footer ──
-    + '<div class="footer">'
-    + "Auto-refresh: " + sec + "s"
-    + " | Vector map served as standalone SVG."
-    + ' | <a href="' + monitorTabHref + '">Monitor</a>'
-    + "</div>"
-    + '<div class="note">Use the zoom links to enlarge.'
-    + " Force-directed layout: connected domains cluster together.</div>"
-    + "</body>"
-    + "</html>"
+    '<div class="footer">' +
+    "Auto-refresh: " +
+    sec +
+    "s" +
+    " | Vector map served as standalone SVG." +
+    ' | <a href="' +
+    monitorTabHref +
+    '">Monitor</a>' +
+    "</div>" +
+    '<div class="note">Use the zoom links to enlarge.' +
+    " Force-directed layout: connected domains cluster together.</div>" +
+    "</body>" +
+    "</html>"
   );
 }

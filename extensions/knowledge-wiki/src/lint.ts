@@ -1,15 +1,12 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { collectWikiClaimHealth, buildClaimContradictionClusters } from "./claim-health.js";
 import {
   parseWikiMarkdown,
   extractWikiLinks,
   inferWikiPageKind,
   type WikiPageSummary,
 } from "./markdown.js";
-import {
-  collectWikiClaimHealth,
-  buildClaimContradictionClusters,
-} from "./claim-health.js";
 import type { LintIssue, LintReport } from "./types.js";
 
 const WIKI_DIRS = ["summaries", "entities", "concepts"] as const;
@@ -45,9 +42,7 @@ export async function lintWiki(vaultRoot: string): Promise<LintReport> {
     }
     const bare = pageBareName(page.relativePath);
     const full = page.relativePath.replace(/\.md$/, "");
-    const links =
-      (inboundLinks.get(bare) ?? 0) +
-      (inboundLinks.get(full) ?? 0);
+    const links = (inboundLinks.get(bare) ?? 0) + (inboundLinks.get(full) ?? 0);
     if (links === 0) {
       issues.push({
         severity: "info",
@@ -90,9 +85,7 @@ function pageBareName(relativePath: string): string {
   return (parts[parts.length - 1] ?? "").replace(/\.md$/, "");
 }
 
-async function readAllWikiPages(
-  vaultRoot: string,
-): Promise<WikiPageSummary[]> {
+async function readAllWikiPages(vaultRoot: string): Promise<WikiPageSummary[]> {
   const pages: WikiPageSummary[] = [];
   for (const dir of WIKI_DIRS) {
     const dirPath = path.join(vaultRoot, dir);
@@ -142,9 +135,7 @@ async function readAllWikiPages(
   return pages;
 }
 
-function buildInboundLinkMap(
-  pages: WikiPageSummary[],
-): Map<string, number> {
+function buildInboundLinkMap(pages: WikiPageSummary[]): Map<string, number> {
   const inbound = new Map<string, number>();
   for (const page of pages) {
     for (const link of page.linkTargets) {

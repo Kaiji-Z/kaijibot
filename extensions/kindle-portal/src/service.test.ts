@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { KaijiBotPluginServiceContext } from "../api.js";
 import { FleetState, type AgentEventPayload } from "./monitor/fleet-state.js";
 import { createKindlePortalService, KINDLE_PORTAL_SERVICE_ID } from "./service.js";
-import type { KaijiBotPluginServiceContext } from "../api.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

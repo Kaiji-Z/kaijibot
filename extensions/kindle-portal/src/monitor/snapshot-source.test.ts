@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { FleetState } from "./fleet-state.js";
-import { buildFleetSnapshot, type SnapshotSourceOpts } from "./snapshot-source.js";
-import type { LoadSessionStore, SessionStoreSnapshot } from "./scope-resolver.js";
-import type { FleetAgent } from "../types.js";
 import type { KindleConfig } from "../config.js";
+import type { FleetAgent } from "../types.js";
+import { FleetState } from "./fleet-state.js";
+import type { LoadSessionStore, SessionStoreSnapshot } from "./scope-resolver.js";
+import { buildFleetSnapshot, type SnapshotSourceOpts } from "./snapshot-source.js";
 
 /**
  * Fleet snapshot source — merges live event state with session store metadata.
@@ -72,8 +72,20 @@ describe("buildFleetSnapshot", () => {
           {
             agentId: "agent-main",
             sessions: [
-              { sessionKey: "sess-A", updatedAt: 1, label: "Alice chat", totalTokens: 500, estimatedCostUsd: 0.02 },
-              { sessionKey: "sess-B", updatedAt: 2, label: "Bob chat", totalTokens: 800, estimatedCostUsd: 0.04 },
+              {
+                sessionKey: "sess-A",
+                updatedAt: 1,
+                label: "Alice chat",
+                totalTokens: 500,
+                estimatedCostUsd: 0.02,
+              },
+              {
+                sessionKey: "sess-B",
+                updatedAt: 2,
+                label: "Bob chat",
+                totalTokens: 800,
+                estimatedCostUsd: 0.04,
+              },
             ],
           },
         ],
@@ -106,7 +118,13 @@ describe("buildFleetSnapshot", () => {
           {
             agentId: "agent-main",
             sessions: [
-              { sessionKey: "sess-A", updatedAt: 1, label: "Alice chat", totalTokens: 100, estimatedCostUsd: 0.01 },
+              {
+                sessionKey: "sess-A",
+                updatedAt: 1,
+                label: "Alice chat",
+                totalTokens: 100,
+                estimatedCostUsd: 0.01,
+              },
             ],
           },
         ],
@@ -132,9 +150,7 @@ describe("buildFleetSnapshot", () => {
     });
 
     it("non-idle when active runs present", async () => {
-      const snap = await buildFleetSnapshot(
-        optsWithMockState([liveAgent()], { agents: [] }),
-      );
+      const snap = await buildFleetSnapshot(optsWithMockState([liveAgent()], { agents: [] }));
       expect(snap.idle).toBe(false);
       expect(snap.agents).toHaveLength(1);
     });

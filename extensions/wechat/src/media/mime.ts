@@ -68,7 +68,9 @@ export function getExtensionFromMime(mimeType: string): string {
 export function getExtensionFromContentTypeOrUrl(contentType: string | null, url: string): string {
   if (contentType) {
     const ext = getExtensionFromMime(contentType);
-    if (ext !== ".bin") {return ext;}
+    if (ext !== ".bin") {
+      return ext;
+    }
   }
   const ext = path.extname(new URL(url).pathname).toLowerCase();
   const knownExts = new Set(Object.keys(EXTENSION_TO_MIME));

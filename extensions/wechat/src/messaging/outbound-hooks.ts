@@ -64,7 +64,9 @@ export function emitWeixinMessageSent(params: {
   runId?: string;
 }): void {
   const hookRunner = getGlobalHookRunner();
-  if (!hookRunner?.hasHooks("message_sent")) {return;}
+  if (!hookRunner?.hasHooks("message_sent")) {
+    return;
+  }
   const canonical = buildCanonicalSentMessageHookContext({
     to: params.to,
     content: params.content,

@@ -7,12 +7,12 @@
  * window (5 min) to ease repeated refreshes.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ApiHandlerContext } from "./api-json.js";
-import { resolveActiveUser } from "../monitor/scope-resolver.js";
-import { readPersona } from "../map/persona-reader.js";
-import { readWikiGraph } from "../map/wiki-reader.js";
 import { buildMapGraph } from "../map/graph-builder.js";
+import { readPersona } from "../map/persona-reader.js";
 import { renderGraphPng } from "../map/png-renderer.js";
+import { readWikiGraph } from "../map/wiki-reader.js";
+import { resolveActiveUser } from "../monitor/scope-resolver.js";
+import type { ApiHandlerContext } from "./api-json.js";
 
 const PNG_CONTENT_TYPE = "image/png";
 const PNG_CACHE = "public, max-age=300";

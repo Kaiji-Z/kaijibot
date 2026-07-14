@@ -34,11 +34,11 @@ export interface AuthorizeResult {
  * Node surfaces IPv4-mapped addresses as `::ffff:127.0.0.1`.
  */
 export function isLoopbackAddress(remoteAddress: string | undefined): boolean {
-  if (!remoteAddress) {return false;}
+  if (!remoteAddress) {
+    return false;
+  }
   return (
-    remoteAddress === "127.0.0.1" ||
-    remoteAddress === "::1" ||
-    remoteAddress === "::ffff:127.0.0.1"
+    remoteAddress === "127.0.0.1" || remoteAddress === "::1" || remoteAddress === "::ffff:127.0.0.1"
   );
 }
 
@@ -85,7 +85,9 @@ export function authorize(req: IncomingMessage, opts: AuthorizeOptions): Authori
  * configured length beyond what a length check already reveals).
  */
 export function safeEqualSecret(a: string, b: string): boolean {
-  if (a.length !== b.length) {return false;}
+  if (a.length !== b.length) {
+    return false;
+  }
   let diff = 0;
   for (let i = 0; i < a.length; i += 1) {
     diff |= a.charCodeAt(i) ^ b.charCodeAt(i);

@@ -1,4 +1,9 @@
-import type { ExtractionResult, ExtractedClaim, ExtractedEntity, ExtractedConcept } from "./types.js";
+import type {
+  ExtractionResult,
+  ExtractedClaim,
+  ExtractedEntity,
+  ExtractedConcept,
+} from "./types.js";
 
 export type GenerateTextFn = (prompt: string) => Promise<string>;
 
@@ -29,9 +34,10 @@ export async function extractFromSource(
   content: string,
   sourceMeta: { readonly path: string; readonly filename: string },
 ): Promise<ExtractionResult> {
-  const truncatedContent = content.length > 12000
-    ? `${content.slice(0, 12000)}\n\n[... truncated, ${content.length} total chars ...]`
-    : content;
+  const truncatedContent =
+    content.length > 12000
+      ? `${content.slice(0, 12000)}\n\n[... truncated, ${content.length} total chars ...]`
+      : content;
 
   const prompt = `${EXTRACTION_SYSTEM_PROMPT}
 
@@ -123,9 +129,8 @@ function parseClaims(raw: unknown): ExtractedClaim[] {
     if (!text) {
       continue;
     }
-    const confidence = typeof obj.confidence === "number"
-      ? Math.max(0, Math.min(1, obj.confidence))
-      : 0.5;
+    const confidence =
+      typeof obj.confidence === "number" ? Math.max(0, Math.min(1, obj.confidence)) : 0.5;
     const category = typeof obj.category === "string" ? obj.category : "domain_knowledge";
     const evidence = typeof obj.evidence === "string" ? obj.evidence : undefined;
     claims.push({ text, confidence, category, ...(evidence ? { evidence } : {}) });
@@ -184,9 +189,7 @@ function parseTopics(raw: unknown): string[] {
   return raw.filter((t): t is string => typeof t === "string" && t.trim().length > 0);
 }
 
-function parseRelationships(
-  raw: unknown,
-): ExtractionResult["relationships"] {
+function parseRelationships(raw: unknown): ExtractionResult["relationships"] {
   if (!Array.isArray(raw)) {
     return [];
   }

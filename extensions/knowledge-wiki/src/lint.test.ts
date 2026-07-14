@@ -21,11 +21,7 @@ async function createPage(
       return `${k}: ${JSON.stringify(v)}`;
     })
     .join("\n");
-  await writeFile(
-    path.join(dirPath, `${name}.md`),
-    `---\n${yamlLines}\n---\n${body}`,
-    "utf8",
-  );
+  await writeFile(path.join(dirPath, `${name}.md`), `---\n${yamlLines}\n---\n${body}`, "utf8");
 }
 
 describe("lintWiki", () => {
@@ -42,13 +38,25 @@ describe("lintWiki", () => {
     await createPage(
       "summaries",
       "doc1",
-      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "summary",
+        title: "Doc1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Doc1\n\nSee [[rust]] for details.",
     );
     await createPage(
       "entities",
       "rust",
-      { pageType: "entity", title: "Rust", claims: [], sourceIds: ["[[doc1]]"], updatedAt: new Date().toISOString() },
+      {
+        pageType: "entity",
+        title: "Rust",
+        claims: [],
+        sourceIds: ["[[doc1]]"],
+        updatedAt: new Date().toISOString(),
+      },
       "# Rust\n\n[[doc1]]",
     );
 
@@ -62,13 +70,25 @@ describe("lintWiki", () => {
     await createPage(
       "summaries",
       "doc1",
-      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "summary",
+        title: "Doc1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Doc1",
     );
     await createPage(
       "entities",
       "orphan",
-      { pageType: "entity", title: "Orphan", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "entity",
+        title: "Orphan",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Orphan\n\nNobody links to me.",
     );
 
@@ -83,13 +103,25 @@ describe("lintWiki", () => {
     await createPage(
       "summaries",
       "doc1",
-      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "summary",
+        title: "Doc1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Doc1\n\n[[rust]]",
     );
     await createPage(
       "entities",
       "rust",
-      { pageType: "entity", title: "Rust", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "entity",
+        title: "Rust",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Rust",
     );
 
@@ -104,13 +136,25 @@ describe("lintWiki", () => {
     await createPage(
       "summaries",
       "doc1",
-      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "summary",
+        title: "Doc1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Doc1\n\nSee [[rust]] for details.",
     );
     await createPage(
       "entities",
       "rust",
-      { pageType: "entity", title: "Rust", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "entity",
+        title: "Rust",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Rust\n\nA programming language.",
     );
 
@@ -125,13 +169,25 @@ describe("lintWiki", () => {
     await createPage(
       "summaries",
       "doc1",
-      { pageType: "summary", title: "Doc1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "summary",
+        title: "Doc1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Doc1\n\nSee [[entities/rust]] for details.",
     );
     await createPage(
       "entities",
       "rust",
-      { pageType: "entity", title: "Rust", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "entity",
+        title: "Rust",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# Rust",
     );
 
@@ -146,19 +202,37 @@ describe("lintWiki", () => {
     await createPage(
       "summaries",
       "s1",
-      { pageType: "summary", title: "S1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "summary",
+        title: "S1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# S1",
     );
     await createPage(
       "entities",
       "e1",
-      { pageType: "entity", title: "E1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "entity",
+        title: "E1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# E1\n\n[[s1]]",
     );
     await createPage(
       "concepts",
       "c1",
-      { pageType: "concept", title: "C1", claims: [], sourceIds: [], updatedAt: new Date().toISOString() },
+      {
+        pageType: "concept",
+        title: "C1",
+        claims: [],
+        sourceIds: [],
+        updatedAt: new Date().toISOString(),
+      },
       "# C1\n\n[[s1]]",
     );
 

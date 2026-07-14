@@ -20,11 +20,19 @@
 import path from "node:path";
 import type { KaijiBotPluginApi } from "../api.js";
 import type { KindleConfig } from "./config.js";
-import type { LoadSessionStore, SessionStoreSnapshot, SessionStoreEntry } from "./monitor/scope-resolver.js";
+import {
+  createKindleHttpHandler,
+  createRootRedirectHandler,
+  createShortPathHandler,
+} from "./http/router.js";
 import type { AgentEventPayload } from "./monitor/fleet-state.js";
 import { FleetState } from "./monitor/fleet-state.js";
+import type {
+  LoadSessionStore,
+  SessionStoreSnapshot,
+  SessionStoreEntry,
+} from "./monitor/scope-resolver.js";
 import { createKindlePortalService } from "./service.js";
-import { createKindleHttpHandler, createRootRedirectHandler, createShortPathHandler } from "./http/router.js";
 import { createKindleSetupTool, createKindleStatusTool } from "./tools.js";
 
 /** Conventional default agent id used to resolve workspace + session store. */
@@ -98,14 +106,8 @@ export function registerKindlePortalPlugin(api: KaijiBotPluginApi, cfg: KindleCo
   });
 
   // 6. Agent tools: let users configure Kindle Portal by chatting.
-  api.registerTool(
-    () => createKindleSetupTool({ logger: api.logger }),
-    { name: "kindle_setup" },
-  );
-  api.registerTool(
-    () => createKindleStatusTool({ logger: api.logger }),
-    { name: "kindle_status" },
-  );
+  api.registerTool(() => createKindleSetupTool({ logger: api.logger }), { name: "kindle_setup" });
+  api.registerTool(() => createKindleStatusTool({ logger: api.logger }), { name: "kindle_status" });
 
   // 7. Register the background service.
   api.registerService(service);
@@ -133,7 +135,9 @@ function adaptSessionStore(raw: Record<string, Record<string, unknown>>): Sessio
   const byAgent = new Map<string, SessionStoreEntry[]>();
 
   for (const [sessionKey, entry] of Object.entries(raw)) {
-    if (!entry || typeof entry !== "object") {continue;}
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
     const agentId = extractAgentId(sessionKey) ?? DEFAULT_AGENT_ID;
     const record: SessionStoreEntry = {
       sessionKey,
@@ -160,7 +164,9 @@ function adaptSessionStore(raw: Record<string, Record<string, unknown>>): Sessio
 
 /** Extract the agent id from a `agent:<id>:...` session key. */
 function extractAgentId(sessionKey: string): string | undefined {
-  if (!sessionKey.startsWith("agent:")) {return undefined;}
+  if (!sessionKey.startsWith("agent:")) {
+    return undefined;
+  }
   const rest = sessionKey.slice("agent:".length);
   const colon = rest.indexOf(":");
   return colon === -1 ? rest : rest.slice(0, colon);

@@ -1,6 +1,6 @@
-import type { FleetState } from "./monitor/fleet-state.js";
-import { attachAgentEventCollector, type SubscribeFn } from "./monitor/event-collector.js";
 import type { KaijiBotPluginService, KaijiBotPluginServiceContext } from "../api.js";
+import { attachAgentEventCollector, type SubscribeFn } from "./monitor/event-collector.js";
+import type { FleetState } from "./monitor/fleet-state.js";
 
 export const KINDLE_PORTAL_SERVICE_ID = "kindle-portal";
 
@@ -22,9 +22,7 @@ const DEFAULT_PRUNE_INTERVAL_MS = 60_000;
 const DEFAULT_STALE_AFTER_MS = 120_000;
 const DEFAULT_PRUNE_MAX_AGE_MS = 300_000;
 
-export function createKindlePortalService(
-  opts: CreateServiceOpts,
-): KaijiBotPluginService {
+export function createKindlePortalService(opts: CreateServiceOpts): KaijiBotPluginService {
   const pruneIntervalMs = opts.pruneIntervalMs ?? DEFAULT_PRUNE_INTERVAL_MS;
   const staleAfterMs = opts.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
   const pruneMaxAgeMs = opts.pruneMaxAgeMs ?? DEFAULT_PRUNE_MAX_AGE_MS;
@@ -34,15 +32,15 @@ export function createKindlePortalService(
   let pruneTimer: ReturnType<typeof setInterval> | undefined;
 
   async function start(_ctx: KaijiBotPluginServiceContext): Promise<void> {
-    if (started) {return;}
+    if (started) {
+      return;
+    }
     started = true;
 
     try {
       collectorUnsub = attachAgentEventCollector(opts.state, opts.subscribe, opts.logger);
     } catch (e) {
-      opts.logger?.warn?.(
-        `[kindle-portal] failed to attach event collector: ${String(e)}`,
-      );
+      opts.logger?.warn?.(`[kindle-portal] failed to attach event collector: ${String(e)}`);
     }
 
     pruneTimer = setInterval(() => {
@@ -60,14 +58,14 @@ export function createKindlePortalService(
   }
 
   async function stop(_ctx: KaijiBotPluginServiceContext): Promise<void> {
-    if (!started) {return;}
+    if (!started) {
+      return;
+    }
 
     try {
       collectorUnsub?.();
     } catch (e) {
-      opts.logger?.warn?.(
-        `[kindle-portal] failed to unsubscribe collector: ${String(e)}`,
-      );
+      opts.logger?.warn?.(`[kindle-portal] failed to unsubscribe collector: ${String(e)}`);
     }
 
     if (pruneTimer !== undefined) {

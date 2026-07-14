@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { DEFAULT_BOOTSTRAP_FILENAME } from "../agents/workspace.js";
 import { formatCliCommand } from "../cli/command-format.js";
+import { t } from "../cli/i18n/translate.js";
 import {
   buildGatewayInstallPlan,
   gatewayInstallErrorHint,
@@ -108,7 +109,7 @@ export async function finalizeSetupWizard(
     installDaemon = true;
   } else {
     installDaemon = await prompter.confirm({
-      message: "安装网关服务（推荐）",
+      message: t("cli.wizard.daemon.installQuestion"),
       initialValue: true,
     });
   }
@@ -128,7 +129,7 @@ export async function finalizeSetupWizard(
       flow === "quickstart"
         ? DEFAULT_GATEWAY_DAEMON_RUNTIME
         : await prompter.select({
-            message: "网关服务运行时",
+            message: t("cli.wizard.daemon.runtimeSelect"),
             options: GATEWAY_DAEMON_RUNTIME_OPTIONS,
             initialValue: opts.daemonRuntime ?? DEFAULT_GATEWAY_DAEMON_RUNTIME,
           });
@@ -146,11 +147,11 @@ export async function finalizeSetupWizard(
     let restartWasScheduled = false;
     if (loaded) {
       const action = await prompter.select({
-        message: "网关服务已安装",
+        message: t("cli.wizard.daemon.installedAction"),
         options: [
-          { value: "restart", label: "重启" },
-          { value: "reinstall", label: "重新安装" },
-          { value: "skip", label: "跳过" },
+          { value: "restart", label: t("cli.wizard.daemon.restartLabel") },
+          { value: "reinstall", label: t("cli.wizard.daemon.reinstallLabel") },
+          { value: "skip", label: t("cli.wizard.daemon.skipLabel") },
         ],
       });
       if (action === "restart") {
@@ -225,10 +226,15 @@ export async function finalizeSetupWizard(
       } catch (err) {
         installError = formatErrorMessage(err);
       } finally {
-        progress.stop(installError ? "网关服务安装失败。" : "网关服务已安装。");
+        progress.stop(
+          installError ? t("cli.wizard.daemon.installFailed") : t("cli.wizard.daemon.installOk"),
+        );
       }
       if (installError) {
-        await prompter.note(`网关服务安装失败：${installError}`, "Gateway");
+        await prompter.note(
+          t("cli.wizard.daemon.installFailedNote", { error: installError }),
+          "Gateway",
+        );
         await prompter.note(gatewayInstallErrorHint(), "Gateway");
       }
     }
@@ -374,7 +380,7 @@ export async function finalizeSetupWizard(
           "This is the defining action that makes your agent you.",
           "Please take your time.",
           "The more you tell it, the better the experience will be.",
-          "我们将发送唤醒消息来激活机器人。",
+          t("cli.wizard.hatch.wakeMessage"),
         ].join("\n"),
         "Start TUI (best option!)",
       );
@@ -394,11 +400,11 @@ export async function finalizeSetupWizard(
     );
 
     hatchChoice = await prompter.select({
-      message: "你想怎样启动你的机器人？",
+      message: t("cli.wizard.hatch.message"),
       options: [
-        { value: "tui", label: "在 TUI 中启动（推荐）" },
-        { value: "web", label: "打开 Web 控制面板" },
-        { value: "later", label: "稍后再说" },
+        { value: "tui", label: t("cli.wizard.hatch.tuiLabel") },
+        { value: "web", label: t("cli.wizard.hatch.webLabel") },
+        { value: "later", label: t("cli.wizard.hatch.laterLabel") },
       ],
       initialValue: "tui",
     });
@@ -411,7 +417,7 @@ export async function finalizeSetupWizard(
         password: settings.authMode === "password" ? resolvedGatewayPassword : "",
         // Safety: setup TUI should not auto-deliver to lastProvider/lastTo.
         deliver: false,
-        message: hasBootstrap ? "你好！我是你的 KaijiBot 助手。" : undefined,
+        message: hasBootstrap ? t("cli.wizard.hatch.tuiGreeting") : undefined,
       });
       launchedTui = true;
     } else if (hatchChoice === "web") {
@@ -459,10 +465,7 @@ export async function finalizeSetupWizard(
     "Workspace backup",
   );
 
-  await prompter.note(
-    "安全提示：不要将 Gateway 暴露在公网，API Key 不要放在 agent 可访问的路径下。",
-    "安全须知",
-  );
+  await prompter.note(t("cli.wizard.security.notice"), t("cli.wizard.security.title"));
 
   await setupWizardShellCompletion({ flow, prompter });
 
@@ -619,14 +622,14 @@ export async function finalizeSetupWizard(
     );
   }
 
-  await prompter.note("接下来：探索 KaijiBot 的认知功能，与你的机器人开始对话。", "What now");
+  await prompter.note(t("cli.wizard.whatNow.body"), "What now");
 
   await prompter.outro(
     controlUiOpened
-      ? "配置完成。控制面板已打开，保持该标签页即可管理 KaijiBot。"
+      ? t("cli.wizard.outro.opened")
       : seededInBackground
-        ? "配置完成。控制面板链接："
-        : "配置完成。",
+        ? t("cli.wizard.outro.background")
+        : t("cli.wizard.outro.default"),
   );
 
   return { launchedTui };

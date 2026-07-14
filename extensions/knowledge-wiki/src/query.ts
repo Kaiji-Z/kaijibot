@@ -37,12 +37,14 @@ export async function queryWiki(
       }
 
       const parsed = parseWikiMarkdown(content);
-      const title = typeof parsed.frontmatter.title === "string"
-        ? parsed.frontmatter.title
-        : entry.replace(/\.md$/, "");
-      const pageType = typeof parsed.frontmatter.pageType === "string"
-        ? parsed.frontmatter.pageType
-        : dir.slice(0, -1);
+      const title =
+        typeof parsed.frontmatter.title === "string"
+          ? parsed.frontmatter.title
+          : entry.replace(/\.md$/, "");
+      const pageType =
+        typeof parsed.frontmatter.pageType === "string"
+          ? parsed.frontmatter.pageType
+          : dir.slice(0, -1);
 
       const score = scorePage(title, parsed.body, queryLower, queryTerms);
       if (score > 0) {
@@ -59,9 +61,7 @@ export async function queryWiki(
 
   matches.toSorted((a, b) => b.score - a.score);
   const topMatches = matches.slice(0, maxResults);
-  const suggestedPages = matches
-    .slice(maxResults, maxResults + 3)
-    .map((m) => m.title);
+  const suggestedPages = matches.slice(maxResults, maxResults + 3).map((m) => m.title);
 
   return { matchedPages: topMatches, suggestedPages };
 }

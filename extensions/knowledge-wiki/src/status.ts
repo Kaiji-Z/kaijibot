@@ -9,9 +9,7 @@ export type WikiStatus = {
   lastActivity: string | null;
 };
 
-export async function resolveWikiStatus(
-  vaultRoot: string,
-): Promise<WikiStatus> {
+export async function resolveWikiStatus(vaultRoot: string): Promise<WikiStatus> {
   const dirs = ["summaries", "entities", "concepts"];
   const pageCounts: Record<string, number> = {};
   let totalPages = 0;
@@ -32,10 +30,7 @@ export async function resolveWikiStatus(
 
   let lastActivity: string | null = null;
   try {
-    const logContent = await readFile(
-      path.join(vaultRoot, "log.md"),
-      "utf8",
-    );
+    const logContent = await readFile(path.join(vaultRoot, "log.md"), "utf8");
     const lines = logContent.split("\n").filter((l) => l.startsWith("## ["));
     if (lines.length > 0) {
       const match = lines[lines.length - 1]!.match(/^## \[([^\]]+)\]/);

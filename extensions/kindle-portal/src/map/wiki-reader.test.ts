@@ -8,9 +8,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...real,
-    writeFile: vi.fn((...a: Parameters<typeof real.writeFile>) =>
-      real.writeFile(...a),
-    ),
+    writeFile: vi.fn((...a: Parameters<typeof real.writeFile>) => real.writeFile(...a)),
     mkdir: vi.fn((...a: Parameters<typeof real.mkdir>) => real.mkdir(...a)),
     unlink: vi.fn((...a: Parameters<typeof real.unlink>) => real.unlink(...a)),
     rename: vi.fn((...a: Parameters<typeof real.rename>) => real.rename(...a)),
@@ -55,11 +53,7 @@ describe("readWikiGraph", () => {
   }
 
   it("reads entities + concepts", async () => {
-    await writePage(
-      "entities",
-      "rust.md",
-      "---\ntitle: Rust\n---\n\nUses [[tokio]] for async.\n",
-    );
+    await writePage("entities", "rust.md", "---\ntitle: Rust\n---\n\nUses [[tokio]] for async.\n");
     await writePage(
       "concepts",
       "cap.md",
@@ -91,11 +85,7 @@ describe("readWikiGraph", () => {
   });
 
   it("falls back to filename when title absent", async () => {
-    await writePage(
-      "entities",
-      "rust.md",
-      "No frontmatter at all, just body.\n",
-    );
+    await writePage("entities", "rust.md", "No frontmatter at all, just body.\n");
     clearMutationSpies();
 
     const { nodes } = await readWikiGraph(tmp);
@@ -105,11 +95,7 @@ describe("readWikiGraph", () => {
   });
 
   it("lowercases node ids", async () => {
-    await writePage(
-      "entities",
-      "Rust.md",
-      "---\ntitle: Rust\n---\n\nbody\n",
-    );
+    await writePage("entities", "Rust.md", "---\ntitle: Rust\n---\n\nbody\n");
     clearMutationSpies();
 
     const { nodes } = await readWikiGraph(tmp);
@@ -117,16 +103,8 @@ describe("readWikiGraph", () => {
   });
 
   it("dedupes edges (unordered pairs)", async () => {
-    await writePage(
-      "entities",
-      "a.md",
-      "---\ntitle: A\n---\n\nLinks to [[b]].\n",
-    );
-    await writePage(
-      "entities",
-      "b.md",
-      "---\ntitle: B\n---\n\nLinks back to [[a]].\n",
-    );
+    await writePage("entities", "a.md", "---\ntitle: A\n---\n\nLinks to [[b]].\n");
+    await writePage("entities", "b.md", "---\ntitle: B\n---\n\nLinks back to [[a]].\n");
     clearMutationSpies();
 
     const { edges } = await readWikiGraph(tmp);
@@ -136,16 +114,8 @@ describe("readWikiGraph", () => {
 
   it("dedupes nodes by id", async () => {
     // Same id present in both entities/ and concepts/ — only one wins.
-    await writePage(
-      "entities",
-      "rust.md",
-      "---\ntitle: Rust Entity\n---\n\nbody\n",
-    );
-    await writePage(
-      "concepts",
-      "rust.md",
-      "---\ntitle: Rust Concept\n---\n\nbody\n",
-    );
+    await writePage("entities", "rust.md", "---\ntitle: Rust Entity\n---\n\nbody\n");
+    await writePage("concepts", "rust.md", "---\ntitle: Rust Concept\n---\n\nbody\n");
     clearMutationSpies();
 
     const { nodes } = await readWikiGraph(tmp);
@@ -164,11 +134,7 @@ describe("readWikiGraph", () => {
 
   it("missing entities dir tolerated", async () => {
     // Only concepts/ exists
-    await writePage(
-      "concepts",
-      "cap.md",
-      "---\ntitle: CAP\n---\n\nbody\n",
-    );
+    await writePage("concepts", "cap.md", "---\ntitle: CAP\n---\n\nbody\n");
     clearMutationSpies();
 
     const { nodes } = await readWikiGraph(tmp);
@@ -184,11 +150,7 @@ describe("readWikiGraph", () => {
     // Write invalid UTF-8 byte sequence (lone continuation byte)
     await writeFile(join(badDir, "bad.md"), Buffer.from([0xff, 0xfe, 0x00]));
     // Valid file alongside
-    await writePage(
-      "entities",
-      "good.md",
-      "---\ntitle: Good\n---\n\nbody [[bad]]\n",
-    );
+    await writePage("entities", "good.md", "---\ntitle: Good\n---\n\nbody [[bad]]\n");
     clearMutationSpies();
 
     const { nodes } = await readWikiGraph(tmp);
@@ -198,11 +160,7 @@ describe("readWikiGraph", () => {
   });
 
   it("NEVER writes: spies on fs.promises.writeFile/mkdir/unlink/rename", async () => {
-    await writePage(
-      "entities",
-      "rust.md",
-      "---\ntitle: Rust\n---\n\n[[tokio]]\n",
-    );
+    await writePage("entities", "rust.md", "---\ntitle: Rust\n---\n\n[[tokio]]\n");
     clearMutationSpies();
 
     const result = await readWikiGraph(tmp);

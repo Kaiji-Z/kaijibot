@@ -20,10 +20,10 @@
  * `const`/`let`, no `fetch`).
  */
 
-import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 import type { KindleConfig } from "../config.js";
-import { SHARED_CSS } from "./shared-css.js";
+import type { FleetSnapshot, FleetAgent, RegisteredAgent } from "../types.js";
 import { getDogArt, type DogStatus } from "./dog-svgs.js";
+import { SHARED_CSS } from "./shared-css.js";
 
 /**
  * Format token counts with K/M suffixes: 302000 -> "302K", 1200000 -> "1.2M".
@@ -108,13 +108,13 @@ function collectActiveAgentIds(agents: readonly FleetAgent[]): Set<string> {
  * Used to surface run-level status (thinking/tool_calling/completed/failed)
  * for the dog illustration on each agent card.
  */
-function collectLatestFleetByAgentId(
-  agents: readonly FleetAgent[],
-): Map<string, FleetAgent> {
+function collectLatestFleetByAgentId(agents: readonly FleetAgent[]): Map<string, FleetAgent> {
   var map = new Map<string, FleetAgent>();
   for (var i = 0; i < agents.length; i++) {
     var a = agents[i];
-    if (a.agentId === undefined || a.agentId.length === 0) {continue;}
+    if (a.agentId === undefined || a.agentId.length === 0) {
+      continue;
+    }
     var existing = map.get(a.agentId);
     if (existing === undefined || a.lastEventAt > existing.lastEventAt) {
       map.set(a.agentId, a);
@@ -152,9 +152,10 @@ function renderAgentCard(agent: RegisteredAgent): string {
     statusText = "\u25cb IDLE";
   }
   var model = agent.model;
-  var lastActive = agent.lastActiveAt !== undefined
-    ? " \u00b7 " + formatRelativeTime(agent.lastActiveAt, Date.now())
-    : "";
+  var lastActive =
+    agent.lastActiveAt !== undefined
+      ? " \u00b7 " + formatRelativeTime(agent.lastActiveAt, Date.now())
+      : "";
   var ctxStr = "";
   if (agent.contextUsed !== undefined && agent.contextMax !== undefined && agent.contextMax > 0) {
     ctxStr = formatTokens(agent.contextUsed) + "/" + formatTokens(agent.contextMax) + " tokens";
@@ -162,13 +163,26 @@ function renderAgentCard(agent: RegisteredAgent): string {
     var sc = String(agent.sessionCount);
     ctxStr = sc + (agent.sessionCount === 1 ? " session" : " sessions");
   }
-  return '<div class="agent-card ' + statusClass + ' clearfix">'
-    + '<div class="agent-status">' + statusText + " " + getDogArt(dogStatus) + "</div>"
-    + '<div class="agent-id">' + agent.id + "</div>"
-    + '<div class="agent-model">'
-    + model + " \u00b7 " + ctxStr + lastActive
-    + "</div>"
-    + "</div>";
+  return (
+    '<div class="agent-card ' +
+    statusClass +
+    ' clearfix">' +
+    '<div class="agent-status">' +
+    statusText +
+    " " +
+    getDogArt(dogStatus) +
+    "</div>" +
+    '<div class="agent-id">' +
+    agent.id +
+    "</div>" +
+    '<div class="agent-model">' +
+    model +
+    " \u00b7 " +
+    ctxStr +
+    lastActive +
+    "</div>" +
+    "</div>"
+  );
 }
 
 /**
@@ -226,18 +240,28 @@ export function renderMonitorHtml(
           }
         }
       }
-      qParts.push('<div class="quota-window">'
-        + '<div class="quota-window-label">' + win.label + " " + wpct + "%" + resetStr + "</div>"
-        + '<div class="quota-bar"><div class="quota-fill" style="width:'
-        + wpct + '%"></div></div>'
-        + "</div>");
+      qParts.push(
+        '<div class="quota-window">' +
+          '<div class="quota-window-label">' +
+          win.label +
+          " " +
+          wpct +
+          "%" +
+          resetStr +
+          "</div>" +
+          '<div class="quota-bar"><div class="quota-fill" style="width:' +
+          wpct +
+          '%"></div></div>' +
+          "</div>",
+      );
     }
     qParts.push("</div>");
     quotaSection = qParts.join("");
   } else {
-    quotaSection = '<div class="quota-section">'
-      + '<div class="quota-label">Provider quota unavailable</div>'
-      + "</div>";
+    quotaSection =
+      '<div class="quota-section">' +
+      '<div class="quota-label">Provider quota unavailable</div>' +
+      "</div>";
   }
 
   // ── Agents section (always shows all registered agents) ──
@@ -271,92 +295,117 @@ export function renderMonitorHtml(
   // ── System health: last activity ──
   var allAgents = registeredAgents ?? [];
   var lastTs = lastActivityTime(allAgents);
-  var lastActivityStr = lastTs !== undefined
-    ? formatRelativeTime(lastTs, snapshot.generatedAt)
-    : "never";
+  var lastActivityStr =
+    lastTs !== undefined ? formatRelativeTime(lastTs, snapshot.generatedAt) : "never";
 
   var refreshMs = String(cfg.refreshIntervalSeconds * 1000);
 
-  return "<!DOCTYPE html>"
-    + '<html lang="en">'
-    + "<head>"
-    + '<meta charset="utf-8">'
-    + '<meta http-equiv="refresh" content="' + sec + '">'
-    + "<title>KaijiBot</title>"
-    + "<style>" + SHARED_CSS + "</style>"
-    + "</head>"
-    + "<body>"
-    + '<div class="header clearfix">'
-    + '<div class="zoom-bar">'
-    + '<button type="button" class="zoom-btn" onclick="zoomOut()">A-</button>'
-    + '<button type="button" class="zoom-btn" onclick="zoomIn()">A+</button>'
-    + "</div>"
-    + '<div class="title">KaijiBot</div>'
-    + '<div class="meta">'
-    + '<span class="badge"><span class="status-icon">' + stateIcon + "</span> " + stateText + "</span>"
-    + " | " + iso
-    + " | Last: " + lastActivityStr
-    + "</div>"
-    + "</div>"
+  return (
+    "<!DOCTYPE html>" +
+    '<html lang="en">' +
+    "<head>" +
+    '<meta charset="utf-8">' +
+    '<meta http-equiv="refresh" content="' +
+    sec +
+    '">' +
+    "<title>KaijiBot</title>" +
+    "<style>" +
+    SHARED_CSS +
+    "</style>" +
+    "</head>" +
+    "<body>" +
+    '<div class="header clearfix">' +
+    '<div class="zoom-bar">' +
+    '<button type="button" class="zoom-btn" onclick="zoomOut()">A-</button>' +
+    '<button type="button" class="zoom-btn" onclick="zoomIn()">A+</button>' +
+    "</div>" +
+    '<div class="title">KaijiBot</div>' +
+    '<div class="meta">' +
+    '<span class="badge"><span class="status-icon">' +
+    stateIcon +
+    "</span> " +
+    stateText +
+    "</span>" +
+    " | " +
+    iso +
+    " | Last: " +
+    lastActivityStr +
+    "</div>" +
+    "</div>" +
     // ── Today's Usage (2 metrics) ──
-    + '<div class="metrics-row clearfix">'
-    + '<div class="metric metric-quarter">'
-    + '<div class="metric-num">' + todayTokensStr + "</div>"
-    + '<div class="metric-label">TODAY TOKENS</div>'
-    + "</div>"
-    + '<div class="metric metric-quarter">'
-    + '<div class="metric-num">' + monthTokensStr + "</div>"
-    + '<div class="metric-label">MONTH TOKENS</div>'
-    + "</div>"
-    + '<div class="metric metric-quarter">'
-    + '<div class="metric-num">' + todayCostStr + "</div>"
-    + '<div class="metric-label">TODAY COST</div>'
-    + "</div>"
-    + '<div class="metric metric-quarter">'
-    + '<div class="metric-num">' + monthCostStr + "</div>"
-    + '<div class="metric-label">MONTH COST</div>'
-    + "</div>"
-    + "</div>"
+    '<div class="metrics-row clearfix">' +
+    '<div class="metric metric-quarter">' +
+    '<div class="metric-num">' +
+    todayTokensStr +
+    "</div>" +
+    '<div class="metric-label">TODAY TOKENS</div>' +
+    "</div>" +
+    '<div class="metric metric-quarter">' +
+    '<div class="metric-num">' +
+    monthTokensStr +
+    "</div>" +
+    '<div class="metric-label">MONTH TOKENS</div>' +
+    "</div>" +
+    '<div class="metric metric-quarter">' +
+    '<div class="metric-num">' +
+    todayCostStr +
+    "</div>" +
+    '<div class="metric-label">TODAY COST</div>' +
+    "</div>" +
+    '<div class="metric metric-quarter">' +
+    '<div class="metric-num">' +
+    monthCostStr +
+    "</div>" +
+    '<div class="metric-label">MONTH COST</div>' +
+    "</div>" +
+    "</div>" +
     // ── Provider Quota ──
-    + quotaSection
+    quotaSection +
     // ── Agents section ──
-    + '<div class="section">'
-    + agentsSection
-    + "</div>"
+    '<div class="section">' +
+    agentsSection +
+    "</div>" +
     // ── Footer ──
-    + '<div class="footer">'
-    + "Auto-refresh: " + sec + "s"
-    + "</div>"
-    + "<script>"
+    '<div class="footer">' +
+    "Auto-refresh: " +
+    sec +
+    "s" +
+    "</div>" +
+    "<script>" +
     // ── Zoom (ES5: var, function declarations, + concatenation) ──
-    + "var zoomLevel = 30;"
-    + "function zoomIn() {"
-    + "if (zoomLevel < 42) {"
-    + "zoomLevel = zoomLevel + 2;"
-    + 'document.body.style.fontSize = zoomLevel + "px";'
-    + "}"
-    + "}"
-    + "function zoomOut() {"
-    + "if (zoomLevel > 20) {"
-    + "zoomLevel = zoomLevel - 2;"
-    + 'document.body.style.fontSize = zoomLevel + "px";'
-    + "}"
-    + "}"
+    "var zoomLevel = 30;" +
+    "function zoomIn() {" +
+    "if (zoomLevel < 42) {" +
+    "zoomLevel = zoomLevel + 2;" +
+    'document.body.style.fontSize = zoomLevel + "px";' +
+    "}" +
+    "}" +
+    "function zoomOut() {" +
+    "if (zoomLevel > 20) {" +
+    "zoomLevel = zoomLevel - 2;" +
+    'document.body.style.fontSize = zoomLevel + "px";' +
+    "}" +
+    "}" +
     // ── XHR polling (auto-refresh) ──
-    + "var REFRESH_MS = " + refreshMs + ";"
-    + 'var TOKEN_Q = "' + tq + '";'
-    + "function pollFleet() {"
-    + "var xhr = new XMLHttpRequest();"
-    + 'xhr.open("GET", "/kindle/api/fleet" + TOKEN_Q, true);'
-    + "xhr.onreadystatechange = function () {"
-    + "if (xhr.readyState === 4 && xhr.status === 200) {"
-    + "window.location.reload();"
-    + "}"
-    + "};"
-    + "xhr.send();"
-    + "}"
-    + "setInterval(pollFleet, REFRESH_MS);"
-    + "</script>"
-    + "</body>"
-    + "</html>";
+    "var REFRESH_MS = " +
+    refreshMs +
+    ";" +
+    'var TOKEN_Q = "' +
+    tq +
+    '";' +
+    "function pollFleet() {" +
+    "var xhr = new XMLHttpRequest();" +
+    'xhr.open("GET", "/kindle/api/fleet" + TOKEN_Q, true);' +
+    "xhr.onreadystatechange = function () {" +
+    "if (xhr.readyState === 4 && xhr.status === 200) {" +
+    "window.location.reload();" +
+    "}" +
+    "};" +
+    "xhr.send();" +
+    "}" +
+    "setInterval(pollFleet, REFRESH_MS);" +
+    "</script>" +
+    "</body>" +
+    "</html>"
+  );
 }

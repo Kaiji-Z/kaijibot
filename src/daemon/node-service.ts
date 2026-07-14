@@ -6,7 +6,11 @@ import {
   resolveNodeSystemdServiceName,
   resolveNodeWindowsTaskName,
 } from "./constants.js";
-import { tryResolveGatewayService, type GatewayService, type GatewayServiceInstallArgs } from "./service.js";
+import {
+  tryResolveGatewayService,
+  type GatewayService,
+  type GatewayServiceInstallArgs,
+} from "./service.js";
 
 function withNodeServiceEnv(
   env: Record<string, string | undefined>,
