@@ -388,9 +388,7 @@ export async function parseMessageWithAttachments(
         }
       }
     } catch (err) {
-      await Promise.allSettled(
-        savedMediaIds.map((id) => deleteMediaBuffer(id, "inbound")),
-      );
+      await Promise.allSettled(savedMediaIds.map((id) => deleteMediaBuffer(id, "inbound")));
       throw err;
     }
 

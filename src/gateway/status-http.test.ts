@@ -82,9 +82,7 @@ function makeRes(): ServerResponse {
 
 function opts() {
   return {
-    auth: { token: TEST_TOKEN } as unknown as Parameters<
-      typeof handleStatusHttpRequest
-    >[2]["auth"],
+    auth: { token: TEST_TOKEN } as unknown as Parameters<typeof handleStatusHttpRequest>[2]["auth"],
   };
 }
 
@@ -227,14 +225,7 @@ describe("handleStatusHttpRequest", () => {
     await handleStatusHttpRequest(req, res, opts());
     expect(sendJsonMock).toHaveBeenCalledTimes(1);
     const body = sentBody();
-    for (const key of [
-      "version",
-      "uptime",
-      "agents",
-      "usage",
-      "providers",
-      "cognitive",
-    ] as const) {
+    for (const key of ["version", "uptime", "agents", "usage", "providers", "cognitive"] as const) {
       expect(body).toHaveProperty(key);
     }
   });

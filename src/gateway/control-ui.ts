@@ -393,8 +393,7 @@ export function handleControlUiHttpRequest(
   })();
   const auth = opts?.config?.gateway?.auth;
   const rawToken = auth?.mode === "token" ? auth.token : undefined;
-  const localToken =
-    isLocalClient && typeof rawToken === "string" ? rawToken : undefined;
+  const localToken = isLocalClient && typeof rawToken === "string" ? rawToken : undefined;
 
   const root =
     rootState?.kind === "resolved" || rootState?.kind === "bundled"

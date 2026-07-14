@@ -1,9 +1,7 @@
 import { ErrorCodes, errorShape } from "../protocol/index.js";
 import type { GatewayRequestHandlers } from "./types.js";
 
-export async function loadCognitiveStatsSummary(
-  configDir: string,
-): Promise<{
+export async function loadCognitiveStatsSummary(configDir: string): Promise<{
   enabled: boolean;
   users: number;
   domains: number;
@@ -17,8 +15,7 @@ export async function loadCognitiveStatsSummary(
   const { PersonaStore } = await import("../../cognitive/persona/store.js");
   const { InsightStore } = await import("../../cognitive/insight/store.js");
   const { CorrectionStore } = await import("../../cognitive/correction/store.js");
-  const { SkillLifecycleManager } =
-    await import("../../cognitive/evolution/skill-lifecycle.js");
+  const { SkillLifecycleManager } = await import("../../cognitive/evolution/skill-lifecycle.js");
   const { SkillPersistenceWriter } = await import("../../cognitive/evolution/skill-writer.js");
   const { readConfigFileSnapshot } = await import("../../config/io.js");
 

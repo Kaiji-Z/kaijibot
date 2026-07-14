@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { networkInterfaces } from "node:os";
 import type { KaijiBotConfig } from "../config/types.kaijibot.js";
-import { loadCostUsageSummary } from "../infra/session-cost-usage.js";
 import { loadProviderUsageSummary } from "../infra/provider-usage.load.js";
+import { loadCostUsageSummary } from "../infra/session-cost-usage.js";
 import { VERSION } from "../version.js";
 import type { AuthRateLimiter } from "./auth-rate-limit.js";
 import type { ResolvedGatewayAuth } from "./auth.js";
@@ -13,15 +13,15 @@ import { loadCognitiveStatsSummary } from "./server-methods/cognitive.js";
 
 function isLanIp(ip: string): boolean {
   return (
-    ip.startsWith("192.168.") ||
-    ip.startsWith("10.") ||
-    /^172\.(1[6-9]|2[0-9]|3[01])\./.test(ip)
+    ip.startsWith("192.168.") || ip.startsWith("10.") || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(ip)
   );
 }
 
 function detectLanIp(): string | null {
   for (const addrs of Object.values(networkInterfaces())) {
-    if (!addrs) { continue; }
+    if (!addrs) {
+      continue;
+    }
     for (const a of addrs) {
       if (a.family === "IPv4" && !a.internal && isLanIp(a.address)) {
         return a.address;

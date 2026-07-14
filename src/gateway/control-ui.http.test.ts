@@ -574,10 +574,7 @@ describe("handleControlUiHttpRequest", () => {
             { root: { kind: "resolved", path: tmp } },
           );
           expect(res.statusCode).toBe(200);
-          expect(setHeader).toHaveBeenCalledWith(
-            "Content-Type",
-            "application/manifest+json",
-          );
+          expect(setHeader).toHaveBeenCalledWith("Content-Type", "application/manifest+json");
         },
       });
     });
