@@ -2,7 +2,7 @@
 
 > **Your AI assistant reaches out to you — not the other way around.**
 
-Pluggable provider/channel architecture · Cognitive layer turns AI from reactive to proactive · 40+ LLM providers · 17+ messaging channels · Auto locale switching (EN/zh)
+Pluggable provider/channel architecture · Cognitive layer turns AI from reactive to proactive · 40+ LLM providers · Feishu + WeChat (first-class channels) · Auto locale switching (EN/zh)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
@@ -14,22 +14,22 @@ Pluggable provider/channel architecture · Cognitive layer turns AI from reactiv
 
 Every AI assistant you've used follows the same pattern: you ask, it answers. You stop asking, it goes silent.
 
-KaijiBot is different. After a few conversations on Feishu / Telegram / Discord, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
+KaijiBot is different. After a few conversations on Feishu, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
 
-|                        | Typical Chatbot                        | KaijiBot                                                                             |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| **Interaction**        | Reactive — you ask, it answers         | Proactive insights + normal Q&A                                                      |
-| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences                             |
-| **Timing Awareness**   | Doesn't care what you're doing         | Respects active hours, trust level, conversation cadence                             |
-| **Chinese Support**    | English-first, Chinese often breaks    | Chinese-native: pattern routing, persona extraction optimized for Chinese            |
-| **Localization**       | UI hardcoded in one language           | CLI / wizard / cognitive prompts auto-detect system locale, switch between EN and zh |
-| **Integration**        | Requires Web/SDK integration           | Feishu · Telegram · Discord · WeChat · Slack and 17+ channels                        |
+|                        | Typical Chatbot                        | KaijiBot                                                                                                                                   |
+| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Interaction**        | Reactive — you ask, it answers         | Proactive insights + normal Q&A                                                                                                            |
+| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences                                                                                   |
+| **Timing Awareness**   | Doesn't care what you're doing         | Respects active hours, trust level, conversation cadence                                                                                   |
+| **Chinese Support**    | English-first, Chinese often breaks    | Chinese-native: pattern routing, persona extraction optimized for Chinese                                                                  |
+| **Localization**       | UI hardcoded in one language           | CLI / wizard / cognitive prompts auto-detect system locale, switch between EN and zh                                                       |
+| **Integration**        | Requires Web/SDK integration           | Feishu · WeChat (first-class, deep support); 18 additional channels bundled from upstream (Telegram/Discord/Slack etc., not deeply tested) |
 
 ## ✨ Core Features
 
 ### 🔮 Cognitive Engine — From Reactive Replies to Proactive Insights
 
-You've been chatting with KaijiBot on Feishu / Telegram about AI architecture and distributed systems. Next week, it sends you a message unprompted:
+You've been chatting with KaijiBot on Feishu about AI architecture and distributed systems. Next week, it sends you a message unprompted:
 
 > "Saw a recent article on using eBPF for distributed tracing — combining it with the observability direction you've been exploring, this might spark some ideas."
 
@@ -120,13 +120,13 @@ kaijibot skills install <skill-name>
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Kaiji-Z/kaijibot/main/scripts/install.sh | bash
+curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/Kaiji-Z/kaijibot/main/scripts/install.ps1 | iex
+iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
 ```
 
 ### npm

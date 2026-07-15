@@ -7,24 +7,19 @@ title: "Credits"
 
 # Credits and Acknowledgments
 
-## The name
+## Origin
 
-KaijiBot = CLAW + TARDIS, because every space lobster needs a time and space machine.
+KaijiBot is an **independent project** that forked from [OpenClaw](https://github.com/openclaw/openclaw) in April 2026 and has since diverged with its own cognitive layer, architecture direction, and focus on the Chinese ecosystem (Feishu-first). The fork retains the upstream gateway architecture, plugin SDK, agent loop, and tool ecosystem as its foundation.
 
-## Credits
+## Upstream acknowledgment
 
-- **Peter Steinberger** ([@steipete](https://x.com/steipete)) - Creator, lobster whisperer
-- **Mario Zechner** ([@badlogicc](https://x.com/badlogicgames)) - Pi creator, security pen tester
-- **Clawd** - The space lobster who demanded a better name
+KaijiBot stands on the shoulders of **OpenClaw**, built by **Peter Steinberger** ([@steipete](https://x.com/steipete)) and the OpenClaw community. OpenClaw provided the Gateway architecture, Plugin SDK boundaries, the agent loop, multi-channel plumbing, and the full tool ecosystem — these are the foundation KaijiBot builds its cognitive layer on.
 
-## Core contributors
+## KaijiBot
 
-- **Maxim Vovshin** (@Hyaxia, [36747317+Hyaxia@users.noreply.github.com](mailto:36747317+Hyaxia@users.noreply.github.com)) - Blogwatcher skill
-- **Nacho Iacovino** (@nachoiacovino, [nacho.iacovino@gmail.com](mailto:nacho.iacovino@gmail.com)) - Location parsing (Telegram and WhatsApp)
-- **Vincent Koc** ([@vincentkoc](https://github.com/vincentkoc), [@vincent_koc](https://x.com/vincent_koc)) - Agents, Telemetry, Hooks, Security
+- **KaijiBot Contributors** ([github.com/Kaiji-Z](https://github.com/Kaiji-Z)) — fork maintainer, cognitive layer, memory rewrite, Feishu/WeChat focus, Chinese-native optimization
+- All KaijiBot-specific code (the `src/cognitive/` layer, the memory consolidation engine, the i18n locale-aware CLI) is original to this project
 
 ## License
 
-MIT - Free as a lobster in the ocean.
-
-> "We are all just playing with our own prompts." (An AI, probably high on tokens)
+MIT — see [LICENSE](https://github.com/Kaiji-Z/kaijibot/blob/main/LICENSE). The upstream OpenClaw copyright notice is retained as required by the MIT license.

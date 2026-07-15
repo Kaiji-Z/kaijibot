@@ -134,7 +134,7 @@ To return to latest: `git checkout main && git pull`.
 - Run `kaijibot doctor` again and read the output carefully.
 - For `kaijibot update --channel dev` on source checkouts, the updater auto-bootstraps `pnpm` when needed. If you see a pnpm/corepack bootstrap error, install `pnpm` manually (or re-enable `corepack`) and rerun the update.
 - Check: [Troubleshooting](/gateway/troubleshooting)
-- Ask in Discord: [https://discord.gg/clawd](https://discord.gg/clawd)
+- Report issues: [github.com/Kaiji-Z/kaijibot/issues](https://github.com/Kaiji-Z/kaijibot/issues)
 
 ## Related
 

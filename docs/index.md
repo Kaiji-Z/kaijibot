@@ -43,7 +43,7 @@ title: "KaijiBot"
 
 ## What is KaijiBot?
 
-KaijiBot is a **self-hosted proactive AI assistant** built on [OpenClaw](https://github.com/openclaw/openclaw), tailored for Chinese users with deep Feishu integration. It connects to **62+ extensions** covering 35+ LLM providers — Z.AI (智谱 GLM), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds a **cognitive AI layer** that makes the assistant genuinely proactive.
+KaijiBot is a **self-hosted proactive AI assistant** that forked from [OpenClaw](https://github.com/openclaw/openclaw) and now develops independently, tailored for Chinese users with deep Feishu integration. It connects to **90+ extensions** covering 45+ LLM providers — Z.AI (智谱 GLM, default), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds an original **cognitive AI layer** that makes the assistant genuinely proactive.
 
 **Who is it for?** Developers and power users who want an AI partner that knows them, learns their interests, and initiates conversations with relevant insights — all running on their own hardware.
 
@@ -88,7 +88,7 @@ The Gateway is the single source of truth for sessions, routing, and channel con
     Browser dashboard for chat, config, sessions, and monitoring.
   </Card>
   <Card title="Plugin & Skill System" icon="plug">
-    21 bundled extensions and 21 skills — memory, search, browser automation, and more. Extensible via SDK.
+    90+ bundled extensions and 22 skills — memory, search, browser automation, and more. Extensible via SDK.
   </Card>
 </Columns>
 

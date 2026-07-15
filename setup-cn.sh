@@ -109,7 +109,7 @@ print_banner() {
   echo -e "${BOLD}${CYAN}║  认知驱动，主动思考。                    ║${NC}"
   echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════╝${NC}"
   echo ""
-  echo -e "${DIM}基于 OpenClaw 精简改造 | 飞书 + 智谱 GLM${NC}"
+  echo -e "${DIM}独立项目 · 原始代码 fork 自 OpenClaw | 飞书 + 智谱 GLM${NC}"
   echo -e "${DIM}从源码一键部署，无需 Docker${NC}"
   echo ""
 }

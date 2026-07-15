@@ -67,17 +67,14 @@ Use these hubs to discover every page, including deep dives and reference docs t
 
 ## Providers + ingress
 
-- [Chat channels hub](/channels)
+- [Feishu](/channels/feishu) — first-class channel (primary, China-oriented)
+- [WeChat](/channels/wechat) — first-class channel
+- [Chat channels hub](/channels) — full channel reference (incl. bundled/inherited channels)
 - [Model providers hub](/providers/models)
-- [WhatsApp](/channels/whatsapp)
-- [Telegram](/channels/telegram)
-- [Slack](/channels/slack)
-- [Discord](/channels/discord)
-- [Mattermost](/channels/mattermost)
-- [Signal](/channels/signal)
-- [BlueBubbles (iMessage)](/channels/bluebubbles)
-- [QQ Bot](/channels/qqbot)
-- [iMessage (legacy)](/channels/imessage)
+- [Telegram](/channels/telegram) — bundled/inherited, not deeply tested
+- [Slack](/channels/slack) — bundled/inherited
+- [Discord](/channels/discord) — bundled/inherited
+- [QQ Bot](/channels/qqbot) — bundled/inherited
 - [Location parsing](/channels/location)
 - [WebChat](/web/webchat)
 - [Webhooks](/automation/cron-jobs#webhooks)

@@ -6,6 +6,8 @@ read_when:
 title: "iMessage"
 ---
 
+> ⚠️ **此频道在 KaijiBot 中无打包代码。** This channel has **no bundled code** in KaijiBot — the page is preserved as upstream OpenClaw reference only. KaijiBot's first-class channels are Feishu (飞书) and WeChat (微信); see the [channels hub](/channels) for the full list.
+
 > ⚠️ **此频道 KaijiBot 暂不支持。** This channel is available in the upstream OpenClaw project but is not included in KaijiBot. KaijiBot currently supports Feishu (飞书) only.
 
 # iMessage (legacy: imsg)

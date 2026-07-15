@@ -8,11 +8,13 @@ read_when:
 
 # Showcase
 
-Real projects from the community. See what people are building with KaijiBot.
+Community-built projects and integrations. See what people are building.
 
 <Info>
-**Want to be featured?** Share your project in [#self-promotion on Discord](https://discord.gg/clawd) or [tag @kaijibot on X](https://x.com/kaijibot).
+**Want to be featured?** Open an issue at [github.com/Kaiji-Z/kaijibot/issues](https://github.com/Kaiji-Z/kaijibot/issues) with your project, or tag [@kaijibot on X](https://x.com/kaijibot).
 </Info>
+
+> **Note:** KaijiBot forked from OpenClaw and shares much of its tool/channel ecosystem. Many entries below are from the upstream OpenClaw community and are listed as reference; they may use upstream-only channels (Telegram/Discord/etc.) not bundled-tested in KaijiBot.
 
 ## 🎥 KaijiBot in Action
 

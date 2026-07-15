@@ -36,16 +36,15 @@ For a complete map of the docs, see [Docs hubs](/start/hubs).
 
 ## Providers and UX
 
+- [Feishu](/channels/feishu) — first-class channel (primary)
+- [WeChat](/channels/wechat) — first-class channel
 - [WebChat](/web/webchat)
 - [Control UI (browser)](/web/control-ui)
-- [Telegram](/channels/telegram)
-- [Discord](/channels/discord)
-- [Mattermost](/channels/mattermost)
-- [BlueBubbles (iMessage)](/channels/bluebubbles)
-- [QQ Bot](/channels/qqbot)
-- [iMessage (legacy)](/channels/imessage)
+- [Telegram](/channels/telegram) — bundled/inherited
+- [Discord](/channels/discord) — bundled/inherited
+- [QQ Bot](/channels/qqbot) — bundled/inherited
 - [Groups](/channels/groups)
-- [WhatsApp group messages](/channels/group-messages)
+- [Group messages](/channels/group-messages)
 - [Media images](/nodes/images)
 - [Media audio](/nodes/audio)
 
