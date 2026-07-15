@@ -27,7 +27,12 @@ Before developing any feature or changing any code, read and follow `VERIFICATIO
   - `context-writer.ts` — builds cognitive mode prompt sections for system prompt injection
 - **`src/infra/openclaw-migrator/`** — OpenClaw → KaijiBot migration: auto-detect OpenClaw installation, import agents/workspace/skills/config with dry-run support, onboard wizard integration
 - **`src/commands/migrate.ts`** — `kaijibot migrate` CLI command
-- **`extensions/`** — bundled plugins. The only messaging channel is **feishu**; the primary LLM provider is **zai**. Also includes: openai, ollama, lmstudio, github-copilot, exa, tavily, browser, memory-core, memory-lancedb, knowledge-wiki, speech-core, talk-voice, media-understanding-core, image-generation-core, diffs, llm-task, device-pair, webhooks
+- **`extensions/`** — bundled plugins (~75 packages with their own `package.json` + ~15 bundled-in modules without one). Ground-truth categories as of the current tree:
+  - **Channels — first-class** (own package, project focus, China-oriented): **feishu**, **wechat**
+  - **Channels — bundled/inherited from upstream fork** (code present, NOT first-class, untested in this project): discord, googlechat, irc, line, matrix, mattermost, nextcloud-talk, nostr, qa-matrix, qqbot, signal, slack, synology-chat, telegram, tlon, twitch, zalo, zalouser. **Note**: `docs/channels/` additionally documents bluebubbles/imessage/msteams/whatsapp which have **no bundled code** (dead doc pages).
+  - **LLM providers (~47)**: **zai** (default/recommended), deepseek, qwen, moonshot, minimax, alibaba (qianfan), anthropic, anthropic-vertex, google, openai, openrouter, mistral, groq, together, fireworks, stepfun, volcengine/byteplus, xai, ollama, lmstudio, vllm, sglang, litellm, huggingface, nvidia, cerebras, runway, venice, chutes, kilocode, kimi-coding, gradium, vydra, opencode, opencode-go, microsoft-foundry, copilot-proxy, github-copilot, arcee, cloudflare-ai-gateway, vercel-ai-gateway, qianfan, xiaomi, open-prose
+  - **Web search**: exa, tavily, perplexity
+  - **Core/media/memory/other**: browser, memory-core, memory-lancedb, knowledge-wiki, speech-core, talk-voice, voice-call, media-understanding-core, image-generation-core, diffs, llm-task, webhooks, kindle-portal, openshell, canvas, device-pair, amazon-bedrock, codex, codex-supervisor, sms, qa-channel, qa-lab, acpx, bonjour, clickclack, migrate-hermes, oc-path
 - **`packages/`** — shared packages: plugin-sdk, plugin-package-contract, memory-host-sdk
 - **`skills/`** — 22 skills (github, gh-issues, weather, summarize, coding-agent, mcporter, skill-creator, session-logs, healthcheck, notion, obsidian, canvas, nano-pdf, taskflow, taskflow-inbox-triage, clawhub, video-frames, gifgrep, node-connect, blogwatcher, sherpa-onnx-tts, memory-organize)
 - **`ui/`** — web control UI
@@ -427,23 +432,21 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 - Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl`.
 - Never commit real phone numbers, API keys, or live config values.
 
-## Syncing Upstream
+## Upstream Relationship (Independent)
+
+KaijiBot forked from [OpenClaw](https://github.com/openclaw/openclaw) in April 2026 and now **develops independently**. We no longer merge upstream automatically — the cognitive layer, memory rewrite, and China/Feishu focus have taken the project in a different direction.
+
+**When (rarely) to look upstream:** only to research how a specific upstream bug was fixed, or to hand-port a concrete improvement. This is a manual, selective judgment call — never a blanket merge. There is no expectation that upstream changes flow in.
+
+The upstream remotes are kept dormant for this occasional reference only:
 
 ```bash
-git remote add upstream https://github.com/openclaw/openclaw
-git fetch upstream
-git merge upstream/main
+# Reference only — do NOT merge into main.
+git remote add upstream https://github.com/openclaw/openclaw      # GitHub
+git remote add openclaw  https://gitee.com/kaiji1126/openclaw      # Gitee mirror (squash history)
 ```
 
-Or use the Gitee mirror (squash history, no individual commits):
-
-```bash
-git remote add openclaw https://gitee.com/kaiji1126/openclaw
-git fetch openclaw
-git merge openclaw/main
-```
-
-Core code (`src/`) is fully compatible; merge conflicts should be rare. The cognitive layer (`src/cognitive/`) is unique to this fork and lives in separate files — it does not conflict with upstream merges.
+If you do selectively port a fix, attribute it in the commit message (e.g. `port: <fix> from OpenClaw`). The cognitive layer (`src/cognitive/`) is unique to KaijiBot and never has an upstream counterpart.
 
 ## Collaboration / Safety Notes
 
