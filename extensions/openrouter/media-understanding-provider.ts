@@ -115,7 +115,7 @@ export async function transcribeOpenRouterAudio(
       defaultHeaders: {
         Authorization: `Bearer ${params.apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://openclaw.ai",
+        "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
         "X-OpenRouter-Title": "OpenClaw",
       },
       provider: "openrouter",

@@ -4,7 +4,7 @@ import {
   listOpenRouterVideoModelCatalog,
 } from "./video-generation-provider.js";
 
-const SUPPORTED_DURATIONS_HINT = Symbol.for("openclaw.videoGeneration.supportedDurations");
+const SUPPORTED_DURATIONS_HINT = Symbol.for("kaijibot.videoGeneration.supportedDurations");
 
 const {
   assertOkOrThrowHttpErrorMock,

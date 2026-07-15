@@ -12,7 +12,9 @@ const LIVE_MODEL_ID =
   process.env.OPENCLAW_LIVE_OPENROUTER_PLUGIN_MODEL?.trim() || "openai/gpt-5.4-nano";
 const LIVE_CACHE_MODEL_ID =
   process.env.OPENCLAW_LIVE_OPENROUTER_CACHE_MODEL?.trim() || "deepseek/deepseek-v3.2";
-const liveEnabled = OPENROUTER_API_KEY.trim().length > 0 && process.env.OPENCLAW_LIVE_TEST === "1";
+const liveEnabled =
+  OPENROUTER_API_KEY.trim().length > 0 &&
+  (process.env.KAIJIBOT_LIVE_TEST || process.env.OPENCLAW_LIVE_TEST) === "1";
 const describeLive = liveEnabled ? describe : describe.skip;
 const describeCacheLive =
   liveEnabled && process.env.OPENCLAW_LIVE_CACHE_TEST === "1" ? describe : describe.skip;

@@ -137,10 +137,10 @@ ARG KAIJIBOT_DOCKER_APT_UPGRADE
 # OCI base-image metadata for downstream image consumers.
 # If you change these annotations, also update:
 # - docs/install/docker.md ("Base image metadata" section)
-# - https://docs.kaijibot.ai/install/docker
-LABEL org.opencontainers.image.source="https://github.com/kaijibot/kaijibot" \
-  org.opencontainers.image.url="https://kaijibot.ai" \
-  org.opencontainers.image.documentation="https://docs.kaijibot.ai/install/docker" \
+# - https://github.com/Kaiji-Z/kaijibot/tree/main/docs/install/docker.md
+LABEL org.opencontainers.image.source="https://github.com/Kaiji-Z/kaijibot" \
+  org.opencontainers.image.url="https://github.com/Kaiji-Z/kaijibot" \
+  org.opencontainers.image.documentation="https://github.com/Kaiji-Z/kaijibot/tree/main/docs/install/docker.md" \
   org.opencontainers.image.licenses="MIT" \
   org.opencontainers.image.title="KaijiBot" \
   org.opencontainers.image.description="KaijiBot gateway and CLI runtime container image"

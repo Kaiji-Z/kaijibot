@@ -92,7 +92,7 @@ describe("openrouter media understanding provider", () => {
       defaultHeaders: {
         Authorization: "Bearer sk-openrouter",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://openclaw.ai",
+        "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
         "X-OpenRouter-Title": "OpenClaw",
       },
       provider: "openrouter",
@@ -122,7 +122,7 @@ describe("openrouter media understanding provider", () => {
       throw new Error("expected OpenRouter request headers");
     }
     expect(headers.get("authorization")).toBe("Bearer sk-openrouter");
-    expect(headers.get("http-referer")).toBe("https://openclaw.ai");
+    expect(headers.get("http-referer")).toBe("https://github.com/Kaiji-Z/kaijibot");
     expect(headers.get("x-openrouter-title")).toBe("OpenClaw");
     expect(release).toHaveBeenCalledOnce();
   });

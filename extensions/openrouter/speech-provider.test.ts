@@ -147,7 +147,7 @@ describe("openrouter speech provider", () => {
       defaultHeaders: {
         Authorization: "Bearer sk-openrouter",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://openclaw.ai",
+        "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
         "X-OpenRouter-Title": "OpenClaw",
       },
       provider: "openrouter",
@@ -160,7 +160,7 @@ describe("openrouter speech provider", () => {
     expect(Object.fromEntries(headers.entries())).toEqual({
       authorization: "Bearer sk-openrouter",
       "content-type": "application/json",
-      "http-referer": "https://openclaw.ai",
+      "http-referer": "https://github.com/Kaiji-Z/kaijibot",
       "x-openrouter-title": "OpenClaw",
     });
     expect(request).toEqual({

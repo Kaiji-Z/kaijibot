@@ -36,7 +36,7 @@ export function buildOpenRouterSpeechProvider(): SpeechProviderPlugin {
     voiceCompatibleResponseFormats: ["mp3"],
     baseUrlPolicy: { kind: "canonical", aliases: ["https://openrouter.ai/v1"] },
     extraHeaders: {
-      "HTTP-Referer": "https://openclaw.ai",
+      "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
       "X-OpenRouter-Title": "OpenClaw",
     },
     apiErrorLabel: "OpenRouter TTS API error",

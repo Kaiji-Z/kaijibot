@@ -8,7 +8,7 @@ const log = createSubsystemLogger("deepinfra-models");
 const DEEPINFRA_MANIFEST_CATALOG = manifest.modelCatalog.providers.deepinfra;
 
 export const DEEPINFRA_BASE_URL = DEEPINFRA_MANIFEST_CATALOG.baseUrl;
-export const DEEPINFRA_MODELS_URL = `${DEEPINFRA_BASE_URL}/models?sort_by=openclaw&filter=with_meta`;
+export const DEEPINFRA_MODELS_URL = `${DEEPINFRA_BASE_URL}/models?filter=with_meta`;
 
 export const DEEPINFRA_DEFAULT_MODEL_ID = "deepseek-ai/DeepSeek-V3.2";
 export const DEEPINFRA_DEFAULT_MODEL_REF = `deepinfra/${DEEPINFRA_DEFAULT_MODEL_ID}`;

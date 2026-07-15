@@ -283,7 +283,7 @@ export function buildOpenRouterMusicGenerationProvider(): MusicGenerationProvide
           defaultHeaders: {
             Authorization: `Bearer ${auth.apiKey}`,
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://openclaw.ai",
+            "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
             "X-OpenRouter-Title": "OpenClaw",
           },
           provider: "openrouter",

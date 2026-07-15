@@ -18,10 +18,20 @@ for (const arg of process.argv.slice(2)) {
   forwardedArgs.push(arg);
 }
 
+const liveTestFlag = process.env.KAIJIBOT_LIVE_TEST || process.env.OPENCLAW_LIVE_TEST || "1";
+const liveTestQuiet =
+  quietOverride ??
+  process.env.KAIJIBOT_LIVE_TEST_QUIET ??
+  process.env.OPENCLAW_LIVE_TEST_QUIET ??
+  "1";
+
 const env = {
   ...process.env,
-  OPENCLAW_LIVE_TEST: process.env.OPENCLAW_LIVE_TEST || "1",
-  OPENCLAW_LIVE_TEST_QUIET: quietOverride ?? process.env.OPENCLAW_LIVE_TEST_QUIET ?? "1",
+  // Canonical KaijiBot name, plus the legacy OPENCLAW_ alias for back-compat.
+  KAIJIBOT_LIVE_TEST: liveTestFlag,
+  KAIJIBOT_LIVE_TEST_QUIET: liveTestQuiet,
+  OPENCLAW_LIVE_TEST: liveTestFlag,
+  OPENCLAW_LIVE_TEST_QUIET: liveTestQuiet,
 };
 
 function parsePositiveInt(value, fallback) {
@@ -32,7 +42,10 @@ function parsePositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-const heartbeatMs = parsePositiveInt(process.env.OPENCLAW_LIVE_WRAPPER_HEARTBEAT_MS, 20_000);
+const heartbeatMs = parsePositiveInt(
+  process.env.KAIJIBOT_LIVE_WRAPPER_HEARTBEAT_MS ?? process.env.OPENCLAW_LIVE_WRAPPER_HEARTBEAT_MS,
+  20_000,
+);
 const startedAt = Date.now();
 let lastOutputAt = startedAt;
 

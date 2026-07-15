@@ -37,7 +37,7 @@ const SUPPORTED_ASPECT_RATIOS = ["16:9", "9:16"] as const;
 const OPENROUTER_VIDEO_MALFORMED_RESPONSE = "OpenRouter video generation response malformed";
 const SUPPORTED_DURATION_SECONDS = [4, 6, 8] as const;
 // Runtime sets this after normalizing against live model capabilities.
-const SUPPORTED_DURATIONS_HINT = Symbol.for("openclaw.videoGeneration.supportedDurations");
+const SUPPORTED_DURATIONS_HINT = Symbol.for("kaijibot.videoGeneration.supportedDurations");
 const SUPPORTED_RESOLUTIONS = ["720P", "1080P"] as const;
 
 type OpenRouterVideoResponse = {
@@ -431,7 +431,7 @@ export function buildOpenRouterVideoGenerationProvider(): VideoGenerationProvide
           defaultHeaders: {
             Authorization: `Bearer ${auth.apiKey}`,
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://openclaw.ai",
+            "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
             "X-OpenRouter-Title": "OpenClaw",
           },
           request: sanitizeConfiguredModelProviderRequest(

@@ -224,7 +224,7 @@ async function fetchOpenRouterVideoModels(params: {
     load: async () => {
       const headers = new Headers({
         Authorization: `Bearer ${params.apiKey}`,
-        "HTTP-Referer": "https://openclaw.ai",
+        "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
         "X-OpenRouter-Title": "OpenClaw",
       });
       const { response, release } = await fetchOpenRouterVideoGet({

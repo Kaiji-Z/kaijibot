@@ -303,7 +303,7 @@ export function buildOpenRouterImageGenerationProvider(): ImageGenerationProvide
           allowPrivateNetwork: false,
           defaultHeaders: {
             Authorization: `Bearer ${auth.apiKey}`,
-            "HTTP-Referer": "https://openclaw.ai",
+            "HTTP-Referer": "https://github.com/Kaiji-Z/kaijibot",
             "X-OpenRouter-Title": "OpenClaw",
           },
           provider: "openrouter",
