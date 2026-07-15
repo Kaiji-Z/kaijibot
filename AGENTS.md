@@ -9,6 +9,10 @@ KaijiBot is an independent project — a proactive cognitive AI assistant with a
   - Upstream mirror (Gitee): `https://gitee.com/kaiji1126/openclaw` (manual mirror, squash history)
 - In chat replies, file references must be repo-root relative only (e.g. `src/cli/index.ts:80`); never absolute paths or `~/...`.
 
+## Mandatory Verification Protocol
+
+Before developing any feature or changing any code, read and follow `VERIFICATION.md`. Output that violates a red line in VERIFICATION.md §7 is void. The current verification system status and backlog are in [Verification System](#verification-system) below.
+
 ## Project Structure
 
 - **`src/`** — core engine: CLI (`src/cli`), commands (`src/commands`), gateway (`src/gateway`), agents (`src/agents`), config (`src/config`), plugin system (`src/plugins`, `src/plugin-sdk`), channels (`src/channels`), media pipeline (`src/media`), **cognitive layer (`src/cognitive`)**
@@ -453,3 +457,82 @@ Core code (`src/`) is fully compatible; merge conflicts should be rare. The cogn
 - Release guardrails: do not change version numbers without operator's explicit consent.
 - Never send streaming/partial replies to external messaging surfaces; only final replies.
 - Tool schema guardrails: avoid `Type.Union` / `anyOf` / `oneOf` / `allOf` in tool input schemas. Use `stringEnum` / `optionalStringEnum`. Avoid raw `format` property names.
+
+## Verification System
+
+Established by `VERIFICATION.md` diagnosis pipeline. This section is the live audit/status/backlog; the protocol itself lives in `VERIFICATION.md`.
+
+### ACI Architecture Audit — PASS (all criteria)
+
+| Criterion                      | Verdict | Evidence                                                                                                                                                                                                                  |
+| ------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §2.1 Runs without the UI       | ✅ PASS | `kaijibot gateway --port 18789` (`src/cli/gateway-cli/run.ts`); `POST /v1/chat/completions` (`src/gateway/openai-http.ts:431`); gateway RPC `chat` (`src/gateway/server-methods/chat.ts`); `*.e2e.test.ts` headless suite |
+| §2.2 Intermediate state logged | ✅ PASS | Session JSONL transcripts (`src/gateway/session-transcript-files.fs.ts:39`); evolution audit log (`src/cognitive/evolution/audit-log.ts`); `getRecentSessionContent` (`src/hooks/bundled/session-memory/transcript.ts`)   |
+| §2.3 Programmatic interface    | ✅ PASS | `GET /api/status` (`src/gateway/status-http.ts:58`); gateway RPC `sessions.list`/`chat.history` (`src/gateway/server-methods/`); backend/frontend split (no MCP-web-sim)                                                  |
+
+Architecture is sound. Gaps are in the verification _layers_, not the runtime.
+
+### Test Infrastructure Status
+
+| Item                           | Status                                                                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Regression run                 | `pnpm test` (`scripts/test-projects.mjs`); scoped `pnpm test <path>`. ✅ present                                                                                                                       |
+| Regression set                 | Colocated `*.test.ts` (unit), `*.e2e.test.ts` (e2e), `*.live.test.ts` (live, excluded by default). 12 vitest configs incl. `vitest.cognitive.config.ts`. ✅ present                                    |
+| Assertion framework            | vitest native `expect`/`assert`. ✅ present (Layer 1 deterministic)                                                                                                                                    |
+| Supervisor (Layer 2 LLM judge) | ⚠️ ad-hoc only — `verifyInsightWithLLM` (`src/cognitive/insight/llm-engine.ts`), `skill-quality-gate.ts`, `skill-reviewer.ts`. NOT a reusable/clean-context harness for arbitrary features. **P0 gap** |
+| Flag-based regression (§4)     | ⚠️ config `enabled` booleans exist (`src/config/types.cognitive.ts:3,7,64`), `insight.engine` enum. NO env FEATURE_FLAG system; NO on/off comparison SOP. **P0 gap**                                   |
+
+### Project Parameters (§8) — Filled
+
+| Item                    | Category    | Value                                                                                                                                                                    |
+| ----------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 8.1 Backend start       | auto-fill   | `kaijibot gateway --port 18789`                                                                                                                                          |
+| 8.1 Workflow trigger    | auto-fill   | `POST /v1/chat/completions`; gateway RPC `chat`; `kaijibot infer`/`send` CLI                                                                                             |
+| 8.1 Trace fetch         | auto-fill   | `GET /api/status`; `kaijibot sessions list`; session JSONL at `~/.kaijibot/`                                                                                             |
+| 8.2 Regression run      | auto-fill   | `pnpm test`; scoped `pnpm test <path>`                                                                                                                                   |
+| 8.2 Regression set      | auto-fill   | colocated `*.test.ts`; e2e `*.e2e.test.ts`; live `*.live.test.ts`                                                                                                        |
+| 8.2 Assertion framework | auto-fill   | vitest native (no eval harness)                                                                                                                                          |
+| 8.3 Flags               | auto-fill   | config `enabled` booleans (`src/config/types.cognitive.ts`); `insight.engine` enum. No env FEATURE_FLAG / on-off SOP                                                     |
+| 8.4 Supervisor model    | must-ask ✅ | Reuse agent's main model (ZAI/GLM) as judge. NOTE: §3.2 recommends a different model — self-scoring risk acknowledged; acceptable until a second key is available        |
+| 8.4 Scoring dimensions  | must-ask ✅ | Quality / Relevance / Novelty / Safety — each 0–10                                                                                                                       |
+| 8.4 Pass threshold      | must-ask ✅ | Each dimension ≥ 0.7                                                                                                                                                     |
+| 8.5 Acceptance scope    | must-ask ✅ | 5 core workflows: proactive insight / skill self-evolution / correction memory / memory consolidation / normal conversation reply (happy path + reverse acceptance each) |
+| 8.7 Eval toolchain      | auto-fill   | vitest only. No deepeval/langsmith. §3/§4 land on vitest native assertions; supervisor harness to be built                                                               |
+
+### Verification Backlog (sorted by priority)
+
+| Priority | Gap                                          | Remediation                                                                                                                                       | Status              |
+| -------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| **P0**   | No reusable supervisor framework (§3.2)      | `test/helpers/eval/supervisor.ts` — `createSupervisor({ generateText })`, clean-context (accepts only expected+actual), 4 dims ≥0.7, 8 unit tests | ✅ remediated       |
+| **P0**   | No flag-based regression comparison (§4)     | `scripts/regression-flag-diff.mjs [target]` — runs suite twice via temp `KAIJIBOT_CONFIG_PATH`, JSON reporter, REGRESSIONS = pass-off/fail-on     | ✅ remediated       |
+| **P1**   | Acceptance criteria not centralized (§8.5)   | `docs/ACCEPTANCE.md` — happy path + reverse acceptance for the 5 core workflows                                                                   | ✅ remediated       |
+| **P1**   | Live tests excluded from default `pnpm test` | Wire a periodic live-test gate + document acceptance thresholds                                                                                   | pending remediation |
+| **P2**   | No dataset-management eval harness           | Optional: thin vitest-based eval harness (fixtures + judge scoring) vs. introducing a heavy dependency                                            | deferred            |
+
+**DoD reminder (§6):** a feature is done only when its happy-path regression test passes under flag=on, the supervisor reaches threshold, and flag=off shows no regression — all reproducible by one command. Until the P0 items are remediated, "done" claims for fuzzy-output features (insights, skill drafts) rest on the ad-hoc inline judges only.
+
+### Verification System — Remediation Status
+
+The P0 supervisor + flag-regression and the P1 acceptance doc have landed:
+
+| Deliverable                                 | Location                                                  | Usage                                                                                                                                                                                              |
+| ------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Supervisor** (clean-context LLM-as-judge) | `test/helpers/eval/supervisor.ts` (+ `.test.ts`, 8 tests) | `createSupervisor({ generateText })` → `supervise({ expected, actual })`; enforces §3.2 by accepting ONLY expected+actual (no code-leak path). Wire to live LLM via `createStandaloneGenerateText` |
+| **Flag-regression diff**                    | `scripts/regression-flag-diff.mjs [target]`               | Runs a suite twice (cognitive enabled/disabled via temp `KAIJIBOT_CONFIG_PATH`), emits a REGRESSIONS list (pass-off/fail-on). Exit 1 on regression                                                 |
+| **Acceptance criteria**                     | `docs/ACCEPTANCE.md`                                      | Happy path + reverse acceptance for the 5 core workflows — the `expected` text the supervisor scores against                                                                                       |
+
+**How to use them together** (§6 DoD, one command per layer):
+
+```bash
+# Layer 1 — deterministic regression (flag on vs off)
+node scripts/regression-flag-diff.mjs src/cognitive/insight
+
+# Layer 2 — supervisor (clean-context judge) inside a live test:
+#   const supervise = createSupervisor({ generateText });
+#   const r = await supervise({ expected: <from docs/ACCEPTANCE.md>, actual: output });
+#   assert(r.passed);
+```
+
+The supervisor reuses the ZAI/GLM main model (operator decision, §8.4) but in an isolated context — this satisfies §3.2 rule 1 (clean context) while rule 3 (different model) stays relaxed until a second key is available.
+
+**Remaining backlog:** P1 live-test periodic gate; P2 optional dataset eval harness.
