@@ -215,7 +215,10 @@ Launcher 主界面长这样:
 
 **完整安装 + 启动流程**(从手机桌面 → KaijiBot Control 启动 → 第一条响应,26 秒):
 
-<video controls muted src="./screenshot/Android5.mp4">你的浏览器不支持 video 标签,请直接下载 <a href="./screenshot/Android5.mp4">Android5.mp4</a> 查看</video>
+<video controls width="320" preload="metadata" poster="./screenshot/Android5-poster.jpg">
+  <source src="./screenshot/Android5.mp4" type="video/mp4">
+  你的浏览器不支持 video 标签 —— <a href="./screenshot/Android5.mp4">直接下载 MP4</a>
+</video>
 
 **实际移动端对话** —— KaijiBot 在手机端给你写的实质内容(把 Git commit 类比为依赖图,讨论 Agent 如何辅助哲学写作的一致性检查):
 
