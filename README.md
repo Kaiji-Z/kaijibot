@@ -218,15 +218,15 @@ Launcher 主界面、控制面板、实际移动端对话三张截图并排:
 - **离线可用** — 只要 LLM provider 能访问(本机 Ollama / 局域网 vLLM 完全离线),你就有一个随身 AI 伙伴。配云端 LLM 也可,流量走你自己的 API Key。
 - **主动洞察走系统通知** — PRISM 门控 + Android 通知,KaijiBot 在你通勤、午休时主动给你发洞察,和你日常用飞书/微信的体验一致。
 
-**📱 完整运行流程(26 秒视频)**
+**📱 完整运行流程(26 秒加速回放)**
 
-从手机桌面 → KaijiBot Control 启动 → 第一条响应:
+从手机桌面启动 KaijiBot → 打开控制面板 → 对话响应(视频已加速,便于快速预览,实际耗时更长):
 
-<a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="点击在新页面播放 26 秒演示视频">
-  <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android 安装启动全流程 - 点击播放视频">
+<a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="点击在新页面播放 26 秒加速回放">
+  <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android 启动到对话响应 - 点击播放加速回放">
 </a>
 
-**[▶ 播放完整 26 秒演示视频](./screenshot/Android5.mp4?raw=true)**(MP4,4MB,点击在新页面播放)
+**[▶ 播放加速回放](./screenshot/Android5.mp4?raw=true)**(MP4,4MB,点击在新页面播放)
 
 **已有 Termux 的技术用户** 可以跳过 Launcher APK,直接跑:
 

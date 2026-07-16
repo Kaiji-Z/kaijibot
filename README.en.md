@@ -219,15 +219,15 @@ Launcher home screen, control panel, and a real mobile conversation — three sc
 - **Offline-capable** — As long as the LLM provider is reachable (fully offline via on-device Ollama / LAN vLLM), you have a portable AI companion. Cloud LLMs work too — traffic goes through your own API key.
 - **Proactive insights via system notifications** — PRISM gating + Android notifications. KaijiBot pushes insights during your commute or lunch break, with the same UX as your daily Feishu/WeChat use.
 
-**📱 Full run flow (26-second video)**
+**📱 Full run flow (26-second sped-up replay)**
 
-From phone home screen → KaijiBot Control opens → first response:
+Launch KaijiBot from phone home screen → open control panel → chat response (video sped up for quick preview; actual timing is longer):
 
-<a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="Click to play the 26-second demo video in a new tab">
-  <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android install and launch flow - click to play video">
+<a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="Click to play the 26-second sped-up replay in a new tab">
+  <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android launch to chat response - click to play sped-up replay">
 </a>
 
-**[▶ Play the full 26-second demo video](./screenshot/Android5.mp4?raw=true)** (MP4, 4MB, plays in a new browser tab)
+**[▶ Play the sped-up replay](./screenshot/Android5.mp4?raw=true)** (MP4, 4MB, plays in a new browser tab)
 
 **Technical users who already have Termux** can skip the Launcher APK and run directly:
 
