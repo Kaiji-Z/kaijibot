@@ -2,11 +2,11 @@
 
 > **Your AI assistant reaches out to you — not the other way around.**
 
-Pluggable provider/channel architecture · Cognitive layer turns AI from reactive to proactive · 40+ LLM providers · Feishu + WeChat (first-class channels) · Auto locale switching (EN/zh)
+The first open-source AI companion that turns "proactive cognition" into a system-level capability · Pushes insights to you · Continuously models you · Agent autonomously evolves its own skills · Never makes the same mistake twice · Runs locally on Android phones
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6.svg)](https://www.typescriptlang.org/)]
 
 [English](./README.en.md) | [简体中文](./README.md)
 
@@ -16,38 +16,65 @@ Every AI assistant you've used follows the same pattern: you ask, it answers. Yo
 
 KaijiBot is different. After a few conversations on Feishu, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
 
-|                        | Typical Chatbot                        | KaijiBot                                                                                                                                   |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Interaction**        | Reactive — you ask, it answers         | Proactive insights + normal Q&A                                                                                                            |
-| **User Understanding** | Stateless, starts from zero every time | Continuously learns your interests, domains, preferences                                                                                   |
-| **Timing Awareness**   | Doesn't care what you're doing         | Respects active hours, trust level, conversation cadence                                                                                   |
-| **Chinese Support**    | English-first, Chinese often breaks    | Chinese-native: pattern routing, persona extraction optimized for Chinese                                                                  |
-| **Localization**       | UI hardcoded in one language           | CLI / wizard / cognitive prompts auto-detect system locale, switch between EN and zh                                                       |
-| **Integration**        | Requires Web/SDK integration           | Feishu · WeChat (first-class, deep support); 18 additional channels bundled from upstream (Telegram/Discord/Slack etc., not deeply tested) |
+| Capability | Typical chatbot | Typical memory agent (2026) | **KaijiBot** |
+| --- | --- | --- | --- |
+| **Interaction** | Reactive — you ask, it answers | Reactive + long memory | **Pushes insights proactively** + normal Q&A |
+| **User modeling** | Stateless | Vector DB + rerank | **TypedInsight 6 categories + category-aware decay half-lives + interest lifecycle** |
+| **Timing awareness** | Doesn't care what you're doing | None | **PRISM cost-sensitive gating** (no late-night interruptions, restraint during low trust) |
+| **Self-evolution** | None | None | **Agent autonomously creates/deletes skills** (code makes no quality judgments) |
+| **Correction learning** | None | None | **Dual-path correction memory** (never makes the same mistake twice) |
+| **Deployment** | Cloud SaaS | Cloud SaaS | **Cloud / local / Android phone local** (Termux, full agent, not a thin client) |
+
+> Channel integration: Feishu · WeChat (first-class channels, deep support); 18 additional channels bundled from upstream (Telegram/Discord/Slack etc., not deeply tested). EN/zh CLI / wizard / cognitive prompts auto-switch. 40+ LLM providers pluggable.
 
 ## ✨ Core Features
 
 ### 🔮 Cognitive Engine — From Reactive Replies to Proactive Insights
 
-You've been chatting with KaijiBot on Feishu about AI architecture and distributed systems. Next week, it sends you a message unprompted:
+KaijiBot is not a reactive tool — it's a **continuously running cognitive entity that models you and pushes insights when the moment is right**. Its proactive insight pipeline:
 
-> "Saw a recent article on using eBPF for distributed tracing — combining it with the observability direction you've been exploring, this might spark some ideas."
+```mermaid
+flowchart TD
+    U[You chat on Feishu/WeChat] --> P[Persona modeling<br/>TypedInsight 6 categories + interest lifecycle]
+    P --> S[Scheduler events<br/>timer / persona-change / info-scan]
+    S --> G{PRISM cost gate<br/>expected value vs interruption cost}
+    G -- reject --> SKIP[Silent - late night / low trust / too frequent]
+    G -- pass --> SR[SIRI loop]
+    SR --> SE[Search<br/>cross-domain / domain depth / extension exploration]
+    SE --> ID[Identify<br/>domain cooldown + type cooldown + bandit mode selection]
+    ID --> RS[Resolve<br/>LLM generation → self-refine → LLM-as-judge verify]
+    RS --> DL[Push to Feishu/WeChat]
+    DL --> F[Your implicit feedback<br/>reply length / follow-up questions / brush-off]
+    F --> TS[Thompson Sampling<br/>preference learning]
+    TS -.updates preferences.-> P
+```
 
-This isn't a scheduled push. It's a genuine insight KaijiBot produced after **understanding you**.
+Five core mechanisms:
 
-Two weeks later, you bring up Rust and embedded systems. One day it tells you:
-
-> "You've been learning Rust, and you previously showed interest in embedded systems. There's a hands-on article on writing an RTOS kernel in Rust at the intersection of these two — worth a look."
-
-How it works:
-
-- **Persona Profiling** — Every conversation teaches it something new. LLM-driven structured extraction automatically discovers domains and interests from conversations. Insights decay by category independently. Interest lifecycle is tracked automatically. Domain names discovered dynamically by LLM — no hardcoded keywords.
-- **Cross-Domain Insights** — You're interested in both A and B, it finds potential connections. You asked about something before but didn't dig deeper, it follows up from a new angle. You've gone deep enough in one area, it suggests extension directions. LLM self-refine loop ensures quality, semantic dedup ensures every push is fresh.
-- **Timing Gate** — It doesn't push whenever it feels like it. The PRISM model calculates expected value for each insight. Only pushes when expected benefit exceeds interruption cost. No late-night打扰, restraint during low trust, waits if you've been inactive.
+- **Persona Profiling** — Every conversation teaches it something new. LLM-driven structured extraction automatically discovers domains and interests from conversations. Insights decay by category independently (`tool_config` 7d / `domain_knowledge` 30d / `behavioral_pattern` 90d...). Interest lifecycle is tracked automatically (emergent→stable→declining→dormant→revived). Domain names discovered dynamically by LLM — no hardcoded keywords.
+- **Cross-Domain Insights** — You're interested in both A and B, it finds potential connections. You asked about something before but didn't dig deeper, it follows up from a new angle. You've gone deep enough in one area, it suggests extension directions. LLM self-refine loop (critique→rewrite, up to 3 rounds) ensures quality, semantic dedup ensures every push is fresh.
+- **Timing Gate** — It doesn't push whenever it feels like it. The PRISM model calculates expected value for each insight. Only pushes when expected benefit exceeds interruption cost. No late-night interruptions, restraint during low trust, waits if you've been inactive.
 - **Trust Evolution** — Cautious at first, understands you better over time, eventually becomes a confident partner who can make bold recommendations. SARA framework drives four-stage trust evolution. Trust level determines what the system is allowed to do.
 - **Preference Learning** — You wrote a long reply? It notes you like this topic. You gave a one-word response? It tries a different direction next time. Thompson Sampling-driven preference learning. Implicit feedback is more honest than explicit feedback.
 
 Insight content is generated from your profile + LLM knowledge + real-time web search. With a search API key, insights stay current.
+
+<details>
+<summary><b>💡 Real insight samples (click to expand — actual Feishu messages from the operator's own KaijiBot instance)</b></summary>
+
+The two screenshots below are real Feishu messages KaijiBot pushed to the operator during long-term use. **Not fabricated, not GPT examples, actual system output.**
+
+**Sample 1: Behavioral pattern insight** — KaijiBot noticed the operator repeatedly deferring "style judgment" to the review stage, and proactively suggested moving that judgment upstream into the delegation stage (pushed 2026-07-07 22:48):
+
+![Writing workflow insight — KaijiBot proactively suggests moving review judgment upstream into delegation](./screenshot/ins1.jpg)
+
+**Sample 2: Cross-domain connection** — KaijiBot migrated the operator's prior pattern of "using AI to assist medical consultations" onto "using AI to interpret Apple Watch fitness data", building a bridge between two domains (pushed 2026-07-11 19:26):
+
+![Cross-domain connection — KaijiBot maps the AI-assisted medical visit pattern onto fitness data analysis](./screenshot/ins2.jpg)
+
+Note the tone — it doesn't read like a cold "notification" or "suggestion", but **like a friend casually sharing a thought**. This isn't a prompt-injected personality; it's the conversational style tuned by Persona implicit-preference learning + Thompson Sampling.
+
+</details>
 
 ### 🧬 Self-Evolution — Agent Decides When to Learn New Skills
 
@@ -57,9 +84,26 @@ You've done several complex Feishu knowledge base operations with KaijiBot — s
 
 How it works:
 
-- **Hard Trigger Detection** — Code does noise filtering only, no quality judgments. After detecting complex tasks, a system event is injected.
+- **Hard Trigger Detection** — Code does noise filtering only, no quality judgments. After detecting complex tasks (≥3 tool calls), a system event is injected.
 - **Agent-Driven Decision** — The Agent has full conversation context and decides whether it's worth creating a skill. Not worth it? Ignored.
-- **Full Lifecycle** — Dedup check before creation, usage frequency tracking after, auto-cleanup for unused skills.
+- **Full Lifecycle** — Dedup check before creation, usage frequency tracking after, auto-cleanup for unused skills (30 days + 0 usage).
+
+<details>
+<summary><b>🧬 Real samples (click to expand — two opposite outcomes from Agent autonomous decision-making)</b></summary>
+
+The two screenshots below show opposite decisions the Agent made during the operator's real use. **This is living proof of the "code makes no quality judgments" architectural claim** — most "self-evolving agents" will blindly create a skill for every complex task. KaijiBot's Agent judges for itself whether something "deserves to be solidified into a workflow".
+
+**Decision 1: Agent decides to create a skill** — After the operator processed a batch of Obsidian philosophy-concept notes' cross-references, the Agent evaluated that this pattern would recur and proactively created a `knowledge-graph-structuring` skill, explaining its uses and how to delete it:
+
+![Agent decides to create the knowledge-graph-structuring skill](./screenshot/evo1.jpg)
+
+**Decision 2: Agent decides NOT to create a skill** — The operator asked the Agent to read through a manuscript and give structured criticism. The Hard Trigger fired the same evolution signal, but the Agent judged for itself "this is fundamentally editing work, the core capability is reading+judgment, not a process; hard-codifying it would actually limit flexibility" and **proactively refused** to create the skill:
+
+![Agent proactively refuses to create a skill — because it's editing work, shouldn't be hard-codified](./screenshot/evo2.jpg)
+
+Note evo2 — the Agent's refusal reason is substantive (first draft = structure, second draft = pacing, final draft = word choice), not a templated "I can't do this". This ability to "say no on its own" is a direct product of the "code only does noise filtering, Agent judges everything" architecture.
+
+</details>
 
 ### 🔄 Correction Self-Evolution — Never Makes the Same Mistake Twice
 
@@ -107,46 +151,126 @@ export KAIJIBOT_CLI_LOCALE=en
 
 **Memory System**: Multiple storage backends with semantic search over conversation history. Three complementary systems maintain Agent context: session memory, daily consolidation, and manual organization.
 
+- **Session memory** — Auto-generates structured summaries (decisions, todos, topics) at the end of each conversation. Archives by date into `memory/YYYY-MM-DD.md`, splits by topic into independent topic files. 8KB budget auto-balances: high-frequency content inlined, low-frequency content kept as pointers.
+- **Daily consolidation** — Scheduled scan of historical sessions. LLM extracts structured knowledge (domains, behavioral patterns, preferences, goals), Jaccard-dedups, and routes into Persona profile, Fragment store, and Correction store. Your cognitive model evolves every day.
+- **Smart retrieval** — Dual-engine: FTS full-text + sqlite-vec vector semantic search (requires an embedding provider). Hybrid retrieval balances keyword matching and semantic relevance.
+- **Manual organization** — Built-in `memory-organize` skill: 4-step flow — GC (clean expired) → deep scan (find missed) → tidy dedup (cross-file) → budget check (stay lean).
+
 **Skill Marketplace**: Dozens of built-in skills (github, weather, summarize, coding-agent, notion, obsidian, taskflow, and more). Install additional skills from ClawHub:
 
 ```bash
 kaijibot skills install <skill-name>
 ```
 
-## 🚀 Quick Start
+### 📱 Runs Locally on Android — Put Your AI Companion in Your Pocket
 
-### One-click install (recommended — auto-detects environment, installs dependencies, runs onboard wizard)
+Most AI assistants are either cloud SaaS (data leaves your device) or self-hosted projects that require a server. **KaijiBot can be installed directly on an Android phone, running the full agent locally** — not a thin client connecting back to your server, the phone itself is the agent.
 
-**macOS / Linux:**
+**Just download one APK — no laptop, no command line, no GitHub account needed.** The [KaijiBot Launcher APK](https://github.com/Kaiji-Z/kaijibot/releases/tag/launcher) (~41MB, bundles Termux inside) walks you through every step.
+
+**Three steps:**
+
+1. **Download `kaijibot-launcher.apk`** — from the [GitHub Release](https://github.com/Kaiji-Z/kaijibot/releases/tag/launcher) to your phone
+2. **Install the APK** (allow "unknown sources") — open the Launcher, it auto-installs the bundled Termux
+3. **Tap "复制命令并打开 Termux" (Copy command and open Termux)** — long-press in Termux to paste, hit enter, KaijiBot auto-installs and starts
+
+The Launcher home screen looks like this:
+
+![KaijiBot Launcher APK home screen](./screenshot/Android1.jpg)
+
+After launch, the full KaijiBot control panel (chat / agent / cognition / insights / evolution / corrections / skills...) runs in the phone's browser, every cognitive subsystem has its own UI entry:
+
+![KaijiBot Control mobile — full cognitive-systems sidebar visible](./screenshot/Android3.jpg)
+
+Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置** (Chat / Agent / Cognition / Insights / Evolution / Corrections / Skills / Usage / History / Scheduled tasks / Settings). Each item is a real UI entry for the cognitive subsystem described above — not just a box in the architecture diagram. The right pane shows the current insight with its source attribution (`Source: Web Search --- LEDGER: Scaling Agentic Document Editing...`), proving the knowledge-mode web search is actually working.
+
+**Why this matters:**
+
+- **Data never leaves the phone** — Conversation history, Persona profile, correction memory, skills — all stored locally on the phone. No third-party server in the middle.
+- **Offline-capable** — As long as the LLM provider is reachable (fully offline via on-device Ollama / LAN vLLM), you have a portable AI companion. Cloud LLMs work too — traffic goes through your own API key.
+- **Proactive insights via system notifications** — PRISM gating + Android notifications. KaijiBot pushes insights during your commute or lunch break, with the same UX as your daily Feishu/WeChat use.
+
+<details>
+<summary><b>📱 Watch the full run flow (26-second GIF) and a real conversation screenshot</b></summary>
+
+**Full install + launch flow** (from phone home screen → KaijiBot Control opens → first response, 26 seconds):
+
+<video controls muted src="./screenshot/Android5.mp4">Your browser does not support the video tag — download <a href="./screenshot/Android5.mp4">Android5.mp4</a> directly</video>
+
+**Real mobile conversation** — substantive content KaijiBot produced on-phone (analogizing Git commits to dependency graphs, discussing how Agent can assist with consistency-checking in philosophical writing):
+
+![Real mobile conversation — philosophical writing + Agent collaboration](./screenshot/Android2.jpg)
+
+</details>
+
+**Technical users who already have Termux** can skip the Launcher APK and run directly:
 
 ```bash
-curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.sh | bash
+curl -fsSL https://github.com/Kaiji-Z/kaijibot/raw/main/scripts/install-termux.sh | bash
 ```
 
-**Windows (PowerShell):**
+> Want to understand how the Launcher APK works under the hood, keep-alive configuration, or the Termux compatibility engineering? See [`android/README.md`](./android/README.md) and the [Termux deployment guide](./docs/platforms/termux.md).
+
+## 🚀 Quick Start
+
+### Preparation
+
+Before you start, you'll need:
+
+| Requirement | What for | How to get it                                                                                                                                                                                                                             |
+| ----------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **LLM API key** | At least one AI provider's key | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [Qwen](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) — pick one |
+| **Messaging channel** | For sending/receiving messages | [Feishu](https://open.feishu.cn/) (recommended, wizard supports QR-code auto-creation) · [WeChat](./docs/channels/) (first-class channel, run `kaijibot channels login --channel wechat` to connect) · 18 additional bundled channels (Telegram/Discord/Slack etc., not deeply tested) |
+
+### Install (recommended)
+
+**macOS / Linux** — one command:
+
+```bash
+curl -fsSL https://github.com/Kaiji-Z/kaijibot/raw/main/scripts/install.sh | bash
+```
+
+The script will: detect your system → install Node.js (if missing) → install KaijiBot → launch the config wizard.
+
+**Windows** — PowerShell:
 
 ```powershell
-iwr -useb https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install.ps1 | iex
+iwr -useb https://github.com/Kaiji-Z/kaijibot/raw/main/scripts/install.ps1 | iex
 ```
 
-### npm
+After install, the wizard walks you through configuring LLM providers, Feishu bot, gateway, etc. The Feishu bot supports **QR-code auto-creation** (10 seconds, no manual setup on the open platform).
+
+### Start
+
+```bash
+kaijibot gateway --port 18789 --verbose
+```
+
+Once started, find your bot in Feishu and send a message. KaijiBot automatically begins building your cognitive profile, and after a few rounds of conversation it'll push its first proactive insight.
+
+<details>
+<summary><b>📦 Other install methods</b></summary>
+
+#### Android phone
+
+Just download the [KaijiBot Launcher APK](https://github.com/Kaiji-Z/kaijibot/releases/tag/launcher) — three steps and you're done. See the [📱 Runs Locally on Android](#-runs-locally-on-android--put-your-ai-companion-in-your-pocket) section above.
+
+#### npm global install (if you already have Node.js 22+)
 
 ```bash
 npm install -g kaijibot
-kaijibot onboard
+kaijibot onboard   # Interactive wizard, auto-configures
 ```
 
-### Docker
-
-Using the Docker setup script (recommended — handles image build and env config):
+#### Docker
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
 cd kaijibot
-bash scripts/docker/setup.sh
+bash scripts/docker/setup.sh   # One-shot deploy script (recommended)
 ```
 
-Or manual:
+Or build manually:
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
@@ -160,36 +284,32 @@ docker build -t kaijibot:local .
 docker compose up -d
 ```
 
-### Build from Source
+#### Build from source
 
 ```bash
 git clone https://github.com/Kaiji-Z/kaijibot.git
 cd kaijibot
 pnpm install
 pnpm build
-kaijibot onboard   # Interactive wizard, auto-configures
+kaijibot onboard   # Interactive wizard
 # Migrating from OpenClaw? Run:
 kaijibot migrate
 ```
 
-### Start
+</details>
 
-```bash
-kaijibot gateway --port 18789 --verbose
-```
-
-## ⚙️ Configuration
+### Configuration
 
 **Required**: At least one LLM provider API key + at least one messaging channel credential.
 
 ```bash
-# LLM API Key — pick one provider, uncomment the corresponding line
+# LLM API key — pick one provider, uncomment the corresponding line
 # export DEEPSEEK_API_KEY="your-key"         # DeepSeek
 # export ANTHROPIC_API_KEY="your-key"        # Claude
 # export GOOGLE_API_KEY="your-key"           # Gemini
 # export ZAI_API_KEY="your-key"              # Zhipu GLM
 
-# Feishu channel
+# Feishu channel (also configurable via wizard QR-code)
 kaijibot config set channels.feishu.appId "your-app-id"
 kaijibot config set channels.feishu.appSecret "your-app-secret"
 ```
@@ -203,46 +323,17 @@ export TAVILY_API_KEY="your-key"
 
 Config file at `~/.kaijibot/kaijibot.json`, supports hot reload. Cognitive system can be disabled via `cognitive.enabled: false`. For detailed configuration, see `AGENTS.md`.
 
-## 🏗️ Relationship with OpenClaw
+## Relationship with OpenClaw
 
-KaijiBot was originally forked from [OpenClaw](https://github.com/openclaw/openclaw) (the general-purpose AI agent ranked #1 globally on OpenRouter by token consumption, 382K+ GitHub stars), but has evolved into an independent project. **KaijiBot does three things, not just "OpenClaw + cognitive layer"**:
+KaijiBot was originally forked from [OpenClaw](https://github.com/openclaw/openclaw)'s Gateway architecture and Plugin SDK boundaries. On top of that, we built an independent cognitive layer (proactive insights, self-evolution, correction memory) and rewrote the memory consolidation system. The foundation OpenClaw provides (Gateway, agent loop, tool ecosystem) lets us focus on the differentiated parts.
 
-### 1. Hardened and simplified the base
+Base-layer engineering work (TypeBox type migration, pi-ai SDK upgrades, 1220 lint fixes, Windows/Android bug fixes, Plugin SDK backfill) is essentially invisible to users — see commit history for details.
 
-OpenClaw is a massive project built for a global, multi-channel, multilingual audience. KaijiBot consolidates the base layer on top of it:
-
-- **Type system modernization** — migrated from AJV/JSON Schema validators to TypeBox, unifying runtime and compile-time types
-- **Dependency tracking** — pi-ai SDK 0.65.2→0.79.4, keeping pace with the LLM abstraction layer's rapid evolution
-- **Code quality cleanup** — fixed 1220 pre-existing lint errors inherited from upstream (across 191 files)
-- **Critical bug fixes** — resolved upstream issues like the Windows dual-gateway race condition and Android rendering crashes
-- **Plugin SDK completion** — backfilled 13 missing plugin-sdk subpath barrels from upstream
-- **Native module loading** — `.js` plugins take the native `require` fast path, `.ts` falls back to jiti
-
-### 2. Rewrote the memory layer
-
-OpenClaw's original "dreaming"-style memory consolidation was replaced with a **memory consolidation engine**:
-
-- Daily cron scans historical sessions, LLM extracts structured knowledge (domain knowledge, behavioral patterns, preferences, goals)
-- Jaccard deduplication prevents redundant entries from accumulating
-- Routes to `PersonaStore` / `FragmentStore` / `CorrectionStore` + MEMORY.md inline sections
-- Category-aware routing (domain_knowledge / behavioral_pattern / stated_preference / goal_or_aspiration) → different inline sections
-- MEMORY.md 8KB budget auto-balancing — high-frequency content inlined, low-frequency content kept as pointers
-
-### 3. Added the cognitive layer (KaijiBot's differentiator)
-
-- **Persona profile system** — TypedInsight 6 categories + category-aware decay half-lives
-- **Proactive insight generation** — PRISM cost-sensitive gate + SIRI search-identify-resolve loop
-- **Self-evolution** — Agent-driven skill generation (code layer does noise filtering only; the Agent judges value)
-- **Correction self-evolution** — dual-path detection (Agent self-report + post-session LLM extraction) + Jaccard dedup + system prompt injection
-- **Interest lifecycle** — emergent → stable → declining → dormant → revived
-
-> Want a slimmed-down OpenClaw experience? Set `cognitive.enabled: false` in config to disable the entire cognitive layer, falling back to the "hardened base + rewritten memory layer" state — which is already a step beyond upstream OpenClaw in memory and stability.
-
-KaijiBot continuously syncs critical fixes and architectural improvements from upstream (see the `sync from upstream OpenClaw` commit series in git history). If you only want the OpenClaw base + improved memory layer without the cognitive layer, that's a fully supported usage.
+> Want a slimmed-down experience? Set `cognitive.enabled: false` in config to disable the entire cognitive layer, falling back to the "hardened base + rewritten memory layer" state.
 
 ## Acknowledgments
 
-KaijiBot stands on the shoulders of [OpenClaw](https://github.com/openclaw/openclaw) (built by Peter Steinberger and the community). OpenClaw provides the Gateway architecture, Plugin SDK boundaries, agent loop, multi-channel integrations, and a complete tool ecosystem — these are the foundation that lets KaijiBot focus on the cognitive layer.
+KaijiBot stands on the shoulders of [OpenClaw](https://github.com/openclaw/openclaw) (built by Peter Steinberger and the community).
 
 ### Academic Research
 

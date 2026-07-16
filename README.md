@@ -2,7 +2,7 @@
 
 > **你的 AI 助手会主动找你聊天，而不是干等着你提问。**
 
-可插拔 provider/channel 架构 · 认知层让 AI 从被动变主动 · 40+ LLM 提供商 · 飞书 + 微信(一等渠道)· CLI 中英自动切换
+首个把"主动认知"做成系统级能力的开源 AI 伙伴 · 主动推送洞察 · 持续建模用户 · Agent 自主进化技能 · 同样的错误不犯第二次 · 可装进口袋在 Android 手机本地运行
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js >=22](https://img.shields.io/badge/Node.js-%3E%3D22-339933.svg)](https://nodejs.org/)
@@ -16,38 +16,65 @@
 
 KaijiBot 不一样。你在飞书里跟它聊了几次之后，它会开始**主动**给你发消息。不是广告，不是提醒喝水，而是你真正可能感兴趣的东西。
 
-|                | 普通聊天机器人       | KaijiBot                                                                                                 |
-| -------------- | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| **交互方式**   | 你问它才答           | 主动推送洞察 + 正常对话                                                                                  |
-| **用户理解**   | 无状态，每次从零开始 | 持续学习你的兴趣、领域、偏好                                                                             |
-| **时机感知**   | 不管你在干嘛         | 尊重活跃时段、信任阶段、对话频率                                                                         |
-| **中文支持**   | 英文优先，中文常掉队 | 中文原生优化，模式路由、画像提取均针对中文设计                                                           |
-| **多语言适配** | 界面写死单一语言     | CLI / 向导 / 认知层 prompt 自动检测系统语言，中英文切换                                                  |
-| **渠道集成**   | 需要 Web/SDK 接入    | 飞书 · 微信（一等渠道，深度支持）；另打包 18 个继承自上游的渠道（Telegram/Discord/Slack 等，未深度测试） |
+| 能力 | 普通 chatbot | 典型 memory agent (2026) | **KaijiBot** |
+| --- | --- | --- | --- |
+| **交互方式** | 你问它才答 | 被动响应 + 长记忆 | **主动推送洞察** + 正常对话 |
+| **用户建模** | 无状态 | 向量库 rerank | **TypedInsight 6 类 + 类别衰减半衰期 + 兴趣生命周期** |
+| **时机感知** | 不管你在干嘛 | 无 | **PRISM 成本敏感门控**(凌晨不打扰、信任低时克制) |
+| **自我进化** | 无 | 无 | **Agent 自主创建/删除技能**(代码不做质量判断) |
+| **纠错学习** | 无 | 无 | **双路径纠错记忆**(同样的错误不犯第二次) |
+| **部署形态** | 云端 SaaS | 云端 SaaS | **云端 / 本地 / Android 手机本地运行**(Termux,完整 agent,非瘦客户端) |
+
+> 渠道集成方面:飞书 · 微信(一等渠道,深度支持);另打包 18 个继承自上游的渠道(Telegram/Discord/Slack 等,未深度测试)。中英文 CLI / 向导 / 认知层 prompt 自动切换,40+ LLM 提供商可插拔。
 
 ## ✨ 核心特性
 
 ### 🔮 认知引擎 — 从被动回复到主动洞察
 
-你在飞书里跟 KaijiBot 聊了几次 AI 架构和分布式系统，下周它主动发来一条消息：
+KaijiBot 不是一个被动响应的工具,而是一个**持续运行、对你建模、并在合适时机主动给你洞察**的认知实体。它的主动洞察流水线:
 
-> "最近看到一篇关于用 eBPF 做分布式追踪的文章，结合你之前关注的可观测性方向，可能有启发。"
+```mermaid
+flowchart TD
+    U[用户在飞书/微信对话] --> P[Persona 画像建模<br/>TypedInsight 6 类别 + 兴趣生命周期]
+    P --> S[Scheduler 事件源<br/>timer / persona-change / info-scan]
+    S --> G{PRISM 成本门控<br/>期望价值 vs 打扰成本}
+    G -- 不通过 --> SKIP[静默 - 凌晨/信任低/频率过高]
+    G -- 通过 --> SR[SIRI 循环]
+    SR --> SE[Search<br/>跨域连接 / 领域深度 / 延伸探索]
+    SE --> ID[Identify<br/>领域冷却 + 类型冷却 + bandit 选模式]
+    ID --> RS[Resolve<br/>LLM 生成 → 自我精炼 → LLM-as-judge 验证]
+    RS --> DL[主动推送到飞书/微信]
+    DL --> F[用户隐式反馈<br/>回复长度 / 追问 / 敷衍]
+    F --> TS[Thompson Sampling<br/>偏好学习]
+    TS -.更新偏好.-> P
+```
 
-这不是预设推送，是 KaijiBot 真正**理解了你**之后产生的洞察。
+五个核心机制:
 
-再过两周，你又聊了几个关于 Rust 和嵌入式的话题。某天它告诉你：
+- **Persona 画像** — 每次对话都在学习你。LLM 驱动的结构化提取,从对话中自动发现领域和兴趣。洞察按类别独立衰减(`tool_config` 7天 / `domain_knowledge` 30天 / `behavioral_pattern` 90天...),兴趣生命周期自动追踪(emergent→stable→declining→dormant→revived)。领域由 LLM 动态发现,不依赖硬编码关键词。
+- **跨域洞察** — 你同时关注 A 和 B,它发现二者有潜在联系。你之前问过但没深入的问题,它从新角度跟进。你在某个领域钻得够深了,它推荐延伸方向。LLM 自我精炼(critique→rewrite,最多 3 轮)保证质量,语义去重确保每次推送都有新意。
+- **时机门控** — 不是想发就发。PRISM 模型计算每条洞察的期望价值,只有预期收益超过打扰成本时才推送。凌晨不打扰,信任度低时克制,你最近活跃度低就先等等。
+- **信任演化** — 刚认识时谨慎试探,聊多了越来越懂你,最终变成可以大胆推荐的深度伙伴。SARA 框架驱动四个阶段的信任演化,信任等级决定系统被允许做什么。
+- **偏好学习** — 你回复长了、追问了"为什么",它记下你喜欢这个话题。你敷衍了,它下次换一个方向。Thompson Sampling 驱动的偏好学习,隐式反馈比显式反馈更诚实。
 
-> "你最近在学 Rust，同时之前对嵌入式系统感兴趣，这两者的交集里有一篇关于用 Rust 写 RTOS 内核的实战文章，值得看看。"
+洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了搜索 API Key,洞察会紧跟时事。
 
-它怎么做到的：
+<details>
+<summary><b>💡 真实洞察样例(点开查看 — 运营者本人运行 KaijiBot 的实际飞书消息截图)</b></summary>
 
-- **Persona 画像** — 每次对话都在学习你。LLM 驱动的结构化提取，从对话中自动发现领域和兴趣。洞察按类别独立衰减，兴趣生命周期自动追踪。领域由 LLM 动态发现，不依赖硬编码关键词。
-- **跨域洞察** — 你同时关注 A 和 B，它发现二者有潜在联系。你之前问过但没深入的问题，它从新角度跟进。你在某个领域钻得够深了，它推荐延伸方向。LLM 自我精炼保证质量，语义去重确保每次推送都有新意。
-- **时机门控** — 不是想发就发。PRISM 模型计算每条洞察的期望价值，只有预期收益超过打扰成本时才推送。凌晨不打扰，信任度低时克制，你最近活跃度低就先等等。
-- **信任演化** — 刚认识时谨慎试探，聊多了越来越懂你，最终变成可以大胆推荐的深度伙伴。SARA 框架驱动四个阶段的信任演化，信任等级决定系统被允许做什么。
-- **偏好学习** — 你回复长了、追问了"为什么"，它记下你喜欢这个话题。你敷衍了，它下次换一个方向。Thompson Sampling 驱动的偏好学习，隐式反馈比显式反馈更诚实。
+以下两条是 KaijiBot 在长期运行中真实推送给运营者的飞书消息。**不是编造,不是 GPT 示例,是系统实际输出。**
 
-洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了搜索 API Key，洞察会紧跟时事。
+**样例 1:行为模式洞察** — KaijiBot 注意到运营者反复把"风格判断"压在审稿环节,主动建议把判断前移到授权环节(2026-07-07 22:48 推送):
+
+![写作流程洞察 — KaijiBot 主动建议把审稿判断前移](./screenshot/ins1.jpg)
+
+**样例 2:跨域连接** — KaijiBot 把运营者之前"用 AI 辅助医疗就诊"的行为模式,迁移到"用 AI 辅助解读 Apple Watch 健身数据"上,建立两个领域之间的桥梁(2026-07-11 19:26 推送):
+
+![跨域连接 — KaijiBot 把医疗就诊的 AI 辅助模式映射到健身数据分析](./screenshot/ins2.jpg)
+
+可以看到这些洞察的语气不是冷冰冰的"提醒"或"建议",而是**像一个朋友顺手分享一个想法**。这不是 prompt 硬塞的人格设定——是 Persona 画像里隐式偏好学习 + Thompson Sampling 调出来的对话风格。
+
+</details>
 
 ### 🧬 自我进化 — Agent 自主判断何时学新技能
 
@@ -60,6 +87,23 @@ KaijiBot 不一样。你在飞书里跟它聊了几次之后，它会开始**主
 - **Hard Trigger 检测** — 代码层只做噪音过滤，不做质量判断。检测到复杂任务后注入系统事件。
 - **Agent 自主决策** — Agent 拥有完整对话上下文，自己判断是否值得做成技能。不值得就忽略。
 - **完整生命周期** — 创建前去重检查、创建后跟踪使用频率、长期不用自动清理。
+
+<details>
+<summary><b>🧬 真实样例(点开查看 — Agent 自主决策的两种相反结果)</b></summary>
+
+下面两条是运营者真实运行时 Agent 的两种相反决策。**这是"代码不做质量判断"架构声明的活证据** —— 大多数"自进化 agent"会无差别地为每个复杂任务创建技能,KaijiBot 的 Agent 会自己判断"这事该不该固化成流程"。
+
+**决策 1:Agent 决定创建技能** — 运营者处理了一批 Obsidian 哲学概念笔记的交叉引用,Agent 评估后认为这个模式会反复出现,主动创建了 `knowledge-graph-structuring` 技能,并解释了用途和删除方式:
+
+![Agent 决定创建 knowledge-graph-structuring 技能](./screenshot/evo1.jpg)
+
+**决策 2:Agent 决定不创建技能** — 运营者让 Agent 通读书稿给结构化批评,Hard Trigger 同样触发了进化信号,但 Agent 自己判断"这本质是编辑工作,核心能力是阅读+判断,不是流程,硬封装反而限制灵活度",**主动拒绝**了技能创建:
+
+![Agent 主动拒绝创建技能 — 因为是编辑工作,不该固化](./screenshot/evo2.jpg)
+
+注意 evo2 这条 —— Agent 给出的拒绝理由是有内容的(初稿看骨架、二稿看节奏、终稿看字句),不是模板化的"我无法处理"。这种"自己说不"的能力,是"代码只降噪、Agent 全权判断"架构的直接产物。
+
+</details>
 
 ### 🔄 纠错自进化 — 同样的错误不犯第二次
 
@@ -118,6 +162,55 @@ export KAIJIBOT_CLI_LOCALE=zh-CN
 kaijibot skills install <skill-name>
 ```
 
+### 📱 Android 手机本地运行 — 把 AI 伙伴装进口袋
+
+大多数 AI 助手要么是云端 SaaS(数据离开你的设备),要么是需要服务器的自部署项目。**KaijiBot 可以直接装进 Android 手机,完整 agent 在本地运行**——不是连回你服务器的瘦客户端,是手机本身就是 agent。
+
+**只需要下载一个 APK,不需要电脑、不需要命令行、不需要 GitHub 账号。** [KaijiBot Launcher APK](https://github.com/Kaiji-Z/kaijibot/releases/tag/launcher)(约 41MB,内置 Termux)会引导你完成所有步骤。
+
+**三步搞定:**
+
+1. **下载 `kaijibot-launcher.apk`** —— 从 [GitHub Release](https://github.com/Kaiji-Z/kaijibot/releases/tag/launcher) 下载到手机
+2. **安装 APK**(允许"未知来源") —— 打开 Launcher,它会自动安装内置的 Termux
+3. **点击「复制命令并打开 Termux」** —— 在 Termux 里长按粘贴、回车,KaijiBot 自动安装并启动
+
+Launcher 主界面长这样:
+
+![KaijiBot Launcher APK 主界面](./screenshot/Android1.jpg)
+
+启动后,完整的 KaijiBot 控制面板(聊天/代理/认知/洞察/进化/纠错/技能...)在手机浏览器里跑起来,每个认知子系统都有独立的 UI 入口:
+
+![KaijiBot Control 移动端 — 认知系统全功能 sidebar 可见](./screenshot/Android3.jpg)
+
+注意左侧导航 —— **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置**,这上面的每一项都是上文讲过的认知子系统的真实 UI 入口,不是只存在于架构图里。右侧显示当前洞察的来源(`Source: Web Search --- LEDGER: Scaling Agentic Document Editing...`),证明 knowledge mode 的网络搜索是真实在工作。
+
+**为什么这件事值得做:**
+
+- **数据不出手机** — 对话历史、Persona 画像、纠错记忆、技能全部存在手机本地。没有第三方服务器中转。
+- **离线可用** — 只要 LLM provider 能访问(本机 Ollama / 局域网 vLLM 完全离线),你就有一个随身 AI 伙伴。配云端 LLM 也可,流量走你自己的 API Key。
+- **主动洞察走系统通知** — PRISM 门控 + Android 通知,KaijiBot 在你通勤、午休时主动给你发洞察,和你日常用飞书/微信的体验一致。
+
+<details>
+<summary><b>📱 看完整运行流程(26 秒 GIF)和实际对话截图</b></summary>
+
+**完整安装 + 启动流程**(从手机桌面 → KaijiBot Control 启动 → 第一条响应,26 秒):
+
+<video controls muted src="./screenshot/Android5.mp4">你的浏览器不支持 video 标签,请直接下载 <a href="./screenshot/Android5.mp4">Android5.mp4</a> 查看</video>
+
+**实际移动端对话** —— KaijiBot 在手机端给你写的实质内容(把 Git commit 类比为依赖图,讨论 Agent 如何辅助哲学写作的一致性检查):
+
+![移动端实际对话 — 哲学写作 + Agent 协作](./screenshot/Android2.jpg)
+
+</details>
+
+**已有 Termux 的技术用户** 可以跳过 Launcher APK,直接跑:
+
+```bash
+curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.sh | bash
+```
+
+> 想了解 Launcher APK 的工作原理、保活配置、Termux 兼容性工程问题?详见 [`android/README.md`](./android/README.md) 和 [Termux 部署指南](./docs/platforms/termux.md)。
+
 ## 🚀 快速开始
 
 ### 准备工作
@@ -127,7 +220,7 @@ kaijibot skills install <skill-name>
 | 条件            | 说明                     | 获取方式                                                                                                                                                                                                                                  |
 | --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **LLM API Key** | 至少一个 AI 提供商的密钥 | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) 任选其一 |
-| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· [微信](https://open.feishu.cn/)（一等渠道）· 另打包 18 个继承渠道（Telegram/Discord/Slack 等，未深度测试）                                                                 |
+| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· [微信](./docs/channels/)（一等渠道，运行 `kaijibot channels login --channel wechat` 接入）· 另打包 18 个继承渠道（Telegram/Discord/Slack 等，未深度测试）                                                                 |
 
 ### 安装（推荐方式）
 
@@ -158,15 +251,9 @@ kaijibot gateway --port 18789 --verbose
 <details>
 <summary><b>📦 其他安装方式</b></summary>
 
-#### Android / Termux（手机运行）
+#### Android 手机
 
-```bash
-# 1. 从 F-Droid 安装 Termux（不要用 Google Play 版）
-# 2. 在 Termux 中运行：
-curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.sh | bash
-```
-
-详见 [Termux 部署指南](./docs/platforms/termux.md)。
+直接下载 [KaijiBot Launcher APK](https://github.com/Kaiji-Z/kaijibot/releases/tag/launcher),三步搞定 —— 详见上文 [📱 Android 手机本地运行](#-android-手机本地运行--把-ai-伙伴装进口袋) 章节。
 
 #### npm 全局安装（已有 Node.js 22+ 环境）
 
@@ -238,46 +325,17 @@ export TAVILY_API_KEY="your-key"
 
 配置文件位于 `~/.kaijibot/kaijibot.json`，支持热重载。认知系统可通过 `cognitive.enabled: false` 关闭。详细配置参考 `AGENTS.md`。
 
-## 🏗️ 与 OpenClaw 的关系
+## 与 OpenClaw 的关系
 
-KaijiBot 最初 fork 自 [OpenClaw](https://github.com/openclaw/openclaw)（OpenRouter 全球 Token 消耗榜首的通用 AI Agent，382K+ GitHub stars），但已发展为独立项目。**KaijiBot 做了三件事，不只是"OpenClaw + 认知层"**：
+KaijiBot 最初 fork 自 [OpenClaw](https://github.com/openclaw/openclaw) 的 Gateway 架构和 Plugin SDK 边界,在此之上构建了独立的认知层(主动洞察、自我进化、纠错记忆)和重写的记忆整合系统。OpenClaw 提供的地基(Gateway、Agent 循环、工具生态)让我们能专注于差异化部分。
 
-### 1. 加固并简化基座
+基座层面的工程改造(TypeBox 类型迁移、pi-ai SDK 升级、1220 处 lint 修复、Windows/Android bug 修复、Plugin SDK 补完)对使用者基本不可见,详见 commit 历史。
 
-OpenClaw 是一个面向全球、多渠道、多语言的庞大项目。KaijiBot 在它的基础上做了基座层面的收敛：
-
-- **类型系统现代化** — 从 AJV/JSON Schema 验证器迁移到 TypeBox，运行时与编译时类型统一
-- **依赖跟进** — pi-ai SDK 0.65.2→0.79.4，跟上 LLM 抽象层的快速演进
-- **代码质量整治** — 修复上游遗留的 1220 处 lint 错误（覆盖 191 个文件）
-- **关键 Bug 修复** — 修复 Windows 上双 Gateway 竞争条件、Android 渲染崩溃等上游问题
-- **Plugin SDK 补完** — 补齐 13 个上游缺失的 plugin-sdk 子路径导出
-- **原生模块加载** — `.js` 插件走原生 `require` 快速路径，`.ts` 走 jiti 兜底
-
-### 2. 重写记忆层
-
-OpenClaw 原有的「dreaming」式记忆整合被替换为 **memory consolidation engine**：
-
-- 每日 cron 扫描历史会话，LLM 抽取结构化知识（领域知识、行为模式、偏好、目标）
-- Jaccard 去重，避免重复条目堆积
-- 路由分发到 `PersonaStore` / `FragmentStore` / `CorrectionStore` + MEMORY.md 内联区
-- 类别感知（domain_knowledge / behavioral_pattern / stated_preference / goal_or_aspiration）路由到不同 inline section
-- MEMORY.md 8KB 预算自动平衡，高频内容内联，低频内容存指针
-
-### 3. 加入认知层（KaijiBot 的差异化）
-
-- **Persona 画像系统** — TypedInsight 6 类别 + 类别感知衰减半衰期
-- **主动洞察生成** — PRISM cost-sensitive gate + SIRI search-identify-resolve loop
-- **自我进化** — Agent 驱动的技能生成（代码层只做噪音过滤，由 Agent 判断价值）
-- **纠错自进化** — 双路径检测（Agent 自报 + 会话结束 LLM 抽取）+ Jaccard 去重 + 系统提示注入
-- **兴趣生命周期** — emergent → stable → declining → dormant → revived
-
-> 想要精简的 OpenClaw 体验？配置里设 `cognitive.enabled: false` 即可关闭整个认知层，回到「加固基座 + 重写记忆层」的状态——这本身已经比上游 OpenClaw 在记忆和稳定性上更进一步。
-
-KaijiBot 持续从上游同步关键修复和架构改进（参见 commit 历史中的 `sync from upstream OpenClaw` 系列）。如果你只想用 OpenClaw 基础功能 + 改进的记忆层，不想用认知层，这也是完全支持的用法。
+> 想要精简的体验?配置里设 `cognitive.enabled: false` 即可关闭整个认知层,回到「加固基座 + 重写记忆层」的状态。
 
 ## 致谢
 
-KaijiBot 站在 [OpenClaw](https://github.com/openclaw/openclaw)（由 Peter Steinberger 和社区构建）的肩膀上。OpenClaw 提供了 Gateway 架构、Plugin SDK 边界、Agent 循环、多渠道接入和完整的工具生态——这些是 KaijiBot 能够专注于认知层的地基。
+KaijiBot 站在 [OpenClaw](https://github.com/openclaw/openclaw)(由 Peter Steinberger 和社区构建)的肩膀上。
 
 ### 学术研究
 
