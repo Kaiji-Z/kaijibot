@@ -34,19 +34,18 @@ KaijiBot is different. After a few conversations on Feishu, it starts **reaching
 KaijiBot is not a reactive tool — it's a **continuously running cognitive entity that models you and pushes insights when the moment is right**. Its proactive insight pipeline:
 
 ```mermaid
-flowchart TD
-    U[You chat on Feishu/WeChat] --> P[Persona modeling<br/>TypedInsight 6 categories + interest lifecycle]
+flowchart LR
+    U[You chat<br/>Feishu/WeChat/WebUI] --> P[Persona modeling<br/>TypedInsight 6 categories + interest lifecycle]
     P --> S[Scheduler events<br/>timer / persona-change / info-scan]
-    S --> G{PRISM cost gate<br/>expected value vs interruption cost}
+    S --> G{PRISM gate<br/>value vs interruption cost}
     G -- reject --> SKIP[Silent - late night / low trust / too frequent]
     G -- pass --> SR[SIRI loop]
-    SR --> SE[Search<br/>cross-domain / domain depth / extension exploration]
-    SE --> ID[Identify<br/>domain cooldown + type cooldown + bandit mode selection]
-    ID --> RS[Resolve<br/>LLM generation → self-refine → LLM-as-judge verify]
-    RS --> DL[Push to Feishu/WeChat]
-    DL --> F[Your implicit feedback<br/>reply length / follow-up questions / brush-off]
-    F --> TS[Thompson Sampling<br/>preference learning]
-    TS -.updates preferences.-> P
+    SR --> SE[Search<br/>cross-domain / depth / extension]
+    SE --> ID[Identify<br/>cooldown + bandit mode selection]
+    ID --> RS[Resolve<br/>LLM generation → self-refine → LLM-as-judge]
+    RS --> DL[Push insight<br/>Feishu/WeChat/WebUI]
+    DL --> F[User implicit feedback<br/>reply length / follow-up / brush-off]
+    F -.updates preferences.-> P
 ```
 
 Five core mechanisms:

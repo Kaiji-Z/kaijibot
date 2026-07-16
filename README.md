@@ -34,19 +34,18 @@ KaijiBot 不一样。你在飞书里跟它聊了几次之后，它会开始**主
 KaijiBot 不是一个被动响应的工具,而是一个**持续运行、对你建模、并在合适时机主动给你洞察**的认知实体。它的主动洞察流水线:
 
 ```mermaid
-flowchart TD
-    U[用户在飞书/微信对话] --> P[Persona 画像建模<br/>TypedInsight 6 类别 + 兴趣生命周期]
-    P --> S[Scheduler 事件源<br/>timer / persona-change / info-scan]
-    S --> G{PRISM 成本门控<br/>期望价值 vs 打扰成本}
+flowchart LR
+    U[用户对话<br/>飞书/微信/WebUI] --> P[Persona 建模<br/>TypedInsight 6 类 + 兴趣生命周期]
+    P --> S[Scheduler 事件<br/>timer / persona-change / info-scan]
+    S --> G{PRISM 门控<br/>价值 vs 打扰成本}
     G -- 不通过 --> SKIP[静默 - 凌晨/信任低/频率过高]
     G -- 通过 --> SR[SIRI 循环]
-    SR --> SE[Search<br/>跨域连接 / 领域深度 / 延伸探索]
-    SE --> ID[Identify<br/>领域冷却 + 类型冷却 + bandit 选模式]
-    ID --> RS[Resolve<br/>LLM 生成 → 自我精炼 → LLM-as-judge 验证]
-    RS --> DL[主动推送到飞书/微信]
+    SR --> SE[Search<br/>跨域 / 深度 / 延伸]
+    SE --> ID[Identify<br/>冷却 + bandit 选模式]
+    ID --> RS[Resolve<br/>LLM 生成 → 自精炼 → judge 验证]
+    RS --> DL[推送洞察<br/>飞书/微信/WebUI]
     DL --> F[用户隐式反馈<br/>回复长度 / 追问 / 敷衍]
-    F --> TS[Thompson Sampling<br/>偏好学习]
-    TS -.更新偏好.-> P
+    F -.更新偏好.-> P
 ```
 
 五个核心机制:
