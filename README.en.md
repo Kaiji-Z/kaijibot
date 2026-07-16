@@ -215,10 +215,11 @@ Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / �
 
 **Full install + launch flow** (from phone home screen → KaijiBot Control opens → first response, 26 seconds):
 
-<video controls width="320" preload="metadata" poster="./screenshot/Android5-poster.jpg">
-  <source src="./screenshot/Android5.mp4" type="video/mp4">
-  Your browser does not support the video tag — <a href="./screenshot/Android5.mp4">download the MP4 directly</a>
-</video>
+<a href="./screenshot/Android5.mp4" target="_blank" title="Click to play the 26-second demo video">
+  <img src="./screenshot/Android5-poster.jpg" width="320" alt="Android install and launch flow - click to play video">
+</a>
+
+**[▶ Play the full 26-second demo video](./screenshot/Android5.mp4)** (MP4, 4MB, opens in a new page)
 
 **Real mobile conversation** — substantive content KaijiBot produced on-phone (analogizing Git commits to dependency graphs, discussing how Agent can assist with consistency-checking in philosophical writing):
 
