@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 /**
  * Flag-based regression comparison (VERIFICATION.md §4).
  *
@@ -26,10 +28,8 @@
  * Exit code: 1 if any REGRESSION found, else 0.
  */
 import { createRequire } from "node:module";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
 
 const require = createRequire(import.meta.url);
 
@@ -55,7 +55,7 @@ async function readJsonMaybe(filePath) {
 /** Deep-merge a partial override into a config object (shallow-per-key is enough here). */
 function withCognitiveToggle(config, enabled) {
   const clone = structuredClone(config);
-  clone.cognitive = { ...(clone.cognitive ?? {}), enabled };
+  clone.cognitive = { ...clone.cognitive, enabled };
   return clone;
 }
 
@@ -159,9 +159,7 @@ async function main() {
   const baseConfig = await readJsonMaybe(realConfigPath);
 
   if (baseConfig.cognitive?.enabled === false) {
-    console.warn(
-      `⚠️  Real config has cognitive.enabled=false; the "off" run will match baseline.`,
-    );
+    console.warn(`⚠️  Real config has cognitive.enabled=false; the "off" run will match baseline.`);
   }
 
   const workDir = await mkdtemp(path.join(tmpdir(), "kaiji-flagdiff-"));
@@ -201,10 +199,10 @@ async function main() {
     const totalOff = offReport.numTotalTests ?? 0;
     console.log("━".repeat(60));
     console.log(`Tests run: ${totalOn} (on) / ${totalOff} (off)`);
+    console.log(`Stable: ${diff.stablePassed} pass, ${diff.stableFailed} same-status-non-pass`);
     console.log(
-      `Stable: ${diff.stablePassed} pass, ${diff.stableFailed} same-status-non-pass`,
+      `Feature-only (pass-on / fail-off): ${diff.featureOnly.length}  ← expected for cognitive suites`,
     );
-    console.log(`Feature-only (pass-on / fail-off): ${diff.featureOnly.length}  ← expected for cognitive suites`);
     console.log(`Always-broken (fail both): ${diff.alwaysBroken.length}`);
     console.log(`🔴 REGRESSIONS (pass-off / fail-on): ${diff.regression.length}`);
 

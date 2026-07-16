@@ -962,8 +962,6 @@ export function buildSurpriseInsightPrompt(
   ).join("\n\n");
 
   const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances, locale);
-  const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
-
   const indexedWebFindings = buildIndexedWebFindings(webResults);
 
   return {
@@ -1554,7 +1552,6 @@ export function buildPatternInsightPrompt(
 
   const patternUserName = persona.identity?.displayName || "";
   const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances, locale);
-  const stanceText = stance.text.replace(/\{name\}/g, patternUserName || "the user");
 
   const patternFrameIdx = input.feedbackProfile
     ? pickPromptVariant(
@@ -1779,8 +1776,6 @@ export function buildInsightPrompt(
   const fragmentSection = buildFragmentSection(fragments);
 
   const stance = selectEmotionalStance(fewShotIdx, input.recentEmotionalStances, locale);
-  const stanceText = stance.text.replace(/\{name\}/g, userName || "the user");
-
   return {
     prompt: `${identityContext ? `${identityContext}\n` : ""}
 
@@ -2285,7 +2280,7 @@ export function buildRefinePrompt(
   originalPrompt: string,
   candidate: InsightCandidate,
   critique: LlmCritiqueResult,
-  persona: PersonaTree,
+  _persona: PersonaTree,
 ): string {
   const suggestions = critique.improvementSuggestions.map((s, i) => `${i + 1}. ${s}`).join("\n");
 

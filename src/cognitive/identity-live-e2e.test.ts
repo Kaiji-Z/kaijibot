@@ -7,38 +7,15 @@
  * Phase 2 (LLM):    full evolution pipeline for operator session
  */
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetHeartbeatWakeStateForTests } from "../infra/heartbeat-wake.js";
 import { peekSystemEventEntries, resetSystemEventsForTest } from "../infra/system-events.js";
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
-const ZAI_URL = "https://api.z.ai/api/coding/paas/v4/chat/completions";
-const MODEL = "glm-5-turbo";
-
-async function callLLM(prompt: string): Promise<string> {
-  const res = await fetch(ZAI_URL, {
-    method: "PST",
-    headers: { Authorization: `Bearer ${ZAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 3000,
-    }),
-  });
-  const data = (await res.json()) as {
-    error?: { message: string };
-    choices?: Array<{ message: { content: string } }>;
-  };
-  if (data.error) {
-    throw new Error(data.error.message);
-  }
-  return data.choices?.[0]?.message?.content ?? "";
-}
 
 let tempDir: string;
 

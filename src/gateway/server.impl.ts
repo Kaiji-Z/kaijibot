@@ -1440,14 +1440,11 @@ export async function startGatewayServer(
           const {
             generateInsightCandidatesLLM,
             createDefaultInsightDeps,
-            loadWorkspacePersonaContext,
-            loadSoulContentForInsight,
             loadIdentityContextForInsight,
           } = await import("../cognitive/insight/llm-engine.js");
           const cognitiveStore = new PersonaStore(resolveConfigDir());
           await cognitiveStore.migrateFromFlatLayout();
           const baseInsightDeps = createDefaultInsightDeps();
-          const workspacePersonaContext = await loadWorkspacePersonaContext(defaultWorkspaceDir);
 
           const insightDeps = {
             ...baseInsightDeps,
@@ -1550,7 +1547,6 @@ export async function startGatewayServer(
                   log.warn(`cognitive insight persistence failed: ${String(err)}`);
                 }
 
-                let deliveryMessageId: string | undefined;
                 try {
                   const { findSessionKeyForUserId } = await import("./cognitive-delivery.js");
                   const { enqueueSystemEvent } = await import("../infra/system-events.js");

@@ -534,12 +534,15 @@ export async function handleOpenAiHttpRequest(
           const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
           const { getRuntimeConfigSnapshot } = await import("../config/runtime-snapshot.js");
           const { resolveStateDir } = await import("../config/paths.js");
-          const { triggerInternalHook, createInternalHookEvent } = await import("../hooks/internal-hooks.js");
+          const { triggerInternalHook, createInternalHookEvent } =
+            await import("../hooks/internal-hooks.js");
           const nodePath = await import("node:path");
           const nodeFs = await import("node:fs/promises");
 
           const cfg = getRuntimeConfigSnapshot();
-          if (!cfg) throw new Error("config snapshot not available");
+          if (!cfg) {
+            throw new Error("config snapshot not available");
+          }
 
           const stateDir = resolveStateDir();
           const sessionsDir = nodePath.join(stateDir, "agents", agentId, "sessions");
@@ -548,12 +551,20 @@ export async function handleOpenAiHttpRequest(
           const dirEntries = await nodeFs.readdir(sessionsDir).catch(() => [] as string[]);
           const candidates: Array<{ name: string; path: string; msgCount: number }> = [];
           for (const f of dirEntries) {
-            if (!f.endsWith(".jsonl") || f.includes(".reset.")) continue;
+            if (!f.endsWith(".jsonl") || f.includes(".reset.")) {
+              continue;
+            }
             const filePath = nodePath.join(sessionsDir, f);
             try {
               const fileContent = await nodeFs.readFile(filePath, "utf-8");
-              const msgCount = fileContent.split("\n").filter(l => l.includes('"type":"message"') && l.includes('"role":"user"')).length;
-              if (msgCount > 0) candidates.push({ name: f, path: filePath, msgCount });
+              const msgCount = fileContent
+                .split("\n")
+                .filter(
+                  (l) => l.includes('"type":"message"') && l.includes('"role":"user"'),
+                ).length;
+              if (msgCount > 0) {
+                candidates.push({ name: f, path: filePath, msgCount });
+              }
             } catch {}
           }
           candidates.sort((a, b) => b.msgCount - a.msgCount);
