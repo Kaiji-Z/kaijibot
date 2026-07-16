@@ -64,13 +64,23 @@ flowchart TD
 
 以下两条是 KaijiBot 在长期运行中真实推送给运营者的飞书消息。**不是编造,不是 GPT 示例,是系统实际输出。**
 
-**样例 1:行为模式洞察** — KaijiBot 注意到运营者反复把"风格判断"压在审稿环节,主动建议把判断前移到授权环节(2026-07-07 22:48 推送):
-
-![写作流程洞察 — KaijiBot 主动建议把审稿判断前移](./screenshot/ins1.jpg)
-
-**样例 2:跨域连接** — KaijiBot 把运营者之前"用 AI 辅助医疗就诊"的行为模式,迁移到"用 AI 辅助解读 Apple Watch 健身数据"上,建立两个领域之间的桥梁(2026-07-11 19:26 推送):
-
-![跨域连接 — KaijiBot 把医疗就诊的 AI 辅助模式映射到健身数据分析](./screenshot/ins2.jpg)
+<table>
+<tr>
+<td width="33%" valign="top">
+<strong>样例 1:行为模式洞察</strong><br>
+<sub>KaijiBot 注意到运营者反复把"风格判断"压在审稿环节,主动建议把判断前移到授权环节(2026-07-07 22:48 推送)</sub>
+<br><br>
+<img src="./screenshot/ins1.jpg" alt="写作流程洞察 — KaijiBot 主动建议把审稿判断前移">
+</td>
+<td width="33%" valign="top">
+<strong>样例 2:跨域连接</strong><br>
+<sub>KaijiBot 把运营者之前"用 AI 辅助医疗就诊"的行为模式,迁移到"用 AI 辅助解读 Apple Watch 健身数据"上,建立两个领域之间的桥梁(2026-07-11 19:26 推送)</sub>
+<br><br>
+<img src="./screenshot/ins2.jpg" alt="跨域连接 — KaijiBot 把医疗就诊的 AI 辅助模式映射到健身数据分析">
+</td>
+<td width="33%"></td>
+</tr>
+</table>
 
 可以看到这些洞察的语气不是冷冰冰的"提醒"或"建议",而是**像一个朋友顺手分享一个想法**。这不是 prompt 硬塞的人格设定——是 Persona 画像里隐式偏好学习 + Thompson Sampling 调出来的对话风格。
 
@@ -93,13 +103,23 @@ flowchart TD
 
 下面两条是运营者真实运行时 Agent 的两种相反决策。**这是"代码不做质量判断"架构声明的活证据** —— 大多数"自进化 agent"会无差别地为每个复杂任务创建技能,KaijiBot 的 Agent 会自己判断"这事该不该固化成流程"。
 
-**决策 1:Agent 决定创建技能** — 运营者处理了一批 Obsidian 哲学概念笔记的交叉引用,Agent 评估后认为这个模式会反复出现,主动创建了 `knowledge-graph-structuring` 技能,并解释了用途和删除方式:
-
-![Agent 决定创建 knowledge-graph-structuring 技能](./screenshot/evo1.jpg)
-
-**决策 2:Agent 决定不创建技能** — 运营者让 Agent 通读书稿给结构化批评,Hard Trigger 同样触发了进化信号,但 Agent 自己判断"这本质是编辑工作,核心能力是阅读+判断,不是流程,硬封装反而限制灵活度",**主动拒绝**了技能创建:
-
-![Agent 主动拒绝创建技能 — 因为是编辑工作,不该固化](./screenshot/evo2.jpg)
+<table>
+<tr>
+<td width="33%" valign="top">
+<strong>决策 1:Agent 决定创建技能</strong><br>
+<sub>运营者处理了一批 Obsidian 哲学概念笔记的交叉引用,Agent 评估后认为这个模式会反复出现,主动创建了 <code>knowledge-graph-structuring</code> 技能,并解释了用途和删除方式</sub>
+<br><br>
+<img src="./screenshot/evo1.jpg" alt="Agent 决定创建 knowledge-graph-structuring 技能">
+</td>
+<td width="33%" valign="top">
+<strong>决策 2:Agent 决定不创建技能</strong><br>
+<sub>运营者让 Agent 通读书稿给结构化批评,Hard Trigger 同样触发了进化信号,但 Agent 自己判断"这本质是编辑工作,核心能力是阅读+判断,不是流程,硬封装反而限制灵活度",<strong>主动拒绝</strong>了技能创建</sub>
+<br><br>
+<img src="./screenshot/evo2.jpg" alt="Agent 主动拒绝创建技能 — 因为是编辑工作,不该固化">
+</td>
+<td width="33%"></td>
+</tr>
+</table>
 
 注意 evo2 这条 —— Agent 给出的拒绝理由是有内容的(初稿看骨架、二稿看节奏、终稿看字句),不是模板化的"我无法处理"。这种"自己说不"的能力,是"代码只降噪、Agent 全权判断"架构的直接产物。
 
@@ -176,11 +196,11 @@ kaijibot skills install <skill-name>
 
 Launcher 主界面长这样:
 
-![KaijiBot Launcher APK 主界面](./screenshot/Android1.jpg)
+<p><img src="./screenshot/Android1.jpg" width="32%" alt="KaijiBot Launcher APK 主界面"></p>
 
 启动后,完整的 KaijiBot 控制面板(聊天/代理/认知/洞察/进化/纠错/技能...)在手机浏览器里跑起来,每个认知子系统都有独立的 UI 入口:
 
-![KaijiBot Control 移动端 — 认知系统全功能 sidebar 可见](./screenshot/Android3.jpg)
+<p><img src="./screenshot/Android3.jpg" width="32%" alt="KaijiBot Control 移动端 — 认知系统全功能 sidebar 可见"></p>
 
 注意左侧导航 —— **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置**,这上面的每一项都是上文讲过的认知子系统的真实 UI 入口,不是只存在于架构图里。右侧显示当前洞察的来源(`Source: Web Search --- LEDGER: Scaling Agentic Document Editing...`),证明 knowledge mode 的网络搜索是真实在工作。
 
@@ -199,7 +219,7 @@ Launcher 主界面长这样:
 
 **实际移动端对话** —— KaijiBot 在手机端给你写的实质内容(把 Git commit 类比为依赖图,讨论 Agent 如何辅助哲学写作的一致性检查):
 
-![移动端实际对话 — 哲学写作 + Agent 协作](./screenshot/Android2.jpg)
+<p><img src="./screenshot/Android2.jpg" width="32%" alt="移动端实际对话 — 哲学写作 + Agent 协作"></p>
 
 </details>
 

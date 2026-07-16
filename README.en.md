@@ -64,13 +64,23 @@ Insight content is generated from your profile + LLM knowledge + real-time web s
 
 The two screenshots below are real Feishu messages KaijiBot pushed to the operator during long-term use. **Not fabricated, not GPT examples, actual system output.**
 
-**Sample 1: Behavioral pattern insight** — KaijiBot noticed the operator repeatedly deferring "style judgment" to the review stage, and proactively suggested moving that judgment upstream into the delegation stage (pushed 2026-07-07 22:48):
-
-![Writing workflow insight — KaijiBot proactively suggests moving review judgment upstream into delegation](./screenshot/ins1.jpg)
-
-**Sample 2: Cross-domain connection** — KaijiBot migrated the operator's prior pattern of "using AI to assist medical consultations" onto "using AI to interpret Apple Watch fitness data", building a bridge between two domains (pushed 2026-07-11 19:26):
-
-![Cross-domain connection — KaijiBot maps the AI-assisted medical visit pattern onto fitness data analysis](./screenshot/ins2.jpg)
+<table>
+<tr>
+<td width="33%" valign="top">
+<strong>Sample 1: Behavioral pattern insight</strong><br>
+<sub>KaijiBot noticed the operator repeatedly deferring "style judgment" to the review stage, and proactively suggested moving that judgment upstream into the delegation stage (pushed 2026-07-07 22:48)</sub>
+<br><br>
+<img src="./screenshot/ins1.jpg" alt="Writing workflow insight — KaijiBot proactively suggests moving review judgment upstream into delegation">
+</td>
+<td width="33%" valign="top">
+<strong>Sample 2: Cross-domain connection</strong><br>
+<sub>KaijiBot migrated the operator's prior pattern of "using AI to assist medical consultations" onto "using AI to interpret Apple Watch fitness data", building a bridge between two domains (pushed 2026-07-11 19:26)</sub>
+<br><br>
+<img src="./screenshot/ins2.jpg" alt="Cross-domain connection — KaijiBot maps the AI-assisted medical visit pattern onto fitness data analysis">
+</td>
+<td width="33%"></td>
+</tr>
+</table>
 
 Note the tone — it doesn't read like a cold "notification" or "suggestion", but **like a friend casually sharing a thought**. This isn't a prompt-injected personality; it's the conversational style tuned by Persona implicit-preference learning + Thompson Sampling.
 
@@ -93,13 +103,23 @@ How it works:
 
 The two screenshots below show opposite decisions the Agent made during the operator's real use. **This is living proof of the "code makes no quality judgments" architectural claim** — most "self-evolving agents" will blindly create a skill for every complex task. KaijiBot's Agent judges for itself whether something "deserves to be solidified into a workflow".
 
-**Decision 1: Agent decides to create a skill** — After the operator processed a batch of Obsidian philosophy-concept notes' cross-references, the Agent evaluated that this pattern would recur and proactively created a `knowledge-graph-structuring` skill, explaining its uses and how to delete it:
-
-![Agent decides to create the knowledge-graph-structuring skill](./screenshot/evo1.jpg)
-
-**Decision 2: Agent decides NOT to create a skill** — The operator asked the Agent to read through a manuscript and give structured criticism. The Hard Trigger fired the same evolution signal, but the Agent judged for itself "this is fundamentally editing work, the core capability is reading+judgment, not a process; hard-codifying it would actually limit flexibility" and **proactively refused** to create the skill:
-
-![Agent proactively refuses to create a skill — because it's editing work, shouldn't be hard-codified](./screenshot/evo2.jpg)
+<table>
+<tr>
+<td width="33%" valign="top">
+<strong>Decision 1: Agent decides to create a skill</strong><br>
+<sub>After the operator processed a batch of Obsidian philosophy-concept notes' cross-references, the Agent evaluated that this pattern would recur and proactively created a <code>knowledge-graph-structuring</code> skill, explaining its uses and how to delete it</sub>
+<br><br>
+<img src="./screenshot/evo1.jpg" alt="Agent decides to create the knowledge-graph-structuring skill">
+</td>
+<td width="33%" valign="top">
+<strong>Decision 2: Agent decides NOT to create a skill</strong><br>
+<sub>The operator asked the Agent to read through a manuscript and give structured criticism. The Hard Trigger fired the same evolution signal, but the Agent judged for itself "this is fundamentally editing work, the core capability is reading+judgment, not a process; hard-codifying it would actually limit flexibility" and <strong>proactively refused</strong> to create the skill</sub>
+<br><br>
+<img src="./screenshot/evo2.jpg" alt="Agent proactively refuses to create a skill — because it's editing work, shouldn't be hard-codified">
+</td>
+<td width="33%"></td>
+</tr>
+</table>
 
 Note evo2 — the Agent's refusal reason is substantive (first draft = structure, second draft = pacing, final draft = word choice), not a templated "I can't do this". This ability to "say no on its own" is a direct product of the "code only does noise filtering, Agent judges everything" architecture.
 
@@ -176,11 +196,11 @@ Most AI assistants are either cloud SaaS (data leaves your device) or self-hoste
 
 The Launcher home screen looks like this:
 
-![KaijiBot Launcher APK home screen](./screenshot/Android1.jpg)
+<p><img src="./screenshot/Android1.jpg" width="32%" alt="KaijiBot Launcher APK home screen"></p>
 
 After launch, the full KaijiBot control panel (chat / agent / cognition / insights / evolution / corrections / skills...) runs in the phone's browser, every cognitive subsystem has its own UI entry:
 
-![KaijiBot Control mobile — full cognitive-systems sidebar visible](./screenshot/Android3.jpg)
+<p><img src="./screenshot/Android3.jpg" width="32%" alt="KaijiBot Control mobile — full cognitive-systems sidebar visible"></p>
 
 Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置** (Chat / Agent / Cognition / Insights / Evolution / Corrections / Skills / Usage / History / Scheduled tasks / Settings). Each item is a real UI entry for the cognitive subsystem described above — not just a box in the architecture diagram. The right pane shows the current insight with its source attribution (`Source: Web Search --- LEDGER: Scaling Agentic Document Editing...`), proving the knowledge-mode web search is actually working.
 
@@ -199,7 +219,7 @@ Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / �
 
 **Real mobile conversation** — substantive content KaijiBot produced on-phone (analogizing Git commits to dependency graphs, discussing how Agent can assist with consistency-checking in philosophical writing):
 
-![Real mobile conversation — philosophical writing + Agent collaboration](./screenshot/Android2.jpg)
+<p><img src="./screenshot/Android2.jpg" width="32%" alt="Real mobile conversation — philosophical writing + Agent collaboration"></p>
 
 </details>
 
