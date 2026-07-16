@@ -187,15 +187,30 @@ kaijibot skills install <skill-name>
 2. **安装 APK**(允许"未知来源") —— 打开 Launcher,它会自动安装内置的 Termux
 3. **点击「复制命令并打开 Termux」** —— 在 Termux 里长按粘贴、回车,KaijiBot 自动安装并启动
 
-Launcher 主界面长这样:
+Launcher 主界面、控制面板、实际移动端对话三张截图并排:
 
-<p><img src="./screenshot/Android1.jpg" width="32%" alt="KaijiBot Launcher APK 主界面"></p>
-
-启动后,完整的 KaijiBot 控制面板(聊天/代理/认知/洞察/进化/纠错/技能...)在手机浏览器里跑起来,每个认知子系统都有独立的 UI 入口:
-
-<p><img src="./screenshot/Android3.jpg" width="32%" alt="KaijiBot Control 移动端 — 认知系统全功能 sidebar 可见"></p>
-
-注意左侧导航 —— **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置**,这上面的每一项都是上文讲过的认知子系统的真实 UI 入口,不是只存在于架构图里。右侧显示当前洞察的来源(`Source: Web Search --- LEDGER: Scaling Agentic Document Editing...`),证明 knowledge mode 的网络搜索是真实在工作。
+<table>
+<tr>
+<td width="33%" valign="top">
+<strong>Launcher 主界面</strong><br>
+<sub>打开 APK 后看到的第一个画面,展示 KaijiBot 品牌 + 一键安装 Termux 的引导按钮</sub>
+<br><br>
+<img src="./screenshot/Android1.jpg" width="100%" alt="KaijiBot Launcher APK 主界面">
+</td>
+<td width="33%" valign="top">
+<strong>控制面板(认知系统全貌)</strong><br>
+<sub>启动后 KaijiBot Control 在手机浏览器里跑起来。左侧导航的每一项都是真实的认知子系统 UI 入口:<strong>聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置</strong>。右侧显示当前洞察的来源(<code>Source: Web Search --- LEDGER: Scaling Agentic Document Editing...</code>),证明 knowledge mode 的网络搜索是真实在工作</sub>
+<br><br>
+<img src="./screenshot/Android3.jpg" width="100%" alt="KaijiBot Control 移动端 — 认知系统全功能 sidebar 可见">
+</td>
+<td width="33%" valign="top">
+<strong>实际移动端对话</strong><br>
+<sub>KaijiBot 在手机端给你写的实质内容(把 Git commit 类比为依赖图,讨论 Agent 如何辅助哲学写作的一致性检查)。不是 toy demo,是真实运行时产生的深度内容</sub>
+<br><br>
+<img src="./screenshot/Android2.jpg" width="100%" alt="移动端实际对话 — 哲学写作 + Agent 协作">
+</td>
+</tr>
+</table>
 
 **为什么这件事值得做:**
 
@@ -203,19 +218,15 @@ Launcher 主界面长这样:
 - **离线可用** — 只要 LLM provider 能访问(本机 Ollama / 局域网 vLLM 完全离线),你就有一个随身 AI 伙伴。配云端 LLM 也可,流量走你自己的 API Key。
 - **主动洞察走系统通知** — PRISM 门控 + Android 通知,KaijiBot 在你通勤、午休时主动给你发洞察,和你日常用飞书/微信的体验一致。
 
-**📱 完整运行流程 + 实际移动端对话**
+**📱 完整运行流程(26 秒视频)**
 
-**完整安装 + 启动流程**(从手机桌面 → KaijiBot Control 启动 → 第一条响应,26 秒):
+从手机桌面 → KaijiBot Control 启动 → 第一条响应:
 
 <a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="点击在新页面播放 26 秒演示视频">
   <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android 安装启动全流程 - 点击播放视频">
 </a>
 
 **[▶ 播放完整 26 秒演示视频](./screenshot/Android5.mp4?raw=true)**(MP4,4MB,点击在新页面播放)
-
-**实际移动端对话** —— KaijiBot 在手机端给你写的实质内容(把 Git commit 类比为依赖图,讨论 Agent 如何辅助哲学写作的一致性检查):
-
-<p><img src="./screenshot/Android2.jpg" width="32%" alt="移动端实际对话 — 哲学写作 + Agent 协作"></p>
 
 **已有 Termux 的技术用户** 可以跳过 Launcher APK,直接跑:
 

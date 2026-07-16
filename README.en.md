@@ -188,15 +188,30 @@ Most AI assistants are either cloud SaaS (data leaves your device) or self-hoste
 2. **Install the APK** (allow "unknown sources") — open the Launcher, it auto-installs the bundled Termux
 3. **Tap "复制命令并打开 Termux" (Copy command and open Termux)** — long-press in Termux to paste, hit enter, KaijiBot auto-installs and starts
 
-The Launcher home screen looks like this:
+Launcher home screen, control panel, and a real mobile conversation — three screenshots side by side:
 
-<p><img src="./screenshot/Android1.jpg" width="32%" alt="KaijiBot Launcher APK home screen"></p>
-
-After launch, the full KaijiBot control panel (chat / agent / cognition / insights / evolution / corrections / skills...) runs in the phone's browser, every cognitive subsystem has its own UI entry:
-
-<p><img src="./screenshot/Android3.jpg" width="32%" alt="KaijiBot Control mobile — full cognitive-systems sidebar visible"></p>
-
-Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置** (Chat / Agent / Cognition / Insights / Evolution / Corrections / Skills / Usage / History / Scheduled tasks / Settings). Each item is a real UI entry for the cognitive subsystem described above — not just a box in the architecture diagram. The right pane shows the current insight with its source attribution (`Source: Web Search --- LEDGER: Scaling Agentic Document Editing...`), proving the knowledge-mode web search is actually working.
+<table>
+<tr>
+<td width="33%" valign="top">
+<strong>Launcher home screen</strong><br>
+<sub>What you see when you open the APK — KaijiBot branding + a one-tap button that installs Termux and guides you through the rest</sub>
+<br><br>
+<img src="./screenshot/Android1.jpg" width="100%" alt="KaijiBot Launcher APK home screen">
+</td>
+<td width="33%" valign="top">
+<strong>Control panel (full cognitive system)</strong><br>
+<sub>After launch, KaijiBot Control runs in the phone's browser. Every item in the left nav is a real UI entry for a cognitive subsystem: <strong>聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / 技能 / 使用情况 / 历史 / 定时任务 / 设置</strong> (Chat / Agent / Cognition / Insights / Evolution / Corrections / Skills / Usage / History / Scheduled tasks / Settings). The right pane shows the current insight with its source attribution (<code>Source: Web Search --- LEDGER: Scaling Agentic Document Editing...</code>), proving the knowledge-mode web search is actually working</sub>
+<br><br>
+<img src="./screenshot/Android3.jpg" width="100%" alt="KaijiBot Control mobile — full cognitive-systems sidebar visible">
+</td>
+<td width="33%" valign="top">
+<strong>Real mobile conversation</strong><br>
+<sub>Substantive content KaijiBot produced on-phone (analogizing Git commits to dependency graphs, discussing how Agent can assist with consistency-checking in philosophical writing). Not a toy demo — this is real output from a live session</sub>
+<br><br>
+<img src="./screenshot/Android2.jpg" width="100%" alt="Real mobile conversation — philosophical writing + Agent collaboration">
+</td>
+</tr>
+</table>
 
 **Why this matters:**
 
@@ -204,19 +219,15 @@ Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / �
 - **Offline-capable** — As long as the LLM provider is reachable (fully offline via on-device Ollama / LAN vLLM), you have a portable AI companion. Cloud LLMs work too — traffic goes through your own API key.
 - **Proactive insights via system notifications** — PRISM gating + Android notifications. KaijiBot pushes insights during your commute or lunch break, with the same UX as your daily Feishu/WeChat use.
 
-**📱 Full run flow + real mobile conversation**
+**📱 Full run flow (26-second video)**
 
-**Full install + launch flow** (from phone home screen → KaijiBot Control opens → first response, 26 seconds):
+From phone home screen → KaijiBot Control opens → first response:
 
 <a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="Click to play the 26-second demo video in a new tab">
   <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android install and launch flow - click to play video">
 </a>
 
 **[▶ Play the full 26-second demo video](./screenshot/Android5.mp4?raw=true)** (MP4, 4MB, plays in a new browser tab)
-
-**Real mobile conversation** — substantive content KaijiBot produced on-phone (analogizing Git commits to dependency graphs, discussing how Agent can assist with consistency-checking in philosophical writing):
-
-<p><img src="./screenshot/Android2.jpg" width="32%" alt="Real mobile conversation — philosophical writing + Agent collaboration"></p>
 
 **Technical users who already have Termux** can skip the Launcher APK and run directly:
 
