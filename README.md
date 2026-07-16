@@ -59,8 +59,7 @@ flowchart TD
 
 洞察内容结合你的画像 + LLM 知识 + 实时网络搜索生成。配了搜索 API Key,洞察会紧跟时事。
 
-<details>
-<summary><b>💡 真实洞察样例(点开查看 — 运营者本人运行 KaijiBot 的实际飞书消息截图)</b></summary>
+**💡 真实洞察样例(运营者本人运行 KaijiBot 的实际飞书消息截图)**
 
 以下两条是 KaijiBot 在长期运行中真实推送给运营者的飞书消息。**不是编造,不是 GPT 示例,是系统实际输出。**
 
@@ -70,21 +69,19 @@ flowchart TD
 <strong>样例 1:行为模式洞察</strong><br>
 <sub>KaijiBot 注意到运营者反复把"风格判断"压在审稿环节,主动建议把判断前移到授权环节(2026-07-07 22:48 推送)</sub>
 <br><br>
-<img src="./screenshot/ins1.jpg" alt="写作流程洞察 — KaijiBot 主动建议把审稿判断前移">
+<img src="./screenshot/ins1.jpg" width="100%" alt="写作流程洞察 — KaijiBot 主动建议把审稿判断前移">
 </td>
 <td width="33%" valign="top">
 <strong>样例 2:跨域连接</strong><br>
 <sub>KaijiBot 把运营者之前"用 AI 辅助医疗就诊"的行为模式,迁移到"用 AI 辅助解读 Apple Watch 健身数据"上,建立两个领域之间的桥梁(2026-07-11 19:26 推送)</sub>
 <br><br>
-<img src="./screenshot/ins2.jpg" alt="跨域连接 — KaijiBot 把医疗就诊的 AI 辅助模式映射到健身数据分析">
+<img src="./screenshot/ins2.jpg" width="100%" alt="跨域连接 — KaijiBot 把医疗就诊的 AI 辅助模式映射到健身数据分析">
 </td>
 <td width="33%"></td>
 </tr>
 </table>
 
 可以看到这些洞察的语气不是冷冰冰的"提醒"或"建议",而是**像一个朋友顺手分享一个想法**。这不是 prompt 硬塞的人格设定——是 Persona 画像里隐式偏好学习 + Thompson Sampling 调出来的对话风格。
-
-</details>
 
 ### 🧬 自我进化 — Agent 自主判断何时学新技能
 
@@ -98,8 +95,7 @@ flowchart TD
 - **Agent 自主决策** — Agent 拥有完整对话上下文，自己判断是否值得做成技能。不值得就忽略。
 - **完整生命周期** — 创建前去重检查、创建后跟踪使用频率、长期不用自动清理。
 
-<details>
-<summary><b>🧬 真实样例(点开查看 — Agent 自主决策的两种相反结果)</b></summary>
+**🧬 真实样例 — Agent 自主决策的两种相反结果**
 
 下面两条是运营者真实运行时 Agent 的两种相反决策。**这是"代码不做质量判断"架构声明的活证据** —— 大多数"自进化 agent"会无差别地为每个复杂任务创建技能,KaijiBot 的 Agent 会自己判断"这事该不该固化成流程"。
 
@@ -109,21 +105,19 @@ flowchart TD
 <strong>决策 1:Agent 决定创建技能</strong><br>
 <sub>运营者处理了一批 Obsidian 哲学概念笔记的交叉引用,Agent 评估后认为这个模式会反复出现,主动创建了 <code>knowledge-graph-structuring</code> 技能,并解释了用途和删除方式</sub>
 <br><br>
-<img src="./screenshot/evo1.jpg" alt="Agent 决定创建 knowledge-graph-structuring 技能">
+<img src="./screenshot/evo1.jpg" width="100%" alt="Agent 决定创建 knowledge-graph-structuring 技能">
 </td>
 <td width="33%" valign="top">
 <strong>决策 2:Agent 决定不创建技能</strong><br>
 <sub>运营者让 Agent 通读书稿给结构化批评,Hard Trigger 同样触发了进化信号,但 Agent 自己判断"这本质是编辑工作,核心能力是阅读+判断,不是流程,硬封装反而限制灵活度",<strong>主动拒绝</strong>了技能创建</sub>
 <br><br>
-<img src="./screenshot/evo2.jpg" alt="Agent 主动拒绝创建技能 — 因为是编辑工作,不该固化">
+<img src="./screenshot/evo2.jpg" width="100%" alt="Agent 主动拒绝创建技能 — 因为是编辑工作,不该固化">
 </td>
 <td width="33%"></td>
 </tr>
 </table>
 
 注意 evo2 这条 —— Agent 给出的拒绝理由是有内容的(初稿看骨架、二稿看节奏、终稿看字句),不是模板化的"我无法处理"。这种"自己说不"的能力,是"代码只降噪、Agent 全权判断"架构的直接产物。
-
-</details>
 
 ### 🔄 纠错自进化 — 同样的错误不犯第二次
 
@@ -210,22 +204,19 @@ Launcher 主界面长这样:
 - **离线可用** — 只要 LLM provider 能访问(本机 Ollama / 局域网 vLLM 完全离线),你就有一个随身 AI 伙伴。配云端 LLM 也可,流量走你自己的 API Key。
 - **主动洞察走系统通知** — PRISM 门控 + Android 通知,KaijiBot 在你通勤、午休时主动给你发洞察,和你日常用飞书/微信的体验一致。
 
-<details>
-<summary><b>📱 看完整运行流程(26 秒 GIF)和实际对话截图</b></summary>
+**📱 完整运行流程 + 实际移动端对话**
 
 **完整安装 + 启动流程**(从手机桌面 → KaijiBot Control 启动 → 第一条响应,26 秒):
 
-<a href="./screenshot/Android5.mp4" target="_blank" title="点击播放 26 秒演示视频">
-  <img src="./screenshot/Android5-poster.jpg" width="320" alt="Android 安装启动全流程 - 点击播放视频">
+<a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="点击在新页面播放 26 秒演示视频">
+  <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android 安装启动全流程 - 点击播放视频">
 </a>
 
-**[▶ 播放完整 26 秒演示视频](./screenshot/Android5.mp4)**(MP4,4MB,点击在新页面打开)
+**[▶ 播放完整 26 秒演示视频](./screenshot/Android5.mp4?raw=true)**(MP4,4MB,点击在新页面播放)
 
 **实际移动端对话** —— KaijiBot 在手机端给你写的实质内容(把 Git commit 类比为依赖图,讨论 Agent 如何辅助哲学写作的一致性检查):
 
 <p><img src="./screenshot/Android2.jpg" width="32%" alt="移动端实际对话 — 哲学写作 + Agent 协作"></p>
-
-</details>
 
 **已有 Termux 的技术用户** 可以跳过 Launcher APK,直接跑:
 

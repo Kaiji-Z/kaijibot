@@ -59,8 +59,7 @@ Five core mechanisms:
 
 Insight content is generated from your profile + LLM knowledge + real-time web search. With a search API key, insights stay current.
 
-<details>
-<summary><b>💡 Real insight samples (click to expand — actual Feishu messages from the operator's own KaijiBot instance)</b></summary>
+**💡 Real insight samples (actual Feishu messages from the operator's own KaijiBot instance)**
 
 The two screenshots below are real Feishu messages KaijiBot pushed to the operator during long-term use. **Not fabricated, not GPT examples, actual system output.**
 
@@ -70,13 +69,13 @@ The two screenshots below are real Feishu messages KaijiBot pushed to the operat
 <strong>Sample 1: Behavioral pattern insight</strong><br>
 <sub>KaijiBot noticed the operator repeatedly deferring "style judgment" to the review stage, and proactively suggested moving that judgment upstream into the delegation stage (pushed 2026-07-07 22:48)</sub>
 <br><br>
-<img src="./screenshot/ins1.jpg" alt="Writing workflow insight — KaijiBot proactively suggests moving review judgment upstream into delegation">
+<img src="./screenshot/ins1.jpg" width="100%" alt="Writing workflow insight — KaijiBot proactively suggests moving review judgment upstream into delegation">
 </td>
 <td width="33%" valign="top">
 <strong>Sample 2: Cross-domain connection</strong><br>
 <sub>KaijiBot migrated the operator's prior pattern of "using AI to assist medical consultations" onto "using AI to interpret Apple Watch fitness data", building a bridge between two domains (pushed 2026-07-11 19:26)</sub>
 <br><br>
-<img src="./screenshot/ins2.jpg" alt="Cross-domain connection — KaijiBot maps the AI-assisted medical visit pattern onto fitness data analysis">
+<img src="./screenshot/ins2.jpg" width="100%" alt="Cross-domain connection — KaijiBot maps the AI-assisted medical visit pattern onto fitness data analysis">
 </td>
 <td width="33%"></td>
 </tr>
@@ -84,7 +83,6 @@ The two screenshots below are real Feishu messages KaijiBot pushed to the operat
 
 Note the tone — it doesn't read like a cold "notification" or "suggestion", but **like a friend casually sharing a thought**. This isn't a prompt-injected personality; it's the conversational style tuned by Persona implicit-preference learning + Thompson Sampling.
 
-</details>
 
 ### 🧬 Self-Evolution — Agent Decides When to Learn New Skills
 
@@ -98,8 +96,7 @@ How it works:
 - **Agent-Driven Decision** — The Agent has full conversation context and decides whether it's worth creating a skill. Not worth it? Ignored.
 - **Full Lifecycle** — Dedup check before creation, usage frequency tracking after, auto-cleanup for unused skills (30 days + 0 usage).
 
-<details>
-<summary><b>🧬 Real samples (click to expand — two opposite outcomes from Agent autonomous decision-making)</b></summary>
+**🧬 Real samples — two opposite outcomes from Agent autonomous decision-making**
 
 The two screenshots below show opposite decisions the Agent made during the operator's real use. **This is living proof of the "code makes no quality judgments" architectural claim** — most "self-evolving agents" will blindly create a skill for every complex task. KaijiBot's Agent judges for itself whether something "deserves to be solidified into a workflow".
 
@@ -109,21 +106,19 @@ The two screenshots below show opposite decisions the Agent made during the oper
 <strong>Decision 1: Agent decides to create a skill</strong><br>
 <sub>After the operator processed a batch of Obsidian philosophy-concept notes' cross-references, the Agent evaluated that this pattern would recur and proactively created a <code>knowledge-graph-structuring</code> skill, explaining its uses and how to delete it</sub>
 <br><br>
-<img src="./screenshot/evo1.jpg" alt="Agent decides to create the knowledge-graph-structuring skill">
+<img src="./screenshot/evo1.jpg" width="100%" alt="Agent decides to create the knowledge-graph-structuring skill">
 </td>
 <td width="33%" valign="top">
 <strong>Decision 2: Agent decides NOT to create a skill</strong><br>
 <sub>The operator asked the Agent to read through a manuscript and give structured criticism. The Hard Trigger fired the same evolution signal, but the Agent judged for itself "this is fundamentally editing work, the core capability is reading+judgment, not a process; hard-codifying it would actually limit flexibility" and <strong>proactively refused</strong> to create the skill</sub>
 <br><br>
-<img src="./screenshot/evo2.jpg" alt="Agent proactively refuses to create a skill — because it's editing work, shouldn't be hard-codified">
+<img src="./screenshot/evo2.jpg" width="100%" alt="Agent proactively refuses to create a skill — because it's editing work, shouldn't be hard-codified">
 </td>
 <td width="33%"></td>
 </tr>
 </table>
 
 Note evo2 — the Agent's refusal reason is substantive (first draft = structure, second draft = pacing, final draft = word choice), not a templated "I can't do this". This ability to "say no on its own" is a direct product of the "code only does noise filtering, Agent judges everything" architecture.
-
-</details>
 
 ### 🔄 Correction Self-Evolution — Never Makes the Same Mistake Twice
 
@@ -210,22 +205,19 @@ Note the left nav — **聊天 / 代理 / 认知 / 洞察 / 进化 / 纠错 / �
 - **Offline-capable** — As long as the LLM provider is reachable (fully offline via on-device Ollama / LAN vLLM), you have a portable AI companion. Cloud LLMs work too — traffic goes through your own API key.
 - **Proactive insights via system notifications** — PRISM gating + Android notifications. KaijiBot pushes insights during your commute or lunch break, with the same UX as your daily Feishu/WeChat use.
 
-<details>
-<summary><b>📱 Watch the full run flow (26-second GIF) and a real conversation screenshot</b></summary>
+**📱 Full run flow + real mobile conversation**
 
 **Full install + launch flow** (from phone home screen → KaijiBot Control opens → first response, 26 seconds):
 
-<a href="./screenshot/Android5.mp4" target="_blank" title="Click to play the 26-second demo video">
-  <img src="./screenshot/Android5-poster.jpg" width="320" alt="Android install and launch flow - click to play video">
+<a href="./screenshot/Android5.mp4?raw=true" target="_blank" title="Click to play the 26-second demo video in a new tab">
+  <img src="./screenshot/Android5-poster.jpg" width="32%" alt="Android install and launch flow - click to play video">
 </a>
 
-**[▶ Play the full 26-second demo video](./screenshot/Android5.mp4)** (MP4, 4MB, opens in a new page)
+**[▶ Play the full 26-second demo video](./screenshot/Android5.mp4?raw=true)** (MP4, 4MB, plays in a new browser tab)
 
 **Real mobile conversation** — substantive content KaijiBot produced on-phone (analogizing Git commits to dependency graphs, discussing how Agent can assist with consistency-checking in philosophical writing):
 
 <p><img src="./screenshot/Android2.jpg" width="32%" alt="Real mobile conversation — philosophical writing + Agent collaboration"></p>
-
-</details>
 
 **Technical users who already have Termux** can skip the Launcher APK and run directly:
 
