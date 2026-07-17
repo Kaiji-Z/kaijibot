@@ -282,10 +282,12 @@ export async function runPreparedReply(
       cognitivePersona = await store.load(agentId, userId);
     }
     try {
-      const { CorrectionStore } = await import("../../cognitive/correction/store.js");
-      if (userId) {
-        const corrStore = new CorrectionStore(resolveConfigDir());
-        corrections = await corrStore.listActive(agentId, userId);
+      if (cognitiveCfg?.correction?.enabled !== false) {
+        const { CorrectionStore } = await import("../../cognitive/correction/store.js");
+        if (userId) {
+          const corrStore = new CorrectionStore(resolveConfigDir());
+          corrections = await corrStore.listActive(agentId, userId);
+        }
       }
     } catch {}
     const { prompt: cognitivePrompt } = buildCognitiveModePrompt({

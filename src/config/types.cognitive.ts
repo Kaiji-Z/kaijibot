@@ -71,4 +71,9 @@ export type CognitiveConfig = {
     /** Auto-publish accepted skills to ClawHub (default: false) */
     clawhubAutoPublish?: boolean;
   };
+  /** Correction memory settings */
+  correction?: {
+    /** Enable correction extraction and injection (default: true). When false, no post-session extraction in session-memory hook, no agent self-report tool, and no system prompt injection of past corrections. */
+    enabled?: boolean;
+  };
 };

@@ -564,8 +564,9 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
   {
     path: ["cognitive", "enabled"],
     label: "认知系统",
-    description: "主动学习用户画像并推送洞察",
+    description: "主动学习用户画像、推送洞察、自我进化、纠错记忆。关闭后所有子项停用。",
     section: "cognitive",
+    render: (props) => renderCognitiveSection(props),
   },
   {
     path: ["cognitive", "insight", "inferenceModel"],
@@ -575,9 +576,39 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     render: (props) => renderCognitiveModelSelect(props),
   },
   {
+    path: ["memory", "consolidation", "enabled"],
+    label: "记忆整合",
+    description:
+      "每日凌晨自动扫描会话归档，LLM 提取领域知识/行为模式/偏好写入长期记忆。关闭可省 token。",
+    section: "system",
+    render: (props) =>
+      renderToggleAtPath(props, ["memory", "consolidation", "enabled"], "记忆整合"),
+  },
+  {
+    path: ["hooks", "internal", "entries", "session-memory", "enabled"],
+    label: "会话记忆归档",
+    description:
+      "每次 /new 或 /reset 时 LLM 生成结构化摘要写入日记和主题文件。关闭可省 token，但长期记忆会缺失当天内容。",
+    section: "system",
+    render: (props) =>
+      renderToggleAtPath(
+        props,
+        ["hooks", "internal", "entries", "session-memory", "enabled"],
+        "会话记忆归档",
+      ),
+  },
+  {
+    path: ["agents", "defaults", "compaction", "memoryFlush", "enabled"],
+    label: "压缩前记忆冲刷",
+    description:
+      "上下文窗口将满时 LLM 把当前对话持久化到 memory/YYYY-MM-DD.md 再压缩。关闭可省 token，但压缩后会丢失部分上下文。",
+    section: "system",
+  },
+  {
     path: ["tools", "loopDetection", "enabled"],
     label: "防重复保护",
-    description: "检测并阻止重复的工具调用",
+    description:
+      "检测 LLM 重复无进展的工具调用（同一工具同样参数连续触发、ping-pong 死循环），熔断会话避免 token 浪费和卡死。建议常开。",
     section: "system",
   },
   {
@@ -616,6 +647,130 @@ async function fetchKindleUrl(): Promise<string | null> {
     kindleUrlCache = null;
   }
   return kindleUrlCache;
+}
+
+function renderToggleAtPath(
+  props: ConfigProps,
+  path: string[],
+  label: string,
+  /** When true (default), undefined config value is rendered as ON. */
+  defaultOn = true,
+): TemplateResult | typeof nothing {
+  const value = getValueAtPath(props.formValue ?? {}, path);
+  const enabled = value === true || (value === undefined && defaultOn);
+  return html`
+    <label class="cfg-toggle-row ${props.loading ? "disabled" : ""}">
+      <div class="cfg-toggle-row__content">
+        <span class="cfg-toggle-row__label">${label}已${enabled ? "开启" : "关闭"}</span>
+      </div>
+      <div class="cfg-toggle">
+        <input
+          type="checkbox"
+          .checked=${enabled}
+          ?disabled=${props.loading}
+          @change=${(e: Event) => {
+            const v = (e.target as HTMLInputElement).checked;
+            props.onFormPatch(path, v);
+          }}
+        />
+        <span class="cfg-toggle__track"></span>
+      </div>
+    </label>
+  `;
+}
+
+function renderCognitiveSection(props: ConfigProps): TemplateResult | typeof nothing {
+  const MASTER_PATH = ["cognitive", "enabled"];
+  const masterVal = getValueAtPath(props.formValue ?? {}, MASTER_PATH);
+  // Cognitive defaults to enabled when undefined — match runtime semantics.
+  const masterEnabled = masterVal !== false;
+
+  const subItems: Array<{
+    path: string[];
+    label: string;
+    description: string;
+    /** Returns true when the sub-toggle should be considered ON by default if undefined. */
+    defaultOn: boolean;
+  }> = [
+    {
+      path: ["cognitive", "proactive", "enabled"],
+      label: "洞察推送",
+      description: "主动给用户发跨域连接、深度跟进、延伸推荐",
+      defaultOn: true,
+    },
+    {
+      path: ["cognitive", "evolution", "enabled"],
+      label: "技能进化",
+      description: "复杂任务后 Agent 自主判断是否生成可复用技能",
+      defaultOn: true,
+    },
+    {
+      path: ["cognitive", "correction", "enabled"],
+      label: "纠错记忆",
+      description: "从对话提取纠错、Agent 自报错误、注入系统提示防止再犯",
+      defaultOn: true,
+    },
+    {
+      path: ["cognitive", "persona", "autoExtract"],
+      label: "画像建模",
+      description: "从对话提取 persona 和 fragment，构建用户认知模型",
+      defaultOn: true,
+    },
+  ];
+
+  return html`
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label class="cfg-toggle-row ${props.loading ? "disabled" : ""}">
+        <div class="cfg-toggle-row__content">
+          <span class="cfg-toggle-row__label">认知系统已${masterEnabled ? "开启" : "关闭"}</span>
+        </div>
+        <div class="cfg-toggle">
+          <input
+            type="checkbox"
+            .checked=${masterEnabled}
+            ?disabled=${props.loading}
+            @change=${(e: Event) => {
+              const v = (e.target as HTMLInputElement).checked;
+              props.onFormPatch(MASTER_PATH, v);
+            }}
+          />
+          <span class="cfg-toggle__track"></span>
+        </div>
+      </label>
+      <div
+        style="display:flex;flex-direction:column;gap:8px;padding-left:14px;border-left:2px solid var(--border);margin-left:6px;${masterEnabled
+          ? ""
+          : "opacity:0.4;pointer-events:none;"}"
+      >
+        ${subItems.map(
+          (item) =>
+            html`<label class="cfg-toggle-row ${props.loading ? "disabled" : ""}">
+              <div class="cfg-toggle-row__content">
+                <span class="cfg-toggle-row__label" style="font-size:13px;">${item.label}</span>
+                <span
+                  class="config-quick-settings__item-desc"
+                  style="margin-top:2px;font-size:11px;"
+                  >${item.description}</span
+                >
+              </div>
+              <div class="cfg-toggle">
+                <input
+                  type="checkbox"
+                  .checked=${(getValueAtPath(props.formValue ?? {}, item.path) ??
+                  item.defaultOn) === true}
+                  ?disabled=${props.loading || !masterEnabled}
+                  @change=${(e: Event) => {
+                    const v = (e.target as HTMLInputElement).checked;
+                    props.onFormPatch(item.path, v);
+                  }}
+                />
+                <span class="cfg-toggle__track"></span>
+              </div>
+            </label>`,
+        )}
+      </div>
+    </div>
+  `;
 }
 
 function renderKindleToggle(props: ConfigProps): TemplateResult | typeof nothing {

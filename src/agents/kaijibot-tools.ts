@@ -317,12 +317,16 @@ export function createKaijiBotTools(
         config: resolvedConfig,
         sessionKey: options?.agentSessionKey,
       }),
-      createCorrectionReportTool({
-        config: resolvedConfig,
-        sessionKey: options?.agentSessionKey,
-        deliveryTo: options?.agentTo,
-        agentId: sessionAgentId,
-      }),
+      ...(resolvedConfig?.cognitive?.correction?.enabled !== false
+        ? [
+            createCorrectionReportTool({
+              config: resolvedConfig,
+              sessionKey: options?.agentSessionKey,
+              deliveryTo: options?.agentTo,
+              agentId: sessionAgentId,
+            }),
+          ]
+        : []),
       createSwitchSoulTool({ agentId: sessionAgentId }),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),

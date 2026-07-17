@@ -367,7 +367,8 @@ const saveSessionToMemory: HookHandler = async (event) => {
     }
 
     // --- Post-session correction extraction ---
-    if (sessionContent && cfg && allowLlm) {
+    const correctionEnabled = cfg?.cognitive?.correction?.enabled !== false;
+    if (sessionContent && cfg && allowLlm && correctionEnabled) {
       try {
         const { hasCorrectionSignals, extractCorrectionsFromTranscript } =
           await import("../../../cognitive/correction/extractor.js");
