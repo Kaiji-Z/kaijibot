@@ -34,6 +34,7 @@ import {
 } from "./summary.js";
 import type { StructuredSummary } from "./summary.js";
 import {
+  extractFirstMessageTimestamp,
   findPreviousSessionFile,
   getDialogueWithStaging,
   getRecentSessionContentWithResetFallback,
@@ -144,7 +145,6 @@ const saveSessionToMemory: HookHandler = async (event) => {
     await fs.mkdir(memoryDir, { recursive: true });
 
     const now = new Date(event.timestamp);
-    const dateStr = localDateStr(now);
 
     const sessionEntry = (context.previousSessionEntry || context.sessionEntry || {}) as Record<
       string,
@@ -181,6 +181,18 @@ const saveSessionToMemory: HookHandler = async (event) => {
     });
 
     const sessionFile = currentSessionFile || undefined;
+
+    // Date memory artifacts by when the conversation actually started, not
+    // when the hook fired. A session that ran 22:00→02:00 and was /new'd at
+    // 09:00 next morning should be filed under the start date.
+    let referenceTime = now;
+    if (sessionFile) {
+      const firstMsgTime = await extractFirstMessageTimestamp(sessionFile);
+      if (firstMsgTime) {
+        referenceTime = firstMsgTime;
+      }
+    }
+    const dateStr = localDateStr(referenceTime);
 
     // Build session pointer (sessionId + sessionsDir) for stable resolution.
     // Unlike an absolute file path, this survives /reset renaming (.reset.{ts}).
@@ -242,7 +254,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
         topicSlug: "session",
       };
     } else {
-      const timeStr = localTimeStr(now);
+      const timeStr = localTimeStr(referenceTime);
       summary = {
         summary: `(empty session at ${timeStr})`,
         decisions: [],
@@ -426,11 +438,11 @@ const saveSessionToMemory: HookHandler = async (event) => {
       try {
         const cleanDialogue = await getDialogueWithStaging(stagingPath, sessionFile);
         if (cleanDialogue && cleanDialogue.trim().length > 0) {
-          const dialogueFilename = `${localDateStr(now)}-${localTimeStr(now)}.md`;
+          const dialogueFilename = `${localDateStr(referenceTime)}-${localTimeStr(referenceTime)}.md`;
           const dialoguePath = path.join(dialogueDir, dialogueFilename);
           const frontmatter = [
             "---",
-            `date: ${localDateTimeStr(now)}`,
+            `date: ${localDateTimeStr(referenceTime)}`,
             `participants:`,
             ...(summary.participants ?? ["user"]).map((p) => `  - ${p}`),
             `messageCount: ${cleanDialogue.split("\n").length}`,

@@ -516,4 +516,47 @@ describe("routeToStores", () => {
     expect(result.errors.some((e) => e.includes("wiki disk full"))).toBe(true);
     expect(failingDeps.mergeTypedInsights).toHaveBeenCalled();
   });
+
+  it("uses sourceTime for date stamps when provided", async () => {
+    const deps = makeMockDeps();
+    const items = [
+      makeRouteItem({
+        category: "domain_knowledge",
+        confidence: 0.9,
+        content: "Likes Rust",
+      }),
+    ];
+    // Conversation happened 2026-07-01, pipeline runs later — date stamps must
+    // reflect the conversation date, not wall-clock time.
+    const sourceTime = new Date("2026-07-01T22:00:00Z");
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps, sourceTime });
+
+    // MEMORY.md inline section date stamp
+    expect(deps.updateMemoryIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ date: expect.stringMatching(/^2026-07-0[12]$/) }),
+    );
+    // The exact local-day depends on test-runner TZ; accept either side of
+    // midnight UTC but verify the date passed matches sourceTime's local date.
+    const passedDate = (deps.updateMemoryIndex as ReturnType<typeof vi.fn>).mock.calls[0]![0]
+      .date as string;
+    const expectedLocal = formatDateLocal(sourceTime);
+    expect(passedDate).toBe(expectedLocal);
+  });
+
+  it("falls back to wall-clock date when sourceTime omitted", async () => {
+    const deps = makeMockDeps();
+    const items = [
+      makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "X" }),
+    ];
+    await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
+    const today = formatDateLocal(new Date());
+    expect((deps.updateMemoryIndex as ReturnType<typeof vi.fn>).mock.calls[0]![0].date).toBe(today);
+  });
 });
+
+function formatDateLocal(d: Date): string {
+  const y = d.getFullYear().toString();
+  const m = (d.getMonth() + 1).toString().padStart(2, "0");
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}

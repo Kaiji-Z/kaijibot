@@ -15,6 +15,7 @@ import type {
 } from "kaijibot/plugin-sdk/memory-core-host-status";
 import {
   extractFromBatch,
+  extractEarliestMessageTimestamp,
   mergeAndDedupBatches,
   resolveConflicts,
 } from "./consolidation-extract.js";
@@ -295,10 +296,13 @@ export async function runConsolidationForAgent(params: {
       item,
     }));
 
+    const sourceTime = extractEarliestMessageTimestamp(userFiles.map((f) => f.content));
+
     const routeResult = await routeToStores({
       items: routeItems,
       workspaceDir,
       deps: deps.routeDeps,
+      sourceTime: sourceTime ?? undefined,
     });
     totalRouted += routeResult.routed;
     errors.push(...routeResult.errors);

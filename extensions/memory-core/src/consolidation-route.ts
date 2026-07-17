@@ -88,14 +88,24 @@ export async function routeToStores(params: {
   items: RouteItem[];
   workspaceDir: string;
   deps: ConsolidationRouteDeps;
+  /**
+   * Reference time for date-stamping routed artifacts (MEMORY.md sections,
+   * daily memory file append, wiki pages). Defaults to wall-clock time when
+   * omitted. Callers should pass the earliest first-message timestamp of the
+   * source transcripts so artifacts are dated by when the conversation
+   * happened, not when the pipeline ran.
+   */
+  sourceTime?: Date;
 }): Promise<{ routed: number; errors: string[] }> {
-  const { items, workspaceDir, deps } = params;
+  const { items, workspaceDir, deps, sourceTime } = params;
   const errors: string[] = [];
   let routed = 0;
 
   if (items.length === 0) {
     return { routed: 0, errors };
   }
+
+  const dateStr = localDateStr(sourceTime ?? new Date());
 
   // Group by (agentId, userId) for batch persona writes
   const personaGroups = new Map<
@@ -179,7 +189,7 @@ export async function routeToStores(params: {
       await deps.updateMemoryIndex({
         workspaceDir,
         items: highConfidenceItems.map((ri) => ri.item),
-        date: localDateStr(),
+        date: dateStr,
       });
     } catch (err) {
       errors.push(`Failed to update MEMORY.md for ${workspaceDir}: ${String(err)}`);
@@ -189,7 +199,6 @@ export async function routeToStores(params: {
   // Append deduped summary to daily memory file
   if (memorySummaryLines.length > 0) {
     try {
-      const dateStr = localDateStr();
       const summary = `\n## Consolidation Summary (${dateStr})\n${memorySummaryLines.join("\n")}\n`;
       await deps.appendToMemoryFile(workspaceDir, summary);
     } catch (err) {
@@ -230,7 +239,7 @@ export async function routeToStores(params: {
           agentId: group.agentId,
           userId: group.userId,
           items: group.items,
-          date: localDateStr(),
+          date: dateStr,
         });
       } catch (err) {
         errors.push(

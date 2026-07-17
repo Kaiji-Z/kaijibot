@@ -9,6 +9,7 @@ import {
   mergeJsonlContents,
   updateDialogueStaging,
   getDialogueWithStaging,
+  extractFirstMessageTimestamp,
 } from "./transcript.js";
 
 // ---------------------------------------------------------------------------
@@ -693,5 +694,122 @@ describe("getDialogueWithStaging", () => {
     const result = await getDialogueWithStaging(stagingPath, sessionPath);
     expect(result).not.toContain("[tool:");
     expect(result).toContain("assistant: Searching");
+  });
+});
+
+describe("extractFirstMessageTimestamp", () => {
+  let tmpDir: string;
+  let sessionPath: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-firstmsg-test-"));
+    sessionPath = path.join(tmpDir, "session.jsonl");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  function messageRecord(
+    id: string,
+    role: "user" | "assistant",
+    ts: string,
+    content = "hi",
+  ): string {
+    return JSON.stringify({
+      type: "message",
+      id,
+      timestamp: ts,
+      message: { role, content, timestamp: ts },
+    });
+  }
+
+  it("returns first user message timestamp from JSONL", async () => {
+    const jsonl = buildJsonl(
+      sessionHeader(),
+      messageRecord("1", "user", "2026-07-01T10:00:00Z", "morning"),
+      messageRecord("2", "assistant", "2026-07-01T10:01:00Z", "hello"),
+      messageRecord("3", "user", "2026-07-01T22:30:00Z", "goodnight"),
+    );
+    await fs.writeFile(sessionPath, jsonl);
+
+    const ts = await extractFirstMessageTimestamp(sessionPath);
+    expect(ts).not.toBeNull();
+    expect(ts!.toISOString()).toBe("2026-07-01T10:00:00.000Z");
+  });
+
+  it("returns null when file does not exist", async () => {
+    const ts = await extractFirstMessageTimestamp(
+      path.join(tmpDir, "missing.jsonl"),
+    );
+    expect(ts).toBeNull();
+  });
+
+  it("returns null when JSONL has no message records", async () => {
+    await fs.writeFile(sessionPath, sessionHeader() + "\n");
+    const ts = await extractFirstMessageTimestamp(sessionPath);
+    expect(ts).toBeNull();
+  });
+
+  it("falls back to .reset.<ts> archive when primary missing", async () => {
+    const archivedPath = `${sessionPath}.reset.2026-07-02T01-00-00.000Z`;
+    const jsonl = buildJsonl(
+      sessionHeader(),
+      messageRecord("1", "user", "2026-07-01T22:00:00Z", "late night"),
+    );
+    await fs.writeFile(archivedPath, jsonl);
+
+    const ts = await extractFirstMessageTimestamp(sessionPath);
+    expect(ts).not.toBeNull();
+    expect(ts!.toISOString()).toBe("2026-07-01T22:00:00.000Z");
+  });
+
+  it("skips system/tool messages, returns first user/assistant timestamp", async () => {
+    const systemMsg = JSON.stringify({
+      type: "message",
+      id: "sys-1",
+      timestamp: "2026-07-01T09:00:00Z",
+      message: { role: "system", content: "session init" },
+    });
+    const jsonl = buildJsonl(
+      sessionHeader(),
+      systemMsg,
+      messageRecord("u1", "user", "2026-07-01T10:30:00Z", "real start"),
+    );
+    await fs.writeFile(sessionPath, jsonl);
+
+    const ts = await extractFirstMessageTimestamp(sessionPath);
+    expect(ts).not.toBeNull();
+    expect(ts!.toISOString()).toBe("2026-07-01T10:30:00.000Z");
+  });
+
+  it("uses record-level timestamp when message-level timestamp absent", async () => {
+    const recordWithoutMsgTs = JSON.stringify({
+      type: "message",
+      id: "1",
+      timestamp: "2026-07-01T15:45:00Z",
+      message: { role: "user", content: "no message timestamp" },
+    });
+    await fs.writeFile(sessionPath, buildJsonl(sessionHeader(), recordWithoutMsgTs));
+
+    const ts = await extractFirstMessageTimestamp(sessionPath);
+    expect(ts).not.toBeNull();
+    expect(ts!.toISOString()).toBe("2026-07-01T15:45:00.000Z");
+  });
+
+  it("regression: hook fires next morning but file date should be previous day", async () => {
+    // Scenario: user chats 2026-07-01 10:00-23:00, sleeps, /new at 2026-07-02 09:00.
+    // The hook fires at 09:00 next day, but the conversation is from 07-01.
+    const jsonl = buildJsonl(
+      sessionHeader(),
+      messageRecord("1", "user", "2026-07-01T10:00:00Z", "morning"),
+      messageRecord("2", "assistant", "2026-07-01T10:01:00Z", "hi"),
+      messageRecord("3", "user", "2026-07-01T22:00:00Z", "goodnight"),
+    );
+    await fs.writeFile(sessionPath, jsonl);
+
+    const firstMsgTime = await extractFirstMessageTimestamp(sessionPath);
+    expect(firstMsgTime).not.toBeNull();
+    expect(firstMsgTime!.toISOString()).toMatch(/^2026-07-01/);
   });
 });

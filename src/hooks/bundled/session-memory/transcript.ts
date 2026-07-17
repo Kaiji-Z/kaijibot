@@ -375,3 +375,58 @@ export async function findPreviousSessionFile(params: {
   }
   return undefined;
 }
+
+/**
+ * Extract the timestamp of the first user/assistant message from a session
+ * transcript JSONL file. Used to date memory artifacts (daily file, dialogue
+ * archive) by when the conversation actually started, not when the hook fired.
+ *
+ * Returns null when the file is missing, unreadable, or contains no message
+ * records with a parseable timestamp — callers should fall back to event time.
+ *
+ * Honors the `.reset.<ts>` archive fallback via {@link resolveReadableSessionFile}.
+ */
+export async function extractFirstMessageTimestamp(
+  sessionFilePath: string,
+): Promise<Date | null> {
+  const resolved = await resolveReadableSessionFile(sessionFilePath);
+  if (!resolved) {
+    return null;
+  }
+
+  let raw: string;
+  try {
+    raw = await fs.readFile(resolved, "utf-8");
+  } catch {
+    return null;
+  }
+
+  for (const line of raw.split(/\r?\n/)) {
+    if (!line.trim()) {
+      continue;
+    }
+    let record: { type?: unknown; timestamp?: unknown; message?: unknown };
+    try {
+      record = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (record.type !== "message" || !record.message) {
+      continue;
+    }
+    const message = record.message as { role?: unknown; timestamp?: unknown };
+    if (message.role !== "user" && message.role !== "assistant") {
+      continue;
+    }
+    // Prefer message-level timestamp; fall back to record-level.
+    const tsCandidate = message.timestamp ?? record.timestamp;
+    if (typeof tsCandidate !== "string" && typeof tsCandidate !== "number") {
+      continue;
+    }
+    const date = new Date(tsCandidate);
+    if (!Number.isNaN(date.getTime())) {
+      return date;
+    }
+  }
+  return null;
+}

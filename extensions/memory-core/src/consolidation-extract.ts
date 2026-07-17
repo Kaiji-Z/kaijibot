@@ -212,3 +212,55 @@ export function resolveConflicts(items: ExtractedItem[]): {
 
   return { resolved, conflicts };
 }
+
+/**
+ * Scan JSONL transcript contents and return the earliest first-message
+ * timestamp. Used to date consolidated memory artifacts by when the source
+ * conversations actually happened, not when the cron pipeline ran.
+ *
+ * Returns null when no message record carries a parseable timestamp;
+ * callers should fall back to wall-clock time.
+ */
+export function extractEarliestMessageTimestamp(contents: string[]): Date | null {
+  let earliest: Date | null = null;
+  for (const content of contents) {
+    const ts = scanFirstMessageTimestamp(content);
+    if (!ts) {
+      continue;
+    }
+    if (earliest === null || ts.getTime() < earliest.getTime()) {
+      earliest = ts;
+    }
+  }
+  return earliest;
+}
+
+function scanFirstMessageTimestamp(jsonl: string): Date | null {
+  for (const line of jsonl.split(/\r?\n/)) {
+    if (!line.trim()) {
+      continue;
+    }
+    let record: { type?: unknown; timestamp?: unknown; message?: unknown };
+    try {
+      record = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (record.type !== "message" || !record.message) {
+      continue;
+    }
+    const message = record.message as { role?: unknown; timestamp?: unknown };
+    if (message.role !== "user" && message.role !== "assistant") {
+      continue;
+    }
+    const tsCandidate = message.timestamp ?? record.timestamp;
+    if (typeof tsCandidate !== "string" && typeof tsCandidate !== "number") {
+      continue;
+    }
+    const date = new Date(tsCandidate);
+    if (!Number.isNaN(date.getTime())) {
+      return date;
+    }
+  }
+  return null;
+}
