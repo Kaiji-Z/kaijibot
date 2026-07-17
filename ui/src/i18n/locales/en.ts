@@ -168,7 +168,8 @@ export const en: TranslationMap = {
     insights: "Insights",
     evolution: "Evolution",
     corrections: "Corrections",
-    history: "History",
+    history: "Sessions",
+    dialogues: "Dialogues",
   },
   subtitles: {
     agents: "Workspaces, tools, identities.",
@@ -194,7 +195,8 @@ export const en: TranslationMap = {
     insights: "Proactive insight history and quality.",
     evolution: "Skill evolution and self-improvement.",
     corrections: "Learned corrections and reinforcement.",
-    history: "Session transcripts and memory.",
+    history: "Active sessions management.",
+    dialogues: "Archived conversation markdown files.",
   },
   overview: {
     access: {

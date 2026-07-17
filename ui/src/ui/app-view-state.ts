@@ -178,6 +178,20 @@ export type AppViewState = {
   historySelectedKey: string | null;
   historyPreview: unknown | null;
   historyMessages: TranscriptMessage[];
+  dialoguesLoading: boolean;
+  dialoguesError: string | null;
+  dialoguesList: {
+    agents: Array<{
+      agentId: string;
+      workspace: string;
+      dialogues: Array<{ filename: string; date: string; time: string; size: number }>;
+    }>;
+  } | null;
+  dialoguesSelectedAgentId: string | null;
+  dialoguesSelectedFilename: string | null;
+  dialoguesContent: string | null;
+  dialoguesContentLoading: boolean;
+  dialoguesContentError: string | null;
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;

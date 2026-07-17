@@ -110,6 +110,7 @@ const lazyUsage = createLazy(() => import("./views/usage.ts"));
 const lazySkillsManager = createLazy(() => import("./views/skills-manager.ts"));
 const lazyCorrections = createLazy(() => import("./views/corrections.ts"));
 const lazyHistory = createLazy(() => import("./views/history.ts"));
+const lazyDialogues = createLazy(() => import("./views/dialogues.ts"));
 
 function lazyRender<M>(getter: () => M | null, render: (mod: M) => unknown) {
   const mod = getter();
@@ -1216,6 +1217,41 @@ export function renderApp(state: AppViewState) {
                     void c.deleteHistorySession(
                       state as Parameters<typeof c.deleteHistorySession>[0],
                       key,
+                    );
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "dialogues"
+          ? lazyRender(lazyDialogues, (m) =>
+              m.renderDialogues({
+                loading: state.dialoguesLoading,
+                error: state.dialoguesError,
+                list: state.dialoguesList,
+                selectedAgentId: state.dialoguesSelectedAgentId,
+                selectedFilename: state.dialoguesSelectedFilename,
+                content: state.dialoguesContent,
+                contentLoading: state.dialoguesContentLoading,
+                contentError: state.dialoguesContentError,
+                onSelect: (agentId: string, filename: string) => {
+                  import("./controllers/dialogues.ts").then((c) => {
+                    void c.loadDialogueContent(
+                      state as Parameters<typeof c.loadDialogueContent>[0],
+                      agentId,
+                      filename,
+                    );
+                  });
+                },
+                onClearSelection: () => {
+                  import("./controllers/dialogues.ts").then((c) => {
+                    c.clearDialogueSelection(state as Parameters<typeof c.clearDialogueSelection>[0]);
+                  });
+                },
+                onRefresh: () => {
+                  import("./controllers/dialogues.ts").then((c) => {
+                    void c.loadDialoguesList(
+                      state as Parameters<typeof c.loadDialoguesList>[0],
                     );
                   });
                 },

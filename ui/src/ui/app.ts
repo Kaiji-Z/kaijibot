@@ -307,6 +307,21 @@ export class KaijiBotApp extends LitElement {
   @state() historyPreview: unknown = null;
   @state() historyMessages: unknown[] = [];
 
+  @state() dialoguesLoading = false;
+  @state() dialoguesError: string | null = null;
+  @state() dialoguesList: {
+    agents: Array<{
+      agentId: string;
+      workspace: string;
+      dialogues: Array<{ filename: string; date: string; time: string; size: number }>;
+    }>;
+  } | null = null;
+  @state() dialoguesSelectedAgentId: string | null = null;
+  @state() dialoguesSelectedFilename: string | null = null;
+  @state() dialoguesContent: string | null = null;
+  @state() dialoguesContentLoading = false;
+  @state() dialoguesContentError: string | null = null;
+
   @state() correctionsLoading = false;
   @state() correctionsError: string | null = null;
   @state() correctionsAgentId: string | null = null;

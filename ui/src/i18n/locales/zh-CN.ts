@@ -169,7 +169,8 @@ export const zh_CN: TranslationMap = {
     insights: "洞察",
     evolution: "进化",
     corrections: "纠错",
-    history: "历史",
+    history: "会话",
+    dialogues: "聊天记录",
   },
   subtitles: {
     agents: "工作区、工具、身份。",
@@ -195,7 +196,8 @@ export const zh_CN: TranslationMap = {
     insights: "主动洞察历史和质量。",
     evolution: "技能进化与自我改进。",
     corrections: "已学习纠错和强化记录。",
-    history: "会话记录和记忆。",
+    history: "活跃会话管理。",
+    dialogues: "归档对话 markdown 文件浏览。",
   },
   overview: {
     access: {

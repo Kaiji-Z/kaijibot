@@ -338,6 +338,11 @@ export async function refreshActiveTab(host: SettingsHost) {
       void c.loadHistorySessions(host as unknown as Parameters<typeof c.loadHistorySessions>[0]);
     });
   }
+  if (host.tab === "dialogues") {
+    void import("./controllers/dialogues.ts").then((c) => {
+      void c.loadDialoguesList(host as unknown as Parameters<typeof c.loadDialoguesList>[0]);
+    });
+  }
 }
 
 export function inferBasePath() {
