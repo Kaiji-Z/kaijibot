@@ -30,7 +30,12 @@ export type ConsolidationRouteDeps = {
     userId: string,
     record: CorrectionRecord,
   ) => Promise<string>;
-  appendToMemoryFile: (workspaceDir: string, content: string) => Promise<void>;
+  appendToMemoryFile: (
+    workspaceDir: string,
+    content: string,
+    /** Local YYYY-MM-DD string for the target daily file. Defaults to wall-clock local date. */
+    localDateStr?: string,
+  ) => Promise<void>;
   collectFragment: (
     agentId: string,
     userId: string,
@@ -200,7 +205,7 @@ export async function routeToStores(params: {
   if (memorySummaryLines.length > 0) {
     try {
       const summary = `\n## Consolidation Summary (${dateStr})\n${memorySummaryLines.join("\n")}\n`;
-      await deps.appendToMemoryFile(workspaceDir, summary);
+      await deps.appendToMemoryFile(workspaceDir, summary, dateStr);
     } catch (err) {
       errors.push(`Failed to append memory file for ${workspaceDir}: ${String(err)}`);
     }

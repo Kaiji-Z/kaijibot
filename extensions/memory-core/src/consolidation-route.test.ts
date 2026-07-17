@@ -138,6 +138,7 @@ describe("routeToStores", () => {
     expect(deps.appendToMemoryFile).toHaveBeenCalledWith(
       "/tmp/ws",
       expect.stringContaining("Consolidation Summary"),
+      expect.any(String),
     );
   });
 

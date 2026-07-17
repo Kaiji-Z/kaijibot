@@ -1779,11 +1779,20 @@ export async function startGatewayServer(
                 const result = await correctionStore.addOrReinforce(agentId, userId, fullRecord);
                 return result;
               },
-              appendToMemoryFile: async (workspaceDir: string, content: string) => {
+              appendToMemoryFile: async (
+                workspaceDir: string,
+                content: string,
+                localDateStr?: string,
+              ) => {
                 const fs = await import("node:fs/promises");
                 const path = await import("node:path");
-                const today = new Date().toISOString().slice(0, 10);
-                const dailyFile = path.join(workspaceDir, "memory", `${today}.md`);
+                const now = new Date();
+                const y = now.getFullYear().toString();
+                const m = (now.getMonth() + 1).toString().padStart(2, "0");
+                const d = now.getDate().toString().padStart(2, "0");
+                const fallback = `${y}-${m}-${d}`;
+                const dayStr = localDateStr ?? fallback;
+                const dailyFile = path.join(workspaceDir, "memory", `${dayStr}.md`);
                 await fs.mkdir(path.dirname(dailyFile), { recursive: true });
                 await fs.appendFile(dailyFile, content, "utf-8");
               },
