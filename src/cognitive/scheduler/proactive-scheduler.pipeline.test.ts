@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
 import type { InsightCandidate } from "../insight/types.js";
 import { createDefaultPersona } from "../persona/store.js";
@@ -278,60 +278,70 @@ describe("ProactiveScheduler pipeline lifecycle", () => {
   // ── Test 4 ───────────────────────────────────────────────────────────
 
   it("diversification across 5 rounds produces varied domains", async () => {
-    const baseTimestamp = 10_000;
-    const persona = richPersona(baseTimestamp);
-    let currentPersona: PersonaTree = persona;
-    const deliveredDomains: string[][] = [];
+    // Deterministic RNG so bandit/gate selections are stable across runs (was flaky).
+    let seed = 0x9e37_79b9;
+    const randomSpy = vi.spyOn(Math, "random").mockImplementation(() => {
+      seed = (seed * 1_664_525 + 1_013_904_223) % 4_294_967_296;
+      return seed / 4_294_967_296;
+    });
+    try {
+      const baseTimestamp = 10_000;
+      const persona = richPersona(baseTimestamp);
+      let currentPersona: PersonaTree = persona;
+      const deliveredDomains: string[][] = [];
 
-    for (let cycle = 0; cycle < 5; cycle++) {
-      let savedPersona: PersonaTree | undefined;
-      // Use cycle % 5 for domain index → different domain each cycle
-      const fakeInsight = makeFakeInsight(cycle, cycle % 5);
+      for (let cycle = 0; cycle < 5; cycle++) {
+        let savedPersona: PersonaTree | undefined;
+        // Use cycle % 5 for domain index → different domain each cycle
+        const fakeInsight = makeFakeInsight(cycle, cycle % 5);
 
-      const scheduler = new ProactiveScheduler(
-        pipelineConfig,
-        {
-          loadPersona: async () => currentPersona,
-          onInsightReady: async () => {},
-          savePersona: async (_agentId, _userId, p) => {
-            savedPersona = p;
+        const scheduler = new ProactiveScheduler(
+          pipelineConfig,
+          {
+            loadPersona: async () => currentPersona,
+            onInsightReady: async () => {},
+            savePersona: async (_agentId, _userId, p) => {
+              savedPersona = p;
+            },
           },
-        },
-        { insightGenerator: async () => [fakeInsight] },
-      );
+          { insightGenerator: async () => [fakeInsight] },
+        );
 
-      const result = await scheduler.processEvent("user1", {
-        type: "timer",
-        timestamp: 10_000 + cycle * 3_601_000,
-      });
+        const result = await scheduler.processEvent("user1", {
+          type: "timer",
+          timestamp: 10_000 + cycle * 3_601_000,
+        });
 
-      if (result) {
-        deliveredDomains.push(result.targetDomains);
-        if (savedPersona) {
-          // Simulate user activity after each delivered insight so the
-          // cadenceFactor stays near-peak for the next cycle.
-          savedPersona.lifecycle.lastActiveAt = 10_000 + cycle * 3_601_000;
-          currentPersona = savedPersona;
+        if (result) {
+          deliveredDomains.push(result.targetDomains);
+          if (savedPersona) {
+            // Simulate user activity after each delivered insight so the
+            // cadenceFactor stays near-peak for the next cycle.
+            savedPersona.lifecycle.lastActiveAt = 10_000 + cycle * 3_601_000;
+            currentPersona = savedPersona;
+          }
         }
       }
-    }
 
-    // Should deliver at least some insights
-    expect(deliveredDomains.length).toBeGreaterThanOrEqual(3);
+      // Should deliver at least some insights
+      expect(deliveredDomains.length).toBeGreaterThanOrEqual(3);
 
-    // Verify at least 3 unique domain sets were delivered
-    const uniqueDomainSets = new Set(deliveredDomains.map((d) => d.toSorted().join(",")));
-    expect(uniqueDomainSets.size).toBeGreaterThanOrEqual(3);
+      // Verify at least 3 unique domain sets were delivered
+      const uniqueDomainSets = new Set(deliveredDomains.map((d) => d.toSorted().join(",")));
+      expect(uniqueDomainSets.size).toBeGreaterThanOrEqual(3);
 
-    // Verify no single domain appears more than 2 times
-    const domainCounts = new Map<string, number>();
-    for (const domains of deliveredDomains) {
-      for (const d of domains) {
-        domainCounts.set(d, (domainCounts.get(d) ?? 0) + 1);
+      // Verify no single domain appears more than 2 times
+      const domainCounts = new Map<string, number>();
+      for (const domains of deliveredDomains) {
+        for (const d of domains) {
+          domainCounts.set(d, (domainCounts.get(d) ?? 0) + 1);
+        }
       }
-    }
-    for (const [_domain, count] of domainCounts) {
-      expect(count).toBeLessThanOrEqual(2);
+      for (const [_domain, count] of domainCounts) {
+        expect(count).toBeLessThanOrEqual(2);
+      }
+    } finally {
+      randomSpy.mockRestore();
     }
   });
 

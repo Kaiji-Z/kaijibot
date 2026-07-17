@@ -1,15 +1,24 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { ProactiveScheduler, type InsightGeneratorFn } from "../scheduler/proactive-scheduler.js";
 import type { Opportunity, SchedulerConfig, SchedulerEvent } from "../scheduler/types.js";
 import type { PersonaTree } from "../types.js";
+import { FragmentStore } from "./fragment-store.js";
 import {
   generateInsightCandidatesLLM,
   type LlmInsightDeps,
   type WebSearchResult,
 } from "./llm-engine.js";
 import type { InsightCandidate, InsightMode } from "./types.js";
+
+// Isolated FragmentStore so tests don't read/write the real ~/.kaijibot and
+// don't pollute each other across files in the same suite.
+const isolatedFragmentStore = new FragmentStore(
+  join(tmpdir(), `kaijibot-test-fragments-${Date.now()}`),
+);
 
 // ---------------------------------------------------------------------------
 // Test infrastructure (local copies, no imports from other test files)
@@ -226,7 +235,7 @@ describe("insight pipeline integration", () => {
         },
         savePersona: async () => {},
       },
-      { insightGenerator: generator },
+      { insightGenerator: generator, fragmentStore: isolatedFragmentStore },
     );
 
     const result = await scheduler.resolve("main", persona, explorationOpportunity("surprise"));
@@ -264,7 +273,7 @@ describe("insight pipeline integration", () => {
         onInsightReady: async () => {},
         savePersona: async () => {},
       },
-      { insightGenerator: generator },
+      { insightGenerator: generator, fragmentStore: isolatedFragmentStore },
     );
 
     const result = await scheduler.resolve("main", persona, explorationOpportunity("extend"));
@@ -310,7 +319,7 @@ describe("insight pipeline integration", () => {
         onInsightReady: async () => {},
         savePersona: async () => {},
       },
-      { insightGenerator: generator },
+      { insightGenerator: generator, fragmentStore: isolatedFragmentStore },
     );
 
     const result = await scheduler.resolve("main", persona, explorationOpportunity("surprise"));
@@ -350,7 +359,7 @@ describe("insight pipeline integration", () => {
         onInsightReady: async () => {},
         savePersona: async () => {},
       },
-      { insightGenerator: generator },
+      { insightGenerator: generator, fragmentStore: isolatedFragmentStore },
     );
 
     const opportunity: Opportunity = {
@@ -402,7 +411,7 @@ describe("insight pipeline integration", () => {
         onInsightReady: async () => {},
         savePersona: async () => {},
       },
-      { insightGenerator: generator },
+      { insightGenerator: generator, fragmentStore: isolatedFragmentStore },
     );
 
     const result = await scheduler.resolve("main", persona, explorationOpportunity("surprise"));
@@ -443,7 +452,7 @@ describe("insight pipeline integration", () => {
         },
         savePersona: async () => {},
       },
-      { insightGenerator: generator },
+      { insightGenerator: generator, fragmentStore: isolatedFragmentStore },
     );
 
     const event: SchedulerEvent = { type: "timer", timestamp: surpriseTimestamp() };

@@ -8,6 +8,8 @@ export default defineConfig({
   test: {
     ...sharedVitestConfig.test,
     include: ["src/cognitive/**/*.test.ts"],
+    setupFiles: ["src/cognitive/test-setup.ts"],
+    fileParallelism: false,
     exclude: [
       "dist/**",
       "test/fixtures/**",

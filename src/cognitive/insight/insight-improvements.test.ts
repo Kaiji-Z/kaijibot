@@ -10,9 +10,18 @@
  * Run: pnpm test src/cognitive/insight/insight-improvements.test.ts
  */
 
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { ProactiveScheduler } from "../scheduler/proactive-scheduler.js";
 import type { PersonaTree } from "../types.js";
+import { FragmentStore } from "./fragment-store.js";
+
+// Isolated FragmentStore so tests don't read/write the real ~/.kaijibot and
+// don't pollute each other across files in the same suite.
+const isolatedFragmentStore = new FragmentStore(
+  join(tmpdir(), `kaijibot-test-fragments-${Date.now()}`),
+);
 import { buildInsightPrompt, generateInsightCandidatesLLM } from "./llm-engine.js";
 import type { LlmInsightDeps, WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
@@ -287,7 +296,7 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
         onInsightReady: async () => {},
         savePersona: async () => {},
       },
-      { insightGenerator: async () => [fakeInsight] },
+      { insightGenerator: async () => [fakeInsight], fragmentStore: isolatedFragmentStore },
     );
 
     const result = await scheduler.processEvent("user1", {
@@ -325,7 +334,7 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
           savedPersona = p;
         },
       },
-      { insightGenerator: async () => [fakeInsight] },
+      { insightGenerator: async () => [fakeInsight], fragmentStore: isolatedFragmentStore },
     );
 
     const result = await scheduler.processEvent("user1", {
@@ -394,6 +403,7 @@ describe("Improvement #2: Semantic dedup via domain overlap", () => {
           }
           return [insight2];
         },
+        fragmentStore: isolatedFragmentStore,
       },
     );
 
@@ -622,6 +632,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       },
       {
         insightGenerator: async () => [insight1],
+        fragmentStore: isolatedFragmentStore,
       },
     );
 
@@ -658,6 +669,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       },
       {
         insightGenerator: async () => [insight2],
+        fragmentStore: isolatedFragmentStore,
       },
     );
 
@@ -693,6 +705,7 @@ describe("Combined: full pipeline with all 3 improvements", () => {
       },
       {
         insightGenerator: async () => [insight3],
+        fragmentStore: isolatedFragmentStore,
       },
     );
 
