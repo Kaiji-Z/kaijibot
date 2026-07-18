@@ -127,7 +127,10 @@ export function buildMemoryFlushPlan(
   const nowMs = Number.isFinite(resolved.nowMs) ? (resolved.nowMs as number) : Date.now();
   const cfg = resolved.cfg;
   const defaults = cfg?.agents?.defaults?.compaction?.memoryFlush;
-  if (defaults?.enabled === false) {
+  // Memory Flush is default-OFF: the session-memory hook now reads the full
+  // transcript at compaction:after (no 500-message cap), making flush largely
+  // redundant. Enable explicitly only when agent-self-curation is desired.
+  if (defaults?.enabled !== true) {
     return null;
   }
 

@@ -585,16 +585,17 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
       renderToggleAtPath(props, ["memory", "consolidation", "enabled"], "记忆整合"),
   },
   {
-    path: ["hooks", "internal", "entries", "session-memory", "enabled"],
-    label: "会话记忆归档",
+    path: ["agents", "defaults", "compaction", "memoryFlush", "enabled"],
+    label: "压缩前记忆冲刷",
     description:
-      "每次 /new 或 /reset 时 LLM 生成结构化摘要写入日记和主题文件。关闭可省 token，但长期记忆会缺失当天内容。",
+      "默认关闭。压缩前让 agent 主动提炼持久记忆（按 topic 分类写入 memory/topics/）。会话记忆 hook 已在 compaction:after 读完整文件并提取，通常无需开启。仅在需要 agent 实时自我策展时手动启用。",
     section: "system",
     render: (props) =>
       renderToggleAtPath(
         props,
-        ["hooks", "internal", "entries", "session-memory", "enabled"],
-        "会话记忆归档",
+        ["agents", "defaults", "compaction", "memoryFlush", "enabled"],
+        "压缩前记忆冲刷",
+        false,
       ),
   },
   {

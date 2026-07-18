@@ -13,6 +13,14 @@ import { normalizeLowercaseStringOrEmpty } from "../../../shared/string-coerce.j
 
 const log = createSubsystemLogger("hooks/session-memory/summary");
 
+/**
+ * Hard cap on transcript chars sent to the LLM. ~30K tokens at ~3 chars/token
+ * for mixed CJK/English — fits comfortably in 32K+ context models with room
+ * for the 4K output budget. Truncation keeps the MOST RECENT chars, which
+ * capture the compaction entry (summary of older content) + nearby messages.
+ */
+const SUMMARY_TRANSCRIPT_CHAR_BUDGET = 100_000;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -267,8 +275,14 @@ export async function generateStructuredSummary(params: {
   }
 
   try {
-    const transcriptSlice = transcript;
-    log.debug("Generating structured summary", { transcriptLength: transcript.length });
+    const transcriptSlice =
+      transcript.length > SUMMARY_TRANSCRIPT_CHAR_BUDGET
+        ? transcript.slice(-SUMMARY_TRANSCRIPT_CHAR_BUDGET)
+        : transcript;
+    log.debug("Generating structured summary", {
+      transcriptLength: transcript.length,
+      slicedLength: transcriptSlice.length,
+    });
 
     const generateText = await createBackgroundGenerateText(cfg, {
       maxTokens: 4000,

@@ -205,16 +205,24 @@ const saveSessionToMemory: HookHandler = async (event) => {
         : undefined;
 
     const hookConfig = resolveHookConfig(cfg, "session-memory");
+    // For compaction:after, read the full transcript — pre-compaction content
+    // is preserved in the file (compaction only appends a summary entry, never
+    // removes messages). The 500-message cap would miss early pre-compaction
+    // content in long multi-compaction sessions.
     const messageCount =
       typeof hookConfig?.messages === "number" && hookConfig.messages > 0
         ? Math.min(hookConfig.messages, MESSAGE_CAP)
         : MESSAGE_CAP;
+    const effectiveMessageCount = isCompaction ? Number.MAX_SAFE_INTEGER : messageCount;
 
     let sessionContent: string | null = null;
     let summary: StructuredSummary;
 
     if (sessionFile) {
-      sessionContent = await getRecentSessionContentWithResetFallback(sessionFile, messageCount);
+      sessionContent = await getRecentSessionContentWithResetFallback(
+        sessionFile,
+        effectiveMessageCount,
+      );
       log.debug("Session content loaded", {
         length: sessionContent?.length ?? 0,
         messageCount,
