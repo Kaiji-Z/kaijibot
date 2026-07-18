@@ -599,13 +599,6 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
       ),
   },
   {
-    path: ["agents", "defaults", "compaction", "memoryFlush", "enabled"],
-    label: "压缩前记忆冲刷",
-    description:
-      "上下文窗口将满时 LLM 把当前对话持久化到 memory/YYYY-MM-DD.md 再压缩。关闭可省 token，但压缩后会丢失部分上下文。",
-    section: "system",
-  },
-  {
     path: ["tools", "loopDetection", "enabled"],
     label: "防重复保护",
     description:
