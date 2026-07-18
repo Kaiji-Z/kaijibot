@@ -13,8 +13,39 @@ Repo: https://github.com/Kaiji-Z/kaijibot · Backup: https://gitee.com/kaiji1126
 
 ## 2026.7.x — Cognitive identity system & live model discovery
 
+### ⚠️ Breaking (2026.7.18-1)
+
+- **Memory Flush default flipped from ON to OFF.** The session-memory hook now reads the
+  full transcript at `compaction:after` (was capped at 500 messages), giving it complete
+  pre-compaction context and making the parallel Memory Flush pipeline largely redundant.
+  To re-enable agent-curated pre-compaction memory extraction, set
+  `agents.defaults.compaction.memoryFlush.enabled: true` in `~/.kaijibot/kaijiBot.json`
+  or toggle it on in **Settings → Quick Settings → 压缩前记忆冲刷**.
+  Most users do not need to re-enable it — the hook covers the same ground.
+
 ### Highlights
 
+- **Memory system: unified on session-memory hook as the canonical writer.** Two parallel
+  fixes shipped together: (1) hook at `compaction:after` now reads the full session file
+  (verified: compaction only appends a summary entry, never removes messages, so pre-compaction
+  content is preserved in the file); previously it was capped at 500 messages and missed early
+  pre-compaction content in long multi-compaction sessions. (2) Memory Flush now defaults to
+  OFF to eliminate overlap with the hook.
+- **Memory artifacts dated by conversation start, not pipeline trigger time.** Both the
+  session-memory hook (dialogue archive, daily file, dialogue frontmatter, topic frontmatter)
+  and the consolidation pipeline (MEMORY.md inline sections, daily file append, wiki route)
+  now derive their date stamps from the first user/assistant message timestamp in the source
+  transcript, with fallback to wall-clock time. Fixes the bug where a 22:00→02:00 conversation
+  that was `/new`'d at 09:00 next morning got filed under the wrong day.
+- **Dialogues archive browser (new Control UI tab).** New "聊天记录" tab reads
+  `memory/dialogues/*.md` per-agent workspace, with Agent → Date → Dialogue hierarchy in the
+  sidebar and markdown-rendered detail pane. Two new gateway RPCs: `dialogues.list` and
+  `dialogues.get`. Distinct from the existing "Sessions" tab (renamed from "History"), which
+  continues to manage active sessions from `sessions.json`.
+- **Quick settings card redesigned** with hierarchical cognitive toggles (master +
+  洞察推送 / 技能进化 / 纠错记忆 / 画像建模), and surfaced three previously hidden
+  token-consuming features: 记忆整合 (consolidation), 会话记忆归档 (session-memory hook),
+  and 压缩前记忆冲刷 (memory flush, now default-off).
 - **Cognitive identity system** (`src/cognitive/identity.ts`): unified, channel-agnostic
   `resolveCognitiveUserId()`. Control UI, TUI, and mobile clients map to a single `operator`
   identity; group sessions are correctly excluded from per-user profiles. The old `ou_`-prefix
@@ -37,6 +68,14 @@ Repo: https://github.com/Kaiji-Z/kaijibot · Backup: https://gitee.com/kaiji1126
   so non-message reset paths still capture summaries and corrections.
 - Memory: chunk dialogue files at turn boundaries and default to Porter stemming for better
   full-text search recall.
+- Memory: `appendToMemoryFile` dep now accepts a `localDateStr` string to avoid UTC/local
+  off-by-one when routing consolidated summaries to the correct daily file. Previously the
+  route layer computed local date but the dep impl used `toISOString()` (UTC), causing the
+  section header and target file to disagree at certain timezones.
+- Cognitive: new `cognitive.correction.enabled` config key (default `true`) gates the
+  correction pipeline in three locations: `get-reply-run.ts` (CorrectionStore load),
+  `session-memory` hook (post-session extraction), and `kaijibot-tools.ts`
+  (`record_correction` agent tool registration). Surfaces as the "纠错记忆" sub-toggle.
 - Branding: replaced inherited OpenClaw lobster icons with the KaijiBot K logo; filter evolution
   signals out of chat history.
 
