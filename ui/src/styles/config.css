@@ -1869,7 +1869,7 @@
 
 .config-quick-settings__grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -2208,10 +2208,6 @@
 @media (max-width: 600px) {
   .config-quick-settings {
     padding: 14px 16px 12px;
-  }
-
-  .config-quick-settings__grid {
-    grid-template-columns: 1fr;
   }
 
   .config-advanced-divider {
