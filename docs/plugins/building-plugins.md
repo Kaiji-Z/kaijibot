@@ -120,6 +120,33 @@ and provider plugins have dedicated guides linked above.
     `defineChannelPluginEntry` — see [Channel Plugins](/plugins/sdk-channel-plugins).
     For full entry point options, see [Entry Points](/plugins/sdk-entrypoints).
 
+    <Callout type="info" title="Tool schema best practice">
+      For tool parameters with multiple actions, use `stringEnum` instead of
+      `Type.Union([Type.Literal(...)])`. Smaller LLMs (Qwen / Kimi / MiniMax)
+      fail to parse top-level `anyOf` reliably.
+
+      ```typescript
+      import { stringEnum } from "kaijibot/plugin-sdk/core";
+      import { Type } from "@sinclair/typebox";
+
+      // ✅ Do this — flat schema, all fields optional
+      const MyToolSchema = Type.Object({
+        action: stringEnum(["create", "list", "delete"] as const),
+        name: Type.Optional(Type.String()),
+        id: Type.Optional(Type.String()),
+      });
+
+      // ❌ Not this — top-level anyOf breaks smaller LLMs
+      const BadSchema = Type.Union([
+        Type.Object({ action: Type.Literal("create"), name: Type.String() }),
+        Type.Object({ action: Type.Literal("list") }),
+      ]);
+      ```
+
+      For per-action required fields, enforce at runtime with a `requiredParam()` helper:
+      `if (!params.name) throw new Error("Missing required parameter: name");`.
+    </Callout>
+
   </Step>
 
   <Step title="Test and publish">

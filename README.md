@@ -368,6 +368,14 @@ KaijiBot 最初 fork 自 [OpenClaw](https://github.com/openclaw/openclaw) 的 Ga
 
 基座层面的工程改造(TypeBox 类型迁移、pi-ai SDK 升级、1220 处 lint 修复、Windows/Android bug 修复、Plugin SDK 补完)对使用者基本不可见,详见 commit 历史。
 
+v2026.7.19 起，KaijiBot 在基座之上加固了多项安全机制，这些是 KaijiBot 独有、不向上游贡献的差异化：
+
+- **配置覆盖保护**：gateway 拒绝静默写入会让 kaijibot.json 缩水 50% 的 stub 写入（防止 env-var 拼写错误吞掉真实 operator 配置）
+- **认知层并发安全**：persona / correction / fragment 三个 store 全部加 per-user 文件锁，5 个并发 writer 不再互踩
+- **Prompt injection 防御**：web search 结果用 `<untrusted_source>` 包装 + 后过滤拒绝指令性洞察；correction 记录字段做注入短语过滤 + 长度上限
+- **工具 schema LLM 友好化**：所有 17 处 `Type.Union` 改为 `stringEnum` + flat Object，国内中小模型（Qwen / Kimi / MiniMax）调用工具的成功率显著提升
+- **供应链卫生**：`pnpm.overrides` 强制升级 7 个高危依赖；high CVE 从 27 降到 3（剩余 3 个为深层 transitive，不可达 chat-input）
+
 > 想要精简的体验?配置里设 `cognitive.enabled: false` 即可关闭整个认知层,回到「加固基座 + 重写记忆层」的状态。
 
 ## 致谢

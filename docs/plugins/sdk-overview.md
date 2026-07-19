@@ -61,12 +61,12 @@ explicitly promotes one as public.
 
 ### Plugin entry
 
-| Subpath                     | Key exports                                                                                                                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugin-sdk/plugin-entry`   | `definePluginEntry`                                                                                                                    |
-| `plugin-sdk/core`           | `defineChannelPluginEntry`, `createChatChannelPlugin`, `createChannelPluginBase`, `defineSetupPluginEntry`, `buildChannelConfigSchema` |
-| `plugin-sdk/config-schema`  | `KaijiBotSchema`                                                                                                                       |
-| `plugin-sdk/provider-entry` | `defineSingleProviderPluginEntry`                                                                                                      |
+| Subpath                     | Key exports                                                                                                                                                                |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugin-sdk/plugin-entry`   | `definePluginEntry`                                                                                                                                                        |
+| `plugin-sdk/core`           | `defineChannelPluginEntry`, `createChatChannelPlugin`, `createChannelPluginBase`, `defineSetupPluginEntry`, `buildChannelConfigSchema`, `stringEnum`, `optionalStringEnum` |
+| `plugin-sdk/config-schema`  | `KaijiBotSchema`                                                                                                                                                           |
+| `plugin-sdk/provider-entry` | `defineSingleProviderPluginEntry`                                                                                                                                          |
 
 <AccordionGroup>
   <Accordion title="Channel subpaths">

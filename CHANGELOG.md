@@ -11,6 +11,87 @@ Repo: https://github.com/Kaiji-Z/kaijibot · Backup: https://gitee.com/kaiji1126
 
 ---
 
+## 2026.7.19 — Adversarial audit fixes (distribution readiness)
+
+### ⚠️ Breaking
+
+- **Tool schema shape changed for 7 feishu/memory/evolution tools.** `Type.Union([Type.Object({action: Literal("...")}), ...])`
+  flattened to `Type.Object({ action: stringEnum([...]), ...allFieldsOptional })`. LLM-visible schema is now flatter;
+  per-action required fields enforced at runtime via `requiredParam()` helper (clear error: `Missing required parameter: space_id`
+  instead of cryptic TypeError). Affected: `feishu_wiki`, `feishu_doc`, `feishu_drive`, `feishu_perm`, `feishu_task`,
+  `feishu_vc`, `memory_save`, `manage_archived_skills`. Smaller models (Qwen / Kimi / MiniMax) now generate valid tool
+  calls significantly more reliably.
+- **`/v1/*` and `/api/*` unmatched routes return JSON error body** instead of bare `Not Found` text. SDK clients now get
+  `{ error: { message, type: "not_found", code } }` with actionable hints (e.g. `chat_completions_endpoint_disabled`).
+- **Docker `.env` file mode changed from 0644 to 0600.** `scripts/docker/setup.sh` now sets `umask 077` and `chmod 600`
+  after every `update_env_var`. Existing deployments: run `chmod 600 ~/.kaijibot/.env` once.
+- **`install.sh` no longer forces npmmirror.com for non-China users.** Detection now uses `TZ=Asia/Shanghai` or
+  `LANG=zh_CN*`; everywhere else gets the upstream npm registry. Users who previously relied on the forced mirror should
+  `npm config set registry https://registry.npmmirror.com` explicitly.
+
+### Highlights — Distribution blockers (B-1..B-5)
+
+- **Config clobber protection (B-1).** New `ConfigClobberProtectionError` refuses writes that would shrink `kaijibot.json`
+  by >50% vs the last-known-good snapshot when the prior config had `gateway.mode` set. Eliminates the silent-overwrite
+  pattern caused by env-var typos (e.g. `KAIJIBOT_CONFIG_DIR` is not honored — the correct name is `KAIJIBOT_STATE_DIR`;
+  docs now consistent across `.env.example` / `README.en.md` / `DOCKER.md`). Bypass via
+  `KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1` env or `allowConfigClobberShrink: true` write option. 5 unit tests.
+- **Postinstall transparency (B-2).** Two kill switches documented in README + `.env.example`:
+  `KAIJIBOT_DISABLE_BUNDLED_PLUGIN_POSTINSTALL=1` (skip all postinstall) and
+  `KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL=1` (skip lark-cli skills only).
+- **`install.sh` locale-aware mirror (B-3).** See breaking section above.
+- **Channel docs reconciliation (B-4).** `README.md` / `docs/index.md` / `docs/channels/index.md` now agree: Feishu + WeChat
+  first-class, 16 upstream-inherited (was inconsistently 18/20). New `docs/channels/wechat.md` (was missing despite README
+  promoting WeChat as first-class).
+- **JSON error body for unmatched routes (B-5).** See breaking section above.
+
+### Highlights — Hardening (M-1..M-12)
+
+- **Dependency overrides bumped (M-1).** `protobufjs 7.5.5 → 7.6.5`, `axios 1.15.2 → 1.16.0`, `form-data 2.5.5 → 2.5.6`,
+  `basic-ftp 5.3.0 → 5.3.1`; new overrides: `undici 8.7.0`, `fast-uri 3.1.3`, `ws 8.21.1`. **high CVEs 27 → 3 (-89%)**.
+  Remaining 3 (`simple-git`, `fast-xml-builder`, `linkify-it`) are deep transitive, require upstream PRs; all unreachable
+  from chat input (verified via call-graph analysis).
+- **`Type.Union` → `stringEnum` refactor (M-2).** See breaking section.
+- **Docker `.env` permissions (M-3).** See breaking section.
+- **Web search prompt injection defense (M-4).** Search results wrapped in `<untrusted_source url="...">` tags with HTML
+  escaping. Post-generation filter rejects insight candidates matching imperative-injection patterns
+  (send money / click link / download file / share API key / etc). 8 pattern classes.
+- **Correction store stored-injection defense (M-5).** `CorrectionRecord` fields (domain / trigger / mistake / correction)
+  now pass through 10 injection-phrase patterns (ignore previous / system: / you are now / ChatML `<|im_start|>` / etc);
+  matched segments redacted to `[redacted-injection]`. 2000-char per-field cap. 5 sanitization unit tests.
+- **Cognitive stores file locks (M-6).** `PersonaStore` / `CorrectionStore` / `FragmentStore` now wrap all writes in
+  per-`(agentId, userId)` `createAsyncLock`. New `PersonaStore.update(agentId, userId, mutator)` atomic API. Migrated
+  `dispatch.ts` feedback collector and `server.impl.ts` consolidation `mergeTypedInsights` to `update()`. Scheduler
+  `savePersona` auto-protected via locked `save()`. Eliminates the race where 5 concurrent writers could silently drop
+  each other's updates.
+- **AuditLog rotation (M-7).** Rotate-before-append at 5MB threshold; keep last 5 `audit-<timestamp>.jsonl.rotated`
+  archives. `query()` no longer at risk of loading unbounded files on long-running deployments. 4 rotation unit tests.
+- **Plugin SDK drift cleanup (M-8 / M-9 / M-10).** `pnpm plugin-sdk:sync-exports` removed 6 broken export paths
+  (`github-copilot-token`, `ollama-runtime`, `lmstudio-runtime`, `proxy-capture`, `diagnostics-otel`, `voice-call`);
+  added new test-runtime and provider-_ paths. `plugin-sdk:api:gen` regenerated baseline SHA256 (was drifting since
+  2026-06-19). `pnpm format` cleared 13 unformatted files (README.md, VERIFICATION.md, ui/_, etc).
+- **CI gap closed (M-11).** `.github/workflows/ci.yml` check job now runs `pnpm format:check`,
+  `pnpm plugin-sdk:check-exports`, `NODE_OPTIONS=--max-old-space-size=8192 pnpm plugin-sdk:api:check`. All three drift
+  classes caught at PR time going forward.
+- **Cron + scheduler lifecycle (M-12).** New `backgroundStoppable` registry collects 3 Crontime handles (consolidation
+  / skill-cleanup / wiki-ingest) + ProactiveScheduler. Gateway `close` handler calls `.stop()` on each. Fixes the
+  pre-existing timer leak where `pnpm gw:deploy` could hit a port-bind conflict with the old process.
+
+### New environment variables
+
+- `KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1` — bypass config clobber protection (B-1).
+- `KAIJIBOT_DISABLE_BUNDLED_PLUGIN_POSTINSTALL=1` — skip all npm postinstall hooks (B-2).
+- `KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL=1` — skip only the lark-cli skills install step (B-2).
+
+### Migration notes
+
+- If you have a Feishu bot running: no action needed. Tool schemas changed but execute behavior is identical for valid calls.
+- If you maintain a third-party KaijiBot plugin: use `stringEnum` from `kaijibot/plugin-sdk/core` for tool action fields;
+  avoid `Type.Union([Type.Literal(...)])`. See `docs/plugins/building-plugins.md` for the updated guidance.
+- If you deploy via Docker: run `chmod 600 ~/.kaijibot/.env` once on existing deployments to pick up the new default.
+
+---
+
 ## 2026.7.x — Cognitive identity system & live model discovery
 
 ### ⚠️ Breaking (2026.7.18-1)

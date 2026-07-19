@@ -137,6 +137,8 @@ The cognitive system identifies users through a single unified function: `resolv
 - Skills/Memory: workspace-isolated (per-agent, no userId dimension)
 - AuditLog/Effectiveness: global
 
+**Store concurrency:** PersonaStore, CorrectionStore, and FragmentStore all wrap writes in per-`(agentId, userId)` `createAsyncLock` (from `src/infra/json-files.ts`). Use `PersonaStore.update(agentId, userId, mutator)` for atomic load → mutate → save; avoid external `load()` + `save()` pairs (they leave a race window between load and save). CorrectionStore and FragmentStore lock internally — callers don't need to do anything special.
+
 ### Proactive Insight Pipeline
 
 ```
@@ -429,7 +431,9 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 - Credentials stored at `~/.kaijibot/credentials/`.
 - Persona data stored at `~/.kaijibot/cognitive/persona/{agentId}/{userId}.json` (per-agent subdirectory). Schema includes TypedInsights with category-aware decay and InterestPhase lifecycle per domain.
 - Evolution records stored at `~/.kaijibot/cognitive/evolution/{agentId}/{userId}.json`; skills at `~/.kaijibot/skills/{name}/SKILL.md`.
-- Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl`.
+- Evolution audit log at `~/.kaijibot/cognitive/evolution/audit.jsonl` (rotates at 5MB, keeps last 5 `audit-*.jsonl.rotated` archives).
+- Config clobber protection: writes to `kaijibot.json` that would shrink the file by >50% vs the last-known-good snapshot (when prior config had `gateway.mode` set) are refused with `ConfigClobberProtectionError`. Bypass via `KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1` env or `allowConfigClobberShrink: true` write option.
+- Postinstall kill switches: `KAIJIBOT_DISABLE_BUNDLED_PLUGIN_POSTINSTALL=1` (skip all npm postinstall) and `KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL=1` (skip lark-cli skills only).
 - Never commit real phone numbers, API keys, or live config values.
 
 ## Upstream Relationship (Independent)
@@ -459,7 +463,7 @@ If you do selectively port a fix, attribute it in the commit message (e.g. `port
 - Lint/format churn: if staged+unstaged diffs are formatting-only, auto-resolve without asking.
 - Release guardrails: do not change version numbers without operator's explicit consent.
 - Never send streaming/partial replies to external messaging surfaces; only final replies.
-- Tool schema guardrails: avoid `Type.Union` / `anyOf` / `oneOf` / `allOf` in tool input schemas. Use `stringEnum` / `optionalStringEnum`. Avoid raw `format` property names.
+- Tool schema guardrails: avoid `Type.Union` / `anyOf` / `oneOf` / `allOf` in tool input schemas. Use `stringEnum` / `optionalStringEnum` from `src/agents/schema/typebox.ts` (or `kaijibot/plugin-sdk/core` for extensions). Avoid raw `format` property names. For action-based tools, flatten to `Type.Object({ action: stringEnum([...]), ...allFieldsOptional })` and enforce per-action required fields at runtime via a `requiredParam()` helper (see `extensions/feishu/src/wiki.ts` for the pattern).
 
 ## Verification System
 
@@ -484,6 +488,7 @@ Architecture is sound. Gaps are in the verification _layers_, not the runtime.
 | Assertion framework            | vitest native `expect`/`assert`. ✅ present (Layer 1 deterministic)                                                                                                                                    |
 | Supervisor (Layer 2 LLM judge) | ⚠️ ad-hoc only — `verifyInsightWithLLM` (`src/cognitive/insight/llm-engine.ts`), `skill-quality-gate.ts`, `skill-reviewer.ts`. NOT a reusable/clean-context harness for arbitrary features. **P0 gap** |
 | Flag-based regression (§4)     | ⚠️ config `enabled` booleans exist (`src/config/types.cognitive.ts:3,7,64`), `insight.engine` enum. NO env FEATURE_FLAG system; NO on/off comparison SOP. **P0 gap**                                   |
+| Contract drift checks (CI)     | ✅ CI runs `pnpm format:check`, `pnpm plugin-sdk:check-exports`, `NODE_OPTIONS=--max-old-space-size=8192 pnpm plugin-sdk:api:check` on every PR. Remediated 2026.7.19.                                 |
 
 ### Project Parameters (§8) — Filled
 
