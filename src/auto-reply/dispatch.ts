@@ -70,8 +70,8 @@ async function detectInsightReplyFeedback(params: {
       return;
     }
 
-    const persona = await personaStore.load(agentId, userId);
-    if (!persona) {
+    const existing = await personaStore.load(agentId, userId);
+    if (!existing) {
       return;
     }
 
@@ -79,8 +79,10 @@ async function detectInsightReplyFeedback(params: {
     const topic = insight.targetDomains[0];
     const signals = collectorMod.extractImplicitSignals(userMessage, undefined, topic, [topic]);
     const sentiment = collectorMod.classifySentimentFromSignals(signals);
-    const updated = collectorMod.processInsightFeedback(persona, insight, sentiment);
-    await personaStore.save(agentId, userId, updated);
+
+    await personaStore.update(agentId, userId, (persona) =>
+      collectorMod.processInsightFeedback(persona, insight, sentiment),
+    );
 
     await insightStore.updateFeedback(agentId, userId, insight.id, sentiment, userMessage);
 

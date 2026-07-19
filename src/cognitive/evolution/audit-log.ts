@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir, rename, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 export type AuditEntry = {
@@ -14,6 +14,9 @@ export type AuditEntry = {
   metadata?: Record<string, unknown>;
 };
 
+const MAX_AUDIT_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_ARCHIVED_FILES = 5;
+
 export class AuditLog {
   constructor(private readonly configDir: string) {}
 
@@ -21,9 +24,15 @@ export class AuditLog {
     return join(this.configDir, "cognitive", "evolution", "audit.jsonl");
   }
 
+  private dirPath(): string {
+    return join(this.configDir, "cognitive", "evolution");
+  }
+
   async append(entry: Omit<AuditEntry, "id" | "timestamp">): Promise<AuditEntry> {
-    const dir = join(this.configDir, "cognitive", "evolution");
+    const dir = this.dirPath();
     await mkdir(dir, { recursive: true });
+
+    await this.rotateIfNeeded();
 
     const full: AuditEntry = {
       ...entry,
@@ -34,6 +43,51 @@ export class AuditLog {
     const line = JSON.stringify(full) + "\n";
     await appendFile(this.filePath(), line, "utf-8");
     return full;
+  }
+
+  private async rotateIfNeeded(): Promise<void> {
+    let size: number;
+    try {
+      const stats = await stat(this.filePath());
+      size = stats.size;
+    } catch {
+      return;
+    }
+    if (size <= MAX_AUDIT_FILE_BYTES) {
+      return;
+    }
+    const stamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
+    const archivePath = join(this.dirPath(), `audit-${stamp}.jsonl.rotated`);
+    try {
+      await rename(this.filePath(), archivePath);
+    } catch {
+      // best-effort rotation
+      return;
+    }
+    await this.pruneOldArchives();
+  }
+
+  private async pruneOldArchives(): Promise<void> {
+    let entries: string[];
+    try {
+      entries = await readdir(this.dirPath());
+    } catch {
+      return;
+    }
+    const archives = entries
+      .filter((name) => name.startsWith("audit-") && name.endsWith(".jsonl.rotated"))
+      .toSorted((a, b) => a.localeCompare(b));
+    while (archives.length > MAX_ARCHIVED_FILES) {
+      const oldest = archives.shift();
+      if (!oldest) {
+        break;
+      }
+      try {
+        await unlink(join(this.dirPath(), oldest));
+      } catch {
+        // best-effort
+      }
+    }
   }
 
   async query(filter: {

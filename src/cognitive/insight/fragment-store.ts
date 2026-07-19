@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { writeTextAtomic } from "../../infra/json-files.js";
+import { createAsyncLock, writeTextAtomic } from "../../infra/json-files.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { Fragment, FragmentCluster, FragmentStoreFile } from "./fragment-types.js";
 import { isFragmentExpired, computeFragmentDecay } from "./fragment-types.js";
@@ -15,6 +15,17 @@ export class FragmentStore {
 
   private cache = new Map<string, { fragments: Fragment[]; loadedAt: number }>();
   private static CACHE_TTL_MS = 60_000;
+  private readonly locks = new Map<string, <T>(fn: () => Promise<T>) => Promise<T>>();
+
+  private async withLock<T>(agentId: string, userId: string, fn: () => Promise<T>): Promise<T> {
+    const key = `${agentId}/${userId}`;
+    let lock = this.locks.get(key);
+    if (!lock) {
+      lock = createAsyncLock();
+      this.locks.set(key, lock);
+    }
+    return lock(fn);
+  }
 
   private filePath(agentId: string, userId: string): string {
     return join(this.configDir, FRAGMENTS_DIR, agentId, `${userId}.json`);
@@ -80,50 +91,52 @@ export class FragmentStore {
   }
 
   async addFragment(agentId: string, userId: string, fragment: Fragment): Promise<Fragment[]> {
-    const existing = await this.load(agentId, userId);
-    const domainKey = (domains: string[]) => [...domains].toSorted().join(",");
-    const dupIdx = existing.findIndex(
-      (f) =>
-        f.structuralTag === fragment.structuralTag &&
-        domainKey(f.domains) === domainKey(fragment.domains),
-    );
-    if (dupIdx >= 0) {
-      const dup = existing[dupIdx];
-      if (fragment.strength > dup.strength) {
-        existing[dupIdx] = {
-          ...fragment,
-          evidence:
-            dup.evidence.length >= fragment.evidence.length ? dup.evidence : fragment.evidence,
-        };
+    return this.withLock(agentId, userId, async () => {
+      const existing = await this.load(agentId, userId);
+      const domainKey = (domains: string[]) => [...domains].toSorted().join(",");
+      const dupIdx = existing.findIndex(
+        (f) =>
+          f.structuralTag === fragment.structuralTag &&
+          domainKey(f.domains) === domainKey(fragment.domains),
+      );
+      if (dupIdx >= 0) {
+        const dup = existing[dupIdx];
+        if (fragment.strength > dup.strength) {
+          existing[dupIdx] = {
+            ...fragment,
+            evidence:
+              dup.evidence.length >= fragment.evidence.length ? dup.evidence : fragment.evidence,
+          };
+        } else {
+          existing[dupIdx] = {
+            ...dup,
+            evidence:
+              dup.evidence.length >= fragment.evidence.length ? dup.evidence : fragment.evidence,
+          };
+        }
       } else {
-        existing[dupIdx] = {
-          ...dup,
-          evidence:
-            dup.evidence.length >= fragment.evidence.length ? dup.evidence : fragment.evidence,
-        };
+        existing.push(fragment);
       }
-    } else {
-      existing.push(fragment);
-    }
-    if (dupIdx >= 0) {
-      log.info("fragment dedup hit", {
-        agentId,
-        userId,
-        structuralTag: fragment.structuralTag,
-        existingStrength: existing[dupIdx].strength.toFixed(3),
-        newStrength: fragment.strength.toFixed(3),
-      });
-    } else {
-      log.info("fragment added", {
-        agentId,
-        userId,
-        structuralTag: fragment.structuralTag,
-        strength: fragment.strength.toFixed(3),
-        domains: fragment.domains,
-      });
-    }
-    await this.save(agentId, userId, existing);
-    return existing;
+      if (dupIdx >= 0) {
+        log.info("fragment dedup hit", {
+          agentId,
+          userId,
+          structuralTag: fragment.structuralTag,
+          existingStrength: existing[dupIdx].strength.toFixed(3),
+          newStrength: fragment.strength.toFixed(3),
+        });
+      } else {
+        log.info("fragment added", {
+          agentId,
+          userId,
+          structuralTag: fragment.structuralTag,
+          strength: fragment.strength.toFixed(3),
+          domains: fragment.domains,
+        });
+      }
+      await this.save(agentId, userId, existing);
+      return existing;
+    });
   }
 
   async findClusters(agentId: string, userId: string): Promise<FragmentCluster[]> {

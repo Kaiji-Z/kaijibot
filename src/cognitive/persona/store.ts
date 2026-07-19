@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { writeTextAtomic } from "../../infra/json-files.js";
+import { writeTextAtomic, createAsyncLock } from "../../infra/json-files.js";
 import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
 import { safeParsePersona } from "./persona-schema.js";
 
@@ -82,7 +82,37 @@ function shouldMigrateFlatFile(userId: string, persona: PersonaTree | null): boo
 }
 
 export class PersonaStore {
+  private readonly locks = new Map<string, <T>(fn: () => Promise<T>) => Promise<T>>();
+
   constructor(private readonly configDir: string) {}
+
+  private async withLock<T>(agentId: string, userId: string, fn: () => Promise<T>): Promise<T> {
+    const key = `${agentId}/${userId}`;
+    let lock = this.locks.get(key);
+    if (!lock) {
+      lock = createAsyncLock();
+      this.locks.set(key, lock);
+    }
+    return lock(fn);
+  }
+
+  /**
+   * Atomically load → mutate → save. Use this instead of separate load/save
+   * calls when the caller intends to modify the persona, so concurrent writers
+   * (session-memory hook, consolidation cron, scheduler, evolution) cannot
+   * silently drop each other's updates.
+   */
+  async update(
+    agentId: string,
+    userId: string,
+    mutator: (persona: PersonaTree) => PersonaTree | Promise<PersonaTree>,
+  ): Promise<void> {
+    await this.withLock(agentId, userId, async () => {
+      const current = await this.loadOrCreate(agentId, userId);
+      const next = await mutator(current);
+      await this.saveUnlocked(agentId, userId, next);
+    });
+  }
 
   /**
    * Migrate legacy flat persona files from `persona/{userId}.json`
@@ -173,6 +203,12 @@ export class PersonaStore {
   }
 
   async save(agentId: string, userId: string, persona: PersonaTree): Promise<void> {
+    await this.withLock(agentId, userId, async () => {
+      await this.saveUnlocked(agentId, userId, persona);
+    });
+  }
+
+  private async saveUnlocked(agentId: string, userId: string, persona: PersonaTree): Promise<void> {
     const targetPath = this.personaPath(agentId, userId);
     await writeTextAtomic(targetPath, JSON.stringify(persona, null, 2));
   }

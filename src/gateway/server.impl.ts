@@ -1053,6 +1053,10 @@ export async function startGatewayServer(
         typeof import("../cognitive/scheduler/event-sources/info-scan-source.js").InfoScanSource
       >
     | undefined;
+  // Outer-scope registry for timers/crons started inside async IIFEs so the
+  // close handler can stop them. Without this they keep the Node event loop
+  // alive after gateway close (croner defaults to unref=false).
+  const backgroundStoppable: Array<{ stop: () => void }> = [];
   let stopModelPricingRefresh = () => {};
   let mcpServer: { port: number; close: () => Promise<void> } | undefined;
   let configReloader: { stop: () => Promise<void> } = { stop: async () => {} };
@@ -1632,6 +1636,7 @@ export async function startGatewayServer(
             }
             return entries;
           }, schedulerIntervalMs);
+          backgroundStoppable.push(proactiveScheduler);
 
           log.info(
             `cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`,
@@ -1708,7 +1713,6 @@ export async function startGatewayServer(
                 items: ExtractedItem[],
               ): Promise<number> => {
                 const now = Date.now();
-                const persona = await personaStore.loadOrCreate(agentId, userId);
 
                 const domainGroups = new Map<string, TypedInsight[]>();
                 for (const item of items) {
@@ -1728,29 +1732,30 @@ export async function startGatewayServer(
                 }
 
                 let merged = 0;
-                for (const [domainKey, incoming] of domainGroups) {
-                  let domain = persona.domains[domainKey];
-                  if (!domain) {
-                    domain = {
-                      depth: 1,
-                      recurrence: 1,
-                      lastMentioned: now,
-                      keyInsights: [],
-                      insights: [],
-                      activeQuestions: [],
-                      negationSignals: 0,
-                    };
-                    persona.domains[domainKey] = domain;
+                await personaStore.update(agentId, userId, (persona) => {
+                  for (const [domainKey, incoming] of domainGroups) {
+                    let domain = persona.domains[domainKey];
+                    if (!domain) {
+                      domain = {
+                        depth: 1,
+                        recurrence: 1,
+                        lastMentioned: now,
+                        keyInsights: [],
+                        insights: [],
+                        activeQuestions: [],
+                        negationSignals: 0,
+                      };
+                      persona.domains[domainKey] = domain;
+                    }
+                    const before = (domain.insights ?? []).length;
+                    domain.insights = mergeTypedInsights(domain.insights ?? [], incoming);
+                    const after = domain.insights.length;
+                    merged += Math.max(0, after - before);
+                    domain.lastMentioned = now;
+                    domain.recurrence += incoming.length;
                   }
-                  const before = (domain.insights ?? []).length;
-                  domain.insights = mergeTypedInsights(domain.insights ?? [], incoming);
-                  const after = domain.insights.length;
-                  merged += Math.max(0, after - before);
-                  domain.lastMentioned = now;
-                  domain.recurrence += incoming.length;
-                }
-
-                await personaStore.save(agentId, userId, persona);
+                  return persona;
+                });
                 return merged;
               },
               addOrReinforceCorrection: async (
@@ -1976,6 +1981,7 @@ export async function startGatewayServer(
           const cronJob = new Cron(consolidationConfig.cron, { timezone }, () => {
             void runConsolidation();
           });
+          backgroundStoppable.push(cronJob);
 
           log.info(
             `consolidation scheduled (cron=${consolidationConfig.cron}, tz=${timezone}, lookback=${consolidationConfig.lookbackDays}d, next=${cronJob.nextRun()?.toISOString() ?? "unknown"})`,
@@ -2013,6 +2019,7 @@ export async function startGatewayServer(
               log.warn(`evolution removeStale failed: ${String(err)}`);
             }
           });
+          backgroundStoppable.push(job);
           log.info(
             `evolution removeStale scheduled (cron=0 4 * * *, next=${job.nextRun()?.toISOString() ?? "unknown"})`,
           );
@@ -2070,6 +2077,7 @@ export async function startGatewayServer(
           const cronJob = new Cron(wikiConfig.cron, { timezone }, () => {
             void runWikiIngest();
           });
+          backgroundStoppable.push(cronJob);
           log.info(
             `wiki ingest scheduled (cron=${wikiConfig.cron}, tz=${timezone}, next=${cronJob.nextRun()?.toISOString() ?? "unknown"})`,
           );
@@ -2570,6 +2578,11 @@ export async function startGatewayServer(
       stopModelPricingRefresh();
       channelHealthMonitor?.stop();
       infoScanSource?.stop();
+      for (const handle of backgroundStoppable) {
+        try {
+          handle.stop();
+        } catch {}
+      }
       clearSecretsRuntimeSnapshot();
       await mcpServer?.close().catch(() => {});
       await close(opts);
