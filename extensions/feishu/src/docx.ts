@@ -11,6 +11,17 @@ import { listEnabledFeishuAccounts } from "./accounts.js";
 import { FeishuDocSchema, type FeishuDocParams } from "./doc-schema.js";
 import { BATCH_SIZE, insertBlocksInBatches } from "./docx-batch-insert.js";
 import { updateColorText } from "./docx-color-text.js";
+
+function requiredDocxParam<T extends object, K extends keyof T>(
+  params: T,
+  key: K,
+): NonNullable<T[K]> {
+  const value = params[key];
+  if (value === undefined || value === null) {
+    throw new Error(`Missing required parameter: ${String(key)}`);
+  }
+  return value as NonNullable<T[K]>;
+}
 import {
   cleanBlocksForDescendant,
   insertTableRow,
@@ -1437,13 +1448,13 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
               const client = getClient(p, defaultAccountId);
               switch (p.action) {
                 case "read":
-                  return json(await readDoc(client, p.doc_token));
+                  return json(await readDoc(client, requiredDocxParam(p, "doc_token")));
                 case "write":
                   return json(
                     await writeDoc(
                       client,
-                      p.doc_token,
-                      p.content,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "content"),
                       getMediaMaxBytes(p, defaultAccountId),
                       api.logger,
                     ),
@@ -1452,8 +1463,8 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                   return json(
                     await appendDoc(
                       client,
-                      p.doc_token,
-                      p.content,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "content"),
                       getMediaMaxBytes(p, defaultAccountId),
                       api.logger,
                     ),
@@ -1462,51 +1473,75 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                   return json(
                     await insertDoc(
                       client,
-                      p.doc_token,
-                      p.content,
-                      p.after_block_id,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "content"),
+                      requiredDocxParam(p, "after_block_id"),
                       getMediaMaxBytes(p, defaultAccountId),
                       api.logger,
                     ),
                   );
                 case "create":
                   return json(
-                    await createDoc(client, p.title, p.folder_token, {
+                    await createDoc(client, requiredDocxParam(p, "title"), p.folder_token, {
                       grantToRequester: p.grant_to_requester,
                       requesterOpenId: trustedRequesterOpenId,
                     }),
                   );
                 case "list_blocks":
-                  return json(await listBlocks(client, p.doc_token));
+                  return json(await listBlocks(client, requiredDocxParam(p, "doc_token")));
                 case "get_block":
-                  return json(await getBlock(client, p.doc_token, p.block_id));
+                  return json(
+                    await getBlock(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                    ),
+                  );
                 case "update_block":
-                  return json(await updateBlock(client, p.doc_token, p.block_id, p.content));
+                  return json(
+                    await updateBlock(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      requiredDocxParam(p, "content"),
+                    ),
+                  );
                 case "delete_block":
-                  return json(await deleteBlock(client, p.doc_token, p.block_id));
+                  return json(
+                    await deleteBlock(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                    ),
+                  );
                 case "create_table":
                   return json(
                     await createTable(
                       client,
-                      p.doc_token,
-                      p.row_size,
-                      p.column_size,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "row_size"),
+                      requiredDocxParam(p, "column_size"),
                       p.parent_block_id,
                       p.column_width,
                     ),
                   );
                 case "write_table_cells":
                   return json(
-                    await writeTableCells(client, p.doc_token, p.table_block_id, p.values),
+                    await writeTableCells(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "table_block_id"),
+                      requiredDocxParam(p, "values"),
+                    ),
                   );
                 case "create_table_with_values":
                   return json(
                     await createTableWithValues(
                       client,
-                      p.doc_token,
-                      p.row_size,
-                      p.column_size,
-                      p.values,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "row_size"),
+                      requiredDocxParam(p, "column_size"),
+                      requiredDocxParam(p, "values"),
                       p.parent_block_id,
                       p.column_width,
                     ),
@@ -1515,7 +1550,7 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                   return json(
                     await uploadImageBlock(
                       client,
-                      p.doc_token,
+                      requiredDocxParam(p, "doc_token"),
                       getMediaMaxBytes(p, defaultAccountId),
                       mediaLocalRoots,
                       p.url,
@@ -1523,14 +1558,14 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                       p.parent_block_id,
                       p.filename,
                       p.index,
-                      p.image, // data URI or plain base64
+                      p.image,
                     ),
                   );
                 case "upload_file":
                   return json(
                     await uploadFileBlock(
                       client,
-                      p.doc_token,
+                      requiredDocxParam(p, "doc_token"),
                       getMediaMaxBytes(p, defaultAccountId),
                       mediaLocalRoots,
                       p.url,
@@ -1540,20 +1575,39 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                     ),
                   );
                 case "color_text":
-                  return json(await updateColorText(client, p.doc_token, p.block_id, p.content));
+                  return json(
+                    await updateColorText(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      requiredDocxParam(p, "content"),
+                    ),
+                  );
                 case "insert_table_row":
-                  return json(await insertTableRow(client, p.doc_token, p.block_id, p.row_index));
+                  return json(
+                    await insertTableRow(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      p.row_index,
+                    ),
+                  );
                 case "insert_table_column":
                   return json(
-                    await insertTableColumn(client, p.doc_token, p.block_id, p.column_index),
+                    await insertTableColumn(
+                      client,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      p.column_index,
+                    ),
                   );
                 case "delete_table_rows":
                   return json(
                     await deleteTableRows(
                       client,
-                      p.doc_token,
-                      p.block_id,
-                      p.row_start,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      requiredDocxParam(p, "row_start"),
                       p.row_count,
                     ),
                   );
@@ -1561,9 +1615,9 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                   return json(
                     await deleteTableColumns(
                       client,
-                      p.doc_token,
-                      p.block_id,
-                      p.column_start,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      requiredDocxParam(p, "column_start"),
                       p.column_count,
                     ),
                   );
@@ -1571,12 +1625,12 @@ export function registerFeishuDocTools(api: KaijiBotPluginApi) {
                   return json(
                     await mergeTableCells(
                       client,
-                      p.doc_token,
-                      p.block_id,
-                      p.row_start,
-                      p.row_end,
-                      p.column_start,
-                      p.column_end,
+                      requiredDocxParam(p, "doc_token"),
+                      requiredDocxParam(p, "block_id"),
+                      requiredDocxParam(p, "row_start"),
+                      requiredDocxParam(p, "row_end"),
+                      requiredDocxParam(p, "column_start"),
+                      requiredDocxParam(p, "column_end"),
                     ),
                   );
                 default:

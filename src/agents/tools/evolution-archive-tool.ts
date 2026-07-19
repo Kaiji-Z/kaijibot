@@ -1,10 +1,11 @@
 import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { stringEnum } from "../schema/typebox.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, textResult } from "./common.js";
 
 export const EvolutionArchiveSchema = Type.Object({
-  action: Type.Union([Type.Literal("list"), Type.Literal("recover")], {
+  action: stringEnum(["list", "recover"] as const, {
     description: "'list' to show archived skills, 'recover' to restore one",
   }),
   name: Type.Optional(

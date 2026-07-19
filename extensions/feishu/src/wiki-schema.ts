@@ -1,55 +1,36 @@
+import { stringEnum } from "kaijibot/plugin-sdk/core";
 import { Type, type Static } from "typebox";
 
-export const FeishuWikiSchema = Type.Union([
-  Type.Object({
-    action: Type.Literal("spaces"),
+export const FeishuWikiSchema = Type.Object({
+  action: stringEnum(["spaces", "nodes", "get", "search", "create", "move", "rename"] as const, {
+    description:
+      "Wiki action: 'spaces' list all, 'nodes' list children of a space, 'get' fetch a wiki node, 'search' query nodes, 'create' a new node, 'move' a node between spaces, 'rename' a node.",
   }),
-  Type.Object({
-    action: Type.Literal("nodes"),
-    space_id: Type.String({ description: "Knowledge space ID" }),
-    parent_node_token: Type.Optional(
-      Type.String({ description: "Parent node token (optional, omit for root)" }),
-    ),
-  }),
-  Type.Object({
-    action: Type.Literal("get"),
-    token: Type.String({ description: "Wiki node token (from URL /wiki/XXX)" }),
-  }),
-  Type.Object({
-    action: Type.Literal("search"),
-    query: Type.String({ description: "Search query" }),
-    space_id: Type.Optional(Type.String({ description: "Limit search to this space (optional)" })),
-  }),
-  Type.Object({
-    action: Type.Literal("create"),
-    space_id: Type.String({ description: "Knowledge space ID" }),
-    title: Type.String({ description: "Node title" }),
-    obj_type: Type.Optional(
-      Type.Union([Type.Literal("docx"), Type.Literal("sheet"), Type.Literal("bitable")], {
-        description: "Object type (default: docx)",
-      }),
-    ),
-    parent_node_token: Type.Optional(
-      Type.String({ description: "Parent node token (optional, omit for root)" }),
-    ),
-  }),
-  Type.Object({
-    action: Type.Literal("move"),
-    space_id: Type.String({ description: "Source knowledge space ID" }),
-    node_token: Type.String({ description: "Node token to move" }),
-    target_space_id: Type.Optional(
-      Type.String({ description: "Target space ID (optional, same space if omitted)" }),
-    ),
-    target_parent_token: Type.Optional(
-      Type.String({ description: "Target parent node token (optional, root if omitted)" }),
-    ),
-  }),
-  Type.Object({
-    action: Type.Literal("rename"),
-    space_id: Type.String({ description: "Knowledge space ID" }),
-    node_token: Type.String({ description: "Node token to rename" }),
-    title: Type.String({ description: "New title" }),
-  }),
-]);
+  space_id: Type.Optional(Type.String({ description: "Knowledge space ID" })),
+  parent_node_token: Type.Optional(
+    Type.String({ description: "Parent node token (optional, omit for root)" }),
+  ),
+  token: Type.Optional(Type.String({ description: "Wiki node token (from URL /wiki/XXX)" })),
+  query: Type.Optional(Type.String({ description: "Search query (action: 'search')" })),
+  title: Type.Optional(Type.String({ description: "Node title (action: 'create' or 'rename')" })),
+  obj_type: Type.Optional(
+    stringEnum(["docx", "sheet", "bitable"] as const, {
+      description: "Object type for 'create' (default: docx)",
+    }),
+  ),
+  node_token: Type.Optional(
+    Type.String({ description: "Node token (action: 'move' or 'rename')" }),
+  ),
+  target_space_id: Type.Optional(
+    Type.String({
+      description: "Target space ID (action: 'move'; optional, same space if omitted)",
+    }),
+  ),
+  target_parent_token: Type.Optional(
+    Type.String({
+      description: "Target parent node token (action: 'move'; optional, root if omitted)",
+    }),
+  ),
+});
 
 export type FeishuWikiParams = Static<typeof FeishuWikiSchema>;

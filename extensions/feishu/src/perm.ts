@@ -9,6 +9,14 @@ import {
   unknownToolActionResult,
 } from "./tool-result.js";
 
+function requiredParam<T extends object, K extends keyof T>(params: T, key: K): NonNullable<T[K]> {
+  const value = params[key];
+  if (value === undefined || value === null) {
+    throw new Error(`Missing required parameter: ${String(key)}`);
+  }
+  return value as NonNullable<T[K]>;
+}
+
 type ListTokenType =
   | "doc"
   | "sheet"
@@ -153,11 +161,24 @@ export function registerFeishuPermTools(api: KaijiBotPluginApi) {
                 return jsonToolResult(await listMembers(client, p.token, p.type));
               case "add":
                 return jsonToolResult(
-                  await addMember(client, p.token, p.type, p.member_type, p.member_id, p.perm),
+                  await addMember(
+                    client,
+                    p.token,
+                    p.type,
+                    requiredParam(p, "member_type"),
+                    requiredParam(p, "member_id"),
+                    requiredParam(p, "perm"),
+                  ),
                 );
               case "remove":
                 return jsonToolResult(
-                  await removeMember(client, p.token, p.type, p.member_type, p.member_id),
+                  await removeMember(
+                    client,
+                    p.token,
+                    p.type,
+                    requiredParam(p, "member_type"),
+                    requiredParam(p, "member_id"),
+                  ),
                 );
               default:
                 return unknownToolActionResult((p as { action?: unknown }).action);

@@ -11,6 +11,14 @@ import { FeishuWikiSchema, type FeishuWikiParams } from "./wiki-schema.js";
 
 type ObjType = "doc" | "sheet" | "mindnote" | "bitable" | "file" | "docx" | "slides";
 
+function requiredParam<T extends object, K extends keyof T>(params: T, key: K): NonNullable<T[K]> {
+  const value = params[key];
+  if (value === undefined || value === null) {
+    throw new Error(`Missing required parameter: ${String(key)}`);
+  }
+  return value as NonNullable<T[K]>;
+}
+
 // ============ Actions ============
 
 const WIKI_ACCESS_HINT =
@@ -192,9 +200,11 @@ export function registerFeishuWikiTools(api: KaijiBotPluginApi) {
               case "spaces":
                 return jsonToolResult(await listSpaces(client));
               case "nodes":
-                return jsonToolResult(await listNodes(client, p.space_id, p.parent_node_token));
+                return jsonToolResult(
+                  await listNodes(client, requiredParam(p, "space_id"), p.parent_node_token),
+                );
               case "get":
-                return jsonToolResult(await getNode(client, p.token));
+                return jsonToolResult(await getNode(client, requiredParam(p, "token")));
               case "search":
                 return jsonToolResult({
                   error:
@@ -202,20 +212,33 @@ export function registerFeishuWikiTools(api: KaijiBotPluginApi) {
                 });
               case "create":
                 return jsonToolResult(
-                  await createNode(client, p.space_id, p.title, p.obj_type, p.parent_node_token),
+                  await createNode(
+                    client,
+                    requiredParam(p, "space_id"),
+                    requiredParam(p, "title"),
+                    p.obj_type,
+                    p.parent_node_token,
+                  ),
                 );
               case "move":
                 return jsonToolResult(
                   await moveNode(
                     client,
-                    p.space_id,
-                    p.node_token,
+                    requiredParam(p, "space_id"),
+                    requiredParam(p, "node_token"),
                     p.target_space_id,
                     p.target_parent_token,
                   ),
                 );
               case "rename":
-                return jsonToolResult(await renameNode(client, p.space_id, p.node_token, p.title));
+                return jsonToolResult(
+                  await renameNode(
+                    client,
+                    requiredParam(p, "space_id"),
+                    requiredParam(p, "node_token"),
+                    requiredParam(p, "title"),
+                  ),
+                );
               default:
                 return unknownToolActionResult((p as { action?: unknown }).action);
             }

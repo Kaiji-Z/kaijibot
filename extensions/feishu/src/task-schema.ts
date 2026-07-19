@@ -1,7 +1,8 @@
+import { stringEnum } from "kaijibot/plugin-sdk/core";
 import { Type, type Static } from "typebox";
 
 export const FeishuTaskSchema = Type.Object({
-  action: Type.Union([Type.Literal("create"), Type.Literal("list"), Type.Literal("update")], {
+  action: stringEnum(["create", "list", "update"] as const, {
     description: "Task action: create task, list tasks, update task",
   }),
   summary: Type.Optional(Type.String({ description: "Task summary/title (required for create)" })),

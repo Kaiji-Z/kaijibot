@@ -8,6 +8,7 @@
  */
 
 import fs from "node:fs/promises";
+import { stringEnum } from "kaijibot/plugin-sdk/core";
 import {
   jsonResult,
   readStringParam,
@@ -36,23 +37,15 @@ export const MemorySaveSchema = Type.Object({
       "Subject-based topic name (e.g. 'feishu', 'philosophy'). Auto-sanitized to kebab-case lowercase, max 30 chars (e.g. 'My Cool Topic' → 'my-cool-topic'). Determines the topic file.",
   }),
   importance: Type.Optional(
-    Type.Union([Type.Literal("high"), Type.Literal("normal"), Type.Literal("low")], {
+    stringEnum(["high", "normal", "low"] as const, {
       description: "Importance level. High importance fast-tracks long-term promotion.",
     }),
   ),
   type: Type.Optional(
-    Type.Union(
-      [
-        Type.Literal("user"),
-        Type.Literal("feedback"),
-        Type.Literal("project"),
-        Type.Literal("reference"),
-      ],
-      {
-        description:
-          "Memory classification type: user (personal info), feedback (about assistant), project (work-related), reference (factual knowledge).",
-      },
-    ),
+    stringEnum(["user", "feedback", "project", "reference"] as const, {
+      description:
+        "Memory classification type: user (personal info), feedback (about assistant), project (work-related), reference (factual knowledge).",
+    }),
   ),
 });
 

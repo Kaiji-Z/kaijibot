@@ -651,29 +651,37 @@ export async function generateInsightCandidatesLLM(
       });
     }
 
-    return filtered.map((c) => {
-      // Force-align targetDomains: LLM often deviates from the requested domains.
-      // If LLM output domains share no overlap with input.targetDomains, override
-      // with the input domains to prevent domain-overlap dedup from killing the insight.
-      const inputDomains = input.targetDomains;
-      const llmDomains = c.targetDomains;
-      const hasOverlap = llmDomains.some((d) =>
-        inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()),
-      );
-      if (!hasOverlap && inputDomains.length > 0) {
-        log.info("force-aligned LLM output domains to input targetDomains", {
-          llmDomains,
-          inputDomains,
-        });
-        c.targetDomains = [...inputDomains];
-      }
-      const enriched = resolveCitedSources(c, webResults);
-      if (queryUsed) {
-        enriched.searchQueryUsed = queryUsed;
-      }
-      enriched.promptVariant = variant;
-      return enriched;
-    });
+    return filtered
+      .map((c) => {
+        // Force-align targetDomains: LLM often deviates from the requested domains.
+        // If LLM output domains share no overlap with input.targetDomains, override
+        // with the input domains to prevent domain-overlap dedup from killing the insight.
+        const inputDomains = input.targetDomains;
+        const llmDomains = c.targetDomains;
+        const hasOverlap = llmDomains.some((d) =>
+          inputDomains.some((id) => id.toLowerCase() === d.toLowerCase()),
+        );
+        if (!hasOverlap && inputDomains.length > 0) {
+          log.info("force-aligned LLM output domains to input targetDomains", {
+            llmDomains,
+            inputDomains,
+          });
+          c.targetDomains = [...inputDomains];
+        }
+        const enriched = resolveCitedSources(c, webResults);
+        if (queryUsed) {
+          enriched.searchQueryUsed = queryUsed;
+        }
+        enriched.promptVariant = variant;
+        if (looksLikeImperativeInjection(enriched.content)) {
+          log.warn("rejected insight candidate: matched imperative-injection pattern", {
+            contentPreview: enriched.content.slice(0, 120),
+          });
+          return null;
+        }
+        return enriched;
+      })
+      .filter((c: InsightCandidate | null): c is InsightCandidate => c !== null);
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
     log.warn(
@@ -1274,8 +1282,34 @@ function buildIndexedWebFindings(webResults: WebSearchResult[]): string {
   }
   return webResults
     .slice(0, 6)
-    .map((r, i) => `[${i}] ${r.title} | ${r.url} | ${truncate(r.snippet, 150)}`)
+    .map(
+      (r, i) =>
+        `[${i}] <untrusted_source url="${r.url}">${escapeUntrustedSource(r.title)} | ${escapeUntrustedSource(truncate(r.snippet, 150))}</untrusted_source>`,
+    )
     .join("\n");
+}
+
+function escapeUntrustedSource(value: string): string {
+  return value.replaceAll(/[<>]/g, (ch) => (ch === "<" ? "&lt;" : "&gt;"));
+}
+
+const IMPERATIVE_INJECTION_PATTERNS: ReadonlyArray<RegExp> = [
+  /\b(?:send|transfer|wire)\s+(?:money|funds?|crypto)\b/i,
+  /\b(?:click|tap|open)\s+(?:the\s+)?(?:link|url|attachment)\s*:/i,
+  /\b(?:download|install|run)\s+(?:this\s+)?(?:file|app|program|script)\b/i,
+  /\b(?:buy|purchase|order)\s+(?:now|this|it)\b/i,
+  /\b(?:visit|go\s+to)\s+https?:\/\//i,
+  /\b(?:call|text|email|contact)\s+(?:this\s+)?(?:number|address|phone)\s*:/i,
+  /\bshare\s+(?:your|this)\s+(?:api\s+key|password|token|credit\s+card)\b/i,
+];
+
+function looksLikeImperativeInjection(text: string): boolean {
+  for (const re of IMPERATIVE_INJECTION_PATTERNS) {
+    if (re.test(text)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function buildDomainKeywordMap(

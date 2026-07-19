@@ -12,6 +12,17 @@ import {
   unknownToolActionResult,
 } from "./tool-result.js";
 
+function requiredDriveParam<T extends object, K extends keyof T>(
+  params: T,
+  key: K,
+): NonNullable<T[K]> {
+  const value = params[key];
+  if (value === undefined || value === null) {
+    throw new Error(`Missing required parameter: ${String(key)}`);
+  }
+  return value as NonNullable<T[K]>;
+}
+
 // ============ Actions ============
 
 type FeishuExplorerRootFolderMetaResponse = {
@@ -215,7 +226,7 @@ function resolveAmbientCommentTarget(context: FeishuDriveToolContext | undefined
 function applyAmbientCommentDefaults<
   T extends {
     file_token?: string;
-    file_type?: CommentFileType;
+    file_type?: string;
     comment_id?: string;
   },
 >(params: T, context: FeishuDriveToolContext | undefined): T {
@@ -234,7 +245,7 @@ function applyAmbientCommentDefaults<
 function applyAddCommentAmbientDefaults<
   T extends {
     file_token?: string;
-    file_type?: "doc" | "docx";
+    file_type?: string;
   },
 >(params: T, context: FeishuDriveToolContext | undefined): T {
   const ambient = resolveAmbientCommentTarget(context);
@@ -251,10 +262,11 @@ function applyAddCommentAmbientDefaults<
 function applyAddCommentDefaults<
   T extends {
     file_token?: string;
-    file_type?: "doc" | "docx";
+    file_type?: string;
   },
 >(params: T): T & { file_type: "doc" | "docx" } {
-  const fileType = params.file_type ?? "docx";
+  const fileType: "doc" | "docx" =
+    params.file_type === "doc" || params.file_type === "docx" ? params.file_type : "docx";
   if (!params.file_type) {
     console.info(
       `[feishu_drive] add_comment missing file_type; defaulting to docx ` +
@@ -270,7 +282,7 @@ function applyAddCommentDefaults<
 function applyCommentFileTypeDefault<
   T extends {
     file_token?: string;
-    file_type?: CommentFileType;
+    file_type?: string;
   },
 >(
   params: T,
@@ -278,7 +290,8 @@ function applyCommentFileTypeDefault<
 ): T & {
   file_type: CommentFileType;
 } {
-  const fileType = params.file_type ?? "docx";
+  const incoming = params.file_type as CommentFileType | undefined;
+  const fileType: CommentFileType = incoming ?? "docx";
   if (!params.file_type) {
     console.info(
       `[feishu_drive] ${action} missing file_type; defaulting to docx ` +
@@ -886,7 +899,7 @@ export function registerFeishuDriveTools(api: KaijiBotPluginApi) {
                 const fileType = p.file_type ?? "doc";
                 return jsonToolResult(
                   await metasBatchQuery(client, {
-                    file_tokens: p.file_tokens,
+                    file_tokens: requiredDriveParam(p, "file_tokens"),
                     file_type: fileType,
                   }),
                 );
@@ -895,7 +908,7 @@ export function registerFeishuDriveTools(api: KaijiBotPluginApi) {
                 const fileType = p.file_type ?? "doc";
                 return jsonToolResult(
                   await getViewRecords(client, {
-                    file_token: p.file_token,
+                    file_token: requiredDriveParam(p, "file_token"),
                     file_type: fileType,
                     page_size: p.page_size,
                     page_token: p.page_token,
@@ -905,37 +918,76 @@ export function registerFeishuDriveTools(api: KaijiBotPluginApi) {
               case "list":
                 return jsonToolResult(await listFolder(client, p.folder_token));
               case "info":
-                return jsonToolResult(await getFileInfo(client, p.file_token));
+                return jsonToolResult(
+                  await getFileInfo(client, requiredDriveParam(p, "file_token")),
+                );
               case "create_folder":
-                return jsonToolResult(await createFolder(client, p.name, p.folder_token));
+                return jsonToolResult(
+                  await createFolder(client, requiredDriveParam(p, "name"), p.folder_token),
+                );
               case "move":
-                return jsonToolResult(await moveFile(client, p.file_token, p.type, p.folder_token));
+                return jsonToolResult(
+                  await moveFile(
+                    client,
+                    requiredDriveParam(p, "file_token"),
+                    requiredDriveParam(p, "type"),
+                    requiredDriveParam(p, "folder_token"),
+                  ),
+                );
               case "delete":
-                return jsonToolResult(await deleteFile(client, p.file_token, p.type));
+                return jsonToolResult(
+                  await deleteFile(
+                    client,
+                    requiredDriveParam(p, "file_token"),
+                    requiredDriveParam(p, "type"),
+                  ),
+                );
               case "list_comments": {
                 const resolved = applyCommentFileTypeDefault(
                   applyAmbientCommentDefaults(p, ctx),
                   "list_comments",
                 );
-                return jsonToolResult(await listComments(client, resolved));
+                return jsonToolResult(
+                  await listComments(client, {
+                    ...resolved,
+                    file_token: requiredDriveParam(resolved, "file_token"),
+                  }),
+                );
               }
               case "list_comment_replies": {
                 const resolved = applyCommentFileTypeDefault(
                   applyAmbientCommentDefaults(p, ctx),
                   "list_comment_replies",
                 );
-                return jsonToolResult(await listCommentReplies(client, resolved));
+                return jsonToolResult(
+                  await listCommentReplies(client, {
+                    ...resolved,
+                    file_token: requiredDriveParam(resolved, "file_token"),
+                    comment_id: requiredDriveParam(resolved, "comment_id"),
+                  }),
+                );
               }
               case "add_comment": {
                 const resolved = applyAddCommentDefaults(applyAddCommentAmbientDefaults(p, ctx));
-                return jsonToolResult(await addComment(client, resolved));
+                return jsonToolResult(
+                  await addComment(client, {
+                    ...resolved,
+                    file_token: requiredDriveParam(resolved, "file_token"),
+                    content: requiredDriveParam(resolved, "content"),
+                  }),
+                );
               }
               case "reply_comment": {
-                const resolved = applyCommentFileTypeDefault(
-                  applyAmbientCommentDefaults(p, ctx),
-                  "reply_comment",
+                const ambient = applyAmbientCommentDefaults(p, ctx);
+                const resolved = applyCommentFileTypeDefault(ambient, "reply_comment");
+                return jsonToolResult(
+                  await deliverCommentThreadText(client, {
+                    file_token: requiredDriveParam(resolved, "file_token"),
+                    file_type: resolved.file_type,
+                    comment_id: requiredDriveParam(resolved, "comment_id"),
+                    content: requiredDriveParam(resolved, "content"),
+                  }),
                 );
-                return jsonToolResult(await deliverCommentThreadText(client, resolved));
               }
               default:
                 return unknownToolActionResult((p as { action?: unknown }).action);
