@@ -135,6 +135,7 @@ export type WeixinMsgContext = {
   Body: string;
   From: string;
   To: string;
+  SenderId: string;
   AccountId: string;
   OriginatingChannel: "wechat";
   OriginatingTo: string;
@@ -234,6 +235,7 @@ export function weixinMessageToMsgContext(
     Body: bodyFromItemList(msg.item_list),
     From: from_user_id,
     To: from_user_id,
+    SenderId: from_user_id,
     AccountId: accountId,
     OriginatingChannel: "wechat",
     OriginatingTo: from_user_id,
