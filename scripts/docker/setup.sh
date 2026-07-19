@@ -3,6 +3,10 @@
 # 面向中国开发者 — 一条命令启动你的主动型 AI 助手
 set -euo pipefail
 
+# .env contains API keys and gateway tokens — restrict to owner only from the
+# start so every subsequent write (heredoc, sed, >>) inherits mode 0600.
+umask 077
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
@@ -225,7 +229,7 @@ ENVEOF
   # 设置 Docker 卷路径
   local config_dir="$HOME/.kaijibot"
   local workspace_dir="$HOME/.kaijibot/workspace"
-  update_env_var "$env_file" "KAIJIBOT_CONFIG_DIR" "$config_dir"
+  update_env_var "$env_file" "KAIJIBOT_STATE_DIR" "$config_dir"
   update_env_var "$env_file" "KAIJIBOT_WORKSPACE_DIR" "$workspace_dir"
 
   print_success "环境变量配置完成"
@@ -242,6 +246,7 @@ update_env_var() {
   else
     echo "${key}=${value}" >> "$file"
   fi
+  chmod 600 "$file" 2>/dev/null || true
 }
 
 # ── 创建配置目录 ──────────────────────────────────────────────

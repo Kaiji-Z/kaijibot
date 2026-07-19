@@ -16,14 +16,14 @@ Every AI assistant you've used follows the same pattern: you ask, it answers. Yo
 
 KaijiBot is different. After a few conversations on Feishu, it starts **reaching out to you** proactively — not with spam or hydration reminders, but with things you'd actually find interesting.
 
-| Capability | Typical chatbot | Typical memory agent (2026) | **KaijiBot** |
-| --- | --- | --- | --- |
-| **Interaction** | Reactive — you ask, it answers | Reactive + long memory | **Pushes insights proactively** + normal Q&A |
-| **User modeling** | Stateless | Vector DB + rerank | **TypedInsight 6 categories + category-aware decay half-lives + interest lifecycle** |
-| **Timing awareness** | Doesn't care what you're doing | None | **PRISM cost-sensitive gating** (no late-night interruptions, restraint during low trust) |
-| **Self-evolution** | None | None | **Agent autonomously creates/deletes skills** (code makes no quality judgments) |
-| **Correction learning** | None | None | **Dual-path correction memory** (never makes the same mistake twice) |
-| **Deployment** | Cloud SaaS | Cloud SaaS | **Cloud / local / Android phone local** (Termux, full agent, not a thin client) |
+| Capability              | Typical chatbot                | Typical memory agent (2026) | **KaijiBot**                                                                              |
+| ----------------------- | ------------------------------ | --------------------------- | ----------------------------------------------------------------------------------------- |
+| **Interaction**         | Reactive — you ask, it answers | Reactive + long memory      | **Pushes insights proactively** + normal Q&A                                              |
+| **User modeling**       | Stateless                      | Vector DB + rerank          | **TypedInsight 6 categories + category-aware decay half-lives + interest lifecycle**      |
+| **Timing awareness**    | Doesn't care what you're doing | None                        | **PRISM cost-sensitive gating** (no late-night interruptions, restraint during low trust) |
+| **Self-evolution**      | None                           | None                        | **Agent autonomously creates/deletes skills** (code makes no quality judgments)           |
+| **Correction learning** | None                           | None                        | **Dual-path correction memory** (never makes the same mistake twice)                      |
+| **Deployment**          | Cloud SaaS                     | Cloud SaaS                  | **Cloud / local / Android phone local** (Termux, full agent, not a thin client)           |
 
 > Channel integration: Feishu · WeChat (first-class channels, deep support); 18 additional channels bundled from upstream (Telegram/Discord/Slack etc., not deeply tested). EN/zh CLI / wizard / cognitive prompts auto-switch. 40+ LLM providers pluggable.
 
@@ -81,7 +81,6 @@ The two screenshots below are real Feishu messages KaijiBot pushed to the operat
 </table>
 
 Note the tone — it doesn't read like a cold "notification" or "suggestion", but **like a friend casually sharing a thought**. This isn't a prompt-injected personality; it's the conversational style tuned by Persona implicit-preference learning + Thompson Sampling.
-
 
 ### 🧬 Self-Evolution — Agent Decides When to Learn New Skills
 
@@ -243,9 +242,9 @@ curl -fsSL https://github.com/Kaiji-Z/kaijibot/raw/main/scripts/install-termux.s
 
 Before you start, you'll need:
 
-| Requirement | What for | How to get it                                                                                                                                                                                                                             |
-| ----------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **LLM API key** | At least one AI provider's key | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [Qwen](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) — pick one |
+| Requirement           | What for                       | How to get it                                                                                                                                                                                                                                                                          |
+| --------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **LLM API key**       | At least one AI provider's key | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [Qwen](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) — pick one                                                |
 | **Messaging channel** | For sending/receiving messages | [Feishu](https://open.feishu.cn/) (recommended, wizard supports QR-code auto-creation) · [WeChat](./docs/channels/) (first-class channel, run `kaijibot channels login --channel wechat` to connect) · 18 additional bundled channels (Telegram/Discord/Slack etc., not deeply tested) |
 
 ### Install (recommended)
@@ -288,6 +287,19 @@ npm install -g kaijibot
 kaijibot onboard   # Interactive wizard, auto-configures
 ```
 
+> ⚠️ **postinstall behavior**: `npm install kaijibot` runs a postinstall hook that
+> (1) fetches bundled-extension runtime deps (e.g. `@larksuiteoapi/node-sdk`) into
+> the package root, and (2) installs ~28 lark-cli skills to `~/.agents/skills/` via
+> `npx -y skills add larksuite/cli -g --all`. Both pull third-party npm packages at
+> install time. To skip:
+>
+> ```bash
+> KAIJIBOT_DISABLE_BUNDLED_PLUGIN_POSTINSTALL=1 npm install -g kaijibot   # skip all postinstall
+> KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL=1 npm install -g kaijibot          # skip lark-cli skills only
+> ```
+>
+> See `.env.example` for full details.
+
 #### Docker
 
 ```bash
@@ -305,7 +317,7 @@ docker build -t kaijibot:local .
 # Create .env (see .env.example), at minimum:
 #   ZAI_API_KEY=your-key
 #   KAIJIBOT_GATEWAY_TOKEN=your-token
-#   KAIJIBOT_CONFIG_DIR=~/.kaijibot
+#   KAIJIBOT_STATE_DIR=~/.kaijibot
 #   KAIJIBOT_WORKSPACE_DIR=~/.kaijibot/workspace
 docker compose up -d
 ```

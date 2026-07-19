@@ -149,6 +149,14 @@ export type ConfigWriteOptions = {
    * even if schema/default normalization reintroduces them.
    */
   unsetPaths?: string[][];
+  /**
+   * Bypass {@link ConfigClobberProtectionError}. Set this when the caller has
+   * already authorized a deliberate config shrink (e.g. `kaijibot config unset`
+   * removing many keys, or an explicit operator-initiated wipe). The env var
+   * `KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1` provides the same bypass without
+   * a code change.
+   */
+  allowConfigClobberShrink?: boolean;
 };
 
 export type ReadConfigFileSnapshotForWriteResult = {
@@ -162,6 +170,44 @@ export class ConfigRuntimeRefreshError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
     this.name = "ConfigRuntimeRefreshError";
+  }
+}
+
+/**
+ * Thrown when `writeConfigFile` detects a likely accidental clobber: the
+ * next payload is much smaller than the last-known-good config AND the prior
+ * config had a configured gateway while the new one does not. This signature
+ * matches the pattern where a bootstrap stub silently overwrites a real
+ * operator config (e.g. an unknown `KAIJIBOT_*_DIR` env var doesn't get
+ * honored, so the gateway writes to the default path).
+ *
+ * Bypass by setting `KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1` in the env or
+ * passing `allowConfigClobberShrink: true` in `ConfigWriteOptions`.
+ */
+export class ConfigClobberProtectionError extends Error {
+  readonly lastKnownGoodBytes: number;
+  readonly nextBytes: number;
+  readonly previousGatewayMode: string;
+
+  constructor(params: {
+    lastKnownGoodBytes: number;
+    nextBytes: number;
+    previousGatewayMode: string;
+  }) {
+    const shrinkPct = Math.round((1 - params.nextBytes / params.lastKnownGoodBytes) * 100);
+    super(
+      `Refusing to shrink kaijibot.json from ${params.lastKnownGoodBytes} bytes ` +
+        `(last-known-good) to ${params.nextBytes} bytes (${shrinkPct}% smaller). ` +
+        `The previous config had a configured gateway (gateway.mode="${params.previousGatewayMode}"), ` +
+        `but the new payload has no gateway section — this is the signature of an accidental ` +
+        `clobber, typically caused by an env-var typo (e.g. KAIJIBOT_CONFIG_DIR is not honored; ` +
+        `the correct name is KAIJIBOT_STATE_DIR). ` +
+        `To proceed anyway, set KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1 in the environment.`,
+    );
+    this.name = "ConfigClobberProtectionError";
+    this.lastKnownGoodBytes = params.lastKnownGoodBytes;
+    this.nextBytes = params.nextBytes;
+    this.previousGatewayMode = params.previousGatewayMode;
   }
 }
 
@@ -1525,6 +1571,38 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       gatewayModeBefore,
       gatewayModeAfter,
     });
+
+    // Config clobber protection: refuse to silently overwrite a real operator
+    // config (one that previously had a configured gateway) with a much smaller
+    // stub. This is the signature of an accidental clobber — typically caused
+    // by an env-var typo such as KAIJIBOT_CONFIG_DIR (not honored; the correct
+    // name is KAIJIBOT_STATE_DIR), which makes the gateway write to the default
+    // path regardless of the user's intent.
+    //
+    // Bypass via env KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK=1 or option
+    // allowConfigClobberShrink: true. Tests usually don't have a real gateway
+    // configured in lastKnownGood, so they pass through unaffected.
+    if (
+      !options.allowConfigClobberShrink &&
+      deps.env.KAIJIBOT_ALLOW_CONFIG_CLOBBER_SHRINK !== "1" &&
+      typeof nextBytes === "number"
+    ) {
+      const healthState = await readConfigHealthState(deps);
+      const lkg = healthState.entries?.[configPath]?.lastKnownGood;
+      if (
+        lkg &&
+        lkg.bytes >= 1024 &&
+        lkg.gatewayMode &&
+        !gatewayModeAfter &&
+        nextBytes < Math.floor(lkg.bytes * 0.5)
+      ) {
+        throw new ConfigClobberProtectionError({
+          lastKnownGoodBytes: lkg.bytes,
+          nextBytes,
+          previousGatewayMode: lkg.gatewayMode,
+        });
+      }
+    }
     const logConfigOverwrite = () => {
       if (!snapshot.exists) {
         return;

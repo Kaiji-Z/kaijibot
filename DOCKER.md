@@ -175,7 +175,7 @@ docker build \
   -t kaijibot:local .
 
 # 3. 启动
-KAIJIBOT_CONFIG_DIR=~/.kaijibot \
+KAIJIBOT_STATE_DIR=~/.kaijibot \
 KAIJIBOT_WORKSPACE_DIR=~/.kaijibot/workspace \
 docker compose up -d
 ```

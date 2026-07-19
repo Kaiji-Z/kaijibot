@@ -16,16 +16,16 @@
 
 KaijiBot 不一样。你在飞书里跟它聊了几次之后，它会开始**主动**给你发消息。不是广告，不是提醒喝水，而是你真正可能感兴趣的东西。
 
-| 能力 | 普通 chatbot | 典型 memory agent (2026) | **KaijiBot** |
-| --- | --- | --- | --- |
-| **交互方式** | 你问它才答 | 被动响应 + 长记忆 | **主动推送洞察** + 正常对话 |
-| **用户建模** | 无状态 | 向量库 rerank | **TypedInsight 6 类 + 类别衰减半衰期 + 兴趣生命周期** |
-| **时机感知** | 不管你在干嘛 | 无 | **PRISM 成本敏感门控**(凌晨不打扰、信任低时克制) |
-| **自我进化** | 无 | 无 | **Agent 自主创建/删除技能**(代码不做质量判断) |
-| **纠错学习** | 无 | 无 | **双路径纠错记忆**(同样的错误不犯第二次) |
-| **部署形态** | 云端 SaaS | 云端 SaaS | **云端 / 本地 / Android 手机本地运行**(Termux,完整 agent,非瘦客户端) |
+| 能力         | 普通 chatbot | 典型 memory agent (2026) | **KaijiBot**                                                         |
+| ------------ | ------------ | ------------------------ | -------------------------------------------------------------------- |
+| **交互方式** | 你问它才答   | 被动响应 + 长记忆        | **主动推送洞察** + 正常对话                                          |
+| **用户建模** | 无状态       | 向量库 rerank            | **TypedInsight 6 类 + 类别衰减半衰期 + 兴趣生命周期**                |
+| **时机感知** | 不管你在干嘛 | 无                       | **PRISM 成本敏感门控**(凌晨不打扰、信任低时克制)                     |
+| **自我进化** | 无           | 无                       | **Agent 自主创建/删除技能**(代码不做质量判断)                        |
+| **纠错学习** | 无           | 无                       | **双路径纠错记忆**(同样的错误不犯第二次)                             |
+| **部署形态** | 云端 SaaS    | 云端 SaaS                | **云端 / 本地 / Android 手机本地运行**(Termux,完整 agent,非瘦客户端) |
 
-> 渠道集成方面:飞书 · 微信(一等渠道,深度支持);另打包 18 个继承自上游的渠道(Telegram/Discord/Slack 等,未深度测试)。中英文 CLI / 向导 / 认知层 prompt 自动切换,40+ LLM 提供商可插拔。
+> 渠道集成方面：**飞书 + 微信**（一等渠道，深度支持）；另打包 16 个继承自上游的渠道（Telegram/Discord/Slack 等，未深度测试，仅供参考）。中英文 CLI / 向导 / 认知层 prompt 自动切换，40+ LLM 提供商可插拔。各数字以 `docs/channels/index.md` 为准。
 
 ## ✨ 核心特性
 
@@ -245,7 +245,7 @@ curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.
 | 条件            | 说明                     | 获取方式                                                                                                                                                                                                                                  |
 | --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **LLM API Key** | 至少一个 AI 提供商的密钥 | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) 任选其一 |
-| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· [微信](./docs/channels/)（一等渠道，运行 `kaijibot channels login --channel wechat` 接入）· 另打包 18 个继承渠道（Telegram/Discord/Slack 等，未深度测试）                                                                 |
+| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· [微信](./docs/channels/wechat)（一等渠道，运行 `kaijibot channels login --channel wechat` 接入）· 另打包 16 个继承渠道（Telegram/Discord/Slack 等，未深度测试，仅供参考）  |
 
 ### 安装（推荐方式）
 
@@ -286,6 +286,18 @@ kaijibot gateway --port 18789 --verbose
 npm install -g kaijibot
 kaijibot onboard   # 交互式向导，自动配置
 ```
+
+> ⚠️ **postinstall 行为说明**：`npm install kaijibot` 会运行 postinstall 钩子，
+> 它会 (1) 拉取捆绑扩展的运行时依赖（如 `@larksuiteoapi/node-sdk`）到包根，
+> (2) 通过 `npx -y skills add larksuite/cli -g --all` 安装 ~28 个 lark-cli skill 到 `~/.agents/skills/`。
+> 这两步都会在安装时拉取第三方 npm 包。如需跳过：
+>
+> ```bash
+> KAIJIBOT_DISABLE_BUNDLED_PLUGIN_POSTINSTALL=1 npm install -g kaijibot   # 跳过全部 postinstall
+> KAIJIBOT_DISABLE_LARK_SKILLS_INSTALL=1 npm install -g kaijibot          # 仅跳过 lark-cli skills
+> ```
+>
+> 详见 `.env.example`。
 
 #### Docker 部署
 

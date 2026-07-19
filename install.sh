@@ -82,11 +82,32 @@ clone_repo() {
 install_deps() {
   local target="$1"
   info "Installing dependencies..."
-  if cmd_exists npm && npm config get registry 2>/dev/null | grep -q "npmmirror"; then
-    pnpm install --dir "$target" 2>&1 | tail -1
+
+  # Detect whether the user is likely in mainland China. We use two signals:
+  #   1. The Asia/Shanghai timezone (covers CST/CDT aliases too).
+  #   2. A zh_CN* locale.
+  # Only in that case do we route through the npmmirror.com registry, which is
+  # significantly faster from inside China. Users everywhere else get the
+  # upstream npmjs.org registry (or whatever they've already configured).
+  #
+  # We never override an explicit user choice: if `npm config get registry`
+  # already points somewhere specific, we leave it alone.
+  local user_registry
+  user_registry="$(npm config get registry 2>/dev/null || true)"
+  local in_china=0
+  if [ "${TZ:-}" = "Asia/Shanghai" ] || [ "${LANG:-}" = "zh_CN.UTF-8" ] || \
+     printf '%s' "${LANG:-}" | grep -qi '^zh_CN'; then
+    in_china=1
+  fi
+
+  if [ "$in_china" -eq 1 ] && ! printf '%s' "$user_registry" | grep -q 'npmmirror'; then
+    info "China locale detected (TZ/LANG); using npmmirror.com registry for speed"
+    info "Set npm config registry manually to override."
+    pnpm install --dir "$target" --registry https://registry.npmmirror.com || \
+      die "pnpm install failed"
   else
-    pnpm install --dir "$target" --registry https://registry.npmmirror.com 2>&1 | tail -1 || \
-    pnpm install --dir "$target" 2>&1 | tail -1
+    pnpm install --dir "$target" || \
+      die "pnpm install failed"
   fi
   ok "Dependencies installed"
 }

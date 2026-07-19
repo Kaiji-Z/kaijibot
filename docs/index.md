@@ -43,15 +43,15 @@ title: "KaijiBot"
 
 ## What is KaijiBot?
 
-KaijiBot is a **self-hosted proactive AI assistant** that forked from [OpenClaw](https://github.com/openclaw/openclaw) and now develops independently, tailored for Chinese users with deep Feishu integration. It connects to **90+ extensions** covering 45+ LLM providers — Z.AI (智谱 GLM, default), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds an original **cognitive AI layer** that makes the assistant genuinely proactive.
+KaijiBot is a **self-hosted proactive AI assistant** that forked from [OpenClaw](https://github.com/openclaw/openclaw) and now develops independently, tailored for Chinese users with deep Feishu + WeChat integration. It connects to **60+ extensions** covering 40+ LLM providers — Z.AI (智谱 GLM, default), DeepSeek, Qwen (通义千问), Anthropic, Google, OpenRouter, and more — through a single Gateway, and adds an original **cognitive AI layer** that makes the assistant genuinely proactive.
 
 **Who is it for?** Developers and power users who want an AI partner that knows them, learns their interests, and initiates conversations with relevant insights — all running on their own hardware.
 
 **What makes it different?**
 
 - **Proactive cognitive AI** — builds a per-user persona, generates cross-domain insights, and decides when to reach out based on learned trust and preferences
-- **Feishu-native** — deep integration with Feishu via WebSocket long-connection and event subscription (the only messaging channel)
-- **Multi-provider LLM** — 35+ providers: Z.AI (GLM), DeepSeek, Qwen, Kimi, MiniMax, 百度千帆, 阶跃星辰, 火山引擎, BytePlus, Anthropic Claude, Google Gemini, OpenRouter, LiteLLM, Ollama, and more
+- **Feishu-native + WeChat** — deep integration with Feishu via WebSocket long-connection and event subscription (primary channel), plus a first-class WeChat (iLink Bot) channel with QR login and AES-128-ECB CDN media. 16 additional upstream channels (Telegram/Discord/Slack etc.) are bundled but untested.
+- **Multi-provider LLM** — 40+ providers: Z.AI (GLM), DeepSeek, Qwen, Kimi, MiniMax, 百度千帆, 阶跃星辰, 火山引擎, BytePlus, Anthropic Claude, Google Gemini, OpenRouter, LiteLLM, Ollama, and more
 - **Self-hosted**: runs on your hardware, your rules — no data leaves your machine unless you configure search providers
 - **Open source**: MIT licensed, based on the OpenClaw platform
 
@@ -88,7 +88,7 @@ The Gateway is the single source of truth for sessions, routing, and channel con
     Browser dashboard for chat, config, sessions, and monitoring.
   </Card>
   <Card title="Plugin & Skill System" icon="plug">
-    90+ bundled extensions and 22 skills — memory, search, browser automation, and more. Extensible via SDK.
+    60+ bundled extensions and 22 skills — memory, search, browser automation, and more. Extensible via SDK.
   </Card>
 </Columns>
 

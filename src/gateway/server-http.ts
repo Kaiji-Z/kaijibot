@@ -1004,6 +1004,32 @@ export function createGatewayHttpServer(opts: {
         return;
       }
 
+      // Unmatched route. For API-style paths (OpenAI-compat `/v1/*`, RPC `/api/*`),
+      // return a JSON body so SDK clients get a structured error instead of bare
+      // "Not Found" text. Hint at the most common cause (chatCompletions endpoint
+      // disabled by default) when the path looks like an OpenAI-compat call.
+      const isApiPath = requestPath.startsWith("/v1/") || requestPath.startsWith("/api/");
+      if (isApiPath) {
+        const looksLikeChatCompletions = requestPath.startsWith("/v1/chat/completions");
+        const message = looksLikeChatCompletions
+          ? "Endpoint POST /v1/chat/completions is not enabled on this gateway. Set config gateway.http.endpoints.chatCompletions.enabled=true or pass --enable-chat-completions."
+          : `No route registered for ${requestPath}`;
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(
+          JSON.stringify({
+            error: {
+              message,
+              type: "not_found",
+              code: looksLikeChatCompletions
+                ? "chat_completions_endpoint_disabled"
+                : "route_not_found",
+            },
+          }),
+        );
+        return;
+      }
+
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Not Found");
