@@ -22,13 +22,13 @@
 
 ### Happy path
 
-| Stage | Condition |
-|-------|-----------|
-| Trigger | Scheduler event (timer / persona-change / info-scan) fires |
-| Gate | PRISM `pNeed × pAccept ≥ cost` — only passes when expected value exceeds打扰 cost; respects active hours, trust phase, recency |
-| Search | SIRI loop: scan (cross-domain / domain-depth / exploration) → identify (best by pAct, domain+type cooldown) → resolve (generate candidate) |
+| Stage    | Condition                                                                                                                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger  | Scheduler event (timer / persona-change / info-scan) fires                                                                                               |
+| Gate     | PRISM `pNeed × pAccept ≥ cost` — only passes when expected value exceeds打扰 cost; respects active hours, trust phase, recency                           |
+| Search   | SIRI loop: scan (cross-domain / domain-depth / exploration) → identify (best by pAct, domain+type cooldown) → resolve (generate candidate)               |
 | Generate | Unified pipeline: contrastive dedup vs past insights → LLM self-refine (critique→rewrite, exit at ≥0.85) → LLM-as-judge verify → semantic freshness gate |
-| Deliver | Insight reaches the user via feishu (or Control UI/TUI heartbeat) as a single final message |
+| Deliver  | Insight reaches the user via feishu (or Control UI/TUI heartbeat) as a single final message                                                              |
 
 **Passes iff**: delivered insight references a real domain from the user's persona, is semantically distinct from the last N insights, and scores ≥0.7 on all 4 supervisor dimensions.
 
@@ -46,14 +46,14 @@
 
 ### Happy path
 
-| Stage | Condition |
-|-------|-----------|
-| Detect | Post-turn hook: ≥3 tool calls in one turn (noise filter only — NOT a quality judgment) |
-| Signal | `[Evolution Signal]` system event enqueued; `requestHeartbeatNow({reason:"cognitive-evolution"})` |
-| Decide | Agent evaluates signal with full conversation context; decides worth-it → calls `evaluate_skill_evolution` |
-| Generate | `generateSkillDraftLLM` produces a draft with embedded skill-creator spec → `SKILL.md` output |
-| Gate | LLM-as-judge quality gate: 4 dimensions, mean ≥ 0.7, up to 2 refine-retry loops |
-| Persist | `touchSkill` metadata written; dedup check (Levenshtein + Jaccard) passed before save |
+| Stage    | Condition                                                                                                  |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Detect   | Post-turn hook: ≥3 tool calls in one turn (noise filter only — NOT a quality judgment)                     |
+| Signal   | `[Evolution Signal]` system event enqueued; `requestHeartbeatNow({reason:"cognitive-evolution"})`          |
+| Decide   | Agent evaluates signal with full conversation context; decides worth-it → calls `evaluate_skill_evolution` |
+| Generate | `generateSkillDraftLLM` produces a draft with embedded skill-creator spec → `SKILL.md` output              |
+| Gate     | LLM-as-judge quality gate: 4 dimensions, mean ≥ 0.7, up to 2 refine-retry loops                            |
+| Persist  | `touchSkill` metadata written; dedup check (Levenshtein + Jaccard) passed before save                      |
 
 **Passes iff**: a skill is persisted only after the quality gate passes, and the skill's triggers would plausibly re-fire on the observed task pattern.
 
@@ -71,13 +71,13 @@
 
 ### Happy path
 
-| Stage | Condition |
-|-------|-----------|
-| Detect (A) | Agent recognizes its mistake → calls `record_correction` (provenance: "self") |
-| Detect (B) | `/new` or `/reset` → `hasCorrectionSignals` regex pre-screen → `extractCorrectionsFromTranscript` LLM (provenance: "user") |
-| Dedup | `CorrectionStore.addOrReinforce`: same domain + Jaccard > 0.6 → increment `reinforcedCount`; else add new |
-| Bound | Max 50 records per user, TTL 90 days; `removeStale()` cleans expired |
-| Inject | Next conversation: `listActive` → `formatCorrectionsPrompt` (top 15 by reinforcedCount) → system prompt `## Known Corrections` |
+| Stage      | Condition                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Detect (A) | Agent recognizes its mistake → calls `record_correction` (provenance: "self")                                                  |
+| Detect (B) | `/new` or `/reset` → `hasCorrectionSignals` regex pre-screen → `extractCorrectionsFromTranscript` LLM (provenance: "user")     |
+| Dedup      | `CorrectionStore.addOrReinforce`: same domain + Jaccard > 0.6 → increment `reinforcedCount`; else add new                      |
+| Bound      | Max 50 records per user, TTL 90 days; `removeStale()` cleans expired                                                           |
+| Inject     | Next conversation: `listActive` → `formatCorrectionsPrompt` (top 15 by reinforcedCount) → system prompt `## Known Corrections` |
 
 **Passes iff**: the same mistake, repeated, increments weight rather than creating a duplicate, and the correction is visible in the next turn's system prompt.
 
@@ -95,13 +95,13 @@
 
 ### Happy path
 
-| Stage | Condition |
-|-------|-----------|
-| Trigger | Cron `0 3 * * *` (configurable); scans session transcripts in lookback window |
+| Stage   | Condition                                                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger | Cron `0 3 * * *` (configurable); scans session transcripts in lookback window                                                   |
 | Extract | LLM extracts structured items: domain_knowledge / behavioral_pattern / stated_preference / goal_or_aspiration (with confidence) |
-| Dedup | Jaccard similarity against existing store entries; conflicts resolved |
-| Route | PersonaStore / FragmentStore / CorrectionStore + high-confidence (≥0.7, behavioral ≥0.8) → MEMORY.md inline sections |
-| Balance | `rebalanceIndex()` enforces 8KB budget on MEMORY.md |
+| Dedup   | Jaccard similarity against existing store entries; conflicts resolved                                                           |
+| Route   | PersonaStore / FragmentStore / CorrectionStore + high-confidence (≥0.7, behavioral ≥0.8) → MEMORY.md inline sections            |
+| Balance | `rebalanceIndex()` enforces 8KB budget on MEMORY.md                                                                             |
 
 **Passes iff**: extracted knowledge lands in the correct store/section by category, and MEMORY.md stays within 8KB after consolidation.
 
@@ -119,12 +119,12 @@
 
 ### Happy path
 
-| Stage | Condition |
-|-------|-----------|
-| Receive | Feishu inbound → event decode → dedup → mention gating → gateway ingress |
-| Route | Allowlist check → command detection → session routing (`dispatchInboundMessage`) |
-| Context | `context-writer` injects: mode + persona + corrections + evolution into system prompt |
-| Run | `pi-embedded-runner`: LLM streaming + tool execution loop (reason → tool → observe → reason) |
+| Stage   | Condition                                                                                        |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| Receive | Feishu inbound → event decode → dedup → mention gating → gateway ingress                         |
+| Route   | Allowlist check → command detection → session routing (`dispatchInboundMessage`)                 |
+| Context | `context-writer` injects: mode + persona + corrections + evolution into system prompt            |
+| Run     | `pi-embedded-runner`: LLM streaming + tool execution loop (reason → tool → observe → reason)     |
 | Deliver | ReplyDispatcher → channel outbound → Feishu; only the FINAL reply is sent (no streaming/partial) |
 
 **Passes iff**: the reply correctly incorporates tool-call results, addresses the user's actual question, and is delivered as one final message (not partial chunks).

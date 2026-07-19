@@ -1245,14 +1245,14 @@ export function renderApp(state: AppViewState) {
                 },
                 onClearSelection: () => {
                   import("./controllers/dialogues.ts").then((c) => {
-                    c.clearDialogueSelection(state as Parameters<typeof c.clearDialogueSelection>[0]);
+                    c.clearDialogueSelection(
+                      state as Parameters<typeof c.clearDialogueSelection>[0],
+                    );
                   });
                 },
                 onRefresh: () => {
                   import("./controllers/dialogues.ts").then((c) => {
-                    void c.loadDialoguesList(
-                      state as Parameters<typeof c.loadDialoguesList>[0],
-                    );
+                    void c.loadDialoguesList(state as Parameters<typeof c.loadDialoguesList>[0]);
                   });
                 },
               }),

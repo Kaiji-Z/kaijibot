@@ -739,9 +739,7 @@ describe("extractFirstMessageTimestamp", () => {
   });
 
   it("returns null when file does not exist", async () => {
-    const ts = await extractFirstMessageTimestamp(
-      path.join(tmpDir, "missing.jsonl"),
-    );
+    const ts = await extractFirstMessageTimestamp(path.join(tmpDir, "missing.jsonl"));
     expect(ts).toBeNull();
   });
 

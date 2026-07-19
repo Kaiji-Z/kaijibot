@@ -213,7 +213,10 @@ function mergeConfig(
       overrides?.store?.vector?.extensionPath ?? defaults?.store?.vector?.extensionPath,
   };
   const fts = {
-    tokenizer: (overrides?.store?.fts?.tokenizer ?? defaults?.store?.fts?.tokenizer ?? "porter") as "unicode61" | "trigram" | "porter",
+    tokenizer: (overrides?.store?.fts?.tokenizer ?? defaults?.store?.fts?.tokenizer ?? "porter") as
+      | "unicode61"
+      | "trigram"
+      | "porter",
   };
   const store = {
     driver: overrides?.store?.driver ?? defaults?.store?.driver ?? "sqlite",

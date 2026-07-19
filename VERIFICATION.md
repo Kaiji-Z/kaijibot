@@ -41,10 +41,12 @@ A step without a GATE declaration is considered incomplete.
 ```
 
 **Verify rules (self-check, every step):**
+
 - Every "Did" must have a matching "Evidence." No evidence = not done.
 - No "I think" / "probably" / "maybe" in a declaration. Compliance is boolean, not probabilistic.
 
 **Enforce rules (violation blocks the pipeline):**
+
 - Any step without a GATE → must NOT proceed to the next step
 - GATE declaration contradicts the artifact (claims AGENTS.md updated but file unchanged) → redo that step
 - A [must-ask] item filled without a developer answer → that step is void, re-ask
@@ -65,16 +67,19 @@ Humans do not participate in runtime verification. They intervene only once, at 
 **If any of the three is below standard, the verification system spins idle.** Fix the architecture first, not write tests first.
 
 ### 2.1 Runs without the UI
+
 - [ ] Backend can start independently, not depending on the frontend
 - [ ] Triggering a workflow has a CLI/API form, not requiring browser clicks
 - [ ] One complete workflow can run end-to-end in a headless environment (terminal/CI)
 
 ### 2.2 Intermediate state is logged
+
 - [ ] Each workflow step (tool call / return / branch) has structured records
 - [ ] Records are retrievable programmatically, not only by eyeballing a web page
 - [ ] History is queryable after the run ends
 
 ### 2.3 Programmatic interface
+
 - [ ] "View workflow status" / "fetch trace" have native interfaces
 - [ ] Prefer backend/frontend split / native API. **Do NOT** use MCP to simulate web interaction (worse on auth / corner cases / efficiency)
 
@@ -85,13 +90,16 @@ Humans do not participate in runtime verification. They intervene only once, at 
 ## §3 TWO-LAYER JUDGE (the core of the development workflow)
 
 ### 3.1 Layer 1: Deterministic assertions — absolutely reliable, zero cost
+
 Never use an LLM where this layer can catch it. Typical form:
+
 ```
 # Logic form (tool-agnostic):
 assert tool_was_called("search", within_steps=[3, 4])
 assert records_count_at_step(5) == 3
 assert branch_taken == "happy_path"
 ```
+
 **Land on a tool (decided by §8.7 during diagnosis; do NOT invent your own syntax):**
 | Project has | How to assert | Detection signal |
 |---|---|---|
@@ -101,16 +109,19 @@ assert branch_taken == "happy_path"
 | None | go to §8.7 [must-ask], pick a tool first | — |
 
 ### 3.2 Layer 2: LLM judge (supervisor) — three iron rules
+
 1. **Context MUST be clean.** The supervisor does no development, knows nothing about how the code is written, sees only "the expected correct behavior." Once it knows the code, it scores its own people high — verification is void.
 2. **Quantitative scoring only, no right/wrong verdicts.** Score outputs that have no single answer; measure how much better / worse.
 3. **Ideally use a different model/prompt than the generator.**
 
 Supervisor prompt template (must be isolated):
+
 ```
 You are an acceptance judge. You see only two things: expected correct behavior + actual run trace.
 You do not know how the code is written, and do not need to.
 Score each dimension 0–10 and give deduction points: [dimension A/B/...]
 ```
+
 **Land on a tool (by §8.7):**
 | Project has | How to call the supervisor |
 |---|---|
@@ -153,6 +164,7 @@ Score each dimension 0–10 and give deduction points: [dimension A/B/...]
 ## §6 DEFINITION OF DONE (machine-checkable "complete")
 
 A feature is done if and only if ALL hold:
+
 - [ ] happy path written as a regression test, in the regression set
 - [ ] §3.1 assertions all pass under flag=on
 - [ ] supervisor score reaches the preset threshold
@@ -184,43 +196,50 @@ A feature is done if and only if ALL hold:
 **[must-ask]** = ask the developer per the template; fill after an answer; before that fill "pending"; guessing forbidden
 
 ### 8.1 System entry [auto-fill]
+
 - Backend start command: [evidence]
 - CLI/API command to trigger a workflow: [evidence]
 - Command/API to fetch a trace: [evidence, or "none, needed"]
 
 ### 8.2 Test infra [auto-fill]
+
 - Regression run command: [evidence]
 - Regression set directory: [evidence]
 - Assertion framework: [evidence, or "none, needed"]
 
 ### 8.3 Flag mechanism [auto-fill]
+
 - How flags are defined and read: [evidence, or "none, design during remediation"]
 
 ### 8.4 Supervisor design [must-ask] ⚠️ critical
+
 > Cannot be auto-filled: the agent's default inclination is "give more context," which exactly violates the §3.2 clean-context iron rule.
-Template (ask all at once):
+> Template (ask all at once):
+
 1. Which model scores the fuzzy parts?
 2. What are the scoring dimensions?
 3. Passing threshold per dimension?
 4. What MUST the supervisor prompt NOT contain? (default forbid: code implementation / PR description / commit / dev conversation)
 
 ### 8.5 Acceptance criteria [must-ask] ⚠️ critical
+
 > Cannot be auto-filled: reverse-engineering from existing tests would freeze existing bugs as "the standard."
-Template (ask all at once):
+> Template (ask all at once):
+
 1. Happy path of the core workflow? (input → tool → branch → output)
 2. 3–5 acceptance criteria, shaped like "under condition X, should Y"?
 3. Reverse acceptance criteria (behaviors that MUST NEVER happen)?
 
 ### 8.6 Fill status (maintained by the agent)
 
-| Item | Category | Status | Source |
-|---|---|---|---|
-| 8.1 | auto-fill | | |
-| 8.2 | auto-fill | | |
-| 8.3 | auto-fill | | |
-| 8.4 | must-ask | | |
-| 8.5 | must-ask | | |
-| 8.7 | auto-fill→must-ask | | |
+| Item | Category           | Status | Source |
+| ---- | ------------------ | ------ | ------ |
+| 8.1  | auto-fill          |        |        |
+| 8.2  | auto-fill          |        |        |
+| 8.3  | auto-fill          |        |        |
+| 8.4  | must-ask           |        |        |
+| 8.5  | must-ask           |        |        |
+| 8.7  | auto-fill→must-ask |        |        |
 
 ### 8.7 Eval toolchain [auto-fill→must-ask] ⚙️ orchestration item
 
@@ -228,6 +247,7 @@ Template (ask all at once):
 
 **Step 1 [auto-fill]: detect existing tools (scan dependency files)**
 Scan `requirements.txt` / `pyproject.toml` / `package.json` / `go.mod` etc., fill "installed" or "none" for each:
+
 - [ ] `deepeval`? [evidence]
 - [ ] `langsmith` / `langchain` with eval module? [evidence]
 - [ ] `pytest`? [evidence]
@@ -237,6 +257,7 @@ Scan `requirements.txt` / `pyproject.toml` / `package.json` / `go.mod` etc., fil
 **Detected at least one → §3/§4 land on that tool's API. Fill: "using [tool name]".**
 
 **Step 2 [must-ask] (triggers only if Step 1 is all "none"):** recommend per tech stack, **do NOT self-install**, ask in one batch:
+
 ```
 The project has no eval tool yet. For your stack [fill: detected language/framework],
 I recommend one of these to implement the §3/§4 verification system:
@@ -244,6 +265,7 @@ I recommend one of these to implement the §3/§4 verification system:
   - [rec 2 + one-line reason]
 Which one? Once confirmed I will wire it up (I will NOT pip/npm install myself; wait for you to install).
 ```
+
 Fill after answer: "awaiting install of [chosen tool]". **Until installed, §3/§4 tool-API lists are written but marked "pending tool readiness".**
 
 ---
@@ -254,9 +276,11 @@ Fill after answer: "awaiting install of [chosen tool]". **Until installed, §3/�
 # {project name} · Agent Development Guide
 
 ## Mandatory protocol
+
 Before developing any feature or changing any code, read and follow `VERIFICATION.md`.
 Output that violates a red line in VERIFICATION.md §7 is void.
 
 ## Project overview / Build & run / Verification system status / Test infra status / Verification backlog / Project-specific conventions
+
 [filled by the diagnosis pipeline]
 ```

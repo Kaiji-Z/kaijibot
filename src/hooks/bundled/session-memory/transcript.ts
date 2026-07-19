@@ -386,9 +386,7 @@ export async function findPreviousSessionFile(params: {
  *
  * Honors the `.reset.<ts>` archive fallback via {@link resolveReadableSessionFile}.
  */
-export async function extractFirstMessageTimestamp(
-  sessionFilePath: string,
-): Promise<Date | null> {
+export async function extractFirstMessageTimestamp(sessionFilePath: string): Promise<Date | null> {
   const resolved = await resolveReadableSessionFile(sessionFilePath);
   if (!resolved) {
     return null;

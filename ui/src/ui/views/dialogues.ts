@@ -1,16 +1,12 @@
 import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-
 import {
   type DialogueAgent,
   type DialogueFile,
   groupDialoguesByDate,
 } from "../controllers/dialogues.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
-import {
-  renderEmptyDetail,
-  renderTwoColumnLayout,
-} from "./cognitive-shared.ts";
+import { renderEmptyDetail, renderTwoColumnLayout } from "./cognitive-shared.ts";
 
 export type DialoguesProps = {
   loading: boolean;
@@ -81,7 +77,9 @@ function renderSidebar(props: DialoguesProps): unknown {
         <button class="btn btn--sm" @click=${props.onRefresh}>刷新</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        ${agents.map((agent) => renderAgentSection(agent, selectedAgentId, selectedFilename, props))}
+        ${agents.map((agent) =>
+          renderAgentSection(agent, selectedAgentId, selectedFilename, props),
+        )}
       </div>
     </div>
   `;
@@ -115,9 +113,8 @@ function renderAgentSection(
                 ${group.date}
               </div>
               <div style="display:grid;gap:4px;">
-                ${group.items.map(
-                  (d) =>
-                    renderDialogueItem(agent.agentId, d, selectedAgentId, selectedFilename, props),
+                ${group.items.map((d) =>
+                  renderDialogueItem(agent.agentId, d, selectedAgentId, selectedFilename, props),
                 )}
               </div>
             </div>
@@ -139,10 +136,14 @@ function renderDialogueItem(
   return html`
     <div
       class="list-item-clickable${isSelected ? " list-item-selected" : ""}"
-      style="border:1px solid ${isSelected ? "var(--accent)" : "var(--border)"};border-radius:var(--radius-md);padding:8px 10px;background:var(--card);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;transition:border-color var(--duration-fast) var(--ease-out);"
+      style="border:1px solid ${isSelected
+        ? "var(--accent)"
+        : "var(--border)"};border-radius:var(--radius-md);padding:8px 10px;background:var(--card);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;transition:border-color var(--duration-fast) var(--ease-out);"
       @click=${() => props.onSelect(agentId, dialogue.filename)}
     >
-      <span style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+      <span
+        style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+      >
         ${dialogue.time}
       </span>
       <span style="font-size:11px;color:var(--muted);flex-shrink:0;">
@@ -155,15 +156,15 @@ function renderDialogueItem(
 function renderDetail(props: DialoguesProps): unknown {
   const hasSel = hasSelection(props);
   if (!hasSel) {
-    return renderEmptyDetail(
-      "选择一个对话",
-      "从左侧选择 agent 和日期下的对话以查看完整内容。",
-    );
+    return renderEmptyDetail("选择一个对话", "从左侧选择 agent 和日期下的对话以查看完整内容。");
   }
 
   if (props.contentLoading) {
     return html`
-      <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:300px;">
+      <div
+        class="card"
+        style="display:flex;align-items:center;justify-content:center;min-height:300px;"
+      >
         <div class="muted">加载对话内容…</div>
       </div>
     `;
@@ -183,9 +184,7 @@ function renderDetail(props: DialoguesProps): unknown {
 
   return html`
     <div class="card" style="padding:20px;max-height:100%;overflow-y:auto;">
-      <div class="markdown-body">
-        ${unsafeHTML(toSanitizedMarkdownHtml(props.content))}
-      </div>
+      <div class="markdown-body">${unsafeHTML(toSanitizedMarkdownHtml(props.content))}</div>
     </div>
   `;
 }

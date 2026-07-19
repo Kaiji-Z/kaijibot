@@ -672,7 +672,10 @@ function isValidKeyword(token: string): boolean {
  * For Chinese, we do character-based splitting since we don't have a proper segmenter.
  * For English, we split on whitespace and punctuation.
  */
-function tokenize(text: string, opts?: { ftsTokenizer?: "unicode61" | "trigram" | "porter" }): string[] {
+function tokenize(
+  text: string,
+  opts?: { ftsTokenizer?: "unicode61" | "trigram" | "porter" },
+): string[] {
   const useTrigram = opts?.ftsTokenizer === "trigram";
   const tokens: string[] = [];
   const normalized = normalizeLowercaseStringOrEmpty(text);

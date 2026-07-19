@@ -751,7 +751,7 @@ function renderCognitiveSection(props: ConfigProps): TemplateResult | typeof not
                 <input
                   type="checkbox"
                   .checked=${(getValueAtPath(props.formValue ?? {}, item.path) ??
-                  item.defaultOn) === true}
+                    item.defaultOn) === true}
                   ?disabled=${props.loading || !masterEnabled}
                   @change=${(e: Event) => {
                     const v = (e.target as HTMLInputElement).checked;

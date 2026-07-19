@@ -1,9 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-
 import { listAgentIds, resolveAgentWorkspaceDir } from "../../agents/agent-scope.js";
 import { loadConfig } from "../../config/config.js";
-
 import { ErrorCodes, errorShape } from "../protocol/index.js";
 import type { GatewayRequestHandlers } from "./types.js";
 
@@ -85,10 +83,7 @@ async function scanAgentDialogues(agentId: string): Promise<AgentDialogues> {
   return { agentId, workspace, dialogues };
 }
 
-function resolveDialoguePath(params: {
-  workspace: string;
-  filename: string;
-}): string | null {
+function resolveDialoguePath(params: { workspace: string; filename: string }): string | null {
   const filename = params.filename?.trim();
   if (!filename || !SAFE_FILENAME_RE.test(filename) || !filename.endsWith(".md")) {
     return null;

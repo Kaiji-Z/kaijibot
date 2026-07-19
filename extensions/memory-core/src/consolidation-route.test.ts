@@ -546,9 +546,7 @@ describe("routeToStores", () => {
 
   it("falls back to wall-clock date when sourceTime omitted", async () => {
     const deps = makeMockDeps();
-    const items = [
-      makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "X" }),
-    ];
+    const items = [makeRouteItem({ category: "domain_knowledge", confidence: 0.9, content: "X" })];
     await routeToStores({ items, workspaceDir: "/tmp/ws", deps });
     const today = formatDateLocal(new Date());
     expect((deps.updateMemoryIndex as ReturnType<typeof vi.fn>).mock.calls[0]![0].date).toBe(today);

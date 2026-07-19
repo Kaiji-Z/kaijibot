@@ -38,6 +38,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm format:check
+      - run: pnpm plugin-sdk:check-exports
+      - run: NODE_OPTIONS=--max-old-space-size=8192 pnpm plugin-sdk:api:check
 
   test:
     name: Test
