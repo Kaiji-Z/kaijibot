@@ -154,9 +154,10 @@ export function createScopedVitestConfig(
   const isolate = options?.isolate ?? resolveVitestIsolation(options?.env);
   const setupFiles = [
     ...new Set([
+      "test/setup-state-dir-isolation.ts",
       ...(baseTest.setupFiles ?? []),
       ...(options?.setupFiles ?? []),
-      ...(options?.includeKaijiBotRuntimeSetup === false ? [] : ["test/setup-kaijibot-runtime.ts"]),
+      ...(options?.includeKaijibotRuntimeSetup === false ? [] : ["test/setup-kaijibot-runtime.ts"]),
     ]),
   ];
   const useNonIsolatedRunner = options?.useNonIsolatedRunner ?? !isolate;
