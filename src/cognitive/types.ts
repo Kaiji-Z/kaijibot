@@ -5,20 +5,10 @@ export type CognitiveMode = "task" | "insight" | "hybrid" | "proactive";
  * Category of a typed insight extracted from user interactions.
  * Used to classify and filter insights for downstream consumers.
  *
- * - domain_knowledge: Factual knowledge the user has about a domain
- * - behavioral_pattern: Repeated behaviors or thinking patterns observed
- * - stated_preference: Explicit preferences the user has expressed
- * - tool_config: Configuration/usage of tools (excluded from insight prompts)
- * - contextual_fact: Situational facts (e.g. "currently at work") — short-lived
- * - goal_or_aspiration: Long-term goals or aspirations the user mentioned
+ * - durable: Long-lasting knowledge, preferences, behaviors, or goals
+ * - ephemeral: Short-lived facts, tool configs, current context (excluded from insight prompts)
  */
-export type InsightCategory =
-  | "domain_knowledge"
-  | "behavioral_pattern"
-  | "stated_preference"
-  | "tool_config"
-  | "contextual_fact"
-  | "goal_or_aspiration";
+export type InsightCategory = "durable" | "ephemeral";
 
 export type TypedInsight = {
   text: string;

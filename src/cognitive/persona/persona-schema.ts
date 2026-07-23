@@ -1,14 +1,8 @@
 import { z } from "zod";
 import type { PersonaTree } from "../types.js";
+import { migrateInsightCategory } from "./curator.js";
 
-const insightCategorySchema = z.enum([
-  "domain_knowledge",
-  "behavioral_pattern",
-  "stated_preference",
-  "tool_config",
-  "contextual_fact",
-  "goal_or_aspiration",
-]);
+const insightCategorySchema = z.string().transform(migrateInsightCategory);
 
 const typedInsightSchema = z.object({
   text: z.string(),

@@ -44,8 +44,7 @@ import type {
 const log = createSubsystemLogger("cognitive/insight-llm");
 
 const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set([
-  "tool_config",
-  "contextual_fact",
+  "ephemeral",
 ]);
 
 export function getFilteredInsights(

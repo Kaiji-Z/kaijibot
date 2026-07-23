@@ -68,7 +68,7 @@ export function buildPersonaContext(persona: PersonaTree | undefined): string {
       continue;
     }
     for (const ins of d.insights) {
-      if (ins.category === "goal_or_aspiration") {
+      if (ins.category === "durable") {
         goalInsights.push({ domain: domainName, insight: ins });
       }
     }

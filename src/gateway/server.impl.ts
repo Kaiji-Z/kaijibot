@@ -1845,10 +1845,7 @@ export async function startGatewayServer(
                 const inlineSections = index.inlineSections ?? [];
 
                 const CATEGORY_TO_SECTION: Record<string, string> = {
-                  domain_knowledge: "⚡ Core Memory",
-                  stated_preference: "⚡ Core Memory",
-                  goal_or_aspiration: "🔥 Active Context",
-                  behavioral_pattern: "⚡ Core Memory",
+                  durable: "⚡ Core Memory",
                 };
 
                 for (const item of params.items) {

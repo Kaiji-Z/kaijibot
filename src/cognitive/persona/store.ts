@@ -50,7 +50,7 @@ export function migrateToTypedInsights(persona: PersonaTree): PersonaTree {
 
     domain.insights = domain.keyInsights.map((text) => ({
       text,
-      category: "domain_knowledge" as const,
+      category: "durable" as const,
       confidence: 0.5,
       source: "inferred" as const,
       firstObserved: domain.lastMentioned,

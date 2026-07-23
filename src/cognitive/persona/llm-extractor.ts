@@ -5,18 +5,10 @@ import { prepareSimpleCompletionModel } from "../../agents/simple-completion-run
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree, InsightCategory } from "../types.js";
+import { migrateInsightCategory } from "./curator.js";
 import { extractFromMessage } from "./extractor.js";
 import type { ExtractionResult } from "./types.js";
 const log = createSubsystemLogger("cognitive/persona-extractor");
-
-const VALID_INSIGHT_CATEGORIES: ReadonlySet<string> = new Set<InsightCategory>([
-  "domain_knowledge",
-  "behavioral_pattern",
-  "stated_preference",
-  "tool_config",
-  "contextual_fact",
-  "goal_or_aspiration",
-]);
 
 export type LlmExtractorDeps = {
   complete: typeof completeSimple;
@@ -188,8 +180,8 @@ Extract and respond with ONLY a JSON object in this exact format (no markdown, n
       "depth": 3,
       "insights": ["user understands transformer architecture"],
       "typedInsights": [
-        {"text": "user understands transformer architecture", "category": "domain_knowledge", "confidence": 0.8, "source": "inferred"},
-        {"text": "user prefers Rust for systems programming", "category": "stated_preference", "confidence": 0.9, "source": "explicit"}
+        {"text": "user understands transformer architecture", "category": "durable", "confidence": 0.8, "source": "inferred"},
+        {"text": "user prefers Rust for systems programming", "category": "durable", "confidence": 0.9, "source": "explicit"}
       ],
       "questions": []
     }
@@ -208,13 +200,9 @@ Rules:
 - Only include domains that are actually discussed by the USER
 - Discover domains dynamically — do NOT limit to a predefined list. Name domains naturally in Chinese or English based on the conversation content (e.g. "前端开发", "DevOps", "量化交易", "游戏设计", "区块链")
 - Each domain MUST include typedInsights. Classify every insight into exactly one category:
-  - domain_knowledge: Factual knowledge the user demonstrates about a domain
-  - behavioral_pattern: Repeated behaviors or thinking patterns observed in the user
-  - stated_preference: Explicit preferences the user has expressed
-  - tool_config: Configuration or usage of specific tools and technologies
-  - contextual_fact: Situational, short-lived facts (e.g. "currently at work", "using laptop")
-  - goal_or_aspiration: Long-term goals, career aspirations, or learning objectives
-- typedInsights must have: text (string), category (one of the 6 above), confidence (0-1), source (explicit/inferred/observed)
+  - durable: Long-lasting knowledge, preferences, behaviors, or goals (e.g. "knows Rust", "prefers typed languages", "plans to open-source")
+  - ephemeral: Short-lived or situational facts, tool configs, current context (e.g. "currently using VS Code", "at work today")
+- typedInsights must have: text (string), category (durable or ephemeral), confidence (0-1), source (explicit/inferred/observed)
 - If nothing meaningful can be extracted, return empty arrays
 - Respond with ONLY the JSON, nothing else`;
 }
@@ -394,9 +382,5 @@ function validSource(value: unknown): "explicit" | "inferred" | "observed" {
 }
 
 function validInsightCategory(value: unknown): InsightCategory {
-  const s = String(value);
-  if (VALID_INSIGHT_CATEGORIES.has(s)) {
-    return s as InsightCategory;
-  }
-  return "domain_knowledge";
+  return migrateInsightCategory(value);
 }

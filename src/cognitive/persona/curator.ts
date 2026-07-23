@@ -19,18 +19,35 @@ const AUTO_BLACKLIST_NEGATION_THRESHOLD = 3;
 const AUTO_BLACKLIST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const HALF_LIFE_BY_CATEGORY: Record<InsightCategory, number> = {
-  tool_config: 7,
-  contextual_fact: 14,
-  domain_knowledge: 30,
-  stated_preference: 60,
-  behavioral_pattern: 90,
-  goal_or_aspiration: 90,
+  durable: 30,
+  ephemeral: 7,
 };
 
 const BACKWARD_COMPAT_EXCLUDE_CATEGORIES: ReadonlySet<InsightCategory> = new Set([
-  "tool_config",
-  "contextual_fact",
+  "ephemeral",
 ]);
+
+const LEGACY_CATEGORY_MAP: Record<string, InsightCategory> = {
+  domain_knowledge: "durable",
+  behavioral_pattern: "durable",
+  stated_preference: "durable",
+  goal_or_aspiration: "durable",
+  tool_config: "ephemeral",
+  contextual_fact: "ephemeral",
+};
+
+export function migrateInsightCategory(raw: unknown): InsightCategory {
+  if (typeof raw === "string") {
+    if (raw === "durable" || raw === "ephemeral") {
+      return raw;
+    }
+    const mapped = LEGACY_CATEGORY_MAP[raw];
+    if (mapped) {
+      return mapped;
+    }
+  }
+  return "durable";
+}
 
 const INSIGHT_ECHO_PATTERNS: ReadonlyArray<RegExp> = [
   /receives?\s+(automated\s+)?cognitive\s+insight/i,
