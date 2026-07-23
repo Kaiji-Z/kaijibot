@@ -54,16 +54,34 @@ export const CognitiveFeedbackSchema = z
   .strict()
   .optional();
 
+/**
+ * Fields retained in the config loader for backward compatibility but no
+ * longer read by any production code. They are stripped before validation
+ * with a deprecation warning so existing kaijibot.json files keep working.
+ */
+const DEPRECATED_EVOLUTION_KEYS = [
+  "minComplexity",
+  "errorComplexityThreshold",
+  "clawhubEnabled",
+  "clawhubRegistry",
+  "clawhubAutoPublish",
+] as const;
+
 export const CognitiveEvolutionSchema = z
-  .object({
-    enabled: z.boolean().default(true),
-    minComplexity: z.number().min(0).max(1).default(0.6),
-    errorComplexityThreshold: z.number().min(0).max(1).default(0.3),
-    clawhubEnabled: z.boolean().optional(),
-    clawhubRegistry: z.string().url().optional(),
-    clawhubAutoPublish: z.boolean().optional(),
-  })
-  .strict()
+  .preprocess((val) => {
+    if (val && typeof val === "object") {
+      const obj = val as Record<string, unknown>;
+      for (const key of DEPRECATED_EVOLUTION_KEYS) {
+        if (key in obj) {
+          console.warn(
+            `[kaijibot] config.cognitive.evolution.${key} is deprecated, ignored, and will be removed in a future version. Remove it from your kaijibot.json.`,
+          );
+          delete obj[key];
+        }
+      }
+    }
+    return val;
+  }, z.object({ enabled: z.boolean().default(true) }).strict())
   .optional();
 
 export const CognitiveSchema = z

@@ -21997,24 +21997,12 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             },
             additionalProperties: false,
           },
-          evolution: {
+           evolution: {
             type: "object",
             properties: {
               enabled: {
                 default: true,
                 type: "boolean",
-              },
-              minComplexity: {
-                default: 0.6,
-                type: "number",
-                minimum: 0,
-                maximum: 1,
-              },
-              errorComplexityThreshold: {
-                default: 0.3,
-                type: "number",
-                minimum: 0,
-                maximum: 1,
               },
               cooldownHours: {
                 default: 24,
@@ -22028,21 +22016,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 minimum: 1,
                 maximum: 50,
               },
-              clawhubEnabled: {
-                type: "boolean",
-              },
-              clawhubRegistry: {
-                type: "string",
-                format: "uri",
-              },
-              clawhubAutoPublish: {
-                type: "boolean",
-              },
             },
             required: [
               "enabled",
-              "minComplexity",
-              "errorComplexityThreshold",
               "cooldownHours",
               "maxSuggestionsPerDay",
             ],

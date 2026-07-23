@@ -62,14 +62,6 @@ export type CognitiveConfig = {
   evolution?: {
     /** Enable skill evolution suggestions (default: true) */
     enabled?: boolean;
-    /** Minimum complexity score to consider (default: 0.5) */
-    minComplexity?: number;
-    /** Enable ClawHub skill sharing (default: false) */
-    clawhubEnabled?: boolean;
-    /** ClawHub registry URL */
-    clawhubRegistry?: string;
-    /** Auto-publish accepted skills to ClawHub (default: false) */
-    clawhubAutoPublish?: boolean;
   };
   /** Correction memory settings */
   correction?: {
