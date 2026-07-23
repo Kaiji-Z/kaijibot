@@ -40,6 +40,7 @@ const FULL_SUITE_CONFIG_WEIGHT = new Map([
   ["vitest/vitest.extension-channels.config.ts", 100],
   ["vitest/vitest.extension-providers.config.ts", 96],
   ["vitest/vitest.auto-reply-core.config.ts", 90],
+  ["vitest/vitest.runtime-config.config.ts", 88],
   ["vitest/vitest.cli.config.ts", 86],
   ["vitest/vitest.channels.config.ts", 84],
   ["vitest/vitest.plugins.config.ts", 82],
