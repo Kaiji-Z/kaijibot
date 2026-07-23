@@ -81,7 +81,7 @@ export const CognitiveEvolutionSchema = z
       }
     }
     return val;
-  }, z.object({ enabled: z.boolean().default(true) }).strict())
+  }, z.object({ enabled: z.boolean().default(true), qualityGateModel: z.string().optional() }).strict())
   .optional();
 
 export const CognitiveSchema = z

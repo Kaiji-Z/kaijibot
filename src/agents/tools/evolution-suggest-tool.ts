@@ -190,16 +190,30 @@ export function createEvolutionSuggestTool(deps: {
         if (generateTextForDedup) {
           const { evaluateSkillQuality, refineSkillDraft } =
             await import("../../cognitive/evolution/skill-quality-gate.js");
-          const genText = generateTextForDedup;
-          let quality = await evaluateSkillQuality(draft, { generateText: genText });
+          const gateModelRef = deps.config?.cognitive?.evolution?.qualityGateModel;
+          let judgeGenText = generateTextForDedup;
+          if (gateModelRef && gateModelRef.includes("/")) {
+            try {
+              const { createStandaloneGenerateText: createJudge } =
+                await import("../../cognitive/evolution/standalone-generate.js");
+              judgeGenText = await createJudge(deps.config!, {
+                maxTokens: 200,
+                timeout: 30_000,
+                modelRef: gateModelRef,
+              });
+            } catch {
+              // Fall back to default model if judge model unavailable
+            }
+          }
+          let quality = await evaluateSkillQuality(draft, { generateText: judgeGenText });
           let refinedDraft = draft;
           let attempts = 0;
           while (!quality.passed && attempts < 2) {
             attempts++;
             refinedDraft = await refineSkillDraft(refinedDraft, quality.critique, quality.issues, {
-              generateText: genText,
+              generateText: judgeGenText,
             });
-            quality = await evaluateSkillQuality(refinedDraft, { generateText: genText });
+            quality = await evaluateSkillQuality(refinedDraft, { generateText: judgeGenText });
           }
           if (!quality.passed) {
             const record = {
@@ -267,7 +281,21 @@ export function createEvolutionSuggestTool(deps: {
 
         if (generateTextForDedup) {
           const draftForReview = draft;
-          const reviewGenerateText = generateTextForDedup;
+          const reviewModelRef = deps.config?.cognitive?.evolution?.qualityGateModel;
+          let reviewGenerateText = generateTextForDedup;
+          if (reviewModelRef && reviewModelRef.includes("/") && deps.config) {
+            try {
+              const { createStandaloneGenerateText: createJudge } =
+                await import("../../cognitive/evolution/standalone-generate.js");
+              reviewGenerateText = await createJudge(deps.config, {
+                maxTokens: 200,
+                timeout: 30_000,
+                modelRef: reviewModelRef,
+              });
+            } catch {
+              // Fall back to default model
+            }
+          }
           void (async () => {
             try {
               const { reviewSkill } = await import("../../cognitive/evolution/skill-reviewer.js");

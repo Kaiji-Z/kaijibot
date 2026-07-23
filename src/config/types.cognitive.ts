@@ -62,6 +62,8 @@ export type CognitiveConfig = {
   evolution?: {
     /** Enable skill evolution suggestions (default: true) */
     enabled?: boolean;
+    /** Override model for quality gate judge (format: "provider/model"). When set, the judge uses a different model than the draft generator, reducing self-scoring bias. */
+    qualityGateModel?: string;
   };
   /** Correction memory settings */
   correction?: {

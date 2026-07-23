@@ -13,6 +13,7 @@ export type StandaloneGenerateTextFn = (prompt: string) => Promise<string>;
 export type StandaloneGenerateOptions = {
   maxTokens?: number;
   timeout?: number;
+  modelRef?: string;
 };
 
 export type BatchGenerateOptions = StandaloneGenerateOptions & {
@@ -34,11 +35,21 @@ export async function createStandaloneGenerateText(
   cfg: KaijiBotConfig,
   options?: StandaloneGenerateOptions,
 ): Promise<StandaloneGenerateTextFn> {
-  const resolved = resolveDefaultModelForAgent({ cfg });
+  let provider: string;
+  let modelId: string;
+  if (options?.modelRef && options.modelRef.includes("/")) {
+    const slashIdx = options.modelRef.indexOf("/");
+    provider = options.modelRef.slice(0, slashIdx);
+    modelId = options.modelRef.slice(slashIdx + 1);
+  } else {
+    const resolved = resolveDefaultModelForAgent({ cfg });
+    provider = resolved.provider;
+    modelId = resolved.model;
+  }
   const prepared = await prepareSimpleCompletionModel({
     cfg,
-    provider: resolved.provider,
-    modelId: resolved.model,
+    provider,
+    modelId,
   });
   if ("error" in prepared) {
     throw new Error(`Cannot create standalone generateText: ${prepared.error}`);
