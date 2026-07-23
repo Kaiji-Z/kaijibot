@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { writeJsonAtomic } from "../infra/json-files.js";
 import { safeParseJsonWithSchema, safeParseWithSchema } from "../utils/zod-parse.js";
 import { ensureAuthProfileStore } from "./auth-profiles.js";
 import {
@@ -74,7 +75,7 @@ export async function ensurePiAuthJsonFromAuthProfiles(agentDir: string): Promis
   }
 
   await fs.mkdir(agentDir, { recursive: true, mode: 0o700 });
-  await fs.writeFile(authPath, `${JSON.stringify(existing, null, 2)}\n`, { mode: 0o600 });
+  await writeJsonAtomic(authPath, existing, { mode: 0o600 });
 
   return { wrote: true, authPath };
 }

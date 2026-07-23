@@ -40,9 +40,7 @@ export function ensureDirForFile(filePath: string): void {
 }
 
 export function writeJsonFileSecure(pathname: string, value: unknown): void {
-  ensureDirForFile(pathname);
-  fs.writeFileSync(pathname, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  fs.chmodSync(pathname, 0o600);
+  writeTextFileAtomic(pathname, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 export function readTextFileIfExists(pathname: string): string | null {
