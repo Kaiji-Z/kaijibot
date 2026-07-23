@@ -82,6 +82,21 @@ export function runRuntimePostBuild(params = {}) {
   stageBundledPluginRuntime(params);
   writeStableRootRuntimeAliases(params);
   copyStaticExtensionAssets(params);
+  copySoulPresets();
+}
+
+function copySoulPresets() {
+  const srcDir = path.join(ROOT, "src", "cli", "soul-presets");
+  const destDir = path.join(ROOT, "dist", "soul-presets");
+  if (!fs.existsSync(srcDir)) {
+    return;
+  }
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const file of fs.readdirSync(srcDir)) {
+    if (file.endsWith(".md")) {
+      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+    }
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
