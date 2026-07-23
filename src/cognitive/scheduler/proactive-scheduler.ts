@@ -246,12 +246,37 @@ export class ProactiveScheduler {
           });
 
     const fatigued = getFatiguedDomains(recentDomains);
+    const personaDomains = persona?.domains;
+    const DORMANT_PENALTY = 0.5;
+    const REVIVED_BONUS = 1.3;
+    const phaseAdjusted = personaDomains
+      ? boosted.map((opp) => {
+          if (opp.targetDomains.length === 0) {
+            return opp;
+          }
+          const phases = opp.targetDomains
+            .map((d) => personaDomains[d]?.phase)
+            .filter((p): p is NonNullable<typeof p> => Boolean(p));
+          if (phases.length === 0) {
+            return opp;
+          }
+          const hasDormant = phases.includes("dormant");
+          const hasRevived = phases.includes("revived");
+          if (hasRevived) {
+            return { ...opp, pAct: opp.pAct * REVIVED_BONUS };
+          }
+          if (hasDormant) {
+            return { ...opp, pAct: opp.pAct * DORMANT_PENALTY };
+          }
+          return opp;
+        })
+      : boosted;
     const nonFatigued =
       fatigued.size > 0
-        ? boosted.filter((opp) => !opp.targetDomains.some((d) => fatigued.has(d)))
-        : boosted;
+        ? phaseAdjusted.filter((opp) => !opp.targetDomains.some((d) => fatigued.has(d)))
+        : phaseAdjusted;
     const sorted = [...nonFatigued].toSorted((a, b) => b.pAct - a.pAct);
-    const pool = sorted.length > 0 ? sorted : [...boosted].toSorted((a, b) => b.pAct - a.pAct);
+    const pool = sorted.length > 0 ? sorted : [...phaseAdjusted].toSorted((a, b) => b.pAct - a.pAct);
 
     const aboveThreshold = pool.filter((opp) => opp.pAct > threshold);
     return aboveThreshold.slice(0, 5);
