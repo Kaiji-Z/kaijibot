@@ -586,6 +586,33 @@ describe("ProactiveScheduler.identify", () => {
     expect(selected.length).toBe(1);
     expect(selected[0].pAct).toBe(0.64);
   });
+
+  it("penalizes dormant domains and boosts revived domains via InterestPhase", () => {
+    const scheduler = makeScheduler(config);
+    const persona = createDefaultPersona();
+    persona.rapport.trustScore = 0.8;
+    persona.domains = {
+      dormantDomain: { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0, phase: "dormant" },
+      revivedDomain: { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0, phase: "revived" },
+      stableDomain: { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0, phase: "stable" },
+    };
+    const opportunities: Opportunity[] = [
+      { type: "domain_depth", targetDomains: ["dormantDomain"], sourceDomains: [], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
+      { type: "domain_depth", targetDomains: ["revivedDomain"], sourceDomains: [], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
+      { type: "domain_depth", targetDomains: ["stableDomain"], sourceDomains: [], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
+    ];
+
+    const selected = scheduler.identify(opportunities, persona);
+    const dormant = selected.find((o) => o.targetDomains.includes("dormantDomain"));
+    const revived = selected.find((o) => o.targetDomains.includes("revivedDomain"));
+    const stable = selected.find((o) => o.targetDomains.includes("stableDomain"));
+
+    expect(dormant).toBeDefined();
+    expect(revived).toBeDefined();
+    expect(stable).toBeDefined();
+    expect(dormant!.pAct).toBeLessThan(stable!.pAct);
+    expect(revived!.pAct).toBeGreaterThan(stable!.pAct);
+  });
 });
 
 describe("ProactiveScheduler.resolve", () => {
