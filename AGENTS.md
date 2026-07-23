@@ -7,7 +7,7 @@ KaijiBot is an independent project — a proactive cognitive AI assistant with a
   - Backup (Gitee): `https://gitee.com/kaiji1126/kaijibot`
   - Upstream (GitHub): `https://github.com/openclaw/openclaw`
   - Upstream mirror (Gitee): `https://gitee.com/kaiji1126/openclaw` (manual mirror, squash history)
-- In chat replies, file references must be repo-root relative only (e.g. `src/cli/index.ts:80`); never absolute paths or `~/...`.
+- In chat replies, file references must be repo-root relative only (e.g. `src/gateway/server.impl.ts:80`); never absolute paths or `~/...`.
 
 ## Mandatory Verification Protocol
 
