@@ -1,0 +1,25 @@
+name: Regression Flag Diff
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flag-diff:
+    name: Cognitive flag on/off regression
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run flag-based regression diff (cognitive on vs off)
+        run: node scripts/regression-flag-diff.mjs src/cognitive
