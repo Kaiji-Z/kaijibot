@@ -83,4 +83,36 @@ describe("buildCognitiveModePrompt", () => {
     });
     expect(prompt).not.toContain("Known Corrections");
   });
+
+  it("places stable sections (evolution, corrections) before dynamic mode section for cache stability", () => {
+    const corrections: CorrectionRecord[] = [
+      {
+        id: "test",
+        domain: "test",
+        trigger: "test trigger",
+        mistake: "test mistake",
+        correction: "test correction",
+        provenance: "user",
+        reinforcedCount: 1,
+        createdAt: Date.now(),
+        lastReinforced: Date.now(),
+      },
+    ];
+    const { prompt } = buildCognitiveModePrompt({
+      message: "帮我整理文档",
+      cognitiveEnabled: true,
+      evolutionEnabled: true,
+      corrections,
+    });
+
+    const evolutionIdx = prompt.indexOf("## Skill Evolution");
+    const correctionsIdx = prompt.indexOf("## Known Corrections");
+    const modeIdx = prompt.indexOf("## Current Mode:");
+
+    expect(evolutionIdx).toBeGreaterThan(-1);
+    expect(correctionsIdx).toBeGreaterThan(-1);
+    expect(modeIdx).toBeGreaterThan(-1);
+    expect(evolutionIdx).toBeLessThan(modeIdx);
+    expect(correctionsIdx).toBeLessThan(modeIdx);
+  });
 });

@@ -88,8 +88,6 @@ export function buildCognitiveModePrompt(params: {
 
   const parts: string[] = [];
 
-  parts.push(buildModePromptSection(classification.mode));
-
   if (persona) {
     const personaCtx = buildPersonaContext(persona);
     if (personaCtx) {
@@ -110,6 +108,8 @@ export function buildCognitiveModePrompt(params: {
   if (corrections && corrections.length > 0) {
     parts.push(formatCorrectionsPrompt(corrections, resolvedLocale));
   }
+
+  parts.push(buildModePromptSection(classification.mode));
 
   return { prompt: parts.join("\n\n"), classification };
 }
