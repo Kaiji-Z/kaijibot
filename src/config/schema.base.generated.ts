@@ -4012,6 +4012,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                                 const: "trigram",
                               },
                             ],
+                            title: "FTS Tokenizer",
+                            description:
+                              "FTS5 tokenizer: 'porter' (default), 'unicode61', or 'trigram'.",
                           },
                         },
                         additionalProperties: false,
@@ -4262,29 +4265,46 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "cache-ttl",
                       },
                     ],
+                    title: "Context Pruning Mode",
+                    description:
+                      'Context pruning mode: "off" (disabled) or "cache-ttl" (prune old tool results based on TTL).',
                   },
                   ttl: {
                     type: "string",
+                    title: "Context Pruning TTL",
+                    description:
+                      "TTL duration for cache-ttl pruning mode (e.g. '30m', '2h'). Tool results older than this are pruned from context.",
                   },
                   keepLastAssistants: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Context Pruning Keep Last Assistants",
+                    description:
+                      "Number of recent assistant turns to always preserve from pruning.",
                   },
                   softTrimRatio: {
                     type: "number",
                     minimum: 0,
                     maximum: 1,
+                    title: "Context Pruning Soft Trim Ratio",
+                    description: "Fraction of original content kept during soft trimming (0-1).",
                   },
                   hardClearRatio: {
                     type: "number",
                     minimum: 0,
                     maximum: 1,
+                    title: "Context Pruning Hard Clear Ratio",
+                    description:
+                      "Fraction of original content kept during hard clearing (0-1). Lower = more aggressive pruning.",
                   },
                   minPrunableToolChars: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Context Pruning Min Tool Chars",
+                    description:
+                      "Minimum tool result size in chars before it becomes eligible for pruning.",
                   },
                   tools: {
                     type: "object",
@@ -4703,11 +4723,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Block Streaming Min Chars",
+                    description: "Minimum characters per streamed block chunk.",
                   },
                   maxChars: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Block Streaming Max Chars",
+                    description: "Maximum characters per streamed block chunk before splitting.",
                   },
                   breakPreference: {
                     anyOf: [
@@ -4724,6 +4748,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "sentence",
                       },
                     ],
+                    title: "Block Streaming Break Preference",
+                    description:
+                      'Where to prefer splitting streamed block replies: "paragraph", "newline", or "sentence".',
                   },
                 },
                 additionalProperties: false,
@@ -4735,16 +4762,22 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Block Coalesce Min Chars",
+                    description: "Minimum characters to accumulate before flushing.",
                   },
                   maxChars: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Block Coalesce Max Chars",
+                    description: "Maximum characters to coalesce before flushing.",
                   },
                   idleMs: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Block Coalesce Idle (ms)",
+                    description: "Idle time in ms before flushing coalesced block replies.",
                   },
                 },
                 additionalProperties: false,
@@ -4846,33 +4879,55 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 properties: {
                   every: {
                     type: "string",
+                    title: "Heartbeat Interval",
+                    description:
+                      "Heartbeat interval as a duration string (e.g. '30m', '2h'). Controls how often the agent runs background heartbeat turns.",
                   },
                   activeHours: {
                     type: "object",
                     properties: {
                       start: {
                         type: "string",
+                        title: "Heartbeat Active Hours Start",
+                        description:
+                          "Start of the active hours window for heartbeat runs (24h HH:MM format). Heartbeats are suppressed before this time.",
                       },
                       end: {
                         type: "string",
+                        title: "Heartbeat Active Hours End",
+                        description:
+                          "End of the active hours window for heartbeat runs (24h HH:MM format). Heartbeats are suppressed after this time.",
                       },
                       timezone: {
                         type: "string",
+                        title: "Heartbeat Active Hours Timezone",
+                        description:
+                          'Timezone for heartbeat active hours. Accepts "user", "local", or IANA timezone string.',
                       },
                     },
                     additionalProperties: false,
                   },
                   model: {
                     type: "string",
+                    title: "Heartbeat Model",
+                    description:
+                      "Model override for heartbeat runs (provider/model). When unset, uses the agent default model.",
                   },
                   session: {
                     type: "string",
+                    title: "Heartbeat Session",
+                    description: "Session key for heartbeat runs. Default: 'main'.",
                   },
                   includeReasoning: {
                     type: "boolean",
+                    title: "Heartbeat Include Reasoning",
+                    description:
+                      "Deliver the model reasoning payload for heartbeat runs (default: false).",
                   },
                   target: {
                     type: "string",
+                    title: "Heartbeat Delivery Channel",
+                    description: 'Delivery channel for heartbeat: "last", "none", or a channel id.',
                   },
                   directPolicy: {
                     anyOf: [
@@ -4891,12 +4946,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   to: {
                     type: "string",
+                    title: "Heartbeat Delivery Target",
+                    description:
+                      "Delivery target for heartbeat output. Supports E.164 phone format or chat IDs.",
                   },
                   accountId: {
                     type: "string",
+                    title: "Heartbeat Account ID",
+                    description: "Account id override for multi-account heartbeat delivery.",
                   },
                   prompt: {
                     type: "string",
+                    title: "Heartbeat Prompt",
+                    description:
+                      "Custom prompt for heartbeat runs. Default reads HEARTBEAT.md from workspace.",
                   },
                   includeSystemPromptSection: {
                     type: "boolean",
@@ -4908,6 +4971,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Heartbeat Ack Max Chars",
+                    description:
+                      "Max chars allowed after HEARTBEAT_OK before delivery (default: 300).",
                   },
                   suppressToolErrorWarnings: {
                     type: "boolean",
@@ -4916,9 +4982,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   lightContext: {
                     type: "boolean",
+                    title: "Heartbeat Light Context",
+                    description:
+                      "Run heartbeat with lightweight bootstrap context (only HEARTBEAT.md). Reduces token cost.",
                   },
                   isolatedSession: {
                     type: "boolean",
+                    title: "Heartbeat Isolated Session",
+                    description:
+                      "Run heartbeat in an isolated session with no prior conversation history. Dramatically reduces per-heartbeat token cost.",
                   },
                 },
                 additionalProperties: false,
@@ -4993,6 +5065,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         additionalProperties: false,
                       },
                     ],
+                    title: "Sub-Agent Model",
+                    description:
+                      "Default model for spawned sub-agents (string or {primary, fallbacks}).",
                   },
                   thinking: {
                     type: "string",
@@ -5043,10 +5118,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "all",
                       },
                     ],
+                    title: "Sandbox Mode",
+                    description:
+                      'Sandbox session scoping: "off", "non-main", or "all". Controls which sessions run in sandbox.',
                   },
                   backend: {
                     type: "string",
                     minLength: 1,
+                    title: "Sandbox Backend",
+                    description:
+                      'Sandbox backend type: "docker", "ssh", or unset for auto-detection.',
                   },
                   workspaceAccess: {
                     anyOf: [
@@ -5063,6 +5144,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "rw",
                       },
                     ],
+                    title: "Sandbox Workspace Access",
+                    description:
+                      'Workspace file access level inside sandbox: "read-write", "read-only", or "none".',
                   },
                   sessionToolsVisibility: {
                     anyOf: [
@@ -5075,6 +5159,8 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "all",
                       },
                     ],
+                    title: "Sandbox Tool Visibility",
+                    description: "Tool visibility within sandboxed sessions.",
                   },
                   scope: {
                     anyOf: [
@@ -5091,9 +5177,14 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "shared",
                       },
                     ],
+                    title: "Sandbox Scope",
+                    description:
+                      "Session scope for sandbox: which conversations are eligible for sandboxed execution.",
                   },
                   workspaceRoot: {
                     type: "string",
+                    title: "Sandbox Workspace Root",
+                    description: "Root directory mounted into the sandbox as the workspace.",
                   },
                   docker: {
                     type: "object",
@@ -5558,6 +5649,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               },
               backgroundBatch: {
                 type: "boolean",
+                title: "Background Batch API",
+                description:
+                  "Route background LLM pipelines (memory consolidation, correction extraction) through the provider Batch API for ~50% cost discount. Default: false.",
               },
             },
             additionalProperties: false,
@@ -7442,6 +7536,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         ],
                       },
                     ],
+                    title: "Web Search API Key",
+                    description:
+                      "API key for the web search provider. Prefer env/secret substitution.",
                   },
                   openaiCodex: {
                     type: "object",
@@ -7676,26 +7773,39 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 properties: {
                   enabled: {
                     type: "boolean",
+                    title: "X Search Enabled",
+                    description:
+                      "Enable X (Twitter) search tool using xAI Grok (default: true when xAI auth available).",
                   },
                   model: {
                     type: "string",
+                    title: "X Search Model",
+                    description: "Model id for X search.",
                   },
                   inlineCitations: {
                     type: "boolean",
+                    title: "X Search Inline Citations",
+                    description: "Keep inline citations in xAI response payload (default: true).",
                   },
                   maxTurns: {
                     type: "integer",
                     minimum: -9007199254740991,
                     maximum: 9007199254740991,
+                    title: "X Search Max Turns",
+                    description: "Max search/tool turns for xAI internally.",
                   },
                   timeoutSeconds: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "X Search Timeout (s)",
+                    description: "Timeout for X search requests in seconds.",
                   },
                   cacheTtlMinutes: {
                     type: "number",
                     minimum: 0,
+                    title: "X Search Cache TTL (min)",
+                    description: "Cache TTL for X search results in minutes.",
                   },
                 },
                 additionalProperties: false,
@@ -9128,6 +9238,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   baseUrl: {
                     type: "string",
+                    title: "Image Understanding Base URL",
+                    description:
+                      "Base URL override for image understanding provider requests. See docs/nodes/media-understanding.md for details.",
                   },
                   headers: {
                     type: "object",
@@ -11547,9 +11660,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   echoTranscript: {
                     type: "boolean",
+                    title: "Image Echo Transcript",
+                    description:
+                      "Echo the transcript back to chat before agent processing so users can verify what was heard.",
                   },
                   echoFormat: {
                     type: "string",
+                    title: "Image Echo Format",
+                    description:
+                      "Format string for echoed audio transcripts. Use {transcript} as placeholder.",
                   },
                 },
                 additionalProperties: false,
@@ -11719,6 +11838,8 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   baseUrl: {
                     type: "string",
+                    title: "Audio Understanding Base URL",
+                    description: "Base URL override for audio understanding provider requests.",
                   },
                   headers: {
                     type: "object",
@@ -14364,6 +14485,8 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   baseUrl: {
                     type: "string",
+                    title: "Video Understanding Base URL",
+                    description: "Base URL override for video understanding provider requests.",
                   },
                   headers: {
                     type: "object",
@@ -17324,18 +17447,24 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     items: {
                       type: "string",
                     },
+                    title: "Sub-Agent Tool Allow List",
+                    description: "Tool allowlist for spawned sub-agents.",
                   },
                   alsoAllow: {
                     type: "array",
                     items: {
                       type: "string",
                     },
+                    title: "Sub-Agent Tool Also Allow",
+                    description: "Additional tools allowed for sub-agents beyond defaults.",
                   },
                   deny: {
                     type: "array",
                     items: {
                       type: "string",
                     },
+                    title: "Sub-Agent Tool Deny List",
+                    description: "Tools denied for sub-agents.",
                   },
                 },
                 additionalProperties: false,
@@ -17360,18 +17489,24 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     items: {
                       type: "string",
                     },
+                    title: "Sandbox Tool Allow List",
+                    description: "Tool allowlist for sandboxed agent executions.",
                   },
                   alsoAllow: {
                     type: "array",
                     items: {
                       type: "string",
                     },
+                    title: "Sandbox Tool Also Allow",
+                    description: "Additional tools allowed in sandbox beyond defaults.",
                   },
                   deny: {
                     type: "array",
                     items: {
                       type: "string",
                     },
+                    title: "Sandbox Tool Deny List",
+                    description: "Tools denied in sandboxed executions.",
                   },
                 },
                 additionalProperties: false,
@@ -17393,15 +17528,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 properties: {
                   enabled: {
                     type: "boolean",
+                    title: "Spawn Attachments Enabled",
+                    description: "Enable file attachments in sub-agent spawn requests.",
                   },
                   maxTotalBytes: {
                     type: "number",
                   },
                   maxFiles: {
                     type: "number",
+                    title: "Spawn Max Files",
+                    description: "Maximum number of files per spawn request.",
                   },
                   maxFileBytes: {
                     type: "number",
+                    title: "Spawn Max File Bytes",
+                    description: "Maximum file size in bytes for spawn attachments.",
                   },
                   retainOnSessionKeep: {
                     type: "boolean",
@@ -18296,30 +18437,48 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 properties: {
                   thinking: {
                     type: "string",
+                    title: "Thinking Emoji",
+                    description: "Emoji for the thinking state (default: 🤔).",
                   },
                   tool: {
                     type: "string",
+                    title: "Tool Emoji",
+                    description: "Emoji for the tool-use state (default: 🔧).",
                   },
                   coding: {
                     type: "string",
+                    title: "Coding Emoji",
+                    description: "Emoji for the coding state (default: 💻).",
                   },
                   web: {
                     type: "string",
+                    title: "Web Search Emoji",
+                    description: "Emoji for the web-search state (default: 🌐).",
                   },
                   done: {
                     type: "string",
+                    title: "Done Emoji",
+                    description: "Emoji for the completed state (default: ✅).",
                   },
                   error: {
                     type: "string",
+                    title: "Error Emoji",
+                    description: "Emoji for the error state (default: ❌).",
                   },
                   stallSoft: {
                     type: "string",
+                    title: "Soft Stall Emoji",
+                    description: "Emoji for soft stall warning (default: 🟡).",
                   },
                   stallHard: {
                     type: "string",
+                    title: "Hard Stall Emoji",
+                    description: "Emoji for hard stall warning (default: 🔴).",
                   },
                   compacting: {
                     type: "string",
+                    title: "Compacting Emoji",
+                    description: "Emoji for context compaction state (default: 🧹).",
                   },
                 },
                 additionalProperties: false,
@@ -18334,26 +18493,39 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Status Debounce (ms)",
+                    description:
+                      "Debounce interval for intermediate status states in ms (default: 700).",
                   },
                   stallSoftMs: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Soft Stall Timeout (ms)",
+                    description: "Soft stall warning timeout in ms (default: 25000).",
                   },
                   stallHardMs: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Hard Stall Timeout (ms)",
+                    description: "Hard stall warning timeout in ms (default: 60000).",
                   },
                   doneHoldMs: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Done Hold Duration (ms)",
+                    description:
+                      "How long to hold the done emoji before cleanup in ms (default: 1500).",
                   },
                   errorHoldMs: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Error Hold Duration (ms)",
+                    description:
+                      "How long to hold the error emoji before cleanup in ms (default: 2500).",
                   },
                 },
                 additionalProperties: false,
@@ -19073,16 +19245,22 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "idle",
                       },
                     ],
+                    title: "Direct Chat Reset Mode",
+                    description: 'Reset mode for direct chats: "daily" or "idle".',
                   },
                   atHour: {
                     type: "integer",
                     minimum: 0,
                     maximum: 23,
+                    title: "Direct Chat Reset Hour",
+                    description: "Daily reset hour (0-23) for direct chats.",
                   },
                   idleMinutes: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Direct Chat Idle Reset (min)",
+                    description: "Idle reset window in minutes for direct chats.",
                   },
                 },
                 additionalProperties: false,
@@ -19135,16 +19313,22 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "idle",
                       },
                     ],
+                    title: "Group Chat Reset Mode",
+                    description: 'Reset mode for group chats: "daily" or "idle".',
                   },
                   atHour: {
                     type: "integer",
                     minimum: 0,
                     maximum: 23,
+                    title: "Group Chat Reset Hour",
+                    description: "Daily reset hour (0-23) for group chats.",
                   },
                   idleMinutes: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Group Chat Idle Reset (min)",
+                    description: "Idle reset window in minutes for group chats.",
                   },
                 },
                 additionalProperties: false,
@@ -19166,16 +19350,22 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         const: "idle",
                       },
                     ],
+                    title: "Thread Chat Reset Mode",
+                    description: 'Reset mode for thread chats: "daily" or "idle".',
                   },
                   atHour: {
                     type: "integer",
                     minimum: 0,
                     maximum: 23,
+                    title: "Thread Chat Reset Hour",
+                    description: "Daily reset hour (0-23) for thread chats.",
                   },
                   idleMinutes: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Thread Chat Idle Reset (min)",
+                    description: "Idle reset window in minutes for thread chats.",
                   },
                 },
                 additionalProperties: false,
@@ -19616,14 +19806,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       source: {
                         type: "string",
                         const: "env",
+                        title: "Webhook Token SecretRef Source",
+                        description: "SecretRef source type for cron.webhookToken.",
                       },
                       provider: {
                         type: "string",
                         pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                        title: "Webhook Token SecretRef Provider",
+                        description: "SecretRef provider name for cron.webhookToken.",
                       },
                       id: {
                         type: "string",
                         pattern: "^[A-Z][A-Z0-9_]{0,127}$",
+                        title: "Webhook Token SecretRef ID",
+                        description: "SecretRef provider id for cron.webhookToken.",
                       },
                     },
                     required: ["source", "provider", "id"],
@@ -19635,13 +19831,19 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       source: {
                         type: "string",
                         const: "file",
+                        title: "Webhook Token SecretRef Source",
+                        description: "SecretRef source type for cron.webhookToken.",
                       },
                       provider: {
                         type: "string",
                         pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                        title: "Webhook Token SecretRef Provider",
+                        description: "SecretRef provider name for cron.webhookToken.",
                       },
                       id: {
                         type: "string",
+                        title: "Webhook Token SecretRef ID",
+                        description: "SecretRef provider id for cron.webhookToken.",
                       },
                     },
                     required: ["source", "provider", "id"],
@@ -19653,13 +19855,19 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       source: {
                         type: "string",
                         const: "exec",
+                        title: "Webhook Token SecretRef Source",
+                        description: "SecretRef source type for cron.webhookToken.",
                       },
                       provider: {
                         type: "string",
                         pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                        title: "Webhook Token SecretRef Provider",
+                        description: "SecretRef provider name for cron.webhookToken.",
                       },
                       id: {
                         type: "string",
+                        title: "Webhook Token SecretRef ID",
+                        description: "SecretRef provider id for cron.webhookToken.",
                       },
                     },
                     required: ["source", "provider", "id"],
@@ -19721,23 +19929,33 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             properties: {
               enabled: {
                 type: "boolean",
+                title: "Cron Failure Alert Enabled",
+                description: "Enable failure alert notifications for cron jobs.",
               },
               after: {
                 type: "integer",
                 minimum: 1,
                 maximum: 9007199254740991,
+                title: "Cron Failure Alert After",
+                description: "Number of failed attempts before alerting.",
               },
               cooldownMs: {
                 type: "integer",
                 minimum: 0,
                 maximum: 9007199254740991,
+                title: "Cron Failure Alert Cooldown (ms)",
+                description: "Cooldown in ms between repeated failure alerts.",
               },
               mode: {
                 type: "string",
                 enum: ["announce", "webhook"],
+                title: "Cron Failure Alert Mode",
+                description: "Alert delivery mode: 'session' or 'targets'.",
               },
               accountId: {
                 type: "string",
+                title: "Cron Failure Alert Account ID",
+                description: "Account id for multi-account alert delivery.",
               },
             },
             additionalProperties: false,
@@ -19747,16 +19965,24 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             properties: {
               channel: {
                 type: "string",
+                title: "Cron Failure Channel",
+                description: "Channel id for cron failure notifications.",
               },
               to: {
                 type: "string",
+                title: "Cron Failure Destination",
+                description: "Destination identifier for failure notifications.",
               },
               accountId: {
                 type: "string",
+                title: "Cron Failure Destination Account ID",
+                description: "Account id for failure notification delivery.",
               },
               mode: {
                 type: "string",
                 enum: ["announce", "webhook"],
+                title: "Cron Failure Delivery Mode",
+                description: "Delivery mode for failure notifications.",
               },
             },
             additionalProperties: false,
@@ -20779,14 +21005,22 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "env",
+                            title: "Gateway Token SecretRef Source",
+                            description:
+                              "SecretRef source type for gateway.auth.token (env, file, or exec).",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Gateway Token SecretRef Provider",
+                            description: "SecretRef provider name for gateway.auth.token.",
                           },
                           id: {
                             type: "string",
                             pattern: "^[A-Z][A-Z0-9_]{0,127}$",
+                            title: "Gateway Token SecretRef ID",
+                            description:
+                              "SecretRef provider id for gateway.auth.token. When the token is a SecretRef object, this identifies which provider resolves the secret.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -20798,13 +21032,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "file",
+                            title: "Gateway Token SecretRef Source",
+                            description:
+                              "SecretRef source type for gateway.auth.token (env, file, or exec).",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Gateway Token SecretRef Provider",
+                            description: "SecretRef provider name for gateway.auth.token.",
                           },
                           id: {
                             type: "string",
+                            title: "Gateway Token SecretRef ID",
+                            description:
+                              "SecretRef provider id for gateway.auth.token. When the token is a SecretRef object, this identifies which provider resolves the secret.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -20816,13 +21058,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "exec",
+                            title: "Gateway Token SecretRef Source",
+                            description:
+                              "SecretRef source type for gateway.auth.token (env, file, or exec).",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Gateway Token SecretRef Provider",
+                            description: "SecretRef provider name for gateway.auth.token.",
                           },
                           id: {
                             type: "string",
+                            title: "Gateway Token SecretRef ID",
+                            description:
+                              "SecretRef provider id for gateway.auth.token. When the token is a SecretRef object, this identifies which provider resolves the secret.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -20848,14 +21098,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "env",
+                            title: "Gateway Password SecretRef Source",
+                            description:
+                              "SecretRef source type for gateway.auth.password (env, file, or exec).",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Gateway Password SecretRef Provider",
+                            description: "SecretRef provider name for gateway.auth.password.",
                           },
                           id: {
                             type: "string",
                             pattern: "^[A-Z][A-Z0-9_]{0,127}$",
+                            title: "Gateway Password SecretRef ID",
+                            description: "SecretRef provider id for gateway.auth.password.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -20867,13 +21124,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "file",
+                            title: "Gateway Password SecretRef Source",
+                            description:
+                              "SecretRef source type for gateway.auth.password (env, file, or exec).",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Gateway Password SecretRef Provider",
+                            description: "SecretRef provider name for gateway.auth.password.",
                           },
                           id: {
                             type: "string",
+                            title: "Gateway Password SecretRef ID",
+                            description: "SecretRef provider id for gateway.auth.password.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -20885,13 +21149,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "exec",
+                            title: "Gateway Password SecretRef Source",
+                            description:
+                              "SecretRef source type for gateway.auth.password (env, file, or exec).",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Gateway Password SecretRef Provider",
+                            description: "SecretRef provider name for gateway.auth.password.",
                           },
                           id: {
                             type: "string",
+                            title: "Gateway Password SecretRef ID",
+                            description: "SecretRef provider id for gateway.auth.password.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -21112,14 +21383,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "env",
+                            title: "Remote Token SecretRef Source",
+                            description: "SecretRef source type for gateway.remote.token.",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Remote Token SecretRef Provider",
+                            description: "SecretRef provider name for gateway.remote.token.",
                           },
                           id: {
                             type: "string",
                             pattern: "^[A-Z][A-Z0-9_]{0,127}$",
+                            title: "Remote Token SecretRef ID",
+                            description: "SecretRef provider id for gateway.remote.token.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -21131,13 +21408,19 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "file",
+                            title: "Remote Token SecretRef Source",
+                            description: "SecretRef source type for gateway.remote.token.",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Remote Token SecretRef Provider",
+                            description: "SecretRef provider name for gateway.remote.token.",
                           },
                           id: {
                             type: "string",
+                            title: "Remote Token SecretRef ID",
+                            description: "SecretRef provider id for gateway.remote.token.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -21149,13 +21432,19 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "exec",
+                            title: "Remote Token SecretRef Source",
+                            description: "SecretRef source type for gateway.remote.token.",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Remote Token SecretRef Provider",
+                            description: "SecretRef provider name for gateway.remote.token.",
                           },
                           id: {
                             type: "string",
+                            title: "Remote Token SecretRef ID",
+                            description: "SecretRef provider id for gateway.remote.token.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -21181,14 +21470,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "env",
+                            title: "Remote Password SecretRef Source",
+                            description: "SecretRef source type for gateway.remote.password.",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Remote Password SecretRef Provider",
+                            description: "SecretRef provider name for gateway.remote.password.",
                           },
                           id: {
                             type: "string",
                             pattern: "^[A-Z][A-Z0-9_]{0,127}$",
+                            title: "Remote Password SecretRef ID",
+                            description: "SecretRef provider id for gateway.remote.password.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -21200,13 +21495,19 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "file",
+                            title: "Remote Password SecretRef Source",
+                            description: "SecretRef source type for gateway.remote.password.",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Remote Password SecretRef Provider",
+                            description: "SecretRef provider name for gateway.remote.password.",
                           },
                           id: {
                             type: "string",
+                            title: "Remote Password SecretRef ID",
+                            description: "SecretRef provider id for gateway.remote.password.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -21218,13 +21519,19 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           source: {
                             type: "string",
                             const: "exec",
+                            title: "Remote Password SecretRef Source",
+                            description: "SecretRef source type for gateway.remote.password.",
                           },
                           provider: {
                             type: "string",
                             pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                            title: "Remote Password SecretRef Provider",
+                            description: "SecretRef provider name for gateway.remote.password.",
                           },
                           id: {
                             type: "string",
+                            title: "Remote Password SecretRef ID",
+                            description: "SecretRef provider id for gateway.remote.password.",
                           },
                         },
                         required: ["source", "provider", "id"],
@@ -23186,7 +23493,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "logging.redactSensitive": {
       label: "Sensitive Data Redaction Mode",
-      help: 'Sensitive redaction mode: "off" disables built-in masking, while "tools" redacts sensitive tool/config payload fields. Keep "tools" in shared logs unless you have isolated secure log sinks.',
+      help: 'Sensitive redaction mode: "off" disables built-in masking, while "tools" redacts sensitive tool/config payload fields. Keep "tools" in shared logs unless you have isolated secure log sinks. Defaults to "tools" when unset (applied during config materialization).',
       tags: ["privacy", "observability"],
     },
     "logging.redactPatterns": {
@@ -25661,7 +25968,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "agents.defaults.compaction.mode": {
       label: "Compaction Mode",
-      help: 'Compaction strategy mode: "default" uses baseline behavior, while "safeguard" applies stricter guardrails to preserve recent context. Keep "default" unless you observe aggressive history loss near limit boundaries.',
+      help: 'Compaction strategy mode: "default" uses baseline behavior, while "safeguard" applies stricter guardrails to preserve recent context. Keep "default" unless you observe aggressive history loss near limit boundaries. Defaults to "safeguard" when unset (applied during config materialization).',
       tags: ["advanced"],
     },
     "agents.defaults.compaction.provider": {
@@ -27084,12 +27391,12 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "cognitive.proactive.enabled": {
       label: "Proactive Push Enabled",
-      help: "Allow proactive insight pushes to the user (default: true). When false, KaijiBot only responds to direct messages and never initiates conversations.",
+      help: "Allow proactive insight pushes to the user (default: true). When false, KaijiBot only responds to direct messages and never initiates conversations. Only effective when cognitive.enabled is true.",
       tags: ["advanced"],
     },
     "cognitive.proactive.minIntervalHours": {
       label: "Proactive Min Interval (hours)",
-      help: "Minimum hours between proactive pushes per user (default: 0.5). Lower values increase push frequency but risk annoying the user; higher values reduce noise but slow down insight delivery.",
+      help: "Minimum hours between proactive pushes per user (default: 0.5). Lower values increase push frequency but risk annoying the user; higher values reduce noise but slow down insight delivery. Only effective when cognitive.proactive.enabled is true.",
       tags: ["performance"],
     },
     "cognitive.proactive.activeHours": {
@@ -27134,7 +27441,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "cognitive.persona.autoExtract": {
       label: "Persona Auto Extract",
-      help: "Automatically extract and update user persona from conversations using LLM-driven analysis (default: true). When false, the persona model is frozen and never updates.",
+      help: "Automatically extract and update user persona from conversations using LLM-driven analysis (default: true). When false, the persona model is frozen and never updates. Only effective when cognitive.enabled is true.",
       tags: ["advanced"],
     },
     "cognitive.persona.extractionModel": {
@@ -27154,7 +27461,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "cognitive.insight.inferenceModel": {
       label: "Insight Inference Model",
-      help: 'Model used for interest inference and insight generation (format: "provider/model"). When unset, the main agent model is used.',
+      help: 'Model used for interest inference and insight generation (format: "provider/model"). When unset, the main agent model is used. Only effective when cognitive.enabled is true.',
       tags: ["advanced"],
     },
     "cognitive.insight.outputLanguage": {
@@ -27194,7 +27501,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "cognitive.evolution.enabled": {
       label: "Skill Evolution Enabled",
-      help: "Enable skill self-evolution (default: true). When true, complex tasks (3+ tool calls) trigger an evolution signal that the Agent evaluates to decide whether a reusable skill should be created.",
+      help: "Enable skill self-evolution (default: true). When true, complex tasks (3+ tool calls) trigger an evolution signal that the Agent evaluates to decide whether a reusable skill should be created. Only effective when cognitive.enabled is true.",
       tags: ["advanced"],
     },
     "cognitive.evolution.cooldownHours": {
@@ -27424,7 +27731,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "agents.defaults.maxConcurrent": {
       label: "Max Concurrent Runs",
-      help: "Maximum concurrent agent runs across all conversations (default: 1, sequential). Increase to handle multiple users simultaneously; watch resource limits.",
+      help: "Maximum concurrent agent runs across all conversations (default: 1, sequential). Increase to handle multiple users simultaneously; watch resource limits. Defaults to a system constant when unset (applied during config materialization).",
       tags: ["performance"],
     },
     "agents.defaults.imageModel": {
@@ -27612,6 +27919,527 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Per-agent MBTI personality preset that overrides SOUL.md for this specific agent. Use distinct presets when different agents need different personas.",
       tags: ["advanced"],
     },
+    "gateway.auth.token.id": {
+      label: "Gateway Token SecretRef ID",
+      help: "SecretRef provider id for gateway.auth.token. When the token is a SecretRef object, this identifies which provider resolves the secret.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.auth.token.provider": {
+      label: "Gateway Token SecretRef Provider",
+      help: "SecretRef provider name for gateway.auth.token.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.auth.token.source": {
+      label: "Gateway Token SecretRef Source",
+      help: "SecretRef source type for gateway.auth.token (env, file, or exec).",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.auth.password.id": {
+      label: "Gateway Password SecretRef ID",
+      help: "SecretRef provider id for gateway.auth.password.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.auth.password.provider": {
+      label: "Gateway Password SecretRef Provider",
+      help: "SecretRef provider name for gateway.auth.password.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.auth.password.source": {
+      label: "Gateway Password SecretRef Source",
+      help: "SecretRef source type for gateway.auth.password (env, file, or exec).",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.remote.token.id": {
+      label: "Remote Token SecretRef ID",
+      help: "SecretRef provider id for gateway.remote.token.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.remote.token.provider": {
+      label: "Remote Token SecretRef Provider",
+      help: "SecretRef provider name for gateway.remote.token.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.remote.token.source": {
+      label: "Remote Token SecretRef Source",
+      help: "SecretRef source type for gateway.remote.token.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.remote.password.id": {
+      label: "Remote Password SecretRef ID",
+      help: "SecretRef provider id for gateway.remote.password.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.remote.password.provider": {
+      label: "Remote Password SecretRef Provider",
+      help: "SecretRef provider name for gateway.remote.password.",
+      tags: ["security", "auth", "network"],
+    },
+    "gateway.remote.password.source": {
+      label: "Remote Password SecretRef Source",
+      help: "SecretRef source type for gateway.remote.password.",
+      tags: ["security", "auth", "network"],
+    },
+    "cron.webhookToken.id": {
+      label: "Webhook Token SecretRef ID",
+      help: "SecretRef provider id for cron.webhookToken.",
+      tags: ["security", "auth", "automation"],
+    },
+    "cron.webhookToken.provider": {
+      label: "Webhook Token SecretRef Provider",
+      help: "SecretRef provider name for cron.webhookToken.",
+      tags: ["security", "auth", "automation"],
+    },
+    "cron.webhookToken.source": {
+      label: "Webhook Token SecretRef Source",
+      help: "SecretRef source type for cron.webhookToken.",
+      tags: ["security", "auth", "automation"],
+    },
+    "agents.defaults.blockStreamingChunk.breakPreference": {
+      label: "Block Streaming Break Preference",
+      help: 'Where to prefer splitting streamed block replies: "paragraph", "newline", or "sentence".',
+      tags: ["advanced"],
+    },
+    "agents.defaults.blockStreamingChunk.maxChars": {
+      label: "Block Streaming Max Chars",
+      help: "Maximum characters per streamed block chunk before splitting.",
+      tags: ["performance"],
+    },
+    "agents.defaults.blockStreamingChunk.minChars": {
+      label: "Block Streaming Min Chars",
+      help: "Minimum characters per streamed block chunk.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.blockStreamingCoalesce.idleMs": {
+      label: "Block Coalesce Idle (ms)",
+      help: "Idle time in ms before flushing coalesced block replies.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.blockStreamingCoalesce.maxChars": {
+      label: "Block Coalesce Max Chars",
+      help: "Maximum characters to coalesce before flushing.",
+      tags: ["performance"],
+    },
+    "agents.defaults.blockStreamingCoalesce.minChars": {
+      label: "Block Coalesce Min Chars",
+      help: "Minimum characters to accumulate before flushing.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.backgroundBatch": {
+      label: "Background Batch API",
+      help: "Route background LLM pipelines (memory consolidation, correction extraction) through the provider Batch API for ~50% cost discount. Default: false.",
+      tags: ["storage"],
+    },
+    "agents.defaults.contextPruning.mode": {
+      label: "Context Pruning Mode",
+      help: 'Context pruning mode: "off" (disabled) or "cache-ttl" (prune old tool results based on TTL).',
+      tags: ["advanced"],
+    },
+    "agents.defaults.contextPruning.ttl": {
+      label: "Context Pruning TTL",
+      help: "TTL duration for cache-ttl pruning mode (e.g. '30m', '2h'). Tool results older than this are pruned from context.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.contextPruning.keepLastAssistants": {
+      label: "Context Pruning Keep Last Assistants",
+      help: "Number of recent assistant turns to always preserve from pruning.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.contextPruning.softTrimRatio": {
+      label: "Context Pruning Soft Trim Ratio",
+      help: "Fraction of original content kept during soft trimming (0-1).",
+      tags: ["advanced"],
+    },
+    "agents.defaults.contextPruning.hardClearRatio": {
+      label: "Context Pruning Hard Clear Ratio",
+      help: "Fraction of original content kept during hard clearing (0-1). Lower = more aggressive pruning.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.contextPruning.minPrunableToolChars": {
+      label: "Context Pruning Min Tool Chars",
+      help: "Minimum tool result size in chars before it becomes eligible for pruning.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.heartbeat.every": {
+      label: "Heartbeat Interval",
+      help: "Heartbeat interval as a duration string (e.g. '30m', '2h'). Controls how often the agent runs background heartbeat turns.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.activeHours.start": {
+      label: "Heartbeat Active Hours Start",
+      help: "Start of the active hours window for heartbeat runs (24h HH:MM format). Heartbeats are suppressed before this time.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.activeHours.end": {
+      label: "Heartbeat Active Hours End",
+      help: "End of the active hours window for heartbeat runs (24h HH:MM format). Heartbeats are suppressed after this time.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.activeHours.timezone": {
+      label: "Heartbeat Active Hours Timezone",
+      help: 'Timezone for heartbeat active hours. Accepts "user", "local", or IANA timezone string.',
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.model": {
+      label: "Heartbeat Model",
+      help: "Model override for heartbeat runs (provider/model). When unset, uses the agent default model.",
+      tags: ["models", "automation"],
+    },
+    "agents.defaults.heartbeat.session": {
+      label: "Heartbeat Session",
+      help: "Session key for heartbeat runs. Default: 'main'.",
+      tags: ["storage", "automation"],
+    },
+    "agents.defaults.heartbeat.to": {
+      label: "Heartbeat Delivery Target",
+      help: "Delivery target for heartbeat output. Supports E.164 phone format or chat IDs.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.accountId": {
+      label: "Heartbeat Account ID",
+      help: "Account id override for multi-account heartbeat delivery.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.target": {
+      label: "Heartbeat Delivery Channel",
+      help: 'Delivery channel for heartbeat: "last", "none", or a channel id.',
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.prompt": {
+      label: "Heartbeat Prompt",
+      help: "Custom prompt for heartbeat runs. Default reads HEARTBEAT.md from workspace.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.ackMaxChars": {
+      label: "Heartbeat Ack Max Chars",
+      help: "Max chars allowed after HEARTBEAT_OK before delivery (default: 300).",
+      tags: ["performance", "automation"],
+    },
+    "agents.defaults.heartbeat.lightContext": {
+      label: "Heartbeat Light Context",
+      help: "Run heartbeat with lightweight bootstrap context (only HEARTBEAT.md). Reduces token cost.",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.isolatedSession": {
+      label: "Heartbeat Isolated Session",
+      help: "Run heartbeat in an isolated session with no prior conversation history. Dramatically reduces per-heartbeat token cost.",
+      tags: ["storage", "automation"],
+    },
+    "agents.defaults.heartbeat.includeReasoning": {
+      label: "Heartbeat Include Reasoning",
+      help: "Deliver the model reasoning payload for heartbeat runs (default: false).",
+      tags: ["automation"],
+    },
+    "agents.defaults.heartbeat.timeoutSeconds": {
+      label: "Heartbeat Timeout (s)",
+      help: "Run timeout in seconds for heartbeat agent turns.",
+      tags: ["performance", "automation"],
+    },
+    "agents.defaults.subagents.model": {
+      label: "Sub-Agent Model",
+      help: "Default model for spawned sub-agents (string or {primary, fallbacks}).",
+      tags: ["models"],
+    },
+    "agents.defaults.sandbox.backend": {
+      label: "Sandbox Backend",
+      help: 'Sandbox backend type: "docker", "ssh", or unset for auto-detection.',
+      tags: ["storage"],
+    },
+    "agents.defaults.sandbox.mode": {
+      label: "Sandbox Mode",
+      help: 'Sandbox session scoping: "off", "non-main", or "all". Controls which sessions run in sandbox. Effective sandbox backend depends on agents.defaults.sandbox.backend and runtime detection.',
+      tags: ["storage"],
+    },
+    "agents.defaults.sandbox.scope": {
+      label: "Sandbox Scope",
+      help: "Session scope for sandbox: which conversations are eligible for sandboxed execution.",
+      tags: ["storage"],
+    },
+    "agents.defaults.sandbox.sessionToolsVisibility": {
+      label: "Sandbox Tool Visibility",
+      help: "Tool visibility within sandboxed sessions.",
+      tags: ["storage"],
+    },
+    "agents.defaults.sandbox.workspaceAccess": {
+      label: "Sandbox Workspace Access",
+      help: 'Workspace file access level inside sandbox: "read-write", "read-only", or "none".',
+      tags: ["access", "storage"],
+    },
+    "agents.defaults.sandbox.workspaceRoot": {
+      label: "Sandbox Workspace Root",
+      help: "Root directory mounted into the sandbox as the workspace.",
+      tags: ["storage"],
+    },
+    "messages.statusReactions.emojis.thinking": {
+      label: "Thinking Emoji",
+      help: "Emoji for the thinking state (default: 🤔).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.tool": {
+      label: "Tool Emoji",
+      help: "Emoji for the tool-use state (default: 🔧).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.coding": {
+      label: "Coding Emoji",
+      help: "Emoji for the coding state (default: 💻).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.web": {
+      label: "Web Search Emoji",
+      help: "Emoji for the web-search state (default: 🌐).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.done": {
+      label: "Done Emoji",
+      help: "Emoji for the completed state (default: ✅).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.error": {
+      label: "Error Emoji",
+      help: "Emoji for the error state (default: ❌).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.stallSoft": {
+      label: "Soft Stall Emoji",
+      help: "Emoji for soft stall warning (default: 🟡).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.stallHard": {
+      label: "Hard Stall Emoji",
+      help: "Emoji for hard stall warning (default: 🔴).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.emojis.compacting": {
+      label: "Compacting Emoji",
+      help: "Emoji for context compaction state (default: 🧹).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.timing.debounceMs": {
+      label: "Status Debounce (ms)",
+      help: "Debounce interval for intermediate status states in ms (default: 700).",
+      tags: ["performance"],
+    },
+    "messages.statusReactions.timing.stallSoftMs": {
+      label: "Soft Stall Timeout (ms)",
+      help: "Soft stall warning timeout in ms (default: 25000).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.timing.stallHardMs": {
+      label: "Hard Stall Timeout (ms)",
+      help: "Hard stall warning timeout in ms (default: 60000).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.timing.doneHoldMs": {
+      label: "Done Hold Duration (ms)",
+      help: "How long to hold the done emoji before cleanup in ms (default: 1500).",
+      tags: ["advanced"],
+    },
+    "messages.statusReactions.timing.errorHoldMs": {
+      label: "Error Hold Duration (ms)",
+      help: "How long to hold the error emoji before cleanup in ms (default: 2500).",
+      tags: ["advanced"],
+    },
+    "session.resetByType.direct.mode": {
+      label: "Direct Chat Reset Mode",
+      help: 'Reset mode for direct chats: "daily" or "idle".',
+      tags: ["storage"],
+    },
+    "session.resetByType.direct.atHour": {
+      label: "Direct Chat Reset Hour",
+      help: "Daily reset hour (0-23) for direct chats.",
+      tags: ["storage"],
+    },
+    "session.resetByType.direct.idleMinutes": {
+      label: "Direct Chat Idle Reset (min)",
+      help: "Idle reset window in minutes for direct chats.",
+      tags: ["storage"],
+    },
+    "session.resetByType.group.mode": {
+      label: "Group Chat Reset Mode",
+      help: 'Reset mode for group chats: "daily" or "idle".',
+      tags: ["storage"],
+    },
+    "session.resetByType.group.atHour": {
+      label: "Group Chat Reset Hour",
+      help: "Daily reset hour (0-23) for group chats.",
+      tags: ["storage"],
+    },
+    "session.resetByType.group.idleMinutes": {
+      label: "Group Chat Idle Reset (min)",
+      help: "Idle reset window in minutes for group chats.",
+      tags: ["storage"],
+    },
+    "session.resetByType.thread.mode": {
+      label: "Thread Chat Reset Mode",
+      help: 'Reset mode for thread chats: "daily" or "idle".',
+      tags: ["storage"],
+    },
+    "session.resetByType.thread.atHour": {
+      label: "Thread Chat Reset Hour",
+      help: "Daily reset hour (0-23) for thread chats.",
+      tags: ["storage"],
+    },
+    "session.resetByType.thread.idleMinutes": {
+      label: "Thread Chat Idle Reset (min)",
+      help: "Idle reset window in minutes for thread chats.",
+      tags: ["storage"],
+    },
+    "tools.web.search.apiKey": {
+      label: "Web Search API Key",
+      help: "API key for the web search provider. Prefer env/secret substitution.",
+      tags: ["security", "auth", "tools"],
+      sensitive: true,
+    },
+    "tools.web.x_search.enabled": {
+      label: "X Search Enabled",
+      help: "Enable X (Twitter) search tool using xAI Grok (default: true when xAI auth available).",
+      tags: ["tools"],
+    },
+    "tools.web.x_search.model": {
+      label: "X Search Model",
+      help: "Model id for X search.",
+      tags: ["models", "tools"],
+    },
+    "tools.web.x_search.inlineCitations": {
+      label: "X Search Inline Citations",
+      help: "Keep inline citations in xAI response payload (default: true).",
+      tags: ["tools"],
+    },
+    "tools.web.x_search.maxTurns": {
+      label: "X Search Max Turns",
+      help: "Max search/tool turns for xAI internally.",
+      tags: ["performance", "tools"],
+    },
+    "tools.web.x_search.timeoutSeconds": {
+      label: "X Search Timeout (s)",
+      help: "Timeout for X search requests in seconds.",
+      tags: ["performance", "tools"],
+    },
+    "tools.web.x_search.cacheTtlMinutes": {
+      label: "X Search Cache TTL (min)",
+      help: "Cache TTL for X search results in minutes.",
+      tags: ["performance", "storage", "tools"],
+    },
+    "tools.sandbox.tools.allow": {
+      label: "Sandbox Tool Allow List",
+      help: "Tool allowlist for sandboxed agent executions.",
+      tags: ["access", "storage", "tools"],
+    },
+    "tools.sandbox.tools.alsoAllow": {
+      label: "Sandbox Tool Also Allow",
+      help: "Additional tools allowed in sandbox beyond defaults.",
+      tags: ["access", "storage", "tools"],
+    },
+    "tools.sandbox.tools.deny": {
+      label: "Sandbox Tool Deny List",
+      help: "Tools denied in sandboxed executions.",
+      tags: ["access", "storage", "tools"],
+    },
+    "tools.subagents.tools.allow": {
+      label: "Sub-Agent Tool Allow List",
+      help: "Tool allowlist for spawned sub-agents.",
+      tags: ["access", "tools"],
+    },
+    "tools.subagents.tools.alsoAllow": {
+      label: "Sub-Agent Tool Also Allow",
+      help: "Additional tools allowed for sub-agents beyond defaults.",
+      tags: ["access", "tools"],
+    },
+    "tools.subagents.tools.deny": {
+      label: "Sub-Agent Tool Deny List",
+      help: "Tools denied for sub-agents.",
+      tags: ["access", "tools"],
+    },
+    "tools.sessions_spawn.attachments.enabled": {
+      label: "Spawn Attachments Enabled",
+      help: "Enable file attachments in sub-agent spawn requests.",
+      tags: ["storage", "tools"],
+    },
+    "tools.sessions_spawn.attachments.maxFileBytes": {
+      label: "Spawn Max File Bytes",
+      help: "Maximum file size in bytes for spawn attachments.",
+      tags: ["performance", "storage", "tools"],
+    },
+    "tools.sessions_spawn.attachments.maxFiles": {
+      label: "Spawn Max Files",
+      help: "Maximum number of files per spawn request.",
+      tags: ["performance", "storage", "tools"],
+    },
+    "cron.failureAlert.enabled": {
+      label: "Cron Failure Alert Enabled",
+      help: "Enable failure alert notifications for cron jobs.",
+      tags: ["automation"],
+    },
+    "cron.failureAlert.mode": {
+      label: "Cron Failure Alert Mode",
+      help: "Alert delivery mode: 'session' or 'targets'.",
+      tags: ["automation"],
+    },
+    "cron.failureAlert.after": {
+      label: "Cron Failure Alert After",
+      help: "Number of failed attempts before alerting.",
+      tags: ["automation"],
+    },
+    "cron.failureAlert.cooldownMs": {
+      label: "Cron Failure Alert Cooldown (ms)",
+      help: "Cooldown in ms between repeated failure alerts.",
+      tags: ["automation"],
+    },
+    "cron.failureAlert.accountId": {
+      label: "Cron Failure Alert Account ID",
+      help: "Account id for multi-account alert delivery.",
+      tags: ["automation"],
+    },
+    "cron.failureDestination.channel": {
+      label: "Cron Failure Channel",
+      help: "Channel id for cron failure notifications.",
+      tags: ["automation"],
+    },
+    "cron.failureDestination.to": {
+      label: "Cron Failure Destination",
+      help: "Destination identifier for failure notifications.",
+      tags: ["automation"],
+    },
+    "cron.failureDestination.mode": {
+      label: "Cron Failure Delivery Mode",
+      help: "Delivery mode for failure notifications.",
+      tags: ["automation"],
+    },
+    "cron.failureDestination.accountId": {
+      label: "Cron Failure Destination Account ID",
+      help: "Account id for failure notification delivery.",
+      tags: ["automation"],
+    },
+    "tools.media.image.baseUrl": {
+      label: "Image Understanding Base URL",
+      help: "Base URL override for image understanding provider requests. See docs/nodes/media-understanding.md for details.",
+      tags: ["media", "tools", "url-secret"],
+    },
+    "tools.media.image.echoFormat": {
+      label: "Image Echo Format",
+      help: "Format string for echoed audio transcripts. Use {transcript} as placeholder.",
+      tags: ["media", "tools"],
+    },
+    "tools.media.image.echoTranscript": {
+      label: "Image Echo Transcript",
+      help: "Echo the transcript back to chat before agent processing so users can verify what was heard.",
+      tags: ["media", "tools"],
+    },
+    "tools.media.video.baseUrl": {
+      label: "Video Understanding Base URL",
+      help: "Base URL override for video understanding provider requests.",
+      tags: ["media", "tools", "url-secret"],
+    },
+    "tools.media.audio.baseUrl": {
+      label: "Audio Understanding Base URL",
+      help: "Base URL override for audio understanding provider requests.",
+      tags: ["media", "tools", "url-secret"],
+    },
+    "agents.defaults.memorySearch.store.fts.tokenizer": {
+      label: "FTS Tokenizer",
+      help: "FTS5 tokenizer: 'porter' (default), 'unicode61', or 'trigram'.",
+      tags: ["security", "auth", "storage"],
+    },
     "agents.defaults.sandbox.docker.dangerouslyAllowReservedContainerTargets": {
       tags: ["security", "access", "storage", "advanced", "dangerous"],
     },
@@ -27653,10 +28481,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "agents.list[].sandbox.ssh.knownHostsData": {
       sensitive: true,
       tags: ["security", "storage"],
-    },
-    "tools.web.search.apiKey": {
-      sensitive: true,
-      tags: ["security", "auth", "tools"],
     },
     "tools.web.fetch.firecrawl.apiKey": {
       sensitive: true,
@@ -27985,9 +28809,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "tools.media.models[].request.proxy.url": {
       tags: ["media", "tools", "url-secret"],
     },
-    "tools.media.image.baseUrl": {
-      tags: ["media", "tools", "url-secret"],
-    },
     "tools.media.image.request.proxy.url": {
       tags: ["media", "tools", "url-secret"],
     },
@@ -27997,16 +28818,10 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "tools.media.image.models[].request.proxy.url": {
       tags: ["media", "tools", "url-secret"],
     },
-    "tools.media.audio.baseUrl": {
-      tags: ["media", "tools", "url-secret"],
-    },
     "tools.media.audio.models[].baseUrl": {
       tags: ["media", "tools", "url-secret"],
     },
     "tools.media.audio.models[].request.proxy.url": {
-      tags: ["media", "tools", "url-secret"],
-    },
-    "tools.media.video.baseUrl": {
       tags: ["media", "tools", "url-secret"],
     },
     "tools.media.video.request.proxy.url": {

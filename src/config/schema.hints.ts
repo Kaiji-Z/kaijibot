@@ -158,6 +158,29 @@ const DANGEROUS_FIELDS: ReadonlySet<string> = new Set([
   "browser.noSandbox",
 ]);
 
+const FIELD_DEPENDENCIES: Record<string, string> = {
+  "session.dmScope":
+    " Automatically promotes to \"per-peer\" when any channel has credentials configured.",
+  "cognitive.proactive.enabled":
+    " Only effective when cognitive.enabled is true.",
+  "cognitive.proactive.minIntervalHours":
+    " Only effective when cognitive.proactive.enabled is true.",
+  "cognitive.evolution.enabled":
+    " Only effective when cognitive.enabled is true.",
+  "cognitive.persona.autoExtract":
+    " Only effective when cognitive.enabled is true.",
+  "cognitive.insight.inferenceModel":
+    " Only effective when cognitive.enabled is true.",
+  "agents.defaults.compaction.mode":
+    " Defaults to \"safeguard\" when unset (applied during config materialization).",
+  "logging.redactSensitive":
+    " Defaults to \"tools\" when unset (applied during config materialization).",
+  "agents.defaults.maxConcurrent":
+    " Defaults to a system constant when unset (applied during config materialization).",
+  "agents.defaults.sandbox.mode":
+    " Effective sandbox backend depends on agents.defaults.sandbox.backend and runtime detection.",
+};
+
 function isWhitelistedSensitivePath(path: string): boolean {
   const lowerPath = normalizeLowercaseStringOrEmpty(path);
   return NORMALIZED_SENSITIVE_KEY_WHITELIST_SUFFIXES.some((suffix) => lowerPath.endsWith(suffix));
@@ -211,6 +234,17 @@ export function buildBaseHints(): ConfigUiHints {
       hints[path] = current
         ? { ...current, tags: [...existingTags, "dangerous"] }
         : { tags: ["dangerous"] };
+    }
+  }
+  for (const [path, note] of Object.entries(FIELD_DEPENDENCIES)) {
+    if (isPluginOwnedChannelHintPath(path)) {
+      continue;
+    }
+    const current = hints[path];
+    if (current?.help && !current.help.includes(note.trim())) {
+      hints[path] = { ...current, help: current.help + note };
+    } else if (!current?.help) {
+      hints[path] = { ...current, help: note.trim() };
     }
   }
   return applyDerivedTags(hints);
