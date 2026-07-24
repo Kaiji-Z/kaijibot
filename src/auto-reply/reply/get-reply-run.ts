@@ -307,8 +307,6 @@ export async function runPreparedReply(
       const { readConfigFileSnapshot } = await import("../../config/config.js");
       const snapshot = await readConfigFileSnapshot();
       const hasSoulPreset = Boolean(
-        snapshot.resolved?.soul?.preset ||
-        snapshot.resolved?.agents?.defaults?.soul?.preset ||
         snapshot.resolved?.agents?.list?.some((a) => a.soul?.preset),
       );
       if (!hasSoulPreset) {

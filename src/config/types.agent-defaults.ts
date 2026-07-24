@@ -6,7 +6,8 @@ import type {
   HumanDelayConfig,
   TypingMode,
 } from "./types.base.js";
-import type { SoulConfig } from "./types.soul.js";
+
+;
 import type { MemorySearchConfig } from "./types.tools.js";
 
 export type AgentContextInjection = "always" | "continuation-skip";
@@ -337,7 +338,6 @@ export type AgentDefaultsConfig = {
   };
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: AgentSandboxConfig;
-  soul?: SoulConfig;
   /**
    * Opt-in: route background LLM pipelines (memory consolidation, correction
    * extraction, session summary) through the provider's Batch API for a ~50%

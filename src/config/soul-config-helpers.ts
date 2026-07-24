@@ -2,10 +2,8 @@ import type { SoulPreset } from "./types.soul.js";
 
 type MutableConfig = Record<string, unknown> & {
   agents?: {
-    defaults?: { soul?: { preset?: SoulPreset } };
     list?: Array<{ id: string; soul?: { preset?: SoulPreset } }>;
   };
-  soul?: { preset?: SoulPreset };
 };
 
 export function setSoulInConfig(

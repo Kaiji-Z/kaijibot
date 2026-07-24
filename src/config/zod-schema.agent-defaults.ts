@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { isValidNonNegativeByteSizeString } from "./byte-size.js";
-import { SOUL_PRESETS } from "./types.soul.js";
 import {
   HeartbeatSchema,
   AgentSandboxSchema,
@@ -220,12 +219,6 @@ export const AgentDefaultsSchema = z
       .strict()
       .optional(),
     sandbox: AgentSandboxSchema,
-    soul: z
-      .object({
-        preset: z.enum(SOUL_PRESETS).optional(),
-      })
-      .strict()
-      .optional(),
     backgroundBatch: z.boolean().optional(),
   })
   .strict()

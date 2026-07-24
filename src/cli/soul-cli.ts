@@ -22,10 +22,8 @@ function soulPresetName(preset: SoulPreset): string {
 
 type MutableConfig = Record<string, unknown> & {
   agents?: {
-    defaults?: { soul?: { preset?: SoulPreset } };
     list?: Array<{ id: string; soul?: { preset?: SoulPreset } }>;
   };
-  soul?: { preset?: SoulPreset };
 };
 
 function resolvePresetKey(input: string): SoulPreset | null {
@@ -43,13 +41,7 @@ function loadPresetContent(preset: SoulPreset): string {
 
 function resolveCurrentPreset(config: MutableConfig, agentId: string): SoulPreset | undefined {
   const entry = config.agents?.list?.find((e) => e.id.toLowerCase() === agentId.toLowerCase());
-  if (entry?.soul?.preset) {
-    return entry.soul.preset;
-  }
-  if (config.agents?.defaults?.soul?.preset) {
-    return config.agents.defaults.soul.preset;
-  }
-  return config.soul?.preset;
+  return entry?.soul?.preset;
 }
 
 async function resolveEffectiveAgentId(
