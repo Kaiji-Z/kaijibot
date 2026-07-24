@@ -41,6 +41,10 @@ docs/.local/
 docs/internal/
 docs/.generated/plugin-sdk-api-baseline.json
 docs/.generated/plugin-sdk-api-baseline.jsonl
+docs/.generated/config-baseline.json
+docs/.generated/config-baseline.core.json
+docs/.generated/config-baseline.channel.json
+docs/.generated/config-baseline.plugin.json
 tmp/
 /IDENTITY.md
 /USER.md

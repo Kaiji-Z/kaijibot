@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { buildBaseHints } from "./schema.hints.js";
 import { buildSecretInputSchema } from "../plugin-sdk/secret-input-schema.js";
 import { isSensitiveUrlConfigPath } from "../shared/net/redact-sensitive-url.js";
 import { FIELD_HELP } from "./schema.help.js";
@@ -197,5 +198,31 @@ describe("collectMatchingSchemaPaths", () => {
     expect(paths.has("models.providers.*.baseUrl")).toBe(true);
     expect(paths.has("models.providers.*.request.proxy.url")).toBe(true);
     expect(paths.has("tools.media.audio.request.proxy.url")).toBe(true);
+  });
+});
+
+describe("dangerous field tags", () => {
+  it("marks dangerous fields with the 'dangerous' tag", () => {
+    const hints = buildBaseHints();
+    const dangerousPaths = [
+      "gateway.controlUi.dangerouslyDisableDeviceAuth",
+      "gateway.controlUi.allowInsecureAuth",
+      "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback",
+      "tools.elevated.enabled",
+      "tools.exec.applyPatch.workspaceOnly",
+      "agents.defaults.sandbox.docker.dangerouslyAllowReservedContainerTargets",
+      "agents.defaults.sandbox.docker.dangerouslyAllowExternalBindSources",
+      "agents.defaults.sandbox.docker.dangerouslyAllowContainerNamespaceJoin",
+      "browser.ssrfPolicy.dangerouslyAllowPrivateNetwork",
+      "hooks.gmail.allowUnsafeExternalContent",
+      "hooks.mappings[].allowUnsafeExternalContent",
+      "tools.exec.security",
+      "browser.noSandbox",
+    ];
+    for (const path of dangerousPaths) {
+      const hint = hints[path];
+      expect(hint, `hint for ${path} should exist`).toBeDefined();
+      expect(hint?.tags, `tags for ${path} should include 'dangerous'`).toContain("dangerous");
+    }
   });
 });

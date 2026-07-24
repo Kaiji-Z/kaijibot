@@ -142,6 +142,22 @@ const SENSITIVE_PATTERNS = [
   /serviceaccount(?:ref)?$/i,
 ];
 
+const DANGEROUS_FIELDS: ReadonlySet<string> = new Set([
+  "gateway.controlUi.dangerouslyDisableDeviceAuth",
+  "gateway.controlUi.allowInsecureAuth",
+  "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback",
+  "tools.elevated.enabled",
+  "tools.exec.applyPatch.workspaceOnly",
+  "agents.defaults.sandbox.docker.dangerouslyAllowReservedContainerTargets",
+  "agents.defaults.sandbox.docker.dangerouslyAllowExternalBindSources",
+  "agents.defaults.sandbox.docker.dangerouslyAllowContainerNamespaceJoin",
+  "browser.ssrfPolicy.dangerouslyAllowPrivateNetwork",
+  "hooks.gmail.allowUnsafeExternalContent",
+  "hooks.mappings[].allowUnsafeExternalContent",
+  "tools.exec.security",
+  "browser.noSandbox",
+]);
+
 function isWhitelistedSensitivePath(path: string): boolean {
   const lowerPath = normalizeLowercaseStringOrEmpty(path);
   return NORMALIZED_SENSITIVE_KEY_WHITELIST_SUFFIXES.some((suffix) => lowerPath.endsWith(suffix));
@@ -184,6 +200,18 @@ export function buildBaseHints(): ConfigUiHints {
     }
     const current = hints[path];
     hints[path] = current ? { ...current, placeholder } : { placeholder };
+  }
+  for (const path of DANGEROUS_FIELDS) {
+    if (isPluginOwnedChannelHintPath(path)) {
+      continue;
+    }
+    const current = hints[path];
+    const existingTags = Array.isArray(current?.tags) ? current.tags : [];
+    if (!existingTags.includes("dangerous")) {
+      hints[path] = current
+        ? { ...current, tags: [...existingTags, "dangerous"] }
+        : { tags: ["dangerous"] };
+    }
   }
   return applyDerivedTags(hints);
 }

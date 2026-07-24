@@ -1523,4 +1523,221 @@ export const FIELD_HELP: Record<string, string> = {
     "Override default timing. Keys: debounceMs (700), stallSoftMs (25000), stallHardMs (60000), doneHoldMs (1500), errorHoldMs (2500).",
   "messages.inbound.debounceMs":
     "Debounce window (ms) for batching rapid inbound messages from the same sender (0 to disable).",
+  cognitive:
+    "Cognitive layer controls for KaijiBot's proactive AI system: persona modeling, proactive insight delivery, skill self-evolution, and correction memory. Disable this section to revert to a purely reactive assistant.",
+  "cognitive.enabled":
+    "Master switch for the entire cognitive layer (default: true). When false, all subsystems are disabled: no proactive insights, no persona extraction, no skill evolution, no correction memory.",
+  "cognitive.proactive":
+    "Proactive insight delivery settings controlling when and how KaijiBot initiates outbound messages to the user based on learned patterns and cross-domain connections.",
+  "cognitive.proactive.enabled":
+    "Allow proactive insight pushes to the user (default: true). When false, KaijiBot only responds to direct messages and never initiates conversations.",
+  "cognitive.proactive.minIntervalHours":
+    "Minimum hours between proactive pushes per user (default: 0.5). Lower values increase push frequency but risk annoying the user; higher values reduce noise but slow down insight delivery.",
+  "cognitive.proactive.activeHours":
+    "Time window during which proactive pushes are allowed. Insights are suppressed outside this window to respect the user's schedule.",
+  "cognitive.proactive.activeHours.start":
+    'Start time of the active window in 24h HH:MM format (e.g. "09:00"). Proactive pushes are suppressed before this time.',
+  "cognitive.proactive.activeHours.end":
+    'End time of the active window in 24h HH:MM format (e.g. "22:00"). Proactive pushes are suppressed after this time.',
+  "cognitive.proactive.activeHours.timezone":
+    'Timezone for the active hours window. Accepts "user" (persona-inferred), "local" (host), or an IANA timezone string (e.g. "Asia/Shanghai"). Default: "user".',
+  "cognitive.proactive.digestMode":
+    'Reserved for future use. Controls batching of proactive insights: "realtime" (default, send immediately), "daily", or "weekly". Only realtime is currently implemented.',
+  "cognitive.proactive.costFalseAlarm":
+    "Cost penalty for sending an insight the user does not value, used by the PRISM gate to balance push frequency against relevance. Higher values make the system more conservative.",
+  "cognitive.proactive.costFalseNegative":
+    "Cost penalty for NOT sending an insight the user would have valued, used by the PRISM gate. Higher values make the system more aggressive in pushing insights.",
+  "cognitive.persona":
+    "User cognitive model settings controlling how KaijiBot builds and maintains a per-user persona from conversations.",
+  "cognitive.persona.autoExtract":
+    "Automatically extract and update user persona from conversations using LLM-driven analysis (default: true). When false, the persona model is frozen and never updates.",
+  "cognitive.persona.extractionModel":
+    'Lightweight model used for persona extraction (format: "provider/model"). When unset, the main agent model is used. Setting a faster/cheaper model here reduces extraction cost.',
+  "cognitive.persona.identityRefreshHours":
+    "Interval in hours between L1 identity memory refresh cycles (default: 24). Lower values refresh more frequently but consume more tokens.",
+  "cognitive.insight":
+    "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",
+  "cognitive.insight.inferenceModel":
+    'Model used for interest inference and insight generation (format: "provider/model"). When unset, the main agent model is used.',
+  "cognitive.insight.outputLanguage":
+    'Language for generated insight messages (e.g. "zh", "en", "ja"). When unset, KaijiBot auto-detects from the user persona.',
+  "cognitive.insight.verificationLevel":
+    'Fact verification strictness for insights: "basic" (default), "strict", or "paranoid". Higher levels consume more tokens but reduce hallucination risk.',
+  "cognitive.insight.sources":
+    "Information source settings for insight generation, including web search integration and scan cadence.",
+  "cognitive.insight.sources.webSearchProvider":
+    'Web search provider id for real-time evidence in insights (e.g. "exa", "tavily"). When unset, no web search is performed and insights rely on persona + LLM knowledge only.',
+  "cognitive.insight.sources.scanIntervalHours":
+    "Interval in hours between information source scans for new insight opportunities (default: 6).",
+  "cognitive.insight.sources.explicitTopics":
+    "Explicit list of topics to track for insight generation, in addition to auto-inferred topics from the persona.",
+  "cognitive.evolution":
+    "Skill self-evolution settings controlling how KaijiBot detects complex repeated tasks and autonomously creates reusable skills.",
+  "cognitive.evolution.enabled":
+    "Enable skill self-evolution (default: true). When true, complex tasks (3+ tool calls) trigger an evolution signal that the Agent evaluates to decide whether a reusable skill should be created.",
+  "cognitive.evolution.cooldownHours":
+    "Minimum hours between evolution suggestions for the same domain (default: unset). Prevents skill-creation spam when the same complex task repeats rapidly.",
+  "cognitive.evolution.maxSuggestionsPerDay":
+    "Maximum number of skill evolution suggestions per day (default: unset). Caps the total number of skills that can be auto-created daily.",
+  "cognitive.feedback":
+    "Feedback collection settings (reserved — feedback is currently collected implicitly via reply engagement metrics).",
+  "cognitive.feedback.mechanism":
+    'Reserved for future use. Intended feedback mechanism: "emoji", "buttons", or "text". Currently unused — feedback is always implicit.',
+  "cognitive.feedback.implicitFeedback":
+    "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and engagement signals (default: true). Currently always true in practice.",
+  secrets:
+    "Secrets management system for resolving credentials from external sources (environment variables, files, or command execution) instead of storing plaintext in config. See docs/gateway/secrets.md for the full SecretRef contract.",
+  "secrets.providers":
+    "Named secret provider definitions keyed by provider alias. Each provider resolves secrets from a specific source (env, file, or exec).",
+  "secrets.providers.*.source":
+    'Secret provider source type: "env" (read from environment variables), "file" (read from a JSON or single-value file), or "exec" (run a command that outputs the secret).',
+  "secrets.providers.*.allowlist":
+    'For env-source providers: explicit list of allowed environment variable names. When set, only these variables can be resolved through this provider.',
+  "secrets.providers.*.path":
+    "For file-source providers: filesystem path to the secret file. In singleValue mode, the entire file content is the secret. In json mode, the file is parsed as JSON and individual keys are resolved.",
+  "secrets.providers.*.mode":
+    'For file-source providers: "singleValue" (entire file is the secret) or "json" (file is a JSON object, resolve individual keys).',
+  "secrets.providers.*.maxBytes":
+    "For file-source providers: maximum file size in bytes before the read is rejected (default: implementation-defined).",
+  "secrets.providers.*.command":
+    "For exec-source providers: command to execute that outputs the secret to stdout. The command output is captured and used as the secret value.",
+  "secrets.providers.*.args":
+    "For exec-source providers: arguments passed to the command.",
+  "secrets.providers.*.env":
+    "For exec-source providers: additional environment variables injected into the command's execution environment.",
+  "secrets.providers.*.passEnv":
+    "For exec-source providers: list of environment variable names from the parent process to pass through to the command.",
+  "secrets.providers.*.timeoutMs":
+    "For exec/file-source providers: timeout in milliseconds before the resolution attempt is aborted.",
+  "secrets.providers.*.noOutputTimeoutMs":
+    "For exec-source providers: watchdog timeout — if no stdout is received within this window, the command is killed.",
+  "secrets.providers.*.maxOutputBytes":
+    "For exec-source providers: maximum output bytes captured from stdout before truncation.",
+  "secrets.providers.*.jsonOnly":
+    "For exec-source providers: when true, the command output must be valid JSON and individual keys are resolved from it.",
+  "secrets.providers.*.trustedDirs":
+    "For exec-source providers: explicit list of directories trusted for command path resolution (PATH entries are never auto-trusted).",
+  "secrets.providers.*.allowInsecurePath":
+    "For exec-source providers: when true, allows command paths outside trusted directories (security-sensitive — only enable for trusted workflows).",
+  "secrets.providers.*.allowSymlinkCommand":
+    "For exec-source providers: when true, allows the command to be a symlink (security-sensitive — symlink targets are not verified).",
+  "secrets.defaults":
+    "Default provider aliases used when a SecretRef does not specify an explicit provider. Maps source types to default provider names.",
+  "secrets.defaults.env":
+    'Default provider alias for env-source SecretRefs (default: "default"). When a SecretRef has source=env without a provider, this alias is used.',
+  "secrets.defaults.file":
+    "Default provider alias for file-source SecretRefs. When a SecretRef has source=file without a provider, this alias is used.",
+  "secrets.defaults.exec":
+    "Default provider alias for exec-source SecretRefs. When a SecretRef has source=exec without a provider, this alias is used.",
+  "secrets.resolution":
+    "Batch resolution controls for how multiple SecretRefs are resolved concurrently during config activation.",
+  "secrets.resolution.maxProviderConcurrency":
+    "Maximum concurrent resolution calls per provider during batch secret resolution (default: implementation-defined). Prevents overwhelming a single secret backend.",
+  "secrets.resolution.maxRefsPerProvider":
+    "Maximum number of SecretRefs resolved in a single batch per provider (default: implementation-defined). Limits batch size to avoid timeout cascades.",
+  "secrets.resolution.maxBatchBytes":
+    "Maximum total bytes resolved across all secrets in a single batch (default: implementation-defined). Caps memory usage during resolution.",
+  "agents.defaults.thinkingDefault":
+    'Default thinking level when no /think directive is present: "off", "minimal", "low", "medium", "high", "xhigh", or "adaptive". Higher levels produce more thorough reasoning at the cost of latency and tokens.',
+  "agents.defaults.verboseDefault":
+    'Default verbosity level when no /verbose directive is present: "off", "on", or "full". Controls how much detail the assistant includes in responses.',
+  "agents.defaults.elevatedDefault":
+    'Default elevated exec level when no /elevated directive is present: "off", "on", "ask", or "full". Controls whether shell commands can run without approval.',
+  "agents.defaults.blockStreamingDefault":
+    'Default block streaming mode: "off" disables chunked delivery, "on" emits block replies as they are produced. Controls real-time message delivery pacing.',
+  "agents.defaults.blockStreamingBreak":
+    'Where to split streamed block replies: "text_end" splits at the end of each text content block (before tool calls), "message_end" splits at the end of the whole message.',
+  "agents.defaults.systemPromptOverride":
+    "Optional full system prompt replacement. Primarily for prompt debugging and controlled experiments. When set, replaces the entire generated system prompt.",
+  "agents.defaults.skipBootstrap":
+    "Skip BOOTSTRAP.md creation and workspace initialization for pre-configured deployments (default: false). Useful when workspace is managed externally.",
+  "agents.defaults.userTimezone":
+    "Optional IANA timezone for the user (e.g. Asia/Shanghai). Used in system prompt for date/time context. Defaults to host timezone when unset.",
+  "agents.defaults.timeFormat":
+    'Time format in system prompt: "auto" (OS preference), "12" (12-hour), or "24" (24-hour). Default: "auto".',
+  "agents.defaults.contextTokens":
+    "Optional context window cap used for runtime estimates and status percentage display. Does not affect the actual model context window — only the budget calculations.",
+  "agents.defaults.timeoutSeconds":
+    "Maximum runtime in seconds for a single agent turn before it is aborted. Increase for long multi-tool workflows; decrease for faster failure detection.",
+  "agents.defaults.typingMode":
+    'Typing indicator start mode: "never", "instant", "thinking", or "message". Controls when typing indicators appear in supported channels.',
+  "agents.defaults.typingIntervalSeconds":
+    "Interval in seconds between repeated typing indicators while a reply is being prepared. Lower values show more active feedback but increase channel API calls.",
+  "agents.defaults.mediaMaxMb":
+    "Maximum inbound media size in megabytes for agent-visible attachments (default: implementation-defined). Larger files are rejected or truncated.",
+  "agents.defaults.maxConcurrent":
+    "Maximum concurrent agent runs across all conversations (default: 1, sequential). Increase to handle multiple users simultaneously; watch resource limits.",
+  "agents.defaults.imageModel":
+    "Optional image-capable model and fallbacks (provider/model). Used when the primary model lacks image input capability.",
+  "agents.defaults.imageGenerationModel":
+    "Optional image-generation model and fallbacks (provider/model). Used by the shared image generation capability.",
+  "agents.defaults.videoGenerationModel":
+    "Optional video-generation model and fallbacks (provider/model). Used by the shared video generation capability.",
+  "agents.defaults.musicGenerationModel":
+    "Optional music-generation model and fallbacks (provider/model). Used by the shared music generation capability.",
+  "agents.defaults.pdfModel":
+    "Optional PDF-capable model and fallbacks (provider/model). Used by the PDF analysis tool. Defaults to imageModel, then session model.",
+  "agents.defaults.llm.idleTimeoutSeconds":
+    "Idle timeout for LLM streaming responses in seconds. If no token is received within this time, the request is aborted (default: 60). Set 0 to disable.",
+  "agents.defaults.subagents.maxSpawnDepth":
+    "Maximum depth allowed for sessions_spawn chains (default: 1, no nested spawns). Increase carefully — deep spawn chains can create exponential resource usage.",
+  "agents.defaults.subagents.maxChildrenPerAgent":
+    "Maximum active children a single requester session may spawn (default: 5). Prevents runaway spawn cascades from consuming resources.",
+  "agents.defaults.subagents.archiveAfterMinutes":
+    "Auto-archive completed sub-agent sessions after N minutes (default: 60, set 0 to disable). Controls how long sub-agent transcripts are kept before cleanup.",
+  "agents.defaults.subagents.allowAgents":
+    'Default allowlist of target agent ids for sessions_spawn. Use "*" to allow any agent. When unset, only same-as-caller is allowed.',
+  "agents.defaults.subagents.requireAgentId":
+    "Require explicit agentId in sessions_spawn calls (default: false). When true, sub-agents cannot default to the caller's agent id.",
+  "agents.defaults.subagents.thinking":
+    'Default thinking level for spawned sub-agents: "off", "low", "medium", "high". Overrides agents.defaults.thinkingDefault for sub-agent runs.',
+  "agents.defaults.subagents.runTimeoutSeconds":
+    "Default run timeout in seconds for spawned sub-agents (0 = no timeout). Caps how long a sub-agent can run before being forcibly terminated.",
+  "agents.defaults.subagents.announceTimeoutMs":
+    "Gateway timeout in milliseconds for sub-agent announce delivery calls (default: 90000). Increase for slow networks; decrease to fail faster.",
+  "tools.exec.backgroundMs":
+    "Default time in milliseconds before an exec command auto-backgrounds (default: implementation-defined). Commands that exceed this duration are moved to background processing.",
+  "tools.exec.timeoutSec":
+    "Default timeout in seconds before auto-killing exec commands. Commands that exceed this duration are forcibly terminated.",
+  "tools.exec.cleanupMs":
+    "How long to keep finished exec sessions in memory before cleanup (ms). Lower values reduce memory usage but may lose session state needed for follow-up commands.",
+  "browser.extraArgs":
+    'Additional Chrome launch arguments (e.g. ["--window-size=1920,1080", "--disable-infobars"]). Useful for stealth flags, window size overrides, or custom user-agent strings.',
+  "logging.maxFileBytes":
+    "Maximum size of a single log file in bytes before writes are suppressed (default: 500MB). When exceeded, a warning is emitted and further writes to that file are dropped.",
+  "skills.allowBundled":
+    "Optional allowlist of bundled skill IDs to load. When set, only listed bundled skills are available; others are filtered out. Omit to allow all bundled skills.",
+  "skills.load.extraDirs":
+    "Additional directories to scan for skill definitions beyond the default locations. Use stable, reviewed directories to avoid loading untrusted skills.",
+  "skills.limits.maxSkillsLoadedPerSource":
+    "Maximum number of skills loaded from a single source directory (default: implementation-defined). Prevents a single source from flooding the skill registry.",
+  "skills.limits.maxSkillsInPrompt":
+    "Maximum number of skill definitions injected into the system prompt simultaneously (default: implementation-defined). Controls prompt size and token usage.",
+  "skills.limits.maxSkillsPromptChars":
+    "Maximum total characters of skill content injected into the system prompt (default: implementation-defined). Caps the token budget consumed by skill definitions.",
+  "skills.limits.maxSkillFileBytes":
+    "Maximum file size in bytes for a single skill definition file (default: implementation-defined). Oversized skill files are rejected.",
+  "skills.limits.maxCandidatesPerRoot":
+    "Maximum candidate skills evaluated per root directory during skill discovery (default: implementation-defined). Prevents excessive filesystem scanning.",
+  "skills.install.nodeManager":
+    'Package manager to use for skill installation: "npm", "pnpm", or "yarn" (default: auto-detected). Pin when auto-detection picks the wrong manager.',
+  "skills.install.preferBrew":
+    "Prefer Homebrew for native dependency installation on macOS when available (default: false). Enable if your environment relies on Homebrew-managed binaries.",
+  "messages.tts.enabled":
+    "Enable text-to-speech for outbound replies on supported channels (default: false). When true, replies are also converted to audio.",
+  "messages.tts.mode":
+    'TTS delivery mode: "reply" (send audio as a separate reply) or "replace" (replace text reply with audio). Default: "reply".',
+  "messages.tts.provider":
+    "TTS provider id for voice synthesis (e.g. a plugin provider id). When unset, the first available TTS provider is used.",
+  "messages.tts.auto":
+    'Auto-detect when to apply TTS: "off" (never), "voice-note-reply" (only reply to voice notes with voice), or "always". Default: "off".',
+  "messages.tts.maxTextLength":
+    "Maximum text length in characters to send to TTS (default: implementation-defined). Longer texts are truncated before synthesis.",
+  "messages.tts.timeoutMs":
+    "Timeout in milliseconds for TTS synthesis requests. If synthesis exceeds this duration, the audio reply is skipped and text is sent instead.",
+  "messages.tts.summaryModel":
+    'Model used to generate a summary before TTS synthesis for long messages (format: "provider/model"). When unset, the full text (up to maxTextLength) is synthesized.',
+  "messages.tts.prefsPath":
+    "Filesystem path to TTS user preferences file. Stores per-user voice settings, speed preferences, and provider selections.",
+  "agents.list[].soul.preset": "Per-agent MBTI personality preset that overrides SOUL.md for this specific agent. Use distinct presets when different agents need different personas.",
 };

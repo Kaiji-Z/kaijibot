@@ -518,6 +518,11 @@ const LANGUAGE_ENTRY: QuickSettingEntry = {
   },
 };
 
+const COMPACTION_MODE_OPTIONS = [
+  { value: "default", label: "默认（标准压缩）" },
+  { value: "safeguard", label: "保守（保留更多上下文）" },
+] as const;
+
 function renderCognitiveModelSelect(props: ConfigProps): TemplateResult | typeof nothing {
   const catalog = props.fullModelCatalog ?? [];
   const whitelist = getModelsWhitelist(props.formValue);
@@ -617,6 +622,54 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     description: "启用后可在 Kindle 电子书上查看 agent 状态与配额用量",
     section: "system",
     render: (props) => renderKindleToggle(props),
+  },
+  {
+    path: ["tools", "web", "search", "enabled"],
+    label: "联网搜索",
+    description: "允许 Agent 使用网络搜索增强回答和洞察",
+    section: "system",
+    render: (props) =>
+      renderToggleAtPath(props, ["tools", "web", "search", "enabled"], "联网搜索"),
+  },
+  {
+    path: ["agents", "defaults", "compaction", "mode"],
+    label: "压缩策略",
+    description: "长对话上下文压缩方式",
+    section: "system",
+    render: (props) => {
+      const raw = props.formValue
+        ? getValueAtPath(props.formValue, ["agents", "defaults", "compaction", "mode"])
+        : undefined;
+      const current = typeof raw === "string" ? raw : "default";
+      return html`
+        <div>
+          <span style="font-size:11px;color:var(--secondary-text);">默认 Agent</span>
+          <select
+            class="config-quick-settings__select"
+            ?disabled=${props.loading}
+            @change=${(e: Event) => {
+              props.onFormPatch(
+                ["agents", "defaults", "compaction", "mode"],
+                (e.target as HTMLSelectElement).value,
+              );
+            }}
+          >
+            ${COMPACTION_MODE_OPTIONS.map(
+              (p) =>
+                html`<option value=${p.value} ?selected=${p.value === current}>${p.label}</option>`,
+            )}
+          </select>
+        </div>
+      `;
+    },
+  },
+  {
+    path: ["tools", "media", "image", "enabled"],
+    label: "图片理解",
+    description: "允许 Agent 理解和处理图片",
+    section: "system",
+    render: (props) =>
+      renderToggleAtPath(props, ["tools", "media", "image", "enabled"], "图片理解"),
   },
 ];
 

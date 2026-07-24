@@ -328,6 +328,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             type: "integer",
             exclusiveMinimum: 0,
             maximum: 9007199254740991,
+            title: "Log Max File Bytes",
+            description:
+              "Maximum size of a single log file in bytes before writes are suppressed (default: 500MB). When exceeded, a warning is emitted and further writes to that file are dropped.",
           },
           consoleLevel: {
             anyOf: [
@@ -718,6 +721,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             items: {
               type: "string",
             },
+            title: "Browser Extra Args",
+            description:
+              'Additional Chrome launch arguments (e.g. ["--window-size=1920,1080", "--disable-infobars"]). Useful for stealth flags, window size overrides, or custom user-agent strings.',
           },
         },
         additionalProperties: false,
@@ -778,6 +784,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     source: {
                       type: "string",
                       const: "env",
+                      title: "Secret Provider Source",
+                      description:
+                        'Secret provider source type: "env" (read from environment variables), "file" (read from a JSON or single-value file), or "exec" (run a command that outputs the secret).',
                     },
                     allowlist: {
                       maxItems: 256,
@@ -786,6 +795,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                         pattern: "^[A-Z][A-Z0-9_]{0,127}$",
                       },
+                      title: "Secret Provider Allowlist",
+                      description:
+                        "For env-source providers: explicit list of allowed environment variable names. When set, only these variables can be resolved through this provider.",
                     },
                   },
                   required: ["source"],
@@ -797,10 +809,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     source: {
                       type: "string",
                       const: "file",
+                      title: "Secret Provider Source",
+                      description:
+                        'Secret provider source type: "env" (read from environment variables), "file" (read from a JSON or single-value file), or "exec" (run a command that outputs the secret).',
                     },
                     path: {
                       type: "string",
                       minLength: 1,
+                      title: "Secret Provider File Path",
+                      description:
+                        "For file-source providers: filesystem path to the secret file. In singleValue mode, the entire file content is the secret. In json mode, the file is parsed as JSON and individual keys are resolved.",
                     },
                     mode: {
                       anyOf: [
@@ -813,16 +831,25 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           const: "json",
                         },
                       ],
+                      title: "Secret Provider File Mode",
+                      description:
+                        'For file-source providers: "singleValue" (entire file is the secret) or "json" (file is a JSON object, resolve individual keys).',
                     },
                     timeoutMs: {
                       type: "integer",
                       exclusiveMinimum: 0,
                       maximum: 120000,
+                      title: "Secret Provider Timeout (ms)",
+                      description:
+                        "For exec/file-source providers: timeout in milliseconds before the resolution attempt is aborted.",
                     },
                     maxBytes: {
                       type: "integer",
                       exclusiveMinimum: 0,
                       maximum: 20971520,
+                      title: "Secret Provider Max Bytes",
+                      description:
+                        "For file-source providers: maximum file size in bytes before the read is rejected (default: implementation-defined).",
                     },
                   },
                   required: ["source", "path"],
@@ -834,10 +861,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     source: {
                       type: "string",
                       const: "exec",
+                      title: "Secret Provider Source",
+                      description:
+                        'Secret provider source type: "env" (read from environment variables), "file" (read from a JSON or single-value file), or "exec" (run a command that outputs the secret).',
                     },
                     command: {
                       type: "string",
                       minLength: 1,
+                      title: "Secret Provider Exec Command",
+                      description:
+                        "For exec-source providers: command to execute that outputs the secret to stdout. The command output is captured and used as the secret value.",
                     },
                     args: {
                       maxItems: 128,
@@ -846,24 +879,38 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                         maxLength: 1024,
                       },
+                      title: "Secret Provider Exec Args",
+                      description: "For exec-source providers: arguments passed to the command.",
                     },
                     timeoutMs: {
                       type: "integer",
                       exclusiveMinimum: 0,
                       maximum: 120000,
+                      title: "Secret Provider Timeout (ms)",
+                      description:
+                        "For exec/file-source providers: timeout in milliseconds before the resolution attempt is aborted.",
                     },
                     noOutputTimeoutMs: {
                       type: "integer",
                       exclusiveMinimum: 0,
                       maximum: 120000,
+                      title: "Secret Provider No-Output Timeout (ms)",
+                      description:
+                        "For exec-source providers: watchdog timeout — if no stdout is received within this window, the command is killed.",
                     },
                     maxOutputBytes: {
                       type: "integer",
                       exclusiveMinimum: 0,
                       maximum: 20971520,
+                      title: "Secret Provider Max Output Bytes",
+                      description:
+                        "For exec-source providers: maximum output bytes captured from stdout before truncation.",
                     },
                     jsonOnly: {
                       type: "boolean",
+                      title: "Secret Provider JSON Only",
+                      description:
+                        "For exec-source providers: when true, the command output must be valid JSON and individual keys are resolved from it.",
                     },
                     env: {
                       type: "object",
@@ -873,6 +920,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       additionalProperties: {
                         type: "string",
                       },
+                      title: "Secret Provider Exec Env",
+                      description:
+                        "For exec-source providers: additional environment variables injected into the command's execution environment.",
                     },
                     passEnv: {
                       maxItems: 128,
@@ -881,6 +931,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                         pattern: "^[A-Z][A-Z0-9_]{0,127}$",
                       },
+                      title: "Secret Provider Pass-through Env",
+                      description:
+                        "For exec-source providers: list of environment variable names from the parent process to pass through to the command.",
                     },
                     trustedDirs: {
                       maxItems: 64,
@@ -889,12 +942,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                         minLength: 1,
                       },
+                      title: "Secret Provider Trusted Dirs",
+                      description:
+                        "For exec-source providers: explicit list of directories trusted for command path resolution (PATH entries are never auto-trusted).",
                     },
                     allowInsecurePath: {
                       type: "boolean",
+                      title: "Secret Provider Allow Insecure Path",
+                      description:
+                        "For exec-source providers: when true, allows command paths outside trusted directories (security-sensitive — only enable for trusted workflows).",
                     },
                     allowSymlinkCommand: {
                       type: "boolean",
+                      title: "Secret Provider Allow Symlink Command",
+                      description:
+                        "For exec-source providers: when true, allows the command to be a symlink (security-sensitive — symlink targets are not verified).",
                     },
                   },
                   required: ["source", "command"],
@@ -902,6 +964,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 },
               ],
             },
+            title: "Secret Providers",
+            description:
+              "Named secret provider definitions keyed by provider alias. Each provider resolves secrets from a specific source (env, file, or exec).",
           },
           defaults: {
             type: "object",
@@ -909,17 +974,29 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               env: {
                 type: "string",
                 pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                title: "Default Env Secret Provider",
+                description:
+                  'Default provider alias for env-source SecretRefs (default: "default"). When a SecretRef has source=env without a provider, this alias is used.',
               },
               file: {
                 type: "string",
                 pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                title: "Default File Secret Provider",
+                description:
+                  "Default provider alias for file-source SecretRefs. When a SecretRef has source=file without a provider, this alias is used.",
               },
               exec: {
                 type: "string",
                 pattern: "^[a-z][a-z0-9_-]{0,63}$",
+                title: "Default Exec Secret Provider",
+                description:
+                  "Default provider alias for exec-source SecretRefs. When a SecretRef has source=exec without a provider, this alias is used.",
               },
             },
             additionalProperties: false,
+            title: "Secret Default Providers",
+            description:
+              "Default provider aliases used when a SecretRef does not specify an explicit provider. Maps source types to default provider names.",
           },
           resolution: {
             type: "object",
@@ -928,22 +1005,37 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 16,
+                title: "Secret Resolution Max Concurrency",
+                description:
+                  "Maximum concurrent resolution calls per provider during batch secret resolution (default: implementation-defined). Prevents overwhelming a single secret backend.",
               },
               maxRefsPerProvider: {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 4096,
+                title: "Secret Resolution Max Refs/Provider",
+                description:
+                  "Maximum number of SecretRefs resolved in a single batch per provider (default: implementation-defined). Limits batch size to avoid timeout cascades.",
               },
               maxBatchBytes: {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 5242880,
+                title: "Secret Resolution Max Batch Bytes",
+                description:
+                  "Maximum total bytes resolved across all secrets in a single batch (default: implementation-defined). Caps memory usage during resolution.",
               },
             },
             additionalProperties: false,
+            title: "Secret Batch Resolution",
+            description:
+              "Batch resolution controls for how multiple SecretRefs are resolved concurrently during config activation.",
           },
         },
         additionalProperties: false,
+        title: "Secrets Management",
+        description:
+          "Secrets management system for resolving credentials from external sources (environment variables, files, or command execution) instead of storing plaintext in config. See docs/gateway/secrets.md for the full SecretRef contract.",
       },
       auth: {
         type: "object",
@@ -2728,6 +2820,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           "azure-openai-responses",
                         ],
                       },
+                      baseUrl: {
+                        type: "string",
+                      },
                       reasoning: {
                         type: "boolean",
                       },
@@ -3001,6 +3096,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                   },
                 ],
+                title: "Image Input Model",
+                description:
+                  "Optional image-capable model and fallbacks (provider/model). Used when the primary model lacks image input capability.",
               },
               imageGenerationModel: {
                 anyOf: [
@@ -3028,6 +3126,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                   },
                 ],
+                title: "Image Generation Model",
+                description:
+                  "Optional image-generation model and fallbacks (provider/model). Used by the shared image generation capability.",
               },
               videoGenerationModel: {
                 anyOf: [
@@ -3055,6 +3156,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                   },
                 ],
+                title: "Video Generation Model",
+                description:
+                  "Optional video-generation model and fallbacks (provider/model). Used by the shared video generation capability.",
               },
               musicGenerationModel: {
                 anyOf: [
@@ -3082,6 +3186,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                   },
                 ],
+                title: "Music Generation Model",
+                description:
+                  "Optional music-generation model and fallbacks (provider/model). Used by the shared music generation capability.",
               },
               mediaGenerationAutoProviderFallback: {
                 type: "boolean",
@@ -3115,6 +3222,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                   },
                 ],
+                title: "PDF Model",
+                description:
+                  "Optional PDF-capable model and fallbacks (provider/model). Used by the PDF analysis tool. Defaults to imageModel, then session model.",
               },
               pdfMaxBytesMb: {
                 type: "number",
@@ -3180,9 +3290,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               },
               systemPromptOverride: {
                 type: "string",
+                title: "System Prompt Override",
+                description:
+                  "Optional full system prompt replacement. Primarily for prompt debugging and controlled experiments. When set, replaces the entire generated system prompt.",
               },
               skipBootstrap: {
                 type: "boolean",
+                title: "Skip Bootstrap",
+                description:
+                  "Skip BOOTSTRAP.md creation and workspace initialization for pre-configured deployments (default: false). Useful when workspace is managed externally.",
               },
               contextInjection: {
                 anyOf: [
@@ -3236,6 +3352,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               },
               userTimezone: {
                 type: "string",
+                title: "User Timezone",
+                description:
+                  "Optional IANA timezone for the user (e.g. Asia/Shanghai). Used in system prompt for date/time context. Defaults to host timezone when unset.",
               },
               timeFormat: {
                 anyOf: [
@@ -3252,6 +3371,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "24",
                   },
                 ],
+                title: "Time Format",
+                description:
+                  'Time format in system prompt: "auto" (OS preference), "12" (12-hour), or "24" (24-hour). Default: "auto".',
               },
               envelopeTimezone: {
                 type: "string",
@@ -3291,6 +3413,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Context Tokens Cap",
+                description:
+                  "Optional context window cap used for runtime estimates and status percentage display. Does not affect the actual model context window — only the budget calculations.",
               },
               cliBackends: {
                 type: "object",
@@ -4224,6 +4349,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "LLM Idle Timeout (sec)",
                   },
                 },
                 additionalProperties: false,
@@ -4494,6 +4620,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "adaptive",
                   },
                 ],
+                title: "Default Thinking Level",
+                description:
+                  'Default thinking level when no /think directive is present: "off", "minimal", "low", "medium", "high", "xhigh", or "adaptive". Higher levels produce more thorough reasoning at the cost of latency and tokens.',
               },
               verboseDefault: {
                 anyOf: [
@@ -4510,6 +4639,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "full",
                   },
                 ],
+                title: "Default Verbosity",
+                description:
+                  'Default verbosity level when no /verbose directive is present: "off", "on", or "full". Controls how much detail the assistant includes in responses.',
               },
               elevatedDefault: {
                 anyOf: [
@@ -4530,6 +4662,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "full",
                   },
                 ],
+                title: "Default Elevated Level",
+                description:
+                  'Default elevated exec level when no /elevated directive is present: "off", "on", "ask", or "full". Controls whether shell commands can run without approval.',
               },
               blockStreamingDefault: {
                 anyOf: [
@@ -4542,6 +4677,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "on",
                   },
                 ],
+                title: "Default Block Streaming",
+                description:
+                  'Default block streaming mode: "off" disables chunked delivery, "on" emits block replies as they are produced. Controls real-time message delivery pacing.',
               },
               blockStreamingBreak: {
                 anyOf: [
@@ -4554,6 +4692,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "message_end",
                   },
                 ],
+                title: "Block Streaming Break Point",
+                description:
+                  'Where to split streamed block replies: "text_end" splits at the end of each text content block (before tool calls), "message_end" splits at the end of the whole message.',
               },
               blockStreamingChunk: {
                 type: "object",
@@ -4650,10 +4791,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Agent Timeout (sec)",
+                description:
+                  "Maximum runtime in seconds for a single agent turn before it is aborted. Increase for long multi-tool workflows; decrease for faster failure detection.",
               },
               mediaMaxMb: {
                 type: "number",
                 exclusiveMinimum: 0,
+                title: "Max Media Size (MB)",
+                description:
+                  "Maximum inbound media size in megabytes for agent-visible attachments (default: implementation-defined). Larger files are rejected or truncated.",
               },
               imageMaxDimensionPx: {
                 type: "integer",
@@ -4667,6 +4814,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Typing Interval (sec)",
+                description:
+                  "Interval in seconds between repeated typing indicators while a reply is being prepared. Lower values show more active feedback but increase channel API calls.",
               },
               typingMode: {
                 anyOf: [
@@ -4687,6 +4837,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "message",
                   },
                 ],
+                title: "Typing Mode",
+                description:
+                  'Typing indicator start mode: "never", "instant", "thinking", or "message". Controls when typing indicators appear in supported channels.',
               },
               heartbeat: {
                 type: "object",
@@ -4774,6 +4927,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Max Concurrent Runs",
+                description:
+                  "Maximum concurrent agent runs across all conversations (default: 1, sequential). Increase to handle multiple users simultaneously; watch resource limits.",
               },
               subagents: {
                 type: "object",
@@ -4783,6 +4939,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     items: {
                       type: "string",
                     },
+                    title: "Subagent Allowed Agents",
+                    description:
+                      'Default allowlist of target agent ids for sessions_spawn. Use "*" to allow any agent. When unset, only same-as-caller is allowed.',
                   },
                   maxConcurrent: {
                     type: "integer",
@@ -4795,6 +4954,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     minimum: 1,
                     maximum: 5,
+                    title: "Subagent Max Spawn Depth",
                   },
                   maxChildrenPerAgent: {
                     description:
@@ -4802,11 +4962,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "integer",
                     minimum: 1,
                     maximum: 20,
+                    title: "Subagent Max Children/Agent",
                   },
                   archiveAfterMinutes: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Subagent Archive After (min)",
+                    description:
+                      "Auto-archive completed sub-agent sessions after N minutes (default: 60, set 0 to disable). Controls how long sub-agent transcripts are kept before cleanup.",
                   },
                   model: {
                     anyOf: [
@@ -4832,19 +4996,31 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   thinking: {
                     type: "string",
+                    title: "Subagent Thinking Level",
+                    description:
+                      'Default thinking level for spawned sub-agents: "off", "low", "medium", "high". Overrides agents.defaults.thinkingDefault for sub-agent runs.',
                   },
                   runTimeoutSeconds: {
                     type: "integer",
                     minimum: 0,
                     maximum: 9007199254740991,
+                    title: "Subagent Run Timeout (sec)",
+                    description:
+                      "Default run timeout in seconds for spawned sub-agents (0 = no timeout). Caps how long a sub-agent can run before being forcibly terminated.",
                   },
                   announceTimeoutMs: {
                     type: "integer",
                     exclusiveMinimum: 0,
                     maximum: 9007199254740991,
+                    title: "Subagent Announce Timeout (ms)",
+                    description:
+                      "Gateway timeout in milliseconds for sub-agent announce delivery calls (default: 90000). Increase for slow networks; decrease to fail faster.",
                   },
                   requireAgentId: {
                     type: "boolean",
+                    title: "Subagent Require Agent ID",
+                    description:
+                      "Require explicit agentId in sessions_spawn calls (default: false). When true, sub-agents cannot default to the caller's agent id.",
                   },
                 },
                 additionalProperties: false,
@@ -5379,6 +5555,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                 },
                 additionalProperties: false,
+              },
+              backgroundBatch: {
+                type: "boolean",
               },
             },
             additionalProperties: false,
@@ -7009,6 +7188,36 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   title: "Agent Runtime",
                   description:
                     "Optional runtime descriptor for this agent. Use embedded for default KaijiBot execution or acp for external ACP harness defaults.",
+                },
+                soul: {
+                  type: "object",
+                  properties: {
+                    preset: {
+                      type: "string",
+                      enum: [
+                        "intj",
+                        "intp",
+                        "entj",
+                        "entp",
+                        "infj",
+                        "infp",
+                        "enfj",
+                        "enfp",
+                        "istj",
+                        "isfj",
+                        "estj",
+                        "esfj",
+                        "istp",
+                        "isfp",
+                        "estp",
+                        "esfp",
+                      ],
+                      title: "Agent Soul Preset",
+                      description:
+                        "Per-agent MBTI personality preset that overrides SOUL.md for this specific agent. Use distinct presets when different agents need different personas.",
+                    },
+                  },
+                  additionalProperties: false,
                 },
               },
               required: ["id"],
@@ -17027,16 +17236,25 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Exec Background After (ms)",
+                description:
+                  "Default time in milliseconds before an exec command auto-backgrounds (default: implementation-defined). Commands that exceed this duration are moved to background processing.",
               },
               timeoutSec: {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Exec Timeout (sec)",
+                description:
+                  "Default timeout in seconds before auto-killing exec commands. Commands that exceed this duration are forcibly terminated.",
               },
               cleanupMs: {
                 type: "integer",
                 exclusiveMinimum: 0,
                 maximum: 9007199254740991,
+                title: "Exec Session Cleanup (ms)",
+                description:
+                  "How long to keep finished exec sessions in memory before cleanup (ms). Lower values reduce memory usage but may lose session state needed for follow-up commands.",
               },
               notifyOnExit: {
                 type: "boolean",
@@ -18161,20 +18379,35 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               auto: {
                 type: "string",
                 enum: ["off", "always", "inbound", "tagged"],
+                title: "TTS Auto Mode",
+                description:
+                  'Auto-detect when to apply TTS: "off" (never), "voice-note-reply" (only reply to voice notes with voice), or "always". Default: "off".',
               },
               enabled: {
                 type: "boolean",
+                title: "Enable TTS",
+                description:
+                  "Enable text-to-speech for outbound replies on supported channels (default: false). When true, replies are also converted to audio.",
               },
               mode: {
                 type: "string",
                 enum: ["final", "all"],
+                title: "TTS Mode",
+                description:
+                  'TTS delivery mode: "reply" (send audio as a separate reply) or "replace" (replace text reply with audio). Default: "reply".',
               },
               provider: {
                 type: "string",
                 minLength: 1,
+                title: "TTS Provider",
+                description:
+                  "TTS provider id for voice synthesis (e.g. a plugin provider id). When unset, the first available TTS provider is used.",
               },
               summaryModel: {
                 type: "string",
+                title: "TTS Summary Model",
+                description:
+                  'Model used to generate a summary before TTS synthesis for long messages (format: "provider/model"). When unset, the full text (up to maxTextLength) is synthesized.',
               },
               modelOverrides: {
                 type: "object",
@@ -18321,16 +18554,25 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               },
               prefsPath: {
                 type: "string",
+                title: "TTS Preferences Path",
+                description:
+                  "Filesystem path to TTS user preferences file. Stores per-user voice settings, speed preferences, and provider selections.",
               },
               maxTextLength: {
                 type: "integer",
                 minimum: 1,
                 maximum: 9007199254740991,
+                title: "TTS Max Text Length",
+                description:
+                  "Maximum text length in characters to send to TTS (default: implementation-defined). Longer texts are truncated before synthesis.",
               },
               timeoutMs: {
                 type: "integer",
                 minimum: 1000,
                 maximum: 120000,
+                title: "TTS Timeout (ms)",
+                description:
+                  "Timeout in milliseconds for TTS synthesis requests. If synthesis exceeds this duration, the audio reply is skipped and text is sent instead.",
               },
             },
             additionalProperties: false,
@@ -18740,7 +18982,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             ],
             title: "DM Session Scope",
             description:
-              'DM session scoping: "main" keeps continuity, while "per-peer", "per-channel-peer", and "per-account-channel-peer" increase isolation. Use isolated modes for shared inboxes or multi-account deployments.',
+              'DM session scoping: "main" keeps continuity, while "per-peer", "per-channel-peer", and "per-account-channel-peer" increase isolation. Automatically promotes to "per-peer" when any channel has credentials configured. Use explicit isolated modes for multi-account deployments.',
           },
           identityLinks: {
             type: "object",
@@ -21882,6 +22124,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
           enabled: {
             default: true,
             type: "boolean",
+            title: "Cognitive Layer Enabled",
+            description:
+              "Master switch for the entire cognitive layer (default: true). When false, all subsystems are disabled: no proactive insights, no persona extraction, no skill evolution, no correction memory.",
           },
           proactive: {
             type: "object",
@@ -21889,45 +22134,82 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               enabled: {
                 default: true,
                 type: "boolean",
+                title: "Proactive Push Enabled",
+                description:
+                  "Allow proactive insight pushes to the user (default: true). When false, KaijiBot only responds to direct messages and never initiates conversations.",
               },
               minIntervalHours: {
                 default: 0.5,
                 type: "number",
                 minimum: 0.5,
                 maximum: 168,
+                title: "Proactive Min Interval (hours)",
+                description:
+                  "Minimum hours between proactive pushes per user (default: 0.5). Lower values increase push frequency but risk annoying the user; higher values reduce noise but slow down insight delivery.",
               },
               activeHours: {
+                default: {
+                  start: "09:00",
+                  end: "22:00",
+                },
                 type: "object",
                 properties: {
                   start: {
+                    default: "09:00",
                     type: "string",
+                    title: "Active Hours Start",
+                    description:
+                      'Start time of the active window in 24h HH:MM format (e.g. "09:00"). Proactive pushes are suppressed before this time.',
                   },
                   end: {
+                    default: "22:00",
                     type: "string",
+                    title: "Active Hours End",
+                    description:
+                      'End time of the active window in 24h HH:MM format (e.g. "22:00"). Proactive pushes are suppressed after this time.',
                   },
                   timezone: {
                     type: "string",
+                    title: "Active Hours Timezone",
+                    description:
+                      'Timezone for the active hours window. Accepts "user" (persona-inferred), "local" (host), or an IANA timezone string (e.g. "Asia/Shanghai"). Default: "user".',
                   },
                 },
+                required: ["start", "end"],
                 additionalProperties: false,
+                title: "Proactive Active Hours",
+                description:
+                  "Time window during which proactive pushes are allowed. Insights are suppressed outside this window to respect the user's schedule.",
               },
               digestMode: {
                 type: "string",
                 enum: ["realtime", "daily", "weekly"],
+                title: "Proactive Digest Mode",
+                description:
+                  'Reserved for future use. Controls batching of proactive insights: "realtime" (default, send immediately), "daily", or "weekly". Only realtime is currently implemented.',
               },
               costFalseNegative: {
                 type: "number",
                 minimum: 0.1,
                 maximum: 100,
+                title: "PRISM False Negative Cost",
+                description:
+                  "Cost penalty for NOT sending an insight the user would have valued, used by the PRISM gate. Higher values make the system more aggressive in pushing insights.",
               },
               costFalseAlarm: {
                 type: "number",
                 minimum: 0.1,
                 maximum: 100,
+                title: "PRISM False Alarm Cost",
+                description:
+                  "Cost penalty for sending an insight the user does not value, used by the PRISM gate to balance push frequency against relevance. Higher values make the system more conservative.",
               },
             },
-            required: ["enabled", "minIntervalHours"],
+            required: ["enabled", "minIntervalHours", "activeHours"],
             additionalProperties: false,
+            title: "Proactive Insights",
+            description:
+              "Proactive insight delivery settings controlling when and how KaijiBot initiates outbound messages to the user based on learned patterns and cross-domain connections.",
           },
           persona: {
             type: "object",
@@ -21935,18 +22217,30 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               autoExtract: {
                 default: true,
                 type: "boolean",
+                title: "Persona Auto Extract",
+                description:
+                  "Automatically extract and update user persona from conversations using LLM-driven analysis (default: true). When false, the persona model is frozen and never updates.",
               },
               extractionModel: {
                 type: "string",
+                title: "Persona Extraction Model",
+                description:
+                  'Lightweight model used for persona extraction (format: "provider/model"). When unset, the main agent model is used. Setting a faster/cheaper model here reduces extraction cost.',
               },
               identityRefreshHours: {
                 type: "number",
                 minimum: 1,
                 maximum: 720,
+                title: "Persona Identity Refresh (hours)",
+                description:
+                  "Interval in hours between L1 identity memory refresh cycles (default: 24). Lower values refresh more frequently but consume more tokens.",
               },
             },
             required: ["autoExtract"],
             additionalProperties: false,
+            title: "Persona Model",
+            description:
+              "User cognitive model settings controlling how KaijiBot builds and maintains a per-user persona from conversations.",
           },
           insight: {
             type: "object",
@@ -21956,33 +22250,61 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 properties: {
                   webSearchProvider: {
                     type: "string",
+                    title: "Insight Web Search Provider",
+                    description:
+                      'Web search provider id for real-time evidence in insights (e.g. "exa", "tavily"). When unset, no web search is performed and insights rely on persona + LLM knowledge only.',
                   },
                   scanIntervalHours: {
                     type: "number",
                     minimum: 1,
                     maximum: 168,
+                    title: "Insight Scan Interval (hours)",
+                    description:
+                      "Interval in hours between information source scans for new insight opportunities (default: 6).",
                   },
                   explicitTopics: {
                     type: "array",
                     items: {
                       type: "string",
                     },
+                    title: "Insight Explicit Topics",
+                    description:
+                      "Explicit list of topics to track for insight generation, in addition to auto-inferred topics from the persona.",
                   },
                 },
                 additionalProperties: false,
+                title: "Insight Sources",
+                description:
+                  "Information source settings for insight generation, including web search integration and scan cadence.",
+              },
+              engine: {
+                type: "string",
+                enum: ["v1", "v2", "dual", "knowledge", "pattern", "unified"],
               },
               verificationLevel: {
                 type: "string",
                 enum: ["basic", "strict", "paranoid"],
+                title: "Insight Verification Level",
+                description:
+                  'Fact verification strictness for insights: "basic" (default), "strict", or "paranoid". Higher levels consume more tokens but reduce hallucination risk.',
               },
               inferenceModel: {
                 type: "string",
+                title: "Insight Inference Model",
+                description:
+                  'Model used for interest inference and insight generation (format: "provider/model"). When unset, the main agent model is used.',
               },
               outputLanguage: {
                 type: "string",
+                title: "Insight Output Language",
+                description:
+                  'Language for generated insight messages (e.g. "zh", "en", "ja"). When unset, KaijiBot auto-detects from the user persona.',
               },
             },
             additionalProperties: false,
+            title: "Insight Engine",
+            description:
+              "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",
           },
           feedback: {
             type: "object",
@@ -21990,42 +22312,74 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               mechanism: {
                 type: "string",
                 enum: ["emoji", "buttons", "text"],
+                title: "Feedback Mechanism (Reserved)",
+                description:
+                  'Reserved for future use. Intended feedback mechanism: "emoji", "buttons", or "text". Currently unused — feedback is always implicit.',
               },
               implicitFeedback: {
                 type: "boolean",
+                title: "Implicit Feedback (Reserved)",
+                description:
+                  "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and engagement signals (default: true). Currently always true in practice.",
               },
             },
             additionalProperties: false,
+            title: "Feedback (Reserved)",
+            description:
+              "Feedback collection settings (reserved — feedback is currently collected implicitly via reply engagement metrics).",
           },
-           evolution: {
+          evolution: {
             type: "object",
             properties: {
               enabled: {
                 default: true,
                 type: "boolean",
+                title: "Skill Evolution Enabled",
+                description:
+                  "Enable skill self-evolution (default: true). When true, complex tasks (3+ tool calls) trigger an evolution signal that the Agent evaluates to decide whether a reusable skill should be created.",
               },
-              cooldownHours: {
-                default: 24,
-                type: "number",
-                minimum: 1,
-                maximum: 168,
-              },
-              maxSuggestionsPerDay: {
-                default: 3,
-                type: "number",
-                minimum: 1,
-                maximum: 50,
+              qualityGateModel: {
+                type: "string",
               },
             },
-            required: [
-              "enabled",
-              "cooldownHours",
-              "maxSuggestionsPerDay",
-            ],
+            required: ["enabled"],
             additionalProperties: false,
+            title: "Skill Evolution",
+            description:
+              "Skill self-evolution settings controlling how KaijiBot detects complex repeated tasks and autonomously creates reusable skills.",
           },
         },
         required: ["enabled"],
+        additionalProperties: false,
+        title: "Cognitive Layer",
+        description:
+          "Cognitive layer controls for KaijiBot's proactive AI system: persona modeling, proactive insight delivery, skill self-evolution, and correction memory. Disable this section to revert to a purely reactive assistant.",
+      },
+      soul: {
+        type: "object",
+        properties: {
+          preset: {
+            type: "string",
+            enum: [
+              "intj",
+              "intp",
+              "entj",
+              "entp",
+              "infj",
+              "infp",
+              "enfj",
+              "enfp",
+              "istj",
+              "isfj",
+              "estj",
+              "esfj",
+              "istp",
+              "isfp",
+              "estp",
+              "esfp",
+            ],
+          },
+        },
         additionalProperties: false,
       },
       skills: {
@@ -22036,6 +22390,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             items: {
               type: "string",
             },
+            title: "Allow Bundled Skills",
+            description:
+              "Optional allowlist of bundled skill IDs to load. When set, only listed bundled skills are available; others are filtered out. Omit to allow all bundled skills.",
           },
           load: {
             type: "object",
@@ -22045,6 +22402,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 items: {
                   type: "string",
                 },
+                title: "Skill Load Extra Dirs",
+                description:
+                  "Additional directories to scan for skill definitions beyond the default locations. Use stable, reviewed directories to avoid loading untrusted skills.",
               },
               watch: {
                 type: "boolean",
@@ -22068,6 +22428,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             properties: {
               preferBrew: {
                 type: "boolean",
+                title: "Skill Install Prefer Brew",
+                description:
+                  "Prefer Homebrew for native dependency installation on macOS when available (default: false). Enable if your environment relies on Homebrew-managed binaries.",
               },
               nodeManager: {
                 anyOf: [
@@ -22088,6 +22451,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     const: "bun",
                   },
                 ],
+                title: "Skill Install Node Manager",
+                description:
+                  'Package manager to use for skill installation: "npm", "pnpm", or "yarn" (default: auto-detected). Pin when auto-detection picks the wrong manager.',
               },
             },
             additionalProperties: false,
@@ -22099,26 +22465,41 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 type: "integer",
                 minimum: 1,
                 maximum: 9007199254740991,
+                title: "Max Skill Candidates/Root",
+                description:
+                  "Maximum candidate skills evaluated per root directory during skill discovery (default: implementation-defined). Prevents excessive filesystem scanning.",
               },
               maxSkillsLoadedPerSource: {
                 type: "integer",
                 minimum: 1,
                 maximum: 9007199254740991,
+                title: "Max Skills Per Source",
+                description:
+                  "Maximum number of skills loaded from a single source directory (default: implementation-defined). Prevents a single source from flooding the skill registry.",
               },
               maxSkillsInPrompt: {
                 type: "integer",
                 minimum: 0,
                 maximum: 9007199254740991,
+                title: "Max Skills In Prompt",
+                description:
+                  "Maximum number of skill definitions injected into the system prompt simultaneously (default: implementation-defined). Controls prompt size and token usage.",
               },
               maxSkillsPromptChars: {
                 type: "integer",
                 minimum: 0,
                 maximum: 9007199254740991,
+                title: "Max Skills Prompt Chars",
+                description:
+                  "Maximum total characters of skill content injected into the system prompt (default: implementation-defined). Caps the token budget consumed by skill definitions.",
               },
               maxSkillFileBytes: {
                 type: "integer",
                 minimum: 0,
                 maximum: 9007199254740991,
+                title: "Max Skill File Bytes",
+                description:
+                  "Maximum file size in bytes for a single skill definition file (default: implementation-defined). Oversized skill files are rejected.",
               },
             },
             additionalProperties: false,
@@ -23263,7 +23644,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "browser.noSandbox": {
       label: "Browser No-Sandbox Mode",
       help: "Disables Chromium sandbox isolation flags for environments where sandboxing fails at runtime. Keep this off whenever possible because process isolation protections are reduced.",
-      tags: ["storage"],
+      tags: ["storage", "dangerous"],
     },
     "browser.attachOnly": {
       label: "Browser Attach-only Mode",
@@ -23615,7 +23996,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "tools.exec.applyPatch.workspaceOnly": {
       label: "apply_patch Workspace-Only",
       help: "Restrict apply_patch paths to the workspace directory (default: true). Set false to allow writing outside the workspace (dangerous).",
-      tags: ["security", "access", "tools", "advanced"],
+      tags: ["security", "access", "tools", "advanced", "dangerous"],
     },
     "tools.exec.applyPatch.allowModels": {
       label: "apply_patch Model Allowlist",
@@ -23695,7 +24076,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "tools.exec.security": {
       label: "Exec Security",
       help: "Execution security posture selector controlling sandbox/approval expectations for command execution. Keep strict security mode for untrusted prompts and relax only for trusted operator workflows.",
-      tags: ["tools"],
+      tags: ["tools", "dangerous"],
     },
     "tools.exec.ask": {
       label: "Exec Ask",
@@ -23740,7 +24121,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "tools.elevated.enabled": {
       label: "Enable Elevated Tool Access",
       help: "Enables elevated tool execution path when sender and policy checks pass. Keep disabled in public/shared channels and enable only for trusted owner-operated contexts.",
-      tags: ["tools"],
+      tags: ["tools", "dangerous"],
     },
     "tools.elevated.allowFrom": {
       label: "Elevated Tool Allow Rules",
@@ -24083,17 +24464,17 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback": {
       label: "Dangerously Allow Host-Header Origin Fallback",
       help: "DANGEROUS toggle that enables Host-header based origin fallback for Control UI/WebChat websocket checks. This mode is supported when your deployment intentionally relies on Host-header origin policy; explicit gateway.controlUi.allowedOrigins remains the recommended hardened default.",
-      tags: ["security", "access", "network", "advanced"],
+      tags: ["security", "access", "network", "advanced", "dangerous"],
     },
     "gateway.controlUi.allowInsecureAuth": {
       label: "Insecure Control UI Auth Toggle",
       help: "Loosens strict browser auth checks for Control UI when you must run a non-standard setup. Keep this off unless you trust your network and proxy path, because impersonation risk is higher.",
-      tags: ["security", "access", "network", "advanced"],
+      tags: ["security", "access", "network", "advanced", "dangerous"],
     },
     "gateway.controlUi.dangerouslyDisableDeviceAuth": {
       label: "Dangerously Disable Control UI Device Auth",
       help: "Disables Control UI device identity checks and relies on token/password only. Use only for short-lived debugging on trusted networks, then turn it off immediately.",
-      tags: ["security", "access", "network", "advanced"],
+      tags: ["security", "access", "network", "advanced", "dangerous"],
     },
     "gateway.push": {
       label: "Gateway Push Delivery",
@@ -25446,7 +25827,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "agents.defaults.sandbox.docker.dangerouslyAllowContainerNamespaceJoin": {
       label: "Sandbox Docker Allow Container Namespace Join",
       help: "DANGEROUS break-glass override that allows sandbox Docker network mode container:<id>. This joins another container namespace and weakens sandbox isolation.",
-      tags: ["security", "access", "storage", "advanced"],
+      tags: ["security", "access", "storage", "advanced", "dangerous"],
     },
     "commands.native": {
       label: "Native Commands",
@@ -25577,7 +25958,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "browser.ssrfPolicy.dangerouslyAllowPrivateNetwork": {
       label: "Browser Dangerously Allow Private Network",
       help: "Allows access to private-network address ranges from browser tooling. Default is enabled for trusted-network operator setups; disable to enforce strict public-only resolution checks.",
-      tags: ["security", "access", "advanced"],
+      tags: ["security", "access", "advanced", "dangerous"],
     },
     "browser.ssrfPolicy.allowedHostnames": {
       label: "Browser Allowed Hostnames",
@@ -25606,7 +25987,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "session.dmScope": {
       label: "DM Session Scope",
-      help: 'DM session scoping: "main" keeps continuity, while "per-peer", "per-channel-peer", and "per-account-channel-peer" increase isolation. Use isolated modes for shared inboxes or multi-account deployments.',
+      help: 'DM session scoping: "main" keeps continuity, while "per-peer", "per-channel-peer", and "per-account-channel-peer" increase isolation. Automatically promotes to "per-peer" when any channel has credentials configured. Use explicit isolated modes for multi-account deployments.',
       tags: ["storage"],
     },
     "session.identityLinks": {
@@ -26005,7 +26386,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "hooks.mappings[].allowUnsafeExternalContent": {
       label: "Hook Mapping Allow Unsafe External Content",
       help: "When true, mapping content may include less-sanitized external payload data in generated messages. Keep false by default and enable only for trusted sources with reviewed transform logic.",
-      tags: ["access"],
+      tags: ["access", "dangerous"],
     },
     "hooks.mappings[].channel": {
       label: "Hook Mapping Delivery Channel",
@@ -26101,7 +26482,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "hooks.gmail.allowUnsafeExternalContent": {
       label: "Gmail Hook Allow Unsafe External Content",
       help: "Allows less-sanitized external Gmail content to pass into processing when enabled. Keep disabled for safer defaults, and enable only for trusted mail streams with controlled transforms.",
-      tags: ["access"],
+      tags: ["access", "dangerous"],
     },
     "hooks.gmail.serve": {
       label: "Gmail Hook Local Server",
@@ -26686,6 +27067,557 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Plugin entry name inside the source marketplace, used for later updates.",
       tags: ["advanced"],
     },
+    cognitive: {
+      label: "Cognitive Layer",
+      help: "Cognitive layer controls for KaijiBot's proactive AI system: persona modeling, proactive insight delivery, skill self-evolution, and correction memory. Disable this section to revert to a purely reactive assistant.",
+      tags: ["advanced"],
+    },
+    "cognitive.enabled": {
+      label: "Cognitive Layer Enabled",
+      help: "Master switch for the entire cognitive layer (default: true). When false, all subsystems are disabled: no proactive insights, no persona extraction, no skill evolution, no correction memory.",
+      tags: ["advanced"],
+    },
+    "cognitive.proactive": {
+      label: "Proactive Insights",
+      help: "Proactive insight delivery settings controlling when and how KaijiBot initiates outbound messages to the user based on learned patterns and cross-domain connections.",
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.enabled": {
+      label: "Proactive Push Enabled",
+      help: "Allow proactive insight pushes to the user (default: true). When false, KaijiBot only responds to direct messages and never initiates conversations.",
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.minIntervalHours": {
+      label: "Proactive Min Interval (hours)",
+      help: "Minimum hours between proactive pushes per user (default: 0.5). Lower values increase push frequency but risk annoying the user; higher values reduce noise but slow down insight delivery.",
+      tags: ["performance"],
+    },
+    "cognitive.proactive.activeHours": {
+      label: "Proactive Active Hours",
+      help: "Time window during which proactive pushes are allowed. Insights are suppressed outside this window to respect the user's schedule.",
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.activeHours.start": {
+      label: "Active Hours Start",
+      help: 'Start time of the active window in 24h HH:MM format (e.g. "09:00"). Proactive pushes are suppressed before this time.',
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.activeHours.end": {
+      label: "Active Hours End",
+      help: 'End time of the active window in 24h HH:MM format (e.g. "22:00"). Proactive pushes are suppressed after this time.',
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.activeHours.timezone": {
+      label: "Active Hours Timezone",
+      help: 'Timezone for the active hours window. Accepts "user" (persona-inferred), "local" (host), or an IANA timezone string (e.g. "Asia/Shanghai"). Default: "user".',
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.digestMode": {
+      label: "Proactive Digest Mode",
+      help: 'Reserved for future use. Controls batching of proactive insights: "realtime" (default, send immediately), "daily", or "weekly". Only realtime is currently implemented.',
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.costFalseAlarm": {
+      label: "PRISM False Alarm Cost",
+      help: "Cost penalty for sending an insight the user does not value, used by the PRISM gate to balance push frequency against relevance. Higher values make the system more conservative.",
+      tags: ["advanced"],
+    },
+    "cognitive.proactive.costFalseNegative": {
+      label: "PRISM False Negative Cost",
+      help: "Cost penalty for NOT sending an insight the user would have valued, used by the PRISM gate. Higher values make the system more aggressive in pushing insights.",
+      tags: ["advanced"],
+    },
+    "cognitive.persona": {
+      label: "Persona Model",
+      help: "User cognitive model settings controlling how KaijiBot builds and maintains a per-user persona from conversations.",
+      tags: ["advanced"],
+    },
+    "cognitive.persona.autoExtract": {
+      label: "Persona Auto Extract",
+      help: "Automatically extract and update user persona from conversations using LLM-driven analysis (default: true). When false, the persona model is frozen and never updates.",
+      tags: ["advanced"],
+    },
+    "cognitive.persona.extractionModel": {
+      label: "Persona Extraction Model",
+      help: 'Lightweight model used for persona extraction (format: "provider/model"). When unset, the main agent model is used. Setting a faster/cheaper model here reduces extraction cost.',
+      tags: ["advanced"],
+    },
+    "cognitive.persona.identityRefreshHours": {
+      label: "Persona Identity Refresh (hours)",
+      help: "Interval in hours between L1 identity memory refresh cycles (default: 24). Lower values refresh more frequently but consume more tokens.",
+      tags: ["advanced"],
+    },
+    "cognitive.insight": {
+      label: "Insight Engine",
+      help: "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",
+      tags: ["advanced"],
+    },
+    "cognitive.insight.inferenceModel": {
+      label: "Insight Inference Model",
+      help: 'Model used for interest inference and insight generation (format: "provider/model"). When unset, the main agent model is used.',
+      tags: ["advanced"],
+    },
+    "cognitive.insight.outputLanguage": {
+      label: "Insight Output Language",
+      help: 'Language for generated insight messages (e.g. "zh", "en", "ja"). When unset, KaijiBot auto-detects from the user persona.',
+      tags: ["advanced"],
+    },
+    "cognitive.insight.verificationLevel": {
+      label: "Insight Verification Level",
+      help: 'Fact verification strictness for insights: "basic" (default), "strict", or "paranoid". Higher levels consume more tokens but reduce hallucination risk.',
+      tags: ["advanced"],
+    },
+    "cognitive.insight.sources": {
+      label: "Insight Sources",
+      help: "Information source settings for insight generation, including web search integration and scan cadence.",
+      tags: ["advanced"],
+    },
+    "cognitive.insight.sources.webSearchProvider": {
+      label: "Insight Web Search Provider",
+      help: 'Web search provider id for real-time evidence in insights (e.g. "exa", "tavily"). When unset, no web search is performed and insights rely on persona + LLM knowledge only.',
+      tags: ["advanced"],
+    },
+    "cognitive.insight.sources.scanIntervalHours": {
+      label: "Insight Scan Interval (hours)",
+      help: "Interval in hours between information source scans for new insight opportunities (default: 6).",
+      tags: ["performance"],
+    },
+    "cognitive.insight.sources.explicitTopics": {
+      label: "Insight Explicit Topics",
+      help: "Explicit list of topics to track for insight generation, in addition to auto-inferred topics from the persona.",
+      tags: ["advanced"],
+    },
+    "cognitive.evolution": {
+      label: "Skill Evolution",
+      help: "Skill self-evolution settings controlling how KaijiBot detects complex repeated tasks and autonomously creates reusable skills.",
+      tags: ["advanced"],
+    },
+    "cognitive.evolution.enabled": {
+      label: "Skill Evolution Enabled",
+      help: "Enable skill self-evolution (default: true). When true, complex tasks (3+ tool calls) trigger an evolution signal that the Agent evaluates to decide whether a reusable skill should be created.",
+      tags: ["advanced"],
+    },
+    "cognitive.evolution.cooldownHours": {
+      label: "Evolution Cooldown (hours)",
+      help: "Minimum hours between evolution suggestions for the same domain (default: unset). Prevents skill-creation spam when the same complex task repeats rapidly.",
+      tags: ["advanced"],
+    },
+    "cognitive.evolution.maxSuggestionsPerDay": {
+      label: "Evolution Max Suggestions/Day",
+      help: "Maximum number of skill evolution suggestions per day (default: unset). Caps the total number of skills that can be auto-created daily.",
+      tags: ["performance"],
+    },
+    "cognitive.feedback": {
+      label: "Feedback (Reserved)",
+      help: "Feedback collection settings (reserved — feedback is currently collected implicitly via reply engagement metrics).",
+      tags: ["storage"],
+    },
+    "cognitive.feedback.mechanism": {
+      label: "Feedback Mechanism (Reserved)",
+      help: 'Reserved for future use. Intended feedback mechanism: "emoji", "buttons", or "text". Currently unused — feedback is always implicit.',
+      tags: ["storage"],
+    },
+    "cognitive.feedback.implicitFeedback": {
+      label: "Implicit Feedback (Reserved)",
+      help: "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and engagement signals (default: true). Currently always true in practice.",
+      tags: ["storage"],
+    },
+    secrets: {
+      label: "Secrets Management",
+      help: "Secrets management system for resolving credentials from external sources (environment variables, files, or command execution) instead of storing plaintext in config. See docs/gateway/secrets.md for the full SecretRef contract.",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers": {
+      label: "Secret Providers",
+      help: "Named secret provider definitions keyed by provider alias. Each provider resolves secrets from a specific source (env, file, or exec).",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.source": {
+      label: "Secret Provider Source",
+      help: 'Secret provider source type: "env" (read from environment variables), "file" (read from a JSON or single-value file), or "exec" (run a command that outputs the secret).',
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.allowlist": {
+      label: "Secret Provider Allowlist",
+      help: "For env-source providers: explicit list of allowed environment variable names. When set, only these variables can be resolved through this provider.",
+      tags: ["security", "auth", "access"],
+    },
+    "secrets.providers.*.path": {
+      label: "Secret Provider File Path",
+      help: "For file-source providers: filesystem path to the secret file. In singleValue mode, the entire file content is the secret. In json mode, the file is parsed as JSON and individual keys are resolved.",
+      tags: ["security", "auth", "storage"],
+    },
+    "secrets.providers.*.mode": {
+      label: "Secret Provider File Mode",
+      help: 'For file-source providers: "singleValue" (entire file is the secret) or "json" (file is a JSON object, resolve individual keys).',
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.maxBytes": {
+      label: "Secret Provider Max Bytes",
+      help: "For file-source providers: maximum file size in bytes before the read is rejected (default: implementation-defined).",
+      tags: ["security", "auth", "performance"],
+    },
+    "secrets.providers.*.command": {
+      label: "Secret Provider Exec Command",
+      help: "For exec-source providers: command to execute that outputs the secret to stdout. The command output is captured and used as the secret value.",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.args": {
+      label: "Secret Provider Exec Args",
+      help: "For exec-source providers: arguments passed to the command.",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.env": {
+      label: "Secret Provider Exec Env",
+      help: "For exec-source providers: additional environment variables injected into the command's execution environment.",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.passEnv": {
+      label: "Secret Provider Pass-through Env",
+      help: "For exec-source providers: list of environment variable names from the parent process to pass through to the command.",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.timeoutMs": {
+      label: "Secret Provider Timeout (ms)",
+      help: "For exec/file-source providers: timeout in milliseconds before the resolution attempt is aborted.",
+      tags: ["security", "auth", "performance"],
+    },
+    "secrets.providers.*.noOutputTimeoutMs": {
+      label: "Secret Provider No-Output Timeout (ms)",
+      help: "For exec-source providers: watchdog timeout — if no stdout is received within this window, the command is killed.",
+      tags: ["security", "auth", "performance"],
+    },
+    "secrets.providers.*.maxOutputBytes": {
+      label: "Secret Provider Max Output Bytes",
+      help: "For exec-source providers: maximum output bytes captured from stdout before truncation.",
+      tags: ["security", "auth", "performance"],
+    },
+    "secrets.providers.*.jsonOnly": {
+      label: "Secret Provider JSON Only",
+      help: "For exec-source providers: when true, the command output must be valid JSON and individual keys are resolved from it.",
+      tags: ["security", "auth"],
+    },
+    "secrets.providers.*.trustedDirs": {
+      label: "Secret Provider Trusted Dirs",
+      help: "For exec-source providers: explicit list of directories trusted for command path resolution (PATH entries are never auto-trusted).",
+      tags: ["security", "auth", "storage"],
+    },
+    "secrets.providers.*.allowInsecurePath": {
+      label: "Secret Provider Allow Insecure Path",
+      help: "For exec-source providers: when true, allows command paths outside trusted directories (security-sensitive — only enable for trusted workflows).",
+      tags: ["security", "auth", "access", "storage", "advanced"],
+    },
+    "secrets.providers.*.allowSymlinkCommand": {
+      label: "Secret Provider Allow Symlink Command",
+      help: "For exec-source providers: when true, allows the command to be a symlink (security-sensitive — symlink targets are not verified).",
+      tags: ["security", "auth", "access"],
+    },
+    "secrets.defaults": {
+      label: "Secret Default Providers",
+      help: "Default provider aliases used when a SecretRef does not specify an explicit provider. Maps source types to default provider names.",
+      tags: ["security", "auth"],
+    },
+    "secrets.defaults.env": {
+      label: "Default Env Secret Provider",
+      help: 'Default provider alias for env-source SecretRefs (default: "default"). When a SecretRef has source=env without a provider, this alias is used.',
+      tags: ["security", "auth"],
+    },
+    "secrets.defaults.file": {
+      label: "Default File Secret Provider",
+      help: "Default provider alias for file-source SecretRefs. When a SecretRef has source=file without a provider, this alias is used.",
+      tags: ["security", "auth", "storage"],
+    },
+    "secrets.defaults.exec": {
+      label: "Default Exec Secret Provider",
+      help: "Default provider alias for exec-source SecretRefs. When a SecretRef has source=exec without a provider, this alias is used.",
+      tags: ["security", "auth"],
+    },
+    "secrets.resolution": {
+      label: "Secret Batch Resolution",
+      help: "Batch resolution controls for how multiple SecretRefs are resolved concurrently during config activation.",
+      tags: ["security", "auth"],
+    },
+    "secrets.resolution.maxProviderConcurrency": {
+      label: "Secret Resolution Max Concurrency",
+      help: "Maximum concurrent resolution calls per provider during batch secret resolution (default: implementation-defined). Prevents overwhelming a single secret backend.",
+      tags: ["security", "auth", "performance"],
+    },
+    "secrets.resolution.maxRefsPerProvider": {
+      label: "Secret Resolution Max Refs/Provider",
+      help: "Maximum number of SecretRefs resolved in a single batch per provider (default: implementation-defined). Limits batch size to avoid timeout cascades.",
+      tags: ["security", "auth", "performance"],
+    },
+    "secrets.resolution.maxBatchBytes": {
+      label: "Secret Resolution Max Batch Bytes",
+      help: "Maximum total bytes resolved across all secrets in a single batch (default: implementation-defined). Caps memory usage during resolution.",
+      tags: ["security", "auth", "performance"],
+    },
+    "agents.defaults.thinkingDefault": {
+      label: "Default Thinking Level",
+      help: 'Default thinking level when no /think directive is present: "off", "minimal", "low", "medium", "high", "xhigh", or "adaptive". Higher levels produce more thorough reasoning at the cost of latency and tokens.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.verboseDefault": {
+      label: "Default Verbosity",
+      help: 'Default verbosity level when no /verbose directive is present: "off", "on", or "full". Controls how much detail the assistant includes in responses.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.elevatedDefault": {
+      label: "Default Elevated Level",
+      help: 'Default elevated exec level when no /elevated directive is present: "off", "on", "ask", or "full". Controls whether shell commands can run without approval.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.blockStreamingDefault": {
+      label: "Default Block Streaming",
+      help: 'Default block streaming mode: "off" disables chunked delivery, "on" emits block replies as they are produced. Controls real-time message delivery pacing.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.blockStreamingBreak": {
+      label: "Block Streaming Break Point",
+      help: 'Where to split streamed block replies: "text_end" splits at the end of each text content block (before tool calls), "message_end" splits at the end of the whole message.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.systemPromptOverride": {
+      label: "System Prompt Override",
+      help: "Optional full system prompt replacement. Primarily for prompt debugging and controlled experiments. When set, replaces the entire generated system prompt.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.skipBootstrap": {
+      label: "Skip Bootstrap",
+      help: "Skip BOOTSTRAP.md creation and workspace initialization for pre-configured deployments (default: false). Useful when workspace is managed externally.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.userTimezone": {
+      label: "User Timezone",
+      help: "Optional IANA timezone for the user (e.g. Asia/Shanghai). Used in system prompt for date/time context. Defaults to host timezone when unset.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.timeFormat": {
+      label: "Time Format",
+      help: 'Time format in system prompt: "auto" (OS preference), "12" (12-hour), or "24" (24-hour). Default: "auto".',
+      tags: ["advanced"],
+    },
+    "agents.defaults.contextTokens": {
+      label: "Context Tokens Cap",
+      help: "Optional context window cap used for runtime estimates and status percentage display. Does not affect the actual model context window — only the budget calculations.",
+      tags: ["security", "auth"],
+    },
+    "agents.defaults.timeoutSeconds": {
+      label: "Agent Timeout (sec)",
+      help: "Maximum runtime in seconds for a single agent turn before it is aborted. Increase for long multi-tool workflows; decrease for faster failure detection.",
+      tags: ["performance"],
+    },
+    "agents.defaults.typingMode": {
+      label: "Typing Mode",
+      help: 'Typing indicator start mode: "never", "instant", "thinking", or "message". Controls when typing indicators appear in supported channels.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.typingIntervalSeconds": {
+      label: "Typing Interval (sec)",
+      help: "Interval in seconds between repeated typing indicators while a reply is being prepared. Lower values show more active feedback but increase channel API calls.",
+      tags: ["performance"],
+    },
+    "agents.defaults.mediaMaxMb": {
+      label: "Max Media Size (MB)",
+      help: "Maximum inbound media size in megabytes for agent-visible attachments (default: implementation-defined). Larger files are rejected or truncated.",
+      tags: ["performance"],
+    },
+    "agents.defaults.maxConcurrent": {
+      label: "Max Concurrent Runs",
+      help: "Maximum concurrent agent runs across all conversations (default: 1, sequential). Increase to handle multiple users simultaneously; watch resource limits.",
+      tags: ["performance"],
+    },
+    "agents.defaults.imageModel": {
+      label: "Image Input Model",
+      help: "Optional image-capable model and fallbacks (provider/model). Used when the primary model lacks image input capability.",
+      tags: ["models", "media"],
+    },
+    "agents.defaults.imageGenerationModel": {
+      label: "Image Generation Model",
+      help: "Optional image-generation model and fallbacks (provider/model). Used by the shared image generation capability.",
+      tags: ["media"],
+    },
+    "agents.defaults.videoGenerationModel": {
+      label: "Video Generation Model",
+      help: "Optional video-generation model and fallbacks (provider/model). Used by the shared video generation capability.",
+      tags: ["media"],
+    },
+    "agents.defaults.musicGenerationModel": {
+      label: "Music Generation Model",
+      help: "Optional music-generation model and fallbacks (provider/model). Used by the shared music generation capability.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.pdfModel": {
+      label: "PDF Model",
+      help: "Optional PDF-capable model and fallbacks (provider/model). Used by the PDF analysis tool. Defaults to imageModel, then session model.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.llm.idleTimeoutSeconds": {
+      label: "LLM Idle Timeout (sec)",
+      help: "Idle timeout for LLM streaming responses in seconds. If no token is received within this time, the request is aborted (default: 60). Set 0 to disable.",
+      tags: ["performance"],
+    },
+    "agents.defaults.subagents.maxSpawnDepth": {
+      label: "Subagent Max Spawn Depth",
+      help: "Maximum depth allowed for sessions_spawn chains (default: 1, no nested spawns). Increase carefully — deep spawn chains can create exponential resource usage.",
+      tags: ["performance"],
+    },
+    "agents.defaults.subagents.maxChildrenPerAgent": {
+      label: "Subagent Max Children/Agent",
+      help: "Maximum active children a single requester session may spawn (default: 5). Prevents runaway spawn cascades from consuming resources.",
+      tags: ["performance"],
+    },
+    "agents.defaults.subagents.archiveAfterMinutes": {
+      label: "Subagent Archive After (min)",
+      help: "Auto-archive completed sub-agent sessions after N minutes (default: 60, set 0 to disable). Controls how long sub-agent transcripts are kept before cleanup.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.subagents.allowAgents": {
+      label: "Subagent Allowed Agents",
+      help: 'Default allowlist of target agent ids for sessions_spawn. Use "*" to allow any agent. When unset, only same-as-caller is allowed.',
+      tags: ["access"],
+    },
+    "agents.defaults.subagents.requireAgentId": {
+      label: "Subagent Require Agent ID",
+      help: "Require explicit agentId in sessions_spawn calls (default: false). When true, sub-agents cannot default to the caller's agent id.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.subagents.thinking": {
+      label: "Subagent Thinking Level",
+      help: 'Default thinking level for spawned sub-agents: "off", "low", "medium", "high". Overrides agents.defaults.thinkingDefault for sub-agent runs.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.subagents.runTimeoutSeconds": {
+      label: "Subagent Run Timeout (sec)",
+      help: "Default run timeout in seconds for spawned sub-agents (0 = no timeout). Caps how long a sub-agent can run before being forcibly terminated.",
+      tags: ["performance"],
+    },
+    "agents.defaults.subagents.announceTimeoutMs": {
+      label: "Subagent Announce Timeout (ms)",
+      help: "Gateway timeout in milliseconds for sub-agent announce delivery calls (default: 90000). Increase for slow networks; decrease to fail faster.",
+      tags: ["performance"],
+    },
+    "tools.exec.backgroundMs": {
+      label: "Exec Background After (ms)",
+      help: "Default time in milliseconds before an exec command auto-backgrounds (default: implementation-defined). Commands that exceed this duration are moved to background processing.",
+      tags: ["tools"],
+    },
+    "tools.exec.timeoutSec": {
+      label: "Exec Timeout (sec)",
+      help: "Default timeout in seconds before auto-killing exec commands. Commands that exceed this duration are forcibly terminated.",
+      tags: ["performance", "tools"],
+    },
+    "tools.exec.cleanupMs": {
+      label: "Exec Session Cleanup (ms)",
+      help: "How long to keep finished exec sessions in memory before cleanup (ms). Lower values reduce memory usage but may lose session state needed for follow-up commands.",
+      tags: ["tools"],
+    },
+    "browser.extraArgs": {
+      label: "Browser Extra Args",
+      help: 'Additional Chrome launch arguments (e.g. ["--window-size=1920,1080", "--disable-infobars"]). Useful for stealth flags, window size overrides, or custom user-agent strings.',
+      tags: ["advanced"],
+    },
+    "logging.maxFileBytes": {
+      label: "Log Max File Bytes",
+      help: "Maximum size of a single log file in bytes before writes are suppressed (default: 500MB). When exceeded, a warning is emitted and further writes to that file are dropped.",
+      tags: ["observability", "performance", "storage"],
+    },
+    "skills.allowBundled": {
+      label: "Allow Bundled Skills",
+      help: "Optional allowlist of bundled skill IDs to load. When set, only listed bundled skills are available; others are filtered out. Omit to allow all bundled skills.",
+      tags: ["access"],
+    },
+    "skills.load.extraDirs": {
+      label: "Skill Load Extra Dirs",
+      help: "Additional directories to scan for skill definitions beyond the default locations. Use stable, reviewed directories to avoid loading untrusted skills.",
+      tags: ["storage"],
+    },
+    "skills.limits.maxSkillsLoadedPerSource": {
+      label: "Max Skills Per Source",
+      help: "Maximum number of skills loaded from a single source directory (default: implementation-defined). Prevents a single source from flooding the skill registry.",
+      tags: ["performance"],
+    },
+    "skills.limits.maxSkillsInPrompt": {
+      label: "Max Skills In Prompt",
+      help: "Maximum number of skill definitions injected into the system prompt simultaneously (default: implementation-defined). Controls prompt size and token usage.",
+      tags: ["performance"],
+    },
+    "skills.limits.maxSkillsPromptChars": {
+      label: "Max Skills Prompt Chars",
+      help: "Maximum total characters of skill content injected into the system prompt (default: implementation-defined). Caps the token budget consumed by skill definitions.",
+      tags: ["performance"],
+    },
+    "skills.limits.maxSkillFileBytes": {
+      label: "Max Skill File Bytes",
+      help: "Maximum file size in bytes for a single skill definition file (default: implementation-defined). Oversized skill files are rejected.",
+      tags: ["performance", "storage"],
+    },
+    "skills.limits.maxCandidatesPerRoot": {
+      label: "Max Skill Candidates/Root",
+      help: "Maximum candidate skills evaluated per root directory during skill discovery (default: implementation-defined). Prevents excessive filesystem scanning.",
+      tags: ["performance"],
+    },
+    "skills.install.nodeManager": {
+      label: "Skill Install Node Manager",
+      help: 'Package manager to use for skill installation: "npm", "pnpm", or "yarn" (default: auto-detected). Pin when auto-detection picks the wrong manager.',
+      tags: ["advanced"],
+    },
+    "skills.install.preferBrew": {
+      label: "Skill Install Prefer Brew",
+      help: "Prefer Homebrew for native dependency installation on macOS when available (default: false). Enable if your environment relies on Homebrew-managed binaries.",
+      tags: ["advanced"],
+    },
+    "messages.tts.enabled": {
+      label: "Enable TTS",
+      help: "Enable text-to-speech for outbound replies on supported channels (default: false). When true, replies are also converted to audio.",
+      tags: ["media"],
+    },
+    "messages.tts.mode": {
+      label: "TTS Mode",
+      help: 'TTS delivery mode: "reply" (send audio as a separate reply) or "replace" (replace text reply with audio). Default: "reply".',
+      tags: ["media"],
+    },
+    "messages.tts.provider": {
+      label: "TTS Provider",
+      help: "TTS provider id for voice synthesis (e.g. a plugin provider id). When unset, the first available TTS provider is used.",
+      tags: ["media"],
+    },
+    "messages.tts.auto": {
+      label: "TTS Auto Mode",
+      help: 'Auto-detect when to apply TTS: "off" (never), "voice-note-reply" (only reply to voice notes with voice), or "always". Default: "off".',
+      tags: ["media"],
+    },
+    "messages.tts.maxTextLength": {
+      label: "TTS Max Text Length",
+      help: "Maximum text length in characters to send to TTS (default: implementation-defined). Longer texts are truncated before synthesis.",
+      tags: ["performance", "media"],
+    },
+    "messages.tts.timeoutMs": {
+      label: "TTS Timeout (ms)",
+      help: "Timeout in milliseconds for TTS synthesis requests. If synthesis exceeds this duration, the audio reply is skipped and text is sent instead.",
+      tags: ["performance", "media"],
+    },
+    "messages.tts.summaryModel": {
+      label: "TTS Summary Model",
+      help: 'Model used to generate a summary before TTS synthesis for long messages (format: "provider/model"). When unset, the full text (up to maxTextLength) is synthesized.',
+      tags: ["media"],
+    },
+    "messages.tts.prefsPath": {
+      label: "TTS Preferences Path",
+      help: "Filesystem path to TTS user preferences file. Stores per-user voice settings, speed preferences, and provider selections.",
+      tags: ["storage", "media"],
+    },
+    "agents.list[].soul.preset": {
+      label: "Agent Soul Preset",
+      help: "Per-agent MBTI personality preset that overrides SOUL.md for this specific agent. Use distinct presets when different agents need different personas.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.sandbox.docker.dangerouslyAllowReservedContainerTargets": {
+      tags: ["security", "access", "storage", "advanced", "dangerous"],
+    },
+    "agents.defaults.sandbox.docker.dangerouslyAllowExternalBindSources": {
+      tags: ["security", "access", "storage", "advanced", "dangerous"],
+    },
     "models.providers.*.headers.*": {
       sensitive: true,
       tags: ["security", "models"],
@@ -27038,6 +27970,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       sensitive: true,
       tags: ["security", "auth"],
     },
+    "models.providers.*.models[].baseUrl": {
+      tags: ["models", "url-secret"],
+    },
     "agents.list[].memorySearch.remote.baseUrl": {
       tags: ["advanced", "url-secret"],
     },
@@ -27087,6 +28022,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced", "url-secret"],
     },
   },
-  version: "2026.4.17",
+  version: "2026.7.23-4",
   generatedAt: "2026-03-22T21:17:33.302Z",
 };
