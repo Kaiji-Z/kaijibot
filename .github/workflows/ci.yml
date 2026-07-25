@@ -59,3 +59,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: rm -rf node_modules/.vite node_modules/.vitest
       - run: pnpm test
+        env:
+          KAIJIBOT_BUNDLED_PLUGINS_DIR: ${{ github.workspace }}/extensions
