@@ -20,7 +20,8 @@ export function resolvePluginSourceRoots(params: {
   const env = params.env ?? process.env;
   const workspaceRoot = params.workspaceDir ? resolveUserPath(params.workspaceDir, env) : undefined;
   const stock = resolveBundledPluginsDir(env);
-  const global = path.join(resolveConfigDir(env), "extensions");
+  const configDir = resolveConfigDir(env);
+  const global = path.join(configDir ?? ".", "extensions");
   const workspace = workspaceRoot ? path.join(workspaceRoot, ".kaijibot", "extensions") : undefined;
   return { stock, global, workspace };
 }
