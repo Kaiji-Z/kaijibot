@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { CognitiveEvolutionSchema } from "../config/zod-schema.cognitive.js";
 
 describe("CognitiveEvolutionSchema — deprecated field stripping", () => {
@@ -15,9 +14,7 @@ describe("CognitiveEvolutionSchema — deprecated field stripping", () => {
       clawhubEnabled: true,
     });
     expect(parsed).toEqual({ enabled: true });
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("clawhubEnabled"),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("clawhubEnabled"));
   });
 
   it("strips minComplexity and warns", () => {
@@ -26,9 +23,7 @@ describe("CognitiveEvolutionSchema — deprecated field stripping", () => {
       minComplexity: 0.8,
     });
     expect(parsed).toEqual({ enabled: false });
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("minComplexity"),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("minComplexity"));
   });
 
   it("strips all five deprecated keys at once", () => {

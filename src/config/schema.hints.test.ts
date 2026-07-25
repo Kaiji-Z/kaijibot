@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { buildBaseHints } from "./schema.hints.js";
 import { buildSecretInputSchema } from "../plugin-sdk/secret-input-schema.js";
 import { isSensitiveUrlConfigPath } from "../shared/net/redact-sensitive-url.js";
 import { FIELD_HELP } from "./schema.help.js";
+import { buildBaseHints } from "./schema.hints.js";
 import { __test__, isPluginOwnedChannelHintPath, isSensitiveConfigPath } from "./schema.hints.js";
 import { FIELD_LABELS } from "./schema.labels.js";
 import { KaijiBotSchema } from "./zod-schema.js";

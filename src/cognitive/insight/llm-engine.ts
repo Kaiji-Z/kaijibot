@@ -43,9 +43,7 @@ import type {
 
 const log = createSubsystemLogger("cognitive/insight-llm");
 
-const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set([
-  "ephemeral",
-]);
+const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set(["ephemeral"]);
 
 export function getFilteredInsights(
   domain: DomainNode,
@@ -141,7 +139,6 @@ function buildFragmentSection(fragments: Fragment[]): string {
 export function buildVoiceSection(_persona: PersonaTree): string {
   return "";
 }
-
 
 /** A single web search result item. */
 export type WebSearchResult = {

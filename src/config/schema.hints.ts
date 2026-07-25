@@ -160,21 +160,17 @@ const DANGEROUS_FIELDS: ReadonlySet<string> = new Set([
 
 const FIELD_DEPENDENCIES: Record<string, string> = {
   "session.dmScope":
-    " Automatically promotes to \"per-peer\" when any channel has credentials configured.",
-  "cognitive.proactive.enabled":
-    " Only effective when cognitive.enabled is true.",
+    ' Automatically promotes to "per-peer" when any channel has credentials configured.',
+  "cognitive.proactive.enabled": " Only effective when cognitive.enabled is true.",
   "cognitive.proactive.minIntervalHours":
     " Only effective when cognitive.proactive.enabled is true.",
-  "cognitive.evolution.enabled":
-    " Only effective when cognitive.enabled is true.",
-  "cognitive.persona.autoExtract":
-    " Only effective when cognitive.enabled is true.",
-  "cognitive.insight.inferenceModel":
-    " Only effective when cognitive.enabled is true.",
+  "cognitive.evolution.enabled": " Only effective when cognitive.enabled is true.",
+  "cognitive.persona.autoExtract": " Only effective when cognitive.enabled is true.",
+  "cognitive.insight.inferenceModel": " Only effective when cognitive.enabled is true.",
   "agents.defaults.compaction.mode":
-    " Defaults to \"safeguard\" when unset (applied during config materialization).",
+    ' Defaults to "safeguard" when unset (applied during config materialization).',
   "logging.redactSensitive":
-    " Defaults to \"tools\" when unset (applied during config materialization).",
+    ' Defaults to "tools" when unset (applied during config materialization).',
   "agents.defaults.maxConcurrent":
     " Defaults to a system constant when unset (applied during config materialization).",
   "agents.defaults.sandbox.mode":

@@ -23,9 +23,7 @@ export const HALF_LIFE_BY_CATEGORY: Record<InsightCategory, number> = {
   ephemeral: 7,
 };
 
-const BACKWARD_COMPAT_EXCLUDE_CATEGORIES: ReadonlySet<InsightCategory> = new Set([
-  "ephemeral",
-]);
+const BACKWARD_COMPAT_EXCLUDE_CATEGORIES: ReadonlySet<InsightCategory> = new Set(["ephemeral"]);
 
 const LEGACY_CATEGORY_MAP: Record<string, InsightCategory> = {
   domain_knowledge: "durable",

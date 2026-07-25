@@ -628,8 +628,7 @@ export const QUICK_SETTINGS: readonly QuickSettingEntry[] = [
     label: "联网搜索",
     description: "允许 Agent 使用网络搜索增强回答和洞察",
     section: "system",
-    render: (props) =>
-      renderToggleAtPath(props, ["tools", "web", "search", "enabled"], "联网搜索"),
+    render: (props) => renderToggleAtPath(props, ["tools", "web", "search", "enabled"], "联网搜索"),
   },
   {
     path: ["agents", "defaults", "compaction", "mode"],

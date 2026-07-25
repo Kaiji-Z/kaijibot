@@ -509,13 +509,13 @@ Architecture is sound. Gaps are in the verification _layers_, not the runtime.
 
 ### Verification Backlog (sorted by priority)
 
-| Priority | Gap                                          | Remediation                                                                                                                                       | Status              |
-| -------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| **P0**   | No reusable supervisor framework (§3.2)      | `test/helpers/eval/supervisor.ts` — `createSupervisor({ generateText })`, clean-context (accepts only expected+actual), 4 dims ≥0.7, 8 unit tests | ✅ built (CI/live wiring pending) |
+| Priority | Gap                                          | Remediation                                                                                                                                       | Status                                                                     |
+| -------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **P0**   | No reusable supervisor framework (§3.2)      | `test/helpers/eval/supervisor.ts` — `createSupervisor({ generateText })`, clean-context (accepts only expected+actual), 4 dims ≥0.7, 8 unit tests | ✅ built (CI/live wiring pending)                                          |
 | **P0**   | No flag-based regression comparison (§4)     | `scripts/regression-flag-diff.mjs [target]` — runs suite twice via temp `KAIJIBOT_CONFIG_PATH`, JSON reporter, REGRESSIONS = pass-off/fail-on     | ✅ built + CI wired (`.github/workflows/regression-flag-diff.yml`, weekly) |
-| **P1**   | Acceptance criteria not centralized (§8.5)   | `docs/ACCEPTANCE.md` — happy path + reverse acceptance for the 5 core workflows                                                                   | ✅ remediated       |
-| **P1**   | Live tests excluded from default `pnpm test` | Wire a periodic live-test gate + document acceptance thresholds                                                                                   | pending remediation |
-| **P2**   | No dataset-management eval harness           | Optional: thin vitest-based eval harness (fixtures + judge scoring) vs. introducing a heavy dependency                                            | deferred            |
+| **P1**   | Acceptance criteria not centralized (§8.5)   | `docs/ACCEPTANCE.md` — happy path + reverse acceptance for the 5 core workflows                                                                   | ✅ remediated                                                              |
+| **P1**   | Live tests excluded from default `pnpm test` | Wire a periodic live-test gate + document acceptance thresholds                                                                                   | pending remediation                                                        |
+| **P2**   | No dataset-management eval harness           | Optional: thin vitest-based eval harness (fixtures + judge scoring) vs. introducing a heavy dependency                                            | deferred                                                                   |
 
 **DoD reminder (§6):** a feature is done only when its happy-path regression test passes under flag=on, the supervisor reaches threshold, and flag=off shows no regression — all reproducible by one command. Until the P0 items are remediated, "done" claims for fuzzy-output features (insights, skill drafts) rest on the ad-hoc inline judges only.
 

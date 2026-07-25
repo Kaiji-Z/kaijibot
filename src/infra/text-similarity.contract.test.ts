@@ -9,9 +9,8 @@
  * from the other.
  */
 import { describe, expect, it } from "vitest";
-
-import { tokenize as canonicalTokenize } from "./text-similarity.js";
 import { tokenize as mmrTokenize } from "../../extensions/memory-core/src/memory/mmr.js";
+import { tokenize as canonicalTokenize } from "./text-similarity.js";
 
 const CORPUS = [
   // Pure ASCII

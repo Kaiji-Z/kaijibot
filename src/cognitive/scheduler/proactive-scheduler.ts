@@ -276,7 +276,8 @@ export class ProactiveScheduler {
         ? phaseAdjusted.filter((opp) => !opp.targetDomains.some((d) => fatigued.has(d)))
         : phaseAdjusted;
     const sorted = [...nonFatigued].toSorted((a, b) => b.pAct - a.pAct);
-    const pool = sorted.length > 0 ? sorted : [...phaseAdjusted].toSorted((a, b) => b.pAct - a.pAct);
+    const pool =
+      sorted.length > 0 ? sorted : [...phaseAdjusted].toSorted((a, b) => b.pAct - a.pAct);
 
     const aboveThreshold = pool.filter((opp) => opp.pAct > threshold);
     return aboveThreshold.slice(0, 5);

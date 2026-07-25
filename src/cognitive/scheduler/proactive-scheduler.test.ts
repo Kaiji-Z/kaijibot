@@ -592,14 +592,59 @@ describe("ProactiveScheduler.identify", () => {
     const persona = createDefaultPersona();
     persona.rapport.trustScore = 0.8;
     persona.domains = {
-      dormantDomain: { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0, phase: "dormant" },
-      revivedDomain: { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0, phase: "revived" },
-      stableDomain: { depth: 3, recurrence: 5, lastMentioned: Date.now(), keyInsights: [], activeQuestions: [], negationSignals: 0, phase: "stable" },
+      dormantDomain: {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+        phase: "dormant",
+      },
+      revivedDomain: {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+        phase: "revived",
+      },
+      stableDomain: {
+        depth: 3,
+        recurrence: 5,
+        lastMentioned: Date.now(),
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+        phase: "stable",
+      },
     };
     const opportunities: Opportunity[] = [
-      { type: "domain_depth", targetDomains: ["dormantDomain"], sourceDomains: [], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
-      { type: "domain_depth", targetDomains: ["revivedDomain"], sourceDomains: [], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
-      { type: "domain_depth", targetDomains: ["stableDomain"], sourceDomains: [], pNeed: 0.8, pAccept: 0.8, pAct: 0.64 },
+      {
+        type: "domain_depth",
+        targetDomains: ["dormantDomain"],
+        sourceDomains: [],
+        pNeed: 0.8,
+        pAccept: 0.8,
+        pAct: 0.64,
+      },
+      {
+        type: "domain_depth",
+        targetDomains: ["revivedDomain"],
+        sourceDomains: [],
+        pNeed: 0.8,
+        pAccept: 0.8,
+        pAct: 0.64,
+      },
+      {
+        type: "domain_depth",
+        targetDomains: ["stableDomain"],
+        sourceDomains: [],
+        pNeed: 0.8,
+        pAccept: 0.8,
+        pAct: 0.64,
+      },
     ];
 
     const selected = scheduler.identify(opportunities, persona);
