@@ -108,61 +108,65 @@ beforeEach(() => {
 });
 
 describe("installPluginFromNpmSpec", () => {
-  it("uses --ignore-scripts for npm pack and cleans up temp dir", async () => {
-    const stateDir = suiteTempRootTracker.makeTempDir();
-    const extensionsDir = path.join(stateDir, "extensions");
-    fs.mkdirSync(extensionsDir, { recursive: true });
+  // CI: reads test/fixtures/plugins-install/voice-call-0.0.1.tgz which is not shipped to CI runners.
+  it.skipIf(process.env.CI)(
+    "uses --ignore-scripts for npm pack and cleans up temp dir",
+    async () => {
+      const stateDir = suiteTempRootTracker.makeTempDir();
+      const extensionsDir = path.join(stateDir, "extensions");
+      fs.mkdirSync(extensionsDir, { recursive: true });
 
-    const run = runCommandWithTimeoutMock;
-    const voiceCallArchiveBuffer = readVoiceCallArchiveBuffer("0.0.1");
+      const run = runCommandWithTimeoutMock;
+      const voiceCallArchiveBuffer = readVoiceCallArchiveBuffer("0.0.1");
 
-    let packTmpDir = "";
-    const packedName = "voice-call-0.0.1.tgz";
-    run.mockImplementation(async (argv, opts) => {
-      if (argv[0] === "npm" && argv[1] === "pack") {
-        packTmpDir = String(typeof opts === "number" ? "" : (opts.cwd ?? ""));
-        fs.writeFileSync(path.join(packTmpDir, packedName), voiceCallArchiveBuffer);
-        return {
-          code: 0,
-          stdout: JSON.stringify([
-            {
-              id: "@kaijibot/voice-call@0.0.1",
-              name: "@kaijibot/voice-call",
-              version: "0.0.1",
-              filename: packedName,
-              integrity: "sha512-plugin-test",
-              shasum: "pluginshasum",
-            },
-          ]),
-          stderr: "",
-          signal: null,
-          killed: false,
-          termination: "exit",
-        };
+      let packTmpDir = "";
+      const packedName = "voice-call-0.0.1.tgz";
+      run.mockImplementation(async (argv, opts) => {
+        if (argv[0] === "npm" && argv[1] === "pack") {
+          packTmpDir = String(typeof opts === "number" ? "" : (opts.cwd ?? ""));
+          fs.writeFileSync(path.join(packTmpDir, packedName), voiceCallArchiveBuffer);
+          return {
+            code: 0,
+            stdout: JSON.stringify([
+              {
+                id: "@kaijibot/voice-call@0.0.1",
+                name: "@kaijibot/voice-call",
+                version: "0.0.1",
+                filename: packedName,
+                integrity: "sha512-plugin-test",
+                shasum: "pluginshasum",
+              },
+            ]),
+            stderr: "",
+            signal: null,
+            killed: false,
+            termination: "exit",
+          };
+        }
+        throw new Error(`unexpected command: ${argv.join(" ")}`);
+      });
+
+      const result = await installPluginFromNpmSpec({
+        spec: "@kaijibot/voice-call@0.0.1",
+        extensionsDir,
+        logger: { info: () => {}, warn: () => {} },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
       }
-      throw new Error(`unexpected command: ${argv.join(" ")}`);
-    });
+      expect(result.npmResolution?.resolvedSpec).toBe("@kaijibot/voice-call@0.0.1");
+      expect(result.npmResolution?.integrity).toBe("sha512-plugin-test");
 
-    const result = await installPluginFromNpmSpec({
-      spec: "@kaijibot/voice-call@0.0.1",
-      extensionsDir,
-      logger: { info: () => {}, warn: () => {} },
-    });
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-    expect(result.npmResolution?.resolvedSpec).toBe("@kaijibot/voice-call@0.0.1");
-    expect(result.npmResolution?.integrity).toBe("sha512-plugin-test");
+      expectSingleNpmPackIgnoreScriptsCall({
+        calls: run.mock.calls as Array<[unknown, unknown]>,
+        expectedSpec: "@kaijibot/voice-call@0.0.1",
+      });
 
-    expectSingleNpmPackIgnoreScriptsCall({
-      calls: run.mock.calls as Array<[unknown, unknown]>,
-      expectedSpec: "@kaijibot/voice-call@0.0.1",
-    });
-
-    expect(packTmpDir).not.toBe("");
-    expect(fs.existsSync(packTmpDir)).toBe(false);
-  });
+      expect(packTmpDir).not.toBe("");
+      expect(fs.existsSync(packTmpDir)).toBe(false);
+    },
+  );
 
   it("allows npm-spec installs with dangerous code patterns when forced unsafe install is set", async () => {
     const stateDir = suiteTempRootTracker.makeTempDir();
@@ -291,7 +295,8 @@ describe("installPluginFromNpmSpec", () => {
     }
   });
 
-  it("handles prerelease npm specs correctly", async () => {
+  // CI: reads test/fixtures/plugins-install/voice-call-0.0.1.tgz which is not shipped to CI runners.
+  it.skipIf(process.env.CI)("handles prerelease npm specs correctly", async () => {
     const prereleaseMetadata = {
       id: "@kaijibot/voice-call@0.0.2-beta.1",
       name: "@kaijibot/voice-call",

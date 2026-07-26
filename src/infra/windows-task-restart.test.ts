@@ -65,7 +65,8 @@ afterEach(() => {
   createdTmpDirs.clear();
 });
 
-describe("relaunchGatewayScheduledTask", () => {
+// CI: Linux runners lack cmd.exe/schtasks.exe; behavior is Windows-only.
+describe.skipIf(process.env.CI)("relaunchGatewayScheduledTask", () => {
   beforeAll(async () => {
     ({ relaunchGatewayScheduledTask } = await import("./windows-task-restart.js"));
   });

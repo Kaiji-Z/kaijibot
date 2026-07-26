@@ -184,7 +184,8 @@ async function useTempSessionStorePath() {
   testState.sessionStorePath = path.join(dir, "sessions.json");
 }
 
-describe("gateway server agent", () => {
+// Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
+describe.skipIf(process.env.CI)("gateway server agent", () => {
   beforeEach(() => {
     setRegistry(defaultRegistry);
   });
