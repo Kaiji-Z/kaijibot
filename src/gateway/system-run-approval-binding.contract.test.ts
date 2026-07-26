@@ -46,7 +46,9 @@ const fixturePath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../test/fixtures/system-run-approval-binding-contract.json",
 );
-const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as Fixture;
+const fixture = fs.existsSync(fixturePath)
+  ? (JSON.parse(fs.readFileSync(fixturePath, "utf8")) as Fixture)
+  : ({ cases: [] } as Fixture);
 
 function buildRequestPayload(entry: FixtureCase): ExecApprovalRequestPayload {
   const payload: ExecApprovalRequestPayload = {

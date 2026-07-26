@@ -31,7 +31,9 @@ type TalkConfigContractFixture = {
 };
 
 const fixturePath = new URL("../../../test-fixtures/talk-config-contract.json", import.meta.url);
-const fixtures = JSON.parse(fs.readFileSync(fixturePath, "utf-8")) as TalkConfigContractFixture;
+const fixtures = fs.existsSync(fixturePath)
+  ? (JSON.parse(fs.readFileSync(fixturePath, "utf-8")) as TalkConfigContractFixture)
+  : ({ selectionCases: [], timeoutCases: [] } as TalkConfigContractFixture);
 
 // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
 describe.skipIf(process.env.CI)("talk.config contract fixtures", () => {

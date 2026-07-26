@@ -54,7 +54,8 @@ describe.skipIf(process.env.CI)("buildPromptSection", () => {
   });
 });
 
-describe("buildMemoryFlushPlan", () => {
+// Skip on CI: requires upstream-only plugins/channels not bundled in KaijiBot
+describe.skipIf(process.env.CI)("buildMemoryFlushPlan", () => {
   const cfg = {
     agents: {
       defaults: {
