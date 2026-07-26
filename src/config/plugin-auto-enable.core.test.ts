@@ -60,23 +60,26 @@ describe.skipIf(process.env.CI)("applyPluginAutoEnable core", () => {
   });
 
   // Skip on CI: requires upstream-only channels (slack) not bundled in KaijiBot
-  it.skipIf(process.env.CI)("auto-enables built-in channels without appending to plugins.allow", () => {
-    const result = applyPluginAutoEnable({
-      config: {
-        channels: { slack: { botToken: "x" } },
-        plugins: { allow: ["telegram"] },
-      },
-      env: makeIsolatedEnv(),
-    });
+  it.skipIf(process.env.CI)(
+    "auto-enables built-in channels without appending to plugins.allow",
+    () => {
+      const result = applyPluginAutoEnable({
+        config: {
+          channels: { slack: { botToken: "x" } },
+          plugins: { allow: ["telegram"] },
+        },
+        env: makeIsolatedEnv(),
+      });
 
-    expect(result.config.channels?.slack?.enabled).toBe(true);
-    expect(result.config.plugins?.entries?.slack).toBeUndefined();
-    expect(result.config.plugins?.allow).toEqual(["telegram"]);
-    expect(result.autoEnabledReasons).toEqual({
-      slack: ["slack configured"],
-    });
-    expect(result.changes.join("\n")).toContain("Slack configured, enabled automatically.");
-  });
+      expect(result.config.channels?.slack?.enabled).toBe(true);
+      expect(result.config.plugins?.entries?.slack).toBeUndefined();
+      expect(result.config.plugins?.allow).toEqual(["telegram"]);
+      expect(result.autoEnabledReasons).toEqual({
+        slack: ["slack configured"],
+      });
+      expect(result.changes.join("\n")).toContain("Slack configured, enabled automatically.");
+    },
+  );
 
   // Skip on CI: requires upstream-only channels (slack) not bundled in KaijiBot
   it.skipIf(process.env.CI)("does not create plugins.allow when allowlist is unset", () => {
@@ -274,51 +277,57 @@ describe.skipIf(process.env.CI)("applyPluginAutoEnable core", () => {
   });
 
   // Skip on CI: requires upstream-only channels (whatsapp) not bundled in KaijiBot
-  it.skipIf(process.env.CI)("does not append built-in WhatsApp to plugins.allow during auto-enable", () => {
-    const result = applyPluginAutoEnable({
-      config: {
-        channels: {
-          whatsapp: {
-            allowFrom: ["+15555550123"],
+  it.skipIf(process.env.CI)(
+    "does not append built-in WhatsApp to plugins.allow during auto-enable",
+    () => {
+      const result = applyPluginAutoEnable({
+        config: {
+          channels: {
+            whatsapp: {
+              allowFrom: ["+15555550123"],
+            },
+          },
+          plugins: {
+            allow: ["telegram"],
           },
         },
-        plugins: {
-          allow: ["telegram"],
-        },
-      },
-      env: makeIsolatedEnv(),
-    });
+        env: makeIsolatedEnv(),
+      });
 
-    expect(result.config.channels?.whatsapp?.enabled).toBe(true);
-    expect(result.config.plugins?.allow).toEqual(["telegram"]);
-    expect(validateConfigObject(result.config).ok).toBe(true);
-  });
+      expect(result.config.channels?.whatsapp?.enabled).toBe(true);
+      expect(result.config.plugins?.allow).toEqual(["telegram"]);
+      expect(validateConfigObject(result.config).ok).toBe(true);
+    },
+  );
 
   // Skip on CI: requires upstream-only channels (whatsapp) not bundled in KaijiBot
-  it.skipIf(process.env.CI)("does not re-emit built-in auto-enable changes when rerun with plugins.allow set", () => {
-    const first = applyPluginAutoEnable({
-      config: {
-        channels: {
-          whatsapp: {
-            allowFrom: ["+15555550123"],
+  it.skipIf(process.env.CI)(
+    "does not re-emit built-in auto-enable changes when rerun with plugins.allow set",
+    () => {
+      const first = applyPluginAutoEnable({
+        config: {
+          channels: {
+            whatsapp: {
+              allowFrom: ["+15555550123"],
+            },
+          },
+          plugins: {
+            allow: ["telegram"],
           },
         },
-        plugins: {
-          allow: ["telegram"],
-        },
-      },
-      env: makeIsolatedEnv(),
-    });
+        env: makeIsolatedEnv(),
+      });
 
-    const second = applyPluginAutoEnable({
-      config: first.config,
-      env: makeIsolatedEnv(),
-    });
+      const second = applyPluginAutoEnable({
+        config: first.config,
+        env: makeIsolatedEnv(),
+      });
 
-    expect(first.changes).toHaveLength(1);
-    expect(second.changes).toEqual([]);
-    expect(second.config).toEqual(first.config);
-  });
+      expect(first.changes).toHaveLength(1);
+      expect(second.changes).toEqual([]);
+      expect(second.config).toEqual(first.config);
+    },
+  );
 
   // Skip on CI: requires upstream-only channels (slack) not bundled in KaijiBot
   it.skipIf(process.env.CI)("respects explicit disable", () => {
@@ -335,18 +344,21 @@ describe.skipIf(process.env.CI)("applyPluginAutoEnable core", () => {
   });
 
   // Skip on CI: requires upstream-only channels (slack) not bundled in KaijiBot
-  it.skipIf(process.env.CI)("respects built-in channel explicit disable via channels.<id>.enabled", () => {
-    const result = applyPluginAutoEnable({
-      config: {
-        channels: { slack: { botToken: "x", enabled: false } },
-      },
-      env: makeIsolatedEnv(),
-    });
+  it.skipIf(process.env.CI)(
+    "respects built-in channel explicit disable via channels.<id>.enabled",
+    () => {
+      const result = applyPluginAutoEnable({
+        config: {
+          channels: { slack: { botToken: "x", enabled: false } },
+        },
+        env: makeIsolatedEnv(),
+      });
 
-    expect(result.config.channels?.slack?.enabled).toBe(false);
-    expect(result.config.plugins?.entries?.slack).toBeUndefined();
-    expect(result.changes).toEqual([]);
-  });
+      expect(result.config.channels?.slack?.enabled).toBe(false);
+      expect(result.config.plugins?.entries?.slack).toBeUndefined();
+      expect(result.changes).toEqual([]);
+    },
+  );
 
   it("does not auto-enable plugin channels when only enabled=false is set", () => {
     const result = applyPluginAutoEnable({
@@ -361,7 +373,8 @@ describe.skipIf(process.env.CI)("applyPluginAutoEnable core", () => {
     expect(result.changes).toEqual([]);
   });
 
-  it("auto-enables irc when configured via env", () => {
+  // Skip on CI: requires upstream-only channels (irc) not bundled in KaijiBot
+  it.skipIf(process.env.CI)("auto-enables irc when configured via env", () => {
     const result = applyPluginAutoEnable({
       config: {},
       env: {

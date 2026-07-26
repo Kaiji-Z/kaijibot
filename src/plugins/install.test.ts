@@ -136,8 +136,12 @@ function readZipperArchiveBuffer(): Buffer {
 }
 
 // CI runners do not ship test/fixtures/plugins-install/*.tgz|zip; dependent describes are skipped on CI.
-const VOICE_CALL_ARCHIVE_V1_BUFFER = process.env.CI ? Buffer.alloc(0) : readVoiceCallArchiveBuffer("0.0.1");
-const VOICE_CALL_ARCHIVE_V2_BUFFER = process.env.CI ? Buffer.alloc(0) : readVoiceCallArchiveBuffer("0.0.2");
+const VOICE_CALL_ARCHIVE_V1_BUFFER = process.env.CI
+  ? Buffer.alloc(0)
+  : readVoiceCallArchiveBuffer("0.0.1");
+const VOICE_CALL_ARCHIVE_V2_BUFFER = process.env.CI
+  ? Buffer.alloc(0)
+  : readVoiceCallArchiveBuffer("0.0.2");
 const ZIPPER_ARCHIVE_BUFFER = process.env.CI ? Buffer.alloc(0) : readZipperArchiveBuffer();
 
 function expectPluginFiles(result: { targetDir: string }, stateDir: string, pluginId: string) {

@@ -383,46 +383,50 @@ describe.skipIf(process.env.CI)("gateway plugin HTTP auth boundary", () => {
     expect(writeAllowedResults).toEqual([true]);
   });
 
-  test("allows unauthenticated Mattermost slash callback routes while keeping other channel routes protected", async () => {
-    const handlePluginRequest = vi.fn(async (req: IncomingMessage, res: ServerResponse) => {
-      const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-      if (pathname === "/api/channels/mattermost/command") {
-        res.statusCode = 200;
-        res.end("ok:mm-callback");
-        return true;
-      }
-      if (pathname === "/api/channels/nostr/default/profile") {
-        res.statusCode = 200;
-        res.end("ok:nostr");
-        return true;
-      }
-      return false;
-    });
+  // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
+  test.skipIf(process.env.CI)(
+    "allows unauthenticated Mattermost slash callback routes while keeping other channel routes protected",
+    async () => {
+      const handlePluginRequest = vi.fn(async (req: IncomingMessage, res: ServerResponse) => {
+        const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+        if (pathname === "/api/channels/mattermost/command") {
+          res.statusCode = 200;
+          res.end("ok:mm-callback");
+          return true;
+        }
+        if (pathname === "/api/channels/nostr/default/profile") {
+          res.statusCode = 200;
+          res.end("ok:nostr");
+          return true;
+        }
+        return false;
+      });
 
-    await withTempConfig({
-      cfg: createMattermostCallbackConfig("/api/channels/mattermost/command"),
-      prefix: "kaijibot-plugin-http-auth-mm-callback-",
-      run: async () => {
-        const server = createTestGatewayServer({
-          resolvedAuth: AUTH_TOKEN,
-          overrides: { handlePluginRequest },
-        });
+      await withTempConfig({
+        cfg: createMattermostCallbackConfig("/api/channels/mattermost/command"),
+        prefix: "kaijibot-plugin-http-auth-mm-callback-",
+        run: async () => {
+          const server = createTestGatewayServer({
+            resolvedAuth: AUTH_TOKEN,
+            overrides: { handlePluginRequest },
+          });
 
-        const slashCallback = await sendRequest(server, {
-          path: "/api/channels/mattermost/command",
-          method: "POST",
-        });
-        expect(slashCallback.res.statusCode).toBe(200);
-        expect(slashCallback.getBody()).toBe("ok:mm-callback");
+          const slashCallback = await sendRequest(server, {
+            path: "/api/channels/mattermost/command",
+            method: "POST",
+          });
+          expect(slashCallback.res.statusCode).toBe(200);
+          expect(slashCallback.getBody()).toBe("ok:mm-callback");
 
-        const otherChannelUnauthed = await sendRequest(server, {
-          path: "/api/channels/nostr/default/profile",
-        });
-        expect(otherChannelUnauthed.res.statusCode).toBe(401);
-        expect(otherChannelUnauthed.getBody()).toContain("Unauthorized");
-      },
-    });
-  });
+          const otherChannelUnauthed = await sendRequest(server, {
+            path: "/api/channels/nostr/default/profile",
+          });
+          expect(otherChannelUnauthed.res.statusCode).toBe(401);
+          expect(otherChannelUnauthed.getBody()).toContain("Unauthorized");
+        },
+      });
+    },
+  );
 
   test("does not bypass auth when mattermost callbackPath points to non-mattermost channel routes", async () => {
     const handlePluginRequest = vi.fn(async (req: IncomingMessage, res: ServerResponse) => {

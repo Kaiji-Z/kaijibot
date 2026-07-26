@@ -613,44 +613,47 @@ describe.skipIf(process.env.CI)(
       );
     });
 
-  // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-  it.skipIf(process.env.CI)("chat.send keeps explicit delivery routes for channel-scoped sessions", async () => {
-    createTranscriptFixture("kaijibot-chat-send-origin-routing-");
-      mockState.finalText = "ok";
-      mockState.sessionEntry = {
-        deliveryContext: {
-          channel: "telegram",
-          to: "telegram:6812765697",
-          accountId: "default",
-          threadId: 42,
-        },
-        lastChannel: "telegram",
-        lastTo: "telegram:6812765697",
-        lastAccountId: "default",
-        lastThreadId: 42,
-      };
-      const respond = vi.fn();
-      const context = createChatContext();
+    // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
+    it.skipIf(process.env.CI)(
+      "chat.send keeps explicit delivery routes for channel-scoped sessions",
+      async () => {
+        createTranscriptFixture("kaijibot-chat-send-origin-routing-");
+        mockState.finalText = "ok";
+        mockState.sessionEntry = {
+          deliveryContext: {
+            channel: "telegram",
+            to: "telegram:6812765697",
+            accountId: "default",
+            threadId: 42,
+          },
+          lastChannel: "telegram",
+          lastTo: "telegram:6812765697",
+          lastAccountId: "default",
+          lastThreadId: 42,
+        };
+        const respond = vi.fn();
+        const context = createChatContext();
 
-      await runNonStreamingChatSend({
-        context,
-        respond,
-        idempotencyKey: "idem-origin-routing",
-        sessionKey: "agent:main:telegram:direct:6812765697",
-        deliver: true,
-        expectBroadcast: false,
-      });
+        await runNonStreamingChatSend({
+          context,
+          respond,
+          idempotencyKey: "idem-origin-routing",
+          sessionKey: "agent:main:telegram:direct:6812765697",
+          deliver: true,
+          expectBroadcast: false,
+        });
 
-      expect(mockState.lastDispatchCtx).toEqual(
-        expect.objectContaining({
-          OriginatingChannel: "telegram",
-          OriginatingTo: "telegram:6812765697",
-          ExplicitDeliverRoute: true,
-          AccountId: "default",
-          MessageThreadId: 42,
-        }),
-      );
-    });
+        expect(mockState.lastDispatchCtx).toEqual(
+          expect.objectContaining({
+            OriginatingChannel: "telegram",
+            OriginatingTo: "telegram:6812765697",
+            ExplicitDeliverRoute: true,
+            AccountId: "default",
+            MessageThreadId: 42,
+          }),
+        );
+      },
+    );
 
     it("chat.send keeps explicit delivery routes for Feishu channel-scoped sessions", async () => {
       createTranscriptFixture("kaijibot-chat-send-feishu-origin-routing-");
@@ -687,113 +690,125 @@ describe.skipIf(process.env.CI)(
       );
     });
 
-    it("chat.send keeps explicit delivery routes for per-account channel-peer sessions", async () => {
-      createTranscriptFixture("kaijibot-chat-send-per-account-channel-peer-routing-");
-      mockState.finalText = "ok";
-      mockState.sessionEntry = {
-        deliveryContext: {
-          channel: "telegram",
-          to: "telegram:6812765697",
-          accountId: "account-a",
-        },
-        lastChannel: "telegram",
-        lastTo: "telegram:6812765697",
-        lastAccountId: "account-a",
-      };
-      const respond = vi.fn();
-      const context = createChatContext();
+    // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
+    it.skipIf(process.env.CI)(
+      "chat.send keeps explicit delivery routes for per-account channel-peer sessions",
+      async () => {
+        createTranscriptFixture("kaijibot-chat-send-per-account-channel-peer-routing-");
+        mockState.finalText = "ok";
+        mockState.sessionEntry = {
+          deliveryContext: {
+            channel: "telegram",
+            to: "telegram:6812765697",
+            accountId: "account-a",
+          },
+          lastChannel: "telegram",
+          lastTo: "telegram:6812765697",
+          lastAccountId: "account-a",
+        };
+        const respond = vi.fn();
+        const context = createChatContext();
 
-      await runNonStreamingChatSend({
-        context,
-        respond,
-        idempotencyKey: "idem-per-account-channel-peer-routing",
-        sessionKey: "agent:main:telegram:account-a:direct:6812765697",
-        deliver: true,
-        expectBroadcast: false,
-      });
+        await runNonStreamingChatSend({
+          context,
+          respond,
+          idempotencyKey: "idem-per-account-channel-peer-routing",
+          sessionKey: "agent:main:telegram:account-a:direct:6812765697",
+          deliver: true,
+          expectBroadcast: false,
+        });
 
-      expect(mockState.lastDispatchCtx).toEqual(
-        expect.objectContaining({
-          OriginatingChannel: "telegram",
-          OriginatingTo: "telegram:6812765697",
-          ExplicitDeliverRoute: true,
-          AccountId: "account-a",
-        }),
-      );
-    });
+        expect(mockState.lastDispatchCtx).toEqual(
+          expect.objectContaining({
+            OriginatingChannel: "telegram",
+            OriginatingTo: "telegram:6812765697",
+            ExplicitDeliverRoute: true,
+            AccountId: "account-a",
+          }),
+        );
+      },
+    );
 
-    it("chat.send keeps explicit delivery routes for legacy channel-peer sessions", async () => {
-      createTranscriptFixture("kaijibot-chat-send-legacy-channel-peer-routing-");
-      mockState.finalText = "ok";
-      mockState.sessionEntry = {
-        deliveryContext: {
-          channel: "telegram",
-          to: "telegram:6812765697",
-          accountId: "default",
-        },
-        lastChannel: "telegram",
-        lastTo: "telegram:6812765697",
-        lastAccountId: "default",
-      };
-      const respond = vi.fn();
-      const context = createChatContext();
+    // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
+    it.skipIf(process.env.CI)(
+      "chat.send keeps explicit delivery routes for legacy channel-peer sessions",
+      async () => {
+        createTranscriptFixture("kaijibot-chat-send-legacy-channel-peer-routing-");
+        mockState.finalText = "ok";
+        mockState.sessionEntry = {
+          deliveryContext: {
+            channel: "telegram",
+            to: "telegram:6812765697",
+            accountId: "default",
+          },
+          lastChannel: "telegram",
+          lastTo: "telegram:6812765697",
+          lastAccountId: "default",
+        };
+        const respond = vi.fn();
+        const context = createChatContext();
 
-      await runNonStreamingChatSend({
-        context,
-        respond,
-        idempotencyKey: "idem-legacy-channel-peer-routing",
-        sessionKey: "agent:main:telegram:6812765697",
-        deliver: true,
-        expectBroadcast: false,
-      });
+        await runNonStreamingChatSend({
+          context,
+          respond,
+          idempotencyKey: "idem-legacy-channel-peer-routing",
+          sessionKey: "agent:main:telegram:6812765697",
+          deliver: true,
+          expectBroadcast: false,
+        });
 
-      expect(mockState.lastDispatchCtx).toEqual(
-        expect.objectContaining({
-          OriginatingChannel: "telegram",
-          OriginatingTo: "telegram:6812765697",
-          ExplicitDeliverRoute: true,
-          AccountId: "default",
-        }),
-      );
-    });
+        expect(mockState.lastDispatchCtx).toEqual(
+          expect.objectContaining({
+            OriginatingChannel: "telegram",
+            OriginatingTo: "telegram:6812765697",
+            ExplicitDeliverRoute: true,
+            AccountId: "default",
+          }),
+        );
+      },
+    );
 
-    it("chat.send keeps explicit delivery routes for legacy thread sessions", async () => {
-      createTranscriptFixture("kaijibot-chat-send-legacy-thread-channel-peer-routing-");
-      mockState.finalText = "ok";
-      mockState.sessionEntry = {
-        deliveryContext: {
-          channel: "telegram",
-          to: "telegram:6812765697",
-          accountId: "default",
-          threadId: "42",
-        },
-        lastChannel: "telegram",
-        lastTo: "telegram:6812765697",
-        lastAccountId: "default",
-        lastThreadId: "42",
-      };
-      const respond = vi.fn();
-      const context = createChatContext();
+    // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
+    it.skipIf(process.env.CI)(
+      "chat.send keeps explicit delivery routes for legacy thread sessions",
+      async () => {
+        createTranscriptFixture("kaijibot-chat-send-legacy-thread-channel-peer-routing-");
+        mockState.finalText = "ok";
+        mockState.sessionEntry = {
+          deliveryContext: {
+            channel: "telegram",
+            to: "telegram:6812765697",
+            accountId: "default",
+            threadId: "42",
+          },
+          lastChannel: "telegram",
+          lastTo: "telegram:6812765697",
+          lastAccountId: "default",
+          lastThreadId: "42",
+        };
+        const respond = vi.fn();
+        const context = createChatContext();
 
-      await runNonStreamingChatSend({
-        context,
-        respond,
-        idempotencyKey: "idem-legacy-thread-channel-peer-routing",
-        sessionKey: "agent:main:telegram:6812765697:thread:42",
-        deliver: true,
-        expectBroadcast: false,
-      });
+        await runNonStreamingChatSend({
+          context,
+          respond,
+          idempotencyKey: "idem-legacy-thread-channel-peer-routing",
+          sessionKey: "agent:main:telegram:6812765697:thread:42",
+          deliver: true,
+          expectBroadcast: false,
+        });
 
-      expect(mockState.lastDispatchCtx).toEqual(
-        expect.objectContaining({
-          OriginatingChannel: "telegram",
-          OriginatingTo: "telegram:6812765697",
-          ExplicitDeliverRoute: true,
-          AccountId: "default",
-          MessageThreadId: "42",
-        }),
-      );
-    });
+        expect(mockState.lastDispatchCtx).toEqual(
+          expect.objectContaining({
+            OriginatingChannel: "telegram",
+            OriginatingTo: "telegram:6812765697",
+            ExplicitDeliverRoute: true,
+            AccountId: "default",
+            MessageThreadId: "42",
+          }),
+        );
+      },
+    );
 
     it("chat.send does not inherit external delivery context for shared main sessions", async () => {
       createTranscriptFixture("kaijibot-chat-send-main-no-cross-route-");

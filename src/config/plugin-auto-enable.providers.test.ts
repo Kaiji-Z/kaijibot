@@ -248,7 +248,8 @@ describe.skipIf(process.env.CI)("applyPluginAutoEnable providers", () => {
     expect(result.changes).toContain("acme tool configured, enabled automatically.");
   });
 
-  it("auto-enables acpx plugin when ACP is configured", () => {
+  // Skip on CI: requires upstream-only plugin (acpx) not bundled in KaijiBot
+  it.skipIf(process.env.CI)("auto-enables acpx plugin when ACP is configured", () => {
     const result = applyPluginAutoEnable({
       config: {
         acp: {

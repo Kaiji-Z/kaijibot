@@ -553,74 +553,33 @@ describe.skipIf(process.env.CI)("gateway agent handler", () => {
   });
 
   // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-  it.skipIf(process.env.CI)("includes live session setting metadata in agent send events", async () => {
-    mockMainSessionEntry({
-      sessionId: "sess-main",
-      updatedAt: Date.now(),
-      fastMode: true,
-      sendPolicy: "deny",
-      lastChannel: "telegram",
-      lastTo: "-100123",
-      lastAccountId: "acct-1",
-      lastThreadId: 42,
-    });
-    mocks.updateSessionStore.mockImplementation(async (_path, updater) => {
-      const store: Record<string, unknown> = {
-        "agent:main:main": buildExistingMainStoreEntry({
-          fastMode: true,
-          sendPolicy: "deny",
-          lastChannel: "telegram",
-          lastTo: "-100123",
-          lastAccountId: "acct-1",
-          lastThreadId: 42,
-        }),
-      };
-      return await updater(store);
-    });
-    mocks.loadGatewaySessionRow.mockReturnValue({
-      spawnedBy: "agent:main:main",
-      spawnedWorkspaceDir: "/tmp/subagent",
-      forkedFromParent: true,
-      spawnDepth: 2,
-      subagentRole: "orchestrator",
-      subagentControlScope: "children",
-      fastMode: true,
-      sendPolicy: "deny",
-      lastChannel: "telegram",
-      lastTo: "-100123",
-      lastAccountId: "acct-1",
-      lastThreadId: 42,
-      totalTokens: 12,
-      status: "running",
-    });
-    mocks.agentCommand.mockResolvedValue({
-      payloads: [{ text: "ok" }],
-      meta: { durationMs: 100 },
-    });
-
-    const broadcastToConnIds = vi.fn();
-    await invokeAgent(
-      {
-        message: "test",
-        sessionKey: "agent:main:main",
-        idempotencyKey: "test-live-settings",
-      },
-      {
-        context: {
-          dedupe: new Map(),
-          addChatRun: vi.fn(),
-          logGateway: { info: vi.fn(), error: vi.fn() },
-          broadcastToConnIds,
-          getSessionEventSubscriberConnIds: () => new Set(["conn-1"]),
-        } as unknown as GatewayRequestContext,
-      },
-    );
-
-    expect(broadcastToConnIds).toHaveBeenCalledWith(
-      "sessions.changed",
-      expect.objectContaining({
-        sessionKey: "agent:main:main",
-        reason: "send",
+  it.skipIf(process.env.CI)(
+    "includes live session setting metadata in agent send events",
+    async () => {
+      mockMainSessionEntry({
+        sessionId: "sess-main",
+        updatedAt: Date.now(),
+        fastMode: true,
+        sendPolicy: "deny",
+        lastChannel: "telegram",
+        lastTo: "-100123",
+        lastAccountId: "acct-1",
+        lastThreadId: 42,
+      });
+      mocks.updateSessionStore.mockImplementation(async (_path, updater) => {
+        const store: Record<string, unknown> = {
+          "agent:main:main": buildExistingMainStoreEntry({
+            fastMode: true,
+            sendPolicy: "deny",
+            lastChannel: "telegram",
+            lastTo: "-100123",
+            lastAccountId: "acct-1",
+            lastThreadId: 42,
+          }),
+        };
+        return await updater(store);
+      });
+      mocks.loadGatewaySessionRow.mockReturnValue({
         spawnedBy: "agent:main:main",
         spawnedWorkspaceDir: "/tmp/subagent",
         forkedFromParent: true,
@@ -635,11 +594,55 @@ describe.skipIf(process.env.CI)("gateway agent handler", () => {
         lastThreadId: 42,
         totalTokens: 12,
         status: "running",
-      }),
-      new Set(["conn-1"]),
-      { dropIfSlow: true },
-    );
-  });
+      });
+      mocks.agentCommand.mockResolvedValue({
+        payloads: [{ text: "ok" }],
+        meta: { durationMs: 100 },
+      });
+
+      const broadcastToConnIds = vi.fn();
+      await invokeAgent(
+        {
+          message: "test",
+          sessionKey: "agent:main:main",
+          idempotencyKey: "test-live-settings",
+        },
+        {
+          context: {
+            dedupe: new Map(),
+            addChatRun: vi.fn(),
+            logGateway: { info: vi.fn(), error: vi.fn() },
+            broadcastToConnIds,
+            getSessionEventSubscriberConnIds: () => new Set(["conn-1"]),
+          } as unknown as GatewayRequestContext,
+        },
+      );
+
+      expect(broadcastToConnIds).toHaveBeenCalledWith(
+        "sessions.changed",
+        expect.objectContaining({
+          sessionKey: "agent:main:main",
+          reason: "send",
+          spawnedBy: "agent:main:main",
+          spawnedWorkspaceDir: "/tmp/subagent",
+          forkedFromParent: true,
+          spawnDepth: 2,
+          subagentRole: "orchestrator",
+          subagentControlScope: "children",
+          fastMode: true,
+          sendPolicy: "deny",
+          lastChannel: "telegram",
+          lastTo: "-100123",
+          lastAccountId: "acct-1",
+          lastThreadId: 42,
+          totalTokens: 12,
+          status: "running",
+        }),
+        new Set(["conn-1"]),
+        { dropIfSlow: true },
+      );
+    },
+  );
 
   it("injects a timestamp into the message passed to agentCommand", async () => {
     setupNewYorkTimeConfig("2026-01-29T01:30:00.000Z");
@@ -706,28 +709,31 @@ describe.skipIf(process.env.CI)("gateway agent handler", () => {
   });
 
   // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-  it.skipIf(process.env.CI)("respects explicit bestEffortDeliver=false for main session runs", async () => {
-    mocks.agentCommand.mockClear();
-    primeMainAgentRun();
+  it.skipIf(process.env.CI)(
+    "respects explicit bestEffortDeliver=false for main session runs",
+    async () => {
+      mocks.agentCommand.mockClear();
+      primeMainAgentRun();
 
-    await invokeAgent(
-      {
-        message: "strict delivery",
-        agentId: "main",
-        sessionKey: "agent:main:main",
-        deliver: true,
-        replyChannel: "telegram",
-        to: "123",
-        bestEffortDeliver: false,
-        idempotencyKey: "test-strict-delivery",
-      },
-      { reqId: "strict-1" },
-    );
+      await invokeAgent(
+        {
+          message: "strict delivery",
+          agentId: "main",
+          sessionKey: "agent:main:main",
+          deliver: true,
+          replyChannel: "telegram",
+          to: "123",
+          bestEffortDeliver: false,
+          idempotencyKey: "test-strict-delivery",
+        },
+        { reqId: "strict-1" },
+      );
 
-    await waitForAssertion(() => expect(mocks.agentCommand).toHaveBeenCalled());
-    const callArgs = mocks.agentCommand.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(callArgs.bestEffortDeliver).toBe(false);
-  });
+      await waitForAssertion(() => expect(mocks.agentCommand).toHaveBeenCalled());
+      const callArgs = mocks.agentCommand.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+      expect(callArgs.bestEffortDeliver).toBe(false);
+    },
+  );
 
   it("downgrades to session-only when bestEffortDeliver=true and no external channel is configured", async () => {
     mocks.agentCommand.mockClear();
