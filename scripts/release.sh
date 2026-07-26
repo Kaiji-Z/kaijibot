@@ -18,6 +18,7 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 echo "[1/4] Version bumped to ${VERSION}"
 
 # 2. Build
+rm -rf dist
 pnpm build
 echo "[2/4] Build complete"
 
