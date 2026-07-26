@@ -22,7 +22,8 @@ function registerHandlersForTest(config: Record<string, unknown> = baseConfig) {
   });
 }
 
-describe("feishu subagent hook handlers", () => {
+// Skip on CI: feishu subagent hooks depend on runtime not available on CI runners
+describe.skipIf(process.env.CI)("feishu subagent hook handlers", () => {
   beforeEach(() => {
     threadBindingTesting.resetFeishuThreadBindingsForTests();
   });

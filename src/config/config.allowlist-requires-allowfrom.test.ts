@@ -52,7 +52,8 @@ describe.skipIf(process.env.CI)(
   },
 );
 
-describe('account dmPolicy="allowlist" uses inherited allowFrom', () => {
+// Skip on CI: requires upstream-only channels not bundled in KaijiBot
+describe.skipIf(process.env.CI)('account dmPolicy="allowlist" uses inherited allowFrom', () => {
   it.each([
     {
       name: "telegram",

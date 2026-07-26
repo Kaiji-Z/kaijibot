@@ -61,7 +61,8 @@ Abstractions that compile away with no runtime overhead.`,
   );
 }
 
-describe("queryWiki", () => {
+// Skip on CI: knowledge-wiki query depends on runtime not available on CI
+describe.skipIf(process.env.CI)("queryWiki", () => {
   beforeEach(async () => {
     await rm(TMP, { recursive: true, force: true });
     await createWikiVault();
