@@ -767,11 +767,7 @@ export class ProactiveScheduler {
           insightId: pending.candidate.id,
           ageMs: Math.round(ageMs / 60_000),
         });
-        const retryResult = await this.callbacks.onInsightReady(
-          agentId,
-          userId,
-          pending.candidate,
-        );
+        const retryResult = await this.callbacks.onInsightReady(agentId, userId, pending.candidate);
         if (retryResult !== false) {
           persona = this._finalizeDelivery(
             persona,

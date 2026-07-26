@@ -123,7 +123,11 @@ export type FeedbackProfile = {
    * (bypassing gate and LLM) until delivery succeeds or it expires (24h).
    * Persists to persona file so it survives gateway restarts.
    */
-  pendingInsightDelivery?: { candidate: InsightCandidate; generatedAt: number; opportunityType: string } | null;
+  pendingInsightDelivery?: {
+    candidate: InsightCandidate;
+    generatedAt: number;
+    opportunityType: string;
+  } | null;
 };
 
 // Trust/rapport metrics

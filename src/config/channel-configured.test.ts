@@ -1,34 +1,12 @@
-import fs from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { withTempDirSync } from "../test-helpers/temp-dir.js";
 import { isChannelConfigured } from "./channel-configured.js";
 
-// Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-describe.skip("isChannelConfigured", () => {
-  it("detects Telegram env configuration through the package metadata seam", () => {
-    expect(isChannelConfigured({}, "telegram", { TELEGRAM_BOT_TOKEN: "token" })).toBe(true);
+describe("isChannelConfigured", () => {
+  it("returns false for empty config and env", () => {
+    expect(isChannelConfigured({}, "feishu", {})).toBe(false);
   });
 
-  it("detects Discord env configuration through the package metadata seam", () => {
-    expect(isChannelConfigured({}, "discord", { DISCORD_BOT_TOKEN: "token" })).toBe(true);
-  });
-
-  it("detects Slack env configuration through the package metadata seam", () => {
-    expect(isChannelConfigured({}, "slack", { SLACK_BOT_TOKEN: "xoxb-test" })).toBe(true);
-  });
-
-  it("requires both IRC host and nick env vars through the package metadata seam", () => {
-    expect(isChannelConfigured({}, "irc", { IRC_HOST: "irc.example.com" })).toBe(false);
-    expect(
-      isChannelConfigured({}, "irc", {
-        IRC_HOST: "irc.example.com",
-        IRC_NICK: "kaijibot",
-      }),
-    ).toBe(true);
-  });
-
-  it("still falls back to generic config presence for channels without a custom hook", () => {
+  it("detects channel config through generic config presence", () => {
     expect(
       isChannelConfigured(
         {
@@ -44,20 +22,19 @@ describe.skip("isChannelConfigured", () => {
     ).toBe(true);
   });
 
-  it("detects persisted Matrix credentials through package metadata", () => {
-    withTempDirSync({ prefix: "kaijibot-channel-configured-" }, (stateDir) => {
-      fs.mkdirSync(path.join(stateDir, "credentials", "matrix"), { recursive: true });
-      fs.writeFileSync(
-        path.join(stateDir, "credentials", "matrix", "credentials-ops.json"),
-        JSON.stringify({
-          homeserver: "https://matrix.example.org",
-          userId: "@ops:example.org",
-          accessToken: "token",
-        }),
-        "utf8",
-      );
+  it("returns false for empty channel config object", () => {
+    expect(isChannelConfigured({ channels: { signal: {} } }, "signal", {})).toBe(false);
+  });
 
-      expect(isChannelConfigured({}, "matrix", { KAIJIBOT_STATE_DIR: stateDir })).toBe(true);
-    });
+  it("returns false for upstream channels without bundled plugin even with env vars", () => {
+    expect(isChannelConfigured({}, "telegram", { TELEGRAM_BOT_TOKEN: "token" })).toBe(false);
+    expect(isChannelConfigured({}, "discord", { DISCORD_BOT_TOKEN: "token" })).toBe(false);
+    expect(isChannelConfigured({}, "slack", { SLACK_BOT_TOKEN: "xoxb-test" })).toBe(false);
+    expect(
+      isChannelConfigured({}, "irc", {
+        IRC_HOST: "irc.example.com",
+        IRC_NICK: "kaijibot",
+      }),
+    ).toBe(false);
   });
 });

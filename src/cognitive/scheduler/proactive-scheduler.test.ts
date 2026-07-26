@@ -11,19 +11,19 @@ import {
 } from "./proactive-scheduler.js";
 import type { SchedulerConfig, Opportunity } from "./types.js";
 
-const FROZEN_TIME = 1_700_001_000_000;
+const DET_TIME = 1_700_000_005_000;
 
 function describeDet(name: string, fn: () => void): void {
   describe(name, () => {
-    let restore: (() => void) | undefined;
+    let restoreRandom: (() => void) | undefined;
+    let restoreDateNow: (() => void) | undefined;
     beforeEach(() => {
-      vi.useFakeTimers();
-      vi.setSystemTime(FROZEN_TIME);
-      restore = vi.spyOn(Math, "random").mockReturnValue(0.5);
+      restoreRandom = vi.spyOn(Math, "random").mockReturnValue(0.5);
+      restoreDateNow = vi.spyOn(Date, "now").mockReturnValue(DET_TIME);
     });
     afterEach(() => {
-      restore?.();
-      vi.useRealTimers();
+      restoreRandom?.();
+      restoreDateNow?.();
     });
     fn();
   });
@@ -32,6 +32,7 @@ function describeDet(name: string, fn: () => void): void {
 function personaWithDomains(): PersonaTree {
   const now = Date.now();
   const persona = createDefaultPersona();
+  persona.identity.userId = "test-user";
   persona.rapport.trustScore = 0.7;
   persona.rapport.totalExchanges = 10;
   persona.domains = {
@@ -268,15 +269,15 @@ describeDet("ProactiveScheduler", () => {
           savedPersona = p;
         },
       },
-      { insightGenerator: async () => { throw new Error("should not generate new insight"); } },
+      {
+        insightGenerator: async () => {
+          throw new Error("should not generate new insight");
+        },
+      },
     );
 
     const now = Date.now();
-    const result = await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: now },
-      "main",
-    );
+    const result = await scheduler.processEvent("user1", { type: "timer", timestamp: now }, "main");
 
     expect(deliverCount).toBe(1);
     expect(result?.id).toBe("pending-insight");
@@ -313,7 +314,11 @@ describeDet("ProactiveScheduler", () => {
           savedPersona = p;
         },
       },
-      { insightGenerator: async () => { throw new Error("should not generate new insight"); } },
+      {
+        insightGenerator: async () => {
+          throw new Error("should not generate new insight");
+        },
+      },
     );
 
     const result = await scheduler.processEvent(
@@ -323,7 +328,9 @@ describeDet("ProactiveScheduler", () => {
     );
 
     expect(result).toBeUndefined();
-    expect(savedPersona?.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe("pending-insight");
+    expect(savedPersona?.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe(
+      "pending-insight",
+    );
   });
 
   it("updates lastProactiveAt when onInsightReady returns true", async () => {
@@ -355,11 +362,7 @@ describeDet("ProactiveScheduler", () => {
     );
 
     const now = Date.now();
-    const result = await scheduler.processEvent(
-      "user1",
-      { type: "timer", timestamp: now },
-      "main",
-    );
+    const result = await scheduler.processEvent("user1", { type: "timer", timestamp: now }, "main");
 
     expect(result).toBeDefined();
     expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);

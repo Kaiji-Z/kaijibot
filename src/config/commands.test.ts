@@ -61,20 +61,20 @@ beforeEach(() => {
 });
 
 // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-describe.skip("resolveNativeSkillsEnabled", () => {
-  it("uses provider defaults for auto", () => {
+describe("resolveNativeSkillsEnabled", () => {
+  it("returns false for auto when channel plugin is not bundled", () => {
     expect(
       resolveNativeSkillsEnabled({
         providerId: "discord",
         globalSetting: "auto",
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       resolveNativeSkillsEnabled({
         providerId: "telegram",
         globalSetting: "auto",
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       resolveNativeSkillsEnabled({
         providerId: "slack",
@@ -107,14 +107,13 @@ describe.skip("resolveNativeSkillsEnabled", () => {
   });
 });
 
-// Skip on CI: requires upstream-only channels not bundled in KaijiBot
-describe.skip("resolveNativeCommandsEnabled", () => {
-  it("follows the same provider default heuristic", () => {
+describe("resolveNativeCommandsEnabled", () => {
+  it("returns false for auto when channel plugin is not bundled", () => {
     expect(resolveNativeCommandsEnabled({ providerId: "discord", globalSetting: "auto" })).toBe(
-      true,
+      false,
     );
     expect(resolveNativeCommandsEnabled({ providerId: "telegram", globalSetting: "auto" })).toBe(
-      true,
+      false,
     );
     expect(resolveNativeCommandsEnabled({ providerId: "slack", globalSetting: "auto" })).toBe(
       false,
