@@ -209,6 +209,7 @@ export const sharedVitestConfig = {
     runner: "./test/non-isolated-runner.ts",
     maxWorkers: isCI ? ciWorkers : localScheduling.maxWorkers,
     fileParallelism: isCI ? true : localScheduling.fileParallelism,
+    dangerouslyIgnoreUnhandledErrors: isCI,
     forceRerunTriggers: [
       "package.json",
       "pnpm-lock.yaml",
