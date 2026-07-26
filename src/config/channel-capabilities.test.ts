@@ -47,7 +47,7 @@ describe.skipIf(process.env.CI)("resolveChannelCapabilities", () => {
   it("falls back to provider capabilities when account capabilities are missing", () => {
     const cfg = {
       channels: {
-        telegram: {
+        feishu: {
           capabilities: ["inlineButtons"],
           accounts: {
             default: {},

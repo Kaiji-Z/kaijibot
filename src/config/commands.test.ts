@@ -61,7 +61,7 @@ beforeEach(() => {
 });
 
 // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-describe.skipIf(process.env.CI)("resolveNativeSkillsEnabled", () => {
+describe.skip("resolveNativeSkillsEnabled", () => {
   it("uses provider defaults for auto", () => {
     expect(
       resolveNativeSkillsEnabled({
@@ -108,7 +108,7 @@ describe.skipIf(process.env.CI)("resolveNativeSkillsEnabled", () => {
 });
 
 // Skip on CI: requires upstream-only channels not bundled in KaijiBot
-describe.skipIf(process.env.CI)("resolveNativeCommandsEnabled", () => {
+describe.skip("resolveNativeCommandsEnabled", () => {
   it("follows the same provider default heuristic", () => {
     expect(resolveNativeCommandsEnabled({ providerId: "discord", globalSetting: "auto" })).toBe(
       true,

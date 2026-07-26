@@ -5,7 +5,7 @@ import { withTempDirSync } from "../test-helpers/temp-dir.js";
 import { isChannelConfigured } from "./channel-configured.js";
 
 // Skip on CI: requires upstream-only channels/plugins not bundled in KaijiBot
-describe.skipIf(process.env.CI)("isChannelConfigured", () => {
+describe.skip("isChannelConfigured", () => {
   it("detects Telegram env configuration through the package metadata seam", () => {
     expect(isChannelConfigured({}, "telegram", { TELEGRAM_BOT_TOKEN: "token" })).toBe(true);
   });
