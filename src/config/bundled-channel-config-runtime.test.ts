@@ -19,7 +19,6 @@ describe("bundled channel config runtime", () => {
     );
 
     const schemaMap = runtimeModule.getBundledChannelConfigSchemaMap();
-    const runtimeMap = runtimeModule.getBundledChannelRuntimeMap();
     const availableChannels = [...schemaMap.keys()];
     expect(availableChannels.length).toBeGreaterThan(0);
   });

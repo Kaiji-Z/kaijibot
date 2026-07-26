@@ -4,7 +4,6 @@ import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
 import { processNoResponse, resetNoResponseStreak } from "../feedback/collector.js";
-import type { NoResponseContext } from "../feedback/collector.js";
 import { pickBestTopic } from "../feedback/preference-learner.js";
 import {
   isDuplicateBySemanticOverlap,
