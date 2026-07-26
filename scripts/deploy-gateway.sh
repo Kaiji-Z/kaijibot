@@ -2,6 +2,7 @@
 set -euo pipefail
 
 echo "[deploy] Building..."
+rm -rf dist
 pnpm build
 
 echo "[deploy] Stopping gateway..."
