@@ -266,6 +266,7 @@ export const sharedVitestConfig = {
       "dist/KaijiBot.app/**",
       "**/*.live.test.ts",
       "**/*.e2e.test.ts",
+      ...(isCI ? ["ui/**"] : []),
     ],
     coverage: {
       provider: "v8" as const,
