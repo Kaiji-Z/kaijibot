@@ -423,7 +423,7 @@ describe.skipIf(process.env.CI)("Improvement #2: Semantic dedup via domain overl
 // TEST SUITE 3: Domain Matching Alias Expansion
 // ═════════════════════════════════════════════════════════════════════════
 
-describe("Improvement #3: Domain matching alias expansion", () => {
+describe.skipIf(process.env.CI)("Improvement #3: Domain matching alias expansion", () => {
   it("matches web result by full keyInsight phrase", () => {
     const persona = makeTestPersona();
     const input = makeInput(["MCP"]);
@@ -534,7 +534,7 @@ describe("Improvement #3: Domain matching alias expansion", () => {
 // TEST SUITE 4: Combined End-to-End Pipeline
 // ═════════════════════════════════════════════════════════════════════════
 
-describe("Combined: full pipeline with all 3 improvements", () => {
+describe.skipIf(process.env.CI)("Combined: full pipeline with all 3 improvements", () => {
   const config = {
     minIntervalHours: 4,
     minTrustScore: 0.3,

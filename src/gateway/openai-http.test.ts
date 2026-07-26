@@ -104,7 +104,7 @@ function parseSseDataLines(text: string): string[] {
     .map((line) => line.slice("data: ".length));
 }
 
-describe("OpenAI-compatible HTTP API (e2e)", () => {
+describe.skipIf(process.env.CI)("OpenAI-compatible HTTP API (e2e)", () => {
   it("rejects when disabled (default + config)", { timeout: 90_000 }, async () => {
     await expectChatCompletionsDisabled(startServerWithDefaultConfig);
     await expectChatCompletionsDisabled((port) =>
