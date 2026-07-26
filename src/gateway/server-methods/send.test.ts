@@ -184,12 +184,12 @@ describe("gateway send mirroring", () => {
       createTestRegistry([
         {
           pluginId: "slack",
-          plugin: createOutboundTestPlugin({ id: "slack", outbound: {} }),
+          plugin: createOutboundTestPlugin({ id: "slack", outbound: { deliveryMode: "gateway" } }),
           source: "test",
         },
         {
           pluginId: "matrix",
-          plugin: createOutboundTestPlugin({ id: "matrix", outbound: {} }),
+          plugin: createOutboundTestPlugin({ id: "matrix", outbound: { deliveryMode: "gateway" } }),
           source: "test",
         },
       ]),
