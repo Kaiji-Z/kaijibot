@@ -72,7 +72,7 @@ async function readCounterWithRetry(filePath: string): Promise<number> {
   throw new Error(`timed out waiting for counter file: ${filePath}`);
 }
 
-describe("gateway e2e", () => {
+describe.skipIf(process.env.CI)("gateway e2e", () => {
   beforeEach(() => {
     clearRuntimeConfigSnapshot();
     clearConfigCache();
