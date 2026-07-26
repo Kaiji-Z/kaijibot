@@ -110,6 +110,7 @@ function seededRandom(seed: number): number {
 }
 
 const DEFAULT_EPSILON_GREEDY = 0.2;
+const PENDING_DELIVERY_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function applyEpsilonGreedy(
   candidates: Opportunity[],
@@ -156,7 +157,7 @@ export class ProactiveScheduler {
         agentId: string,
         userId: string,
         candidate: InsightCandidate,
-      ) => Promise<void>;
+      ) => Promise<boolean | void>;
       savePersona: (agentId: string, userId: string, persona: PersonaTree) => Promise<void>;
     },
     deps?: {
@@ -690,6 +691,58 @@ export class ProactiveScheduler {
     );
   }
 
+  private _finalizeDelivery(
+    persona: PersonaTree,
+    event: SchedulerEvent,
+    insight: InsightCandidate,
+    opportunityType: string,
+  ): PersonaTree {
+    if (
+      persona.feedbackProfile.lastProactiveAt > 0 &&
+      persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt
+    ) {
+      const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+      const prevInsightDomains =
+        recentDomains.length >= 1 ? recentDomains[recentDomains.length - 1] : [];
+      const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
+      const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
+      persona = processNoResponse(persona, {
+        previousDomains: prevInsightDomains ?? [],
+        previousMode: prevMode,
+      });
+    }
+
+    persona.feedbackProfile.lastProactiveAt = event.timestamp;
+    persona.feedbackProfile.pendingInsightDelivery = null;
+
+    const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);
+    persona.feedbackProfile.recentInsightIds = ids;
+    const contents = [
+      ...(persona.feedbackProfile.recentInsightContents ?? []),
+      insight.content,
+    ].slice(-5);
+    persona.feedbackProfile.recentInsightContents = contents;
+    const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+    const replacedDomains = [...prevDomains.slice(0, -1), insight.targetDomains].slice(-5);
+    persona.feedbackProfile.recentInsightDomains = replacedDomains;
+    const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
+    const replacedTypes = [...prevTypes.slice(0, -1), opportunityType].slice(-5);
+    persona.feedbackProfile.recentInsightTypes = replacedTypes;
+    const mode = insight.resolvedMode ?? "surprise";
+    const prevModes = persona.feedbackProfile.recentInsightModes ?? [];
+    const replacedModes = [...prevModes.slice(0, -1), mode].slice(-5);
+    persona.feedbackProfile.recentInsightModes = replacedModes;
+    if (insight.searchQueryUsed) {
+      const queries = [
+        ...(persona.feedbackProfile.recentInsightQueryHistory ?? []),
+        insight.searchQueryUsed,
+      ].slice(-10);
+      persona.feedbackProfile.recentInsightQueryHistory = queries;
+    }
+
+    return persona;
+  }
+
   private async _processEventInner(
     agentId: string,
     userId: string,
@@ -698,6 +751,45 @@ export class ProactiveScheduler {
     let persona = await this.callbacks.loadPersona(agentId, userId);
     if (!persona) {
       return undefined;
+    }
+
+    // Pending insight delivery retry — bypasses gate and LLM (zero token cost).
+    // Stored in persona file so it survives gateway restarts.
+    const pending = persona.feedbackProfile.pendingInsightDelivery;
+    if (pending) {
+      const ageMs = event.timestamp - pending.generatedAt;
+      if (ageMs > PENDING_DELIVERY_TTL_MS) {
+        persona.feedbackProfile.pendingInsightDelivery = null;
+        log.info("pending insight expired (TTL)", { userId, ageMs: Math.round(ageMs / 3600_000) });
+      } else {
+        log.info("retrying pending insight delivery", {
+          userId,
+          insightId: pending.candidate.id,
+          ageMs: Math.round(ageMs / 60_000),
+        });
+        const retryResult = await this.callbacks.onInsightReady(
+          agentId,
+          userId,
+          pending.candidate,
+        );
+        if (retryResult !== false) {
+          persona = this._finalizeDelivery(
+            persona,
+            event,
+            pending.candidate,
+            pending.opportunityType,
+          );
+          await this.callbacks.savePersona(agentId, userId, persona);
+          log.info("pending insight delivered", { userId, insightId: pending.candidate.id });
+          return pending.candidate;
+        }
+        log.info("pending insight delivery still failing", {
+          userId,
+          ageMs: Math.round(ageMs / 60_000),
+        });
+        await this.callbacks.savePersona(agentId, userId, persona);
+        return undefined;
+      }
     }
 
     // Only reset no-response streak before gate — we always want to clear the
@@ -873,52 +965,22 @@ export class ProactiveScheduler {
       return undefined;
     }
 
-    await this.callbacks.onInsightReady(agentId, userId, insight);
-
-    // After delivering a new insight, check whether the user responded to
-    // the *previous* one.  If lastProactive > lastActive at this point the
-    // user never replied to our last proactive, so increment the streak.
-    if (
-      persona.feedbackProfile.lastProactiveAt > 0 &&
-      persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt
-    ) {
-      const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-      const prevInsightDomains =
-        recentDomains.length >= 1 ? recentDomains[recentDomains.length - 1] : [];
-      const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
-      const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
-      const noResponseCtx: NoResponseContext = {
-        previousDomains: prevInsightDomains ?? [],
-        previousMode: prevMode,
+    const deliveryResult = await this.callbacks.onInsightReady(agentId, userId, insight);
+    if (deliveryResult === false) {
+      persona.feedbackProfile.pendingInsightDelivery = {
+        candidate: insight,
+        generatedAt: event.timestamp,
+        opportunityType: selected.type,
       };
-      persona = processNoResponse(persona, noResponseCtx);
+      await this.callbacks.savePersona(agentId, userId, persona);
+      log.info("insight delivery failed, stored as pending", {
+        userId,
+        insightId: insight.id,
+      });
+      return undefined;
     }
 
-    persona.feedbackProfile.lastProactiveAt = event.timestamp;
-    const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);
-    persona.feedbackProfile.recentInsightIds = ids;
-    const contents = [
-      ...(persona.feedbackProfile.recentInsightContents ?? []),
-      insight.content,
-    ].slice(-5);
-    persona.feedbackProfile.recentInsightContents = contents;
-    const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-    const replacedDomains = [...prevDomains.slice(0, -1), insight.targetDomains].slice(-5);
-    persona.feedbackProfile.recentInsightDomains = replacedDomains;
-    const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
-    const replacedTypes = [...prevTypes.slice(0, -1), selected.type].slice(-5);
-    persona.feedbackProfile.recentInsightTypes = replacedTypes;
-    const mode = insight.resolvedMode ?? "surprise";
-    const prevModes = persona.feedbackProfile.recentInsightModes ?? [];
-    const replacedModes = [...prevModes.slice(0, -1), mode].slice(-5);
-    persona.feedbackProfile.recentInsightModes = replacedModes;
-    if (insight.searchQueryUsed) {
-      const queries = [
-        ...(persona.feedbackProfile.recentInsightQueryHistory ?? []),
-        insight.searchQueryUsed,
-      ].slice(-10);
-      persona.feedbackProfile.recentInsightQueryHistory = queries;
-    }
+    persona = this._finalizeDelivery(persona, event, insight, selected.type);
     await this.callbacks.savePersona(agentId, userId, persona);
 
     return insight;

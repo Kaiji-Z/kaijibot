@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { isDuplicateBySemanticOverlap } from "../insight/content-similarity.js";
 import { buildSearchQuery } from "../insight/llm-engine.js";
 import type { InsightCandidate } from "../insight/types.js";
@@ -10,6 +10,24 @@ import {
   isTopicStale,
 } from "./proactive-scheduler.js";
 import type { SchedulerConfig, Opportunity } from "./types.js";
+
+const FROZEN_TIME = 1_700_001_000_000;
+
+function describeDet(name: string, fn: () => void): void {
+  describe(name, () => {
+    let restore: (() => void) | undefined;
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(FROZEN_TIME);
+      restore = vi.spyOn(Math, "random").mockReturnValue(0.5);
+    });
+    afterEach(() => {
+      restore?.();
+      vi.useRealTimers();
+    });
+    fn();
+  });
+}
 
 function personaWithDomains(): PersonaTree {
   const now = Date.now();
@@ -91,8 +109,7 @@ function makeScheduler(
   );
 }
 
-// CI_SKIP: pre-existing test failures on CI (env-specific)
-(process.env.CI ? describe.skip : describe)("ProactiveScheduler", () => {
+describeDet("ProactiveScheduler", () => {
   it("returns undefined when persona not found", async () => {
     const scheduler = new ProactiveScheduler(config, {
       loadPersona: async () => undefined,
@@ -175,6 +192,176 @@ function makeScheduler(
 
     expect(result).toBeDefined();
     expect(capturedCandidates.length).toBe(1);
+    expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);
+  });
+
+  it("stores pending and skips lastProactiveAt when onInsightReady returns false", async () => {
+    const persona = personaWithDomains();
+    const originalLastProactive = persona.feedbackProfile.lastProactiveAt;
+    let savedPersona: PersonaTree | undefined;
+
+    const fakeInsight: InsightCandidate = {
+      id: "test-id-fail",
+      content: "Test insight that fails delivery",
+      rationale: "test",
+      targetDomains: ["AI/机器学习"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => false,
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(result).toBeUndefined();
+    expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(originalLastProactive);
+    expect(savedPersona?.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe("test-id-fail");
+  });
+
+  it("retries pending insight on next event and delivers when onInsightReady succeeds", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.pendingInsightDelivery = {
+      candidate: {
+        id: "pending-insight",
+        content: "Previously failed insight",
+        rationale: "retry",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+        compositeScore: 0.65,
+        sources: [],
+        verificationStatus: "unverified",
+      },
+      generatedAt: Date.now() - 30 * 60_000,
+      opportunityType: "cross_domain",
+    };
+    let savedPersona: PersonaTree | undefined;
+    let deliverCount = 0;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {
+          deliverCount++;
+          return true;
+        },
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => { throw new Error("should not generate new insight"); } },
+    );
+
+    const now = Date.now();
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: now },
+      "main",
+    );
+
+    expect(deliverCount).toBe(1);
+    expect(result?.id).toBe("pending-insight");
+    expect(savedPersona?.feedbackProfile.pendingInsightDelivery).toBeNull();
+    expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);
+  });
+
+  it("keeps pending when retry delivery still fails", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.pendingInsightDelivery = {
+      candidate: {
+        id: "pending-insight",
+        content: "Still failing",
+        rationale: "retry",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+        compositeScore: 0.65,
+        sources: [],
+        verificationStatus: "unverified",
+      },
+      generatedAt: Date.now() - 30 * 60_000,
+      opportunityType: "cross_domain",
+    };
+    let savedPersona: PersonaTree | undefined;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => false,
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => { throw new Error("should not generate new insight"); } },
+    );
+
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(result).toBeUndefined();
+    expect(savedPersona?.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe("pending-insight");
+  });
+
+  it("updates lastProactiveAt when onInsightReady returns true", async () => {
+    const persona = personaWithDomains();
+    let savedPersona: PersonaTree | undefined;
+
+    const fakeInsight: InsightCandidate = {
+      id: "test-id-ok",
+      content: "Test insight that delivers successfully",
+      rationale: "test",
+      targetDomains: ["Rust"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => true,
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const now = Date.now();
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: now },
+      "main",
+    );
+
+    expect(result).toBeDefined();
     expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);
   });
 
@@ -782,7 +969,7 @@ describe("ProactiveScheduler.resolve", () => {
   });
 });
 
-describe.skipIf(process.env.CI)("ProactiveScheduler pipeline integration", () => {
+describeDet("ProactiveScheduler pipeline integration", () => {
   it("pipeline degrades gracefully: search empty → no identify → no resolve", async () => {
     const emptyPersona = createDefaultPersona();
     emptyPersona.rapport.trustScore = 0.7;
@@ -1032,8 +1219,7 @@ describe("ProactiveScheduler.search — blacklist integration", () => {
   });
 });
 
-// CI_SKIP: pre-existing CI flakiness (timing-sensitive dedup counters and per-user queue integration)
-(process.env.CI ? describe.skip : describe)("ProactiveScheduler — semantic dedup", () => {
+describeDet("ProactiveScheduler — semantic dedup", () => {
   it("pre-gen freshness blocks domain-overlapping candidates, exploration passes through", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
@@ -1730,7 +1916,7 @@ describe("Domain rotation", () => {
   });
 });
 
-describe.skipIf(process.env.CI)("Push fatigue", () => {
+describeDet("Push fatigue", () => {
   it("getFatiguedDomains returns correct set", async () => {
     const persona = personaWithDomains();
     let savedPersona: PersonaTree | undefined;
@@ -1877,8 +2063,7 @@ describe.skipIf(process.env.CI)("Push fatigue", () => {
 // Task 6: 6-cycle integration test — verifies all fixes work together
 // ---------------------------------------------------------------------------
 
-// CI_SKIP: pre-existing CI flakiness (integration test timing-sensitive)
-(process.env.CI ? describe.skip : describe)("6-cycle integration test — all fixes together", () => {
+describeDet("6-cycle integration test — all fixes together", () => {
   function integrationPersona(): PersonaTree {
     const persona = createDefaultPersona();
     persona.rapport.trustScore = 0.8;
@@ -2180,7 +2365,7 @@ describe.skipIf(process.env.CI)("Push fatigue", () => {
 // Fix 2: attemptedDomains persisted when insight killed by dedup
 // ---------------------------------------------------------------------------
 
-describe.skipIf(process.env.CI)("processEvent — attemptedDomains persistence on dedup kill", () => {
+describeDet("processEvent — attemptedDomains persistence on dedup kill", () => {
   it("saves persona with attemptedDomains when resolve returns null", async () => {
     const persona = personaWithDomains();
     let savedPersona: PersonaTree | undefined;
@@ -2297,8 +2482,7 @@ describe("isTopicStale", () => {
   });
 });
 
-// CI_SKIP: pre-existing CI flakiness (stale candidate/freshness fallback is timing-sensitive)
-describe.skipIf(process.env.CI)("processEvent — pre-gen freshness fallback", () => {
+describeDet("processEvent — pre-gen freshness fallback", () => {
   it("tries next candidate when first is stale", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
@@ -2540,7 +2724,7 @@ describe("resolve — quality retry", () => {
   });
 });
 
-describe.skipIf(process.env.CI)("processEvent per-user queue", () => {
+describeDet("processEvent per-user queue", () => {
   it("should serialize concurrent processEvent calls for the same user", async () => {
     const executionOrder: string[] = [];
     let personaSnapshot = personaWithDomains();
@@ -2647,7 +2831,7 @@ describe.skipIf(process.env.CI)("processEvent per-user queue", () => {
   });
 });
 
-describe.skipIf(process.env.CI)("insight hallucination gates", () => {
+describeDet("insight hallucination gates", () => {
   const gatePersona = personaWithDomains;
 
   it("pattern-mode contradicted insight returns null from resolve", async () => {
@@ -3207,7 +3391,7 @@ describe.skipIf(process.env.CI)("insight hallucination gates", () => {
   });
 });
 
-describe.skipIf(process.env.CI)("resolve loop: all modes triggered (no starvation)", () => {
+describeDet("resolve loop: all modes triggered (no starvation)", () => {
   function gatePersona(): PersonaTree {
     const p = personaWithDomains();
     p.rapport.trustScore = 1.0;
@@ -3463,7 +3647,7 @@ describe("applyEpsilonGreedy", () => {
   });
 });
 
-describe.skipIf(process.env.CI)("ProactiveScheduler — time-based no-response penalty", () => {
+describeDet("ProactiveScheduler — time-based no-response penalty", () => {
   const noResponseConfig: SchedulerConfig = {
     minIntervalHours: 4,
     minTrustScore: 0.3,

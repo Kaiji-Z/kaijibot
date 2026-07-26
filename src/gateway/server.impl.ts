@@ -1557,20 +1557,23 @@ export async function startGatewayServer(
                   const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
 
                   const insightText = candidate.content;
-                  const sessionKey = findSessionKeyForUserId(cfgAtStart, userId);
+                  const sessionKey = findSessionKeyForUserId(cfgAtStart, userId, agentId);
                   if (sessionKey) {
                     enqueueSystemEvent(`[Cognitive Insight] ${insightText}`, { sessionKey });
                     requestHeartbeatNow({ reason: "cognitive-insight", sessionKey });
                     log.info(`cognitive insight enqueued for heartbeat delivery to ${userId}`, {
                       sessionKey,
                     });
+                    return true;
                   } else {
                     log.info(
                       `cognitive insight: no routable session for ${userId}, skipping delivery`,
                     );
+                    return false;
                   }
                 } catch (err) {
                   log.warn(`cognitive insight delivery failed: ${String(err)}`);
+                  return false;
                 }
               },
             },

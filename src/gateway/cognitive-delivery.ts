@@ -14,15 +14,16 @@ export type CognitiveDeliveryTarget = {
 export function findSessionKeyForUserId(
   cfg: KaijiBotConfig | undefined,
   userId: string,
+  agentId: string = "main",
 ): string | undefined {
   if (!cfg) {
     return undefined;
   }
 
-  const storePath = resolveStorePath(cfg.session?.store, { agentId: "main" });
+  const storePath = resolveStorePath(cfg.session?.store, { agentId });
   const store = loadSessionStore(storePath);
 
-  const directKey = `agent:main:${userId}`;
+  const directKey = `agent:${agentId}:${userId}`;
   if (store[directKey] && !isSubagentSessionKey(directKey) && !isCronSessionKey(directKey)) {
     return directKey;
   }
@@ -58,15 +59,16 @@ export function findSessionKeyForUserId(
 export function resolveCognitiveDeliveryTarget(
   cfg: KaijiBotConfig | undefined,
   userId: string,
+  agentId: string = "main",
 ): CognitiveDeliveryTarget | undefined {
   if (!cfg) {
     return undefined;
   }
 
-  const storePath = resolveStorePath(cfg.session?.store, { agentId: "main" });
+  const storePath = resolveStorePath(cfg.session?.store, { agentId });
   const store = loadSessionStore(storePath);
 
-  const sessionKey = findSessionKeyForUserId(cfg, userId);
+  const sessionKey = findSessionKeyForUserId(cfg, userId, agentId);
   if (!sessionKey) {
     return undefined;
   }

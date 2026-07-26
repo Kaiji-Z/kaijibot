@@ -1,3 +1,5 @@
+import type { InsightCandidate } from "./insight/types.js";
+
 // Conversation mode — determines agent behavior
 export type CognitiveMode = "task" | "insight" | "hybrid" | "proactive";
 
@@ -116,6 +118,12 @@ export type FeedbackProfile = {
    * Set to the lastProactiveAt value when the penalty was applied.
    */
   lastNoResponseAt?: number;
+  /**
+   * Insight generated but not yet delivered. Retried on every scheduler event
+   * (bypassing gate and LLM) until delivery succeeds or it expires (24h).
+   * Persists to persona file so it survives gateway restarts.
+   */
+  pendingInsightDelivery?: { candidate: InsightCandidate; generatedAt: number; opportunityType: string } | null;
 };
 
 // Trust/rapport metrics

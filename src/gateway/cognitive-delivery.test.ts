@@ -95,6 +95,28 @@ describe("findSessionKeyForUserId", () => {
     expect(result).toBeUndefined();
   });
 
+  it("uses agentId parameter to search the correct agent store", () => {
+    const storeTemplate = join(tempDir, "sessions", "{agentId}", "sessions.json");
+    for (const agentId of ["main", "xiantiaojun-bot"]) {
+      const dir = join(tempDir, "sessions", agentId);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, "sessions.json"),
+        JSON.stringify({
+          [`agent:${agentId}:ou_test`]: { lastChannel: "feishu", lastTo: "ou_test" },
+        }),
+        "utf-8",
+      );
+    }
+    const cfg = { session: { store: storeTemplate } } as never;
+
+    const xjResult = findSessionKeyForUserId(cfg, "ou_test", "xiantiaojun-bot");
+    expect(xjResult).toBe("agent:xiantiaojun-bot:ou_test");
+
+    const mainResult = findSessionKeyForUserId(cfg, "ou_test");
+    expect(mainResult).toBe("agent:main:ou_test");
+  });
+
   it("falls back to main session for operator userId", () => {
     const storePath = writeSessionStore({
       "agent:main:main": { lastChannel: "webchat", lastTo: "operator" },
