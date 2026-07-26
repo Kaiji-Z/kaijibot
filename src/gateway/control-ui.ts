@@ -388,7 +388,7 @@ export function handleControlUiHttpRequest(
   }
 
   const isLocalClient = (() => {
-    const addr = req.socket.remoteAddress;
+    const addr = req.socket?.remoteAddress;
     return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
   })();
   const auth = opts?.config?.gateway?.auth;

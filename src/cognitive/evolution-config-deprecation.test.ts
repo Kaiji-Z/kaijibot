@@ -1,11 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CognitiveEvolutionSchema } from "../config/zod-schema.cognitive.js";
 
 describe("CognitiveEvolutionSchema — deprecated field stripping", () => {
-  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
 
   afterEach(() => {
-    warnSpy.mockClear();
+    warnSpy.mockRestore();
   });
 
   it("strips clawhubEnabled and warns", () => {

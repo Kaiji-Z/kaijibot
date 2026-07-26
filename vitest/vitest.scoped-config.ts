@@ -30,9 +30,12 @@ function relativizeScopedPatterns(values: string[], dir?: string): string[] {
 }
 
 export function resolveVitestIsolation(
-  _env: Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = process.env,
 ): boolean {
-  return false;
+  // CI workers share module state across files without isolation, causing
+  // cross-file pollution (env vars, plugin caches, mocks). Isolate on CI for
+  // determinism; keep non-isolated locally for speed.
+  return env.CI === "true" || env.GITHUB_ACTIONS === "true";
 }
 
 const SCOPED_PROJECT_GROUP_ORDER_BY_NAME = new Map(

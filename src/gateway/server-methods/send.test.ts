@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setActivePluginRegistry } from "../../plugins/runtime.js";
-import { createTestRegistry } from "../../test-utils/channel-plugins.js";
+import { createOutboundTestPlugin, createTestRegistry } from "../../test-utils/channel-plugins.js";
 import type { GatewayRequestContext } from "./types.js";
 
 type ResolveOutboundTarget = typeof import("../../infra/outbound/targets.js").resolveOutboundTarget;
@@ -178,7 +178,23 @@ describe("gateway send mirroring", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     registrySeq += 1;
-    setActivePluginRegistry(createTestRegistry([]), `send-test-${registrySeq}`);
+    // slack must be in the registry for resolveOutboundChannelPlugin to treat it as deliverable;
+    // runtime behavior still comes from the getChannelPlugin mock below.
+    setActivePluginRegistry(
+      createTestRegistry([
+        {
+          pluginId: "slack",
+          plugin: createOutboundTestPlugin({ id: "slack", outbound: {} }),
+          source: "test",
+        },
+        {
+          pluginId: "matrix",
+          plugin: createOutboundTestPlugin({ id: "matrix", outbound: {} }),
+          source: "test",
+        },
+      ]),
+      `send-test-${registrySeq}`,
+    );
     mocks.applyPluginAutoEnable.mockImplementation(({ config }) => ({
       config,
       changes: [],
