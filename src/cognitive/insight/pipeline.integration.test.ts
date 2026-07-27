@@ -118,7 +118,10 @@ function makePersona(overrides?: Partial<PersonaTree>): PersonaTree {
 
 function makeConfig(): KaijiBotConfig {
   return {
-    cognitive: { insight: { sources: { webSearchProvider: "zai" } } },
+    cognitive: {
+      insight: { sources: { webSearchProvider: "zai" } },
+      persona: { extractionModel: "zai/glm-5.2" },
+    },
   } as KaijiBotConfig;
 }
 

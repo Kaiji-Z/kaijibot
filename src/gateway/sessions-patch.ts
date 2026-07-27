@@ -6,6 +6,7 @@ import {
   resolveDefaultModelForAgent,
   resolveSubagentConfiguredModelSelection,
 } from "../agents/model-selection.js";
+import { MissingAgentModelConfigError } from "../agents/defaults.js";
 import { normalizeGroupActivation } from "../auto-reply/group-activation.js";
 import {
   formatThinkingLevels,
@@ -92,7 +93,14 @@ export async function applySessionsPatchToStore(params: {
   const now = Date.now();
   const parsedAgent = parseAgentSessionKey(storeKey);
   const sessionAgentId = normalizeAgentId(parsedAgent?.agentId ?? resolveDefaultAgentId(cfg));
-  const resolvedDefault = resolveDefaultModelForAgent({ cfg, agentId: sessionAgentId });
+  let resolvedDefault;
+  try {
+    resolvedDefault = resolveDefaultModelForAgent({ cfg, agentId: sessionAgentId });
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+  }
   const subagentModelHint = isSubagentSessionKey(storeKey)
     ? resolveSubagentConfiguredModelSelection({ cfg, agentId: sessionAgentId })
     : undefined;
@@ -241,8 +249,9 @@ export async function applySessionsPatchToStore(params: {
       const normalized = normalizeThinkLevel(String(raw));
       if (!normalized) {
         const hintProvider =
-          normalizeOptionalString(existing?.providerOverride) || resolvedDefault.provider;
-        const hintModel = normalizeOptionalString(existing?.modelOverride) || resolvedDefault.model;
+          normalizeOptionalString(existing?.providerOverride) || resolvedDefault?.provider || "";
+        const hintModel =
+          normalizeOptionalString(existing?.modelOverride) || resolvedDefault?.model || "";
         return invalid(
           `invalid thinkingLevel (use ${formatThinkingLevels(hintProvider, hintModel, "|")})`,
         );
@@ -377,8 +386,8 @@ export async function applySessionsPatchToStore(params: {
       applyModelOverrideToSessionEntry({
         entry: next,
         selection: {
-          provider: resolvedDefault.provider,
-          model: resolvedDefault.model,
+          provider: resolvedDefault?.provider ?? "",
+          model: resolvedDefault?.model ?? "",
           isDefault: true,
         },
         markLiveSwitchPending: true,
@@ -399,13 +408,14 @@ export async function applySessionsPatchToStore(params: {
         cfg,
         catalog,
         raw: trimmed,
-        defaultProvider: resolvedDefault.provider,
-        defaultModel: subagentModelHint ?? resolvedDefault.model,
+        defaultProvider: resolvedDefault?.provider ?? "",
+        defaultModel: subagentModelHint ?? resolvedDefault?.model ?? "",
       });
       if ("error" in resolved) {
         return invalid(resolved.error);
       }
       const isDefault =
+        resolvedDefault !== undefined &&
         resolved.ref.provider === resolvedDefault.provider &&
         resolved.ref.model === resolvedDefault.model;
       applyModelOverrideToSessionEntry({
@@ -421,8 +431,8 @@ export async function applySessionsPatchToStore(params: {
   }
 
   if (next.thinkingLevel === "xhigh") {
-    const effectiveProvider = next.providerOverride ?? resolvedDefault.provider;
-    const effectiveModel = next.modelOverride ?? resolvedDefault.model;
+    const effectiveProvider = next.providerOverride ?? resolvedDefault?.provider ?? "";
+    const effectiveModel = next.modelOverride ?? resolvedDefault?.model ?? "";
     if (!supportsXHighThinking(effectiveProvider, effectiveModel)) {
       if ("thinkingLevel" in patch) {
         return invalid(`thinkingLevel "xhigh" is only supported for ${formatXHighModelHint()}`);

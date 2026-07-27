@@ -1,6 +1,7 @@
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
+import { MissingAgentModelConfigError } from "../../agents/defaults.js";
 import type { PersonaTree } from "../types.js";
 import {
   buildInterestInferencePrompt,
@@ -115,6 +116,7 @@ function makeConfig(overrides?: Partial<KaijiBotConfig>): KaijiBotConfig {
   return {
     cognitive: {
       insight: { sources: { webSearchProvider: "zai" } },
+      persona: { extractionModel: "zai/glm-5.2" },
     },
     ...overrides,
   } as KaijiBotConfig;
@@ -404,21 +406,25 @@ describe("inferSearchStrategy", () => {
     expect(capturedModelRef).toBe("fallback/extraction-model");
   });
 
-  it("falls back to zai/glm-5-turbo when neither model config is set", async () => {
-    let capturedModelRef: string | undefined;
+  it("throws MissingAgentModelConfigError when neither model config nor providers are set", async () => {
     const deps: InterestInferenceDeps = {
       complete: async () => assistantMessage(validStrategyJSON()),
-      prepareModel: async (_cfg, modelRef) => {
-        capturedModelRef = modelRef;
-        return { model: TEST_MODEL, auth: TEST_AUTH };
-      },
+      prepareModel: async () => ({ model: TEST_MODEL, auth: TEST_AUTH }),
     };
 
-    // makeConfig with no inferenceModel or extractionModel
-    const config = makeConfig();
+    const config = makeConfig({
+      cognitive: {
+        insight: { sources: { webSearchProvider: "zai" } },
+        persona: {},
+      },
+    });
 
-    await inferSearchStrategy(makePersona(), makeInput(), config, deps);
-
-    expect(capturedModelRef).toBe("zai/glm-5-turbo");
+    let caught: unknown;
+    try {
+      await inferSearchStrategy(makePersona(), makeInput(), config, deps);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(MissingAgentModelConfigError);
   });
 });

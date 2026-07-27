@@ -20,7 +20,7 @@ import {
   resolveAgentModelFallbacksOverride,
 } from "./agent-scope.js";
 import { resolveConfiguredProviderFallback } from "./configured-provider-fallback.js";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./defaults.js";
+import { DEFAULT_MODEL, DEFAULT_PROVIDER, MissingAgentModelConfigError } from "./defaults.js";
 import type { ModelCatalogEntry } from "./model-catalog.js";
 import { splitTrailingAuthProfile } from "./model-ref-profile.js";
 import {
@@ -486,7 +486,7 @@ export function resolveConfiguredModelRef(params: {
   if (fallbackProvider) {
     return fallbackProvider;
   }
-  return { provider: params.defaultProvider, model: params.defaultModel };
+  throw new MissingAgentModelConfigError("resolveConfiguredModelRef");
 }
 
 export function resolveDefaultModelForAgent(params: {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
+import { MissingAgentModelConfigError } from "./defaults.js";
 import { resolveSimpleCompletionSelectionForAgent } from "./simple-completion-runtime.js";
 
 describe("resolveSimpleCompletionSelectionForAgent", () => {
@@ -75,15 +76,11 @@ describe("resolveSimpleCompletionSelectionForAgent", () => {
     );
   });
 
-  it("falls back to runtime default model when no explicit model is configured", () => {
+  it("throws MissingAgentModelConfigError when no explicit model is configured and no providers are available", () => {
     const cfg = {} as KaijiBotConfig;
 
-    const selection = resolveSimpleCompletionSelectionForAgent({ cfg, agentId: "main" });
-    expect(selection).toEqual(
-      expect.objectContaining({
-        provider: "openai",
-        modelId: "gpt-5.4",
-      }),
+    expect(() => resolveSimpleCompletionSelectionForAgent({ cfg, agentId: "main" })).toThrow(
+      MissingAgentModelConfigError,
     );
   });
 
@@ -118,7 +115,7 @@ describe("resolveSimpleCompletionSelectionForAgent", () => {
     expect(selection).toEqual(
       expect.objectContaining({
         provider: "openai",
-        modelId: "gpt-5.4",
+        modelId: "gpt-5",
       }),
     );
   });

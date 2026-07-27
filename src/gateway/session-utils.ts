@@ -7,7 +7,12 @@ import {
   resolveDefaultAgentId,
 } from "../agents/agent-scope.js";
 import { lookupContextTokens, resolveContextTokensForModel } from "../agents/context.js";
-import { DEFAULT_CONTEXT_TOKENS, DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
+import {
+  DEFAULT_CONTEXT_TOKENS,
+  DEFAULT_MODEL,
+  DEFAULT_PROVIDER,
+  MissingAgentModelConfigError,
+} from "../agents/defaults.js";
 import type { ModelCatalogEntry } from "../agents/model-catalog.js";
 import {
   inferUniqueProviderFromConfiguredModels,
@@ -1022,18 +1027,25 @@ export function loadCombinedSessionStoreForGateway(cfg: KaijiBotConfig): {
 }
 
 export function getSessionDefaults(cfg: KaijiBotConfig): GatewaySessionsDefaults {
-  const resolved = resolveConfiguredModelRef({
-    cfg,
-    defaultProvider: DEFAULT_PROVIDER,
-    defaultModel: DEFAULT_MODEL,
-  });
+  let resolved: { provider: string; model: string } | undefined;
+  try {
+    resolved = resolveConfiguredModelRef({
+      cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+      defaultModel: DEFAULT_MODEL,
+    });
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+  }
   const contextTokens =
     cfg.agents?.defaults?.contextTokens ??
-    lookupContextTokens(resolved.model, { allowAsyncLoad: false }) ??
+    (resolved?.model ? lookupContextTokens(resolved.model, { allowAsyncLoad: false }) : undefined) ??
     DEFAULT_CONTEXT_TOKENS;
   return {
-    modelProvider: resolved.provider ?? null,
-    model: resolved.model ?? null,
+    modelProvider: resolved?.provider ?? null,
+    model: resolved?.model ?? null,
     contextTokens: contextTokens ?? null,
   };
 }
@@ -1045,13 +1057,21 @@ export function resolveSessionModelRef(
     | Pick<SessionEntry, "model" | "modelProvider" | "modelOverride" | "providerOverride">,
   agentId?: string,
 ): { provider: string; model: string } {
-  const resolved = agentId
-    ? resolveDefaultModelForAgent({ cfg, agentId })
-    : resolveConfiguredModelRef({
-        cfg,
-        defaultProvider: DEFAULT_PROVIDER,
-        defaultModel: DEFAULT_MODEL,
-      });
+  let resolved: { provider: string; model: string };
+  try {
+    resolved = agentId
+      ? resolveDefaultModelForAgent({ cfg, agentId })
+      : resolveConfiguredModelRef({
+          cfg,
+          defaultProvider: DEFAULT_PROVIDER,
+          defaultModel: DEFAULT_MODEL,
+        });
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+    resolved = { provider: "", model: "" };
+  }
 
   const normalizedOverride = normalizeStoredOverrideModel({
     providerOverride: entry?.providerOverride,

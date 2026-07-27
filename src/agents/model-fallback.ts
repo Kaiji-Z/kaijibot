@@ -14,7 +14,7 @@ import {
   isProfileInCooldown,
   resolveProfilesUnavailableReason,
 } from "./auth-profiles/usage.js";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./defaults.js";
+import { DEFAULT_MODEL, DEFAULT_PROVIDER, MissingAgentModelConfigError } from "./defaults.js";
 import {
   FailoverError,
   coerceToFailoverError,
@@ -37,6 +37,7 @@ import {
   normalizeModelRef,
   resolveConfiguredModelRef,
   resolveModelRefFromString,
+  type ModelRef,
 } from "./model-selection.js";
 import type { FailoverReason } from "./pi-embedded-helpers.js";
 import { isLikelyContextOverflowError } from "./pi-embedded-helpers.js";
@@ -378,13 +379,20 @@ function resolveFallbackCandidates(params: {
   /** Optional explicit fallbacks list; when provided (even empty), replaces agents.defaults.model.fallbacks. */
   fallbacksOverride?: string[];
 }): ModelCandidate[] {
-  const primary = params.cfg
-    ? resolveConfiguredModelRef({
+  let primary: ModelRef | null = null;
+  if (params.cfg) {
+    try {
+      primary = resolveConfiguredModelRef({
         cfg: params.cfg,
         defaultProvider: DEFAULT_PROVIDER,
         defaultModel: DEFAULT_MODEL,
-      })
-    : null;
+      });
+    } catch (err) {
+      if (!(err instanceof MissingAgentModelConfigError)) {
+        throw err;
+      }
+    }
+  }
   const defaultProvider = primary?.provider ?? DEFAULT_PROVIDER;
   const defaultModel = primary?.model ?? DEFAULT_MODEL;
   const providerRaw = normalizeOptionalString(String(params.provider ?? "")) || defaultProvider;

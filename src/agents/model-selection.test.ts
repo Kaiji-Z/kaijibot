@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/types.js";
 import { resetLogger, setLoggerOverride } from "../logging/logger.js";
 import { createWarnLogCapture } from "../logging/test-helpers/warn-log-capture.js";
+import { MissingAgentModelConfigError } from "./defaults.js";
 import {
   buildAllowedModelSet,
   inferUniqueProviderFromConfiguredModels,
@@ -984,14 +985,15 @@ describe("model-selection", () => {
       }
     });
 
-    it("should use default provider/model if config is empty", () => {
+    it("should throw MissingAgentModelConfigError if config is empty", () => {
       const cfg: Partial<KaijiBotConfig> = {};
-      const result = resolveConfiguredModelRef({
-        cfg: cfg as KaijiBotConfig,
-        defaultProvider: "openai",
-        defaultModel: "gpt-4",
-      });
-      expect(result).toEqual({ provider: "openai", model: "gpt-4" });
+      expect(() =>
+        resolveConfiguredModelRef({
+          cfg: cfg as KaijiBotConfig,
+          defaultProvider: "openai",
+          defaultModel: "gpt-4",
+        }),
+      ).toThrow(MissingAgentModelConfigError);
     });
 
     it("should prefer configured custom provider when default provider is not in models.providers", () => {
@@ -1048,13 +1050,12 @@ describe("model-selection", () => {
       });
     });
 
-    it("should fall back to hardcoded default when no custom providers have models", () => {
+    it("should throw MissingAgentModelConfigError when no custom providers have models", () => {
       const cfg = createProviderWithModelsConfig("empty-provider", []);
-      const result = resolveConfiguredRefForTest(cfg);
-      expect(result).toEqual({ provider: "openai", model: "gpt-5.4" });
+      expect(() => resolveConfiguredRefForTest(cfg)).toThrow(MissingAgentModelConfigError);
     });
 
-    it("should warn when specified model cannot be resolved and falls back to default", () => {
+    it("should warn and throw MissingAgentModelConfigError when specified model cannot be resolved and no provider is configured", () => {
       setLoggerOverride({ level: "silent", consoleLevel: "warn" });
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       try {
@@ -1066,13 +1067,13 @@ describe("model-selection", () => {
           },
         };
 
-        const result = resolveConfiguredModelRef({
-          cfg: cfg as KaijiBotConfig,
-          defaultProvider: "openai",
-          defaultModel: "gpt-5.4",
-        });
-
-        expect(result).toEqual({ provider: "openai", model: "gpt-5.4" });
+        expect(() =>
+          resolveConfiguredModelRef({
+            cfg: cfg as KaijiBotConfig,
+            defaultProvider: "openai",
+            defaultModel: "gpt-5.4",
+          }),
+        ).toThrow(MissingAgentModelConfigError);
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringContaining('Falling back to default "openai/gpt-5.4"'),
         );
