@@ -77,18 +77,9 @@ export function createContextShowTool(deps: {
         }
 
         // Also check MEMORY.md for stats but don't output content
-        let memoryChars = 0;
-        try {
-          const memContent = await readFile(join(workspaceDir, "MEMORY.md"), "utf-8");
-          memoryChars = memContent.length;
-        } catch {}
+        // Intentionally not shown — mentioning it invites the agent to modify it.
 
         parts.push(`Total: ~${l2TotalTokens} tokens (${l2Files.length} files)`);
-        if (memoryChars > 0) {
-          parts.push(
-            `MEMORY.md: ${memoryChars} chars / ~${approxTokens("x".repeat(memoryChars))} tok [consolidation-managed, excluded from trim]`,
-          );
-        }
         parts.push("");
 
         for (const f of l2Files) {

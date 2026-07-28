@@ -66,11 +66,11 @@ describe("context_show tool", () => {
     expect(text).toContain("You are a helpful assistant.");
   });
 
-  it("shows MEMORY.md token stats but excludes full content", async () => {
+  it("does not mention MEMORY.md in output", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
-    expect(text).toContain("MEMORY.md");
-    expect(text).toContain("consolidation-managed");
+    expect(text).not.toContain("MEMORY.md");
+    expect(text).not.toContain("consolidation-managed");
     expect(text).not.toContain("This should not appear in output.");
   });
 
