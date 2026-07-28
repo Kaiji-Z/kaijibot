@@ -332,6 +332,22 @@ export class CorrectionStore {
     }
   }
 
+  async removeByIds(agentId: string, userId: string, ids: string[]): Promise<number> {
+    if (ids.length === 0) {
+      return 0;
+    }
+    return this.withLock(agentId, userId, async () => {
+      const records = await this.loadRecords(agentId, userId);
+      const idSet = new Set(ids);
+      const remaining = records.filter((r) => !idSet.has(r.id));
+      const removed = records.length - remaining.length;
+      if (removed > 0) {
+        await this.writeRecords(agentId, userId, remaining);
+      }
+      return removed;
+    });
+  }
+
   async listAgentIds(): Promise<string[]> {
     const dir = join(this.configDir, CORRECTIONS_DIR);
     try {

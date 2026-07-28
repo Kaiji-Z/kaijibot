@@ -1,84 +1,40 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { Command } from "commander";
 import { danger, success as successTheme, warn } from "../globals.js";
+import { textSimilarity } from "../infra/text-similarity.js";
 import { defaultRuntime } from "../runtime.js";
 import { normalizeOptionalString } from "../shared/string-coerce.js";
 import { theme } from "../terminal/theme.js";
 
 const dim = (s: string) => theme.muted(s);
-
 const DAY = 86_400_000;
+const BOOTSTRAP_FILES = [
+  "AGENTS.md",
+  "SOUL.md",
+  "IDENTITY.md",
+  "USER.md",
+  "TOOLS.md",
+  "MEMORY.md",
+  "HEARTBEAT.md",
+  "BOOTSTRAP.md",
+] as const;
 
-type ShowResult = {
-  agentId: string;
-  userId: string;
-  persona: {
-    active: boolean;
-    displayName?: string;
-    domainCount: number;
-    activeDomains: Array<{ name: string; depth: number; lastMentioned: number; phase?: string }>;
-    trustScore: number;
-    recentFocus: string[];
-  };
-  corrections: {
-    total: number;
-    items: Array<{
-      id: string;
-      domain: string;
-      trigger: string;
-      mistake: string;
-      reinforcedCount: number;
-      usageCount?: number;
-      lastReinforced: number;
-      ageDays: number;
-    }>;
-  };
-  workspaceFiles: string[];
-};
-
-type AuditResult = {
-  staleCorrections: Array<{
-    id: string;
-    domain: string;
-    mistake: string;
-    ageDays: number;
-    reason: string;
-  }>;
-  unusedCorrections: Array<{
-    id: string;
-    domain: string;
-    mistake: string;
-    usageCount: number;
-    reason: string;
-  }>;
-  duplicateCorrections: Array<{ ids: string[]; domain: string; similarity: number }>;
-  stalePersonaDomains: Array<{ name: string; lastMentionedDays: number }>;
-};
-
-async function loadContextData(
-  agentId: string,
-  userId: string,
-): Promise<{
-  persona: unknown;
-  corrections: ShowResult["corrections"]["items"];
-}> {
+async function resolveAgentWorkspace(agentId: string): Promise<string> {
   const { resolveConfigDir } = await import("../utils.js");
-  const configDir = resolveConfigDir();
+  const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
+  const { loadConfig } = await import("../config/config.js");
+  return resolveAgentWorkspaceDir(loadConfig(), agentId);
+}
+
+async function loadL3(agentId: string, userId: string) {
+  const { resolveConfigDir } = await import("../utils.js");
   const { PersonaStore } = await import("../cognitive/persona/store.js");
   const { CorrectionStore } = await import("../cognitive/correction/store.js");
+  const configDir = resolveConfigDir();
   const persona = await new PersonaStore(configDir).load(agentId, userId);
-  const rawCorrections = await new CorrectionStore(configDir).listActive(agentId, userId);
-  const now = Date.now();
-  const corrections = rawCorrections.map((c) => ({
-    id: c.id,
-    domain: c.domain,
-    trigger: c.trigger,
-    mistake: c.mistake,
-    reinforcedCount: c.reinforcedCount,
-    usageCount: c.usageCount,
-    lastReinforced: c.lastReinforced,
-    ageDays: Math.floor((now - c.lastReinforced) / DAY),
-  }));
-  return { persona, corrections };
+  const corrections = await new CorrectionStore(configDir).listActive(agentId, userId);
+  return { persona, corrections, configDir };
 }
 
 async function listUserIds(agentId: string): Promise<string[]> {
@@ -86,367 +42,478 @@ async function listUserIds(agentId: string): Promise<string[]> {
   const { PersonaStore } = await import("../cognitive/persona/store.js");
   const { CorrectionStore } = await import("../cognitive/correction/store.js");
   const configDir = resolveConfigDir();
-  const personaIds = await new PersonaStore(configDir).listUserIds(agentId);
-  const correctionIds = await new CorrectionStore(configDir).listUserIds(agentId);
-  return [...new Set([...personaIds, ...correctionIds])].toSorted();
+  const a = await new PersonaStore(configDir).listUserIds(agentId);
+  const b = await new CorrectionStore(configDir).listUserIds(agentId);
+  return [...new Set([...a, ...b])].toSorted();
+}
+
+async function readL2Files(
+  workspaceDir: string,
+): Promise<Array<{ name: string; content: string; chars: number; tokens: number }>> {
+  const results: Array<{ name: string; content: string; chars: number; tokens: number }> = [];
+  for (const name of BOOTSTRAP_FILES) {
+    try {
+      const content = await readFile(join(workspaceDir, name), "utf-8");
+      const chars = content.length;
+      let cjk = 0;
+      let other = 0;
+      for (const ch of content) {
+        const code = ch.codePointAt(0) ?? 0;
+        if (
+          (code >= 0x4e00 && code <= 0x9fff) ||
+          (code >= 0x3400 && code <= 0x4dbf) ||
+          (code >= 0xff00 && code <= 0xffef)
+        ) {
+          cjk++;
+        } else {
+          other++;
+        }
+      }
+      const tokens = Math.ceil(cjk * 1.5 + other * 0.25);
+      results.push({ name, content, chars, tokens });
+    } catch {}
+  }
+  return results;
+}
+
+function approxTokens(text: string): number {
+  let cjk = 0;
+  let other = 0;
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (
+      (code >= 0x4e00 && code <= 0x9fff) ||
+      (code >= 0x3400 && code <= 0x4dbf) ||
+      (code >= 0xff00 && code <= 0xffef)
+    ) {
+      cjk++;
+    } else {
+      other++;
+    }
+  }
+  return Math.ceil(cjk * 1.5 + other * 0.25);
+}
+
+function checkCrossLayer(
+  l2Files: Array<{ name: string; content: string }>,
+  persona: unknown,
+): Array<{ l2File: string; l2Snippet: string; l3Field: string }> {
+  const issues: Array<{ l2File: string; l2Snippet: string; l3Field: string }> = [];
+  const p = persona as Record<string, unknown> | undefined;
+  const identity = p?.identity as Record<string, unknown> | undefined;
+  const domains = (p?.domains as Record<string, Record<string, unknown>>) ?? {};
+  const traits = (identity?.coreTraits as Record<string, Record<string, unknown>>) ?? {};
+  const commStyle = identity?.communicationStyle as Record<string, unknown> | undefined;
+
+  const l3Keywords: Array<{ field: string; keywords: string[] }> = [];
+  for (const [key, trait] of Object.entries(traits)) {
+    l3Keywords.push({
+      field: `trait "${key}"`,
+      keywords: [String(trait?.value ?? "").toLowerCase()],
+    });
+  }
+  if (commStyle?.preferredLanguage) {
+    l3Keywords.push({
+      field: "preferredLanguage",
+      keywords: [String(commStyle.preferredLanguage)],
+    });
+  }
+  for (const [name, d] of Object.entries(domains)) {
+    const insights = (d.insights as Array<{ text?: string }>) ?? [];
+    for (const ins of insights.slice(0, 2)) {
+      if (ins.text) {
+        l3Keywords.push({
+          field: `domain "${name}" insight`,
+          keywords: [ins.text.toLowerCase().slice(0, 40)],
+        });
+      }
+    }
+  }
+
+  for (const file of l2Files) {
+    const lower = file.content.toLowerCase();
+    for (const { field, keywords } of l3Keywords) {
+      for (const kw of keywords) {
+        if (kw.length >= 3 && lower.includes(kw)) {
+          issues.push({ l2File: file.name, l2Snippet: kw.slice(0, 50), l3Field: field });
+          break;
+        }
+      }
+    }
+  }
+  return issues;
 }
 
 export function registerContextCli(program: Command) {
   const context = program
     .command("context")
-    .description("Context engineering tools — inspect and audit injected context");
-
-  context
-    .command("show [userId]")
-    .description("Show active context sections (persona + corrections) for a user")
-    .option("-a, --agent <id>", "Agent ID", "main")
-    .option("--json", "Output as JSON")
-    .action(async (rawUserId: string | undefined, opts: { agent: string; json: boolean }) => {
-      try {
-        const agentId = normalizeOptionalString(opts.agent) ?? "main";
-        const userId = normalizeOptionalString(rawUserId);
-
-        if (!userId) {
-          const ids = await listUserIds(agentId);
-          if (ids.length === 0) {
-            defaultRuntime.log(dim("No users found for agent '" + agentId + "'."));
-            return;
-          }
-          defaultRuntime.log(dim("Users with cognitive data:"));
-          for (const id of ids) {
-            defaultRuntime.log(`  ${id}`);
-          }
-          defaultRuntime.log(dim("\nUsage: kaijibot context show <userId> -a <agent>"));
-          return;
-        }
-
-        const { persona, corrections } = await loadContextData(agentId, userId!);
-        const p = persona as Record<string, unknown> | undefined;
-        const identity = p?.identity as Record<string, unknown> | undefined;
-        const rapport = p?.rapport as Record<string, unknown> | undefined;
-        const domains = (p?.domains as Record<string, Record<string, unknown>>) ?? {};
-        const activeDomains = Object.entries(domains)
-          .filter(([, d]) => (d.depth as number) >= 3)
-          .toSorted(([, a], [, b]) => (b.lastMentioned as number) - (a.lastMentioned as number))
-          .slice(0, 5)
-          .map(([name, d]) => ({
-            name,
-            depth: d.depth as number,
-            lastMentioned: d.lastMentioned as number,
-            phase: d.phase as string | undefined,
-          }));
-
-        const result: ShowResult = {
-          agentId,
-          userId: userId!,
-          persona: {
-            active: Boolean(p),
-            displayName: identity?.displayName as string | undefined,
-            domainCount: Object.keys(domains).length,
-            activeDomains,
-            trustScore: (rapport?.trustScore as number) ?? 0,
-            recentFocus: (p?.recentFocus as string[]) ?? [],
-          },
-          corrections: {
-            total: corrections.length,
-            items: corrections,
-          },
-          workspaceFiles: [],
-        };
-
-        if (opts.json) {
-          defaultRuntime.writeJson(result);
-          return;
-        }
-
-        defaultRuntime.log(`\n${successTheme("Context for")} ${agentId}/${userId}`);
-        defaultRuntime.log(dim("━".repeat(50)));
-
-        defaultRuntime.log(
-          `\n${successTheme("Persona")}: ${result.persona.active ? "✅ active" : "❌ none"}`,
-        );
-        if (result.persona.displayName) {
-          defaultRuntime.log(`  Name: ${result.persona.displayName}`);
-        }
-        defaultRuntime.log(
-          `  Domains: ${result.persona.domainCount} (${result.persona.activeDomains.length} active)`,
-        );
-        defaultRuntime.log(`  Trust: ${result.persona.trustScore.toFixed(2)}`);
-        if (result.persona.recentFocus.length > 0) {
-          defaultRuntime.log(`  Focus: ${result.persona.recentFocus.slice(0, 5).join(", ")}`);
-        }
-        for (const d of result.persona.activeDomains) {
-          defaultRuntime.log(`  • ${d.name} (depth=${d.depth}, phase=${d.phase ?? "stable"})`);
-        }
-
-        defaultRuntime.log(`\n${successTheme("Corrections")}: ${result.corrections.total}`);
-        for (const c of result.corrections.items.slice(0, 15)) {
-          const usage = c.usageCount !== undefined ? ` used=${c.usageCount}` : "";
-          defaultRuntime.log(
-            `  [${c.domain}] ${c.mistake} (${c.ageDays}d ago, reinforced=${c.reinforcedCount}${usage})`,
-          );
-        }
-        if (result.corrections.total > 15) {
-          defaultRuntime.log(dim(`  ... and ${result.corrections.total - 15} more`));
-        }
-      } catch (err) {
-        defaultRuntime.error(danger(String(err)));
-        defaultRuntime.exit(1);
-      }
-    });
+    .description("Context engineering — audit and trim injected context");
 
   context
     .command("audit [userId]")
-    .description("Find stale, unused, and duplicate corrections + stale persona domains")
+    .description("Inspect L1/L2/L3 token distribution, diagnose issues, optionally fix")
     .option("-a, --agent <id>", "Agent ID", "main")
-    .option("--json", "Output as JSON")
-    .action(async (rawUserId: string | undefined, opts: { agent: string; json: boolean }) => {
-      try {
-        const agentId = normalizeOptionalString(opts.agent) ?? "main";
-        const userId = normalizeOptionalString(rawUserId);
+    .option("--fix", "Auto-fix L3 issues (remove stale, merge duplicates)")
+    .option("--dry-run", "Show what --fix would do without executing")
+    .option("--json", "JSON output")
+    .action(
+      async (
+        rawUserId: string | undefined,
+        opts: { agent: string; fix: boolean; dryRun: boolean; json: boolean },
+      ) => {
+        try {
+          const agentId = normalizeOptionalString(opts.agent) ?? "main";
+          const userId = normalizeOptionalString(rawUserId);
 
-        if (!userId) {
-          defaultRuntime.error(
-            danger("userId is required for audit. Run 'kaijibot context show' to list users."),
-          );
-          defaultRuntime.exit(1);
-          return;
-        }
+          if (!userId) {
+            const ids = await listUserIds(agentId);
+            if (ids.length === 0) {
+              defaultRuntime.log(dim(`No users with cognitive data for agent "${agentId}".`));
+              return;
+            }
+            defaultRuntime.log(dim("Users with cognitive data:"));
+            for (const id of ids) {
+              defaultRuntime.log(`  ${id}`);
+            }
+            defaultRuntime.log(dim("\nUsage: kaijibot context audit <userId> -a <agent>"));
+            return;
+          }
 
-        const { persona, corrections } = await loadContextData(agentId, userId!);
-        const now = Date.now();
+          const workspaceDir = await resolveAgentWorkspace(agentId);
+          const { persona, corrections, configDir } = await loadL3(agentId, userId!);
+          const l2Files = await readL2Files(workspaceDir);
+          const now = Date.now();
 
-        const staleCorrections = corrections
-          .filter((c) => c.ageDays > 45)
-          .map((c) => ({
+          const l2TotalTokens = l2Files.reduce((s, f) => s + f.tokens, 0);
+
+          const p = persona as Record<string, unknown> | undefined;
+          const domains = (p?.domains as Record<string, Record<string, unknown>>) ?? {};
+          const rapport = p?.rapport as Record<string, unknown> | undefined;
+          const domainCount = Object.keys(domains).length;
+          const activeDomains = Object.values(domains).filter(
+            (d) => (d.depth as number) >= 3,
+          ).length;
+
+          const corrItems = corrections.map((c) => ({
             id: c.id,
             domain: c.domain,
             mistake: c.mistake,
-            ageDays: c.ageDays,
-            reason: `${c.ageDays}d since last reinforcement`,
-          }));
-
-        const unusedCorrections = corrections
-          .filter((c) => c.usageCount === 0 && c.reinforcedCount <= 1)
-          .map((c) => ({
-            id: c.id,
-            domain: c.domain,
-            mistake: c.mistake,
+            reinforcedCount: c.reinforcedCount,
             usageCount: c.usageCount ?? 0,
-            reason: `never referenced (usage=0, reinforced=${c.reinforcedCount})`,
+            ageDays: Math.floor((now - c.lastReinforced) / DAY),
           }));
 
-        const { textSimilarity } = await import("../infra/text-similarity.js");
-        const duplicateCorrections: AuditResult["duplicateCorrections"] = [];
-        for (let i = 0; i < corrections.length; i++) {
-          for (let j = i + 1; j < corrections.length; j++) {
-            const a = corrections[i]!;
-            const b = corrections[j]!;
-            if (a.domain !== b.domain) continue;
-            const sim = textSimilarity(a.mistake, b.mistake);
-            if (sim > 0.6) {
-              duplicateCorrections.push({
-                ids: [a.id, b.id],
-                domain: a.domain,
-                similarity: Math.round(sim * 100) / 100,
-              });
+          const stale = corrItems.filter((c) => c.ageDays > 45);
+          const unused = corrItems.filter((c) => c.usageCount === 0 && c.reinforcedCount <= 1);
+          const duplicates: Array<{
+            a: (typeof corrItems)[number];
+            b: (typeof corrItems)[number];
+            sim: number;
+          }> = [];
+          for (let i = 0; i < corrItems.length; i++) {
+            for (let j = i + 1; j < corrItems.length; j++) {
+              if (corrItems[i]!.domain !== corrItems[j]!.domain) continue;
+              const sim = textSimilarity(corrItems[i]!.mistake, corrItems[j]!.mistake);
+              if (sim > 0.6) {
+                duplicates.push({
+                  a: corrItems[i]!,
+                  b: corrItems[j]!,
+                  sim: Math.round(sim * 100) / 100,
+                });
+              }
             }
           }
-        }
 
-        const p = persona as Record<string, unknown> | undefined;
-        const domains = (p?.domains as Record<string, Record<string, unknown>>) ?? {};
-        const stalePersonaDomains = Object.entries(domains)
-          .map(([name, d]) => ({
-            name,
-            lastMentionedDays: Math.floor((now - (d.lastMentioned as number)) / DAY),
-          }))
-          .filter((d) => d.lastMentionedDays > 60)
-          .toSorted((a, b) => b.lastMentionedDays - a.lastMentionedDays);
+          const stalePersonaDomains = Object.entries(domains)
+            .map(([name, d]) => ({
+              name,
+              days: Math.floor((now - (d.lastMentioned as number)) / DAY),
+            }))
+            .filter((d) => d.days > 60)
+            .toSorted((a, b) => b.days - a.days);
 
-        const result: AuditResult = {
-          staleCorrections,
-          unusedCorrections,
-          duplicateCorrections,
-          stalePersonaDomains,
-        };
-
-        if (opts.json) {
-          defaultRuntime.writeJson(result);
-          return;
-        }
-
-        defaultRuntime.log(`\n${successTheme("Context Audit for")} ${agentId}/${userId}`);
-        defaultRuntime.log(dim("━".repeat(50)));
-
-        if (result.staleCorrections.length > 0) {
-          defaultRuntime.log(
-            `\n${warn("⚠ Stale corrections")} (${result.staleCorrections.length}):`,
+          const crossLayer = checkCrossLayer(
+            l2Files.map((f) => ({ name: f.name, content: f.content })),
+            persona,
           );
-          for (const c of result.staleCorrections.slice(0, 10)) {
-            defaultRuntime.log(`  [${c.domain}] ${c.mistake} — ${c.reason}`);
-          }
-        }
 
-        if (result.unusedCorrections.length > 0) {
-          defaultRuntime.log(
-            `\n${warn("⚠ Unused corrections")} (${result.unusedCorrections.length}):`,
+          const l3PersonaTokens = persona ? approxTokens(JSON.stringify(persona)) : 0;
+          const l3CorrTokens = corrections.reduce(
+            (s, c) => s + approxTokens(`${c.domain} ${c.trigger} ${c.mistake} ${c.correction}`),
+            0,
           );
-          for (const c of result.unusedCorrections.slice(0, 10)) {
-            defaultRuntime.log(`  [${c.domain}] ${c.mistake} — ${c.reason}`);
-          }
-        }
+          const l3Total = l3PersonaTokens + l3CorrTokens;
 
-        if (result.duplicateCorrections.length > 0) {
+          const fixIds: string[] = [];
+          for (const c of stale) {
+            fixIds.push(c.id);
+          }
+          const mergeIds: string[] = [];
+          for (const d of duplicates) {
+            mergeIds.push(d.a.reinforcedCount >= d.b.reinforcedCount ? d.b.id : d.a.id);
+          }
+
+          if (opts.json) {
+            defaultRuntime.writeJson({
+              agentId,
+              userId,
+              tokenBudget: { l1Estimated: 2700, l2: l2TotalTokens, l3: l3Total },
+              l2Files: l2Files.map((f) => ({ name: f.name, chars: f.chars, tokens: f.tokens })),
+              l3: {
+                persona: {
+                  active: Boolean(persona),
+                  domainCount,
+                  activeDomains,
+                  trustScore: (rapport?.trustScore as number) ?? 0,
+                },
+                corrections: {
+                  total: corrections.length,
+                  stale: stale.length,
+                  unused: unused.length,
+                  duplicates: duplicates.length,
+                },
+              },
+              issues: { stale, unused, duplicates, stalePersonaDomains, crossLayer },
+              fix: {
+                wouldRemove: [...new Set([...fixIds, ...mergeIds])],
+                count: new Set([...fixIds, ...mergeIds]).size,
+              },
+            });
+            return;
+          }
+
+          defaultRuntime.log(`\n${successTheme("Context Audit")} — ${agentId}/${userId}`);
+          defaultRuntime.log(dim("━".repeat(50)));
+
+          defaultRuntime.log(`\n${successTheme("Token Budget")}`);
+          defaultRuntime.log(`  L1 hardcoded:  ~2700 (system-prompt.ts)`);
+          defaultRuntime.log(`  L2 user files: ~${l2TotalTokens} (${l2Files.length} files)`);
           defaultRuntime.log(
-            `\n${warn("⚠ Possible duplicates")} (${result.duplicateCorrections.length}):`,
+            `  L3 cognitive:  ~${l3Total} (persona ${l3PersonaTokens} + corrections ${l3CorrTokens})`,
           );
-          for (const d of result.duplicateCorrections.slice(0, 10)) {
-            defaultRuntime.log(`  [${d.domain}] sim=${d.similarity} ids=${d.ids.join(",")}`);
-          }
-        }
+          defaultRuntime.log(`  ${dim("Total: ~")}${2700 + l2TotalTokens + l3Total}`);
 
-        if (result.stalePersonaDomains.length > 0) {
+          defaultRuntime.log(`\n${successTheme("L2 Files")}`);
+          for (const f of l2Files) {
+            const pct =
+              f.name === "MEMORY.md" ? ` (${Math.round((f.chars / 8192) * 100)}% of 8KB)` : "";
+            defaultRuntime.log(`  ${f.name}: ${f.chars} chars / ~${f.tokens} tok${pct}`);
+          }
+
+          defaultRuntime.log(`\n${successTheme("L3 Cognitive")}`);
           defaultRuntime.log(
-            `\n${warn("⚠ Stale persona domains")} (${result.stalePersonaDomains.length}):`,
+            `  Persona: ${domainCount} domains (${activeDomains} active), trust=${((rapport?.trustScore as number) ?? 0).toFixed(2)}`,
           );
-          for (const d of result.stalePersonaDomains.slice(0, 10)) {
-            defaultRuntime.log(`  ${d.name} — ${d.lastMentionedDays}d since last mention`);
+          defaultRuntime.log(`  Corrections: ${corrections.length} active`);
+
+          const hasIssues =
+            stale.length > 0 ||
+            unused.length > 0 ||
+            duplicates.length > 0 ||
+            stalePersonaDomains.length > 0 ||
+            crossLayer.length > 0;
+
+          if (hasIssues) {
+            defaultRuntime.log(`\n${warn("⚠ Issues")}`);
+            if (stale.length > 0) {
+              defaultRuntime.log(`  🔴 Stale corrections (${stale.length}):`);
+              for (const c of stale.slice(0, 5)) {
+                defaultRuntime.log(`     [${c.domain}] ${c.mistake} — ${c.ageDays}d ago`);
+              }
+            }
+            if (unused.length > 0) {
+              defaultRuntime.log(`  🟡 Unused corrections (${unused.length}):`);
+              for (const c of unused.slice(0, 5)) {
+                defaultRuntime.log(
+                  `     [${c.domain}] ${c.mistake} — usage=0 reinforced=${c.reinforcedCount}`,
+                );
+              }
+            }
+            if (duplicates.length > 0) {
+              defaultRuntime.log(`  🟡 Duplicates (${duplicates.length}):`);
+              for (const d of duplicates.slice(0, 5)) {
+                defaultRuntime.log(
+                  `     [${d.a.domain}] sim=${d.sim} "${d.a.mistake}" ↔ "${d.b.mistake}"`,
+                );
+              }
+            }
+            if (stalePersonaDomains.length > 0) {
+              defaultRuntime.log(
+                `  🟢 Stale domains (${stalePersonaDomains.length}, auto-decaying):`,
+              );
+              for (const d of stalePersonaDomains.slice(0, 3)) {
+                defaultRuntime.log(`     ${d.name} — ${d.days}d ago`);
+              }
+            }
+            if (crossLayer.length > 0) {
+              defaultRuntime.log(`  ⚠️ Cross-layer redundancy (${crossLayer.length}):`);
+              for (const c of crossLayer.slice(0, 5)) {
+                defaultRuntime.log(`     ${c.l2File} "${c.l2Snippet}" ↔ L3 ${c.l3Field}`);
+              }
+            }
+          } else {
+            defaultRuntime.log(`\n${successTheme("✓ No issues found")}`);
           }
-        }
 
-        const totalIssues =
-          result.staleCorrections.length +
-          result.unusedCorrections.length +
-          result.duplicateCorrections.length +
-          result.stalePersonaDomains.length;
+          if (opts.fix || opts.dryRun) {
+            const allRemoveIds = [...new Set([...fixIds, ...mergeIds])];
+            if (allRemoveIds.length > 0) {
+              defaultRuntime.log(`\n${opts.dryRun ? dim("Would fix") : successTheme("Fixing")}:`);
+              if (fixIds.length > 0)
+                defaultRuntime.log(`  → Remove ${new Set(fixIds).size} stale corrections`);
+              if (mergeIds.length > 0)
+                defaultRuntime.log(
+                  `  → Remove ${new Set(mergeIds).size} duplicate corrections (keeping higher reinforcedCount)`,
+                );
 
-        if (totalIssues === 0) {
-          defaultRuntime.log(`\n${successTheme("✓ No issues found")} — context is clean.`);
-        } else {
-          defaultRuntime.log(`\n${dim(`Total issues: ${totalIssues}`)}`);
+              if (!opts.dryRun) {
+                const { CorrectionStore } = await import("../cognitive/correction/store.js");
+                const { resolveConfigDir } = await import("../utils.js");
+                const store = new CorrectionStore(resolveConfigDir());
+                const removed = await store.removeByIds(agentId, userId!, allRemoveIds);
+                defaultRuntime.log(successTheme(`  ✓ Removed ${removed} corrections`));
+              }
+            } else {
+              defaultRuntime.log(dim("\n  Nothing to fix."));
+            }
+          } else if (hasIssues) {
+            defaultRuntime.log(
+              dim("\n  Run with --fix to auto-resolve L3 issues, --dry-run to preview."),
+            );
+          }
+
+          if (l2TotalTokens > 3000) {
+            defaultRuntime.log(
+              dim(
+                "\n  💡 L2 files are large. Run 'kaijibot context trim <file>' for LLM analysis.",
+              ),
+            );
+          }
+        } catch (err) {
+          defaultRuntime.error(danger(String(err)));
+          defaultRuntime.exit(1);
         }
-      } catch (err) {
-        defaultRuntime.error(danger(String(err)));
-        defaultRuntime.exit(1);
-      }
-    });
+      },
+    );
 
   context
     .command("trim [file]")
     .description(
-      "Analyze a workspace file (AGENTS.md, SOUL.md, etc.) for redundant/model-known content",
+      "LLM-driven cross-layer analysis: compare L2 file against L1 system prompt + L3 cognitive data",
     )
     .option("-a, --agent <id>", "Agent ID", "main")
-    .option("--apply", "Write trimmed version to <file>.trimmed.md (does NOT overwrite original)")
+    .option("--apply", "Write suggestions to <file>.trimmed.md")
     .action(async (fileArg: string | undefined, opts: { agent: string; apply: boolean }) => {
       try {
-        const { resolveConfigDir } = await import("../utils.js");
-        const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
-        const { loadConfig } = await import("../config/config.js");
-        const { readFile } = await import("node:fs/promises");
-        const { join, basename } = await import("node:path");
-
-        const cfg = loadConfig();
         const agentId = normalizeOptionalString(opts.agent) ?? "main";
-        const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
-
-        const BOOTSTRAP_FILES = [
-          "AGENTS.md",
-          "SOUL.md",
-          "IDENTITY.md",
-          "USER.md",
-          "TOOLS.md",
-          "MEMORY.md",
-          "HEARTBEAT.md",
-          "BOOTSTRAP.md",
-        ];
+        const workspaceDir = await resolveAgentWorkspace(agentId);
 
         const targetFile = normalizeOptionalString(fileArg);
+        const filesToAnalyze: string[] = [];
 
         if (targetFile) {
-          const filePath = join(workspaceDir, targetFile);
+          filesToAnalyze.push(targetFile);
+        } else {
+          for (const name of BOOTSTRAP_FILES) {
+            try {
+              await readFile(join(workspaceDir, name), "utf-8");
+              filesToAnalyze.push(name);
+            } catch {}
+          }
+        }
+
+        if (filesToAnalyze.length === 0) {
+          defaultRuntime.log(dim(`No bootstrap files found in: ${workspaceDir}`));
+          return;
+        }
+
+        const { loadConfig } = await import("../config/config.js");
+        const { createBackgroundGenerateText } =
+          await import("../cognitive/evolution/standalone-generate.js");
+        const cfg = loadConfig();
+        const generateText = await createBackgroundGenerateText(cfg, { maxTokens: 2500 });
+
+        for (const fileName of filesToAnalyze) {
+          const filePath = join(workspaceDir, fileName);
           let content: string;
           try {
             content = await readFile(filePath, "utf-8");
           } catch {
-            defaultRuntime.error(danger(`File not found: ${filePath}`));
-            defaultRuntime.exit(1);
-            return;
+            continue;
           }
-          await analyzeAndReport(filePath, targetFile, content, opts.apply, workspaceDir);
-        } else {
-          let analyzed = 0;
-          for (const name of BOOTSTRAP_FILES) {
-            const filePath = join(workspaceDir, name);
-            try {
-              const content = await readFile(filePath, "utf-8");
-              await analyzeAndReport(filePath, name, content, opts.apply, workspaceDir);
-              analyzed++;
-            } catch {}
-          }
-          if (analyzed === 0) {
-            defaultRuntime.log(dim(`No bootstrap files found in workspace: ${workspaceDir}`));
-            defaultRuntime.log(dim("Usage: kaijibot context trim AGENTS.md -a <agent>"));
-          }
-        }
 
-        async function analyzeAndReport(
-          filePath: string,
-          fileName: string,
-          content: string,
-          apply: boolean,
-          workspaceDir: string,
-        ): Promise<void> {
-          const { createBackgroundGenerateText } =
-            await import("../cognitive/evolution/standalone-generate.js");
-          const { writeFile } = await import("node:fs/promises");
+          defaultRuntime.log(`\n${successTheme(`Trimming ${fileName}`)} (${content.length} chars)`);
 
-          defaultRuntime.log(
-            `\n${successTheme(`Analyzing ${fileName}`)} (${content.length} chars)`,
-          );
-          defaultRuntime.log(dim("━".repeat(50)));
+          let l3Context = "No cognitive data available.";
+          try {
+            const ids = await listUserIds(agentId);
+            if (ids.length > 0) {
+              const { persona, corrections } = await loadL3(agentId, ids[0]!);
+              const p = persona as Record<string, unknown> | undefined;
+              const identity = p?.identity as Record<string, unknown> | undefined;
+              const traits = identity?.coreTraits as
+                | Record<string, Record<string, unknown>>
+                | undefined;
+              const traitSummary = traits
+                ? Object.entries(traits)
+                    .map(([k, v]) => `${k}=${v.value}`)
+                    .join(", ")
+                : "none";
+              const corrSummary = corrections
+                .slice(0, 10)
+                .map((c) => `[${c.domain}] ${c.mistake}`)
+                .join("\n");
+              l3Context = `Persona traits: ${traitSummary}\nCorrections:\n${corrSummary}`;
+            }
+          } catch {}
 
-          const generateText = await createBackgroundGenerateText(cfg, { maxTokens: 2000 });
+          const prompt = `You are a context engineering auditor. Analyze this workspace file for redundancy with L1 system prompt content and L3 cognitive data.
 
-          const prompt = `You are a context engineering auditor for an AI assistant (KaijiBot). Analyze the following workspace file and identify content that is redundant, model-known, or overly verbose.
+**File**: ${fileName} (${content.length} chars)
+**L3 cognitive context** (persona + corrections already injected each turn):
+${l3Context}
 
-Rules (inspired by Claude Code /doctor):
-- KEEP: project-specific rules, pitfalls, rationale, conventions that differ from defaults, user preferences
-- CONDENSE: verbose descriptions that could be shorter (suggest a 1-2 line replacement)
-- REMOVE: generic info the LLM already knows (tool descriptions, language capabilities, common coding patterns, directory structure it can discover)
-
-File: ${fileName}
-Content (${content.length} chars):
+**File content**:
 ---
 ${content}
 ---
 
-Respond in this exact format (use Chinese if the file is in Chinese):
+**L1 system prompt** (hardcoded, already contains):
+- Tooling guidance ("use cron for scheduling", "spawn sub-agents for complex tasks")
+- Safety rules ("never bypass safeguards", "never send streaming replies")
+- Capabilities ("proactive AI assistant, NOT passive Q&A")
+- Messaging routing ("reply in current session → auto routes")
+- Tool call style ("do not narrate routine calls")
 
-## Analysis for ${fileName}
+Rules:
+- REMOVE: content the LLM already knows from L1 system prompt or tool definitions (generic tool descriptions, common patterns, directory structure it can discover)
+- REMOVE: content duplicated in L3 (user preferences already in persona, mistakes already in corrections)
+- CONDENSE: verbose descriptions that could be 1-2 lines
+- KEEP: project-specific rules, pitfalls, commands, conventions that differ from defaults
 
-### REMOVE (model already knows / can discover)
-- [line range or section]: what it says → why it's redundant
+Respond in Chinese if the file is in Chinese. Format:
 
-### CONDENSE (too verbose)
-- [section]: current text → suggested shorter version
+## ${fileName} 分析
 
-### KEEP (must stay)
-- [section]: why it's essential
+### REMOVE (L1 已覆盖 / L3 已有 / 模型已知)
+- [段落描述]: 为什么冗余
 
-### Summary
-- Current: ${content.length} chars
-- Estimated optimal: ~X chars (Y% reduction)
-- Top 3 actions: ...`;
+### CONDENSE (过于冗长)
+- [段落]: 当前 → 建议的精简版
+
+### KEEP (必须保留)
+- [段落]: 为什么重要
+
+### 总结
+- 当前: ${content.length} chars
+- 建议精简到: ~X chars (Y% 减少)`;
 
           const result = await generateText(prompt);
 
-          if (apply) {
+          if (opts.apply) {
             const trimmedPath = join(workspaceDir, `${fileName}.trimmed.md`);
             await writeFile(trimmedPath, result, "utf-8");
-            defaultRuntime.log(successTheme(`✓ Suggestions written to ${trimmedPath}`));
-            defaultRuntime.log(dim("  Review and merge manually — original file is untouched."));
+            defaultRuntime.log(successTheme(`✓ Suggestions written to ${fileName}.trimmed.md`));
           }
 
           defaultRuntime.log(`\n${result}`);
