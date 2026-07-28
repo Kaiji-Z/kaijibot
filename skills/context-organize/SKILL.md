@@ -1,180 +1,68 @@
 ---
 name: context-organize
-description: "整理上下文：审计和优化三层注入上下文（用户自定义文件 + 动态认知数据），消除冗余，精简 token。当用户说'整理上下文'、'上下文太乱了'、'优化上下文'、'精简 prompt'时使用。"
+description: "整理和优化 KaijiBot 的上下文 token 预算。审计三层注入（L1 硬编码 / L2 用户文件 / L3 认知数据），找出跨层冗余，精简 L2 文件，清理过期 L3 数据。当用户说'整理上下文'、'上下文太乱了'、'优化上下文'、'精简 prompt'、'AGENTS.md 太长'、'token 太多了'、'context audit'、'organize context'、'trim context' 时使用。即使用户没有明确说'上下文'，只要提到某个 workspace 文件（AGENTS/SOUL/USER/TOOLS）需要精简或优化，也应使用此 skill。"
 metadata: { "kaijibot": { "emoji": "🔧", "requires": { "bins": [] }, "install": [] } }
 ---
 
 # Context Organize
 
-审计并优化 KaijiBot 每个 agent turn 注入的上下文，消除冗余，精简 token。
+KaijiBot 每个 agent turn 注入三层上下文：L1 硬编码（system-prompt.ts）、L2 用户文件（AGENTS.md 等 7 个 bootstrap 文件）、L3 认知数据（persona + corrections）。随着使用积累，L2 文件膨胀、L3 数据过期，token 预算被无效内容占据，模型注意力被稀释。
 
-## 两个 CLI 工具
+这个 skill 通过审计 → 精简 → 验证三步，把 token 预算还给真正驱动行为的内容。
 
-| 命令                                              | 用途                                                  | 需要 LLM？ | 耗时   |
-| ------------------------------------------------- | ----------------------------------------------------- | ---------- | ------ |
-| `kaijibot context audit [userId] -a [agent]`      | 诊断三层 token + L3 问题 + 跨层冗余；`--fix` 自动修复 | ❌         | 秒级   |
-| `kaijibot context trim [file] -a [agent] --apply` | LLM 分析 L2 文件 vs L1/L3 的跨层冗余                  | ✅         | 十秒级 |
+## 三步流程
 
-**分工**：audit 做确定性诊断+修复（快），trim 做语义分析+建议（慢但精准）。
-
-## When to use
-
-- "整理上下文" / "优化上下文" / "上下文太乱了" / "精简 prompt"
-- "AGENTS.md 太长了" / "SOUL.md 需要精简"
-- "organize context" / "optimize context" / "trim context"
-
-## How it works
-
-**严格按顺序完成 3 个步骤。**
-
-### Step 1: 全面审计（必做）
+### Step 1: 审计
 
 ```
 exec: kaijibot context audit operator -a main
 ```
 
-**获取的信息**：
+audit 是确定性计算（查日期 + Jaccard 相似度 + 关键词匹配），秒级返回。输出包含：
 
-- L1/L2/L3 三层 token 预算分布
-- L2 每个文件的 token（哪个最大）
-- L3 persona/corrections 状态
-- 问题诊断：过时 corrections / 低使用率 / 重复 / 跨层冗余
+- L1/L2/L3 三层 token 分布
+- L2 每个文件的 token 占比
+- L3 问题诊断：过时 corrections、低使用率、重复、跨层冗余
 
-同时用 `read` 工具读取所有 L2 bootstrap 文件（AGENTS.md / SOUL.md / IDENTITY.md / USER.md / TOOLS.md / HEARTBEAT.md / BOOTSTRAP.md），获取完整内容。
+读完后向用户汇报审计摘要：总 token、最大 L2 文件、L3 问题。
 
-**Step 1 检查点：**
+### Step 2: 精简 L2 文件
 
-```
-## Step 1 审计摘要
-- L1: ~2700 tok | L2: ~Stok | L3: ~T tok | 总计: ~X tok
-- L2 最大文件: AGENTS.md (~1100 tok)
-- L3 问题: A 过时 / B 低使用 / C 重复 / D 跨层冗余
-- 整理重点: [L2 文件 / L3 数据 / 两者]
-```
+对 audit 发现的所有超过 ~300 token 的 L2 文件逐个分析并精简。
 
-### Step 2: L2 文件整理（必做）
+**可整理的文件**：AGENTS.md · SOUL.md · IDENTITY.md · USER.md · TOOLS.md · HEARTBEAT.md
 
-对 Step 1 发现的较大 L2 文件执行裁剪。
+**不可整理的文件**：MEMORY.md。它由 consolidation 系统（每日 cron 自动提取知识 + 路由到 persona/fragment/correction + 8KB 预算自动平衡）独立管理。LLM trim 不理解 consolidation 的路由规则，会误删核心记忆。CLI 层面已硬保护（`trim MEMORY.md` 会被拒绝），你也不要用 edit 工具手动改它。
 
-> **⚠️ 禁止整理 MEMORY.md。** MEMORY.md 由 consolidation 系统（每日 cron 自动提取 + 路由 + 8KB 预算自动平衡）和 `memory-organize` skill 管理。context-organize 的 LLM trim 不懂 consolidation 的路由规则，会误删核心记忆。audit 可以显示 MEMORY.md 的 token 占比供参考，但 **trim / edit / 任何修改操作都不得作用于 MEMORY.md**。
-
-**整理范围**：AGENTS.md · SOUL.md · IDENTITY.md · USER.md · TOOLS.md · HEARTBEAT.md
-**排除**：~~MEMORY.md~~（由 consolidation 管理）
-
-对超过 ~300 tok 的文件逐个分析。对每个文件：
-
-**2a. CLI 跨层分析：**
+对每个待整理的文件，执行 trim 分析：
 
 ```
 exec: kaijibot context trim <文件名> -a main --apply
 ```
 
-trim 命令会：
+trim 会读取文件内容 + L1 system prompt 关键段 + L3 persona/corrections，用 LLM 对比三层后输出 REMOVE / CONDENSE / KEEP 建议（写到 `.trimmed.md`）。
 
-1. 读取文件内容
-2. 获取 L1 system prompt 的关键段（Tooling/Safety/Capabilities/Messaging）
-3. 获取 L3 persona traits + corrections
-4. 用 LLM 对比三层，找出冗余
-5. 输出 REMOVE / CONDENSE / KEEP 建议（写到 `.trimmed.md`）
+读取建议后，你是最终决策者——你有完整的对话上下文，比单次 LLM 分析判断更准：
 
-**2b. 审阅建议：**
-
-读取 `.trimmed.md`。对每条建议做判断（你是 agent，比单次 LLM 分析有更强上下文）：
-
-- **REMOVE**：确认不是安全约束/项目命令/用户偏好后才执行
-- **CONDENSE**：确认精简版保留关键信息
+- **REMOVE**：确认该内容确实是模型已知的通用知识、L1 已覆盖的规则、或 L3 已固化的认知。安全约束（"never"/"禁止"）、项目特有命令（`pnpm gw:deploy`）、用户偏好——这些驱动行为的内容必须保留
+- **CONDENSE**：确认精简版保留了关键语义。有些文件写得啰嗦但信息密度低，压缩后反而更容易被模型注意到
 - **KEEP**：采纳
 
-**安全检查清单（不删这些）：**
+用 `edit` 工具逐段修改原文件，每处展示 before/after 让用户确认。改完后删除 `.trimmed.md` 临时文件。
 
-- 包含 "never" / "must" / "禁止" / "不要" 的安全约束
-- 项目特有命令（如 `pnpm gw:deploy` / `scripts/committer`）
-- 用户偏好（语言/风格/习惯）
-- SOUL.md 的核心人格特征
+**判断原则**：对每段内容问三个问题——
+1. 模型本来就知道？（通用工具描述、语言能力、常见编程模式）→ 删
+2. 跨层重复？（L1 system prompt 已有 / L3 persona 已固化 / 另一个 L2 文件已覆盖）→ 留信息密度最高的那处
+3. 驱动特定行为？（项目命令、安全红线、用户习惯、平台特性）→ 留
 
-**2c. 执行修改：**
-
-用 `edit` 工具逐段修改原文件。每处展示 before/after。
-
-**2d. 清理：**
-
-```
-exec: rm <文件名>.trimmed.md
-```
-
-**Step 2 检查点：**
-
-```
-## Step 2 整理摘要
-| 文件 | Before | After | 变化 |
-| --- | --- | --- | --- |
-| AGENTS.md | ~1100 tok | ~650 tok | -41% |
-| USER.md | ~939 tok | ~600 tok | -36% |
-| **L2 总计** | ~S1 | ~S2 | **-X%** |
-```
-
-### Step 3: L3 自动修复（必做）
+### Step 3: 清理 L3 + 验证
 
 ```
 exec: kaijibot context audit operator -a main --fix
 ```
 
-`--fix` 自动执行：
+`--fix` 删除过时 corrections（>45 天未强化）和重复 corrections。这是确定性操作，安全执行。
 
-- 删除过时 corrections（>45 天未强化）
-- 删除重复 corrections 中 reinforcedCount 较低的那条
+如果 audit 报告了"低使用率但未过期"的 corrections，列出来让用户决定是否手动删除（通过编辑 `~/.kaijibot/cognitive/corrections/{agentId}/{userId}.json`）。
 
-如果用户想先预览：
-
-```
-exec: kaijibot context audit operator -a main --dry-run
-```
-
-**Corrections 手动清理**：`--fix` 只处理确定性问题（过时/重复）。对于"低使用率但未过期"的 corrections，展示给用户确认：
-
-"以下 corrections 从未被引用，是否删除？
-
-1. [general] responded too verbosely
-2. [coding] used var instead of const
-
-用户确认后，通过编辑 `~/.kaijibot/cognitive/corrections/{agentId}/{userId}.json` 手动删除。"
-
-**Step 3 检查点：**
-
-```
-## Step 3 L3 修复摘要
-- --fix 删除: X 条过时 + Y 条重复 = Z 条
-- 手动确认: 低使用率 N 条（用户删除 M 条）
-- Persona domains: 自动衰减中，不需操作
-```
-
-### 最终报告
-
-```
-## 🔧 上下文整理完成
-
-| 层级 | Before | After | 变化 |
-| --- | --- | --- | --- |
-| L1 硬编码 | ~2700 | ~2700 | 不变 |
-| L2 用户文件 | ~S1 | ~S2 | -X% |
-| L3 认知数据 | ~T1 | ~T2 | -Y% |
-| **总计** | ~X1 | ~X2 | **-Z%** |
-```
-
-## 判断标准
-
-对每段内容问：
-
-1. **模型已知？** → 删（通用工具描述/语言能力/常见模式）
-2. **跨层重复？** → 留一处（L1 已有/L3 已有/另一文件已有）
-3. **驱动行为？** → 留（项目命令/安全约束/用户偏好）
-
-## Notes
-
-- audit 是确定性计算（查日期 + Jaccard + 关键词匹配），秒级返回
-- trim 需要 LLM（语义判断"模型是否已知"），十秒级
-- trim 的 `--apply` 写到 `.trimmed.md`，不覆盖原文件
-- audit `--fix` 只删 L3 数据（corrections），不改 L2 文件
-- L2 文件修改用 edit 工具，由 agent 审阅后执行
-- MEMORY.md 深度整理交给 memory-organize skill
-- 可以重复运行，幂等安全
+最后再次运行 `audit`（不带 --fix）确认最终 token 分布，对比 Step 1 的数据向用户汇报变化。
