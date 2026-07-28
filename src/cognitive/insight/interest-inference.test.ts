@@ -1,7 +1,7 @@
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
-import type { KaijiBotConfig } from "../../config/config.js";
 import { MissingAgentModelConfigError } from "../../agents/defaults.js";
+import type { KaijiBotConfig } from "../../config/config.js";
 import type { PersonaTree } from "../types.js";
 import {
   buildInterestInferencePrompt,

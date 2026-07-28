@@ -1041,7 +1041,9 @@ export function getSessionDefaults(cfg: KaijiBotConfig): GatewaySessionsDefaults
   }
   const contextTokens =
     cfg.agents?.defaults?.contextTokens ??
-    (resolved?.model ? lookupContextTokens(resolved.model, { allowAsyncLoad: false }) : undefined) ??
+    (resolved?.model
+      ? lookupContextTokens(resolved.model, { allowAsyncLoad: false })
+      : undefined) ??
     DEFAULT_CONTEXT_TOKENS;
   return {
     modelProvider: resolved?.provider ?? null,
