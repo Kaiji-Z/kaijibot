@@ -10,12 +10,14 @@ KaijiBot 每个 agent turn 注入三层上下文：L1 硬编码（system-prompt.
 
 这个 skill 通过审计 → 精简 → 验证三步，把 token 预算还给真正驱动行为的内容。
 
+所有 CLI 命令不需要传 `-a` 和 userId — 会自动检测当前 agent 和当前用户。
+
 ## 三步流程
 
 ### Step 1: 审计
 
 ```
-exec: kaijibot context audit operator -a main
+exec: kaijibot context audit
 ```
 
 audit 是确定性计算（查日期 + Jaccard 相似度 + 关键词匹配），秒级返回。输出包含：
@@ -37,7 +39,7 @@ audit 是确定性计算（查日期 + Jaccard 相似度 + 关键词匹配），
 对每个待整理的文件，执行 trim 分析：
 
 ```
-exec: kaijibot context trim <文件名> -a main --apply
+exec: kaijibot context trim <文件名>
 ```
 
 trim 会读取文件内容 + L1 system prompt 关键段 + L3 persona/corrections，用 LLM 对比三层后输出 REMOVE / CONDENSE / KEEP 建议（写到 `.trimmed.md`）。
@@ -58,7 +60,7 @@ trim 会读取文件内容 + L1 system prompt 关键段 + L3 persona/corrections
 ### Step 3: 清理 L3 + 验证
 
 ```
-exec: kaijibot context audit operator -a main --fix
+exec: kaijibot context audit --fix
 ```
 
 `--fix` 删除过时 corrections（>45 天未强化）和重复 corrections。这是确定性操作，安全执行。

@@ -155,10 +155,13 @@ export function registerContextCli(program: Command) {
     .command("context")
     .description("Context engineering — audit and trim injected context");
 
+  const defaultAgentId = process.env.KAIJIBOT_AGENT_ID ?? "main";
+  const defaultUserId = process.env.KAIJIBOT_USER_ID;
+
   context
     .command("audit [userId]")
     .description("Inspect L1/L2/L3 token distribution, diagnose issues, optionally fix")
-    .option("-a, --agent <id>", "Agent ID", "main")
+    .option("-a, --agent <id>", "Agent ID", defaultAgentId)
     .option("--fix", "Auto-fix L3 issues (remove stale, merge duplicates)")
     .option("--dry-run", "Show what --fix would do without executing")
     .option("--json", "JSON output")
@@ -168,8 +171,8 @@ export function registerContextCli(program: Command) {
         opts: { agent: string; fix: boolean; dryRun: boolean; json: boolean },
       ) => {
         try {
-          const agentId = normalizeOptionalString(opts.agent) ?? "main";
-          const userId = normalizeOptionalString(rawUserId);
+          const agentId = normalizeOptionalString(opts.agent) ?? defaultAgentId;
+          const userId = normalizeOptionalString(rawUserId) ?? defaultUserId;
 
           if (!userId) {
             const ids = await listUserIds(agentId);
@@ -409,11 +412,11 @@ export function registerContextCli(program: Command) {
     .description(
       "LLM-driven cross-layer analysis: compare L2 file against L1 system prompt + L3 cognitive data",
     )
-    .option("-a, --agent <id>", "Agent ID", "main")
+    .option("-a, --agent <id>", "Agent ID", defaultAgentId)
     .option("--apply", "Write suggestions to <file>.trimmed.md")
     .action(async (fileArg: string | undefined, opts: { agent: string; apply: boolean }) => {
       try {
-        const agentId = normalizeOptionalString(opts.agent) ?? "main";
+        const agentId = normalizeOptionalString(opts.agent) ?? defaultAgentId;
         const workspaceDir = await resolveAgentWorkspace(agentId);
 
         const targetFile = normalizeOptionalString(fileArg);

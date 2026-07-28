@@ -17,6 +17,7 @@ import {
 } from "../infra/shell-env.js";
 import { logInfo } from "../logger.js";
 import { parseAgentSessionKey, resolveAgentIdFromSessionKey } from "../routing/session-key.js";
+import { resolveCognitiveUserId } from "../cognitive/identity.js";
 import {
   normalizeLowercaseStringOrEmpty,
   normalizeOptionalLowercaseString,
@@ -1634,6 +1635,14 @@ export function createExecTool(
         );
       } else {
         applyPathPrepend(env, defaultPathPrepend);
+      }
+
+      if (agentId) {
+        env.KAIJIBOT_AGENT_ID = agentId;
+      }
+      const cognitiveUserId = resolveCognitiveUserId(defaults?.sessionKey);
+      if (cognitiveUserId) {
+        env.KAIJIBOT_USER_ID = cognitiveUserId;
       }
 
       if (host === "node") {
