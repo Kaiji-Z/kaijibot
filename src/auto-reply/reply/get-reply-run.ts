@@ -310,7 +310,6 @@ export async function runPreparedReply(
         selectedCorrections: corrections ?? [],
         totalCorrectionsAvailable: corrections?.length ?? 0,
         evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
-        useSummaryLayer: false,
       });
       logVerbose(
         `context manifest: mode=${manifest.mode} persona=${manifest.personaActive} corrections=${manifest.correctionsInjected}/${manifest.correctionsAvailable} evolution=${manifest.evolutionSectionActive}`,

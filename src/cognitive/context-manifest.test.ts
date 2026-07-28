@@ -31,7 +31,6 @@ describe("buildContextManifest", () => {
       selectedCorrections: [],
       totalCorrectionsAvailable: 0,
       evolutionEnabled: true,
-      useSummaryLayer: false,
     });
     expect(m.mode).toBe("task");
     expect(m.modeConfidence).toBe(0.8);
@@ -44,7 +43,6 @@ describe("buildContextManifest", () => {
       selectedCorrections: [],
       totalCorrectionsAvailable: 0,
       evolutionEnabled: false,
-      useSummaryLayer: false,
     });
     expect(m.personaActive).toBe(false);
     expect(m.personaDomainCount).toBe(0);
@@ -78,7 +76,6 @@ describe("buildContextManifest", () => {
       selectedCorrections: [],
       totalCorrectionsAvailable: 0,
       evolutionEnabled: false,
-      useSummaryLayer: false,
     });
     expect(m.personaActive).toBe(true);
     expect(m.personaDomainCount).toBe(2);
@@ -91,23 +88,20 @@ describe("buildContextManifest", () => {
       selectedCorrections: selected,
       totalCorrectionsAvailable: 10,
       evolutionEnabled: false,
-      useSummaryLayer: false,
     });
     expect(m.correctionsInjected).toBe(2);
     expect(m.correctionsAvailable).toBe(10);
     expect(m.correctionIds).toEqual(["a", "b"]);
   });
 
-  it("records evolution and summary flags", () => {
+  it("records evolution flag", () => {
     const m = buildContextManifest({
       classification: baseClassification,
       selectedCorrections: [],
       totalCorrectionsAvailable: 0,
       evolutionEnabled: true,
-      useSummaryLayer: true,
     });
     expect(m.evolutionSectionActive).toBe(true);
-    expect(m.useSummaryLayer).toBe(true);
   });
 
   it("always includes timestamp", () => {
@@ -117,7 +111,6 @@ describe("buildContextManifest", () => {
       selectedCorrections: [],
       totalCorrectionsAvailable: 0,
       evolutionEnabled: false,
-      useSummaryLayer: false,
     });
     const after = Date.now();
     expect(m.timestamp).toBeGreaterThanOrEqual(before);

@@ -10,7 +10,6 @@ import type { CorrectionRecord } from "./correction/types.js";
 import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
 import { classifyMode, buildModePromptSection } from "./mode-router.js";
 import { buildPersonaContext } from "./persona/context-builder.js";
-import { buildPersonaSummary } from "./persona/summary-builder.js";
 import type { CognitiveMode, ModeClassification, PersonaTree } from "./types.js";
 
 const SKILL_EVOLUTION_PROMPT = {
@@ -62,7 +61,6 @@ export function buildCognitiveModePrompt(params: {
   corrections?: CorrectionRecord[];
   /** Optional locale override; defaults to detecting from `persona`. */
   locale?: CognitiveLocale;
-  useSummaryLayer?: boolean;
 }): { prompt: string; classification: ModeClassification } {
   const {
     message,
@@ -74,7 +72,6 @@ export function buildCognitiveModePrompt(params: {
     persona,
     corrections,
     locale,
-    useSummaryLayer,
   } = params;
 
   const classification = classifyMode(message, {
@@ -92,9 +89,7 @@ export function buildCognitiveModePrompt(params: {
   const parts: string[] = [];
 
   if (persona) {
-    const personaCtx = useSummaryLayer
-      ? buildPersonaSummary(persona)
-      : buildPersonaContext(persona);
+    const personaCtx = buildPersonaContext(persona);
     if (personaCtx) {
       parts.push(personaCtx);
     }

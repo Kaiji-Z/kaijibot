@@ -11,7 +11,6 @@ export interface ContextManifest {
   correctionsInjected: number;
   correctionIds: string[];
   evolutionSectionActive: boolean;
-  useSummaryLayer: boolean;
 }
 
 export function buildContextManifest(params: {
@@ -20,7 +19,6 @@ export function buildContextManifest(params: {
   selectedCorrections: CorrectionRecord[];
   totalCorrectionsAvailable: number;
   evolutionEnabled: boolean;
-  useSummaryLayer: boolean;
 }): ContextManifest {
   return {
     timestamp: Date.now(),
@@ -32,6 +30,5 @@ export function buildContextManifest(params: {
     correctionsInjected: params.selectedCorrections.length,
     correctionIds: params.selectedCorrections.map((c) => c.id),
     evolutionSectionActive: params.evolutionEnabled,
-    useSummaryLayer: params.useSummaryLayer,
   };
 }

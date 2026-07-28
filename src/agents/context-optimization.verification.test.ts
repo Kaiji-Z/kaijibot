@@ -9,7 +9,6 @@ import { CorrectionStore } from "../cognitive/correction/store.js";
 import type { CorrectionRecord } from "../cognitive/correction/types.js";
 import { buildPersonaContext } from "../cognitive/persona/context-builder.js";
 import { createDefaultPersona } from "../cognitive/persona/store.js";
-import { buildPersonaSummary } from "../cognitive/persona/summary-builder.js";
 import type { PersonaTree } from "../cognitive/types.js";
 import { writeTextAtomic } from "../infra/json-files.js";
 import {
@@ -476,98 +475,6 @@ describe("Context Engineering Optimization Verification", () => {
     });
   });
 
-  describe("W4.4: Persona summary layer — density vs full context", () => {
-    const richPersona: PersonaTree = {
-      ...createDefaultPersona(),
-      identity: {
-        ...createDefaultPersona().identity,
-        coreTraits: {
-          称呼: {
-            value: "Kaiji",
-            confidence: 0.95,
-            evidenceCount: 10,
-            lastUpdated: 0,
-            source: "explicit",
-          },
-          role: {
-            value: "engineer",
-            confidence: 0.8,
-            evidenceCount: 5,
-            lastUpdated: 0,
-            source: "inferred",
-          },
-        },
-        expertDomains: ["AI", "systems"],
-        interestDomains: ["philosophy"],
-      },
-      domains: Object.fromEntries(
-        Array.from({ length: 5 }, (_, i) => [
-          `domain${i}`,
-          {
-            depth: 4 + i,
-            recurrence: 3,
-            lastMentioned: 100 + i,
-            keyInsights: [`insight ${i}`],
-            activeQuestions: [],
-            negationSignals: 0,
-            insights: Array.from({ length: 3 }, (_, j) => ({
-              text: `insight ${i}-${j}`,
-              category: "durable" as const,
-              confidence: 0.8 - j * 0.1,
-              source: "explicit" as const,
-              firstObserved: 0,
-              lastReinforced: 0,
-              evidenceCount: 2,
-              halfLifeDays: 30,
-            })),
-          },
-        ]),
-      ),
-      recentFocus: ["topic1", "topic2", "topic3", "topic4"],
-    };
-
-    it("summary output is smaller than full context output", () => {
-      const summary = buildPersonaSummary(richPersona);
-      const full = buildPersonaContext(richPersona);
-      expect(summary.length).toBeLessThan(full.length);
-    });
-
-    it("summary retains high-confidence traits", () => {
-      const summary = buildPersonaSummary(richPersona);
-      expect(summary).toContain("Kaiji");
-      expect(summary).toContain("engineer");
-    });
-
-    it("summary retains active domain names (top-3 by lastMentioned desc)", () => {
-      const summary = buildPersonaSummary(richPersona);
-      expect(summary).toContain("domain4");
-      expect(summary).toContain("domain3");
-      expect(summary).toContain("domain2");
-    });
-
-    it("summary limits to 3 domains (vs full context's 5)", () => {
-      const summary = buildPersonaSummary(richPersona);
-      const domainLines = summary.split("\n").filter((l) => l.startsWith("- domain"));
-      expect(domainLines.length).toBeLessThanOrEqual(3);
-    });
-
-    it("summary retains trust indicator", () => {
-      const highTrust: PersonaTree = {
-        ...richPersona,
-        rapport: { ...richPersona.rapport, trustScore: 0.85 },
-      };
-      expect(buildPersonaSummary(highTrust)).toContain("Trust");
-    });
-
-    it("summary token estimate is < 60% of full context", () => {
-      const summary = buildPersonaSummary(richPersona);
-      const full = buildPersonaContext(richPersona);
-      const summaryTokens = approxTokensForText(summary);
-      const fullTokens = approxTokensForText(full);
-      expect(summaryTokens / fullTokens).toBeLessThan(0.6);
-    });
-  });
-
   describe("W5: ContextManifest — injection observability", () => {
     it("records which corrections were actually injected (not just available)", () => {
       const selected = [makeCorrection({ id: "inj-1" }), makeCorrection({ id: "inj-2" })];
@@ -576,7 +483,6 @@ describe("Context Engineering Optimization Verification", () => {
         selectedCorrections: selected,
         totalCorrectionsAvailable: 20,
         evolutionEnabled: true,
-        useSummaryLayer: false,
       });
       expect(manifest.correctionsInjected).toBe(2);
       expect(manifest.correctionsAvailable).toBe(20);
@@ -619,7 +525,6 @@ describe("Context Engineering Optimization Verification", () => {
         selectedCorrections: [],
         totalCorrectionsAvailable: 0,
         evolutionEnabled: false,
-        useSummaryLayer: false,
       });
       expect(manifest.personaActive).toBe(true);
       expect(manifest.personaDomainCount).toBe(3);
