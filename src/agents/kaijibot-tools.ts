@@ -16,6 +16,7 @@ import { createAgentsListTool } from "./tools/agents-list-tool.js";
 import { createCanvasTool } from "./tools/canvas-tool.js";
 import { createCognitiveFeedbackTool } from "./tools/cognitive-feedback-tool.js";
 import type { AnyAgentTool } from "./tools/common.js";
+import { createContextShowTool } from "./tools/context-show-tool.js";
 import { createCorrectionReportTool } from "./tools/correction-report-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
 import { createDialogueListTool } from "./tools/dialogue-list-tool.js";
@@ -328,6 +329,12 @@ export function createKaijiBotTools(
           ]
         : []),
       createSwitchSoulTool({ agentId: sessionAgentId }),
+      createContextShowTool({
+        config: resolvedConfig,
+        workspaceDir,
+        sessionKey: options?.agentSessionKey,
+        agentId: sessionAgentId,
+      }),
     ]),
     ...collectPresentKaijiBotTools([webSearchTool, webFetchTool, imageTool, pdfTool]),
   ];
