@@ -38,7 +38,7 @@ export function createContextShowTool(deps: {
     name: "context_show",
     label: "Context Show",
     description:
-      "展示当前 agent 的三层注入上下文：L1 系统提示关键段、L2 workspace 文件全文（排除 MEMORY.md）、L3 认知数据（persona + corrections）。用于上下文整理时让 agent 看到全部注入内容以判断冗余。",
+      "输出当前 agent 的三层注入上下文快照：L1 系统提示关键段 + L2 workspace 文件全文 + L3 persona/corrections 数据。纯数据展示工具，不包含整理指导——整理流程请参考 context-organize skill。",
     parameters: ContextShowSchema,
     async execute(_toolCallId: string) {
       try {
