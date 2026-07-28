@@ -290,15 +290,31 @@ export async function runPreparedReply(
         }
       }
     } catch {}
-    const { prompt: cognitivePrompt } = buildCognitiveModePrompt({
-      message: rawBodyTrimmed,
-      cognitiveEnabled: cognitiveCfg?.enabled,
-      evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
-      persona: cognitivePersona,
-      corrections,
-    });
+    const { prompt: cognitivePrompt, classification: cognitiveClassification } =
+      buildCognitiveModePrompt({
+        message: rawBodyTrimmed,
+        cognitiveEnabled: cognitiveCfg?.enabled,
+        evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
+        persona: cognitivePersona,
+        corrections,
+      });
     if (cognitivePrompt) {
       extraSystemPromptParts.push(cognitivePrompt);
+    }
+
+    if (cognitiveCfg?.enabled !== false) {
+      const { buildContextManifest } = await import("../../cognitive/context-manifest.js");
+      const manifest = buildContextManifest({
+        classification: cognitiveClassification,
+        persona: cognitivePersona,
+        selectedCorrections: corrections ?? [],
+        totalCorrectionsAvailable: corrections?.length ?? 0,
+        evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
+        useSummaryLayer: false,
+      });
+      logVerbose(
+        `context manifest: mode=${manifest.mode} persona=${manifest.personaActive} corrections=${manifest.correctionsInjected}/${manifest.correctionsAvailable} evolution=${manifest.evolutionSectionActive}`,
+      );
     }
 
     // Soul preset onboarding: first conversation, no persona yet, no soul preset configured.

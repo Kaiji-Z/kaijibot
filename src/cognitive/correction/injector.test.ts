@@ -161,4 +161,25 @@ describe("selectRelevantCorrections", () => {
     expect(result).toHaveLength(2);
     expect(result.map((r) => r.id)).toEqual(["high", "low"]);
   });
+
+  it("matches corrections via substring when exact tokens differ (commit ≈ committing)", () => {
+    const irrelevant = makeCorrection({
+      id: "irr",
+      domain: "cooking",
+      trigger: "baking",
+      mistake: "wrong temperature",
+      correction: "check recipe",
+      reinforcedCount: 100,
+    });
+    const relevant = makeCorrection({
+      id: "rel",
+      domain: "git",
+      trigger: "committing code",
+      mistake: "committed without message",
+      correction: "use descriptive message",
+      reinforcedCount: 1,
+    });
+    const result = selectRelevantCorrections([irrelevant, relevant], "帮我 commit 代码", 1);
+    expect(result[0]!.id).toBe("rel");
+  });
 });

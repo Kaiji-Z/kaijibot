@@ -4,6 +4,31 @@ import type { CorrectionRecord } from "./types.js";
 
 export const MAX_INJECTED_CORRECTIONS = 15;
 
+const MIN_SUBSTRING_LEN = 4;
+
+function computeRelevanceScore(messageTokens: Set<string>, correctionTokens: Set<string>): number {
+  const jaccard = jaccardSimilarity(messageTokens, correctionTokens);
+  if (jaccard > 0) {
+    return jaccard;
+  }
+  let hits = 0;
+  for (const mt of messageTokens) {
+    if (mt.length < MIN_SUBSTRING_LEN) {
+      continue;
+    }
+    for (const ct of correctionTokens) {
+      if (ct.length < MIN_SUBSTRING_LEN) {
+        continue;
+      }
+      if (ct.includes(mt) || mt.includes(ct)) {
+        hits++;
+        break;
+      }
+    }
+  }
+  return hits > 0 ? 0.01 * hits : 0;
+}
+
 /** Select corrections by Jaccard relevance to current message; falls back to top-N by reinforcedCount when no overlap. */
 export function selectRelevantCorrections(
   all: CorrectionRecord[],
@@ -20,7 +45,7 @@ export function selectRelevantCorrections(
   const messageTokens = tokenize(currentMessage);
   const scored = all.map((record) => {
     const correctionText = `${record.domain} ${record.trigger} ${record.mistake}`;
-    const score = jaccardSimilarity(messageTokens, tokenize(correctionText));
+    const score = computeRelevanceScore(messageTokens, tokenize(correctionText));
     return { record, score };
   });
 
