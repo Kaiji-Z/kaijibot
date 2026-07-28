@@ -56,15 +56,22 @@ exec: kaijibot context audit operator -a main
 
 对 Step 1 发现的较大 L2 文件执行裁剪。
 
+> **⚠️ 禁止整理 MEMORY.md。** MEMORY.md 由 consolidation 系统（每日 cron 自动提取 + 路由 + 8KB 预算自动平衡）和 `memory-organize` skill 管理。context-organize 的 LLM trim 不懂 consolidation 的路由规则，会误删核心记忆。audit 可以显示 MEMORY.md 的 token 占比供参考，但 **trim / edit / 任何修改操作都不得作用于 MEMORY.md**。
+
+**整理范围**：AGENTS.md · SOUL.md · IDENTITY.md · USER.md · TOOLS.md · HEARTBEAT.md
+**排除**：~~MEMORY.md~~（由 consolidation 管理）
+
+对超过 ~300 tok 的文件逐个分析。对每个文件：
+
 **2a. CLI 跨层分析：**
 
 ```
-exec: kaijibot context trim AGENTS.md -a main --apply
+exec: kaijibot context trim <文件名> -a main --apply
 ```
 
 trim 命令会：
 
-1. 读取 AGENTS.md 内容
+1. 读取文件内容
 2. 获取 L1 system prompt 的关键段（Tooling/Safety/Capabilities/Messaging）
 3. 获取 L3 persona traits + corrections
 4. 用 LLM 对比三层，找出冗余
@@ -92,7 +99,7 @@ trim 命令会：
 **2d. 清理：**
 
 ```
-exec: rm AGENTS.md.trimmed.md
+exec: rm <文件名>.trimmed.md
 ```
 
 **Step 2 检查点：**
@@ -102,6 +109,7 @@ exec: rm AGENTS.md.trimmed.md
 | 文件 | Before | After | 变化 |
 | --- | --- | --- | --- |
 | AGENTS.md | ~1100 tok | ~650 tok | -41% |
+| USER.md | ~939 tok | ~600 tok | -36% |
 | **L2 总计** | ~S1 | ~S2 | **-X%** |
 ```
 

@@ -20,6 +20,12 @@ const BOOTSTRAP_FILES = [
   "BOOTSTRAP.md",
 ] as const;
 
+/** Files that `trim` is allowed to analyze. MEMORY.md is excluded — it is managed
+ *  by the consolidation system (daily cron + memory-organize skill + 8KB auto-rebalance).
+ *  LLM trim doesn't understand consolidation routing rules and will over-delete core memory. */
+const TRIMMABLE_FILES = BOOTSTRAP_FILES.filter((f) => f !== "MEMORY.md");
+const PROTECTED_FROM_TRIM = new Set(["MEMORY.md"]);
+
 async function resolveAgentWorkspace(agentId: string): Promise<string> {
   const { resolveConfigDir } = await import("../utils.js");
   const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
@@ -297,7 +303,9 @@ export function registerContextCli(program: Command) {
           for (const f of l2Files) {
             const pct =
               f.name === "MEMORY.md" ? ` (${Math.round((f.chars / 8192) * 100)}% of 8KB)` : "";
-            defaultRuntime.log(`  ${f.name}: ${f.chars} chars / ~${f.tokens} tok${pct}`);
+            const managed =
+              f.name === "MEMORY.md" ? dim(" [consolidation-managed, trim excluded]") : "";
+            defaultRuntime.log(`  ${f.name}: ${f.chars} chars / ~${f.tokens} tok${pct}${managed}`);
           }
 
           defaultRuntime.log(`\n${successTheme("L3 Cognitive")}`);
@@ -412,9 +420,17 @@ export function registerContextCli(program: Command) {
         const filesToAnalyze: string[] = [];
 
         if (targetFile) {
+          if (PROTECTED_FROM_TRIM.has(targetFile)) {
+            defaultRuntime.log(
+              dim(
+                `${targetFile} is managed by the consolidation system (daily cron + memory-organize skill). Skipping.\nUse 'kaijibot memory organize' or edit manually if needed.`,
+              ),
+            );
+            return;
+          }
           filesToAnalyze.push(targetFile);
         } else {
-          for (const name of BOOTSTRAP_FILES) {
+          for (const name of TRIMMABLE_FILES) {
             try {
               await readFile(join(workspaceDir, name), "utf-8");
               filesToAnalyze.push(name);
