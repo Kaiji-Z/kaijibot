@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Type } from "typebox";
 import type { AnyAgentTool } from "./common.js";
 import { textResult } from "./common.js";
-import { createSubsystemLogger } from "../../logger.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("context-show-tool");
 
@@ -44,7 +44,7 @@ export function createContextShowTool(deps: {
       try {
         const workspaceDir = deps.workspaceDir;
         if (!workspaceDir) {
-          return textResult("No workspace directory available.");
+          return textResult("No workspace directory available.", { status: "no_workspace" });
         }
 
         const parts: string[] = [];
@@ -105,12 +105,12 @@ export function createContextShowTool(deps: {
 
         // Persona
         try {
+          const { resolveCognitiveUserId } = await import("../../cognitive/identity.js");
+          const userId = resolveCognitiveUserId(deps.sessionKey) ?? "operator";
           const { PersonaStore } = await import("../../cognitive/persona/store.js");
           const store = new PersonaStore(configDir);
-          const persona = await store.load(agentId);
+          const persona = await store.load(agentId, userId);
           if (persona) {
-            const { resolveCognitiveUserId } = await import("../../cognitive/identity.js");
-            const userId = resolveCognitiveUserId(deps.sessionKey) ?? "operator";
             const { buildPersonaContext } = await import("../../cognitive/persona/context-builder.js");
             const personaCtx = buildPersonaContext(persona);
             const domainCount = Object.keys(persona.domains).length;
@@ -166,9 +166,9 @@ export function createContextShowTool(deps: {
         const output = parts.join("\n");
         log.info("context shown", { agentId, l2Files: l2Files.length, l2Tokens: l2TotalTokens });
 
-        return textResult(output);
+        return textResult(output, { status: "ok", l2Tokens: l2TotalTokens });
       } catch (err) {
-        return textResult(`Context show failed: ${String(err)}`);
+        return textResult(`Context show failed: ${String(err)}`, { status: "error" });
       }
     },
   };
