@@ -331,4 +331,129 @@ export function registerContextCli(program: Command) {
         defaultRuntime.exit(1);
       }
     });
+
+  context
+    .command("trim [file]")
+    .description(
+      "Analyze a workspace file (AGENTS.md, SOUL.md, etc.) for redundant/model-known content",
+    )
+    .option("-a, --agent <id>", "Agent ID", "main")
+    .option("--apply", "Write trimmed version to <file>.trimmed.md (does NOT overwrite original)")
+    .action(async (fileArg: string | undefined, opts: { agent: string; apply: boolean }) => {
+      try {
+        const { resolveConfigDir } = await import("../utils.js");
+        const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
+        const { loadConfig } = await import("../config/config.js");
+        const { readFile } = await import("node:fs/promises");
+        const { join, basename } = await import("node:path");
+
+        const cfg = loadConfig();
+        const agentId = normalizeOptionalString(opts.agent) ?? "main";
+        const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+
+        const BOOTSTRAP_FILES = [
+          "AGENTS.md",
+          "SOUL.md",
+          "IDENTITY.md",
+          "USER.md",
+          "TOOLS.md",
+          "MEMORY.md",
+          "HEARTBEAT.md",
+          "BOOTSTRAP.md",
+        ];
+
+        const targetFile = normalizeOptionalString(fileArg);
+
+        if (targetFile) {
+          const filePath = join(workspaceDir, targetFile);
+          let content: string;
+          try {
+            content = await readFile(filePath, "utf-8");
+          } catch {
+            defaultRuntime.error(danger(`File not found: ${filePath}`));
+            defaultRuntime.exit(1);
+            return;
+          }
+          await analyzeAndReport(filePath, targetFile, content, opts.apply, workspaceDir);
+        } else {
+          let analyzed = 0;
+          for (const name of BOOTSTRAP_FILES) {
+            const filePath = join(workspaceDir, name);
+            try {
+              const content = await readFile(filePath, "utf-8");
+              await analyzeAndReport(filePath, name, content, opts.apply, workspaceDir);
+              analyzed++;
+            } catch {}
+          }
+          if (analyzed === 0) {
+            defaultRuntime.log(dim(`No bootstrap files found in workspace: ${workspaceDir}`));
+            defaultRuntime.log(dim("Usage: kaijibot context trim AGENTS.md -a <agent>"));
+          }
+        }
+
+        async function analyzeAndReport(
+          filePath: string,
+          fileName: string,
+          content: string,
+          apply: boolean,
+          workspaceDir: string,
+        ): Promise<void> {
+          const { createBackgroundGenerateText } =
+            await import("../cognitive/evolution/standalone-generate.js");
+          const { writeFile } = await import("node:fs/promises");
+
+          defaultRuntime.log(
+            `\n${successTheme(`Analyzing ${fileName}`)} (${content.length} chars)`,
+          );
+          defaultRuntime.log(dim("━".repeat(50)));
+
+          const generateText = await createBackgroundGenerateText(cfg, { maxTokens: 2000 });
+
+          const prompt = `You are a context engineering auditor for an AI assistant (KaijiBot). Analyze the following workspace file and identify content that is redundant, model-known, or overly verbose.
+
+Rules (inspired by Claude Code /doctor):
+- KEEP: project-specific rules, pitfalls, rationale, conventions that differ from defaults, user preferences
+- CONDENSE: verbose descriptions that could be shorter (suggest a 1-2 line replacement)
+- REMOVE: generic info the LLM already knows (tool descriptions, language capabilities, common coding patterns, directory structure it can discover)
+
+File: ${fileName}
+Content (${content.length} chars):
+---
+${content}
+---
+
+Respond in this exact format (use Chinese if the file is in Chinese):
+
+## Analysis for ${fileName}
+
+### REMOVE (model already knows / can discover)
+- [line range or section]: what it says → why it's redundant
+
+### CONDENSE (too verbose)
+- [section]: current text → suggested shorter version
+
+### KEEP (must stay)
+- [section]: why it's essential
+
+### Summary
+- Current: ${content.length} chars
+- Estimated optimal: ~X chars (Y% reduction)
+- Top 3 actions: ...`;
+
+          const result = await generateText(prompt);
+
+          if (apply) {
+            const trimmedPath = join(workspaceDir, `${fileName}.trimmed.md`);
+            await writeFile(trimmedPath, result, "utf-8");
+            defaultRuntime.log(successTheme(`✓ Suggestions written to ${trimmedPath}`));
+            defaultRuntime.log(dim("  Review and merge manually — original file is untouched."));
+          }
+
+          defaultRuntime.log(`\n${result}`);
+        }
+      } catch (err) {
+        defaultRuntime.error(danger(String(err)));
+        defaultRuntime.exit(1);
+      }
+    });
 }
