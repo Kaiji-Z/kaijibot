@@ -1,7 +1,44 @@
+import { jaccardSimilarity, tokenize } from "../../infra/text-similarity.js";
 import { L, pickLocalized, type CognitiveLocale } from "../cognitive-locale.js";
 import type { CorrectionRecord } from "./types.js";
 
 export const MAX_INJECTED_CORRECTIONS = 15;
+
+/** Select corrections by Jaccard relevance to current message; falls back to top-N by reinforcedCount when no overlap. */
+export function selectRelevantCorrections(
+  all: CorrectionRecord[],
+  currentMessage: string,
+  limit: number = MAX_INJECTED_CORRECTIONS,
+): CorrectionRecord[] {
+  if (all.length === 0) {
+    return [];
+  }
+  if (all.length <= limit) {
+    return [...all].toSorted((a, b) => b.reinforcedCount - a.reinforcedCount);
+  }
+
+  const messageTokens = tokenize(currentMessage);
+  const scored = all.map((record) => {
+    const correctionText = `${record.domain} ${record.trigger} ${record.mistake}`;
+    const score = jaccardSimilarity(messageTokens, tokenize(correctionText));
+    return { record, score };
+  });
+
+  const maxScore = scored.reduce((max, s) => (s.score > max ? s.score : max), 0);
+  if (maxScore === 0) {
+    return [...all].toSorted((a, b) => b.reinforcedCount - a.reinforcedCount).slice(0, limit);
+  }
+
+  return scored
+    .toSorted((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return b.record.reinforcedCount - a.record.reinforcedCount;
+    })
+    .slice(0, limit)
+    .map((s) => s.record);
+}
 
 const SECTION_HEADER = L(
   "以下是你过去犯过的错误和正确的做法，请避免重复：",

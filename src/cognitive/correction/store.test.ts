@@ -42,7 +42,7 @@ describe("CorrectionStore", () => {
 
     const loaded = await store.loadAll(AGENT, USER);
     expect(loaded).toHaveLength(1);
-    expect(loaded[0]).toEqual(record);
+    expect(loaded[0]).toEqual({ ...record, usageCount: 0 });
   });
 
   it("returns [] for non-existent user", async () => {

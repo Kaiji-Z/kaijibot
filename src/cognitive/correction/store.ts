@@ -164,10 +164,14 @@ export class CorrectionStore {
     sanitized: CorrectionRecord,
   ): Promise<void> {
     const records = await this.loadRecords(agentId, userId);
-    records.push(sanitized);
+    const withDefaults: CorrectionRecord = {
+      ...sanitized,
+      usageCount: sanitized.usageCount ?? 0,
+    };
+    records.push(withDefaults);
     await this.writeRecords(agentId, userId, records);
     log.info("correction added", {
-      id: sanitized.id,
+      id: withDefaults.id,
       domain: sanitized.domain,
       agentId,
       userId,
@@ -290,8 +294,23 @@ export class CorrectionStore {
     return this.withLock(agentId, userId, async () => {
       const records = await this.loadRecords(agentId, userId);
       const ttl = (ttlDays ?? DEFAULT_CORRECTION_TTL_DAYS) * 86_400_000;
-      const cutoff = Date.now() - ttl;
-      const active = records.filter((r) => r.lastReinforced >= cutoff);
+      const now = Date.now();
+      const cutoff = now - ttl;
+      const refCutoff = now - (ttl * 2) / 3;
+      const active = records.filter((r) => {
+        if (r.lastReinforced < cutoff) {
+          return false;
+        }
+        if (
+          r.usageCount !== undefined &&
+          r.usageCount > 0 &&
+          r.lastReferencedAt !== undefined &&
+          r.lastReferencedAt < refCutoff
+        ) {
+          return false;
+        }
+        return true;
+      });
       const removed = records.length - active.length;
       if (removed > 0) {
         await this.writeRecords(agentId, userId, active);

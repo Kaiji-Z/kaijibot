@@ -10,6 +10,12 @@ export type CorrectionRecord = {
   reinforcedCount: number;
   createdAt: number;
   lastReinforced: number;
+  /** When to retrieve this correction (natural language); undefined = always relevant. */
+  triggerWhen?: string;
+  /** Times injected into agent turns (distinct from reinforcedCount = times mistake re-observed). */
+  usageCount?: number;
+  /** Last time the agent's reply addressed this mistake; undefined = never referenced. */
+  lastReferencedAt?: number;
 };
 
 export type CorrectionStoreData = {

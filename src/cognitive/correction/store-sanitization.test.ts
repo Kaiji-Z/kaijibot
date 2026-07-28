@@ -86,6 +86,6 @@ describe("CorrectionStore prompt-injection sanitization", () => {
     });
     await store.add("main", "u1", legit);
     const [record] = await store.loadAll("main", "u1");
-    expect(record).toEqual(legit);
+    expect(record).toEqual({ ...legit, usageCount: 0 });
   });
 });

@@ -121,6 +121,37 @@ export function hasCorrectionSignals(transcript: string): boolean {
   return false;
 }
 
+const TOOL_CALL_MARKERS = [
+  "tool_call",
+  "tool_use",
+  "mcp__",
+  "browser_action",
+  "web_search",
+  "playwright",
+];
+
+/** When external tool calls dominate a session, skip correction extraction to avoid misattributing tool errors as agent mistakes. */
+export function shouldSkipCorrectionExtraction(
+  transcript: string,
+  densityThreshold = 0.05,
+): boolean {
+  if (!transcript || transcript.length === 0) {
+    return false;
+  }
+  const lower = transcript.toLowerCase();
+  const tokens = lower.split(/\s+/).filter(Boolean);
+  if (tokens.length < 20) {
+    return false;
+  }
+  let hits = 0;
+  for (const token of tokens) {
+    if (TOOL_CALL_MARKERS.some((marker) => token.includes(marker))) {
+      hits++;
+    }
+  }
+  return hits / tokens.length > densityThreshold;
+}
+
 export async function extractCorrectionsFromTranscript(
   transcript: string,
   generateText: (prompt: string) => Promise<string>,

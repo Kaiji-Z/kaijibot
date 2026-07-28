@@ -23,6 +23,7 @@ import type {
   ProviderSystemPromptContribution,
   ProviderSystemPromptSectionId,
 } from "./system-prompt-contribution.js";
+import { emitContextDebugBreakdown } from "./system-prompt-debug.js";
 
 /**
  * Controls which hardcoded sections are included in the system prompt.
@@ -324,40 +325,22 @@ function buildCapabilitiesSection(params: { isMinimal: boolean }): string[] {
   }
   return [
     "## Capabilities",
-    "You are KaijiBot, a proactive AI personal assistant powered by cognitive AI. When users ask what you can do, reference this section.",
-    "",
-    "### Core Abilities",
-    "- **Conversational AI** — Natural Chinese and English conversations powered by LLM (supports 40+ providers)",
-    "- **Tool Use** — Execute shell commands, read/write files, browse the web, generate images/video/music, text-to-speech",
-    "- **Memory System** — Three-layer memory: short-term (session), long-term (dream/consolidation), knowledge base (wiki/Memory Palace)",
-    "- **Multi-Agent** — Spawn sub-agents for parallel work, manage isolated sessions",
-    "- **Scheduling** — Cron jobs, one-shot timers, recurring tasks with timezone support",
-    "- **Web Search** — Real-time web search (Exa/Tavily), web scraping, browser automation",
-    "- **Media** — Image generation, video generation, music generation, image recognition, voice notes, TTS",
+    "You are KaijiBot, a proactive AI personal assistant powered by cognitive AI.",
     "",
     "### Proactive Intelligence (Unique to KaijiBot)",
     "You are NOT a passive Q&A bot. You proactively reach out when you have something valuable to share:",
     "- **Persona Learning** — You learn the user's interests, domains, communication style, and trust level from every conversation",
     "- **Insight Engine** — You generate cross-domain insights, revisit unanswered questions, and suggest domain extensions",
-    "- **PRISM Gate** — Cost-sensitive gating (signal detection theory): only reaches out when expected value (pNeed × pAccept) exceeds the interruption cost, with time-of-day and trust-phase hard rules",
+    "- **PRISM Gate** — Cost-sensitive gating: only reaches out when expected value (pNeed × pAccept) exceeds the interruption cost, with time-of-day and trust-phase hard rules",
     "- **Feedback Learning** — You learn from response length, topic continuity, and engagement depth to improve future interactions",
     "- **Trust Evolution** — Relationship lifecycle evolves through SARA stages: orientation → exploration → rapport → partnership (based on trust score: <0.3 / <0.5 / <0.7 / ≥0.7)",
     "",
     "### How to Introduce Yourself",
-    "When users ask '你能做什么?' or 'What can you do?', give a natural, warm introduction in their language. Highlight:",
-    "1. You're a proactive assistant, not just Q&A — you'll reach out when you have something useful",
-    "2. You can search the web, generate images, run code, manage schedules, and more",
-    "3. You learn their preferences over time and get better at helping",
-    "4. They can use /help for commands, /tools for available tools, /status for session info",
-    "5. They can set up SOUL.md to customize your personality, HEARTBEAT.md for periodic tasks",
-    "6. They can ask you about configuration at any time — you have a built-in config guide",
-    "",
-    "### User Commands (mention when relevant)",
-    "- `/help` — Show available commands",
-    "- `/tools` — List all available tools",
-    "- `/status` — Show session status and model info",
-    "- `/new` — Start a fresh session",
-    "- `/reasoning` — Toggle deep thinking mode",
+    "When users ask '你能做什么?' or 'What can you do?', give a natural, warm introduction in their language. Emphasize:",
+    "- You're a proactive assistant, not just Q&A — you'll reach out when you have something useful",
+    "- You learn their preferences over time and get better at helping",
+    "- Commands: `/help` for commands, `/tools` for available tools, `/status` for session info, `/new` for fresh session, `/reasoning` for deep thinking",
+    "- Customization: SOUL.md for personality, HEARTBEAT.md for periodic tasks, ask about config anytime",
     "",
   ];
 }
@@ -542,6 +525,12 @@ export function buildAgentSystemPrompt(params: {
 
   const lines = [
     "You are a personal assistant operating inside KaijiBot.",
+    "",
+    "## Context Layer Priority",
+    "This prompt mixes instructions from three layers. When they conflict, apply in this order:",
+    "1. Hardcoded safety rules (## Safety in this prompt) — highest authority",
+    "2. Project workspace files (--- context-layer: project-doc ---) — user-authored rules",
+    "3. Auto-extracted cognitive state (--- context-layer: cognitive ---) — learned context",
     "",
     ...buildCapabilitiesSection({ isMinimal }),
     "",
@@ -755,6 +744,7 @@ export function buildAgentSystemPrompt(params: {
   const orderedContextFiles = sortContextFilesForPrompt(validContextFiles);
   const stableContextFiles = orderedContextFiles.filter((file) => !isDynamicContextFile(file.path));
   const dynamicContextFiles = orderedContextFiles.filter((file) => isDynamicContextFile(file.path));
+  lines.push("--- context-layer: project-doc ---");
   lines.push(
     ...buildProjectContextSection({
       files: stableContextFiles,
@@ -767,18 +757,9 @@ export function buildAgentSystemPrompt(params: {
   if (!isMinimal) {
     lines.push(
       "## Silent Replies",
-      `Use ${SILENT_REPLY_TOKEN} ONLY when no user-visible reply is required.`,
-      "",
-      "⚠️ Rules:",
-      "- Valid cases: silent housekeeping, deliberate no-op ambient wakeups, or after a messaging tool already delivered the user-visible reply.",
-      "- Never use it to avoid doing requested work or to end an actionable turn early.",
-      "- It must be your ENTIRE message - nothing else",
-      `- Never append it to an actual response (never include "${SILENT_REPLY_TOKEN}" in real replies)`,
-      "- Never wrap it in markdown or code blocks",
-      "",
-      `❌ Wrong: "Here's help... ${SILENT_REPLY_TOKEN}"`,
-      `❌ Wrong: "${SILENT_REPLY_TOKEN}"`,
-      `✅ Right: ${SILENT_REPLY_TOKEN}`,
+      `Use ${SILENT_REPLY_TOKEN} ONLY for silent housekeeping, no-op ambient wakeups, or after a messaging tool already delivered the user-visible reply.`,
+      `Rules: must be your ENTIRE message (nothing else); never append to a real reply; never wrap in markdown/code blocks; never use to avoid requested work.`,
+      `✅ Right: ${SILENT_REPLY_TOKEN}  ❌ Wrong: "Here's help... ${SILENT_REPLY_TOKEN}"`,
       "",
     );
   }
@@ -796,12 +777,6 @@ export function buildAgentSystemPrompt(params: {
     }),
   );
 
-  if (extraSystemPrompt) {
-    // Use "Subagent Context" header for minimal mode (subagents), otherwise "Group Chat Context"
-    const contextHeader =
-      promptMode === "minimal" ? "## Subagent Context" : "## Group Chat Context";
-    lines.push(contextHeader, extraSystemPrompt, "");
-  }
   if (providerDynamicSuffix) {
     lines.push(providerDynamicSuffix, "");
   }
@@ -825,7 +800,19 @@ export function buildAgentSystemPrompt(params: {
     `Reasoning: ${reasoningLevel} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.`,
   );
 
-  return lines.filter(Boolean).join("\n");
+  // L3 positioned last (U-shape attention, Liu et al. 2023): mode/corrections/persona drive current-turn behavior.
+  if (extraSystemPrompt) {
+    lines.push("--- context-layer: cognitive ---");
+    const contextHeader =
+      promptMode === "minimal" ? "## Subagent Context" : "## Group Chat Context";
+    lines.push(contextHeader, extraSystemPrompt, "");
+  }
+
+  const assembledSystemPrompt = lines.filter(Boolean).join("\n");
+  if (process.env.KAIJIBOT_DEBUG_CONTEXT === "1") {
+    emitContextDebugBreakdown(assembledSystemPrompt);
+  }
+  return assembledSystemPrompt;
 }
 
 export function buildRuntimeLine(

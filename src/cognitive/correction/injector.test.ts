@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatCorrectionsPrompt, MAX_INJECTED_CORRECTIONS } from "./injector.js";
+import {
+  formatCorrectionsPrompt,
+  MAX_INJECTED_CORRECTIONS,
+  selectRelevantCorrections,
+} from "./injector.js";
 import type { CorrectionRecord } from "./types.js";
 
 function makeCorrection(overrides?: Partial<CorrectionRecord>): CorrectionRecord {
@@ -60,5 +64,101 @@ describe("formatCorrectionsPrompt", () => {
     const result = formatCorrectionsPrompt(corrections);
     const numberedLines = result.split("\n").filter((l) => l.match(/^\d+\./));
     expect(numberedLines).toHaveLength(MAX_INJECTED_CORRECTIONS);
+  });
+});
+
+describe("selectRelevantCorrections", () => {
+  it("returns empty array for empty input", () => {
+    expect(selectRelevantCorrections([], "anything")).toEqual([]);
+  });
+
+  it("returns all sorted by reinforcedCount when count <= limit", () => {
+    const low = makeCorrection({ id: "low", reinforcedCount: 0 });
+    const high = makeCorrection({ id: "high", reinforcedCount: 5 });
+    const mid = makeCorrection({ id: "mid", reinforcedCount: 2 });
+    const result = selectRelevantCorrections([low, high, mid], "any message", 5);
+    expect(result.map((r) => r.id)).toEqual(["high", "mid", "low"]);
+  });
+
+  it("falls back to top-N by reinforcedCount when no overlap", () => {
+    const corrections = Array.from({ length: 20 }, (_, i) =>
+      makeCorrection({
+        id: `c-${i}`,
+        domain: "cooking",
+        trigger: "cooking trigger",
+        mistake: "burned the food",
+        reinforcedCount: i,
+      }),
+    );
+    const result = selectRelevantCorrections(corrections, "completely unrelated message", 5);
+    expect(result).toHaveLength(5);
+    expect(result[0].reinforcedCount).toBe(19);
+    expect(result[4].reinforcedCount).toBe(15);
+  });
+
+  it("prioritizes corrections with token overlap on current message", () => {
+    const unrelated = makeCorrection({
+      id: "unrelated",
+      domain: "cooking",
+      trigger: "cooking",
+      mistake: "burned the food",
+      reinforcedCount: 10,
+    });
+    const related = makeCorrection({
+      id: "related",
+      domain: "git",
+      trigger: "git commit",
+      mistake: "forgot to commit the changes",
+      reinforcedCount: 1,
+    });
+    const result = selectRelevantCorrections(
+      [unrelated, related],
+      "please git commit these changes",
+      1,
+    );
+    expect(result[0].id).toBe("related");
+  });
+
+  it("respects limit parameter", () => {
+    const corrections = Array.from({ length: 30 }, (_, i) =>
+      makeCorrection({ id: `c-${i}`, reinforcedCount: i }),
+    );
+    const result = selectRelevantCorrections(corrections, "any message", 10);
+    expect(result).toHaveLength(10);
+  });
+
+  it("uses default limit when limit parameter omitted", () => {
+    const corrections = Array.from({ length: 30 }, (_, i) =>
+      makeCorrection({ id: `c-${i}`, reinforcedCount: i }),
+    );
+    const result = selectRelevantCorrections(corrections, "any message");
+    expect(result).toHaveLength(MAX_INJECTED_CORRECTIONS);
+  });
+
+  it("ties broken by reinforcedCount desc", () => {
+    const a = makeCorrection({
+      id: "a",
+      domain: "git",
+      trigger: "git push",
+      mistake: "force pushed without warning",
+      reinforcedCount: 1,
+    });
+    const b = makeCorrection({
+      id: "b",
+      domain: "git",
+      trigger: "git push",
+      mistake: "force pushed without warning",
+      reinforcedCount: 5,
+    });
+    const result = selectRelevantCorrections([a, b], "git push warning", 1);
+    expect(result[0].id).toBe("b");
+  });
+
+  it("returns all sorted when count equals limit", () => {
+    const low = makeCorrection({ id: "low", reinforcedCount: 0 });
+    const high = makeCorrection({ id: "high", reinforcedCount: 5 });
+    const result = selectRelevantCorrections([low, high], "any message", 2);
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.id)).toEqual(["high", "low"]);
   });
 });
