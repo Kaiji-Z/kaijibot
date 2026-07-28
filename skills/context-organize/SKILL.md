@@ -16,11 +16,11 @@ KaijiBot 每个 agent turn 注入三层上下文。随着使用积累，L2 文�
 
 调用 `context_show` 工具——它会输出当前 agent 的三层注入内容：
 
-- **L1**：系统提示关键段（Capabilities / Safety / Tooling / Messaging 等）
+- **L1**：系统提示完整全文（~2700 tok，包含 Identity / Capabilities / Safety / Tooling / Messaging / Silent Replies 等所有硬编码段）
 - **L2**：workspace 文件全文（AGENTS.md / SOUL.md / IDENTITY.md / USER.md / TOOLS.md / HEARTBEAT.md），含 token 统计
 - **L3**：persona + corrections 的完整内容
 
-MEMORY.md 显示 token 统计但不输出全文（由 consolidation 系统管理）。
+MEMORY.md 不在输出中——它由 consolidation 系统管理，不属于此流程的整理范围。
 
 ### Step 2: 判断冗余
 
@@ -31,7 +31,7 @@ MEMORY.md 显示 token 统计但不输出全文（由 consolidation 系统管理
 3. **L3 已固化？**（用户偏好、纠错记录——persona 里已记录的信息）→ 删
 4. **驱动特定行为？**（项目命令、平台特性、安全红线、用户习惯）→ 留
 
-不需要额外工具或 LLM 调用——你就是 LLM，你活在 L1 里、每轮看到 L3，你比任何独立 LLM 分析更有上下文优势。
+不需要额外工具或 LLM 调用——L1 全文就在 `context_show` 的输出里，你可以逐字对比 L2 内容和 L1 实际文本，精确识别哪些 L2 段落和 L1 重复。L3 persona/corrections 也在同一次输出中，跨层对比一目了然。
 
 **拿不准时保留。** 删错的代价（丢失行为驱动信息、人格偏移）远大于多留几句的代价（多几百 token）。只删你有把握的内容。
 
