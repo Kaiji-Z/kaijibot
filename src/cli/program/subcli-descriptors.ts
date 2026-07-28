@@ -153,6 +153,11 @@ const subCliCommandCatalog = defineCommandDescriptorCatalog([
     description: t("cli.commands.completion.description"),
     hasSubcommands: false,
   },
+  {
+    name: "context",
+    description: "Context engineering — audit and trim injected context",
+    hasSubcommands: true,
+  },
 ] as const satisfies ReadonlyArray<SubCliDescriptor>);
 
 export const SUB_CLI_DESCRIPTORS = subCliCommandCatalog.descriptors;
