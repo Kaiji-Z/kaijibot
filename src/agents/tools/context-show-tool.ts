@@ -49,17 +49,19 @@ export function createContextShowTool(deps: {
 
         const parts: string[] = [];
 
-        // L1: hardcoded system prompt sections (summary)
-        parts.push("=== L1 System Prompt (hardcoded) ===");
-        parts.push("L1 contains these sections (agent lives inside them every turn):");
-        parts.push("- Identity: who the agent is, workspace home concept");
-        parts.push("- Capabilities: proactive AI assistant, NOT passive Q&A");
-        parts.push("- Safety: never bypass safeguards, never send streaming replies");
-        parts.push('- Tooling: use cron for scheduling, spawn sub-agents, "do not narrate routine calls"');
-        parts.push("- Messaging: reply in current session, auto-routes to channel");
-        parts.push("- Silent Replies: HEARTBEAT_OK for empty heartbeat, skip no-content turns");
-        parts.push("- User Commands: /new, /reset, /model etc.");
-        parts.push("- Context Layer Priority: L1 > L3 > L2 resolution order");
+        parts.push("=== L1 System Prompt (hardcoded, full text) ===");
+        try {
+          const { buildAgentSystemPrompt } = await import("../system-prompt.js");
+          const l1Text = buildAgentSystemPrompt({
+            workspaceDir,
+            toolNames: [],
+          });
+          const l1Tokens = approxTokens(l1Text);
+          parts.push(`(~${l1Tokens} tokens)`);
+          parts.push(l1Text);
+        } catch (err) {
+          parts.push(`(failed to build L1: ${String(err)})`);
+        }
         parts.push("");
 
         // L2: workspace bootstrap files (excluding MEMORY.md)

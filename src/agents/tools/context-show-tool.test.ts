@@ -81,12 +81,12 @@ describe("context_show tool", () => {
     expect(text).toContain("chars");
   });
 
-  it("includes L1 section descriptions", async () => {
+  it("includes L1 full system prompt text", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
-    expect(text).toContain("Capabilities");
-    expect(text).toContain("Safety");
-    expect(text).toContain("Tooling");
+    expect(text).toContain("=== L1 System Prompt");
+    expect(text).toContain("full text");
+    expect(text).toMatch(/~\d+ tokens/);
   });
 
   it("handles missing workspace gracefully", async () => {
