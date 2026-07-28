@@ -38,7 +38,7 @@ export function createContextShowTool(deps: {
     name: "context_show",
     label: "Context Show",
     description:
-      "输出当前 agent 的三层注入上下文快照：L1 系统提示关键段 + L2 workspace 文件全文 + L3 persona/corrections 数据。纯数据展示工具，不包含整理指导——整理流程请参考 context-organize skill。",
+      "整理和优化上下文 token 预算。输出当前 agent 三层注入内容（L1 系统提示全文 + L2 workspace 文件 + L3 persona/corrections），末尾附整理指导。当用户说'整理上下文'、'上下文太乱了'、'优化上下文'、'精简 prompt'、'AGENTS.md 太长'、'SOUL.md 需要精简'、'token 太多了'、'workspace 太大了'、'上下文窗口不够用了'、'organize context'、'optimize context' 时使用。即使用户没有明确说'上下文'，只要提到某个 workspace 文件需要精简、缩短或优化，就应使用此工具。",
     parameters: ContextShowSchema,
     async execute(_toolCallId: string) {
       try {
@@ -155,6 +155,33 @@ export function createContextShowTool(deps: {
         // Mode classification
         parts.push("--- Current Mode ---");
         parts.push("Classified each turn by mode-router (task/insight/hybrid). Changes per message.");
+
+        parts.push("");
+        parts.push("=== 整理指导 ===");
+        parts.push("");
+        parts.push("以上是原始数据。接下来由你判断 L2 文件中哪些内容是冗余的，用 edit 工具修改。");
+        parts.push("");
+        parts.push("判断标准——对 L2 文件每段内容问：");
+        parts.push("1. 模型本来就知道？（通用工具描述、语言能力、常见编程模式）→ 删");
+        parts.push("2. L1 已覆盖？（安全规则、工具用法、消息路由——在上文 L1 全文里逐字可见）→ 删");
+        parts.push("3. L3 已固化？（用户偏好、纠错记录——在上文 persona/corrections 里可见）→ 删");
+        parts.push("4. 驱动特定行为？（项目命令、平台特性、安全红线、用户习惯）→ 留");
+        parts.push("");
+        parts.push("安全原则：");
+        parts.push("- 拿不准时保留。删错的代价（丢失行为驱动信息、人格偏移）远大于多留几百 token。");
+        parts.push("- SOUL.md 定义人格语气，误删影响所有后续对话，要保守。AGENTS.md 是规则指令，冗余更易识别。USER.md 和 L3 persona 最容易重叠，优先检查。");
+        parts.push("- 不修改 MEMORY.md（由 consolidation 系统管理）。不修改 L3 数据（persona/corrections 有自己的生命周期管理）。");
+        parts.push("- 如果没发现明显冗余，直接告诉用户'当前上下文已经很精简'，不要强行删减。");
+        parts.push("- 每处修改展示 before/after 让用户确认。");
+        parts.push("");
+        parts.push("改完后汇报：");
+        parts.push("```");
+        parts.push("## 上下文整理完成");
+        parts.push("| 文件 | 修改前 | 修改后 | 变化 |");
+        parts.push("| --- | --- | --- | --- |");
+        parts.push("| AGENTS.md | 5432 chars | 3200 chars | -41% |");
+        parts.push("| L2 总计 | ~1695 tok | ~1100 tok | -35% |");
+        parts.push("```");
 
         const output = parts.join("\n");
         log.info("context shown", { agentId, l2Files: l2Files.length, l2Tokens: l2TotalTokens });

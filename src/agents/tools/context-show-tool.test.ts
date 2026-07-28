@@ -66,12 +66,12 @@ describe("context_show tool", () => {
     expect(text).toContain("You are a helpful assistant.");
   });
 
-  it("does not mention MEMORY.md in output", async () => {
+  it("does not include MEMORY.md content in L2 files section", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
-    expect(text).not.toContain("MEMORY.md");
-    expect(text).not.toContain("consolidation-managed");
-    expect(text).not.toContain("This should not appear in output.");
+    const l2Section = text.split("=== L2 Workspace Files ===")[1] ?? "";
+    expect(l2Section).not.toContain("This should not appear in output.");
+    expect(l2Section).not.toMatch(/--- MEMORY\.md ---/);
   });
 
   it("includes token estimates for L2 files", async () => {
@@ -81,12 +81,13 @@ describe("context_show tool", () => {
     expect(text).toContain("chars");
   });
 
-  it("includes L1 full system prompt text", async () => {
+  it("includes整理指导 section at end of output", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
-    expect(text).toContain("=== L1 System Prompt");
-    expect(text).toContain("full text");
-    expect(text).toMatch(/~\d+ tokens/);
+    expect(text).toContain("=== 整理指导 ===");
+    expect(text).toContain("拿不准时保留");
+    expect(text).toContain("SOUL.md");
+    expect(text).toContain("不修改 MEMORY.md");
   });
 
   it("handles missing workspace gracefully", async () => {
