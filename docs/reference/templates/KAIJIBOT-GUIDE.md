@@ -30,14 +30,15 @@ read_when:
 
 ## Environment Variables
 
-| Variable                 | Config Path / Purpose                 |
-| ------------------------ | ------------------------------------- |
-| `ZAI_API_KEY`            | `models.providers.zai.apiKey`         |
-| `EXA_API_KEY`            | Exa search (insight web search)       |
-| `TAVILY_API_KEY`         | Tavily search (insight web search)    |
-| `KAIJIBOT_GATEWAY_PORT`  | Gateway port (default: 18789)         |
-| `KAIJIBOT_GATEWAY_TOKEN` | Gateway auth token                    |
-| `KAIJIBOT_HOME`          | Data directory (default: ~/.kaijibot) |
+| Variable                 | Purpose                                        |
+| ------------------------ | ---------------------------------------------- |
+| `ZAI_API_KEY`            | Z.AI (智谱 GLM) API key — default LLM provider  |
+| `EXA_API_KEY`            | Exa search (insight web search)                |
+| `TAVILY_API_KEY`         | Tavily search (insight web search)             |
+| `KAIJIBOT_GATEWAY_PORT`  | Gateway port (default: 18789)                  |
+| `KAIJIBOT_GATEWAY_TOKEN` | Gateway auth token                             |
+| `KAIJIBOT_STATE_DIR`     | Data directory override (default: ~/.kaijibot) |
+| `KAIJIBOT_CONFIG_PATH`   | Config file path override (default: ~/.kaijibot/kaijibot.json) |
 
 ## Memory System
 
