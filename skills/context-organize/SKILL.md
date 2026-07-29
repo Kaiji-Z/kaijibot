@@ -16,9 +16,9 @@ KaijiBot 每个 agent turn 注入三层上下文。随着使用积累，L2 文�
 
 调用 `context_show` 工具——它会输出当前 agent 的三层注入内容：
 
-- **L1**：系统提示完整全文（~2700 tok，包含 Identity / Capabilities / Safety / Tooling / Messaging 等所有硬编码段）
-- **L2**：workspace 文件全文（AGENTS.md / SOUL.md / IDENTITY.md / USER.md / TOOLS.md / HEARTBEAT.md），含 token 统计
-- **L3**：persona + corrections 的完整内容
+- **L1**：系统提示核心硬编码段（Identity / Capabilities / Safety / Tooling / Messaging 等。不含 Runtime/skills/toolNames 等动态参数）
+- **L2**：workspace 文件（经过处理管线后的版本——soul preset 覆盖、hooks、sanitize。可能和磁盘原始文件不一致。如果 SOUL.md 被 soul preset 覆盖，输出会标注 ⚠️ 警告，此时编辑文件不生效）
+- **L3**：persona + corrections 全量数据（实际注入时还会加 Interaction Guidance、Skill Evolution、Current Mode，此处不展示）
 
 MEMORY.md 不在输出中——它由 consolidation 系统管理，不属于此流程的整理范围。
 
@@ -27,13 +27,15 @@ MEMORY.md 不在输出中——它由 consolidation 系统管理，不属于此�
 对比三层内容，对 L2 文件的每段内容判断：
 
 1. **模型本来就知道？**（通用工具描述、语言能力、常见编程模式）→ 删
-2. **L1 已覆盖？**（安全规则、工具用法、消息路由——L1 全文就在 `context_show` 输出里，逐字对比）→ 删
+2. **L1 已覆盖？**（安全规则、工具用法、消息路由——L1 核心硬编码段就在 `context_show` 输出里，逐段对比）→ 删
 3. **L3 已固化？**（用户偏好、纠错记录——persona 里已记录的信息）→ 删
 4. **驱动特定行为？**（项目命令、平台特性、安全红线、用户习惯）→ 留
 
 **拿不准时保留。** 删错的代价（丢失行为驱动信息、人格偏移）远大于多留几句的代价（多几百 token）。只删你有把握的内容。
 
 **文件敏感度不同**：SOUL.md 定义人格语气，误删会影响所有后续对话的语气和风格，要保守。AGENTS.md 是规则指令，冗余更容易识别，可以更积极。USER.md 和 L3 persona 最容易重叠——优先检查。
+
+**SOUL.md 被 soul preset 覆盖时不要编辑**——如果 `context_show` 输出里 SOUL.md 带 ⚠️ 警告标记，说明当前生效的是 preset 版本而非磁盘文件。编辑磁盘上的 SOUL.md 不会改变注入内容，告诉用户"当前 soul preset 激活中，SOUL.md 编辑不生效"即可。
 
 **如果没发现明显冗余**，直接告诉用户"当前上下文已经很精简，没有发现需要清理的冗余"，不要为了"做了点什么"而强行删减。
 
