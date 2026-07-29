@@ -67,9 +67,25 @@ export function createContextShowTool(deps: {
         parts.push("=== L2: workspace 文件（agent 实际看到的版本）===");
         parts.push("来源: workspace 目录 → resolveBootstrapContextForRun()");
         parts.push("处理: soul preset 覆盖 → sanitize → hooks → maxChars 截断");
-        parts.push("说明: 经过处理管线后的内容，可能和磁盘原始文件不一致（如 SOUL.md 被 preset 覆盖）。");
-        parts.push("用途: 这是 agent 每轮实际看到的内容。修改 workspace 中的原始 .md 文件可改变此层。");
+        parts.push("说明: 经过处理管线后的内容，可能和磁盘原始文件不一致。");
         parts.push("");
+
+        const soulPresetActive = (() => {
+          try {
+            const { resolveSessionAgentIds } = require("../../routing/session-key.js");
+            const { resolveAgentConfig } = require("../agent-scope.js");
+            const { sessionAgentId } = resolveSessionAgentIds({
+              config: deps.config,
+              agentId,
+              sessionKey: deps.sessionKey,
+            });
+            const resolved = resolveAgentConfig(deps.config, sessionAgentId);
+            return Boolean(resolved?.soul?.preset);
+          } catch {
+            return false;
+          }
+        })();
+
         let l2TotalTokens = 0;
         let l2FileCount = 0;
         try {
@@ -86,7 +102,11 @@ export function createContextShowTool(deps: {
             const tokens = approxTokens(cf.content);
             l2TotalTokens += tokens;
             l2FileCount++;
-            parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok) ---`);
+            const presetWarning =
+              name === "SOUL.md" && soulPresetActive
+                ? " [⚠️ soul preset 覆盖中，编辑文件不会生效。如需修改人格，先移除 soul preset 配置]"
+                : "";
+            parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok)${presetWarning} ---`);
             parts.push(cf.content);
             parts.push("");
           }
