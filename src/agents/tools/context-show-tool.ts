@@ -156,12 +156,6 @@ export function createContextShowTool(deps: {
         // Mode classification
         parts.push("--- Current Mode ---");
         parts.push("Classified each turn by mode-router (task/insight/hybrid). Changes per message.");
-        parts.push("## 上下文整理完成");
-        parts.push("| 文件 | 修改前 | 修改后 | 变化 |");
-        parts.push("| --- | --- | --- | --- |");
-        parts.push("| AGENTS.md | 5432 chars | 3200 chars | -41% |");
-        parts.push("| L2 总计 | ~1695 tok | ~1100 tok | -35% |");
-        parts.push("```");
 
         const output = parts.join("\n");
         log.info("context shown", { agentId, l2Files: l2Files.length, l2Tokens: l2TotalTokens });
