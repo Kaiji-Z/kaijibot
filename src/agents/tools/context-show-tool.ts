@@ -80,42 +80,15 @@ export function createContextShowTool(deps: {
             agentId,
           });
 
-          const userFiles: typeof contextFiles = [];
-          const systemFiles: typeof contextFiles = [];
           for (const cf of contextFiles) {
             const name = basename(cf.path);
             if (name === "MEMORY.md") continue;
-            if (cf.path.startsWith("template:")) {
-              systemFiles.push(cf);
-            } else {
-              userFiles.push(cf);
-            }
-          }
-
-          if (userFiles.length > 0) {
-            parts.push("--- 用户可编辑文件 ---");
-            for (const cf of userFiles) {
-              const name = basename(cf.path);
-              const tokens = approxTokens(cf.content);
-              l2TotalTokens += tokens;
-              l2FileCount++;
-              parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok) ---`);
-              parts.push(cf.content);
-              parts.push("");
-            }
-          }
-
-          if (systemFiles.length > 0) {
-            parts.push("--- 系统模板（不可修改，由代码自动注入）---");
-            for (const cf of systemFiles) {
-              const name = basename(cf.path);
-              const tokens = approxTokens(cf.content);
-              l2TotalTokens += tokens;
-              l2FileCount++;
-              parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok) ---`);
-              parts.push(cf.content);
-              parts.push("");
-            }
+            const tokens = approxTokens(cf.content);
+            l2TotalTokens += tokens;
+            l2FileCount++;
+            parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok) ---`);
+            parts.push(cf.content);
+            parts.push("");
           }
         } catch (err) {
           parts.push(`(failed to resolve bootstrap context: ${String(err)})`);
