@@ -552,23 +552,7 @@ export async function loadWorkspaceBootstrapFiles(
 
   applySoulPresetOverride(result, opts?.soulPreset);
 
-  await injectGuideFromTemplate(result);
-
   return result;
-}
-
-async function injectGuideFromTemplate(files: WorkspaceBootstrapFile[]): Promise<void> {
-  try {
-    const content = await loadTemplate(DEFAULT_GUIDE_FILENAME);
-    files.unshift({
-      name: DEFAULT_GUIDE_FILENAME,
-      path: `template:${DEFAULT_GUIDE_FILENAME}`,
-      content,
-      missing: false,
-    });
-  } catch {
-    files.unshift({ name: DEFAULT_GUIDE_FILENAME, path: "", missing: true });
-  }
 }
 
 function applySoulPresetOverride(files: WorkspaceBootstrapFile[], soulPreset?: SoulPreset): void {
