@@ -49,12 +49,13 @@ export function createContextShowTool(deps: {
 
         const parts: string[] = [];
 
-        parts.push("=== L1 System Prompt (hardcoded, full text) ===");
+        parts.push("=== L1 System Prompt (hardcoded sections only) ===");
         try {
           const { buildAgentSystemPrompt } = await import("../system-prompt.js");
           const l1Text = buildAgentSystemPrompt({
             workspaceDir,
             toolNames: [],
+            contextFiles: [],
           });
           const l1Tokens = approxTokens(l1Text);
           parts.push(`(~${l1Tokens} tokens)`);
