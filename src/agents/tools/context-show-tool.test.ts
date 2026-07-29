@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { KaijiBotConfig } from "../../config/config.js";
 import { createContextShowTool } from "./context-show-tool.js";
 
 let workspaceDir: string;
@@ -39,7 +40,7 @@ afterEach(() => {
 describe("context_show tool", () => {
   it("returns null when cognitive is disabled", () => {
     const tool = createContextShowTool({
-      config: { cognitive: { enabled: false } },
+      config: { cognitive: { enabled: false } } as KaijiBotConfig,
       workspaceDir,
       agentId: "main",
     });
@@ -54,38 +55,28 @@ describe("context_show tool", () => {
     })!;
     const result = await tool.execute("test-call", {});
     const text = extractText(result);
-    expect(text).toContain("=== L1 System Prompt");
-    expect(text).toContain("=== L2 Workspace Files");
-    expect(text).toContain("=== L3 Cognitive Data");
+    expect(text).toContain("=== L1: 系统提示硬编码段");
+    expect(text).toContain("=== L2: workspace 文件");
+    expect(text).toContain("=== L3: 认知数据");
   });
 
-  it("includes L2 file content for bootstrap files", async () => {
+  it("includes L2 file content via bootstrap pipeline", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
     expect(text).toContain("Test workspace rules.");
-    expect(text).toContain("You are a helpful assistant.");
   });
 
-  it("does not include MEMORY.md content in L2 files section", async () => {
+  it("does not include MEMORY.md content in L2 files", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
-    const l2Section = text.split("=== L2 Workspace Files ===")[1] ?? "";
-    expect(l2Section).not.toContain("This should not appear in output.");
-    expect(l2Section).not.toMatch(/--- MEMORY\.md ---/);
+    expect(text).not.toContain("This should not appear in output.");
+    expect(text).not.toMatch(/--- MEMORY\.md ---/);
   });
 
-  it("includes token estimates for L2 files", async () => {
+  it("includes token estimates", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
     expect(text).toMatch(/~\d+ tok/);
-    expect(text).toContain("chars");
-  });
-
-  it("does not include guidance section in output", async () => {
-    const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
-    const text = extractText(await tool.execute("test-call", {}));
-    expect(text).not.toContain("=== 整理指导 ===");
-    expect(text).not.toContain("拿不准时保留");
   });
 
   it("handles missing workspace gracefully", async () => {

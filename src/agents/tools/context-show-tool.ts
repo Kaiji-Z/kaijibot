@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { Type } from "typebox";
+import type { KaijiBotConfig } from "../../config/config.js";
+import { resolveBootstrapContextForRun } from "../../agents/bootstrap-files.js";
 import type { AnyAgentTool } from "./common.js";
 import { textResult } from "./common.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
@@ -9,23 +9,17 @@ const log = createSubsystemLogger("context-show-tool");
 
 const ContextShowSchema = Type.Object({}, { description: "No parameters needed." });
 
-const BOOTSTRAP_FILES = [
-  "AGENTS.md",
-  "SOUL.md",
-  "IDENTITY.md",
-  "USER.md",
-  "TOOLS.md",
-  "HEARTBEAT.md",
-] as const;
-
-const PROTECTED_FILES = new Set(["MEMORY.md"]);
-
 function approxTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+function basename(filePath: string): string {
+  const parts = filePath.replace(/\\/g, "/").split("/");
+  return parts[parts.length - 1] ?? filePath;
+}
+
 export function createContextShowTool(deps: {
-  config?: { cognitive?: { enabled?: boolean } };
+  config?: KaijiBotConfig;
   workspaceDir?: string;
   sessionKey?: string;
   agentId?: string;
@@ -48,8 +42,13 @@ export function createContextShowTool(deps: {
         }
 
         const parts: string[] = [];
+        const agentId = deps.agentId ?? "main";
 
-        parts.push("=== L1 System Prompt (hardcoded sections only) ===");
+        parts.push("=== L1: 系统提示硬编码段（不可修改）===");
+        parts.push("来源: system-prompt.ts → buildAgentSystemPrompt()");
+        parts.push("包含: Identity / Capabilities / Safety / Tooling / Messaging / Silent Replies / Context Layer Priority");
+        parts.push("说明: 开发者硬编码在代码里的指令，agent 每轮都遵循。用于和 L2 对比识别冗余。");
+        parts.push("");
         try {
           const { buildAgentSystemPrompt } = await import("../system-prompt.js");
           const l1Text = buildAgentSystemPrompt({
@@ -65,39 +64,47 @@ export function createContextShowTool(deps: {
         }
         parts.push("");
 
-        // L2: workspace bootstrap files (excluding MEMORY.md)
-        parts.push("=== L2 Workspace Files ===");
+        parts.push("=== L2: workspace 文件（agent 实际看到的版本）===");
+        parts.push("来源: workspace 目录 → resolveBootstrapContextForRun()");
+        parts.push("处理: soul preset 覆盖 → sanitize → hooks → maxChars 截断");
+        parts.push("说明: 经过处理管线后的内容，可能和磁盘原始文件不一致（如 SOUL.md 被 preset 覆盖）。");
+        parts.push("用途: 这是 agent 每轮实际看到的内容。修改 workspace 中的原始 .md 文件可改变此层。");
+        parts.push("");
         let l2TotalTokens = 0;
-        const l2Files: { name: string; content: string; tokens: number }[] = [];
+        let l2FileCount = 0;
+        try {
+          const { contextFiles } = await resolveBootstrapContextForRun({
+            workspaceDir,
+            config: deps.config,
+            sessionKey: deps.sessionKey,
+            agentId,
+          });
 
-        for (const name of BOOTSTRAP_FILES) {
-          try {
-            const content = await readFile(join(workspaceDir, name), "utf-8");
-            const tokens = approxTokens(content);
-            l2Files.push({ name, content, tokens });
+          for (const cf of contextFiles) {
+            const name = basename(cf.path);
+            if (name === "MEMORY.md") continue;
+            const tokens = approxTokens(cf.content);
             l2TotalTokens += tokens;
-          } catch {}
+            l2FileCount++;
+            parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok) ---`);
+            parts.push(cf.content);
+            parts.push("");
+          }
+        } catch (err) {
+          parts.push(`(failed to resolve bootstrap context: ${String(err)})`);
         }
-
-        // Also check MEMORY.md for stats but don't output content
-        // Intentionally not shown — mentioning it invites the agent to modify it.
-
-        parts.push(`Total: ~${l2TotalTokens} tokens (${l2Files.length} files)`);
+        parts.push(`L2 合计: ~${l2TotalTokens} tokens (${l2FileCount} files)`);
         parts.push("");
 
-        for (const f of l2Files) {
-          parts.push(`--- ${f.name} (${f.content.length} chars / ~${f.tokens} tok) ---`);
-          parts.push(f.content);
-          parts.push("");
-        }
-
-        // L3: cognitive data
-        parts.push("=== L3 Cognitive Data (dynamic) ===");
-        const agentId = deps.agentId ?? "main";
+        parts.push("=== L3: 认知数据（cognitive 系统自管理，不可手动修改）===");
+        parts.push("来源: PersonaStore + CorrectionStore → buildCognitiveModePrompt() 格式化后注入");
+        parts.push("处理: persona 全量特征 + corrections 按 Jaccard 相关性筛选（每轮不同）+ 信任阶段建议");
+        parts.push("说明: 由 cognitive 系统自动维护（对话中提取、每日 consolidation、衰减半衰期）。");
+        parts.push("用途: 用于和 L2 对比——如果 L2 里有和 L3 重复的用户画像或纠错信息，就是冗余。");
+        parts.push("");
         const { resolveConfigDir } = await import("../../utils.js");
         const configDir = resolveConfigDir();
 
-        // Persona
         try {
           const { resolveCognitiveUserId } = await import("../../cognitive/identity.js");
           const userId = resolveCognitiveUserId(deps.sessionKey) ?? "operator";
@@ -121,7 +128,6 @@ export function createContextShowTool(deps: {
         }
         parts.push("");
 
-        // Corrections
         try {
           const { CorrectionStore } = await import("../../cognitive/correction/store.js");
           const store = new CorrectionStore(configDir);
@@ -148,17 +154,15 @@ export function createContextShowTool(deps: {
         }
         parts.push("");
 
-        // Skill Evolution section
         parts.push("--- Skill Evolution Section ---");
         parts.push('Injected when cognitive.evolution.enabled: "## Skill Evolution — 当看到 [Evolution Signal]..."');
         parts.push("");
 
-        // Mode classification
         parts.push("--- Current Mode ---");
         parts.push("Classified each turn by mode-router (task/insight/hybrid). Changes per message.");
 
         const output = parts.join("\n");
-        log.info("context shown", { agentId, l2Files: l2Files.length, l2Tokens: l2TotalTokens });
+        log.info("context shown", { agentId, l2Files: l2FileCount, l2Tokens: l2TotalTokens });
 
         return textResult(output, { status: "ok", l2Tokens: l2TotalTokens });
       } catch (err) {
