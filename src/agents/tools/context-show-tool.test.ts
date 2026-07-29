@@ -81,13 +81,11 @@ describe("context_show tool", () => {
     expect(text).toContain("chars");
   });
 
-  it("includes整理指导 section at end of output", async () => {
+  it("does not include guidance section in output", async () => {
     const tool = createContextShowTool({ workspaceDir, agentId: "main" })!;
     const text = extractText(await tool.execute("test-call", {}));
-    expect(text).toContain("=== 整理指导 ===");
-    expect(text).toContain("拿不准时保留");
-    expect(text).toContain("SOUL.md");
-    expect(text).toContain("不修改 MEMORY.md");
+    expect(text).not.toContain("=== 整理指导 ===");
+    expect(text).not.toContain("拿不准时保留");
   });
 
   it("handles missing workspace gracefully", async () => {
