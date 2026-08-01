@@ -93,8 +93,22 @@
   min-height: 0;
 }
 
+/* Two-col layout scrolls each column independently — the layout itself must
+   not scroll, so override .content > :last-child { overflow: auto }. Same
+   specificity (0,2,0), defined later → wins. */
+.content > .two-col-layout {
+  overflow: hidden;
+}
+
+.two-col-layout__sidebar {
+  overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
 .two-col-layout__detail {
   overflow-y: auto;
+  min-height: 0;
 }
 
 .two-col-back-bar {

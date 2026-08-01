@@ -269,8 +269,7 @@
   }
 
   .two-col-layout__detail {
-    overflow-y: visible;
-    overflow-x: hidden;
+    overflow: visible;
     min-width: 0;
   }
 
@@ -301,6 +300,10 @@
     flex-shrink: 0;
     border-bottom: 1px solid var(--border);
     -webkit-tap-highlight-color: transparent;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
   }
 
   .two-col-back-bar:active {
