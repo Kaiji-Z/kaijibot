@@ -1435,7 +1435,20 @@ export function startHeartbeatRunner(opts: {
     try {
       if (requestedSessionKey || requestedAgentId) {
         const targetAgentId = requestedAgentId ?? resolveAgentIdFromSessionKey(requestedSessionKey);
-        const targetAgent = state.agents.get(targetAgentId);
+        let targetAgent = state.agents.get(targetAgentId);
+        if (!targetAgent) {
+          const isCognitiveDelivery =
+            reason === "cognitive-insight" || reason === "cognitive-evolution";
+          if (isCognitiveDelivery) {
+            targetAgent = {
+              agentId: targetAgentId,
+              heartbeat: resolveHeartbeatConfig(state.cfg, targetAgentId),
+              intervalMs: 0,
+              phaseMs: 0,
+              nextDueMs: now,
+            };
+          }
+        }
         if (!targetAgent) {
           return { status: "skipped", reason: "disabled" };
         }

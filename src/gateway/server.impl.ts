@@ -1559,7 +1559,10 @@ export async function startGatewayServer(
                   const insightText = candidate.content;
                   const sessionKey = findSessionKeyForUserId(cfgAtStart, userId, agentId);
                   if (sessionKey) {
-                    enqueueSystemEvent(`[Cognitive Insight] ${insightText}`, { sessionKey });
+                    enqueueSystemEvent(
+                      `[Cognitive Insight] ${insightText}\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）`,
+                      { sessionKey },
+                    );
                     requestHeartbeatNow({ reason: "cognitive-insight", sessionKey });
                     log.info(`cognitive insight enqueued for heartbeat delivery to ${userId}`, {
                       sessionKey,
