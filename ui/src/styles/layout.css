@@ -5,7 +5,7 @@
 /* --- Shell Container --- */
 
 .shell {
-  height: 100vh;
+  height: var(--app-height, 100vh);
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-rows: 1fr;
@@ -16,7 +16,7 @@
 
 @supports (height: 100dvh) {
   .shell {
-    height: 100dvh;
+    height: var(--app-height, 100dvh);
   }
 }
 

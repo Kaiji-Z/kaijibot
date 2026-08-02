@@ -59,6 +59,24 @@
       })();
     </script>
     <script>
+      (function () {
+        function setAppHeight() {
+          document.documentElement.style.setProperty(
+            "--app-height",
+            window.innerHeight + "px",
+          );
+        }
+        setAppHeight();
+        window.addEventListener("resize", setAppHeight);
+        window.addEventListener("orientationchange", function () {
+          setTimeout(setAppHeight, 100);
+        });
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", setAppHeight);
+        }
+      })();
+    </script>
+    <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
           navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});

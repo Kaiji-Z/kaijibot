@@ -8,8 +8,8 @@
   .shell {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    height: 100dvh;
+    height: var(--app-height, 100vh);
+    height: var(--app-height, 100dvh);
     padding-bottom: 0;
     --content-padding: 14px;
   }
