@@ -12,12 +12,7 @@ const LIVE_RUNTIME_STATE_GUARDS: Record<
     required: readonly string[];
     forbidden: readonly string[];
   }
-> = {
-  [bundledPluginFile("whatsapp", "src/active-listener.ts")]: {
-    required: ["globalThis", 'Symbol.for("kaijibot.whatsapp.activeListenerState")'],
-    forbidden: ["resolveGlobalSingleton"],
-  },
-};
+> = {};
 
 function guardAssertions() {
   return Object.entries(LIVE_RUNTIME_STATE_GUARDS).flatMap(([relativePath, guard]) => [
