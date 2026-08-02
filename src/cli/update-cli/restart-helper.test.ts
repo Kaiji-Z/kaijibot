@@ -263,7 +263,7 @@ describe("restart-helper", () => {
     it("spawns the script as a detached process on Linux", async () => {
       Object.defineProperty(process, "platform", { value: "linux" });
       const scriptPath = "/tmp/fake-script.sh";
-      const mockChild = { unref: vi.fn() };
+      const mockChild = { on: vi.fn(), unref: vi.fn() };
       vi.mocked(spawn).mockReturnValue(mockChild as unknown as ChildProcess);
 
       await runRestartScript(scriptPath);
@@ -279,7 +279,7 @@ describe("restart-helper", () => {
     it("uses cmd.exe on Windows", async () => {
       Object.defineProperty(process, "platform", { value: "win32" });
       const scriptPath = "C:\\Temp\\fake-script.cmd";
-      const mockChild = { unref: vi.fn() };
+      const mockChild = { on: vi.fn(), unref: vi.fn() };
       vi.mocked(spawn).mockReturnValue(mockChild as unknown as ChildProcess);
 
       await runRestartScript(scriptPath);
@@ -296,7 +296,7 @@ describe("restart-helper", () => {
       Object.defineProperty(process, "platform", { value: "win32" });
       const scriptPath = "C:\\Temp\\me&(ow)\\fake-script.cmd";
       const quotedPath = `"${scriptPath.replace(/"/g, '\\"').replace(/%/g, "%%").replace(/!/g, "^!")}"`;
-      const mockChild = { unref: vi.fn() };
+      const mockChild = { on: vi.fn(), unref: vi.fn() };
       vi.mocked(spawn).mockReturnValue(mockChild as unknown as ChildProcess);
 
       await runRestartScript(scriptPath);

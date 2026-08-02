@@ -301,9 +301,9 @@ describe("inspectGatewayRestart", () => {
       runtime: { status: "stopped" },
       portUsage: { status: "free" },
       waitOutcome: "stopped-free",
-      elapsedMs: 27_500,
+      elapsedMs: 32_500,
     });
-    expect(sleep).toHaveBeenCalledTimes(55);
+    expect(sleep).toHaveBeenCalledTimes(65);
   });
 
   it("annotates timeout waits when the health loop exhausts all attempts", async () => {

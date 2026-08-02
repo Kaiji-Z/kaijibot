@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { bundledPluginFile } from "../../test/helpers/bundled-plugin-paths.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 

@@ -122,7 +122,9 @@ describe.skipIf(process.env.CI)("stageBundledPluginRuntimeDeps", () => {
         {
           name: "@kaijibot/amazon-bedrock-provider",
           version: "2026.4.10",
-          dependencies: {},
+          dependencies: {
+            "some-runtime-dep": "^1.0.0",
+          },
           devDependencies: {
             "@kaijibot/plugin-sdk": "workspace:*",
           },
@@ -156,7 +158,7 @@ describe.skipIf(process.env.CI)("stageBundledPluginRuntimeDeps", () => {
     });
 
     expect(installs).toHaveLength(1);
-    expect(installs[0]?.dependencies).toEqual({});
+    expect(installs[0]?.dependencies).toEqual({ "some-runtime-dep": "^1.0.0" });
     expect(installs[0]?.devDependencies).toBeUndefined();
     expect(installs[0]?.peerDependencies).toBeUndefined();
     expect(installs[0]?.peerDependenciesMeta).toBeUndefined();

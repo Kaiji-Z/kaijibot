@@ -40,13 +40,13 @@ describe.skipIf(process.env.CI)("isBundledChannelEnabledByChannelConfig", () => 
   it("only treats enabled channel entries as bundled plugin enablement", () => {
     const cfg = {
       channels: {
-        telegram: { enabled: true },
-        slack: { enabled: false },
+        feishu: { enabled: true },
+        wechat: { enabled: false },
       },
     } as KaijiBotConfig;
 
-    expect(isBundledChannelEnabledByChannelConfig(cfg, "telegram")).toBe(true);
-    expect(isBundledChannelEnabledByChannelConfig(cfg, "slack")).toBe(false);
+    expect(isBundledChannelEnabledByChannelConfig(cfg, "feishu")).toBe(true);
+    expect(isBundledChannelEnabledByChannelConfig(cfg, "wechat")).toBe(false);
     expect(isBundledChannelEnabledByChannelConfig(cfg, "not-a-channel")).toBe(false);
   });
 });
