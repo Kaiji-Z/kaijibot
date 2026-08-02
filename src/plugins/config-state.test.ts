@@ -148,12 +148,12 @@ describe.skipIf(process.env.CI)("resolveEffectiveEnableState", () => {
   function resolveBundledTelegramState(config: Parameters<typeof normalizePluginsConfig>[0]) {
     const normalized = normalizePluginsConfig(config);
     return resolveEffectiveEnableState({
-      id: "telegram",
+      id: "feishu",
       origin: "bundled",
       config: normalized,
       rootConfig: {
         channels: {
-          telegram: {
+          feishu: {
             enabled: true,
           },
         },
@@ -164,12 +164,12 @@ describe.skipIf(process.env.CI)("resolveEffectiveEnableState", () => {
   function resolveConfigOriginTelegramState(config: Parameters<typeof normalizePluginsConfig>[0]) {
     const normalized = normalizePluginsConfig(config);
     return resolveEffectiveEnableState({
-      id: "telegram",
+      id: "feishu",
       origin: "config",
       config: normalized,
       rootConfig: {
         channels: {
-          telegram: {
+          feishu: {
             enabled: true,
           },
         },
@@ -184,14 +184,14 @@ describe.skipIf(process.env.CI)("resolveEffectiveEnableState", () => {
       {
         enabled: true,
         entries: {
-          telegram: {
+          feishu: {
             enabled: false,
           },
         },
       },
       { enabled: false, reason: "disabled in config" },
     ],
-  ] as const)("resolves bundled telegram state for %o", (config, expected) => {
+  ] as const)("resolves bundled feishu state for %o", (config, expected) => {
     expect(resolveBundledTelegramState(config)).toEqual(expected);
   });
 
@@ -211,7 +211,7 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
       Parameters<typeof resolveEffectivePluginActivationState>[0]["rootConfig"]
     > = {
       channels: {
-        telegram: {
+        feishu: {
           botToken: "x",
         },
       },
@@ -220,7 +220,7 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
       Parameters<typeof resolveEffectivePluginActivationState>[0]["rootConfig"]
     > = {
       channels: {
-        telegram: {
+        feishu: {
           botToken: "x",
           enabled: true,
         },
@@ -229,19 +229,19 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
 
     expect(
       resolveEffectivePluginActivationState({
-        id: "telegram",
+        id: "feishu",
         origin: "bundled",
         config: normalizePluginsConfig(effectiveConfig.plugins),
         rootConfig: effectiveConfig,
         activationSource: createPluginActivationSource({ config: rawConfig }),
-        autoEnabledReason: "telegram configured",
+        autoEnabledReason: "feishu configured",
       }),
     ).toEqual({
       enabled: true,
       activated: true,
       explicitlyEnabled: false,
       source: "auto",
-      reason: "telegram configured",
+      reason: "feishu configured",
     });
   });
 
@@ -296,7 +296,7 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
       plugins: {
         allow: ["browser"],
         entries: {
-          telegram: {
+          feishu: {
             enabled: true,
           },
         },
@@ -305,7 +305,7 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
 
     expect(
       resolveEffectivePluginActivationState({
-        id: "telegram",
+        id: "feishu",
         origin: "bundled",
         config: normalizePluginsConfig(rawConfig.plugins),
         rootConfig: rawConfig,
@@ -323,7 +323,7 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
   it("lets explicit bundled channel activation bypass the allowlist", () => {
     const rawConfig = {
       channels: {
-        telegram: {
+        feishu: {
           enabled: true,
         },
       },
@@ -334,7 +334,7 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
 
     expect(
       resolveEffectivePluginActivationState({
-        id: "telegram",
+        id: "feishu",
         origin: "bundled",
         config: normalizePluginsConfig(rawConfig.plugins),
         rootConfig: rawConfig,
@@ -352,18 +352,18 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
   it("keeps denylist authoritative over explicit bundled channel activation", () => {
     const rawConfig = {
       channels: {
-        telegram: {
+        feishu: {
           enabled: true,
         },
       },
       plugins: {
-        deny: ["telegram"],
+        deny: ["feishu"],
       },
     };
 
     expect(
       resolveEffectivePluginActivationState({
-        id: "telegram",
+        id: "feishu",
         origin: "bundled",
         config: normalizePluginsConfig(rawConfig.plugins),
         rootConfig: rawConfig,
@@ -387,12 +387,12 @@ describe.skipIf(process.env.CI)("resolveEffectivePluginActivationState", () => {
 
     expect(
       resolveEffectivePluginActivationState({
-        id: "telegram",
+        id: "feishu",
         origin: "bundled",
         config: normalizePluginsConfig(rawConfig.plugins),
         rootConfig: rawConfig,
         activationSource: createPluginActivationSource({ config: rawConfig }),
-        autoEnabledReason: "telegram configured",
+        autoEnabledReason: "feishu configured",
       }),
     ).toEqual({
       enabled: false,
@@ -458,7 +458,7 @@ describe.skipIf(process.env.CI)("resolveEnableState", () => {
     {
       name: "keeps the selected memory slot plugin enabled even when omitted from plugins.allow",
       config: {
-        allow: ["telegram"],
+        allow: ["feishu"],
         slots: { memory: "memory-core" },
       },
       expected: { enabled: true },
@@ -466,7 +466,7 @@ describe.skipIf(process.env.CI)("resolveEnableState", () => {
     {
       name: "keeps explicit disable authoritative for the selected memory slot plugin",
       config: {
-        allow: ["telegram"],
+        allow: ["feishu"],
         slots: { memory: "memory-core" },
         entries: {
           "memory-core": {

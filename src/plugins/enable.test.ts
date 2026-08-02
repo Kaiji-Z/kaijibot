@@ -23,8 +23,8 @@ function expectEnabledAllowlist(
 }
 
 function expectBuiltInChannelEnabled(result: ReturnType<typeof enablePluginInConfig>) {
-  expect(result.config.channels?.telegram?.enabled).toBe(true);
-  expect(result.config.plugins?.entries?.telegram?.enabled).toBe(true);
+  expect(result.config.channels?.feishu?.enabled).toBe(true);
+  expect(result.config.plugins?.entries?.feishu?.enabled).toBe(true);
 }
 
 function expectBuiltInChannelEnabledWithAllowlist(
@@ -78,7 +78,7 @@ describe.skipIf(process.env.CI)("enablePluginInConfig", () => {
     {
       name: "writes built-in channels to channels.<id>.enabled and plugins.entries",
       cfg: {} as KaijiBotConfig,
-      pluginId: "telegram",
+      pluginId: "feishu",
       expectedEnabled: true,
       assert: expectBuiltInChannelEnabled,
     },
@@ -89,29 +89,29 @@ describe.skipIf(process.env.CI)("enablePluginInConfig", () => {
           allow: ["memory-core"],
         },
       } as KaijiBotConfig,
-      pluginId: "telegram",
+      pluginId: "feishu",
       expectedEnabled: true,
       assert: (result: ReturnType<typeof enablePluginInConfig>) => {
-        expectBuiltInChannelEnabledWithAllowlist(result, ["memory-core", "telegram"]);
+        expectBuiltInChannelEnabledWithAllowlist(result, ["memory-core", "feishu"]);
       },
     },
     {
       name: "re-enables built-in channels after explicit plugin-level disable",
       cfg: {
         channels: {
-          telegram: {
+          feishu: {
             enabled: true,
           },
         },
         plugins: {
           entries: {
-            telegram: {
+            feishu: {
               enabled: false,
             },
           },
         },
       } as KaijiBotConfig,
-      pluginId: "telegram",
+      pluginId: "feishu",
       expectedEnabled: true,
       assert: expectBuiltInChannelEnabledWithAllowlist,
     },
