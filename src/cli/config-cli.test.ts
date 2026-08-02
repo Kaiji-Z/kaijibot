@@ -930,7 +930,7 @@ describe("config cli", () => {
         "config",
         "set",
         "--batch-json",
-        '[{"path":"channels.feishu.appId","ref":{"source":"env","provider":"default","id":"FEISHU_APP_ID"}},{"path":"secrets.providers.default","provider":{"source":"env"}}]',
+        '[{"path":"channels.feishu.appSecret","ref":{"source":"env","provider":"default","id":"FEISHU_APP_SECRET"}},{"path":"secrets.providers.default","provider":{"source":"env"}}]',
         "--dry-run",
       ]);
 
