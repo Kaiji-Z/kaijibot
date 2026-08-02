@@ -5,11 +5,7 @@
 /* --- Shell Container --- */
 
 .shell {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  height: var(--app-height, 100dvh);
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-rows: 1fr;
@@ -1000,6 +996,7 @@
 
 /* Chat mode — full-bleed content */
 .shell--chat {
+  height: var(--app-height, 100dvh);
   overflow: hidden;
 }
 
