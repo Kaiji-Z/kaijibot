@@ -7,13 +7,10 @@ import { buildCognitiveModePrompt } from "../cognitive/context-writer.js";
 import { selectRelevantCorrections } from "../cognitive/correction/injector.js";
 import { CorrectionStore } from "../cognitive/correction/store.js";
 import type { CorrectionRecord } from "../cognitive/correction/types.js";
-import { buildPersonaContext } from "../cognitive/persona/context-builder.js";
 import { createDefaultPersona } from "../cognitive/persona/store.js";
 import type { PersonaTree } from "../cognitive/types.js";
-import { writeTextAtomic } from "../infra/json-files.js";
 import {
   analyzeSystemPromptSections,
-  approxTokensForText,
   summarizeByLayer,
 } from "./system-prompt-debug.js";
 import { buildAgentSystemPrompt } from "./system-prompt.js";

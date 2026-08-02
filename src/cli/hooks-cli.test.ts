@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { initCliI18n } from "./i18n/translate.js";
 import type { HookStatusReport } from "../hooks/hooks-status.js";
 import { formatHookInfo, formatHooksCheck, formatHooksList } from "./hooks-cli.js";
 import { createEmptyInstallChecks } from "./requirements-test-fixtures.js";
@@ -61,6 +62,10 @@ function createPluginManagedHookReport(): HookStatusReport {
 }
 
 describe("hooks cli formatting", () => {
+  beforeEach(() => {
+    initCliI18n({ locale: "en" });
+  });
+
   it("labels hooks list output", () => {
     const output = formatHooksList(report, {});
     expect(output).toContain("Hooks");

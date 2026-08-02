@@ -9,7 +9,7 @@ describe("resolveMessageSecretScope", () => {
         accountId: "Ops",
       }),
     ).toEqual({
-      channel: "signal",
+      channel: "feishu",
       accountId: "ops",
     });
   });
@@ -17,27 +17,27 @@ describe("resolveMessageSecretScope", () => {
   it("infers channel from a prefixed target", () => {
     expect(
       resolveMessageSecretScope({
-        target: "signal:12345",
+        target: "feishu:12345",
       }),
     ).toEqual({
-      channel: "signal",
+      channel: "feishu",
     });
   });
 
   it("infers a shared channel from target arrays", () => {
     expect(
       resolveMessageSecretScope({
-        targets: ["signal:one", "signal:two"],
+        targets: ["feishu:one", "feishu:two"],
       }),
     ).toEqual({
-      channel: "signal",
+      channel: "feishu",
     });
   });
 
   it("does not infer a channel when target arrays mix channels", () => {
     expect(
       resolveMessageSecretScope({
-        targets: ["signal:one", "imessage:two"],
+        targets: ["feishu:one", "wechat:two"],
       }),
     ).toEqual({});
   });
@@ -49,7 +49,7 @@ describe("resolveMessageSecretScope", () => {
         fallbackAccountId: "Chat",
       }),
     ).toEqual({
-      channel: "signal",
+      channel: "feishu",
       accountId: "chat",
     });
   });

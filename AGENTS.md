@@ -375,7 +375,7 @@ Correction (system prompt injection):
   - These tests are excluded from normal `pnpm test` (`**/*.live.test.ts` in vitest exclude). They call real LLM and web search APIs. Skip if API keys are unavailable.
   - Correction: `KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/correction/` (38 tests, unit only — no live LLM tests currently)
 - `pnpm test` (full suite) uses a custom runner (`scripts/test-projects.mjs`) that spawns vitest as child processes. **stdout is empty except for the pnpm header**; test output goes to stderr. Judge success by exit code only — do not wait for stdout feedback. For targeted output, use `pnpm test <path-or-filter>`.
-- Known gaps: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; `src/process/**` is excluded from all vitest projects and `scripts/test-projects.mjs` references a non-existent `vitest/vitest.process.config.ts`. For all gap paths, use `pnpm tsgo` for type verification, or create a temporary vitest config to run tests locally.
+- Known gaps: `vitest.infra.config.ts` and `vitest.gateway.config.ts` exist but some test paths in `src/infra/` and `src/gateway/` are not fully configured; `src/process/**` (12 test files) is excluded from all vitest projects. For all gap paths, use `pnpm tsgo` for type verification, or create a temporary vitest config to run tests locally.
 
 ## Auditing Default-Disabled Features
 

@@ -10,10 +10,6 @@ export const pluginRegistrationContractCases = {
     cliBackendIds: ["claude-cli"],
     requireDescribeImages: true,
   },
-  brave: {
-    pluginId: "brave",
-    webSearchProviderIds: ["brave"],
-  },
   comfy: {
     pluginId: "comfy",
     providerIds: ["comfy"],
@@ -44,12 +40,6 @@ export const pluginRegistrationContractCases = {
     pluginId: "fal",
     providerIds: ["fal"],
     imageGenerationProviderIds: ["fal"],
-  },
-  firecrawl: {
-    pluginId: "firecrawl",
-    webFetchProviderIds: ["firecrawl"],
-    webSearchProviderIds: ["firecrawl"],
-    toolNames: ["firecrawl_search", "firecrawl_scrape"],
   },
   google: {
     pluginId: "google",

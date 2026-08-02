@@ -84,7 +84,7 @@ vi.mock("./ports.js", () => ({
 }));
 
 vi.mock("../daemon/service.js", () => ({
-  resolveGatewayService: () => ({
+  tryResolveGatewayService: () => ({
     label: "LaunchAgent",
     loadedText: "loaded",
     notLoadedText: "not loaded",

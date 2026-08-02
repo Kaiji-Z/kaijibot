@@ -633,9 +633,9 @@ describe("config cli", () => {
       expect(helpText).toContain("--allow-exec");
       expect(helpText).toContain("kaijibot config set gateway.port 19001 --strict-json");
       expect(helpText).toContain(
-        "kaijibot config set channels.discord.token --ref-provider default --ref-source",
+        "kaijibot config set channels.feishu.token --ref-provider default --ref-source",
       );
-      expect(helpText).toContain("--ref-id DISCORD_BOT_TOKEN");
+      expect(helpText).toContain("--ref-id FEISHU_TOKEN");
       expect(helpText).toContain(
         "kaijibot config set --batch-file ./config-set.batch.json --dry-run",
       );
@@ -652,21 +652,21 @@ describe("config cli", () => {
       await runConfigCommand([
         "config",
         "set",
-        "channels.discord.token",
+        "channels.feishu.token",
         "--ref-provider",
         "default",
         "--ref-source",
         "env",
         "--ref-id",
-        "DISCORD_BOT_TOKEN",
+        "FEISHU_TOKEN",
       ]);
 
       expect(mockWriteConfigFile).toHaveBeenCalledTimes(1);
       const written = mockWriteConfigFile.mock.calls[0]?.[0];
-      expect(written.channels?.discord?.token).toEqual({
+      expect(written.channels?.feishu?.token).toEqual({
         source: "env",
         provider: "default",
-        id: "DISCORD_BOT_TOKEN",
+        id: "FEISHU_TOKEN",
       });
     });
 
@@ -761,13 +761,13 @@ describe("config cli", () => {
       await runConfigCommand([
         "config",
         "set",
-        "channels.discord.token",
+        "channels.feishu.token",
         "--ref-provider",
         "default",
         "--ref-source",
         "env",
         "--ref-id",
-        "DISCORD_BOT_TOKEN",
+        "FEISHU_TOKEN",
         "--dry-run",
       ]);
 
@@ -777,7 +777,7 @@ describe("config cli", () => {
         {
           source: "env",
           provider: "default",
-          id: "DISCORD_BOT_TOKEN",
+          id: "FEISHU_TOKEN",
         },
         expect.objectContaining({
           env: expect.any(Object),
@@ -930,7 +930,7 @@ describe("config cli", () => {
         "config",
         "set",
         "--batch-json",
-        '[{"path":"channels.discord.token","ref":{"source":"env","provider":"default","id":"DISCORD_BOT_TOKEN"}},{"path":"secrets.providers.default","provider":{"source":"env"}}]',
+        '[{"path":"channels.feishu.token","ref":{"source":"env","provider":"default","id":"FEISHU_TOKEN"}},{"path":"secrets.providers.default","provider":{"source":"env"}}]',
         "--dry-run",
       ]);
 
@@ -956,7 +956,7 @@ describe("config cli", () => {
       await runConfigCommand([
         "config",
         "set",
-        "channels.discord.token",
+        "channels.feishu.token",
         "--ref-provider",
         "runner",
         "--ref-source",
@@ -993,7 +993,7 @@ describe("config cli", () => {
       await runConfigCommand([
         "config",
         "set",
-        "channels.discord.token",
+        "channels.feishu.token",
         "--ref-provider",
         "runner",
         "--ref-source",
@@ -1048,7 +1048,7 @@ describe("config cli", () => {
         runConfigCommand([
           "config",
           "set",
-          "channels.discord.token",
+          "channels.feishu.token",
           "--ref-provider",
           "runner",
           "--ref-source",
@@ -1082,7 +1082,7 @@ describe("config cli", () => {
         runConfigCommand([
           "config",
           "set",
-          "channels.discord.token",
+          "channels.feishu.token",
           "--ref-provider",
           "runner",
           "--ref-source",
@@ -1139,13 +1139,13 @@ describe("config cli", () => {
         runConfigCommand([
           "config",
           "set",
-          "channels.discord.token",
+          "channels.feishu.token",
           "--ref-provider",
           "default",
           "--ref-source",
           "env",
           "--ref-id",
-          "DISCORD_BOT_TOKEN",
+          "FEISHU_TOKEN",
           "--provider-source",
           "env",
         ]),
@@ -1168,7 +1168,7 @@ describe("config cli", () => {
           "--ref-source",
           "env",
           "--ref-id",
-          "DISCORD_BOT_TOKEN",
+          "FEISHU_TOKEN",
         ]),
       ).rejects.toThrow("__exit__:1");
 
@@ -1224,7 +1224,7 @@ describe("config cli", () => {
           "config",
           "set",
           "--batch-json",
-          '[{"path":"channels.discord.token","value":"x","ref":{"source":"env","provider":"default","id":"DISCORD_BOT_TOKEN"}}]',
+          '[{"path":"channels.feishu.token","value":"x","ref":{"source":"env","provider":"default","id":"FEISHU_TOKEN"}}]',
         ]),
       ).rejects.toThrow("__exit__:1");
 
@@ -1249,13 +1249,13 @@ describe("config cli", () => {
         runConfigCommand([
           "config",
           "set",
-          "channels.discord.token",
+          "channels.feishu.token",
           "--ref-provider",
           "default",
           "--ref-source",
           "env",
           "--ref-id",
-          "DISCORD_BOT_TOKEN",
+          "FEISHU_TOKEN",
           "--dry-run",
         ]),
       ).rejects.toThrow("__exit__:1");
@@ -1279,13 +1279,13 @@ describe("config cli", () => {
       await runConfigCommand([
         "config",
         "set",
-        "channels.discord.token",
+        "channels.feishu.token",
         "--ref-provider",
         "default",
         "--ref-source",
         "env",
         "--ref-id",
-        "DISCORD_BOT_TOKEN",
+        "FEISHU_TOKEN",
         "--dry-run",
         "--json",
       ]);
@@ -1328,7 +1328,7 @@ describe("config cli", () => {
       await runConfigCommand([
         "config",
         "set",
-        "channels.discord.token",
+        "channels.feishu.token",
         "--ref-provider",
         "runner",
         "--ref-source",
@@ -1370,13 +1370,13 @@ describe("config cli", () => {
         runConfigCommand([
           "config",
           "set",
-          "channels.discord.token",
+          "channels.feishu.token",
           "--ref-provider",
           "default",
           "--ref-source",
           "env",
           "--ref-id",
-          "DISCORD_BOT_TOKEN",
+          "FEISHU_TOKEN",
           "--dry-run",
           "--json",
         ]),
@@ -1391,7 +1391,7 @@ describe("config cli", () => {
       expect(payload.ok).toBe(false);
       expect(payload.errors?.some((entry) => entry.kind === "resolvability")).toBe(true);
       expect(
-        payload.errors?.some((entry) => entry.ref?.includes("default:DISCORD_BOT_TOKEN")),
+        payload.errors?.some((entry) => entry.ref?.includes("default:FEISHU_TOKEN")),
       ).toBe(true);
     });
 
@@ -1411,7 +1411,7 @@ describe("config cli", () => {
           "config",
           "set",
           "--batch-json",
-          '[{"path":"channels.discord.token","ref":{"source":"exec","provider":"default","id":"DISCORD_BOT_TOKEN"}},{"path":"channels.telegram.botToken","ref":{"source":"exec","provider":"default","id":"TELEGRAM_BOT_TOKEN"}}]',
+          '[{"path":"channels.feishu.token","ref":{"source":"exec","provider":"default","id":"FEISHU_TOKEN"}},{"path":"channels.telegram.botToken","ref":{"source":"exec","provider":"default","id":"TELEGRAM_BOT_TOKEN"}}]',
           "--dry-run",
           "--json",
         ]),
@@ -1428,7 +1428,7 @@ describe("config cli", () => {
         payload.errors?.filter((entry) => entry.kind === "resolvability") ?? [];
       expect(resolvabilityErrors).toHaveLength(2);
       expect(
-        resolvabilityErrors.some((entry) => entry.ref === "exec:default:DISCORD_BOT_TOKEN"),
+        resolvabilityErrors.some((entry) => entry.ref === "exec:default:FEISHU_TOKEN"),
       ).toBe(true);
       expect(
         resolvabilityErrors.some((entry) => entry.ref === "exec:default:TELEGRAM_BOT_TOKEN"),
@@ -1452,7 +1452,7 @@ describe("config cli", () => {
           "config",
           "set",
           "--batch-json",
-          '[{"path":"gateway.port","value":"not-a-number"},{"path":"channels.discord.token","ref":{"source":"env","provider":"default","id":"DISCORD_BOT_TOKEN"}}]',
+          '[{"path":"gateway.port","value":"not-a-number"},{"path":"channels.feishu.token","ref":{"source":"env","provider":"default","id":"FEISHU_TOKEN"}}]',
           "--dry-run",
           "--json",
         ]),
@@ -1468,7 +1468,7 @@ describe("config cli", () => {
       expect(payload.errors?.some((entry) => entry.kind === "schema")).toBe(true);
       expect(payload.errors?.some((entry) => entry.kind === "resolvability")).toBe(true);
       expect(
-        payload.errors?.some((entry) => entry.ref?.includes("default:DISCORD_BOT_TOKEN")),
+        payload.errors?.some((entry) => entry.ref?.includes("default:FEISHU_TOKEN")),
       ).toBe(true);
     });
 

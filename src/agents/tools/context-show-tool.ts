@@ -37,7 +37,7 @@ async function isSoulPresetActive(
   agentId: string,
   sessionKey: string | undefined,
 ): Promise<boolean> {
-  if (!config) return false;
+  if (!config) { return false; }
   try {
     const { resolveSessionAgentIds, resolveAgentConfig } = await import("../agent-scope.js");
     const { sessionAgentId } = resolveSessionAgentIds({ config, agentId, sessionKey });
@@ -121,7 +121,7 @@ export function createContextShowTool(deps: {
 
           for (const cf of contextFiles) {
             const name = basename(cf.path);
-            if (name === "MEMORY.md") continue;
+            if (name === "MEMORY.md") { continue; }
             const tokens = approxTokens(cf.content);
             l2TotalTokens += tokens;
             l2FileCount++;

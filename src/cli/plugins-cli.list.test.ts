@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { initCliI18n } from "./i18n/translate.js";
 import { createPluginRecord } from "../plugins/status.test-helpers.js";
 import {
   buildPluginDiagnosticsReport,
@@ -10,6 +11,7 @@ import {
 
 describe("plugins cli list", () => {
   beforeEach(() => {
+    initCliI18n({ locale: "en" });
     resetPluginsCliTestState();
   });
 

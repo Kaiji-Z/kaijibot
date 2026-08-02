@@ -338,6 +338,11 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Memory Get",
       detailKeys: ["path", "from", "lines"],
     },
+    context_show: {
+      emoji: "📋",
+      title: "Context Show",
+      detailKeys: [],
+    },
     web_search: {
       emoji: "🔎",
       title: "Web Search",

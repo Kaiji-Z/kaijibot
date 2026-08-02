@@ -84,7 +84,6 @@ const tryResolveGatewayService = vi.hoisted(() =>
 );
 
 vi.mock("../../daemon/service.js", () => ({
-  resolveGatewayService: () => service,
   tryResolveGatewayService: () => tryResolveGatewayService(),
 }));
 

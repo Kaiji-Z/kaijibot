@@ -145,7 +145,7 @@ vi.mock("../plugins/update.js", () => ({
 }));
 
 vi.mock("../daemon/service.js", () => ({
-  resolveGatewayService: vi.fn(() => ({
+  tryResolveGatewayService: vi.fn(() => ({
     isLoaded: (...args: unknown[]) => serviceLoaded(...args),
     readRuntime: (...args: unknown[]) => serviceReadRuntime(...args),
   })),

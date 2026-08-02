@@ -22,7 +22,7 @@ const serviceMock = vi.hoisted(() => ({
 }));
 
 vi.mock("../../daemon/service.js", () => ({
-  resolveGatewayService: () => serviceMock,
+  tryResolveGatewayService: () => serviceMock,
 }));
 
 vi.mock("../../runtime.js", () => ({

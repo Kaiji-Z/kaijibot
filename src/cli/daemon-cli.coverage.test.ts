@@ -82,7 +82,7 @@ vi.mock("../daemon/service.js", async () => {
     await vi.importActual<typeof import("../daemon/service.js")>("../daemon/service.js");
   return {
     ...actual,
-    resolveGatewayService: () => ({
+    tryResolveGatewayService: () => ({
       label: "LaunchAgent",
       loadedText: "loaded",
       notLoadedText: "not loaded",

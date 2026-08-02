@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
-import { areHeartbeatsEnabled, setHeartbeatsEnabled } from "./heartbeat-wake.js";
+import { setHeartbeatsEnabled } from "./heartbeat-wake.js";
 import {
   drainSystemEventEntries,
   enqueueSystemEvent,

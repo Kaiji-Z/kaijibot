@@ -119,7 +119,7 @@ vi.mock("../../commands/daemon-runtime.js", () => ({
 }));
 
 vi.mock("../../daemon/service.js", () => ({
-  resolveGatewayService: () => service,
+  tryResolveGatewayService: () => service,
 }));
 
 vi.mock("./response.js", () => ({

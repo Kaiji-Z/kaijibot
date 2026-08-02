@@ -114,7 +114,7 @@ vi.mock("../../daemon/service-audit.js", () => ({
 }));
 
 vi.mock("../../daemon/service.js", () => ({
-  resolveGatewayService: () =>
+  tryResolveGatewayService: () =>
     createMockGatewayService({
       isLoaded: serviceIsLoaded,
       readCommand: serviceReadCommand,

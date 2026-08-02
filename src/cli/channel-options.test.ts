@@ -17,7 +17,7 @@ vi.mock("node:fs", async () => {
 });
 
 vi.mock("../channels/ids.js", () => ({
-  CHAT_CHANNEL_ORDER: ["telegram", "discord"],
+  CHAT_CHANNEL_ORDER: ["feishu", "wechat"],
 }));
 
 describe("resolveCliChannelOptions", () => {
@@ -28,10 +28,10 @@ describe("resolveCliChannelOptions", () => {
 
   it("uses precomputed startup metadata when available", async () => {
     readFileSyncMock.mockReturnValue(
-      JSON.stringify({ channelOptions: ["cached", "telegram", "cached"] }),
+      JSON.stringify({ channelOptions: ["cached", "feishu", "cached"] }),
     );
 
-    expect(resolveCliChannelOptions()).toEqual(["cached", "telegram"]);
+    expect(resolveCliChannelOptions()).toEqual(["cached", "feishu"]);
   });
 
   it("falls back to core channel order when metadata is missing", async () => {
@@ -39,14 +39,14 @@ describe("resolveCliChannelOptions", () => {
       throw new Error("ENOENT");
     });
 
-    expect(resolveCliChannelOptions()).toEqual(["telegram", "discord"]);
+    expect(resolveCliChannelOptions()).toEqual(["feishu", "wechat"]);
   });
 
   it("ignores external catalog env during CLI bootstrap", async () => {
     process.env.KAIJIBOT_PLUGIN_CATALOG_PATHS = "/tmp/plugins-catalog.json";
-    readFileSyncMock.mockReturnValue(JSON.stringify({ channelOptions: ["cached", "telegram"] }));
+    readFileSyncMock.mockReturnValue(JSON.stringify({ channelOptions: ["cached", "feishu"] }));
 
-    expect(resolveCliChannelOptions()).toEqual(["cached", "telegram"]);
+    expect(resolveCliChannelOptions()).toEqual(["cached", "feishu"]);
     delete process.env.KAIJIBOT_PLUGIN_CATALOG_PATHS;
   });
 });

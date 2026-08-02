@@ -15,11 +15,10 @@ vi.mock("./manifest-registry.js", async (importOriginal) => {
 });
 
 import {
-  resolveBundledExplicitWebFetchProvidersFromPublicArtifacts,
   resolveBundledExplicitWebSearchProvidersFromPublicArtifacts,
 } from "./web-provider-public-artifacts.explicit.js";
 
-// CI: brave/firecrawl explicit fast-path artifacts are missing on CI runners (no bundled plugin source).
+// CI: explicit fast-path artifacts are missing on CI runners (no bundled plugin source).
 describe.skipIf(process.env.CI)("web provider public artifacts explicit fast path", () => {
   beforeEach(() => {
     loadPluginManifestRegistryMock.mockClear();
@@ -27,20 +26,10 @@ describe.skipIf(process.env.CI)("web provider public artifacts explicit fast pat
 
   it("resolves bundled web search providers by explicit plugin id without manifest scans", () => {
     const provider = resolveBundledExplicitWebSearchProvidersFromPublicArtifacts({
-      onlyPluginIds: ["brave"],
+      onlyPluginIds: ["exa"],
     })?.[0];
 
-    expect(provider?.pluginId).toBe("brave");
-    expect(provider?.createTool({ config: {} as never })).toBeNull();
-    expect(loadPluginManifestRegistryMock).not.toHaveBeenCalled();
-  });
-
-  it("resolves bundled web fetch providers by explicit plugin id without manifest scans", () => {
-    const provider = resolveBundledExplicitWebFetchProvidersFromPublicArtifacts({
-      onlyPluginIds: ["firecrawl"],
-    })?.[0];
-
-    expect(provider?.pluginId).toBe("firecrawl");
+    expect(provider?.pluginId).toBe("exa");
     expect(provider?.createTool({ config: {} as never })).toBeNull();
     expect(loadPluginManifestRegistryMock).not.toHaveBeenCalled();
   });

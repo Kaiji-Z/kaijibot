@@ -141,7 +141,7 @@ export function analyzeSystemPromptSections(systemPrompt: string): SectionBreakd
   let currentStart = 0;
   let currentBuffer: string[] = [];
 
-  const flush = (endLineExclusive: number) => {
+  const flush = (_endLineExclusive: number) => {
     if (currentBuffer.length === 0) {
       return;
     }
@@ -201,7 +201,7 @@ export function summarizeByLayer(sections: SectionBreakdown[]): LayerSummary[] {
     entry.chars += section.chars;
     entry.approxTokens += section.approxTokens;
   }
-  return [...map.values()].sort((a, b) => {
+  return [...map.values()].toSorted((a, b) => {
     // Stable order: L1 < L2 < L3 < unknown
     const order = (l: ContextLayer | "unknown"): number =>
       l === "L1" ? 0 : l === "L2" ? 1 : l === "L3" ? 2 : 3;
