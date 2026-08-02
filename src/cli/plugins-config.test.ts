@@ -33,35 +33,35 @@ describe("setPluginEnabledInConfig", () => {
   it("keeps built-in channel and plugin entry flags in sync", () => {
     const config = {
       channels: {
-        telegram: {
+        feishu: {
           enabled: true,
           dmPolicy: "open",
         },
       },
       plugins: {
         entries: {
-          telegram: {
+          feishu: {
             enabled: true,
           },
         },
       },
     } as KaijiBotConfig;
 
-    const disabled = setPluginEnabledInConfig(config, "telegram", false);
-    expect(disabled.channels?.telegram).toEqual({
+    const disabled = setPluginEnabledInConfig(config, "feishu", false);
+    expect(disabled.channels?.feishu).toEqual({
       enabled: false,
       dmPolicy: "open",
     });
-    expect(disabled.plugins?.entries?.telegram).toEqual({
+    expect(disabled.plugins?.entries?.feishu).toEqual({
       enabled: false,
     });
 
-    const reenabled = setPluginEnabledInConfig(disabled, "telegram", true);
-    expect(reenabled.channels?.telegram).toEqual({
+    const reenabled = setPluginEnabledInConfig(disabled, "feishu", true);
+    expect(reenabled.channels?.feishu).toEqual({
       enabled: true,
       dmPolicy: "open",
     });
-    expect(reenabled.plugins?.entries?.telegram).toEqual({
+    expect(reenabled.plugins?.entries?.feishu).toEqual({
       enabled: true,
     });
   });
