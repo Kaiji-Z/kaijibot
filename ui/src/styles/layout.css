@@ -5,19 +5,17 @@
 /* --- Shell Container --- */
 
 .shell {
-  height: var(--app-height, 100vh);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
   background: var(--bg);
   animation: dashboard-enter 0.3s var(--ease-out);
-}
-
-@supports (height: 100dvh) {
-  .shell {
-    height: var(--app-height, 100dvh);
-  }
 }
 
 /* --- Content Area (full bleed) --- */
@@ -1002,15 +1000,7 @@
 
 /* Chat mode — full-bleed content */
 .shell--chat {
-  min-height: 100vh;
-  height: 100vh;
   overflow: hidden;
-}
-
-@supports (height: 100dvh) {
-  .shell--chat {
-    height: 100dvh;
-  }
 }
 
 /* ===========================================
