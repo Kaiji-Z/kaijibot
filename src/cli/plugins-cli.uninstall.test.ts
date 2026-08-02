@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { installedPluginRoot } from "../../test/helpers/bundled-plugin-paths.js";
 import type { KaijiBotConfig } from "../config/config.js";
+import { initCliI18n } from "./i18n/translate.js";
 import {
   buildPluginDiagnosticsReport,
   loadConfig,
@@ -18,6 +19,10 @@ const CLI_STATE_ROOT = "/tmp/kaijibot-state";
 const ALPHA_INSTALL_PATH = installedPluginRoot(CLI_STATE_ROOT, "alpha");
 
 describe("plugins cli uninstall", () => {
+  beforeAll(() => {
+    initCliI18n({ locale: "en" });
+  });
+
   beforeEach(() => {
     resetPluginsCliTestState();
   });

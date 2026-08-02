@@ -5,7 +5,7 @@ describe("resolveMessageSecretScope", () => {
   it("prefers explicit channel/account inputs", () => {
     expect(
       resolveMessageSecretScope({
-        channel: "Signal",
+        channel: "Feishu",
         accountId: "Ops",
       }),
     ).toEqual({
@@ -45,7 +45,7 @@ describe("resolveMessageSecretScope", () => {
   it("uses fallback channel/account when direct inputs are missing", () => {
     expect(
       resolveMessageSecretScope({
-        fallbackChannel: "Signal",
+        fallbackChannel: "Feishu",
         fallbackAccountId: "Chat",
       }),
     ).toEqual({
