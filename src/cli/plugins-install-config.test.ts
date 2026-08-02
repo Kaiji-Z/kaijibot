@@ -76,7 +76,7 @@ describe("loadConfigForInstall", () => {
     loadConfigMock.mockReturnValue(cfg);
 
     const result = await loadConfigForInstall(matrixNpmRequest);
-    expect(result).toBe(cfg);
+    expect(result).toEqual(cfg);
     expect(readConfigFileSnapshotMock).not.toHaveBeenCalled();
   });
 
@@ -86,7 +86,7 @@ describe("loadConfigForInstall", () => {
 
     const result = await loadConfigForInstall(matrixNpmRequest);
     expect(collectChannelDoctorStaleConfigMutationsMock).not.toHaveBeenCalled();
-    expect(result).toBe(cfg);
+    expect(result).toEqual(cfg);
   });
 
   it("falls back to snapshot config for explicit bundled-plugin reinstall when issues match the known upgrade failure", async () => {

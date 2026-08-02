@@ -8,6 +8,8 @@ export default defineConfig({
   ...sharedVitestConfig,
   test: {
     ...sharedVitestConfig.test,
+    isolate: true,
+    runner: undefined,
     include: ["src/cli/**/*.test.ts"],
     exclude: [
       "dist/**",
