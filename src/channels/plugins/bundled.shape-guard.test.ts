@@ -16,14 +16,27 @@ afterEach(() => {
 });
 
 const DEAD_EXTENSION_IDS = [
+  "bluebubbles",
   "discord",
-  "slack",
-  "telegram",
-  "irc",
-  "matrix",
   "googlechat",
-  "zalouser",
+  "imessage",
+  "irc",
   "line",
+  "matrix",
+  "mattermost",
+  "msteams",
+  "nextcloud-talk",
+  "nostr",
+  "qqbot",
+  "signal",
+  "slack",
+  "synology-chat",
+  "telegram",
+  "tlon",
+  "twitch",
+  "whatsapp",
+  "zalo",
+  "zalouser",
 ] as const;
 
 describe("bundled channel entry shape guards", () => {

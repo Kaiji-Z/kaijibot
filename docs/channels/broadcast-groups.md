@@ -7,6 +7,8 @@ status: experimental
 title: "Broadcast Groups"
 ---
 
+> ⚠️ **Channel scope notice**: This document describes broadcast groups for **WhatsApp**, which is **not shipped** with KaijiBot. Only **Feishu** and **WeChat** have source code in this repository. The broadcast pattern may apply if you implement a custom channel plugin. See `docs/archive/channels/whatsapp.md` for the archived WhatsApp reference.
+
 # Broadcast Groups
 
 **Status:** Experimental  

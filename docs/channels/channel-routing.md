@@ -5,6 +5,8 @@ read_when:
 title: "Channel Routing"
 ---
 
+> ⚠️ **Channel scope notice**: This document references channels (WhatsApp, Telegram, Discord, Slack, etc.) that are **not shipped** with KaijiBot. Only **Feishu** and **WeChat** have source code in this repository. The routing patterns described here apply to shipped channels; references to other channels are retained for architectural context. See `docs/archive/channels/` for archived per-channel reference docs.
+
 # Channels & routing
 
 KaijiBot routes replies **back to the channel where a message came from**. The

@@ -5,6 +5,8 @@ read_when:
 title: "Group Messages"
 ---
 
+> ⚠️ **Channel scope notice**: This document is entirely about **WhatsApp**, which is **not shipped** with KaijiBot. Only **Feishu** and **WeChat** have source code in this repository. The mention/behavior patterns described here may apply if you implement a custom channel plugin. See `docs/archive/channels/whatsapp.md` for the archived WhatsApp reference.
+
 # Group messages (WhatsApp web channel)
 
 Goal: let Clawd sit in WhatsApp groups, wake up only when pinged, and keep that thread separate from the personal DM session.

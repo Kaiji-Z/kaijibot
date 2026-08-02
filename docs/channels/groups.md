@@ -5,6 +5,8 @@ read_when:
 title: "Groups"
 ---
 
+> ⚠️ **Channel scope notice**: This document describes group chat behavior for channels (Discord, iMessage, Matrix, Microsoft Teams, Signal, Slack, Telegram, WhatsApp, Zalo) that are **not shipped** with KaijiBot. Only **Feishu** and **WeChat** have source code in this repository. The group/mention patterns described here apply to shipped channels where relevant; references to unshipped channels are retained for architectural context. See `docs/archive/channels/` for archived per-channel reference docs.
+
 # Groups
 
 KaijiBot treats group chats consistently across surfaces: Discord, iMessage, Matrix, Microsoft Teams, Signal, Slack, Telegram, WhatsApp, Zalo.
