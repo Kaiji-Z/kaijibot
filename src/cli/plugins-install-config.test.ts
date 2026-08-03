@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ConfigFileSnapshot } from "../config/types.kaijibot.js";
-import {
-  type PluginInstallRequestContext,
-} from "./plugin-install-config-policy.js";
+import { type PluginInstallRequestContext } from "./plugin-install-config-policy.js";
 import { loadConfigForInstall } from "./plugins-install-command.js";
 
 const hoisted = vi.hoisted(() => ({
@@ -112,7 +110,7 @@ describe("loadConfigForInstall", () => {
     expect(result).toBe(snapshotCfg);
   });
 
-    it("rejects unrelated invalid config even during bundled-plugin reinstall recovery", async () => {
+  it("rejects unrelated invalid config even during bundled-plugin reinstall recovery", async () => {
     const invalidConfigErr = new Error("config invalid");
     (invalidConfigErr as { code?: string }).code = "INVALID_CONFIG";
     loadConfigMock.mockImplementation(() => {

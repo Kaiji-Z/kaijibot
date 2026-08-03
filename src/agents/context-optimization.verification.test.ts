@@ -9,10 +9,7 @@ import { CorrectionStore } from "../cognitive/correction/store.js";
 import type { CorrectionRecord } from "../cognitive/correction/types.js";
 import { createDefaultPersona } from "../cognitive/persona/store.js";
 import type { PersonaTree } from "../cognitive/types.js";
-import {
-  analyzeSystemPromptSections,
-  summarizeByLayer,
-} from "./system-prompt-debug.js";
+import { analyzeSystemPromptSections, summarizeByLayer } from "./system-prompt-debug.js";
 import { buildAgentSystemPrompt } from "./system-prompt.js";
 
 const BASELINE_L1_TOKENS = 3008;

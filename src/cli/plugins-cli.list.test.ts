@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { initCliI18n } from "./i18n/translate.js";
 import { createPluginRecord } from "../plugins/status.test-helpers.js";
+import { initCliI18n } from "./i18n/translate.js";
 import {
   buildPluginDiagnosticsReport,
   buildPluginSnapshotReport,

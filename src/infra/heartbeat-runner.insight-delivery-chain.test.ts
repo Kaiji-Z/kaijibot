@@ -1,18 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
+import { runHeartbeatOnce } from "./heartbeat-runner.js";
+import { installHeartbeatRunnerTestRuntime } from "./heartbeat-runner.test-harness.js";
+import { seedMainSessionStore, withTempHeartbeatSandbox } from "./heartbeat-runner.test-utils.js";
 import { setHeartbeatsEnabled } from "./heartbeat-wake.js";
 import {
   drainSystemEventEntries,
   enqueueSystemEvent,
   peekSystemEventEntries,
 } from "./system-events.js";
-import { installHeartbeatRunnerTestRuntime } from "./heartbeat-runner.test-harness.js";
-import {
-  seedMainSessionStore,
-  withTempHeartbeatSandbox,
-} from "./heartbeat-runner.test-utils.js";
-import { runHeartbeatOnce } from "./heartbeat-runner.js";
 
 // Register telegram + whatsapp test plugins so delivery resolution can proceed.
 installHeartbeatRunnerTestRuntime();
@@ -70,7 +67,8 @@ describe("runHeartbeatOnce insight event → prompt → reply → drain", () => 
       // proactive scheduler generates an insight:
       //   enqueueSystemEvent(`[Cognitive Insight] ${text}\n（投递指令）`, { sessionKey })
       const insightText = "你在肩背恢复方面的行为模式有一个有趣的矛盾";
-      const deliveryInstruction = "（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）";
+      const deliveryInstruction =
+        "（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）";
       const eventText = `[Cognitive Insight] ${insightText}\n${deliveryInstruction}`;
       enqueueSystemEvent(eventText, { sessionKey });
 

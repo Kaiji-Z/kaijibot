@@ -1275,9 +1275,7 @@ describe("update-cli", () => {
 
         const logLines = vi.mocked(defaultRuntime.log).mock.calls.map((call) => String(call[0]));
         expect(
-          logLines.some((line) =>
-            line.includes("Code updated, cognition leveled up again"),
-          ),
+          logLines.some((line) => line.includes("Code updated, cognition leveled up again")),
         ).toBe(true);
       });
     } finally {

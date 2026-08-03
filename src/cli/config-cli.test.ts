@@ -1357,9 +1357,9 @@ describe("config cli", () => {
       };
       expect(payload.ok).toBe(false);
       expect(payload.errors?.some((entry) => entry.kind === "resolvability")).toBe(true);
-      expect(
-        payload.errors?.some((entry) => entry.ref?.includes("default:FEISHU_APP_ID")),
-      ).toBe(true);
+      expect(payload.errors?.some((entry) => entry.ref?.includes("default:FEISHU_APP_ID"))).toBe(
+        true,
+      );
     });
 
     it("keeps distinct resolvability failures when messages are identical but refs differ", async () => {
@@ -1394,9 +1394,9 @@ describe("config cli", () => {
       const resolvabilityErrors =
         payload.errors?.filter((entry) => entry.kind === "resolvability") ?? [];
       expect(resolvabilityErrors).toHaveLength(2);
-      expect(
-        resolvabilityErrors.some((entry) => entry.ref === "exec:default:FEISHU_APP_ID"),
-      ).toBe(true);
+      expect(resolvabilityErrors.some((entry) => entry.ref === "exec:default:FEISHU_APP_ID")).toBe(
+        true,
+      );
       expect(
         resolvabilityErrors.some((entry) => entry.ref === "exec:default:TELEGRAM_BOT_TOKEN"),
       ).toBe(true);
@@ -1434,9 +1434,9 @@ describe("config cli", () => {
       expect(payload.ok).toBe(false);
       expect(payload.errors?.some((entry) => entry.kind === "schema")).toBe(true);
       expect(payload.errors?.some((entry) => entry.kind === "resolvability")).toBe(true);
-      expect(
-        payload.errors?.some((entry) => entry.ref?.includes("default:FEISHU_APP_ID")),
-      ).toBe(true);
+      expect(payload.errors?.some((entry) => entry.ref?.includes("default:FEISHU_APP_ID"))).toBe(
+        true,
+      );
     });
 
     it("fails dry-run when provider updates make existing refs unresolvable", async () => {

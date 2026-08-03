@@ -1,9 +1,9 @@
 import { Type } from "typebox";
-import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveBootstrapContextForRun } from "../../agents/bootstrap-files.js";
+import type { KaijiBotConfig } from "../../config/config.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { AnyAgentTool } from "./common.js";
 import { textResult } from "./common.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("context-show-tool");
 
@@ -37,7 +37,9 @@ async function isSoulPresetActive(
   agentId: string,
   sessionKey: string | undefined,
 ): Promise<boolean> {
-  if (!config) { return false; }
+  if (!config) {
+    return false;
+  }
   try {
     const { resolveSessionAgentIds, resolveAgentConfig } = await import("../agent-scope.js");
     const { sessionAgentId } = resolveSessionAgentIds({ config, agentId, sessionKey });
@@ -79,8 +81,12 @@ export function createContextShowTool(deps: {
         parts.push("=== L1: 系统提示硬编码段 ===");
         parts.push("来源: system-prompt.ts → buildAgentSystemPrompt()");
         parts.push("包含: Identity / Capabilities / Safety / Tooling / Messaging / Silent Replies");
-        parts.push("注意: 此处展示核心硬编码段。实际系统提示还包含 Runtime（model/provider）、工具列表、skills 列表等动态参数，这些每轮不同，此处省略。");
-        parts.push("注意: 末尾的 `--- context-layer: project-doc ---` 是 L2 文件注入位置的占位标记，此处为空（L2 在下方单独展示）。");
+        parts.push(
+          "注意: 此处展示核心硬编码段。实际系统提示还包含 Runtime（model/provider）、工具列表、skills 列表等动态参数，这些每轮不同，此处省略。",
+        );
+        parts.push(
+          "注意: 末尾的 `--- context-layer: project-doc ---` 是 L2 文件注入位置的占位标记，此处为空（L2 在下方单独展示）。",
+        );
         parts.push("");
         let l1Tokens = 0;
         try {
@@ -103,7 +109,9 @@ export function createContextShowTool(deps: {
         parts.push("=== L2: workspace 文件（agent 实际看到的版本）===");
         parts.push(`workspace: ${workspaceDir}`);
         parts.push("来源: resolveBootstrapContextForRun()（与系统提示组装相同的管线）");
-        parts.push("处理: 读取 → soul preset 覆盖 → session/contextMode 过滤 → hooks → sanitize → heartbeat 过滤 → maxChars 截断");
+        parts.push(
+          "处理: 读取 → soul preset 覆盖 → session/contextMode 过滤 → hooks → sanitize → heartbeat 过滤 → maxChars 截断",
+        );
         parts.push("说明: 经过完整处理管线，可能和磁盘原始文件不一致。");
         parts.push("");
 
@@ -121,7 +129,9 @@ export function createContextShowTool(deps: {
 
           for (const cf of contextFiles) {
             const name = basename(cf.path);
-            if (name === "MEMORY.md") { continue; }
+            if (name === "MEMORY.md") {
+              continue;
+            }
             const tokens = approxTokens(cf.content);
             l2TotalTokens += tokens;
             l2FileCount++;
@@ -129,7 +139,9 @@ export function createContextShowTool(deps: {
               name === "SOUL.md" && soulPresetActive
                 ? " [⚠️ soul preset 覆盖中，编辑文件不会生效]"
                 : "";
-            parts.push(`--- ${name} (${cf.content.length} chars / ~${tokens} tok)${presetWarning} ---`);
+            parts.push(
+              `--- ${name} (${cf.content.length} chars / ~${tokens} tok)${presetWarning} ---`,
+            );
             parts.push(cf.content);
             parts.push("");
           }
@@ -161,7 +173,8 @@ export function createContextShowTool(deps: {
           const store = new PersonaStore(configDir);
           const persona = await store.load(agentId, userId);
           if (persona) {
-            const { buildPersonaContext } = await import("../../cognitive/persona/context-builder.js");
+            const { buildPersonaContext } =
+              await import("../../cognitive/persona/context-builder.js");
             const personaCtx = buildPersonaContext(persona);
             const domainCount = Object.keys(persona.domains).length;
             const trust = persona.rapport.trustScore;
@@ -212,10 +225,17 @@ export function createContextShowTool(deps: {
         totalTokens += l3Tokens;
         parts.push(`L3 合计: ~${l3Tokens} tokens`);
         parts.push("");
-        parts.push(`=== 总计: L1 ~${l1Tokens} + L2 ~${l2TotalTokens} + L3 ~${l3Tokens} = ~${totalTokens} tokens ===`);
+        parts.push(
+          `=== 总计: L1 ~${l1Tokens} + L2 ~${l2TotalTokens} + L3 ~${l3Tokens} = ~${totalTokens} tokens ===`,
+        );
 
         const output = parts.join("\n");
-        log.info("context shown", { agentId, l2Files: l2FileCount, l2Tokens: l2TotalTokens, totalTokens });
+        log.info("context shown", {
+          agentId,
+          l2Files: l2FileCount,
+          l2Tokens: l2TotalTokens,
+          totalTokens,
+        });
 
         return textResult(output, { status: "ok", l2Tokens: l2TotalTokens });
       } catch (err) {

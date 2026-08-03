@@ -29,10 +29,7 @@ import { resolveMainSessionKey } from "../config/sessions.js";
 import { buildInsightEventPrompt } from "./heartbeat-events-filter.js";
 import { runHeartbeatOnce } from "./heartbeat-runner.js";
 import { installHeartbeatRunnerTestRuntime } from "./heartbeat-runner.test-harness.js";
-import {
-  seedMainSessionStore,
-  withTempHeartbeatSandbox,
-} from "./heartbeat-runner.test-utils.js";
+import { seedMainSessionStore, withTempHeartbeatSandbox } from "./heartbeat-runner.test-utils.js";
 import {
   enqueueSystemEvent,
   peekSystemEventEntries,
@@ -80,7 +77,7 @@ async function callLLM(params: { system: string; user: string }): Promise<string
 const TEST_INSIGHTS: Array<{ text: string; keywords: string[]; label: string }> = [
   {
     label: "cross-domain",
-    text: '你之前在用 AI 辅助解读医疗检查结果时表现出的那种「先自己理解再验证」的模式，其实也可以用在解读 Apple Watch 的健康数据上。两者本质上都是从非结构化数据里提取有意义的信号。',
+    text: "你之前在用 AI 辅助解读医疗检查结果时表现出的那种「先自己理解再验证」的模式，其实也可以用在解读 Apple Watch 的健康数据上。两者本质上都是从非结构化数据里提取有意义的信号。",
     keywords: ["健康", "数据", "模式", "Apple Watch", "AI"],
   },
   {
@@ -90,7 +87,7 @@ const TEST_INSIGHTS: Array<{ text: string; keywords: string[]; label: string }> 
   },
   {
     label: "domain-depth",
-    text: '你在 Rust 的 borrow checker 上花了不少时间，但你关注的是「怎么绕过它」而不是「为什么它存在」。换个角度，borrow checker 其实在帮你证明内存安全，这是大多数语言做不到的事。',
+    text: "你在 Rust 的 borrow checker 上花了不少时间，但你关注的是「怎么绕过它」而不是「为什么它存在」。换个角度，borrow checker 其实在帮你证明内存安全，这是大多数语言做不到的事。",
     keywords: ["Rust", "borrow", "内存"],
   },
 ];
@@ -111,8 +108,7 @@ function buildConfig(tmpDir: string, storePath: string): KaijiBotConfig {
   } as unknown as KaijiBotConfig;
 }
 
-const DELIVERY_INSTRUCTION =
-  "（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）";
+const DELIVERY_INSTRUCTION = "（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PHASE 1: Infrastructure — always runs (no LLM)
@@ -183,127 +179,45 @@ describe("Phase 1: infrastructure — insight event → runHeartbeatOnce → dra
 // that actually shares the insight content.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe.skipIf(!isLive || !ZAI_API_KEY)(
-  "Phase 2: live LLM insight delivery",
-  () => {
-    beforeEach(() => {
-      resetSystemEventsForTest();
-    });
+describe.skipIf(!isLive || !ZAI_API_KEY)("Phase 2: live LLM insight delivery", () => {
+  beforeEach(() => {
+    resetSystemEventsForTest();
+  });
 
-    afterEach(() => {
-      resetSystemEventsForTest();
-    });
+  afterEach(() => {
+    resetSystemEventsForTest();
+  });
 
-    for (const insight of TEST_INSIGHTS) {
-      it(`LLM delivers ${insight.label} insight naturally via heartbeat prompt`, async () => {
-        await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
-          const cfg = buildConfig(tmpDir, storePath);
-          const sessionKey = resolveMainSessionKey(cfg);
-          await seedMainSessionStore(storePath, cfg, {
-            sessionId: `sid_live_${insight.label}`,
-            lastChannel: "telegram",
-            lastProvider: "telegram",
-            lastTo: "123456789",
-          });
-
-          // Enqueue insight event
-          const eventText = `[Cognitive Insight] ${insight.text}\n${DELIVERY_INSTRUCTION}`;
-          enqueueSystemEvent(eventText, { sessionKey });
-
-          // Mock getReplyFromConfig: call real LLM, capture output,
-          // return empty text so heartbeat completes without delivery attempt.
-          let llmReply: string | undefined;
-          const heartbeatPrompt = buildInsightEventPrompt();
-
-          const mockGetReply = vi.fn().mockImplementation(async (ctx: unknown) => {
-            const prompt = (ctx as { Body?: string }).Body ?? heartbeatPrompt;
-            // Simulate what the agent turn does: system event drained as System: line
-            const systemLine = `System: [test-time] ${eventText}`;
-            llmReply = await callLLM({ system: systemLine, user: prompt });
-            return { text: "" };
-          });
-
-          // Run heartbeat with real LLM
-          const result = await runHeartbeatOnce({
-            cfg,
-            reason: "cognitive-insight",
-            sessionKey,
-            deps: {
-              getQueueSize: () => 0,
-              nowMs: () => Date.now(),
-              getReplyFromConfig: mockGetReply,
-            } as never,
-          });
-
-          // ── Infrastructure assertions ──────────────────────────────────
-          expect(result.status).toBe("ran");
-          expect(mockGetReply).toHaveBeenCalledTimes(1);
-          expect(peekSystemEventEntries(sessionKey)).toHaveLength(0);
-
-          // ── LLM delivery quality assertions ────────────────────────────
-          expect(llmReply).toBeTruthy();
-          const reply = llmReply!;
-          const trimmed = reply.trim();
-
-          console.log(`\n  ═══ ${insight.label} ═══`);
-          console.log(`  洞察: ${insight.text.slice(0, 80)}...`);
-          console.log(`  投递: ${trimmed}`);
-          console.log(`  长度: ${trimmed.length}`);
-          console.log(`  ═══════════════════════\n`);
-
-          // 1. Not empty / not a token
-          expect(trimmed.length).toBeGreaterThan(20);
-          expect(trimmed).not.toContain("HEARTBEAT_OK");
-          expect(trimmed).not.toMatch(/^ok$/i);
-
-          // 2. Contains at least one keyword from the insight
-          const hasKeyword = insight.keywords.some((kw) =>
-            trimmed.toLowerCase().includes(kw.toLowerCase()),
-          );
-          expect(hasKeyword).toBe(true);
-
-          // 3. Conversational tone — first person, question, or casual marker
-          const hasFirstPerson = /我|I /.test(trimmed);
-          const hasQuestion = /[？?]/.test(trimmed);
-          const hasCasualMarker = /其实|说真的|你看|你想|话说|对了|你知道吗|突然|觉得/.test(
-            trimmed,
-          );
-          const isConversational = hasFirstPerson || hasQuestion || hasCasualMarker;
-          expect(isConversational).toBe(true);
-
-          // 4. Not a push notification — no "亲爱的用户" or formal notification style
-          expect(trimmed).not.toMatch(/亲爱的用户|尊敬的|您好|push|notification/i);
-
-          // 5. Reasonable length (not a one-liner, not a wall of text)
-          expect(trimmed.length).toBeGreaterThanOrEqual(15);
-          expect(trimmed.length).toBeLessThanOrEqual(2000);
-        });
-      }, 120_000); // 2 min timeout per insight for live LLM
-    }
-
-    it("LLM does not fabricate insight when no event is queued (negative control)", async () => {
+  for (const insight of TEST_INSIGHTS) {
+    it(`LLM delivers ${insight.label} insight naturally via heartbeat prompt`, async () => {
       await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
         const cfg = buildConfig(tmpDir, storePath);
         const sessionKey = resolveMainSessionKey(cfg);
         await seedMainSessionStore(storePath, cfg, {
-          sessionId: "sid_live_negative",
+          sessionId: `sid_live_${insight.label}`,
           lastChannel: "telegram",
           lastProvider: "telegram",
           lastTo: "123456789",
         });
 
-        // NO insight event enqueued
+        // Enqueue insight event
+        const eventText = `[Cognitive Insight] ${insight.text}\n${DELIVERY_INSTRUCTION}`;
+        enqueueSystemEvent(eventText, { sessionKey });
+
+        // Mock getReplyFromConfig: call real LLM, capture output,
+        // return empty text so heartbeat completes without delivery attempt.
         let llmReply: string | undefined;
+        const heartbeatPrompt = buildInsightEventPrompt();
+
         const mockGetReply = vi.fn().mockImplementation(async (ctx: unknown) => {
-          const prompt = (ctx as { Body?: string }).Body ?? "";
-          // Without an insight system event, the prompt should be generic heartbeat
-          llmReply = await callLLM({
-            system: "You are a helpful assistant.",
-            user: prompt,
-          });
+          const prompt = (ctx as { Body?: string }).Body ?? heartbeatPrompt;
+          // Simulate what the agent turn does: system event drained as System: line
+          const systemLine = `System: [test-time] ${eventText}`;
+          llmReply = await callLLM({ system: systemLine, user: prompt });
           return { text: "" };
         });
 
+        // Run heartbeat with real LLM
         const result = await runHeartbeatOnce({
           cfg,
           reason: "cognitive-insight",
@@ -315,14 +229,91 @@ describe.skipIf(!isLive || !ZAI_API_KEY)(
           } as never,
         });
 
+        // ── Infrastructure assertions ──────────────────────────────────
         expect(result.status).toBe("ran");
         expect(mockGetReply).toHaveBeenCalledTimes(1);
+        expect(peekSystemEventEntries(sessionKey)).toHaveLength(0);
 
-        // Without insight event, prompt should NOT be the insight prompt
-        console.log(`\n  ═══ Negative Control ═══`);
-        console.log(`  Prompt (first 100): ${llmReply?.slice(0, 100) ?? "(empty)"}`);
+        // ── LLM delivery quality assertions ────────────────────────────
+        expect(llmReply).toBeTruthy();
+        const reply = llmReply!;
+        const trimmed = reply.trim();
+
+        console.log(`\n  ═══ ${insight.label} ═══`);
+        console.log(`  洞察: ${insight.text.slice(0, 80)}...`);
+        console.log(`  投递: ${trimmed}`);
+        console.log(`  长度: ${trimmed.length}`);
         console.log(`  ═══════════════════════\n`);
+
+        // 1. Not empty / not a token
+        expect(trimmed.length).toBeGreaterThan(20);
+        expect(trimmed).not.toContain("HEARTBEAT_OK");
+        expect(trimmed).not.toMatch(/^ok$/i);
+
+        // 2. Contains at least one keyword from the insight
+        const hasKeyword = insight.keywords.some((kw) =>
+          trimmed.toLowerCase().includes(kw.toLowerCase()),
+        );
+        expect(hasKeyword).toBe(true);
+
+        // 3. Conversational tone — first person, question, or casual marker
+        const hasFirstPerson = /我|I /.test(trimmed);
+        const hasQuestion = /[？?]/.test(trimmed);
+        const hasCasualMarker = /其实|说真的|你看|你想|话说|对了|你知道吗|突然|觉得/.test(trimmed);
+        const isConversational = hasFirstPerson || hasQuestion || hasCasualMarker;
+        expect(isConversational).toBe(true);
+
+        // 4. Not a push notification — no "亲爱的用户" or formal notification style
+        expect(trimmed).not.toMatch(/亲爱的用户|尊敬的|您好|push|notification/i);
+
+        // 5. Reasonable length (not a one-liner, not a wall of text)
+        expect(trimmed.length).toBeGreaterThanOrEqual(15);
+        expect(trimmed.length).toBeLessThanOrEqual(2000);
       });
-    }, 60_000);
-  },
-);
+    }, 120_000); // 2 min timeout per insight for live LLM
+  }
+
+  it("LLM does not fabricate insight when no event is queued (negative control)", async () => {
+    await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
+      const cfg = buildConfig(tmpDir, storePath);
+      const sessionKey = resolveMainSessionKey(cfg);
+      await seedMainSessionStore(storePath, cfg, {
+        sessionId: "sid_live_negative",
+        lastChannel: "telegram",
+        lastProvider: "telegram",
+        lastTo: "123456789",
+      });
+
+      // NO insight event enqueued
+      let llmReply: string | undefined;
+      const mockGetReply = vi.fn().mockImplementation(async (ctx: unknown) => {
+        const prompt = (ctx as { Body?: string }).Body ?? "";
+        // Without an insight system event, the prompt should be generic heartbeat
+        llmReply = await callLLM({
+          system: "You are a helpful assistant.",
+          user: prompt,
+        });
+        return { text: "" };
+      });
+
+      const result = await runHeartbeatOnce({
+        cfg,
+        reason: "cognitive-insight",
+        sessionKey,
+        deps: {
+          getQueueSize: () => 0,
+          nowMs: () => Date.now(),
+          getReplyFromConfig: mockGetReply,
+        } as never,
+      });
+
+      expect(result.status).toBe("ran");
+      expect(mockGetReply).toHaveBeenCalledTimes(1);
+
+      // Without insight event, prompt should NOT be the insight prompt
+      console.log(`\n  ═══ Negative Control ═══`);
+      console.log(`  Prompt (first 100): ${llmReply?.slice(0, 100) ?? "(empty)"}`);
+      console.log(`  ═══════════════════════\n`);
+    });
+  }, 60_000);
+});

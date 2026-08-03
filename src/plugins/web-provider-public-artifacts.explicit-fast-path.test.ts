@@ -14,9 +14,7 @@ vi.mock("./manifest-registry.js", async (importOriginal) => {
   };
 });
 
-import {
-  resolveBundledExplicitWebSearchProvidersFromPublicArtifacts,
-} from "./web-provider-public-artifacts.explicit.js";
+import { resolveBundledExplicitWebSearchProvidersFromPublicArtifacts } from "./web-provider-public-artifacts.explicit.js";
 
 // CI: explicit fast-path artifacts are missing on CI runners (no bundled plugin source).
 describe.skipIf(process.env.CI)("web provider public artifacts explicit fast path", () => {

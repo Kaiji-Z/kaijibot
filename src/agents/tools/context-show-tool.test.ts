@@ -20,7 +20,10 @@ beforeEach(() => {
   origStateDir = process.env.KAIJIBOT_STATE_DIR;
   process.env.KAIJIBOT_STATE_DIR = configDir;
 
-  writeFileSync(join(workspaceDir, "AGENTS.md"), "# AGENTS\nTest workspace rules.\nUse cron for scheduling.");
+  writeFileSync(
+    join(workspaceDir, "AGENTS.md"),
+    "# AGENTS\nTest workspace rules.\nUse cron for scheduling.",
+  );
   writeFileSync(join(workspaceDir, "SOUL.md"), "# SOUL\nYou are a helpful assistant.");
   writeFileSync(join(workspaceDir, "MEMORY.md"), "# Memory\nThis should not appear in output.");
 
