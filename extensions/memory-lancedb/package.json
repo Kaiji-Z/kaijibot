@@ -4,7 +4,7 @@
   "description": "KaijiBot LanceDB-backed long-term memory plugin with auto-recall/capture",
   "type": "module",
   "dependencies": {
-    "@lancedb/lancedb": "^0.27.2",
+    "@lancedb/lancedb": "^0.33.0",
     "openai": "^6.34.0",
     "typebox": "^1.1"
   },

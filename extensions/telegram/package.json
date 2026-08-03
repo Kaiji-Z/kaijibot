@@ -7,9 +7,9 @@
   "dependencies": {
     "@grammyjs/runner": "^2.0.3",
     "@grammyjs/transformer-throttler": "^1.2.1",
-    "@sinclair/typebox": "0.34.49",
+    "@sinclair/typebox": "0.34.52",
     "grammy": "^1.42.0",
-    "undici": "8.1.0"
+    "undici": "8.9.0"
   },
   "devDependencies": {
     "@kaijibot/plugin-sdk": "workspace:*"
