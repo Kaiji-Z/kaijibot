@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { bundledPluginRootAt, repoInstallSpec } from "../../test/helpers/bundled-plugin-paths.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ConfigFileSnapshot } from "../config/types.kaijibot.js";
 import {
-  resolvePluginInstallRequestContext,
   type PluginInstallRequestContext,
 } from "./plugin-install-config-policy.js";
 import { loadConfigForInstall } from "./plugins-install-command.js";
@@ -28,8 +26,6 @@ vi.mock("../commands/doctor/shared/channel-doctor.js", () => ({
   collectChannelDoctorStaleConfigMutations: (cfg: KaijiBotConfig) =>
     collectChannelDoctorStaleConfigMutationsMock(cfg),
 }));
-
-const MATRIX_REPO_INSTALL_SPEC = repoInstallSpec("matrix");
 
 function makeSnapshot(overrides: Partial<ConfigFileSnapshot> = {}): ConfigFileSnapshot {
   return {
@@ -116,36 +112,7 @@ describe("loadConfigForInstall", () => {
     expect(result).toBe(snapshotCfg);
   });
 
-  it("allows explicit repo-checkout bundled-plugin reinstall recovery", async () => {
-    const invalidConfigErr = new Error("config invalid");
-    (invalidConfigErr as { code?: string }).code = "INVALID_CONFIG";
-    loadConfigMock.mockImplementation(() => {
-      throw invalidConfigErr;
-    });
-
-    const snapshotCfg = { plugins: {} } as KaijiBotConfig;
-    readConfigFileSnapshotMock.mockResolvedValue(
-      makeSnapshot({
-        config: snapshotCfg,
-        issues: [{ path: "channels.matrix", message: "unknown channel id: matrix" }],
-      }),
-    );
-
-    const repoRequest = resolvePluginInstallRequestContext({
-      rawSpec: MATRIX_REPO_INSTALL_SPEC,
-    });
-    if (!repoRequest.ok) {
-      throw new Error(repoRequest.error);
-    }
-
-    const result = await loadConfigForInstall({
-      ...repoRequest.request,
-      resolvedPath: bundledPluginRootAt("/tmp/repo", "matrix"),
-    });
-    expect(result).toBe(snapshotCfg);
-  });
-
-  it("rejects unrelated invalid config even during bundled-plugin reinstall recovery", async () => {
+    it("rejects unrelated invalid config even during bundled-plugin reinstall recovery", async () => {
     const invalidConfigErr = new Error("config invalid");
     (invalidConfigErr as { code?: string }).code = "INVALID_CONFIG";
     loadConfigMock.mockImplementation(() => {

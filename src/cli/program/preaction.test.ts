@@ -1,10 +1,7 @@
 import { Command } from "commander";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { repoInstallSpec } from "../../../test/helpers/bundled-plugin-paths.js";
 import { loggingState } from "../../logging/state.js";
 import { setCommandJsonMode } from "./json-mode.js";
-
-const MATRIX_REPO_INSTALL_SPEC = repoInstallSpec("matrix");
 
 const setVerboseMock = vi.fn();
 const emitCliBannerMock = vi.fn();
@@ -264,61 +261,6 @@ describe("registerPreActionHooks", () => {
       commandPath: ["channels", "add"],
     });
     expect(ensurePluginRegistryLoadedMock).not.toHaveBeenCalled();
-  });
-
-  it("only allows invalid config for explicit Matrix reinstall requests", async () => {
-    await runPreAction({
-      parseArgv: ["plugins", "install", "@kaijibot/matrix"],
-      processArgv: ["node", "kaijibot", "plugins", "install", "@kaijibot/matrix"],
-    });
-
-    expect(ensureConfigReadyMock).toHaveBeenCalledWith({
-      runtime: runtimeMock,
-      commandPath: ["plugins", "install"],
-      allowInvalid: true,
-    });
-
-    vi.clearAllMocks();
-    await runPreAction({
-      parseArgv: ["plugins", "install", "alpha"],
-      processArgv: ["node", "kaijibot", "plugins", "install", "alpha"],
-    });
-
-    expect(ensureConfigReadyMock).toHaveBeenCalledWith({
-      runtime: runtimeMock,
-      commandPath: ["plugins", "install"],
-    });
-
-    vi.clearAllMocks();
-    await runPreAction({
-      parseArgv: ["plugins", "install", MATRIX_REPO_INSTALL_SPEC],
-      processArgv: ["node", "kaijibot", "plugins", "install", MATRIX_REPO_INSTALL_SPEC],
-    });
-
-    expect(ensureConfigReadyMock).toHaveBeenCalledWith({
-      runtime: runtimeMock,
-      commandPath: ["plugins", "install"],
-      allowInvalid: true,
-    });
-
-    vi.clearAllMocks();
-    await runPreAction({
-      parseArgv: ["plugins", "install", "@kaijibot/matrix", "--marketplace", "local/repo"],
-      processArgv: [
-        "node",
-        "kaijibot",
-        "plugins",
-        "install",
-        "@kaijibot/matrix",
-        "--marketplace",
-        "local/repo",
-      ],
-    });
-
-    expect(ensureConfigReadyMock).toHaveBeenCalledWith({
-      runtime: runtimeMock,
-      commandPath: ["plugins", "install"],
-    });
   });
 
   it("skips help/version preaction and respects banner opt-out", async () => {

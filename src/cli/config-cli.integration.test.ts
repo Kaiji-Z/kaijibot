@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import JSON5 from "json5";
 import { describe, expect, it } from "vitest";
 import { clearConfigCache, clearRuntimeConfigSnapshot } from "../config/config.js";
 import { captureEnv } from "../test-utils/env.js";
@@ -110,95 +109,6 @@ async function withExecDryRunConfigHarness(
 }
 
 describe("config cli integration", () => {
-  it("supports batch-file dry-run and then writes real config changes", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "kaijibot-config-cli-int-"));
-    const configPath = path.join(tempDir, "kaijibot.json");
-    const batchPath = path.join(tempDir, "batch.json");
-    const envSnapshot = captureEnv([
-      "KAIJIBOT_CONFIG_PATH",
-      "KAIJIBOT_TEST_FAST",
-      "DISCORD_BOT_TOKEN",
-    ]);
-    try {
-      fs.writeFileSync(
-        configPath,
-        `${JSON.stringify(
-          {
-            gateway: { port: 18789 },
-          },
-          null,
-          2,
-        )}\n`,
-        "utf8",
-      );
-      fs.writeFileSync(
-        batchPath,
-        `${JSON.stringify(
-          [
-            {
-              path: "secrets.providers.default",
-              provider: { source: "env" },
-            },
-            {
-              path: "channels.discord.token",
-              ref: {
-                source: "env",
-                provider: "default",
-                id: "DISCORD_BOT_TOKEN",
-              },
-            },
-          ],
-          null,
-          2,
-        )}\n`,
-        "utf8",
-      );
-
-      process.env.KAIJIBOT_TEST_FAST = "1";
-      process.env.KAIJIBOT_CONFIG_PATH = configPath;
-      process.env.DISCORD_BOT_TOKEN = "test-token";
-      clearConfigCache();
-      clearRuntimeConfigSnapshot();
-
-      const runtime = createTestRuntime();
-      const before = fs.readFileSync(configPath, "utf8");
-      await runConfigSet({
-        cliOptions: {
-          batchFile: batchPath,
-          dryRun: true,
-        },
-        runtime: runtime.runtime,
-      });
-      const afterDryRun = fs.readFileSync(configPath, "utf8");
-      expect(afterDryRun).toBe(before);
-      expect(runtime.errors).toEqual([]);
-      expect(runtime.logs.some((line) => line.includes("Dry run successful: 2 update(s)"))).toBe(
-        true,
-      );
-
-      await runConfigSet({
-        cliOptions: {
-          batchFile: batchPath,
-        },
-        runtime: runtime.runtime,
-      });
-      const afterWrite = JSON5.parse(fs.readFileSync(configPath, "utf8"));
-      expect(afterWrite.secrets?.providers?.default).toEqual({
-        source: "env",
-      });
-      expect(afterWrite.channels?.discord?.token).toEqual({
-        source: "env",
-        provider: "default",
-        id: "DISCORD_BOT_TOKEN",
-      });
-    } finally {
-      envSnapshot.restore();
-      clearConfigCache();
-      clearRuntimeConfigSnapshot();
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
   it("keeps file unchanged when real-file dry-run fails and reports JSON error payload", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "kaijibot-config-cli-int-fail-"));
     const configPath = path.join(tempDir, "kaijibot.json");

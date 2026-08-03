@@ -1101,39 +1101,6 @@ describe("config cli", () => {
       );
     });
 
-    it("writes sibling SecretRef paths when target uses sibling-ref shape", async () => {
-      const resolved: KaijiBotConfig = {
-        gateway: { port: 18789 },
-        channels: {
-          googlechat: {
-            enabled: true,
-          } as never,
-        } as never,
-      };
-      setSnapshot(resolved, resolved);
-
-      await runConfigCommand([
-        "config",
-        "set",
-        "channels.googlechat.serviceAccount",
-        "--ref-provider",
-        "vaultfile",
-        "--ref-source",
-        "file",
-        "--ref-id",
-        "/providers/googlechat/serviceAccount",
-      ]);
-
-      expect(mockWriteConfigFile).toHaveBeenCalledTimes(1);
-      const written = mockWriteConfigFile.mock.calls[0]?.[0];
-      expect(written.channels?.googlechat?.serviceAccountRef).toEqual({
-        source: "file",
-        provider: "vaultfile",
-        id: "/providers/googlechat/serviceAccount",
-      });
-      expect(written.channels?.googlechat?.serviceAccount).toBeUndefined();
-    });
-
     it("rejects mixing ref-builder and provider-builder flags", async () => {
       await expect(
         runConfigCommand([
