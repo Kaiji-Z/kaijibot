@@ -2113,7 +2113,13 @@ export type KaijiBotPluginModule =
   | KaijiBotPluginDefinition
   | ((api: KaijiBotPluginApi) => void | Promise<void>);
 
-export type PluginRegistrationMode = "full" | "setup-only" | "setup-runtime" | "cli-metadata";
+export type PluginRegistrationMode =
+  | "full"
+  | "setup-only"
+  | "setup-runtime"
+  | "cli-metadata"
+  | "tool-discovery"
+  | "discovery";
 
 export type PluginConfigMigration = (config: KaijiBotConfig) =>
   | {

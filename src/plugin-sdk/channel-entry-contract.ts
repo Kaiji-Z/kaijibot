@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createJiti } from "jiti";
 import { emptyChannelConfigSchema } from "../channels/plugins/config-schema.js";
 import type { ChannelConfigSchema, ChannelPlugin } from "../channels/plugins/types.plugin.js";
+import type { ChannelOutboundAdapter } from "../channels/plugins/types.adapters.js";
 import { openBoundaryFileSync } from "../infra/boundary-file-read.js";
 import type { PluginRuntime } from "../plugins/runtime/types.js";
 import {
@@ -36,12 +37,18 @@ export type BundledChannelSetupEntryFeatures = {
   legacySessionSurfaces?: boolean;
 };
 
+/** Test hook for swapping the source-module loader used by bundled entry imports. */
+export type BundledEntryModuleLoadOptions = {
+  createLoaderForTest?: typeof createJiti;
+};
+
 type DefineBundledChannelEntryOptions<TPlugin = ChannelPlugin> = {
   id: string;
   name: string;
   description: string;
   importMetaUrl: string;
   plugin: BundledEntryModuleRef;
+  outbound?: BundledEntryModuleRef;
   secrets?: BundledEntryModuleRef;
   configSchema?: ChannelEntryConfigSchema<TPlugin> | (() => ChannelEntryConfigSchema<TPlugin>);
   runtime?: BundledEntryModuleRef;
@@ -49,6 +56,7 @@ type DefineBundledChannelEntryOptions<TPlugin = ChannelPlugin> = {
   features?: BundledChannelEntryFeatures;
   registerCliMetadata?: (api: KaijiBotPluginApi) => void;
   registerFull?: (api: KaijiBotPluginApi) => void;
+  registerCapabilities?: (api: KaijiBotPluginApi) => void;
 };
 
 type DefineBundledChannelSetupEntryOptions = {
@@ -58,6 +66,7 @@ type DefineBundledChannelSetupEntryOptions = {
   runtime?: BundledEntryModuleRef;
   legacyStateMigrations?: BundledEntryModuleRef;
   legacySessionSurface?: BundledEntryModuleRef;
+  registerSetupRuntime?: (api: KaijiBotPluginApi) => void;
   features?: BundledChannelSetupEntryFeatures;
 };
 
@@ -88,19 +97,21 @@ export type BundledChannelEntryContract<TPlugin = ChannelPlugin> = {
   configSchema: ChannelEntryConfigSchema<TPlugin>;
   features?: BundledChannelEntryFeatures;
   register: (api: KaijiBotPluginApi) => void;
-  loadChannelPlugin: () => TPlugin;
-  loadChannelSecrets?: () => ChannelPlugin["secrets"] | undefined;
-  loadChannelAccountInspector?: () => NonNullable<ChannelPlugin["config"]["inspectAccount"]>;
+  loadChannelPlugin: (options?: BundledEntryModuleLoadOptions) => TPlugin;
+  loadChannelOutbound?: (options?: BundledEntryModuleLoadOptions) => ChannelOutboundAdapter | undefined;
+  loadChannelSecrets?: (options?: BundledEntryModuleLoadOptions) => ChannelPlugin["secrets"] | undefined;
+  loadChannelAccountInspector?: (options?: BundledEntryModuleLoadOptions) => NonNullable<ChannelPlugin["config"]["inspectAccount"]>;
   setChannelRuntime?: (runtime: PluginRuntime) => void;
 };
 
 export type BundledChannelSetupEntryContract<TPlugin = ChannelPlugin> = {
   kind: "bundled-channel-setup-entry";
-  loadSetupPlugin: () => TPlugin;
-  loadSetupSecrets?: () => ChannelPlugin["secrets"] | undefined;
-  loadLegacyStateMigrationDetector?: () => BundledChannelLegacyStateMigrationDetector;
-  loadLegacySessionSurface?: () => BundledChannelLegacySessionSurface;
+  loadSetupPlugin: (options?: BundledEntryModuleLoadOptions) => TPlugin;
+  loadSetupSecrets?: (options?: BundledEntryModuleLoadOptions) => ChannelPlugin["secrets"] | undefined;
+  loadLegacyStateMigrationDetector?: (options?: BundledEntryModuleLoadOptions) => BundledChannelLegacyStateMigrationDetector;
+  loadLegacySessionSurface?: (options?: BundledEntryModuleLoadOptions) => BundledChannelLegacySessionSurface;
   setChannelRuntime?: (runtime: PluginRuntime) => void;
+  registerSetupRuntime?: (api: KaijiBotPluginApi) => void;
   features?: BundledChannelSetupEntryFeatures;
 };
 
@@ -299,7 +310,7 @@ function resolveBundledEntryModulePath(importMetaUrl: string, specifier: string)
   );
 }
 
-function getJiti(modulePath: string) {
+function getJiti(modulePath: string, loaderFactory?: typeof createJiti) {
   const { tryNative, aliasMap, cacheKey } = resolvePluginLoaderJitiConfig({
     modulePath,
     argv1: process.argv[1],
@@ -310,7 +321,7 @@ function getJiti(modulePath: string) {
   if (cached) {
     return cached;
   }
-  const loader = createJiti(import.meta.url, {
+  const loader = (loaderFactory ?? createJiti)(import.meta.url, {
     ...buildPluginLoaderJitiOptions(aliasMap),
     tryNative,
   });
@@ -318,7 +329,11 @@ function getJiti(modulePath: string) {
   return loader;
 }
 
-function loadBundledEntryModuleSync(importMetaUrl: string, specifier: string): unknown {
+function loadBundledEntryModuleSync(
+  importMetaUrl: string,
+  specifier: string,
+  options?: BundledEntryModuleLoadOptions,
+): unknown {
   const modulePath = resolveBundledEntryModulePath(importMetaUrl, specifier);
   const cached = loadedModuleExports.get(modulePath);
   if (cached !== undefined) {
@@ -333,10 +348,10 @@ function loadBundledEntryModuleSync(importMetaUrl: string, specifier: string): u
     try {
       loaded = nodeRequire(modulePath);
     } catch {
-      loaded = getJiti(modulePath)(modulePath);
+      loaded = getJiti(modulePath, options?.createLoaderForTest)(modulePath);
     }
   } else {
-    loaded = getJiti(modulePath)(modulePath);
+    loaded = getJiti(modulePath, options?.createLoaderForTest)(modulePath);
   }
   loadedModuleExports.set(modulePath, loaded);
   return loaded;
@@ -345,8 +360,9 @@ function loadBundledEntryModuleSync(importMetaUrl: string, specifier: string): u
 export function loadBundledEntryExportSync<T>(
   importMetaUrl: string,
   reference: BundledEntryModuleRef,
+  options?: BundledEntryModuleLoadOptions,
 ): T {
-  const loaded = loadBundledEntryModuleSync(importMetaUrl, reference.specifier);
+  const loaded = loadBundledEntryModuleSync(importMetaUrl, reference.specifier, options);
   const resolved =
     loaded && typeof loaded === "object" && "default" in (loaded as Record<string, unknown>)
       ? (loaded as { default: unknown }).default
@@ -369,6 +385,7 @@ export function defineBundledChannelEntry<TPlugin = ChannelPlugin>({
   description,
   importMetaUrl,
   plugin,
+  outbound,
   secrets,
   configSchema,
   runtime,
@@ -376,20 +393,28 @@ export function defineBundledChannelEntry<TPlugin = ChannelPlugin>({
   features,
   registerCliMetadata,
   registerFull,
+  registerCapabilities,
 }: DefineBundledChannelEntryOptions<TPlugin>): BundledChannelEntryContract<TPlugin> {
   const resolvedConfigSchema: ChannelEntryConfigSchema<TPlugin> =
     typeof configSchema === "function"
       ? configSchema()
       : ((configSchema ?? emptyChannelConfigSchema()) as ChannelEntryConfigSchema<TPlugin>);
-  const loadChannelPlugin = () => loadBundledEntryExportSync<TPlugin>(importMetaUrl, plugin);
+  const loadChannelPlugin = (options?: BundledEntryModuleLoadOptions) =>
+    loadBundledEntryExportSync<TPlugin>(importMetaUrl, plugin, options);
+  const loadChannelOutbound = outbound
+    ? (options?: BundledEntryModuleLoadOptions) =>
+        loadBundledEntryExportSync<ChannelOutboundAdapter | undefined>(importMetaUrl, outbound, options)
+    : undefined;
   const loadChannelSecrets = secrets
-    ? () => loadBundledEntryExportSync<ChannelPlugin["secrets"] | undefined>(importMetaUrl, secrets)
+    ? (options?: BundledEntryModuleLoadOptions) =>
+        loadBundledEntryExportSync<ChannelPlugin["secrets"] | undefined>(importMetaUrl, secrets, options)
     : undefined;
   const loadChannelAccountInspector = accountInspect
-    ? () =>
+    ? (options?: BundledEntryModuleLoadOptions) =>
         loadBundledEntryExportSync<NonNullable<ChannelPlugin["config"]["inspectAccount"]>>(
           importMetaUrl,
           accountInspect,
+          options,
         )
     : undefined;
   const setChannelRuntime = runtime
@@ -416,15 +441,26 @@ export function defineBundledChannelEntry<TPlugin = ChannelPlugin>({
         registerCliMetadata?.(api);
         return;
       }
+      if (api.registrationMode === "tool-discovery") {
+        registerCapabilities?.(api);
+        return;
+      }
       setChannelRuntime?.(api.runtime);
       api.registerChannel({ plugin: loadChannelPlugin() as ChannelPlugin });
+      if (api.registrationMode === "discovery") {
+        registerCliMetadata?.(api);
+        registerCapabilities?.(api);
+        return;
+      }
       if (api.registrationMode !== "full") {
         return;
       }
       registerCliMetadata?.(api);
       registerFull?.(api);
+      registerCapabilities?.(api);
     },
     loadChannelPlugin,
+    ...(loadChannelOutbound ? { loadChannelOutbound } : {}),
     ...(loadChannelSecrets ? { loadChannelSecrets } : {}),
     ...(loadChannelAccountInspector ? { loadChannelAccountInspector } : {}),
     ...(setChannelRuntime ? { setChannelRuntime } : {}),
@@ -438,6 +474,7 @@ export function defineBundledChannelSetupEntry<TPlugin = ChannelPlugin>({
   runtime,
   legacyStateMigrations,
   legacySessionSurface,
+  registerSetupRuntime,
   features,
 }: DefineBundledChannelSetupEntryOptions): BundledChannelSetupEntryContract<TPlugin> {
   const setChannelRuntime = runtime
@@ -450,34 +487,39 @@ export function defineBundledChannelSetupEntry<TPlugin = ChannelPlugin>({
       }
     : undefined;
   const loadLegacyStateMigrationDetector = legacyStateMigrations
-    ? () =>
+    ? (options?: BundledEntryModuleLoadOptions) =>
         loadBundledEntryExportSync<BundledChannelLegacyStateMigrationDetector>(
           importMetaUrl,
           legacyStateMigrations,
+          options,
         )
     : undefined;
   const loadLegacySessionSurface = legacySessionSurface
-    ? () =>
+    ? (options?: BundledEntryModuleLoadOptions) =>
         loadBundledEntryExportSync<BundledChannelLegacySessionSurface>(
           importMetaUrl,
           legacySessionSurface,
+          options,
         )
     : undefined;
   return {
     kind: "bundled-channel-setup-entry",
-    loadSetupPlugin: () => loadBundledEntryExportSync<TPlugin>(importMetaUrl, plugin),
+    loadSetupPlugin: (options?: BundledEntryModuleLoadOptions) =>
+      loadBundledEntryExportSync<TPlugin>(importMetaUrl, plugin, options),
     ...(secrets
       ? {
-          loadSetupSecrets: () =>
+          loadSetupSecrets: (options?: BundledEntryModuleLoadOptions) =>
             loadBundledEntryExportSync<ChannelPlugin["secrets"] | undefined>(
               importMetaUrl,
               secrets,
+              options,
             ),
         }
       : {}),
     ...(loadLegacyStateMigrationDetector ? { loadLegacyStateMigrationDetector } : {}),
     ...(loadLegacySessionSurface ? { loadLegacySessionSurface } : {}),
     ...(setChannelRuntime ? { setChannelRuntime } : {}),
+    ...(registerSetupRuntime ? { registerSetupRuntime } : {}),
     ...(features ? { features } : {}),
   };
 }
