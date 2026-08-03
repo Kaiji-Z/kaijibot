@@ -268,7 +268,9 @@
   }
 
   .two-col-layout__detail {
-    overflow: visible;
+    overflow-y: auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
     min-width: 0;
   }
 

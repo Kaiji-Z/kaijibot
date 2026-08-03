@@ -3,6 +3,7 @@ import { t } from "../../i18n/index.ts";
 import { formatRelativeTimestamp } from "../format.ts";
 import { icons } from "../icons.ts";
 import type { GatewaySessionRow } from "../types.ts";
+import { renderTwoColumnLayout } from "./cognitive-shared.ts";
 
 // ── Types ─────────────────────────────────────────────
 
@@ -205,66 +206,57 @@ export function renderHistory(props: HistoryProps) {
 
   const filteredSessions = filterSessions(props.sessions, props.searchQuery);
 
-  return html`
-    <section class="stack">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3>${t("tabs.history")}</h3>
-        <button class="btn" @click=${props.onRefresh}>
+  const sidebar = html`
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="row" style="justify-content:space-between;">
+        <h3 style="font-size:16px;font-weight:600;margin:0;">${t("tabs.history")}</h3>
+        <button class="btn btn--sm" @click=${props.onRefresh}>
           ${icons.refresh} ${t("common.refresh")}
         </button>
       </div>
-
-      <div class="two-col-layout ${props.selectedKey ? "two-col-layout--detail" : ""}">
-        <div class="two-col-layout__sidebar">
-          <div class="stack" style="gap:var(--space-sm); overflow-y:auto; max-height:75vh;">
-            <input
-              type="text"
-              class="input"
-              placeholder="${t("common.search")}…"
-              .value=${props.searchQuery}
-              @input=${(e: Event) => {
-                const target = e.target as HTMLInputElement;
-                props.onSearch(target.value);
-              }}
-            />
-
-            ${filteredSessions.length === 0
-              ? html`<div class="callout">
-                  ${props.searchQuery ? "No matching sessions." : "No sessions found."}
-                </div>`
-              : filteredSessions.map((s) =>
-                  renderSessionCard(
-                    s,
-                    s.key === props.selectedKey,
-                    () => props.onSelectSession(s.key),
-                    props.onDeleteSession,
-                  ),
-                )}
-          </div>
-        </div>
-
-        <div class="two-col-layout__detail">
-          ${props.selectedKey
-            ? html`<div class="two-col-back-bar" @click=${() => props.onSelectSession(null)}>
-                <span class="two-col-back-bar__arrow" aria-hidden="true"></span
-                ><span class="two-col-back-bar__context"
-                  >${formatSessionLabel(props.selectedKey)}</span
-                >
-              </div>`
-            : nothing}
-          <div class="card" style="overflow-y:auto; max-height:75vh; padding:var(--space-md);">
-            ${props.selectedKey == null
-              ? html`<div class="callout">Select a session to view its transcript.</div>`
-              : props.messages.length === 0
-                ? html`<div class="callout">No messages in this session.</div>`
-                : html`<div class="stack" style="gap:var(--space-sm);">
-                    ${props.messages.map((msg) => renderMessage(msg))}
-                  </div>`}
-          </div>
-        </div>
-      </div>
-    </section>
+      <input
+        type="text"
+        class="input"
+        placeholder="${t("common.search")}…"
+        .value=${props.searchQuery}
+        @input=${(e: Event) => {
+          const target = e.target as HTMLInputElement;
+          props.onSearch(target.value);
+        }}
+      />
+      ${filteredSessions.length === 0
+        ? html`<div class="callout">
+            ${props.searchQuery ? "No matching sessions." : "No sessions found."}
+          </div>`
+        : html`<div style="display:flex;flex-direction:column;gap:6px;">
+            ${filteredSessions.map((s) =>
+              renderSessionCard(
+                s,
+                s.key === props.selectedKey,
+                () => props.onSelectSession(s.key),
+                props.onDeleteSession,
+              ),
+            )}
+          </div>`}
+    </div>
   `;
+
+  const detail =
+    props.selectedKey == null
+      ? html`<div class="callout">Select a session to view its transcript.</div>`
+      : props.messages.length === 0
+        ? html`<div class="callout">No messages in this session.</div>`
+        : html`<div class="stack" style="gap:var(--space-sm);">
+            ${props.messages.map((msg) => renderMessage(msg))}
+          </div>`;
+
+  return renderTwoColumnLayout(
+    sidebar,
+    detail,
+    props.selectedKey != null,
+    () => props.onSelectSession(null),
+    props.selectedKey ? formatSessionLabel(props.selectedKey) : undefined,
+  );
 }
 
 // ── Filter helper ─────────────────────────────────────
