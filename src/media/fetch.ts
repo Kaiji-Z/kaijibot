@@ -44,6 +44,8 @@ type FetchMediaOptions = {
   lookupFn?: LookupFn;
   dispatcherAttempts?: FetchDispatcherAttempt[];
   shouldRetryFetchError?: (error: unknown) => boolean;
+  /** When true, trust explicit proxy DNS overrides instead of resolving first. */
+  trustExplicitProxyDns?: boolean;
 };
 
 function stripQuotes(value: string): string {

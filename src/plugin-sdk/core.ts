@@ -22,10 +22,16 @@ import type { ChannelConfigSchema, ChannelPlugin } from "../channels/plugins/typ
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ReplyToMode } from "../config/types.base.js";
 import { buildOutboundBaseSessionKey } from "../infra/outbound/base-session-key.js";
+import { normalizeOutboundThreadId } from "../infra/outbound/thread-id.js";
 import type { OutboundDeliveryResult } from "../infra/outbound/deliver.js";
 import type { PluginRuntime } from "../plugins/runtime/types.js";
 import type { KaijiBotPluginApi } from "../plugins/types.js";
-import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
+import { parseThreadSessionSuffix } from "../sessions/session-key-utils.js";
+import { resolveThreadSessionKeys } from "../routing/session-key.js";
+import {
+  normalizeLowercaseStringOrEmpty,
+  normalizeOptionalLowercaseString,
+} from "../shared/string-coerce.js";
 
 export type {
   AnyAgentTool,
@@ -281,6 +287,96 @@ export function buildChannelOutboundSessionRoute(params: {
     from: params.from,
     to: params.to,
     ...(params.threadId !== undefined ? { threadId: params.threadId } : {}),
+  };
+}
+
+export type ThreadAwareOutboundSessionRouteThreadSource =
+  | "replyToId"
+  | "threadId"
+  | "currentSession";
+
+export type ThreadAwareOutboundSessionRouteRecoveryContext = {
+  route: ChannelOutboundSessionRoute;
+  currentBaseSessionKey: string;
+  currentThreadId: string;
+};
+
+export function recoverCurrentThreadSessionId(params: {
+  route: ChannelOutboundSessionRoute;
+  currentSessionKey?: string | null;
+  canRecover?: (context: ThreadAwareOutboundSessionRouteRecoveryContext) => boolean;
+}): string | undefined {
+  const current = parseThreadSessionSuffix(params.currentSessionKey);
+  if (!current.baseSessionKey || !current.threadId) {
+    return undefined;
+  }
+  if (
+    normalizeOptionalLowercaseString(current.baseSessionKey) !==
+    normalizeOptionalLowercaseString(params.route.baseSessionKey)
+  ) {
+    return undefined;
+  }
+  const context = {
+    route: params.route,
+    currentBaseSessionKey: current.baseSessionKey,
+    currentThreadId: current.threadId,
+  };
+  if (params.canRecover && !params.canRecover(context)) {
+    return undefined;
+  }
+  return current.threadId;
+}
+
+function resolveThreadAwareOutboundCandidate(
+  threadId?: string | number | null,
+): { routeThreadId: string | number; sessionThreadId: string } | undefined {
+  const sessionThreadId = normalizeOutboundThreadId(threadId);
+  if (sessionThreadId === undefined) {
+    return undefined;
+  }
+  return {
+    routeThreadId: typeof threadId === "number" ? threadId : sessionThreadId,
+    sessionThreadId,
+  };
+}
+
+export function buildThreadAwareOutboundSessionRoute(params: {
+  route: ChannelOutboundSessionRoute;
+  replyToId?: string | number | null;
+  threadId?: string | number | null;
+  currentSessionKey?: string | null;
+  precedence?: readonly ThreadAwareOutboundSessionRouteThreadSource[];
+  useSuffix?: boolean;
+  parentSessionKey?: string;
+  normalizeThreadId?: (threadId: string) => string;
+  canRecoverCurrentThread?: (context: ThreadAwareOutboundSessionRouteRecoveryContext) => boolean;
+}): ChannelOutboundSessionRoute {
+  const recoveredThreadId = recoverCurrentThreadSessionId({
+    route: params.route,
+    currentSessionKey: params.currentSessionKey,
+    canRecover: params.canRecoverCurrentThread,
+  });
+  const candidates: Record<
+    ThreadAwareOutboundSessionRouteThreadSource,
+    { routeThreadId: string | number; sessionThreadId: string } | undefined
+  > = {
+    replyToId: resolveThreadAwareOutboundCandidate(params.replyToId),
+    threadId: resolveThreadAwareOutboundCandidate(params.threadId),
+    currentSession: resolveThreadAwareOutboundCandidate(recoveredThreadId),
+  };
+  const precedence = params.precedence ?? ["replyToId", "threadId", "currentSession"];
+  const candidate = precedence.map((source) => candidates[source]).find(Boolean);
+  const threadKeys = resolveThreadSessionKeys({
+    baseSessionKey: params.route.baseSessionKey,
+    threadId: candidate?.sessionThreadId,
+    parentSessionKey: candidate ? params.parentSessionKey : undefined,
+    useSuffix: params.useSuffix,
+    normalizeThreadId: params.normalizeThreadId,
+  });
+  return {
+    ...params.route,
+    sessionKey: threadKeys.sessionKey,
+    ...(candidate !== undefined ? { threadId: candidate.routeThreadId } : {}),
   };
 }
 

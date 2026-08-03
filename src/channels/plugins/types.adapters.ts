@@ -261,6 +261,25 @@ export type ChannelOutboundAdapter = {
   sendText?: (ctx: ChannelOutboundContext) => Promise<OutboundDeliveryResult>;
   sendMedia?: (ctx: ChannelOutboundContext) => Promise<OutboundDeliveryResult>;
   sendPoll?: (ctx: ChannelPollContext) => Promise<ChannelPollResult>;
+  presentationCapabilities?: {
+    supported: boolean;
+    buttons: boolean;
+    selects: boolean;
+    context: boolean;
+    divider: boolean;
+  };
+  deliveryCapabilities?: { pin: boolean };
+  renderPresentation?: (params: {
+    payload: ReplyPayload;
+    presentation: import("../../interactive/payload.js").MessagePresentation;
+  }) => ReplyPayload;
+  pinDeliveredMessage?: (params: {
+    cfg: KaijiBotConfig;
+    target: { to: string; accountId?: string | null };
+    messageId: string | number;
+    pin: { notify?: boolean; enabled?: boolean };
+  }) => Promise<void>;
+  preferFinalAssistantVisibleText?: boolean;
 };
 
 export type ChannelStatusAdapter<ResolvedAccount, Probe = unknown, Audit = unknown> = {
@@ -476,6 +495,12 @@ export type ChannelHeartbeatAdapter = {
     recipients: string[];
     source: string;
   };
+  sendTyping?: (params: {
+    cfg: KaijiBotConfig;
+    to: string;
+    accountId?: string | null;
+    threadId?: string | number | null;
+  }) => Promise<void>;
 };
 
 type ChannelDirectorySelfParams = {
@@ -950,6 +975,15 @@ export type ChannelConversationBindingSupport = {
     | Promise<{
         stop: () => void | Promise<void>;
       }>;
+  buildBoundReplyPayload?: (params: {
+    operation: "acp-spawn" | "subagent-spawn" | "reset";
+    conversation: {
+      channel?: string;
+      accountId?: string | null;
+      conversationId: string;
+      parentConversationId?: string;
+    };
+  }) => ReplyPayload | null;
 };
 
 export type ChannelSecurityAdapter<ResolvedAccount = unknown> = {

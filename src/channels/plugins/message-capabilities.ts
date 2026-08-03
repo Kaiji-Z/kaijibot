@@ -4,6 +4,8 @@ export const CHANNEL_MESSAGE_CAPABILITIES = [
   "cards",
   "components",
   "blocks",
+  "delivery-pin",
+  "presentation",
 ] as const;
 
 export type ChannelMessageCapability = (typeof CHANNEL_MESSAGE_CAPABILITIES)[number];

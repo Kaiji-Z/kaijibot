@@ -37,6 +37,8 @@ export type BlockStreamingChunkConfig = {
 export type ChannelStreamingPreviewConfig = {
   /** Chunking thresholds for preview-draft updates while streaming. */
   chunk?: BlockStreamingChunkConfig;
+  /** Whether to emit tool-progress preview messages during streaming. */
+  toolProgress?: boolean;
 };
 
 export type ChannelStreamingBlockConfig = {

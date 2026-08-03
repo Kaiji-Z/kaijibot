@@ -194,6 +194,7 @@ export type ChannelAccountSnapshot = {
   busy?: boolean;
   activeRuns?: number;
   lastRunActivityAt?: number | null;
+  lastTransportActivityAt?: number | null;
   mode?: string;
   dmPolicy?: string;
   allowFrom?: string[];
@@ -382,6 +383,10 @@ export type ChannelThreadingAdapter = {
     accountId?: string | null;
     context: ChannelThreadingContext;
   }) => ChannelFocusedBindingContext | null;
+  resolveCurrentChannelId?: (params: {
+    to: string;
+    threadId?: string | number | null;
+  }) => string;
 };
 
 export type ChannelThreadingContext = {
@@ -552,6 +557,7 @@ export type ChannelMessagingAdapter = {
     replyToId?: string | null;
     threadId?: string | number | null;
   }) => ChannelOutboundSessionRoute | Promise<ChannelOutboundSessionRoute | null> | null;
+  preserveHeartbeatThreadIdForGroupRoute?: boolean;
 };
 
 export type ChannelAgentPromptAdapter = {

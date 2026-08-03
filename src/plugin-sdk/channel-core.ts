@@ -6,6 +6,8 @@ export type {
   PluginCommandContext,
   PluginRuntime,
   ChannelOutboundSessionRouteParams,
+  ThreadAwareOutboundSessionRouteRecoveryContext,
+  ThreadAwareOutboundSessionRouteThreadSource,
 } from "./core.js";
 
 import { createChannelPluginBase as createChannelPluginBaseFromCore } from "./core.js";
@@ -16,11 +18,13 @@ export const createChannelPluginBase: typeof createChannelPluginBaseFromCore = (
 export {
   buildChannelConfigSchema,
   buildChannelOutboundSessionRoute,
+  buildThreadAwareOutboundSessionRoute,
   clearAccountEntryFields,
   createChatChannelPlugin,
   defineChannelPluginEntry,
   defineSetupPluginEntry,
   parseOptionalDelimitedEntries,
+  recoverCurrentThreadSessionId,
   stripChannelTargetPrefix,
   stripTargetKindPrefix,
   tryReadSecretFileSync,

@@ -55,6 +55,8 @@ export type GetReplyOptions = {
   bootstrapContextMode?: "full" | "lightweight";
   /** If true, suppress tool error warning payloads for this run. */
   suppressToolErrorWarnings?: boolean;
+  /** If true, suppress the default tool-progress preview messages for this run. */
+  suppressDefaultToolProgressMessages?: boolean;
   onPartialReply?: (payload: ReplyPayload) => Promise<void> | void;
   onReasoningStream?: (payload: ReplyPayload) => Promise<void> | void;
   /** Called when a thinking/reasoning block ends. */
@@ -153,6 +155,8 @@ export type ReplyPayload = {
   mediaUrl?: string;
   mediaUrls?: string[];
   interactive?: InteractiveReply;
+  presentation?: import("../interactive/payload.js").MessagePresentation;
+  delivery?: import("../interactive/payload.js").ReplyPayloadDelivery;
   btw?: {
     question: string;
   };

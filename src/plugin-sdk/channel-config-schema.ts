@@ -16,3 +16,4 @@ export {
   requireOpenAllowFrom,
 } from "../config/zod-schema.core.js";
 export { ToolPolicySchema } from "../config/zod-schema.agent-runtime.js";
+export { TelegramConfigSchema } from "../config/zod-schema.telegram.js";

@@ -12,6 +12,7 @@ export {
   DEFAULT_ACCOUNT_ID,
   DEFAULT_MAIN_KEY,
   buildGroupHistoryKey,
+  isAcpSessionKey,
   isCronSessionKey,
   isSubagentSessionKey,
   normalizeAccountId,

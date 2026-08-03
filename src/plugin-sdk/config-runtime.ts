@@ -44,11 +44,29 @@ export { resolveAgentMaxConcurrent } from "../config/agent-limits.js";
 export { loadCronStore, resolveCronStorePath, saveCronStore } from "../cron/store.js";
 export { applyModelOverrideToSessionEntry } from "../sessions/model-overrides.js";
 export { coerceSecretRef } from "../config/types.secrets.js";
+export { requireRuntimeConfig } from "./plugin-config-runtime.js";
 export {
   resolveConfiguredSecretInputString,
   resolveConfiguredSecretInputWithFallback,
   resolveRequiredConfiguredSecretRefInputString,
 } from "../gateway/resolve-configured-secret-input-string.js";
+export type {
+  AutoTopicLabelConfig,
+  TelegramAccountConfig,
+  TelegramActionConfig,
+  TelegramCapabilitiesConfig,
+  TelegramConfig,
+  TelegramCustomCommand,
+  TelegramDirectConfig,
+  TelegramExecApprovalConfig,
+  TelegramExecApprovalTarget,
+  TelegramGroupConfig,
+  TelegramInlineButtonsScope,
+  TelegramNetworkConfig,
+  TelegramStreamingMode,
+  TelegramThreadBindingsConfig,
+  TelegramTopicConfig,
+} from "../config/types.telegram.js";
 export type {
   BlockStreamingCoalesceConfig,
   DmConfig,

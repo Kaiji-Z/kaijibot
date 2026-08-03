@@ -5,6 +5,7 @@ import {
   normalizeResolvedSecretInputString,
   normalizeSecretInputString,
 } from "../config/types.secrets.js";
+import { resolveSecretInputString } from "../secrets/resolve-secret-input-string.js";
 import { normalizeSecretInput } from "../utils/normalize-secret-input.js";
 import { buildSecretInputSchema } from "./secret-input-schema.js";
 
@@ -16,6 +17,7 @@ export {
   normalizeResolvedSecretInputString,
   normalizeSecretInput,
   normalizeSecretInputString,
+  resolveSecretInputString,
 };
 
 /** Optional version of the shared secret-input schema. */

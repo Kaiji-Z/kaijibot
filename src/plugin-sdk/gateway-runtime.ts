@@ -1,6 +1,10 @@
 // Public gateway/client helpers for plugins that talk to the host gateway surface.
 
 export * from "../gateway/channel-status-patches.js";
+export {
+  createTransportActivityStatusPatch,
+  type TransportActivityChannelStatusPatch,
+} from "./channel-status-patches-runtime.js";
 export { GatewayClient } from "../gateway/client.js";
 export {
   createOperatorApprovalsGatewayClient,
