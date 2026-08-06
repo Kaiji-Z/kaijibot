@@ -1526,7 +1526,7 @@ export async function startGatewayServer(
               savePersona: async (agentId, userId, persona) => {
                 await cognitiveStore.save(agentId, userId, persona);
                 const domainKeys = Object.keys(persona.domains);
-                personaChangeSource.checkPersonaUpdate(domainKeys.length, domainKeys);
+                personaChangeSource.checkPersonaUpdate(userId, domainKeys);
               },
               async onInsightReady(agentId: string, userId: string, candidate) {
                 const record: import("../cognitive/types.js").InsightRecord = {
