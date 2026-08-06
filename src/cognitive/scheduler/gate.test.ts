@@ -175,11 +175,11 @@ describe("computeGradedGate", () => {
     expect(Array.isArray(result.reasons)).toBe(true);
   });
 
-  it("pAct equals pNeed * pAccept exactly", () => {
+  it("pAct uses geometric mean sqrt(pNeed*pAccept) to correct for positive correlation", () => {
     const ctx = makeGateContext();
     const result = computeGradedGate(ctx);
 
-    expect(result.pAct).toBeCloseTo(result.pNeed * result.pAccept, 10);
+    expect(result.pAct).toBeCloseTo(Math.sqrt(result.pNeed * result.pAccept), 10);
   });
 
   it("p_need increases with time since last proactive (recovery)", () => {
@@ -991,6 +991,20 @@ describe("computeTimeFactor", () => {
 
     // Longer silence since last proactive → compensatory signal grows → higher factor
     expect(factorLong).toBeGreaterThan(factorRecent);
+  });
+
+  it("silence breaker: high no-response count with extreme silence retains re-engagement capability", () => {
+    const now = Date.now();
+
+    const persona = makeTimePersona({
+      lastActiveAt: now - 60 * 24 * HR,
+      lastProactiveAt: now - 60 * 24 * HR,
+      optimalFrequencyHours: 4,
+      consecutiveNoResponses: 8,
+    });
+
+    const factor = computeTimeFactor(persona, baseConfig, now);
+    expect(factor).toBeGreaterThanOrEqual(0.15);
   });
 
   it("long-silence correction prevents zero for dormant users", () => {

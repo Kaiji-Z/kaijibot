@@ -145,7 +145,11 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
   let pAccept = computePAccept(persona);
   const calibrationSlope = computeCalibrationSlope(persona.calibrationHistory);
   pAccept = applyCalibrationCorrection(pAccept, calibrationSlope);
-  const pAct = pNeed * pAccept;
+  // Geometric mean instead of raw product: pNeed and pAccept are positively
+  // correlated (deep users have both high), so the raw product systematically
+  // underestimates the joint probability. sqrt(pNeed*pAccept) lies between
+  // the product and min(pNeed,pAccept), correcting the underestimation.
+  const pAct = Math.sqrt(pNeed * pAccept);
 
   // Cost-sensitive threshold: τ = C_FA / (C_FN + C_FA)
   const cfn = config.costFalseNegative ?? DEFAULT_C_FN;
@@ -280,12 +284,17 @@ export function computeTimeFactor(
     persona.feedbackProfile.lastProactiveAt > 0
       ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
       : 0;
+  // Silence breaker: trigger earlier (24h vs 48h) and allow stronger compensation
+  // (0.35 vs 0.25). Prevents the silence spiral where sparse feedback → posterior
+  // collapse → permanent silence. The system retains re-engagement capability
+  // even after long no-response streaks.
   const COMPENSATORY_RATE = 0.08;
-  const COMPENSATORY_FLOOR_HOURS = 48;
+  const COMPENSATORY_FLOOR_HOURS = 24;
+  const COMPENSATORY_CAP = 0.35;
   const compensatorySignal =
     silenceHours > COMPENSATORY_FLOOR_HOURS
       ? Math.min(
-          0.25,
+          COMPENSATORY_CAP,
           COMPENSATORY_RATE *
             Math.log2(1 + (silenceHours - COMPENSATORY_FLOOR_HOURS) / COMPENSATORY_FLOOR_HOURS),
         )

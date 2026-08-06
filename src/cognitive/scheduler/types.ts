@@ -21,7 +21,7 @@ export interface GradedGateDecision {
   pNeed: number;
   /** Probability the user will accept / respond positively */
   pAccept: number;
-  /** Combined action probability: pNeed * pAccept */
+  /** Combined action probability: sqrt(pNeed * pAccept) — geometric mean accounting for correlation */
   pAct: number;
   /** Final decision: true if pAct > cost-adjusted threshold and no hard vetoes */
   decision: boolean;
@@ -60,7 +60,7 @@ export type SchedulerConfig = {
   activeHoursStart?: string; // "09:00"
   activeHoursEnd?: string; // "22:00"
   timezone?: string;
-  /** Cost of false negative (missed opportunity). Default 3.0 */
+  /** Cost of false negative (missed opportunity). Default 5.0 */
   costFalseNegative?: number;
   /** Cost of false alarm (unnecessary interruption). Default 1.0 */
   costFalseAlarm?: number;

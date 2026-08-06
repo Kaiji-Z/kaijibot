@@ -70,4 +70,11 @@ export type CognitiveConfig = {
     /** Enable correction extraction and injection (default: true). When false, no post-session extraction in session-memory hook, no agent self-report tool, and no system prompt injection of past corrections. */
     enabled?: boolean;
   };
+  /** Continuity handshake — when the user initiates after a gap, the agent opens by acknowledging prior context (recent focus, last delivered insight) before answering. Pull-side, zero interruption cost. */
+  handshake?: {
+    /** Enable continuity handshake (default: true). */
+    enabled?: boolean;
+    /** Minimum hours since last interaction before handshake is triggered (default: 6). Below this gap, the agent answers directly without the opening acknowledgment. */
+    minGapHours?: number;
+  };
 };

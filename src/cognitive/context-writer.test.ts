@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildCognitiveModePrompt } from "./context-writer.js";
+import { createDefaultPersona } from "./persona/store.js";
 import type { CorrectionRecord } from "./correction/types.js";
+import type { InsightRecord, PersonaTree } from "./types.js";
 
 describe("buildCognitiveModePrompt", () => {
   it("includes Skill Evolution hint when evolutionEnabled is true", () => {
@@ -114,5 +116,106 @@ describe("buildCognitiveModePrompt", () => {
     expect(modeIdx).toBeGreaterThan(-1);
     expect(evolutionIdx).toBeLessThan(modeIdx);
     expect(correctionsIdx).toBeLessThan(modeIdx);
+  });
+});
+
+describe("Continuity Handshake", () => {
+  const HR = 3600_000;
+
+  function makePersonaWithGap(hoursAgo: number): PersonaTree {
+    const persona = createDefaultPersona();
+    persona.lifecycle.lastActiveAt = Date.now() - hoursAgo * HR;
+    persona.identity.displayName = "小明";
+    persona.recentFocus = ["Rust 异步", "飞书机器人"];
+    return persona;
+  }
+
+  it("injects handshake section when gap >= default minGapHours (6)", () => {
+    const persona = makePersonaWithGap(8);
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+    });
+    expect(prompt).toContain("## Continuity Handshake");
+    expect(prompt).toContain("小明");
+    expect(prompt).toContain("Rust 异步");
+  });
+
+  it("omits handshake when gap < minGapHours", () => {
+    const persona = makePersonaWithGap(2);
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+    });
+    expect(prompt).not.toContain("## Continuity Handshake");
+  });
+
+  it("omits handshake when handshakeConfig.enabled is false", () => {
+    const persona = makePersonaWithGap(48);
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+      handshakeConfig: { enabled: false },
+    });
+    expect(prompt).not.toContain("## Continuity Handshake");
+  });
+
+  it("respects custom minGapHours", () => {
+    const persona = makePersonaWithGap(3);
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+      handshakeConfig: { minGapHours: 2 },
+    });
+    expect(prompt).toContain("## Continuity Handshake");
+  });
+
+  it("includes last delivered insight as a cue when recentInsights provided", () => {
+    const persona = makePersonaWithGap(12);
+    const insights: InsightRecord[] = [
+      {
+        id: "insight-1",
+        generatedAt: Date.now() - 2 * 24 * HR,
+        triggerSource: "scheduled",
+        targetDomains: ["AI"],
+        sourceDomains: [],
+        content: "你在 Rust 异步和飞书机器人之间找到了有趣的连接",
+        rationale: "cross-domain link",
+        sources: [],
+      },
+    ];
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+      recentInsights: insights,
+    });
+    expect(prompt).toContain("上次推送的洞察");
+    expect(prompt).toContain("Rust 异步和飞书机器人");
+  });
+
+  it("omits handshake when persona.lifecycle.lastActiveAt is 0", () => {
+    const persona = createDefaultPersona();
+    persona.lifecycle.lastActiveAt = 0;
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+    });
+    expect(prompt).not.toContain("## Continuity Handshake");
+  });
+
+  it("places handshake after persona context but before mode section", () => {
+    const persona = makePersonaWithGap(8);
+    const { prompt } = buildCognitiveModePrompt({
+      message: "帮我整理文档",
+      cognitiveEnabled: true,
+      evolutionEnabled: true,
+      persona,
+    });
+    const personaIdx = prompt.indexOf("## User Cognitive Profile");
+    const handshakeIdx = prompt.indexOf("## Continuity Handshake");
+    const modeIdx = prompt.indexOf("## Current Mode:");
+    expect(personaIdx).toBeGreaterThan(-1);
+    expect(handshakeIdx).toBeGreaterThan(personaIdx);
+    expect(modeIdx).toBeGreaterThan(handshakeIdx);
   });
 });

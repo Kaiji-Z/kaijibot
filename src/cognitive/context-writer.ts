@@ -10,7 +10,7 @@ import type { CorrectionRecord } from "./correction/types.js";
 import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
 import { classifyMode, buildModePromptSection } from "./mode-router.js";
 import { buildPersonaContext } from "./persona/context-builder.js";
-import type { CognitiveMode, ModeClassification, PersonaTree } from "./types.js";
+import type { CognitiveMode, InsightRecord, ModeClassification, PersonaTree } from "./types.js";
 
 const SKILL_EVOLUTION_PROMPT = {
   heading: L("## Skill Evolution", "## Skill Evolution"),
@@ -50,6 +50,53 @@ function buildSkillEvolutionSection(locale: CognitiveLocale): string {
   return lines.join("\n");
 }
 
+function formatHandshakeGap(hours: number): string {
+  return hours < 24
+    ? `${Math.round(hours)} 小时`
+    : `${Math.round(hours / 24)} 天`;
+}
+
+function buildHandshakeSection(params: {
+  persona: PersonaTree;
+  recentInsights: InsightRecord[];
+  hoursSinceLastInteraction: number;
+}): string {
+  const { persona, recentInsights, hoursSinceLastInteraction } = params;
+  const gap = formatHandshakeGap(hoursSinceLastInteraction);
+
+  const lines: string[] = ["## Continuity Handshake"];
+  lines.push(
+    `距上次交互已 ${gap}。回答用户问题前，先用一两句自然承接上文，让用户感到被记住，然后正常回答。`,
+  );
+
+  const cues: string[] = [];
+  if (persona.identity.displayName) {
+    cues.push(`用户称呼：${persona.identity.displayName}`);
+  }
+  if (persona.recentFocus.length > 0) {
+    cues.push(`最近关注：${persona.recentFocus.slice(0, 3).join("、")}`);
+  }
+  const lastInsight = recentInsights[0];
+  if (lastInsight) {
+    const date = new Date(lastInsight.generatedAt).toLocaleDateString("zh-CN");
+    const preview = lastInsight.content.slice(0, 80);
+    cues.push(`上次推送的洞察（${date}）：${preview}`);
+  }
+
+  if (cues.length > 0) {
+    lines.push("可承接的线索（选最相关的一条，不要全部列举）：");
+    for (const cue of cues) {
+      lines.push(`- ${cue}`);
+    }
+  }
+
+  lines.push(
+    "要求：自然简短，不要机械罗列或生硬转折。如果当前问题与历史完全无关，可轻轻一带或省略。",
+  );
+
+  return lines.join("\n");
+}
+
 export function buildCognitiveModePrompt(params: {
   message: string;
   isHeartbeat?: boolean;
@@ -61,6 +108,12 @@ export function buildCognitiveModePrompt(params: {
   corrections?: CorrectionRecord[];
   /** Optional locale override; defaults to detecting from `persona`. */
   locale?: CognitiveLocale;
+  /** Recently delivered insights, used by the continuity handshake to reference prior context. */
+  recentInsights?: InsightRecord[];
+  /** Current timestamp (ms); defaults to Date.now(). Used for handshake gap calculation. */
+  now?: number;
+  /** Continuity handshake config. When enabled and the gap since last interaction exceeds minGapHours, a handshake section is injected. */
+  handshakeConfig?: { enabled?: boolean; minGapHours?: number };
 }): { prompt: string; classification: ModeClassification } {
   const {
     message,
@@ -72,6 +125,9 @@ export function buildCognitiveModePrompt(params: {
     persona,
     corrections,
     locale,
+    recentInsights,
+    now,
+    handshakeConfig,
   } = params;
 
   const classification = classifyMode(message, {
@@ -98,6 +154,21 @@ export function buildCognitiveModePrompt(params: {
     const advice = getPhaseBehaviorAdvice(phase);
     if (advice) {
       parts.push(`## Interaction Guidance\n${advice}`);
+    }
+  }
+
+  if (persona && persona.lifecycle.lastActiveAt > 0 && handshakeConfig?.enabled !== false) {
+    const currentTime = now ?? Date.now();
+    const minGap = handshakeConfig?.minGapHours ?? 6;
+    const hoursSinceLastInteraction = (currentTime - persona.lifecycle.lastActiveAt) / 3_600_000;
+    if (hoursSinceLastInteraction >= minGap) {
+      parts.push(
+        buildHandshakeSection({
+          persona,
+          recentInsights: recentInsights ?? [],
+          hoursSinceLastInteraction,
+        }),
+      );
     }
   }
 
