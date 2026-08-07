@@ -22,6 +22,7 @@ export function findSessionKeyForUserId(
 
   const storePath = resolveStorePath(cfg.session?.store, { agentId });
   const store = loadSessionStore(storePath);
+  const lowerUserId = userId.toLowerCase();
 
   const directKey = `agent:${agentId}:${userId}`;
   if (store[directKey] && !isSubagentSessionKey(directKey) && !isCronSessionKey(directKey)) {
@@ -32,17 +33,17 @@ export function findSessionKeyForUserId(
     if (isSubagentSessionKey(key) || isCronSessionKey(key)) {
       continue;
     }
-    if (key.endsWith(`:${userId}`)) {
+    if (key.toLowerCase().endsWith(`:${lowerUserId}`)) {
       return key;
     }
   }
 
-  if (userId === OPERATOR_USER_ID) {
+  if (lowerUserId === OPERATOR_USER_ID) {
     for (const key of Object.keys(store)) {
       if (isSubagentSessionKey(key) || isCronSessionKey(key)) {
         continue;
       }
-      if (key.endsWith(":main")) {
+      if (key.toLowerCase().endsWith(":main")) {
         return key;
       }
     }

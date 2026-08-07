@@ -69,7 +69,11 @@ export function resolveCognitiveUserId(
   senderId?: string | null,
 ): string | null {
   if (senderId) {
-    return resolveOperatorSenderId(senderId) ?? senderId;
+    const operator = resolveOperatorSenderId(senderId);
+    if (operator) {
+      return operator;
+    }
+    return senderId.toLowerCase();
   }
   if (!sessionKey) {
     return null;
@@ -88,5 +92,6 @@ export function resolveCognitiveUserId(
   if (sessionKey.includes(":group:") && !sessionKey.includes(":sender:")) {
     return null;
   }
-  return tail === "main" ? OPERATOR_USER_ID : tail;
+  const normalized = tail.toLowerCase();
+  return normalized === "main" ? OPERATOR_USER_ID : normalized;
 }
