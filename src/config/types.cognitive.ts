@@ -5,7 +5,7 @@ export type CognitiveConfig = {
   proactive?: {
     /** Allow proactive pushes (default: true) */
     enabled?: boolean;
-    /** Minimum interval between proactive pushes in hours (default: 4) */
+    /** Minimum interval between proactive pushes in hours (default: 0.5) */
     minIntervalHours?: number;
     /** Active hours window */
     activeHours?: {
