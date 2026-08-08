@@ -16,6 +16,39 @@ import type { GetReplyOptions } from "./types.js";
 
 const log = createSubsystemLogger("auto-reply/dispatch");
 
+const FOLLOWUP_PATTERNS = [
+  "展开", "详细", "具体", "深入", "解释", "说明", "什么意思",
+  "举例", "例子", "比如", "怎么理解", "怎么看", "继续", "然后呢",
+  "接着说", "为什么", "你是说", "你的意思是", "讲讲", "多说点",
+  "tell me more", "elaborate", "explain", "what do you mean",
+  "how so", "example", "go on", "continue", "interesting",
+];
+
+function textToBigrams(text: string): Set<string> {
+  const clean = text.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, "");
+  const result = new Set<string>();
+  for (let i = 0; i < clean.length - 1; i++) {
+    result.add(clean.slice(i, i + 2));
+  }
+  return result;
+}
+
+function bigramSimilarity(a: string, b: string): number {
+  const setA = textToBigrams(a);
+  const setB = textToBigrams(b);
+  if (setA.size === 0 || setB.size === 0) {
+    return 0;
+  }
+  let intersection = 0;
+  for (const gram of setA) {
+    if (setB.has(gram)) {
+      intersection++;
+    }
+  }
+  const union = setA.size + setB.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
 export type DispatchInboundResult = DispatchFromConfigResult;
 
 /**
@@ -97,6 +130,87 @@ async function detectInsightReplyFeedback(params: {
   }
 }
 
+async function detectInsightFollowupFeedback(params: {
+  ctx: MsgContext | FinalizedMsgContext;
+  cfg: KaijiBotConfig;
+}): Promise<void> {
+  const sessionKey = params.ctx.SessionKey;
+  if (!sessionKey) {
+    return;
+  }
+  if (params.cfg.cognitive?.enabled === false) {
+    return;
+  }
+  const userId = extractUserIdFromSessionKey(sessionKey, params.ctx.SenderId);
+  if (!userId) {
+    return;
+  }
+  const userMessage = params.ctx.BodyForCommands ?? params.ctx.Body ?? "";
+  if (!userMessage.trim()) {
+    return;
+  }
+
+  const FOLLOWUP_WINDOW_MS = 30 * 60 * 1000;
+  const SIMILARITY_THRESHOLD = 0.12;
+
+  try {
+    const [{ resolveConfigDir }, { resolveSessionAgentId }] = await Promise.all([
+      import("../utils.js"),
+      import("../agents/agent-scope.js"),
+    ]);
+    const insightStoreMod = await import("../cognitive/insight/store.js");
+    const personaStoreMod = await import("../cognitive/persona/store.js");
+    const collectorMod = await import("../cognitive/feedback/collector.js");
+
+    const agentId = resolveSessionAgentId({ sessionKey, config: params.cfg });
+    const configDir = resolveConfigDir();
+    const personaStore = new personaStoreMod.PersonaStore(configDir);
+    const persona = await personaStore.load(agentId, userId);
+    if (!persona) {
+      return;
+    }
+
+    const lastProactive = persona.feedbackProfile.lastProactiveAt;
+    if (lastProactive <= 0) {
+      return;
+    }
+    if (Date.now() - lastProactive > FOLLOWUP_WINDOW_MS) {
+      return;
+    }
+
+    const insightStore = new insightStoreMod.InsightStore(configDir);
+    const recent = await insightStore.listActive(agentId, userId, undefined, 1);
+    if (!recent[0]) {
+      return;
+    }
+    const insight = recent[0];
+
+    const isDiscussing = bigramSimilarity(userMessage, insight.content) >= SIMILARITY_THRESHOLD;
+    const isFollowUp = FOLLOWUP_PATTERNS.some((p) => userMessage.toLowerCase().includes(p));
+
+    if (!isDiscussing && !isFollowUp) {
+      return;
+    }
+
+    const sentiment = isDiscussing ? "engaged" : "positive";
+
+    await personaStore.update(agentId, userId, (p) =>
+      collectorMod.processInsightFeedback(p, insight, sentiment),
+    );
+    await insightStore.updateFeedback(agentId, userId, insight.id, sentiment, userMessage);
+
+    log.info("insight followup feedback detected", {
+      userId,
+      insightId: insight.id,
+      sentiment,
+      isDiscussing,
+      isFollowUp,
+    });
+  } catch (err) {
+    log.warn(`insight followup feedback detection failed: ${String(err)}`);
+  }
+}
+
 export async function withReplyDispatcher<T>(params: {
   dispatcher: ReplyDispatcher;
   run: () => Promise<T>;
@@ -125,6 +239,9 @@ export async function dispatchInboundMessage(params: {
   const finalized = finalizeInboundContext(params.ctx);
   void detectInsightReplyFeedback({ ctx: finalized, cfg: params.cfg }).catch((err) => {
     log.warn(`detectInsightReplyFeedback unexpected error: ${String(err)}`);
+  });
+  void detectInsightFollowupFeedback({ ctx: finalized, cfg: params.cfg }).catch((err) => {
+    log.warn(`detectInsightFollowupFeedback unexpected error: ${String(err)}`);
   });
   return await withReplyDispatcher({
     dispatcher: params.dispatcher,

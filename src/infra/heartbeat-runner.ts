@@ -1200,7 +1200,7 @@ export async function runHeartbeatOnce(opts: {
       }
     }
 
-    await deliverOutboundPayloads({
+    const deliveryResults = await deliverOutboundPayloads({
       cfg,
       channel: delivery.channel,
       to: delivery.to,
@@ -1226,6 +1226,29 @@ export async function runHeartbeatOnce(opts: {
         mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
       },
     });
+
+    if (hasInsightEvent && deliveryResults.length > 0) {
+      const msgId = deliveryResults[0]?.messageId;
+      if (msgId) {
+        try {
+          const { resolveConfigDir } = await import("../utils.js");
+          const { InsightStore } = await import("../cognitive/insight/store.js");
+          const { resolveCognitiveUserId } = await import("../cognitive/identity.js");
+          const insightUserId = resolveCognitiveUserId(sessionKey);
+          if (insightUserId) {
+            const insightStore = new InsightStore(resolveConfigDir());
+            const recent = await insightStore.listActive(agentId, insightUserId, undefined, 5);
+            const pending = recent.find((i) => !i.deliveryMessageId);
+            if (pending) {
+              pending.deliveryMessageId = msgId;
+              await insightStore.save(agentId, insightUserId, pending);
+            }
+          }
+        } catch {
+          // best-effort — don't block heartbeat on insight store update
+        }
+      }
+    }
 
     // Record last delivered heartbeat payload for dedupe.
     if (!shouldSkipMain && normalized.text.trim()) {
