@@ -1538,6 +1538,7 @@ export async function startGatewayServer(
                   content: candidate.content,
                   rationale: candidate.rationale,
                   sources: candidate.sources,
+                  deliveredAt: Date.now(),
                   promptVariant: candidate.promptVariant,
                 };
 
@@ -1551,53 +1552,28 @@ export async function startGatewayServer(
                 }
 
                 try {
-                  const { resolveCognitiveDeliveryTarget } = await import(
-                    "./cognitive-delivery.js"
-                  );
-                  const { deliverOutboundPayloads } = await import(
-                    "../infra/outbound/deliver.js"
-                  );
+                  const { findSessionKeyForUserId } = await import("./cognitive-delivery.js");
+                  const { enqueueSystemEvent } = await import("../infra/system-events.js");
+                  const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
 
-                  const target = resolveCognitiveDeliveryTarget(cfgAtStart, userId, agentId);
-                  if (!target) {
+                  const insightText = candidate.content;
+                  const sessionKey = findSessionKeyForUserId(cfgAtStart, userId, agentId);
+                  if (sessionKey) {
+                    enqueueSystemEvent(
+                      `[Cognitive Insight] ${insightText}\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）`,
+                      { sessionKey },
+                    );
+                    requestHeartbeatNow({ reason: "cognitive-insight", sessionKey });
+                    log.info(`cognitive insight enqueued for heartbeat delivery to ${userId}`, {
+                      sessionKey,
+                    });
+                    return true;
+                  } else {
                     log.info(
                       `cognitive insight: no routable session for ${userId}, skipping delivery`,
                     );
                     return false;
                   }
-
-                  const results = await deliverOutboundPayloads({
-                    cfg: cfgAtStart,
-                    channel: target.channel as Exclude<
-                      import("../infra/outbound/targets.js").OutboundChannel,
-                      "none"
-                    >,
-                    to: target.to,
-                    ...(target.accountId ? { accountId: target.accountId } : {}),
-                    payloads: [{ text: candidate.content }],
-                    session: { key: target.sessionKey, agentId },
-                  });
-
-                  record.deliveredAt = Date.now();
-                  const messageId = results[0]?.messageId;
-                  if (messageId) {
-                    record.deliveryMessageId = messageId;
-                  }
-
-                  try {
-                    const { resolveConfigDir } = await import("../utils.js");
-                    const { InsightStore } = await import("../cognitive/insight/store.js");
-                    const insightStore = new InsightStore(resolveConfigDir());
-                    await insightStore.save(agentId, userId, record);
-                  } catch (err) {
-                    log.warn(`cognitive insight delivery update failed: ${String(err)}`);
-                  }
-
-                  log.info(`cognitive insight delivered to ${userId}`, {
-                    messageId,
-                    sessionKey: target.sessionKey,
-                  });
-                  return true;
                 } catch (err) {
                   log.warn(`cognitive insight delivery failed: ${String(err)}`);
                   return false;
