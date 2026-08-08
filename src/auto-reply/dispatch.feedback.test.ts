@@ -1,4 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import type { KaijiBotConfig } from "../config/config.js";
+import type { ReplyDispatcher } from "./reply/reply-dispatcher.js";
+import { buildTestCtx } from "./reply/test-ctx.js";
 
 function textToBigrams(text: string): Set<string> {
   const clean = text.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, "");
@@ -134,5 +140,251 @@ describe("feedback classification logic", () => {
     const isFollowUp = matchesFollowUp(userMsg);
     expect(isDiscussing).toBe(false);
     expect(isFollowUp).toBe(false);
+  });
+});
+
+type DispatchReplyFromConfigFn =
+  typeof import("./reply/dispatch-from-config.js").dispatchReplyFromConfig;
+
+const hoisted = vi.hoisted(() => ({
+  dispatchReplyFromConfigMock: vi.fn(),
+}));
+
+vi.mock("./reply/dispatch-from-config.js", () => ({
+  dispatchReplyFromConfig: (...args: Parameters<DispatchReplyFromConfigFn>) =>
+    hoisted.dispatchReplyFromConfigMock(...args),
+}));
+
+const { dispatchInboundMessage } = await import("./dispatch.js");
+const { InsightStore } = await import("../cognitive/insight/store.js");
+const { PersonaStore, createDefaultPersona } = await import("../cognitive/persona/store.js");
+
+function createDispatcher(): ReplyDispatcher {
+  return {
+    sendToolResult: () => true,
+    sendBlockReply: () => true,
+    sendFinalReply: () => true,
+    getQueuedCounts: () => ({ tool: 0, block: 0, final: 0 }),
+    getFailedCounts: () => ({ tool: 0, block: 0, final: 0 }),
+    markComplete: () => undefined,
+    waitForIdle: async () => undefined,
+  };
+}
+
+async function withFeedbackSandbox<T>(
+  fn: (ctx: { stateDir: string; agentId: string; userId: string }) => Promise<T>,
+): Promise<T> {
+  const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-feedback-"));
+  const previous = process.env.KAIJIBOT_STATE_DIR;
+  process.env.KAIJIBOT_STATE_DIR = stateDir;
+  try {
+    return await fn({ stateDir, agentId: "main", userId: "ou_test123" });
+  } finally {
+    if (previous === undefined) {
+      delete process.env.KAIJIBOT_STATE_DIR;
+    } else {
+      process.env.KAIJIBOT_STATE_DIR = previous;
+    }
+    await fs.rm(stateDir, { recursive: true, force: true });
+  }
+}
+
+async function seedInsightWithDelivery(stateDir: string, deliveredAtMs: number): Promise<string> {
+  const store = new InsightStore(stateDir);
+  const id = `insight-${deliveredAtMs}`;
+  const record = {
+    id,
+    generatedAt: deliveredAtMs,
+    triggerSource: "scheduled" as const,
+    targetDomains: ["软件开发"],
+    sourceDomains: [],
+    content: "从建筑设计的承重路径到AI agent的文件系统探路，结构诚实与可读性的张力",
+    rationale: "test",
+    sources: [],
+    deliveredAt: deliveredAtMs,
+  };
+  await store.save("main", "ou_test123", record);
+  return id;
+}
+
+async function seedPersonaWithStaleLastProactive(stateDir: string): Promise<void> {
+  const store = new PersonaStore(stateDir);
+  const persona = createDefaultPersona();
+  persona.identity.userId = "ou_test123";
+  // Simulate the bug: lastProactiveAt was advanced by the time-based
+  // no-response penalty (proactive-scheduler.ts:823), so it is far in the
+  // past even though an insight was delivered recently.
+  persona.feedbackProfile.lastProactiveAt = Date.now() - 2 * 60 * 60 * 1000;
+  await store.save("main", "ou_test123", persona);
+}
+
+async function readFeedback(stateDir: string, insightId: string): Promise<string | undefined> {
+  const store = new InsightStore(stateDir);
+  const record = await store.load("main", "ou_test123", insightId);
+  return record?.feedback;
+}
+
+async function readTrust(stateDir: string): Promise<number> {
+  const store = new PersonaStore(stateDir);
+  const persona = await store.load("main", "ou_test123");
+  return persona?.rapport.trustScore ?? -1;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitForFeedback(
+  stateDir: string,
+  insightId: string,
+  timeoutMs = 3000,
+): Promise<string | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  let feedback: string | undefined;
+  while (Date.now() < deadline) {
+    feedback = await readFeedback(stateDir, insightId);
+    if (feedback !== undefined) {
+      return feedback;
+    }
+    await sleep(25);
+  }
+  return feedback;
+}
+
+describe("detectInsightFollowupFeedback full pipeline", () => {
+  afterEach(() => {
+    hoisted.dispatchReplyFromConfigMock.mockReset();
+  });
+
+  it("captures feedback when deliveredAt is within the window even if lastProactiveAt is stale", async () => {
+    await withFeedbackSandbox(async ({ stateDir }) => {
+      const deliveredAt = Date.now() - 5 * 60 * 1000;
+      const insightId = await seedInsightWithDelivery(stateDir, deliveredAt);
+      await seedPersonaWithStaleLastProactive(stateDir);
+
+      hoisted.dispatchReplyFromConfigMock.mockImplementation(async () => ({ text: "ok" }));
+
+      const ctx = buildTestCtx({
+        Body: "建筑的承重路径和代码结构确实很像，AI agent的探路也是结构问题",
+        CommandBody: "建筑的承重路径和代码结构确实很像，AI agent的探路也是结构问题",
+        SessionKey: "agent:main:feishu:direct:ou_test123",
+        Provider: "feishu",
+        Surface: "feishu",
+        From: "ou_test123",
+        To: "bot",
+        ChatType: "direct",
+      });
+      const cfg = { cognitive: { enabled: true } } as unknown as KaijiBotConfig;
+
+      await dispatchInboundMessage({ ctx, cfg, dispatcher: createDispatcher() });
+
+      expect(await waitForFeedback(stateDir, insightId)).toBe("engaged");
+      expect(await readTrust(stateDir)).toBeGreaterThan(0.1);
+    });
+  });
+
+  it("does NOT capture feedback when the delivered insight is outside the window", async () => {
+    await withFeedbackSandbox(async ({ stateDir }) => {
+      const deliveredAt = Date.now() - 2 * 60 * 60 * 1000;
+      const insightId = await seedInsightWithDelivery(stateDir, deliveredAt);
+      await seedPersonaWithStaleLastProactive(stateDir);
+
+      hoisted.dispatchReplyFromConfigMock.mockImplementation(async () => ({ text: "ok" }));
+
+      const ctx = buildTestCtx({
+        Body: "建筑的承重路径和代码结构确实很像，AI agent的探路也是结构问题",
+        CommandBody: "建筑的承重路径和代码结构确实很像，AI agent的探路也是结构问题",
+        SessionKey: "agent:main:feishu:direct:ou_test123",
+        Provider: "feishu",
+        Surface: "feishu",
+        From: "ou_test123",
+        To: "bot",
+        ChatType: "direct",
+      });
+      const cfg = { cognitive: { enabled: true } } as unknown as KaijiBotConfig;
+
+      await dispatchInboundMessage({ ctx, cfg, dispatcher: createDispatcher() });
+
+      await sleep(150);
+      expect(await readFeedback(stateDir, insightId)).toBeUndefined();
+    });
+  });
+
+  it("does NOT capture unrelated messages even inside the window", async () => {
+    await withFeedbackSandbox(async ({ stateDir }) => {
+      const deliveredAt = Date.now() - 5 * 60 * 1000;
+      const insightId = await seedInsightWithDelivery(stateDir, deliveredAt);
+      await seedPersonaWithStaleLastProactive(stateDir);
+
+      hoisted.dispatchReplyFromConfigMock.mockImplementation(async () => ({ text: "ok" }));
+
+      const ctx = buildTestCtx({
+        Body: "帮我查一下明天的天气",
+        CommandBody: "帮我查一下明天的天气",
+        SessionKey: "agent:main:feishu:direct:ou_test123",
+        Provider: "feishu",
+        Surface: "feishu",
+        From: "ou_test123",
+        To: "bot",
+        ChatType: "direct",
+      });
+      const cfg = { cognitive: { enabled: true } } as unknown as KaijiBotConfig;
+
+      await dispatchInboundMessage({ ctx, cfg, dispatcher: createDispatcher() });
+
+      await sleep(150);
+      expect(await readFeedback(stateDir, insightId)).toBeUndefined();
+    });
+  });
+
+  it("captures followup-request pattern as positive feedback", async () => {
+    await withFeedbackSandbox(async ({ stateDir }) => {
+      const deliveredAt = Date.now() - 5 * 60 * 1000;
+      const insightId = await seedInsightWithDelivery(stateDir, deliveredAt);
+      await seedPersonaWithStaleLastProactive(stateDir);
+
+      hoisted.dispatchReplyFromConfigMock.mockImplementation(async () => ({ text: "ok" }));
+
+      const ctx = buildTestCtx({
+        Body: "展开解释一下这个洞察是什么意思",
+        CommandBody: "展开解释一下这个洞察是什么意思",
+        SessionKey: "agent:main:feishu:direct:ou_test123",
+        Provider: "feishu",
+        Surface: "feishu",
+        From: "ou_test123",
+        To: "bot",
+        ChatType: "direct",
+      });
+      const cfg = { cognitive: { enabled: true } } as unknown as KaijiBotConfig;
+
+      await dispatchInboundMessage({ ctx, cfg, dispatcher: createDispatcher() });
+
+      expect(await waitForFeedback(stateDir, insightId)).toBe("positive");
+    });
+  });
+
+  it("skips when cognitive is disabled", async () => {
+    await withFeedbackSandbox(async ({ stateDir }) => {
+      const deliveredAt = Date.now() - 5 * 60 * 1000;
+      const insightId = await seedInsightWithDelivery(stateDir, deliveredAt);
+      await seedPersonaWithStaleLastProactive(stateDir);
+
+      hoisted.dispatchReplyFromConfigMock.mockImplementation(async () => ({ text: "ok" }));
+
+      const ctx = buildTestCtx({
+        Body: "建筑的承重路径和代码结构确实很像，AI agent的探路也是结构问题",
+        CommandBody: "建筑的承重路径和代码结构确实很像，AI agent的探路也是结构问题",
+        SessionKey: "agent:main:feishu:direct:ou_test123",
+        Provider: "feishu",
+        Surface: "feishu",
+        From: "ou_test123",
+        To: "bot",
+        ChatType: "direct",
+      });
+      const cfg = { cognitive: { enabled: false } } as unknown as KaijiBotConfig;
+
+      await dispatchInboundMessage({ ctx, cfg, dispatcher: createDispatcher() });
+
+      await sleep(150);
+      expect(await readFeedback(stateDir, insightId)).toBeUndefined();
+    });
   });
 });

@@ -165,25 +165,20 @@ async function detectInsightFollowupFeedback(params: {
     const agentId = resolveSessionAgentId({ sessionKey, config: params.cfg });
     const configDir = resolveConfigDir();
     const personaStore = new personaStoreMod.PersonaStore(configDir);
-    const persona = await personaStore.load(agentId, userId);
-    if (!persona) {
-      return;
-    }
 
-    const lastProactive = persona.feedbackProfile.lastProactiveAt;
-    if (lastProactive <= 0) {
-      return;
-    }
-    if (Date.now() - lastProactive > FOLLOWUP_WINDOW_MS) {
-      return;
-    }
-
+    // Window check uses the most recent *delivered* insight's deliveredAt,
+    // NOT persona.feedbackProfile.lastProactiveAt — that field is also
+    // advanced by the time-based no-response penalty (proactive-scheduler),
+    // so it no longer reflects the true last delivery time. Using it here
+    // made the followup window effectively un-reachable after any penalty.
     const insightStore = new insightStoreMod.InsightStore(configDir);
-    const recent = await insightStore.listActive(agentId, userId, undefined, 1);
-    if (!recent[0]) {
+    const recentDelivered = await insightStore.listRecent(agentId, userId, 5);
+    const insight = recentDelivered.find(
+      (r) => r.deliveredAt !== undefined && Date.now() - r.deliveredAt <= FOLLOWUP_WINDOW_MS,
+    );
+    if (!insight) {
       return;
     }
-    const insight = recent[0];
 
     const isDiscussing = bigramSimilarity(userMessage, insight.content) >= SIMILARITY_THRESHOLD;
     const isFollowUp = FOLLOWUP_PATTERNS.some((p) => userMessage.toLowerCase().includes(p));

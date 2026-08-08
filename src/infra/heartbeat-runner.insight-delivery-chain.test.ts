@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
+import { InsightStore } from "../cognitive/insight/store.js";
+import type { InsightRecord } from "../cognitive/types.js";
 import { runHeartbeatOnce } from "./heartbeat-runner.js";
 import { installHeartbeatRunnerTestRuntime } from "./heartbeat-runner.test-harness.js";
 import { seedMainSessionStore, withTempHeartbeatSandbox } from "./heartbeat-runner.test-utils.js";
@@ -176,5 +178,107 @@ describe("runHeartbeatOnce insight event → prompt → reply → drain", () => 
         expect(capturedBody).not.toContain("主动洞察已生成");
       }
     });
+  });
+
+  it("writes deliveryMessageId to the exact insight referenced by contextKey, not the first undelivered record", async () => {
+    await withTempHeartbeatSandbox(
+      async ({ tmpDir, storePath, replySpy }) => {
+        const prevStateDir = process.env.KAIJIBOT_STATE_DIR;
+        process.env.KAIJIBOT_STATE_DIR = tmpDir;
+        try {
+          const cfg = {
+            agents: {
+              defaults: {
+                workspace: tmpDir,
+                heartbeat: { every: "30m" },
+                model: { primary: "test/model" },
+              },
+            },
+            channels: { telegram: { allowFrom: ["*"] } },
+            session: { store: storePath },
+          } as unknown as KaijiBotConfig;
+
+          const sessionKey = await seedMainSessionStore(storePath, cfg, {
+            sessionId: "sid_wb",
+            lastChannel: "telegram",
+            lastProvider: "telegram",
+            lastTo: "-100155462274",
+          });
+
+          // Seed two undelivered insights. The decoy has NEWER generatedAt, so
+          // the old "first record without deliveryMessageId" heuristic (listActive
+          // sorts by generatedAt desc) would write the msgId to the decoy. The
+          // contextKey targets the older record — this test proves the fix writes
+          // deliveryMessageId to the correct (contextKey-referenced) record.
+          const insightStore = new InsightStore(tmpDir);
+          const now = Date.now();
+          const decoy: InsightRecord = {
+            id: "insight-decoy",
+            generatedAt: now - 60_000,
+            triggerSource: "scheduled",
+            targetDomains: ["测试"],
+            sourceDomains: [],
+            content: "诱饵洞察",
+            rationale: "test",
+            sources: [],
+            deliveredAt: now - 30_000,
+          };
+          const target: InsightRecord = {
+            id: "insight-target",
+            generatedAt: now - 300_000,
+            triggerSource: "scheduled",
+            targetDomains: ["软件开发"],
+            sourceDomains: [],
+            content: "目标洞察",
+            rationale: "test",
+            sources: [],
+            deliveredAt: now - 200_000,
+          };
+          // resolveCognitiveUserId("agent:main:main") → "operator"
+          await insightStore.save("main", "operator", decoy);
+          await insightStore.save("main", "operator", target);
+
+          const sendTelegram = vi
+            .fn()
+            .mockResolvedValue({ messageId: "m1", chatId: "-100155462274" });
+          replySpy.mockResolvedValue({ text: "这是一条主动洞察，分享给你。" });
+
+          const eventText =
+            "[Cognitive Insight] 目标洞察\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）";
+          enqueueSystemEvent(eventText, {
+            sessionKey,
+            contextKey: "insight:insight-target",
+          });
+
+          const result = await runHeartbeatOnce({
+            cfg,
+            agentId: "main",
+            reason: "cognitive-insight",
+            sessionKey,
+            deps: {
+              getReplyFromConfig: replySpy,
+              telegram: sendTelegram,
+              getQueueSize: () => 0,
+              nowMs: () => Date.now(),
+            } as never,
+          });
+
+          expect(result.status).toBe("ran");
+          expect(sendTelegram).toHaveBeenCalled();
+
+          const targetAfter = await insightStore.load("main", "operator", "insight-target");
+          const decoyAfter = await insightStore.load("main", "operator", "insight-decoy");
+          expect(targetAfter?.deliveryMessageId).toBe("m1");
+          expect(decoyAfter?.deliveryMessageId).toBeUndefined();
+        } finally {
+          if (prevStateDir === undefined) {
+            delete process.env.KAIJIBOT_STATE_DIR;
+          } else {
+            process.env.KAIJIBOT_STATE_DIR = prevStateDir;
+          }
+        }
+      },
+      { prefix: "kaijibot-insight-wb-", unsetEnvVars: ["TELEGRAM_BOT_TOKEN"] },
+    );
   });
 });

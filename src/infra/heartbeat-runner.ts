@@ -1236,12 +1236,20 @@ export async function runHeartbeatOnce(opts: {
           const { resolveCognitiveUserId } = await import("../cognitive/identity.js");
           const insightUserId = resolveCognitiveUserId(sessionKey);
           if (insightUserId) {
+            // Match the delivered insight by its contextKey (insight:<id>), not
+            // by "first record without a deliveryMessageId" — that heuristic
+            // races with older undelivered insights and writes the wrong msgId.
+            const insightId = preflight.pendingEventEntries
+              .map((event) => event.contextKey ?? "")
+              .find((key) => key.startsWith("insight:"))
+              ?.slice("insight:".length);
             const insightStore = new InsightStore(resolveConfigDir());
-            const recent = await insightStore.listActive(agentId, insightUserId, undefined, 5);
-            const pending = recent.find((i) => !i.deliveryMessageId);
-            if (pending) {
-              pending.deliveryMessageId = msgId;
-              await insightStore.save(agentId, insightUserId, pending);
+            if (insightId) {
+              const record = await insightStore.load(agentId, insightUserId, insightId);
+              if (record && !record.deliveryMessageId) {
+                record.deliveryMessageId = msgId;
+                await insightStore.save(agentId, insightUserId, record);
+              }
             }
           }
         } catch {
