@@ -151,7 +151,7 @@ async function detectInsightFollowupFeedback(params: {
   }
 
   const FOLLOWUP_WINDOW_MS = 30 * 60 * 1000;
-  const SIMILARITY_THRESHOLD = 0.12;
+  const SIMILARITY_THRESHOLD = 0.08;
 
   try {
     const [{ resolveConfigDir }, { resolveSessionAgentId }] = await Promise.all([
