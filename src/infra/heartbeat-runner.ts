@@ -1322,6 +1322,11 @@ export async function runHeartbeatOnce(opts: {
       indicatorType: visibility.useIndicator ? resolveIndicatorType("failed") : undefined,
     });
     log.error(`heartbeat failed: ${reason}`, { error: reason });
+    try {
+      await reportInsightOutcome(false);
+    } catch {
+      // reportInsightOutcome may be in TDZ if error occurred before its definition
+    }
     return { status: "failed", reason };
   }
 }
