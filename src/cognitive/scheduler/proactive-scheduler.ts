@@ -690,9 +690,9 @@ export class ProactiveScheduler {
     );
   }
 
-  private _finalizeDelivery(
+  static finalizeDelivery(
     persona: PersonaTree,
-    event: SchedulerEvent,
+    eventTimestamp: number,
     insight: InsightCandidate,
     opportunityType: string,
   ): PersonaTree {
@@ -711,7 +711,7 @@ export class ProactiveScheduler {
       });
     }
 
-    persona.feedbackProfile.lastProactiveAt = event.timestamp;
+    persona.feedbackProfile.lastProactiveAt = eventTimestamp;
     persona.feedbackProfile.pendingInsightDelivery = null;
 
     const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);
@@ -722,15 +722,12 @@ export class ProactiveScheduler {
     ].slice(-5);
     persona.feedbackProfile.recentInsightContents = contents;
     const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-    const replacedDomains = [...prevDomains.slice(0, -1), insight.targetDomains].slice(-5);
-    persona.feedbackProfile.recentInsightDomains = replacedDomains;
+    persona.feedbackProfile.recentInsightDomains = [...prevDomains, insight.targetDomains].slice(-5);
     const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
-    const replacedTypes = [...prevTypes.slice(0, -1), opportunityType].slice(-5);
-    persona.feedbackProfile.recentInsightTypes = replacedTypes;
+    persona.feedbackProfile.recentInsightTypes = [...prevTypes, opportunityType].slice(-5);
     const mode = insight.resolvedMode ?? "surprise";
     const prevModes = persona.feedbackProfile.recentInsightModes ?? [];
-    const replacedModes = [...prevModes.slice(0, -1), mode].slice(-5);
-    persona.feedbackProfile.recentInsightModes = replacedModes;
+    persona.feedbackProfile.recentInsightModes = [...prevModes, mode].slice(-5);
     if (insight.searchQueryUsed) {
       const queries = [
         ...(persona.feedbackProfile.recentInsightQueryHistory ?? []),
@@ -768,14 +765,14 @@ export class ProactiveScheduler {
         });
         const retryResult = await this.callbacks.onInsightReady(agentId, userId, pending.candidate);
         if (retryResult !== false) {
-          persona = this._finalizeDelivery(
-            persona,
-            event,
-            pending.candidate,
-            pending.opportunityType,
-          );
+          persona.feedbackProfile.awaitingDeliveryConfirmation = {
+            candidate: pending.candidate,
+            opportunityType: pending.opportunityType,
+            eventTimestamp: event.timestamp,
+          };
+          persona.feedbackProfile.pendingInsightDelivery = null;
           await this.callbacks.savePersona(agentId, userId, persona);
-          log.info("pending insight delivered", { userId, insightId: pending.candidate.id });
+          log.info("pending insight re-enqueued, awaiting confirmation", { userId, insightId: pending.candidate.id });
           return pending.candidate;
         }
         log.info("pending insight delivery still failing", {
@@ -785,6 +782,13 @@ export class ProactiveScheduler {
         await this.callbacks.savePersona(agentId, userId, persona);
         return undefined;
       }
+    }
+
+    // Previous insight still awaiting delivery confirmation — don't generate
+    // a new one until the outcome is known (avoids stacking insights).
+    if (persona.feedbackProfile.awaitingDeliveryConfirmation) {
+      log.info("skipping — previous insight awaiting delivery confirmation", { userId });
+      return undefined;
     }
 
     // Only reset no-response streak before gate — we always want to clear the
@@ -820,7 +824,7 @@ export class ProactiveScheduler {
         previousMode: prevMode,
       });
       persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
-      persona.feedbackProfile.lastProactiveAt = event.timestamp;
+    persona.feedbackProfile.lastProactiveAt = event.timestamp;
       log.info("time-based no-response penalty applied", {
         userId,
         lastProactiveAt,
@@ -975,7 +979,11 @@ export class ProactiveScheduler {
       return undefined;
     }
 
-    persona = this._finalizeDelivery(persona, event, insight, selected.type);
+    persona.feedbackProfile.awaitingDeliveryConfirmation = {
+      candidate: insight,
+      opportunityType: selected.type,
+      eventTimestamp: event.timestamp,
+    };
     await this.callbacks.savePersona(agentId, userId, persona);
 
     return insight;

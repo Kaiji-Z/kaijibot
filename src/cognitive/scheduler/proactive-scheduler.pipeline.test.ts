@@ -313,14 +313,20 @@ describe.skipIf(process.env.CI)("ProactiveScheduler pipeline lifecycle", () => {
           timestamp: 10_000 + cycle * 3_601_000,
         });
 
-        if (result) {
+        if (result && savedPersona) {
           deliveredDomains.push(result.targetDomains);
-          if (savedPersona) {
-            // Simulate user activity after each delivered insight so the
-            // cadenceFactor stays near-peak for the next cycle.
-            savedPersona.lifecycle.lastActiveAt = 10_000 + cycle * 3_601_000;
-            currentPersona = savedPersona;
+          const awaiting = savedPersona.feedbackProfile.awaitingDeliveryConfirmation;
+          if (awaiting) {
+            savedPersona = ProactiveScheduler.finalizeDelivery(
+              savedPersona,
+              awaiting.eventTimestamp,
+              awaiting.candidate,
+              awaiting.opportunityType,
+            );
+            savedPersona.feedbackProfile.awaitingDeliveryConfirmation = null;
           }
+          savedPersona.lifecycle.lastActiveAt = 10_000 + cycle * 3_601_000;
+          currentPersona = savedPersona;
         }
       }
 

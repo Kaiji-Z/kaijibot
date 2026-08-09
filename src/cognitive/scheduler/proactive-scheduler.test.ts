@@ -193,7 +193,8 @@ describeDet("ProactiveScheduler", () => {
 
     expect(result).toBeDefined();
     expect(capturedCandidates.length).toBe(1);
-    expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation).toBeDefined();
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation?.eventTimestamp).toBe(now);
   });
 
   it("stores pending and skips lastProactiveAt when onInsightReady returns false", async () => {
@@ -282,7 +283,8 @@ describeDet("ProactiveScheduler", () => {
     expect(deliverCount).toBe(1);
     expect(result?.id).toBe("pending-insight");
     expect(savedPersona?.feedbackProfile.pendingInsightDelivery).toBeNull();
-    expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation).toBeDefined();
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation?.candidate.id).toBe("pending-insight");
   });
 
   it("keeps pending when retry delivery still fails", async () => {
@@ -365,7 +367,8 @@ describeDet("ProactiveScheduler", () => {
     const result = await scheduler.processEvent("user1", { type: "timer", timestamp: now }, "main");
 
     expect(result).toBeDefined();
-    expect(savedPersona?.feedbackProfile.lastProactiveAt).toBe(now);
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation).toBeDefined();
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation?.eventTimestamp).toBe(now);
   });
 
   it("start and stop do not throw", async () => {
@@ -2193,12 +2196,20 @@ describeDet("6-cycle integration test — all fixes together", () => {
         "main",
       );
 
-      if (result) {
+      if (result && savedPersona) {
         deliveredDomains.push(result.targetDomains);
-        if (savedPersona) {
-          savedPersona.lifecycle.lastActiveAt = cycleTime;
-          currentPersona = savedPersona;
+        const awaiting = savedPersona.feedbackProfile.awaitingDeliveryConfirmation;
+        if (awaiting) {
+          savedPersona = ProactiveScheduler.finalizeDelivery(
+            savedPersona,
+            awaiting.eventTimestamp,
+            awaiting.candidate,
+            awaiting.opportunityType,
+          );
+          savedPersona.feedbackProfile.awaitingDeliveryConfirmation = null;
         }
+        savedPersona.lifecycle.lastActiveAt = cycleTime;
+        currentPersona = savedPersona;
       }
     }
 
@@ -2261,12 +2272,20 @@ describeDet("6-cycle integration test — all fixes together", () => {
         "main",
       );
 
-      if (result) {
+      if (result && savedPersona) {
         domains.push(result.targetDomains);
-        if (savedPersona) {
-          savedPersona.lifecycle.lastActiveAt = cycleTime;
-          currentPersona = savedPersona;
+        const awaiting = savedPersona.feedbackProfile.awaitingDeliveryConfirmation;
+        if (awaiting) {
+          savedPersona = ProactiveScheduler.finalizeDelivery(
+            savedPersona,
+            awaiting.eventTimestamp,
+            awaiting.candidate,
+            awaiting.opportunityType,
+          );
+          savedPersona.feedbackProfile.awaitingDeliveryConfirmation = null;
         }
+        savedPersona.lifecycle.lastActiveAt = cycleTime;
+        currentPersona = savedPersona;
       }
     }
 

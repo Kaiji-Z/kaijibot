@@ -128,6 +128,16 @@ export type FeedbackProfile = {
     generatedAt: number;
     opportunityType: string;
   } | null;
+  /**
+   * Insight enqueued for delivery but not yet confirmed by reportInsightOutcome.
+   * Finalize is deferred until delivery is confirmed (avoids premature
+   * lastProactiveAt / recentInsight* updates and double-finalize on retry).
+   */
+  awaitingDeliveryConfirmation?: {
+    candidate: InsightCandidate;
+    opportunityType: string;
+    eventTimestamp: number;
+  } | null;
 };
 
 // Trust/rapport metrics

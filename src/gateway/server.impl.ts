@@ -1473,7 +1473,20 @@ export async function startGatewayServer(
               return;
             }
             if (delivered) {
+              const { ProactiveScheduler } = await import(
+                "../cognitive/scheduler/proactive-scheduler.js"
+              );
               await cognitiveStore.update(agentId, userId, (persona) => {
+                const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
+                if (awaiting) {
+                  persona = ProactiveScheduler.finalizeDelivery(
+                    persona,
+                    awaiting.eventTimestamp,
+                    awaiting.candidate,
+                    awaiting.opportunityType,
+                  );
+                  persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                }
                 if (persona.feedbackProfile.pendingInsightDelivery) {
                   persona.feedbackProfile.pendingInsightDelivery = null;
                 }
@@ -1485,32 +1498,40 @@ export async function startGatewayServer(
             const insightStore = new InsightStoreCls(resolveConfigDir());
             const record = await insightStore.load(agentId, userId, insightId);
             if (!record) {
+              await cognitiveStore.update(agentId, userId, (persona) => {
+                persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                return persona;
+              });
               return;
             }
             await cognitiveStore.update(agentId, userId, (persona) => {
+              const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
               const existing = persona.feedbackProfile.pendingInsightDelivery;
               if (existing && existing.generatedAt > record.generatedAt) {
+                persona.feedbackProfile.awaitingDeliveryConfirmation = null;
                 return persona;
               }
-              const candidate: import("../cognitive/insight/types.js").InsightCandidate = {
-                id: record.id,
-                content: record.content,
-                rationale: record.rationale,
-                targetDomains: record.targetDomains,
-                sourceDomains: record.sourceDomains,
-                relevanceScore: 0,
-                surpriseScore: 0,
-                compositeScore: 0,
-                sources: record.sources,
-                verificationStatus: "verified",
-                ...(record.resolvedMode ? { resolvedMode: record.resolvedMode } : {}),
-                ...(record.promptVariant ? { promptVariant: record.promptVariant } : {}),
-              };
+              const candidate: import("../cognitive/insight/types.js").InsightCandidate =
+                awaiting?.candidate ?? {
+                  id: record.id,
+                  content: record.content,
+                  rationale: record.rationale,
+                  targetDomains: record.targetDomains,
+                  sourceDomains: record.sourceDomains,
+                  relevanceScore: 0,
+                  surpriseScore: 0,
+                  compositeScore: 0,
+                  sources: record.sources,
+                  verificationStatus: "verified",
+                  ...(record.resolvedMode ? { resolvedMode: record.resolvedMode } : {}),
+                  ...(record.promptVariant ? { promptVariant: record.promptVariant } : {}),
+                };
               persona.feedbackProfile.pendingInsightDelivery = {
                 candidate,
-                generatedAt: record.generatedAt,
-                opportunityType: "redelivery",
+                generatedAt: awaiting?.eventTimestamp ?? record.generatedAt,
+                opportunityType: awaiting?.opportunityType ?? "redelivery",
               };
+              persona.feedbackProfile.awaitingDeliveryConfirmation = null;
               return persona;
             });
           };
