@@ -1,4 +1,4 @@
-import type { InsightCandidate } from "./insight/types.js";
+import type { InsightCandidate, InsightMode } from "./insight/types.js";
 
 // Conversation mode — determines agent behavior
 export type CognitiveMode = "task" | "insight" | "hybrid" | "proactive";
@@ -208,6 +208,8 @@ export type InsightRecord = {
   userResponse?: string;
   /** Channel-native message id assigned to the delivered insight (for reply matching). */
   deliveryMessageId?: string;
+  /** Resolved insight mode at generation time — used to reconstruct pendingInsightDelivery. */
+  resolvedMode?: InsightMode;
   promptVariant?: {
     fewShotSet: number;
     frameIndex: number;

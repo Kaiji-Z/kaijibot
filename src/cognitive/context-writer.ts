@@ -8,9 +8,16 @@ import {
 import { formatCorrectionsPrompt, selectRelevantCorrections } from "./correction/injector.js";
 import type { CorrectionRecord } from "./correction/types.js";
 import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
+import type { InsightCandidate } from "./insight/types.js";
 import { classifyMode, buildModePromptSection } from "./mode-router.js";
 import { buildPersonaContext } from "./persona/context-builder.js";
-import type { CognitiveMode, InsightRecord, ModeClassification, PersonaTree } from "./types.js";
+import type { CognitiveMode, ModeClassification, PersonaTree } from "./types.js";
+
+type PendingInsightDelivery = {
+  candidate: InsightCandidate;
+  generatedAt: number;
+  opportunityType: string;
+} | null;
 
 const SKILL_EVOLUTION_PROMPT = {
   heading: L("## Skill Evolution", "## Skill Evolution"),
@@ -51,17 +58,15 @@ function buildSkillEvolutionSection(locale: CognitiveLocale): string {
 }
 
 function formatHandshakeGap(hours: number): string {
-  return hours < 24
-    ? `${Math.round(hours)} 小时`
-    : `${Math.round(hours / 24)} 天`;
+  return hours < 24 ? `${Math.round(hours)} 小时` : `${Math.round(hours / 24)} 天`;
 }
 
 function buildHandshakeSection(params: {
   persona: PersonaTree;
-  recentInsights: InsightRecord[];
+  pendingInsightDelivery: PendingInsightDelivery;
   hoursSinceLastInteraction: number;
 }): string {
-  const { persona, recentInsights, hoursSinceLastInteraction } = params;
+  const { persona, pendingInsightDelivery, hoursSinceLastInteraction } = params;
   const gap = formatHandshakeGap(hoursSinceLastInteraction);
 
   const lines: string[] = ["## Continuity Handshake"];
@@ -76,11 +81,10 @@ function buildHandshakeSection(params: {
   if (persona.recentFocus.length > 0) {
     cues.push(`最近关注：${persona.recentFocus.slice(0, 3).join("、")}`);
   }
-  const lastInsight = recentInsights[0];
-  if (lastInsight) {
-    const date = new Date(lastInsight.generatedAt).toLocaleDateString("zh-CN");
-    const preview = lastInsight.content.slice(0, 80);
-    cues.push(`上次推送的洞察（${date}）：${preview}`);
+  if (pendingInsightDelivery) {
+    cues.push(
+      `有条之前没来得及告诉你的洞察（未送达）：${pendingInsightDelivery.candidate.content}`,
+    );
   }
 
   if (cues.length > 0) {
@@ -108,8 +112,8 @@ export function buildCognitiveModePrompt(params: {
   corrections?: CorrectionRecord[];
   /** Optional locale override; defaults to detecting from `persona`. */
   locale?: CognitiveLocale;
-  /** Recently delivered insights, used by the continuity handshake to reference prior context. */
-  recentInsights?: InsightRecord[];
+  /** Undelivered insight to surface as a handshake cue (distinct from already-delivered insights). */
+  pendingInsightDelivery?: PendingInsightDelivery;
   /** Current timestamp (ms); defaults to Date.now(). Used for handshake gap calculation. */
   now?: number;
   /** Continuity handshake config. When enabled and the gap since last interaction exceeds minGapHours, a handshake section is injected. */
@@ -125,7 +129,7 @@ export function buildCognitiveModePrompt(params: {
     persona,
     corrections,
     locale,
-    recentInsights,
+    pendingInsightDelivery,
     now,
     handshakeConfig,
   } = params;
@@ -165,7 +169,7 @@ export function buildCognitiveModePrompt(params: {
       parts.push(
         buildHandshakeSection({
           persona,
-          recentInsights: recentInsights ?? [],
+          pendingInsightDelivery: pendingInsightDelivery ?? null,
           hoursSinceLastInteraction,
         }),
       );

@@ -1420,8 +1420,24 @@ export async function startGatewayServer(
           );
         });
 
+    let insightDeliveryOutcomeHandler:
+      | ((params: {
+          agentId: string;
+          sessionKey: string;
+          insightId: string;
+          delivered: boolean;
+        }) => Promise<void>)
+      | undefined;
+
     if (!minimalTestGateway) {
-      heartbeatRunner = startHeartbeatRunner({ cfg: cfgAtStart });
+      heartbeatRunner = startHeartbeatRunner({
+        cfg: cfgAtStart,
+        onInsightDeliveryOutcome: async (params) => {
+          if (insightDeliveryOutcomeHandler) {
+            await insightDeliveryOutcomeHandler(params);
+          }
+        },
+      });
     }
 
     // Cognitive layer: deferred to post-ready — the scheduler only fires
@@ -1449,6 +1465,55 @@ export async function startGatewayServer(
           const cognitiveStore = new PersonaStore(resolveConfigDir());
           await cognitiveStore.migrateFromFlatLayout();
           const baseInsightDeps = createDefaultInsightDeps();
+
+          insightDeliveryOutcomeHandler = async ({ agentId, sessionKey, insightId, delivered }) => {
+            const { resolveCognitiveUserId } = await import("../cognitive/identity.js");
+            const userId = resolveCognitiveUserId(sessionKey);
+            if (!userId) {
+              return;
+            }
+            if (delivered) {
+              await cognitiveStore.update(agentId, userId, (persona) => {
+                if (persona.feedbackProfile.pendingInsightDelivery) {
+                  persona.feedbackProfile.pendingInsightDelivery = null;
+                }
+                return persona;
+              });
+              return;
+            }
+            const { InsightStore: InsightStoreCls } = await import("../cognitive/insight/store.js");
+            const insightStore = new InsightStoreCls(resolveConfigDir());
+            const record = await insightStore.load(agentId, userId, insightId);
+            if (!record) {
+              return;
+            }
+            await cognitiveStore.update(agentId, userId, (persona) => {
+              const existing = persona.feedbackProfile.pendingInsightDelivery;
+              if (existing && existing.generatedAt > record.generatedAt) {
+                return persona;
+              }
+              const candidate: import("../cognitive/insight/types.js").InsightCandidate = {
+                id: record.id,
+                content: record.content,
+                rationale: record.rationale,
+                targetDomains: record.targetDomains,
+                sourceDomains: record.sourceDomains,
+                relevanceScore: 0,
+                surpriseScore: 0,
+                compositeScore: 0,
+                sources: record.sources,
+                verificationStatus: "verified",
+                ...(record.resolvedMode ? { resolvedMode: record.resolvedMode } : {}),
+                ...(record.promptVariant ? { promptVariant: record.promptVariant } : {}),
+              };
+              persona.feedbackProfile.pendingInsightDelivery = {
+                candidate,
+                generatedAt: record.generatedAt,
+                opportunityType: "redelivery",
+              };
+              return persona;
+            });
+          };
 
           const insightDeps = {
             ...baseInsightDeps,
@@ -1520,6 +1585,8 @@ export async function startGatewayServer(
               patternVerification: cfgAtStart.cognitive?.insight?.patternVerification,
               llmFreshnessCheck: cfgAtStart.cognitive?.insight?.llmFreshnessCheck,
               epsilonGreedy: cfgAtStart.cognitive?.proactive?.epsilonGreedy,
+              costFalseNegative: cfgAtStart.cognitive?.proactive?.costFalseNegative,
+              costFalseAlarm: cfgAtStart.cognitive?.proactive?.costFalseAlarm,
             },
             {
               loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
@@ -1539,6 +1606,7 @@ export async function startGatewayServer(
                   rationale: candidate.rationale,
                   sources: candidate.sources,
                   deliveredAt: Date.now(),
+                  resolvedMode: candidate.resolvedMode,
                   promptVariant: candidate.promptVariant,
                 };
 

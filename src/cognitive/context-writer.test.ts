@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildCognitiveModePrompt } from "./context-writer.js";
-import { createDefaultPersona } from "./persona/store.js";
 import type { CorrectionRecord } from "./correction/types.js";
-import type { InsightRecord, PersonaTree } from "./types.js";
+import type { InsightCandidate } from "./insight/types.js";
+import { createDefaultPersona } from "./persona/store.js";
+import type { PersonaTree } from "./types.js";
 
 describe("buildCognitiveModePrompt", () => {
   it("includes Skill Evolution hint when evolutionEnabled is true", () => {
@@ -170,27 +171,44 @@ describe("Continuity Handshake", () => {
     expect(prompt).toContain("## Continuity Handshake");
   });
 
-  it("includes last delivered insight as a cue when recentInsights provided", () => {
+  it("includes undelivered insight as a cue when pendingInsightDelivery provided", () => {
     const persona = makePersonaWithGap(12);
-    const insights: InsightRecord[] = [
-      {
-        id: "insight-1",
-        generatedAt: Date.now() - 2 * 24 * HR,
-        triggerSource: "scheduled",
-        targetDomains: ["AI"],
-        sourceDomains: [],
-        content: "你在 Rust 异步和飞书机器人之间找到了有趣的连接",
-        rationale: "cross-domain link",
-        sources: [],
-      },
-    ];
+    const candidate: InsightCandidate = {
+      id: "insight-1",
+      content: "你在 Rust 异步和飞书机器人之间找到了有趣的连接",
+      rationale: "cross-domain link",
+      targetDomains: ["AI"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.7,
+      compositeScore: 0.75,
+      sources: [],
+      verificationStatus: "verified",
+      resolvedMode: "surprise",
+    };
     const { prompt } = buildCognitiveModePrompt({
       message: "你好",
       persona,
-      recentInsights: insights,
+      pendingInsightDelivery: {
+        candidate,
+        generatedAt: Date.now() - 2 * 24 * HR,
+        opportunityType: "cross_domain",
+      },
     });
-    expect(prompt).toContain("上次推送的洞察");
+    expect(prompt).toContain("未送达");
     expect(prompt).toContain("Rust 异步和飞书机器人");
+  });
+
+  it("omits insight cue when pendingInsightDelivery is null", () => {
+    const persona = makePersonaWithGap(12);
+    const { prompt } = buildCognitiveModePrompt({
+      message: "你好",
+      persona,
+      pendingInsightDelivery: null,
+    });
+    expect(prompt).toContain("## Continuity Handshake");
+    expect(prompt).not.toContain("未送达");
+    expect(prompt).not.toContain("洞察");
   });
 
   it("omits handshake when persona.lifecycle.lastActiveAt is 0", () => {

@@ -12,8 +12,8 @@ import type {
 
 // ── PRISM cost defaults ──────────────────────────────────────────────
 
-const DEFAULT_C_FN = 5.0;
-const DEFAULT_C_FA = 1.0;
+const DEFAULT_C_FN = 7.0;
+const DEFAULT_C_FA = 3.0;
 const BASE_NEED = 0.6;
 
 const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {

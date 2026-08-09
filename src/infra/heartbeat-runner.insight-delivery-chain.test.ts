@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { KaijiBotConfig } from "../config/config.js";
-import { resolveMainSessionKey } from "../config/sessions.js";
 import { InsightStore } from "../cognitive/insight/store.js";
 import type { InsightRecord } from "../cognitive/types.js";
+import type { KaijiBotConfig } from "../config/config.js";
+import { resolveMainSessionKey } from "../config/sessions.js";
 import { runHeartbeatOnce } from "./heartbeat-runner.js";
 import { installHeartbeatRunnerTestRuntime } from "./heartbeat-runner.test-harness.js";
 import { seedMainSessionStore, withTempHeartbeatSandbox } from "./heartbeat-runner.test-utils.js";
@@ -280,5 +280,193 @@ describe("runHeartbeatOnce insight event → prompt → reply → drain", () => 
       },
       { prefix: "kaijibot-insight-wb-", unsetEnvVars: ["TELEGRAM_BOT_TOKEN"] },
     );
+  });
+
+  it("fires onInsightDeliveryOutcome with delivered=false when agent returns empty reply", async () => {
+    await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
+      const cfg = {
+        agents: {
+          defaults: {
+            workspace: tmpDir,
+            heartbeat: { every: "30m" },
+            model: { primary: "test/model" },
+          },
+        },
+        channels: {
+          telegram: { token: "test" },
+        },
+        session: { store: storePath },
+      } as unknown as KaijiBotConfig;
+
+      const sessionKey = await seedMainSessionStore(storePath, cfg, {
+        sessionId: "sid_outcome",
+        lastChannel: "telegram",
+        lastProvider: "telegram",
+        lastTo: "123456789",
+      });
+
+      enqueueSystemEvent(
+        "[Cognitive Insight] 测试洞察内容\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）",
+        { sessionKey, contextKey: "insight:insight-outcome-test" },
+      );
+
+      const outcomes: Array<{
+        agentId: string;
+        sessionKey: string;
+        insightId: string;
+        delivered: boolean;
+      }> = [];
+      const mockGetReply = vi.fn().mockResolvedValue({ text: "" });
+
+      const result = await runHeartbeatOnce({
+        cfg,
+        reason: "cognitive-insight",
+        sessionKey,
+        deps: {
+          getQueueSize: () => 0,
+          nowMs: () => Date.now(),
+          getReplyFromConfig: mockGetReply,
+          onInsightDeliveryOutcome: async (params: {
+            agentId: string;
+            sessionKey: string;
+            insightId: string;
+            delivered: boolean;
+          }) => {
+            outcomes.push(params);
+          },
+        } as never,
+      });
+
+      expect(result.status).toBe("ran");
+      expect(outcomes).toHaveLength(1);
+      expect(outcomes[0]?.delivered).toBe(false);
+      expect(outcomes[0]?.insightId).toBe("insight-outcome-test");
+      expect(outcomes[0]?.agentId).toBe("main");
+    });
+  });
+
+  it("fires onInsightDeliveryOutcome with delivered=true on successful delivery", async () => {
+    await withTempHeartbeatSandbox(
+      async ({ tmpDir, storePath, replySpy }) => {
+        const prevStateDir = process.env.KAIJIBOT_STATE_DIR;
+        process.env.KAIJIBOT_STATE_DIR = tmpDir;
+        try {
+          const cfg = {
+            agents: {
+              defaults: {
+                workspace: tmpDir,
+                heartbeat: { every: "30m" },
+                model: { primary: "test/model" },
+              },
+            },
+            channels: { telegram: { allowFrom: ["*"] } },
+            session: { store: storePath },
+          } as unknown as KaijiBotConfig;
+
+          const sessionKey = await seedMainSessionStore(storePath, cfg, {
+            sessionId: "sid_outcome_ok",
+            lastChannel: "telegram",
+            lastProvider: "telegram",
+            lastTo: "-100155462274",
+          });
+
+          enqueueSystemEvent(
+            "[Cognitive Insight] 成功投递的洞察\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）",
+            { sessionKey, contextKey: "insight:insight-ok-test" },
+          );
+
+          const outcomes: Array<{ insightId: string; delivered: boolean }> = [];
+          const sendTelegram = vi
+            .fn()
+            .mockResolvedValue({ messageId: "m-ok", chatId: "-100155462274" });
+          replySpy.mockResolvedValue({ text: "这是洞察内容，分享给你。" });
+
+          const result = await runHeartbeatOnce({
+            cfg,
+            agentId: "main",
+            reason: "cognitive-insight",
+            sessionKey,
+            deps: {
+              getReplyFromConfig: replySpy,
+              telegram: sendTelegram,
+              getQueueSize: () => 0,
+              nowMs: () => Date.now(),
+              onInsightDeliveryOutcome: async (params: {
+                agentId: string;
+                sessionKey: string;
+                insightId: string;
+                delivered: boolean;
+              }) => {
+                outcomes.push(params);
+              },
+            } as never,
+          });
+
+          expect(result.status).toBe("ran");
+          expect(sendTelegram).toHaveBeenCalled();
+          expect(outcomes).toHaveLength(1);
+          expect(outcomes[0]?.delivered).toBe(true);
+          expect(outcomes[0]?.insightId).toBe("insight-ok-test");
+        } finally {
+          if (prevStateDir === undefined) {
+            delete process.env.KAIJIBOT_STATE_DIR;
+          } else {
+            process.env.KAIJIBOT_STATE_DIR = prevStateDir;
+          }
+        }
+      },
+      { prefix: "kaijibot-insight-ok-", unsetEnvVars: ["TELEGRAM_BOT_TOKEN"] },
+    );
+  });
+
+  it("does not fire onInsightDeliveryOutcome when no insight event is present", async () => {
+    await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
+      const cfg = {
+        agents: {
+          defaults: {
+            workspace: tmpDir,
+            heartbeat: { every: "30m" },
+            model: { primary: "test/model" },
+          },
+        },
+        channels: {
+          telegram: { token: "test" },
+        },
+        session: { store: storePath },
+      } as unknown as KaijiBotConfig;
+
+      const sessionKey = await seedMainSessionStore(storePath, cfg, {
+        sessionId: "sid_no_insight",
+        lastChannel: "telegram",
+        lastProvider: "telegram",
+        lastTo: "123456789",
+      });
+
+      // No system event enqueued — no insight event
+      const outcomes: Array<{ insightId: string; delivered: boolean }> = [];
+      const mockGetReply = vi.fn().mockResolvedValue({ text: "" });
+
+      const result = await runHeartbeatOnce({
+        cfg,
+        reason: "cognitive-insight",
+        sessionKey,
+        deps: {
+          getQueueSize: () => 0,
+          nowMs: () => Date.now(),
+          getReplyFromConfig: mockGetReply,
+          onInsightDeliveryOutcome: async (params: {
+            agentId: string;
+            sessionKey: string;
+            insightId: string;
+            delivered: boolean;
+          }) => {
+            outcomes.push(params);
+          },
+        } as never,
+      });
+
+      expect(result.status).toBe("ran");
+      expect(outcomes).toHaveLength(0);
+    });
   });
 });

@@ -271,7 +271,6 @@ export async function runPreparedReply(
   // Cognitive layer: classify mode, load persona, inject context into system prompt.
   let cognitivePersona: import("../../cognitive/types.js").PersonaTree | undefined;
   let corrections: import("../../cognitive/correction/types.js").CorrectionRecord[] | undefined;
-  let cognitiveInsights: import("../../cognitive/types.js").InsightRecord[] | undefined;
   try {
     const { buildCognitiveModePrompt } = await import("../../cognitive/context-writer.js");
     const { PersonaStore } = await import("../../cognitive/persona/store.js");
@@ -291,13 +290,6 @@ export async function runPreparedReply(
         }
       }
     } catch {}
-    try {
-      if (cognitiveCfg?.enabled !== false && userId) {
-        const { InsightStore } = await import("../../cognitive/insight/store.js");
-        const insightStore = new InsightStore(resolveConfigDir());
-        cognitiveInsights = await insightStore.listActive(agentId, userId, undefined, 3);
-      }
-    } catch {}
     const { prompt: cognitivePrompt, classification: cognitiveClassification } =
       buildCognitiveModePrompt({
         message: rawBodyTrimmed,
@@ -305,7 +297,7 @@ export async function runPreparedReply(
         evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
         persona: cognitivePersona,
         corrections,
-        recentInsights: cognitiveInsights,
+        pendingInsightDelivery: cognitivePersona?.feedbackProfile.pendingInsightDelivery ?? null,
         handshakeConfig: cognitiveCfg?.handshake,
       });
     if (cognitivePrompt) {

@@ -109,6 +109,12 @@ export type HeartbeatDeps = OutboundSendDeps &
     runtime?: RuntimeEnv;
     getQueueSize?: (lane?: string) => number;
     nowMs?: () => number;
+    onInsightDeliveryOutcome?: (params: {
+      agentId: string;
+      sessionKey: string;
+      insightId: string;
+      delivered: boolean;
+    }) => Promise<void> | void;
   };
 
 const log = createSubsystemLogger("gateway/heartbeat");
@@ -833,6 +839,24 @@ export async function runHeartbeatOnce(opts: {
       heartbeatFileContent: preflight.heartbeatFileContent,
     });
 
+  const insightIdForOutcome = hasInsightEvent
+    ? (preflight.pendingEventEntries
+        .map((event) => event.contextKey ?? "")
+        .find((key) => key.startsWith("insight:"))
+        ?.slice("insight:".length) ?? null)
+    : null;
+  const insightOutcomeDep = opts.deps?.onInsightDeliveryOutcome;
+  const reportInsightOutcome = async (delivered: boolean) => {
+    if (!insightIdForOutcome || !insightOutcomeDep) {
+      return;
+    }
+    try {
+      await insightOutcomeDep({ agentId, sessionKey, insightId: insightIdForOutcome, delivered });
+    } catch {
+      // best-effort — delivery outcome reporting must not break the heartbeat run
+    }
+  };
+
   // If no tasks are due, skip heartbeat entirely
   if (prompt === null) {
     // Wake-triggered events should stay queued when the run short-circuits:
@@ -1053,6 +1077,7 @@ export async function runHeartbeatOnce(opts: {
       });
       await updateTaskTimestamps();
       consumeInspectedSystemEvents();
+      await reportInsightOutcome(false);
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 
@@ -1284,6 +1309,7 @@ export async function runHeartbeatOnce(opts: {
     });
     await updateTaskTimestamps();
     consumeInspectedSystemEvents();
+    await reportInsightOutcome(true);
     return { status: "ran", durationMs: Date.now() - startedAt };
   } catch (err) {
     const reason = formatErrorMessage(err);
@@ -1306,9 +1332,11 @@ export function startHeartbeatRunner(opts: {
   abortSignal?: AbortSignal;
   runOnce?: typeof runHeartbeatOnce;
   stableSchedulerSeed?: string;
+  onInsightDeliveryOutcome?: HeartbeatDeps["onInsightDeliveryOutcome"];
 }): HeartbeatRunner {
   const runtime = opts.runtime ?? defaultRuntime;
   const runOnce = opts.runOnce ?? runHeartbeatOnce;
+  const insightDeliveryOutcome = opts.onInsightDeliveryOutcome;
   const state = {
     cfg: opts.cfg ?? loadConfig(),
     runtime,
@@ -1490,7 +1518,12 @@ export function startHeartbeatRunner(opts: {
             heartbeat: targetAgent.heartbeat,
             reason,
             sessionKey: requestedSessionKey,
-            deps: { runtime: state.runtime },
+            deps: {
+              runtime: state.runtime,
+              ...(insightDeliveryOutcome
+                ? { onInsightDeliveryOutcome: insightDeliveryOutcome }
+                : {}),
+            },
           });
           if (res.status !== "skipped" || res.reason !== "disabled") {
             advanceAgentSchedule(targetAgent, now, reason);
@@ -1518,7 +1551,12 @@ export function startHeartbeatRunner(opts: {
             agentId: agent.agentId,
             heartbeat: agent.heartbeat,
             reason,
-            deps: { runtime: state.runtime },
+            deps: {
+              runtime: state.runtime,
+              ...(insightDeliveryOutcome
+                ? { onInsightDeliveryOutcome: insightDeliveryOutcome }
+                : {}),
+            },
           });
         } catch (err) {
           const errMsg = formatErrorMessage(err);

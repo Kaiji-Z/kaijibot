@@ -17,6 +17,10 @@ export type CognitiveConfig = {
     digestMode?: "realtime" | "daily" | "weekly";
     /** Epsilon-greedy exploration probability (0-1, default 0.2). Promotes exploration candidates with probability ε. Set to 0 to disable. */
     epsilonGreedy?: number;
+    /** Cost of false negative — missing a good insight. Higher = more willing to send. Default: 7 */
+    costFalseNegative?: number;
+    /** Cost of false alarm — bothering user with unwanted insight. Higher = more conservative. Default: 3 */
+    costFalseAlarm?: number;
   };
   /** User cognitive model settings */
   persona?: {
