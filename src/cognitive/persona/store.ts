@@ -199,7 +199,14 @@ export class PersonaStore {
       validated.identity.userId = userId;
     }
     backfillStalePhases(validated);
-    return migrateToTypedInsights(validated);
+    const result = migrateToTypedInsights(validated);
+    if (
+      result.feedbackProfile.consecutiveNoResponses &&
+      result.feedbackProfile.consecutiveNoResponses > 8
+    ) {
+      result.feedbackProfile.consecutiveNoResponses = 8;
+    }
+    return result;
   }
 
   async save(agentId: string, userId: string, persona: PersonaTree): Promise<void> {

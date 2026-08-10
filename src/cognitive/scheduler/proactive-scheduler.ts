@@ -824,7 +824,6 @@ export class ProactiveScheduler {
         previousMode: prevMode,
       });
       persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
-    persona.feedbackProfile.lastProactiveAt = event.timestamp;
       log.info("time-based no-response penalty applied", {
         userId,
         lastProactiveAt,

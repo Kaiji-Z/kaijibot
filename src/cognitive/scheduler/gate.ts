@@ -269,14 +269,14 @@ export function computeTimeFactor(
       : optFreq * 2;
   const recoveryFactor = 1 - Math.exp(-hoursSinceLastProactive / optFreq);
 
-  // Hyperbolic backoff: 1/(1+0.3n) with floor, replacing 0.7^n death spiral.
-  // Phone call data (Mollgaard 2016) shows humans use hyperbolic decay, not exponential.
+  // Linear backoff: mild signal-level decay. Per-topic adjustment happens via
+  // bandits (processNoResponse); backoff provides a gentle global signal that
+  // the user is less engaged. Floor 0.7 ensures pAct drops at most ~13%,
+  // preventing death spirals where accumulated noResp locks the system silent.
   const noResponseCount = persona.feedbackProfile.consecutiveNoResponses ?? 0;
-  const IGNORE_PENALTY_RATE = 0.3;
-  const MIN_BACKOFF_FLOOR = 0.12;
   const MAX_EFFECTIVE_IGNORES = 8;
   const effectiveIgnores = Math.min(noResponseCount, MAX_EFFECTIVE_IGNORES);
-  const ignoreBackoff = 1 / (1 + IGNORE_PENALTY_RATE * effectiveIgnores);
+  const ignoreBackoff = 1.0 - 0.03 * effectiveIgnores;
 
   // Compensatory signal: grows with silence since last proactive, counteracting
   // ignore penalty — mirrors human "compensatory investment" after long silence.
@@ -300,7 +300,7 @@ export function computeTimeFactor(
         )
       : 0;
 
-  const backoffFactor = Math.max(MIN_BACKOFF_FLOOR, ignoreBackoff + compensatorySignal);
+  const backoffFactor = Math.max(0.7, ignoreBackoff + compensatorySignal);
 
   return clamp01(cadenceFactor * recoveryFactor * backoffFactor);
 }

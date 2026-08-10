@@ -906,7 +906,7 @@ describe("computeTimeFactor", () => {
     expect(factorLong).toBeGreaterThan(factorJust);
   });
 
-  it("backoffFactor decays with consecutive no-responses (hyperbolic, floored)", () => {
+  it("backoffFactor decays mildly with consecutive no-responses (linear, floored at 0.7)", () => {
     const now = Date.now();
     const base = {
       lastActiveAt: now - 3 * HR,
@@ -921,8 +921,8 @@ describe("computeTimeFactor", () => {
     const factor3 = computeTimeFactor(backlog3, baseConfig, now);
 
     expect(factor0).toBeGreaterThan(factor3);
-    // Hyperbolic: 1/(1+0.3*3) = 0.526 (vs exponential 0.7^3 = 0.343)
-    const expectedRatio = 1 / (1 + 0.3 * 3);
+    // Linear: (1.0 - 0.03*3) / 1.0 = 0.91
+    const expectedRatio = 1.0 - 0.03 * 3;
     expect(factor3).toBeCloseTo(factor0 * expectedRatio, 2);
   });
 
@@ -955,9 +955,9 @@ describe("computeTimeFactor", () => {
       now,
     );
 
-    // Floor at 0.12: even at streak=20, factor should be >= 0.12 * factor0
+    // Floor at 0.7: even at streak=20, factor retains ~76% of normal
     expect(factor20).toBeGreaterThan(0);
-    expect(factor20).toBeGreaterThanOrEqual(factor0 * 0.12);
+    expect(factor20).toBeGreaterThanOrEqual(factor0 * 0.7);
 
     // Diminishing penalty: factor10 ≈ factor20 (capped at MAX_EFFECTIVE_IGNORES=8)
     expect(factor10).toBeCloseTo(factor20, 3);
