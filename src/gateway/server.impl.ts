@@ -1473,9 +1473,6 @@ export async function startGatewayServer(
               return;
             }
             if (delivered) {
-              const { ProactiveScheduler } = await import(
-                "../cognitive/scheduler/proactive-scheduler.js"
-              );
               await cognitiveStore.update(agentId, userId, (persona) => {
                 const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
                 if (awaiting) {
