@@ -147,6 +147,7 @@ export class ProactiveScheduler {
   private readonly llmDeps: LlmInsightDeps | undefined;
   private readonly botConfig: KaijiBotConfig | undefined;
   private readonly processEventQueue = new KeyedAsyncQueue();
+  private readonly lastProcessEventAt = new Map<string, number>();
 
   constructor(
     private readonly config: SchedulerConfig,
@@ -783,6 +784,14 @@ export class ProactiveScheduler {
         return undefined;
       }
     }
+
+    const cooldownKey = `${agentId}:${userId}`;
+    const cooldownMs = (this.config.minIntervalHours ?? 0.5) * 60 * 60 * 1000;
+    const lastAt = this.lastProcessEventAt.get(cooldownKey);
+    if (lastAt && event.timestamp - lastAt < cooldownMs) {
+      return undefined;
+    }
+    this.lastProcessEventAt.set(cooldownKey, event.timestamp);
 
     // Previous insight still awaiting delivery confirmation — don't generate
     // a new one until the outcome is known (avoids stacking insights).

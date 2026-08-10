@@ -562,26 +562,32 @@ describeDet("ProactiveScheduler", () => {
       sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
       verificationStatus: "unverified",
     };
-    const scheduler = new ProactiveScheduler(
-      config,
-      {
-        loadPersona: async () => JSON.parse(JSON.stringify(persona)) as PersonaTree,
-        onInsightReady: async () => {},
-        savePersona: async () => {},
-      },
-      { insightGenerator: async () => [fakeInsight] },
-    );
-
+    let eventTime = Date.now();
     for (const type of eventTypes) {
-      const result = await scheduler.processEvent(
+      const iterPersona = personaWithDomains();
+      iterPersona.lifecycle.lastActiveAt = eventTime - 2 * 3600_000;
+      iterPersona.feedbackProfile.lastProactiveAt = eventTime - 8 * 3600_000;
+
+      const iterScheduler = new ProactiveScheduler(
+        config,
+        {
+          loadPersona: async () => JSON.parse(JSON.stringify(iterPersona)) as PersonaTree,
+          onInsightReady: async () => {},
+          savePersona: async () => {},
+        },
+        { insightGenerator: async () => [fakeInsight] },
+      );
+
+      const result = await iterScheduler.processEvent(
         "user1",
         {
           type,
-          timestamp: Date.now(),
+          timestamp: eventTime,
         },
         "main",
       );
       results.push(result);
+      eventTime += 4 * 60 * 60 * 1000 + 60_000;
     }
 
     for (const type of eventTypes) {
