@@ -840,6 +840,7 @@ export class ProactiveScheduler {
     };
     const gateResult = computeGradedGate(gateContext);
     if (!gateResult.decision) {
+      await this.callbacks.savePersona(agentId, userId, persona);
       log.info("gate vetoed", {
         userId,
         pNeed: gateResult.pNeed,
