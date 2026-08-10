@@ -1,6 +1,6 @@
 {
   "name": "kaijibot",
-  "version": "2026.8.9-2",
+  "version": "2026.8.9-3",
   "description": "Proactive cognitive AI assistant with Feishu/WeChat integration — learns user interests, pushes cross-domain insights, evolves skills, self-corrects. 40+ LLM providers, runs on cloud/desktop/Android.",
   "keywords": [
     "ai",
