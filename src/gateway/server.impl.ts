@@ -1470,11 +1470,14 @@ export async function startGatewayServer(
             const { resolveCognitiveUserId } = await import("../cognitive/identity.js");
             const userId = resolveCognitiveUserId(sessionKey);
             if (!userId) {
+              console.warn("[insight-outcome] no userId for sessionKey:", sessionKey);
               return;
             }
+            console.warn("[insight-outcome]", { agentId, userId, insightId, delivered });
             if (delivered) {
               await cognitiveStore.update(agentId, userId, (persona) => {
                 const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
+                console.warn("[insight-outcome] awaiting:", awaiting ? "found" : "null");
                 if (awaiting) {
                   persona = ProactiveScheduler.finalizeDelivery(
                     persona,
@@ -1483,6 +1486,7 @@ export async function startGatewayServer(
                     awaiting.opportunityType,
                   );
                   persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                  console.warn("[insight-outcome] finalized, lastProactiveAt:", persona.feedbackProfile.lastProactiveAt);
                 }
                 if (persona.feedbackProfile.pendingInsightDelivery) {
                   persona.feedbackProfile.pendingInsightDelivery = null;

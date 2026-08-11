@@ -804,11 +804,13 @@ export class ProactiveScheduler {
     // counter when the user has been active since the last proactive.
     // The increment is deferred to AFTER a successful insight delivery, so
     // the counter only grows when we actually sent something and got no reply.
+    const currentNoResp = persona.feedbackProfile.consecutiveNoResponses ?? 0;
     if (
       persona.lifecycle.lastActiveAt > 0 &&
-      persona.lifecycle.lastActiveAt > persona.feedbackProfile.lastProactiveAt
+      persona.lifecycle.lastActiveAt > persona.feedbackProfile.lastProactiveAt &&
+      currentNoResp > 0
     ) {
-      persona = resetNoResponseStreak(persona);
+      persona.feedbackProfile.consecutiveNoResponses = currentNoResp - 1;
     }
 
     // Time-based no-response: if the last proactive message went unanswered

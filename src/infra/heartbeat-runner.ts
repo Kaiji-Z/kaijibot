@@ -852,8 +852,8 @@ export async function runHeartbeatOnce(opts: {
     }
     try {
       await insightOutcomeDep({ agentId, sessionKey, insightId: insightIdForOutcome, delivered });
-    } catch {
-      // best-effort — delivery outcome reporting must not break the heartbeat run
+    } catch (err) {
+      log.error("insight delivery outcome handler failed", { error: formatErrorMessage(err) });
     }
   };
 
