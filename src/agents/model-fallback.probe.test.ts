@@ -214,9 +214,8 @@ describe("runWithModelFallback – probe logic", () => {
     vi.restoreAllMocks();
   });
 
-  it("skips primary model when far from cooldown expiry (30 min remaining)", async () => {
+  it("probes primary model even when far from cooldown expiry (30 min remaining)", async () => {
     const cfg = makeCfg();
-    // Cooldown expires in 30 min — well beyond the 2-min margin
     const expiresIn30Min = NOW + 30 * 60 * 1000;
     mockedGetSoonestCooldownExpiry.mockReturnValue(expiresIn30Min);
 
@@ -224,11 +223,10 @@ describe("runWithModelFallback – probe logic", () => {
 
     const result = await runPrimaryCandidate(cfg, run);
 
-    // Should skip primary and use fallback
-    expectFallbackUsed(result, run);
+    expectPrimaryProbeSuccess(result, run, "ok");
   });
 
-  it("uses inferred unavailable reason when skipping a cooldowned primary model", async () => {
+  it("probes primary model even when inferred reason is billing", async () => {
     const cfg = makeCfg();
     const expiresIn30Min = NOW + 30 * 60 * 1000;
     mockedGetSoonestCooldownExpiry.mockReturnValue(expiresIn30Min);
@@ -237,7 +235,7 @@ describe("runWithModelFallback – probe logic", () => {
     const run = vi.fn().mockResolvedValue("ok");
 
     const result = await runPrimaryCandidate(cfg, run);
-    expectPrimarySkippedForReason(result, run, "billing");
+    expectPrimaryProbeSuccess(result, run, "ok");
   });
 
   it("probes primary model when within 2-min margin of cooldown expiry", async () => {
@@ -442,21 +440,18 @@ describe("runWithModelFallback – probe logic", () => {
     expect(run).toHaveBeenNthCalledWith(3, "deepseek", "deepseek-chat");
   });
 
-  it("throttles probe when called within 30s interval", async () => {
+  it("attempts primary regardless of probe throttle interval", async () => {
     const cfg = makeCfg();
-    // Cooldown just about to expire (within probe margin)
     const almostExpired = NOW + 30 * 1000;
     mockedGetSoonestCooldownExpiry.mockReturnValue(almostExpired);
 
-    // Simulate a recent probe 10s ago
     _probeThrottleInternals.lastProbeAttempt.set("openai", NOW - 10_000);
 
     const run = vi.fn().mockResolvedValue("ok");
 
     const result = await runPrimaryCandidate(cfg, run);
 
-    // Should be throttled → skip primary, use fallback
-    expectFallbackUsed(result, run);
+    expectPrimaryProbeSuccess(result, run, "ok");
   });
 
   it("allows probe when 30s have passed since last probe", async () => {
@@ -537,7 +532,7 @@ describe("runWithModelFallback – probe logic", () => {
     expectPrimaryProbeSuccess(result, run, "ok-null");
   });
 
-  it("single candidate skips with rate_limit and exhausts candidates", async () => {
+  it("single candidate attempts primary despite rate_limit cooldown", async () => {
     const cfg = makeCfg({
       agents: {
         defaults: {
@@ -552,19 +547,21 @@ describe("runWithModelFallback – probe logic", () => {
     const almostExpired = NOW + 30 * 1000;
     mockedGetSoonestCooldownExpiry.mockReturnValue(almostExpired);
 
-    const run = vi.fn().mockResolvedValue("unreachable");
+    const run = vi.fn().mockResolvedValue("ok");
 
-    await expect(
-      runWithModelFallback({
-        cfg,
-        provider: "openai",
-        model: "gpt-4.1-mini",
-        fallbacksOverride: [],
-        run,
-      }),
-    ).rejects.toThrow("All models failed");
+    const result = await runWithModelFallback({
+      cfg,
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      fallbacksOverride: [],
+      run,
+    });
 
-    expect(run).not.toHaveBeenCalled();
+    expect(result.result).toBe("ok");
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini", {
+      allowTransientCooldownProbe: true,
+    });
   });
 
   it("scopes probe throttling by agentDir to avoid cross-agent suppression", async () => {
@@ -652,7 +649,7 @@ describe("runWithModelFallback – probe logic", () => {
     });
   });
 
-  it("skips billing-cooldowned primary with fallbacks when far from cooldown expiry", async () => {
+  it("probes billing-cooldowned primary even with fallbacks when far from cooldown expiry", async () => {
     const cfg = makeCfg();
     const expiresIn30Min = NOW + 30 * 60 * 1000;
     mockedGetSoonestCooldownExpiry.mockReturnValue(expiresIn30Min);
@@ -661,6 +658,6 @@ describe("runWithModelFallback – probe logic", () => {
     const run = vi.fn().mockResolvedValue("ok");
 
     const result = await runPrimaryCandidate(cfg, run);
-    expectPrimarySkippedForReason(result, run, "billing");
+    expectPrimaryProbeSuccess(result, run, "ok");
   });
 });

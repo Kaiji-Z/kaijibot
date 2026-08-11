@@ -3,12 +3,7 @@ import type { FailoverReason } from "./pi-embedded-helpers.js";
 export function shouldAllowCooldownProbeForReason(
   reason: FailoverReason | null | undefined,
 ): boolean {
-  return (
-    reason === "rate_limit" ||
-    reason === "overloaded" ||
-    reason === "billing" ||
-    reason === "unknown"
-  );
+  return true;
 }
 
 export function shouldUseTransientCooldownProbeSlot(

@@ -585,39 +585,10 @@ function resolveCooldownDecision(params: {
       profileIds: params.profileIds,
       now: params.now,
     }) ?? "unknown";
-  const isPersistentAuthIssue = inferredReason === "auth" || inferredReason === "auth_permanent";
-  if (isPersistentAuthIssue) {
-    return {
-      type: "skip",
-      reason: inferredReason,
-      error: `Provider ${params.candidate.provider} has ${inferredReason} issue (skipping all models)`,
-    };
-  }
 
-  // Billing is semi-persistent: the user may fix their balance, or a transient
-  // 402 might have been misclassified. Probe single-provider setups on the
-  // standard throttle so they can recover without a restart; when fallbacks
-  // exist, only probe near cooldown expiry so the fallback chain stays preferred.
-  if (inferredReason === "billing") {
-    const shouldProbeSingleProviderBilling =
-      params.isPrimary &&
-      !params.hasFallbackCandidates &&
-      isProbeThrottleOpen(params.now, params.probeThrottleKey);
-    if (params.isPrimary && (shouldProbe || shouldProbeSingleProviderBilling)) {
-      return { type: "attempt", reason: inferredReason, markProbe: true };
-    }
-    return {
-      type: "skip",
-      reason: inferredReason,
-      error: `Provider ${params.candidate.provider} has ${inferredReason} issue (skipping all models)`,
-    };
-  }
-
-  // For primary: try when requested model or when probe allows.
-  // For same-provider fallbacks: only relax cooldown on transient provider
-  // limits, which are often model-scoped and can recover on a sibling model.
+  // Primary always attempts; non-primary skips on provider-wide issues (auth/billing).
   const shouldAttemptDespiteCooldown =
-    (params.isPrimary && (!params.requestedModel || shouldProbe)) ||
+    params.isPrimary ||
     (!params.isPrimary &&
       (inferredReason === "rate_limit" ||
         inferredReason === "overloaded" ||
