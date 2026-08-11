@@ -65,6 +65,23 @@ const feedbackProfileSchema = z.object({
   modeBandits: z.record(z.string(), topicBanditSchema).optional(),
   consecutiveNoResponses: z.number().optional(),
   recentInsightModes: z.array(z.string()).optional().default([]),
+  lastNoResponseAt: z.number().optional(),
+  pendingInsightDelivery: z
+    .object({
+      candidate: z.unknown(),
+      generatedAt: z.number(),
+      opportunityType: z.string(),
+    })
+    .nullable()
+    .optional(),
+  awaitingDeliveryConfirmation: z
+    .object({
+      candidate: z.unknown(),
+      opportunityType: z.string(),
+      eventTimestamp: z.number(),
+    })
+    .nullable()
+    .optional(),
 });
 
 const rapportMetricsSchema = z.object({
