@@ -416,21 +416,20 @@ async function restoreHeartbeatUpdatedAt(params: {
   if (!entry) {
     return;
   }
-  const nextUpdatedAt = Math.max(entry.updatedAt ?? 0, updatedAt);
-  if (entry.updatedAt === nextUpdatedAt) {
-    return;
+  const now = Date.now();
+  const currentUpdatedAt = entry.updatedAt ?? 0;
+  if (currentUpdatedAt !== updatedAt && now - currentUpdatedAt < 5000) {
+    await updateSessionStore(storePath, (nextStore) => {
+      const nextEntry = nextStore[sessionKey];
+      if (!nextEntry) {
+        return;
+      }
+      const liveUpdatedAt = nextEntry.updatedAt ?? 0;
+      if (Date.now() - liveUpdatedAt < 5000) {
+        nextStore[sessionKey] = { ...nextEntry, updatedAt };
+      }
+    });
   }
-  await updateSessionStore(storePath, (nextStore) => {
-    const nextEntry = nextStore[sessionKey] ?? entry;
-    if (!nextEntry) {
-      return;
-    }
-    const resolvedUpdatedAt = Math.max(nextEntry.updatedAt ?? 0, updatedAt);
-    if (nextEntry.updatedAt === resolvedUpdatedAt) {
-      return;
-    }
-    nextStore[sessionKey] = { ...nextEntry, updatedAt: resolvedUpdatedAt };
-  });
 }
 
 function stripLeadingHeartbeatResponsePrefix(
@@ -1310,6 +1309,11 @@ export async function runHeartbeatOnce(opts: {
     await updateTaskTimestamps();
     consumeInspectedSystemEvents();
     await reportInsightOutcome(true);
+    await restoreHeartbeatUpdatedAt({
+      storePath,
+      sessionKey,
+      updatedAt: previousUpdatedAt,
+    });
     return { status: "ran", durationMs: Date.now() - startedAt };
   } catch (err) {
     const reason = formatErrorMessage(err);

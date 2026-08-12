@@ -346,13 +346,12 @@ describe.skipIf(process.env.CI)("Improvement #2: Semantic dedup via domain overl
 
     expect(result).toBeDefined();
     expect(savedPersona).toBeDefined();
-    expect(savedPersona!.feedbackProfile.recentInsightDomains).toContainEqual([
+    expect(savedPersona!.feedbackProfile.awaitingDeliveryConfirmation?.candidate.targetDomains).toEqual([
       "Rust",
       "TypeScript",
     ]);
     expect(savedPersona!.feedbackProfile.recentInsightTypes).toBeDefined();
     expect(savedPersona!.feedbackProfile.recentInsightTypes!.length).toBeGreaterThan(0);
-    expect(savedPersona!.feedbackProfile.recentInsightContents).toContain(fakeInsight.content);
   });
 
   it("full pipeline: prevents two insights on same domain in sequence", async () => {
@@ -644,9 +643,8 @@ describe.skipIf(process.env.CI)("Combined: full pipeline with all 3 improvements
     expect(result1!.targetDomains).toContain("MCP");
     expect(result1!.sources.length).toBe(2);
 
-    // Verify persona saved with dedup metadata
     const saved = savedPersonas[0]!;
-    expect(saved.feedbackProfile.recentInsightDomains).toContainEqual(["MCP", "Rust"]);
+    expect(saved.feedbackProfile.awaitingDeliveryConfirmation?.candidate.targetDomains).toEqual(["MCP", "Rust"]);
 
     // Step 3: Try same domains again — dedup should block
     const insight2: InsightCandidate = {

@@ -304,6 +304,14 @@ export async function runPreparedReply(
       extraSystemPromptParts.push(cognitivePrompt);
     }
 
+    if (cognitivePersona?.feedbackProfile.pendingInsightDelivery && userId) {
+      const store = new PersonaStore(resolveConfigDir());
+      await store.update(agentId, userId, (persona) => {
+        persona.feedbackProfile.pendingInsightDelivery = null;
+        return persona;
+      });
+    }
+
     if (cognitiveCfg?.enabled !== false) {
       const { buildContextManifest } = await import("../../cognitive/context-manifest.js");
       const manifest = buildContextManifest({
