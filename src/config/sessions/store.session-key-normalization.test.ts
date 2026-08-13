@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MsgContext } from "../../auto-reply/templating.js";
 import { createSuiteTempRootTracker } from "../../test-helpers/temp-dir.js";
 import {
@@ -9,6 +9,22 @@ import {
   recordSessionMetaFromInbound,
   updateLastRoute,
 } from "../sessions.js";
+
+vi.mock("./store-maintenance.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../store-maintenance.js")>();
+  return {
+    ...actual,
+    resolveMaintenanceConfig: () => ({
+      mode: "warn" as const,
+      pruneAfterMs: 30 * 24 * 60 * 60 * 1000,
+      maxEntries: 500,
+      rotateBytes: 10_485_760,
+      resetArchiveRetentionMs: 30 * 24 * 60 * 60 * 1000,
+      maxDiskBytes: null,
+      highWaterBytes: null,
+    }),
+  };
+});
 
 const CANONICAL_KEY = "agent:main:webchat:dm:mixed-user";
 const MIXED_CASE_KEY = "Agent:Main:WebChat:DM:MiXeD-User";

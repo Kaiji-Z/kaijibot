@@ -13,6 +13,22 @@ import {
   resolveSessionTranscriptPathInDir,
   validateSessionId,
 } from "./paths.js";
+
+vi.mock("./store-maintenance.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./store-maintenance.js")>();
+  return {
+    ...actual,
+    resolveMaintenanceConfig: () => ({
+      mode: "warn" as const,
+      pruneAfterMs: 30 * 24 * 60 * 60 * 1000,
+      maxEntries: 500,
+      rotateBytes: 10_485_760,
+      resetArchiveRetentionMs: 30 * 24 * 60 * 60 * 1000,
+      maxDiskBytes: null,
+      highWaterBytes: null,
+    }),
+  };
+});
 import { evaluateSessionFreshness, resolveSessionResetPolicy } from "./reset.js";
 import { resolveAndPersistSessionFile } from "./session-file.js";
 import { clearSessionStoreCacheForTest, loadSessionStore, updateSessionStore } from "./store.js";
@@ -176,7 +192,7 @@ describe("session store lock (Promise chain mutex)", () => {
   it("serializes concurrent updateSessionStore calls without data loss", async () => {
     const key = "agent:main:test";
     const { storePath } = await makeTmpStore({
-      [key]: { sessionId: "s1", updatedAt: 100, counter: 0 },
+      [key]: { sessionId: "s1", updatedAt: Date.now(), counter: 0 },
     });
 
     const N = 4;
@@ -216,7 +232,7 @@ describe("session store lock (Promise chain mutex)", () => {
   it("multiple consecutive errors do not permanently poison the queue", async () => {
     const key = "agent:main:multi-err";
     const { storePath } = await makeTmpStore({
-      [key]: { sessionId: "s1", updatedAt: 100 },
+      [key]: { sessionId: "s1", updatedAt: Date.now() },
     });
 
     const errors = Array.from({ length: 3 }, (_, i) =>
@@ -242,7 +258,7 @@ describe("session store lock (Promise chain mutex)", () => {
     const merged = mergeSessionEntry(
       {
         sessionId: "sess-runtime",
-        updatedAt: 100,
+        updatedAt: Date.now(),
         modelProvider: "anthropic",
         model: "claude-opus-4-6",
       },
@@ -259,7 +275,7 @@ describe("session store lock (Promise chain mutex)", () => {
     const { storePath } = await makeTmpStore({
       [key]: {
         sessionId: "sess-orphan",
-        updatedAt: 100,
+        updatedAt: Date.now(),
         modelProvider: "anthropic",
       },
     });
@@ -287,7 +303,7 @@ describe("session store lock (Promise chain mutex)", () => {
     const { storePath } = await makeTmpStore({
       [key]: {
         sessionId: "sess-acp",
-        updatedAt: 100,
+        updatedAt: Date.now(),
         acp,
       },
     });
@@ -295,7 +311,7 @@ describe("session store lock (Promise chain mutex)", () => {
     await updateSessionStore(storePath, (store) => {
       store[key] = {
         sessionId: "sess-acp",
-        updatedAt: 200,
+        updatedAt: Date.now(),
         modelProvider: "openai-codex",
         model: "gpt-5.4",
       };
@@ -312,7 +328,7 @@ describe("session store lock (Promise chain mutex)", () => {
     const { storePath } = await makeTmpStore({
       [key]: {
         sessionId: "sess-acp-clear",
-        updatedAt: 100,
+        updatedAt: Date.now(),
         acp: {
           backend: "acpx",
           agent: "codex",
