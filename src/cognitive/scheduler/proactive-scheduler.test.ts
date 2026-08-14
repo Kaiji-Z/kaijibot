@@ -284,7 +284,9 @@ describeDet("ProactiveScheduler", () => {
     expect(result?.id).toBe("pending-insight");
     expect(savedPersona?.feedbackProfile.pendingInsightDelivery).toBeNull();
     expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation).toBeDefined();
-    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation?.candidate.id).toBe("pending-insight");
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation?.candidate.id).toBe(
+      "pending-insight",
+    );
   });
 
   it("keeps pending when retry delivery still fails", async () => {
@@ -333,6 +335,53 @@ describeDet("ProactiveScheduler", () => {
     expect(savedPersona?.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe(
       "pending-insight",
     );
+  });
+
+  it("does not retry pending insight after a failed attempt (attemptCount >= 1)", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.pendingInsightDelivery = {
+      candidate: {
+        id: "no-reply-insight",
+        content: "Insight the agent NO_REPLY'd",
+        rationale: "handshake-only",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+        compositeScore: 0.65,
+        sources: [],
+        verificationStatus: "unverified",
+      },
+      generatedAt: Date.now() - 30 * 60_000,
+      opportunityType: "cross_domain",
+      attemptCount: 1,
+    };
+    let deliverCount = 0;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {
+          deliverCount++;
+          return true;
+        },
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [],
+      },
+    );
+
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(deliverCount).toBe(0);
+    expect(result).toBeUndefined();
+    expect(persona.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe("no-reply-insight");
   });
 
   it("updates lastProactiveAt when onInsightReady returns true", async () => {
@@ -542,7 +591,6 @@ describeDet("ProactiveScheduler", () => {
   });
 
   it("handles all event types without timer interval dependency", async () => {
-    const persona = personaWithDomains();
     const eventTypes: Array<"timer" | "persona_change" | "info_scan"> = [
       "timer",
       "persona_change",

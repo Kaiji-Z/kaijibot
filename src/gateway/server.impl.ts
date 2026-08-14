@@ -1527,6 +1527,7 @@ export async function startGatewayServer(
                 candidate,
                 generatedAt: awaiting?.eventTimestamp ?? record.generatedAt,
                 opportunityType: awaiting?.opportunityType ?? "redelivery",
+                attemptCount: (existing?.attemptCount ?? 0) + 1,
               };
               persona.feedbackProfile.awaitingDeliveryConfirmation = null;
               const ts = awaiting?.eventTimestamp ?? record.generatedAt;
@@ -1538,7 +1539,9 @@ export async function startGatewayServer(
                 candidate.content,
               ].slice(-5);
               persona.feedbackProfile.recentInsightContents = contents;
-              const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), candidate.id].slice(-20);
+              const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), candidate.id].slice(
+                -20,
+              );
               persona.feedbackProfile.recentInsightIds = ids;
               return persona;
             });

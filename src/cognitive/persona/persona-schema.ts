@@ -71,6 +71,7 @@ const feedbackProfileSchema = z.object({
       candidate: z.unknown(),
       generatedAt: z.number(),
       opportunityType: z.string(),
+      attemptCount: z.number().optional(),
     })
     .nullable()
     .optional(),

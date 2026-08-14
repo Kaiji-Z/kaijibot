@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
-import { processNoResponse, resetNoResponseStreak } from "../feedback/collector.js";
+import { processNoResponse } from "../feedback/collector.js";
 import { pickBestTopic } from "../feedback/preference-learner.js";
 import {
   isDuplicateBySemanticOverlap,
@@ -723,7 +723,9 @@ export class ProactiveScheduler {
     ].slice(-5);
     persona.feedbackProfile.recentInsightContents = contents;
     const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-    persona.feedbackProfile.recentInsightDomains = [...prevDomains, insight.targetDomains].slice(-5);
+    persona.feedbackProfile.recentInsightDomains = [...prevDomains, insight.targetDomains].slice(
+      -5,
+    );
     const prevTypes = persona.feedbackProfile.recentInsightTypes ?? [];
     persona.feedbackProfile.recentInsightTypes = [...prevTypes, opportunityType].slice(-5);
     const mode = insight.resolvedMode ?? "surprise";
@@ -752,12 +754,22 @@ export class ProactiveScheduler {
 
     // Pending insight delivery retry — bypasses gate and LLM (zero token cost).
     // Stored in persona file so it survives gateway restarts.
+    // After one failed attempt (attemptCount >= 1, typically a NO_REPLY), stop
+    // timer retries: the pending insight stays for handshake injection on the
+    // next user conversation, and normal gate/dedup flow resumes.
     const pending = persona.feedbackProfile.pendingInsightDelivery;
     if (pending) {
       const ageMs = event.timestamp - pending.generatedAt;
       if (ageMs > PENDING_DELIVERY_TTL_MS) {
         persona.feedbackProfile.pendingInsightDelivery = null;
         log.info("pending insight expired (TTL)", { userId, ageMs: Math.round(ageMs / 3600_000) });
+      } else if ((pending.attemptCount ?? 0) >= 1) {
+        log.info("pending insight already attempted; waiting for handshake", {
+          userId,
+          insightId: pending.candidate.id,
+          attemptCount: pending.attemptCount,
+          ageMs: Math.round(ageMs / 60_000),
+        });
       } else {
         log.info("retrying pending insight delivery", {
           userId,
@@ -773,7 +785,10 @@ export class ProactiveScheduler {
           };
           persona.feedbackProfile.pendingInsightDelivery = null;
           await this.callbacks.savePersona(agentId, userId, persona);
-          log.info("pending insight re-enqueued, awaiting confirmation", { userId, insightId: pending.candidate.id });
+          log.info("pending insight re-enqueued, awaiting confirmation", {
+            userId,
+            insightId: pending.candidate.id,
+          });
           return pending.candidate;
         }
         log.info("pending insight delivery still failing", {

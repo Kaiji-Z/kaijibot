@@ -119,14 +119,17 @@ export type FeedbackProfile = {
    */
   lastNoResponseAt?: number;
   /**
-   * Insight generated but not yet delivered. Retried on every scheduler event
-   * (bypassing gate and LLM) until delivery succeeds or it expires (24h).
+   * Insight generated but not delivered by proactive push. Retried at most once
+   * on a scheduler event (bypassing gate and LLM); after that it is kept for
+   * handshake injection only (next user conversation) until it expires (24h).
    * Persists to persona file so it survives gateway restarts.
    */
   pendingInsightDelivery?: {
     candidate: InsightCandidate;
     generatedAt: number;
     opportunityType: string;
+    /** Number of failed proactive attempts. 1+ means no further timer retries. */
+    attemptCount?: number;
   } | null;
   /**
    * Insight enqueued for delivery but not yet confirmed by reportInsightOutcome.
