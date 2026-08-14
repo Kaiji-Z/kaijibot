@@ -469,4 +469,91 @@ describe("runHeartbeatOnce insight event → prompt → reply → drain", () => 
       expect(outcomes).toHaveLength(0);
     });
   });
+
+  it("reports delivered=true (not false) for an already-delivered insight on a redundant empty wake", async () => {
+    await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
+      const prevStateDir = process.env.KAIJIBOT_STATE_DIR;
+      process.env.KAIJIBOT_STATE_DIR = tmpDir;
+      try {
+        const cfg = {
+          agents: {
+            defaults: {
+              workspace: tmpDir,
+              heartbeat: { every: "30m" },
+              model: { primary: "test/model" },
+            },
+          },
+          channels: {
+            telegram: { token: "test" },
+          },
+          session: { store: storePath },
+        } as unknown as KaijiBotConfig;
+
+        const sessionKey = await seedMainSessionStore(storePath, cfg, {
+          sessionId: "sid_armed",
+          lastChannel: "telegram",
+          lastProvider: "telegram",
+          lastTo: "123456789",
+        });
+
+        // Seed the insight record as ALREADY delivered (deliveryMessageId set),
+        // simulating a prior heartbeat run that successfully sent it.
+        const insightStore = new InsightStore(tmpDir);
+        await insightStore.save("main", "operator", {
+          id: "insight-armed-test",
+          generatedAt: Date.now() - 300_000,
+          triggerSource: "scheduled",
+          targetDomains: ["软件开发"],
+          sourceDomains: [],
+          content: "已经投递过的洞察",
+          rationale: "test",
+          sources: [],
+          deliveredAt: Date.now() - 200_000,
+          deliveryMessageId: "already-sent-msg",
+        });
+
+        enqueueSystemEvent(
+          "[Cognitive Insight] 已经投递过的洞察\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）",
+          { sessionKey, contextKey: "insight:insight-armed-test" },
+        );
+
+        const outcomes: Array<{ insightId: string; delivered: boolean }> = [];
+        const mockGetReply = vi.fn().mockResolvedValue({ text: "" });
+
+        const result = await runHeartbeatOnce({
+          cfg,
+          agentId: "main",
+          reason: "cognitive-insight",
+          sessionKey,
+          deps: {
+            getQueueSize: () => 0,
+            nowMs: () => Date.now(),
+            getReplyFromConfig: mockGetReply,
+            onInsightDeliveryOutcome: async (params: {
+              agentId: string;
+              sessionKey: string;
+              insightId: string;
+              delivered: boolean;
+            }) => {
+              outcomes.push(params);
+            },
+          } as never,
+        });
+
+        expect(result.status).toBe("ran");
+        expect(outcomes).toHaveLength(1);
+        // Critical: an already-delivered insight must report true, NOT false.
+        // Reporting false here re-arms pendingInsightDelivery and causes the
+        // scheduler to redeliver an insight the user already received.
+        expect(outcomes[0]?.delivered).toBe(true);
+        expect(outcomes[0]?.insightId).toBe("insight-armed-test");
+      } finally {
+        if (prevStateDir === undefined) {
+          delete process.env.KAIJIBOT_STATE_DIR;
+        } else {
+          process.env.KAIJIBOT_STATE_DIR = prevStateDir;
+        }
+      }
+    });
+  });
 });

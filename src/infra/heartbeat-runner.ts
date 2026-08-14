@@ -856,6 +856,31 @@ export async function runHeartbeatOnce(opts: {
     }
   };
 
+  // An insight is already delivered once a prior heartbeat run wrote its
+  // deliveryMessageId to the InsightStore (see the send path below). A redundant
+  // wake for the same insight:<id> event may produce no outbound content — that is
+  // NOT a delivery failure and must not be reported as false, or the scheduler
+  // re-arms pendingInsightDelivery and redelivers an insight the user already got.
+  const isInsightAlreadyDelivered = async (insightId: string | null): Promise<boolean> => {
+    if (!insightId) {
+      return false;
+    }
+    try {
+      const { resolveConfigDir } = await import("../utils.js");
+      const { InsightStore } = await import("../cognitive/insight/store.js");
+      const { resolveCognitiveUserId } = await import("../cognitive/identity.js");
+      const uid = resolveCognitiveUserId(sessionKey);
+      if (!uid) {
+        return false;
+      }
+      const store = new InsightStore(resolveConfigDir());
+      const rec = await store.load(agentId, uid, insightId);
+      return Boolean(rec?.deliveryMessageId);
+    } catch {
+      return false;
+    }
+  };
+
   // If no tasks are due, skip heartbeat entirely
   if (prompt === null) {
     // Wake-triggered events should stay queued when the run short-circuits:
@@ -1076,7 +1101,12 @@ export async function runHeartbeatOnce(opts: {
       });
       await updateTaskTimestamps();
       consumeInspectedSystemEvents();
-      await reportInsightOutcome(false);
+      // Redundant wake for an already-delivered insight (deliveryMessageId set)
+      // must report true, not false — otherwise pendingInsightDelivery is re-armed
+      // and the scheduler redelivers an insight the user already received.
+      await reportInsightOutcome(
+        hasInsightEvent ? await isInsightAlreadyDelivered(insightIdForOutcome) : false,
+      );
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 
@@ -1327,7 +1357,12 @@ export async function runHeartbeatOnce(opts: {
     });
     log.error(`heartbeat failed: ${reason}`, { error: reason });
     try {
-      await reportInsightOutcome(false);
+      // Genuine failure, but if the insight was already delivered in a prior
+      // run (deliveryMessageId set), report true so pendingInsightDelivery is
+      // not re-armed for an insight the user already received.
+      await reportInsightOutcome(
+        hasInsightEvent ? await isInsightAlreadyDelivered(insightIdForOutcome) : false,
+      );
     } catch {
       // reportInsightOutcome may be in TDZ if error occurred before its definition
     }
