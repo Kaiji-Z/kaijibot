@@ -11,7 +11,7 @@ import {
 } from "../sessions.js";
 
 vi.mock("./store-maintenance.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../store-maintenance.js")>();
+  const actual = await importOriginal<typeof import("./store-maintenance.js")>();
   return {
     ...actual,
     resolveMaintenanceConfig: () => ({

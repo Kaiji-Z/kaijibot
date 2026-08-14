@@ -1,7 +1,7 @@
-import { afterEach, describe, it, expect, vi } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 import type { ReplyDispatcher } from "./reply/reply-dispatcher.js";
 import { buildTestCtx } from "./reply/test-ctx.js";
@@ -32,11 +32,35 @@ function bigramSimilarity(a: string, b: string): number {
 }
 
 const FOLLOWUP_PATTERNS = [
-  "展开", "详细", "具体", "深入", "解释", "说明", "什么意思",
-  "举例", "例子", "比如", "怎么理解", "怎么看", "继续", "然后呢",
-  "接着说", "为什么", "你是说", "你的意思是", "讲讲", "多说点",
-  "tell me more", "elaborate", "explain", "what do you mean",
-  "how so", "example", "go on", "continue", "interesting",
+  "展开",
+  "详细",
+  "具体",
+  "深入",
+  "解释",
+  "说明",
+  "什么意思",
+  "举例",
+  "例子",
+  "比如",
+  "怎么理解",
+  "怎么看",
+  "继续",
+  "然后呢",
+  "接着说",
+  "为什么",
+  "你是说",
+  "你的意思是",
+  "讲讲",
+  "多说点",
+  "tell me more",
+  "elaborate",
+  "explain",
+  "what do you mean",
+  "how so",
+  "example",
+  "go on",
+  "continue",
+  "interesting",
 ];
 
 function matchesFollowUp(text: string): boolean {

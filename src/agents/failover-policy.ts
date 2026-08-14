@@ -1,7 +1,7 @@
 import type { FailoverReason } from "./pi-embedded-helpers.js";
 
 export function shouldAllowCooldownProbeForReason(
-  reason: FailoverReason | null | undefined,
+  _reason: FailoverReason | null | undefined,
 ): boolean {
   return true;
 }
