@@ -8,131 +8,61 @@ read_when:
 
 # Release Policy
 
-KaijiBot has three public release lanes:
+KaijiBot ships on two public release lanes:
 
-- stable: tagged releases that publish to npm `beta` by default, or to npm `latest` when explicitly requested
-- beta: prerelease tags that publish to npm `beta`
-- dev: the moving head of `main`
+- **npm** (`kaijibot`, dist-tag `latest`): the install target for
+  `npm install -g kaijibot`
+- **GitHub Releases**: the `kaijibot-<version>.tgz` tarball attached to each
+  tag — the Android/Termux install script downloads this instead of npmjs.org
+  for China network reliability. A separate `launcher` tag carries the Android
+  Launcher APK, rebuilt on `android/**` changes.
 
 ## Version naming
 
 - Stable release version: `YYYY.M.D`
   - Git tag: `vYYYY.M.D`
-- Stable correction release version: `YYYY.M.D-N`
+- Stable correction release version (same-day re-release): `YYYY.M.D-N`
   - Git tag: `vYYYY.M.D-N`
-- Beta prerelease version: `YYYY.M.D-beta.N`
-  - Git tag: `vYYYY.M.D-beta.N`
-- Do not zero-pad month or day
-- `latest` means the current promoted stable npm release
-- `beta` means the current beta install target
-- Stable and stable correction releases publish to npm `beta` by default; release operators can target `latest` explicitly, or promote a vetted beta build later
-- Every KaijiBot release ships the npm package and macOS app together
+- Do not zero-pad month or day; do not use future dates
+- npm versions are immutable — re-publishing an existing version fails with
+  E403, so same-day corrections bump the `-N` suffix
+- The `-N` suffix looks like a semver prerelease to npm 11+, so CI publishes
+  with an explicit `--tag latest`
 
-## Release cadence
+## Release flow
 
-- Releases move beta-first
-- Stable follows only after the latest beta is validated
-- Detailed release procedure, approvals, credentials, and recovery notes are
-  maintainer-only
+One command from the repo root:
+
+```bash
+bash scripts/release.sh 2026.8.15   # or 2026.8.15-1 for a same-day correction
+```
+
+The script bumps `package.json`, runs `pnpm build` as a sanity gate, then
+commits, tags, and pushes to both remotes (Gitee + GitHub). It does **not**
+publish to npm itself — the git tag drives everything in CI:
+
+- `.github/workflows/publish-tarball.yml` triggers on `v*` tag push and runs
+  two parallel jobs:
+  - `publish-npm` — publishes to registry.npmjs.org via npm trusted
+    publishing (OIDC); no npm token exists on the machine or in repo secrets.
+    Node 24 (npm ≥ 11.5.1 required for OIDC).
+  - `upload-tarball` — builds the tarball (`npm pack --ignore-scripts`) and
+    attaches it to the GitHub Release for that tag.
+
+npm trusted publishing is registered for this package (repository
+`Kaiji-Z/kaijibot`, workflow filename `publish-tarball.yml`) and the package's
+publishing access is set to "Require 2FA and disallow tokens" — token-based
+publishing is rejected by the registry, so the CI workflow is the only
+automated publish path. Provenance attestations are signed automatically
+(Sigstore transparency log).
 
 ## Release preflight
 
-- Run `pnpm build && pnpm ui:build` before `pnpm release:check` so the expected
-  `dist/*` release artifacts and Control UI bundle exist for the pack
-  validation step
-- Run `pnpm release:check` before every tagged release
-- Main-branch npm preflight also runs
-  `KAIJIBOT_LIVE_TEST=1 KAIJIBOT_LIVE_CACHE_TEST=1 pnpm test:live:cache`
-  before packaging the tarball, using both `OPENAI_API_KEY` and
-  `ANTHROPIC_API_KEY` workflow secrets
-- Run `RELEASE_TAG=vYYYY.M.D node --import tsx scripts/kaijibot-npm-release-check.ts`
-  (or the matching beta/correction tag) before approval
-- After npm publish, run
-  `node --import tsx scripts/kaijibot-npm-postpublish-verify.ts YYYY.M.D`
-  (or the matching beta/correction version) to verify the published registry
-  install path in a fresh temp prefix
-- Maintainer release automation now uses preflight-then-promote:
-  - real npm publish must pass a successful npm `preflight_run_id`
-  - stable npm releases default to `beta`
-  - stable npm publish can target `latest` explicitly via workflow input
-  - stable npm promotion from `beta` to `latest` is still available as an explicit manual mode on the trusted `KaijiBot NPM Release` workflow
-  - that promotion mode still needs a valid `NPM_TOKEN` in the `npm-release` environment because npm `dist-tag` management is separate from trusted publishing
-  - public `macOS Release` is validation-only
-  - real private mac publish must pass successful private mac
-    `preflight_run_id` and `validate_run_id`
-  - the real publish paths promote prepared artifacts instead of rebuilding
-    them again
-- For stable correction releases like `YYYY.M.D-N`, the post-publish verifier
-  also checks the same temp-prefix upgrade path from `YYYY.M.D` to `YYYY.M.D-N`
-  so release corrections cannot silently leave older global installs on the
-  base stable payload
-- npm release preflight fails closed unless the tarball includes both
-  `dist/control-ui/index.html` and a non-empty `dist/control-ui/assets/` payload
-  so we do not ship an empty browser dashboard again
-- If the release work touched CI planning, extension timing manifests, or fast
-  test matrices, regenerate and review the planner-owned `checks-fast-extensions`
-  workflow matrix outputs from `.github/workflows/ci.yml`
-  before approval so release notes do not describe a stale CI layout
-- Stable macOS release readiness also includes the updater surfaces:
-  - the GitHub release must end up with the packaged `.zip`, `.dmg`, and `.dSYM.zip`
-  - `appcast.xml` on `main` must point at the new stable zip after publish
-  - the packaged app must keep a non-debug bundle id, a non-empty Sparkle feed
-    URL, and a `CFBundleVersion` at or above the canonical Sparkle build floor
-    for that release version
-
-## NPM workflow inputs
-
-`KaijiBot NPM Release` accepts these operator-controlled inputs:
-
-- `tag`: required release tag such as `v2026.4.2`, `v2026.4.2-1`, or
-  `v2026.4.2-beta.1`
-- `preflight_only`: `true` for validation/build/package only, `false` for the
-  real publish path
-- `preflight_run_id`: required on the real publish path so the workflow reuses
-  the prepared tarball from the successful preflight run
-- `npm_dist_tag`: npm target tag for the publish path; defaults to `beta`
-- `promote_beta_to_latest`: `true` to skip publish and move an already-published
-  stable `beta` build onto `latest`
-
-Rules:
-
-- Stable and correction tags may publish to either `beta` or `latest`
-- Beta prerelease tags may publish only to `beta`
-- The real publish path must use the same `npm_dist_tag` used during preflight;
-  the workflow verifies that metadata before publish continues
-- Promotion mode must use a stable or correction tag, `preflight_only=false`,
-  an empty `preflight_run_id`, and `npm_dist_tag=beta`
-- Promotion mode also requires a valid `NPM_TOKEN` in the `npm-release`
-  environment because `npm dist-tag add` still needs regular npm auth
-
-## Stable npm release sequence
-
-When cutting a stable npm release:
-
-1. Run `KaijiBot NPM Release` with `preflight_only=true`
-2. Choose `npm_dist_tag=beta` for the normal beta-first flow, or `latest` only
-   when you intentionally want a direct stable publish
-3. Save the successful `preflight_run_id`
-4. Run `KaijiBot NPM Release` again with `preflight_only=false`, the same
-   `tag`, the same `npm_dist_tag`, and the saved `preflight_run_id`
-5. If the release landed on `beta`, run `KaijiBot NPM Release` later with the
-   same stable `tag`, `promote_beta_to_latest=true`, `preflight_only=false`,
-   `preflight_run_id` empty, and `npm_dist_tag=beta` when you want to move that
-   published build to `latest`
-
-The promotion mode still requires the `npm-release` environment approval and a
-valid `NPM_TOKEN` in that environment.
-
-That keeps the direct publish path and the beta-first promotion path both
-documented and operator-visible.
+- `release.sh` refuses to tag a commit that cannot build (`pnpm build` gate)
+- `pnpm check` (typecheck + lint + boundary checks) runs in CI on every PR
 
 ## Public references
 
-- [`.github/workflows/kaijibot-npm-release.yml`](https://github.com/kaijibot/kaijibot/blob/main/.github/workflows/kaijibot-npm-release.yml)
-- [`scripts/kaijibot-npm-release-check.ts`](https://github.com/kaijibot/kaijibot/blob/main/scripts/kaijibot-npm-release-check.ts)
-- [`scripts/package-mac-dist.sh`](https://github.com/kaijibot/kaijibot/blob/main/scripts/package-mac-dist.sh)
-- [`scripts/make_appcast.sh`](https://github.com/kaijibot/kaijibot/blob/main/scripts/make_appcast.sh)
-
-Maintainers use the private release docs in
-[`kaijibot/maintainers/release/README.md`](https://github.com/kaijibot/maintainers/blob/main/release/README.md)
-for the actual runbook.
+- [`scripts/release.sh`](https://github.com/Kaiji-Z/kaijibot/blob/main/scripts/release.sh)
+- [`.github/workflows/publish-tarball.yml`](https://github.com/Kaiji-Z/kaijibot/blob/main/.github/workflows/publish-tarball.yml)
+- [`AGENTS.md` — Release Process](https://github.com/Kaiji-Z/kaijibot/blob/main/AGENTS.md)

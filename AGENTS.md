@@ -404,7 +404,7 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 
 1. **`pnpm build` is mandatory before publishing** — `dist/` is not committed to git; npm package includes it. Without rebuild, published package has stale code.
 2. **`npm publish --ignore-scripts` is mandatory** — the `prepack` script fails on Control UI build (non-fatal error exits with code 1). `--ignore-scripts` skips prepack.
-3. **Prefer letting CI publish** (push the tag; trusted publishing handles auth). Local publish requires an interactive `npm login` 2FA session or a granular token — note npm deprecates bypass-2FA token publishing (direct publish via such tokens stops working January 2027).
+3. **Prefer letting CI publish** (push the tag; trusted publishing handles auth). The package requires 2FA and disallows tokens (verified 2026-08-15: token publish is rejected with E403 at the auth layer), so local publish only works from an interactive `npm login` 2FA session.
 4. **GitHub push uses SSH** — `git push github main` (remote `github` = `git@github.com:Kaiji-Z/kaijibot.git`). Never use HTTPS to github.com (port 443 unreachable from this machine).
 5. **Gitee push uses HTTPS** — `git push origin main` (remote `origin` = Gitee).
 6. **GitHub Release tarball is uploaded by CI**; if manually publishing, also run `npm pack --ignore-scripts` and upload the `.tgz` to the Release for that tag. Android install script depends on it.
