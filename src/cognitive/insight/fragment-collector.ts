@@ -116,7 +116,7 @@ export async function collectFragments(
         apiKey: prepared.auth.apiKey,
         maxTokens: 800,
         temperature: 0.7,
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(60_000),
       },
     );
 

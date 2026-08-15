@@ -24,7 +24,7 @@ export type LlmExtractorOptions = {
   maxTokens?: number;
 };
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_TOKENS = 1_500;
 
 function isTextContentBlock(block: { type: string }): block is TextContent {
