@@ -1169,9 +1169,22 @@ const IMPERATIVE_INJECTION_PATTERNS: ReadonlyArray<RegExp> = [
   /\b(?:visit|go\s+to)\s+https?:\/\//i,
   /\b(?:call|text|email|contact)\s+(?:this\s+)?(?:number|address|phone)\s*:/i,
   /\bshare\s+(?:your|this)\s+(?:api\s+key|password|token|credit\s+card)\b/i,
+  // Chinese imperative variants — the primary user base writes insights in
+  // Chinese, so English-only patterns leave the whole surface open. The
+  // demonstrative or imperative marker is REQUIRED: these patterns gate a
+  // drop path, and subject-anchored behavioral observations ("你倾向于立即
+  // 购买") must not match — only direct commands to the reader may.
+  /(?:转账|汇款|打款)(?:到|至)(?:以下|下列|这个|指定|该)/,
+  /(?:请|务必|快|赶紧)(?:立即|马上)?(?:购买|下单|订阅|付款|转账|汇款)/,
+  /点击(?:一下)?(?:此|这个|下方|上述|下面的|右边的)(?:链接|网址|按钮|附件)/,
+  /(?:下载|安装|运行)(?:此|这个|下列|以下|上述)(?:文件|程序|脚本|软件|应用|附件)/,
+  /访问(?:此|以下|下方|上述)(?:网址|链接|页面)\s*[:：]?\s*(?:https?:\/\/|www\.)/,
+  /(?:打开|访问|前往)\s*https?:\/\//,
+  /(?:拨打|致电|联系|发短信|发邮件)(?:至|到)(?:此|以下|这个|下列)(?:号码|电话|账户|邮箱|地址)/,
+  /(?:发给我|告诉我|提供给我|分享给我)(?:你的)?\s*(?:api\s*密钥|密码|令牌|口令|验证码|信用卡|银行卡)/i,
 ];
 
-function looksLikeImperativeInjection(text: string): boolean {
+export function looksLikeImperativeInjection(text: string): boolean {
   for (const re of IMPERATIVE_INJECTION_PATTERNS) {
     if (re.test(text)) {
       return true;

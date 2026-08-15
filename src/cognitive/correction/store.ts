@@ -39,6 +39,17 @@ const INJECTION_PATTERNS: ReadonlyArray<RegExp> = [
   /\brefresh\s+your\s+instructions?\b/gi,
   /<\s*system\s*>/gi,
   /<\s*\|?(?:im_start|im_end|begin\s*of\s*text|end\s*of\s*text)\s*\|?>/gi,
+  // Chinese equivalents — corrections are extracted from Chinese-conversation
+  // transcripts, so English-only patterns redact none of the real attack text.
+  /(?:忽略|无视|抛掉|跳过)(?:掉|所有)?(?:之前|以前|上面|上述|以上|先前)的?(?:所有)?(指令|指示|设定|提示词?|规则|要求|约束)/g,
+  /系统\s*[:：]\s*/g,
+  /助手的?角色\s*[:：]\s*/g,
+  /你(?:现在|如今)是/g,
+  /(?:新|新的)(?:指令|指示|角色|人设)\s*[:：]/g,
+  /(?:请|来)?扮演(?:成|一个|你)/g,
+  /假装(?:你是|自己是|成)/g,
+  /(?:刷新|更新|重置)(?:一下)?(?:你的)?(?:指令|设定|人设|规则)/g,
+  /<\s*系统\s*>/g,
 ];
 
 const REDACTED = "[redacted-injection]";

@@ -272,7 +272,9 @@ export async function runPreparedReply(
   let cognitivePersona: import("../../cognitive/types.js").PersonaTree | undefined;
   let corrections: import("../../cognitive/correction/types.js").CorrectionRecord[] | undefined;
   try {
-    const { buildCognitiveModePrompt } = await import("../../cognitive/context-writer.js");
+    const { buildCognitiveModePrompt, shouldBuildHandshake } =
+      await import("../../cognitive/context-writer.js");
+    const { looksLikeImperativeInjection } = await import("../../cognitive/insight/llm-engine.js");
     const { PersonaStore } = await import("../../cognitive/persona/store.js");
     const { resolveConfigDir } = await import("../../utils.js");
     const cognitiveCfg = cfg.cognitive;
@@ -304,7 +306,21 @@ export async function runPreparedReply(
       extraSystemPromptParts.push(cognitivePrompt);
     }
 
-    if (cognitivePersona?.feedbackProfile.pendingInsightDelivery && userId) {
+    // Clear the pending insight only when the handshake section actually
+    // carried its cue into this turn's prompt. Clearing unconditionally would
+    // silently consume the undelivered insight for users who return within
+    // minGapHours of their last interaction; when the cue was dropped by the
+    // imperative-injection filter, the pending stays for the 24h TTL instead
+    // (security drop must not re-arm delivery, but also must not wipe state
+    // the filter flagged only tentatively).
+    const pendingInsight = cognitivePersona?.feedbackProfile.pendingInsightDelivery;
+    if (
+      cognitivePersona &&
+      pendingInsight &&
+      userId &&
+      shouldBuildHandshake(cognitivePersona, cognitiveCfg?.handshake) &&
+      !looksLikeImperativeInjection(pendingInsight.candidate.content)
+    ) {
       const store = new PersonaStore(resolveConfigDir());
       await store.update(agentId, userId, (persona) => {
         persona.feedbackProfile.pendingInsightDelivery = null;

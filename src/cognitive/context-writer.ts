@@ -8,6 +8,7 @@ import {
 import { formatCorrectionsPrompt, selectRelevantCorrections } from "./correction/injector.js";
 import type { CorrectionRecord } from "./correction/types.js";
 import { getPhaseBehaviorAdvice, getInteractionPhase } from "./feedback/trust-calculator.js";
+import { looksLikeImperativeInjection } from "./insight/llm-engine.js";
 import type { InsightCandidate } from "./insight/types.js";
 import { classifyMode, buildModePromptSection } from "./mode-router.js";
 import { buildPersonaContext } from "./persona/context-builder.js";
@@ -61,6 +62,26 @@ function formatHandshakeGap(hours: number): string {
   return hours < 24 ? `${Math.round(hours)} 小时` : `${Math.round(hours / 24)} 天`;
 }
 
+/**
+ * Whether the handshake section (which carries the pending insight cue) gets
+ * built for this turn. The pendingInsightDelivery clear in get-reply-run MUST
+ * use the same predicate: clearing without injecting silently consumes the
+ * undelivered insight.
+ */
+export function shouldBuildHandshake(
+  persona: PersonaTree,
+  handshakeConfig?: { enabled?: boolean; minGapHours?: number },
+  now?: number,
+): boolean {
+  if (persona.lifecycle.lastActiveAt <= 0 || handshakeConfig?.enabled === false) {
+    return false;
+  }
+  const currentTime = now ?? Date.now();
+  const minGap = handshakeConfig?.minGapHours ?? 6;
+  const hoursSinceLastInteraction = (currentTime - persona.lifecycle.lastActiveAt) / 3_600_000;
+  return hoursSinceLastInteraction >= minGap;
+}
+
 function buildHandshakeSection(params: {
   persona: PersonaTree;
   pendingInsightDelivery: PendingInsightDelivery;
@@ -82,9 +103,13 @@ function buildHandshakeSection(params: {
     cues.push(`最近关注：${persona.recentFocus.slice(0, 3).join("、")}`);
   }
   if (pendingInsightDelivery) {
-    cues.push(
-      `有条之前没来得及告诉你的洞察（未送达）：${pendingInsightDelivery.candidate.content}`,
-    );
+    const pendingContent = pendingInsightDelivery.candidate.content;
+    // The insight text derives from web search snippets; the handshake cue is
+    // the only insight path that enters the system prompt raw, so gate it with
+    // the imperative-injection filter and a hard length cap here too.
+    if (!looksLikeImperativeInjection(pendingContent)) {
+      cues.push(`有条之前没来得及告诉你的洞察（未送达）：${pendingContent.slice(0, 400)}`);
+    }
   }
 
   if (cues.length > 0) {
@@ -161,19 +186,16 @@ export function buildCognitiveModePrompt(params: {
     }
   }
 
-  if (persona && persona.lifecycle.lastActiveAt > 0 && handshakeConfig?.enabled !== false) {
+  if (persona && shouldBuildHandshake(persona, handshakeConfig, now)) {
     const currentTime = now ?? Date.now();
-    const minGap = handshakeConfig?.minGapHours ?? 6;
     const hoursSinceLastInteraction = (currentTime - persona.lifecycle.lastActiveAt) / 3_600_000;
-    if (hoursSinceLastInteraction >= minGap) {
-      parts.push(
-        buildHandshakeSection({
-          persona,
-          pendingInsightDelivery: pendingInsightDelivery ?? null,
-          hoursSinceLastInteraction,
-        }),
-      );
-    }
+    parts.push(
+      buildHandshakeSection({
+        persona,
+        pendingInsightDelivery: pendingInsightDelivery ?? null,
+        hoursSinceLastInteraction,
+      }),
+    );
   }
 
   if (evolutionEnabled !== false) {
