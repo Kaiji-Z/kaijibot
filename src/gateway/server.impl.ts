@@ -1744,7 +1744,7 @@ export async function startGatewayServer(
                   insightDeps,
                   {
                     maxCandidates: options?.maxCandidates,
-                    timeout: 20_000,
+                    timeout: 90_000,
                   },
                 );
               },

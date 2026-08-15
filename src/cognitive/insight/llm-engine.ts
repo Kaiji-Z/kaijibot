@@ -257,7 +257,7 @@ export async function generateInsightCandidatesLLM(
         return [];
       }
 
-      const timeoutMs = options?.timeout ?? 20_000;
+      const timeoutMs = options?.timeout ?? 90_000;
       const systemPrompt = options?.systemContext || undefined;
       const messages: Array<{ role: "user"; content: string; timestamp: number }> = [];
       messages.push({ role: "user", content: prompt, timestamp: Date.now() });
@@ -465,7 +465,7 @@ export async function generateInsightCandidatesLLM(
       return [];
     }
 
-    const timeoutMs = options?.timeout ?? 20_000;
+    const timeoutMs = options?.timeout ?? 90_000;
     const systemPrompt = options?.systemContext || undefined;
     const messages: Array<{ role: "user"; content: string; timestamp: number }> = [];
     messages.push({ role: "user", content: prompt, timestamp: Date.now() });
@@ -1335,7 +1335,7 @@ If a result doesn't match any domain, skip it. Respond with ONLY the JSON object
         apiKey: prepared.auth.apiKey,
         maxTokens: 500,
         temperature: 0.2,
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(30_000),
       },
     );
 
@@ -2260,7 +2260,7 @@ export async function critiqueInsightWithLLM(
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.3,
-        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+        signal: AbortSignal.timeout(options?.timeout ?? 30_000),
       },
     );
 
@@ -2345,7 +2345,7 @@ export async function refineInsightWithLLM(
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.85,
-        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+        signal: AbortSignal.timeout(options?.timeout ?? 30_000),
       },
     );
 
@@ -2485,7 +2485,7 @@ export async function verifyInsightWithLLM(
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.2,
-        signal: AbortSignal.timeout(options?.timeout ?? 8_000),
+        signal: AbortSignal.timeout(options?.timeout ?? 30_000),
       },
     );
 
@@ -2606,7 +2606,7 @@ export async function checkSemanticNoveltyWithLLM(
         apiKey: prepared.auth.apiKey,
         maxTokens: options?.maxTokens ?? 4096,
         temperature: 0.2,
-        signal: AbortSignal.timeout(options?.timeout ?? 6_000),
+        signal: AbortSignal.timeout(options?.timeout ?? 20_000),
       },
     );
 
