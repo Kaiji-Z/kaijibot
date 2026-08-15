@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
+import { formatErrorMessage } from "../../infra/errors.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { KeyedAsyncQueue } from "../../plugin-sdk/keyed-async-queue.js";
 import { processNoResponse } from "../feedback/collector.js";
@@ -110,6 +111,12 @@ function seededRandom(seed: number): number {
 
 const DEFAULT_EPSILON_GREEDY = 0.2;
 const PENDING_DELIVERY_TTL_MS = 24 * 60 * 60 * 1000;
+// Safety net for awaitingDeliveryConfirmation: its only clearance path is the
+// heartbeat outcome report, and system events are in-memory — a gateway restart
+// or dropped event would otherwise silence the user forever. Expire instead.
+export const AWAITING_CONFIRMATION_TTL_MS = 60 * 60 * 1000;
+const RESOLVE_FAILURE_BACKOFF_THRESHOLD = 3;
+const RESOLVE_FAILURE_BACKOFF_MAX_FACTOR = 48;
 
 export function applyEpsilonGreedy(
   candidates: Opportunity[],
@@ -159,6 +166,11 @@ export class ProactiveScheduler {
         candidate: InsightCandidate,
       ) => Promise<boolean | void>;
       savePersona: (agentId: string, userId: string, persona: PersonaTree) => Promise<void>;
+      listRecentInsightContents?: (
+        agentId: string,
+        userId: string,
+        limit: number,
+      ) => Promise<string[]>;
     },
     deps?: {
       insightGenerator?: InsightGeneratorFn;
@@ -715,13 +727,19 @@ export class ProactiveScheduler {
     persona.feedbackProfile.lastProactiveAt = eventTimestamp;
     persona.feedbackProfile.pendingInsightDelivery = null;
 
-    const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), insight.id].slice(-20);
-    persona.feedbackProfile.recentInsightIds = ids;
-    const contents = [
-      ...(persona.feedbackProfile.recentInsightContents ?? []),
-      insight.content,
-    ].slice(-5);
-    persona.feedbackProfile.recentInsightContents = contents;
+    // Idempotent append: the delivered:false outcome handler already records
+    // the candidate before a pending retry, so re-recording it would double-
+    // book one insight into two of the dedup window's slots.
+    const prevIds = persona.feedbackProfile.recentInsightIds ?? [];
+    persona.feedbackProfile.recentInsightIds = (
+      prevIds[prevIds.length - 1] === insight.id ? prevIds : [...prevIds, insight.id]
+    ).slice(-20);
+    const prevContents = persona.feedbackProfile.recentInsightContents ?? [];
+    persona.feedbackProfile.recentInsightContents = (
+      prevContents[prevContents.length - 1] === insight.content
+        ? prevContents
+        : [...prevContents, insight.content]
+    ).slice(-10);
     const prevDomains = persona.feedbackProfile.recentInsightDomains ?? [];
     persona.feedbackProfile.recentInsightDomains = [...prevDomains, insight.targetDomains].slice(
       -5,
@@ -795,13 +813,19 @@ export class ProactiveScheduler {
           userId,
           ageMs: Math.round(ageMs / 60_000),
         });
+        pending.attemptCount = (pending.attemptCount ?? 0) + 1;
         await this.callbacks.savePersona(agentId, userId, persona);
         return undefined;
       }
     }
 
     const cooldownKey = `${agentId}:${userId}`;
-    const cooldownMs = (this.config.minIntervalHours ?? 0.5) * 60 * 60 * 1000;
+    const resolveFailures = persona.feedbackProfile.consecutiveResolveFailures ?? 0;
+    const backoffFactor =
+      resolveFailures >= RESOLVE_FAILURE_BACKOFF_THRESHOLD
+        ? Math.min(2 ** (resolveFailures - 2), RESOLVE_FAILURE_BACKOFF_MAX_FACTOR)
+        : 1;
+    const cooldownMs = (this.config.minIntervalHours ?? 0.5) * 60 * 60 * 1000 * backoffFactor;
     const lastAt = this.lastProcessEventAt.get(cooldownKey);
     if (lastAt && event.timestamp - lastAt < cooldownMs) {
       return undefined;
@@ -810,9 +834,24 @@ export class ProactiveScheduler {
 
     // Previous insight still awaiting delivery confirmation — don't generate
     // a new one until the outcome is known (avoids stacking insights).
-    if (persona.feedbackProfile.awaitingDeliveryConfirmation) {
-      log.info("skipping — previous insight awaiting delivery confirmation", { userId });
-      return undefined;
+    // Expire stale awaiting: the outcome report can be lost forever (system
+    // events are in-memory; gateway restart drops them), and an unexpired
+    // awaiting would skip this user's generation on every future event.
+    const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
+    if (awaiting) {
+      const awaitingAgeMs = event.timestamp - awaiting.eventTimestamp;
+      if (awaitingAgeMs > AWAITING_CONFIRMATION_TTL_MS) {
+        persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+        await this.callbacks.savePersona(agentId, userId, persona);
+        log.info("awaiting delivery confirmation expired (TTL)", {
+          userId,
+          insightId: awaiting.candidate.id,
+          ageMs: Math.round(awaitingAgeMs / 60_000),
+        });
+      } else {
+        log.info("skipping — previous insight awaiting delivery confirmation", { userId });
+        return undefined;
+      }
     }
 
     // Only reset no-response streak before gate — we always want to clear the
@@ -914,8 +953,30 @@ export class ProactiveScheduler {
       });
     }
 
-    const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
+    let recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
     const recentInsightDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+
+    // The 10-slot persona window is the only dedup history the SIRI loop sees;
+    // backfill it from the persisted InsightStore so insights older than the
+    // window cannot be regenerated verbatim.
+    if (this.callbacks.listRecentInsightContents) {
+      try {
+        const storedContents = await this.callbacks.listRecentInsightContents(agentId, userId, 10);
+        const merged = [...recentInsightContents];
+        for (const stored of storedContents) {
+          if (!merged.includes(stored)) {
+            merged.push(stored);
+          }
+        }
+        recentInsightContents = merged.slice(-10);
+        persona.feedbackProfile.recentInsightContents = recentInsightContents;
+      } catch (err) {
+        log.info("insight store backfill failed (dedup proceeds with persona window)", {
+          userId,
+          error: formatErrorMessage(err),
+        });
+      }
+    }
 
     const epsilon = this.config.epsilonGreedy ?? DEFAULT_EPSILON_GREEDY;
     const orderedCandidates = applyEpsilonGreedy(candidates, epsilon, event.timestamp);
@@ -931,6 +992,7 @@ export class ProactiveScheduler {
 
     let insight: InsightCandidate | null = null;
     let selected: Opportunity | undefined;
+    let attemptedResolve = false;
     for (const candidate of orderedCandidates) {
       if (isTopicStale(candidate, recentInsightContents, recentInsightDomains)) {
         log.info("pre-gen freshness check: skipping stale candidate", {
@@ -953,11 +1015,21 @@ export class ProactiveScheduler {
       ].slice(-5);
       persona.feedbackProfile.recentInsightTypes = attemptedTypes;
 
+      attemptedResolve = true;
       insight = await this.resolve(agentId, persona, selected);
       if (insight) {
         break;
       }
       await this.callbacks.savePersona(agentId, userId, persona);
+    }
+
+    if (attemptedResolve && !insight) {
+      persona.feedbackProfile.consecutiveResolveFailures =
+        (persona.feedbackProfile.consecutiveResolveFailures ?? 0) + 1;
+      log.info("resolve failed for all attempted candidates", {
+        userId,
+        consecutiveResolveFailures: persona.feedbackProfile.consecutiveResolveFailures,
+      });
     }
 
     if (!insight || !selected) {
@@ -1010,6 +1082,7 @@ export class ProactiveScheduler {
       opportunityType: selected.type,
       eventTimestamp: event.timestamp,
     };
+    persona.feedbackProfile.consecutiveResolveFailures = 0;
     await this.callbacks.savePersona(agentId, userId, persona);
 
     return insight;

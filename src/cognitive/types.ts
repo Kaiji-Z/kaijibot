@@ -110,6 +110,13 @@ export type FeedbackProfile = {
   modeBandits?: Record<string, TopicBandit>;
   /** Consecutive proactive messages with no user response (for backoff calculation). */
   consecutiveNoResponses?: number;
+  /**
+   * Consecutive scheduler events where resolve ran but produced no deliverable
+   * insight (provider outage, quality gates). Drives exponential cooldown
+   * backoff so a failing pipeline retries progressively slower, resetting on
+   * the first successful generation.
+   */
+  consecutiveResolveFailures?: number;
   /** Last 5 insight modes (knowledge/pattern/surprise/extend) for no-response tracking. */
   recentInsightModes?: string[];
   /**

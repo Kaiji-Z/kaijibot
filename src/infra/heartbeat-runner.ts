@@ -1182,6 +1182,9 @@ export async function runHeartbeatOnce(opts: {
       });
       await updateTaskTimestamps();
       consumeInspectedSystemEvents();
+      await reportInsightOutcome(
+        hasInsightEvent ? await isInsightAlreadyDelivered(insightIdForOutcome) : false,
+      );
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 
@@ -1204,6 +1207,11 @@ export async function runHeartbeatOnce(opts: {
       });
       await updateTaskTimestamps();
       consumeInspectedSystemEvents();
+      // These early returns consume the insight event without sending; without
+      // an outcome report, awaitingDeliveryConfirmation would never clear.
+      await reportInsightOutcome(
+        hasInsightEvent ? await isInsightAlreadyDelivered(insightIdForOutcome) : false,
+      );
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 
@@ -1225,6 +1233,9 @@ export async function runHeartbeatOnce(opts: {
         indicatorType: visibility.useIndicator ? resolveIndicatorType("sent") : undefined,
       });
       consumeInspectedSystemEvents();
+      await reportInsightOutcome(
+        hasInsightEvent ? await isInsightAlreadyDelivered(insightIdForOutcome) : false,
+      );
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 

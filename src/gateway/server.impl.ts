@@ -1466,6 +1466,29 @@ export async function startGatewayServer(
           await cognitiveStore.migrateFromFlatLayout();
           const baseInsightDeps = createDefaultInsightDeps();
 
+          // Startup sweep: insight system events are in-memory and did not
+          // survive this restart, so any awaitingDeliveryConfirmation older
+          // than the confirmation TTL can never receive its outcome — clear
+          // it now instead of silencing that user until the next event tick.
+          try {
+            const { AWAITING_CONFIRMATION_TTL_MS } =
+              await import("../cognitive/scheduler/proactive-scheduler.js");
+            const cutoff = Date.now() - AWAITING_CONFIRMATION_TTL_MS;
+            for (const sweepAgentId of await cognitiveStore.listAgentIds()) {
+              for (const sweepUserId of await cognitiveStore.listUserIds(sweepAgentId)) {
+                await cognitiveStore.update(sweepAgentId, sweepUserId, (persona) => {
+                  const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
+                  if (awaiting && awaiting.eventTimestamp < cutoff) {
+                    persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                  }
+                  return persona;
+                });
+              }
+            }
+          } catch (err) {
+            log.warn(`awaiting-confirmation startup sweep failed: ${String(err)}`);
+          }
+
           insightDeliveryOutcomeHandler = async ({ agentId, sessionKey, insightId, delivered }) => {
             const { resolveCognitiveUserId } = await import("../cognitive/identity.js");
             const userId = resolveCognitiveUserId(sessionKey);
@@ -1474,8 +1497,11 @@ export async function startGatewayServer(
             }
             if (delivered) {
               await cognitiveStore.update(agentId, userId, (persona) => {
+                // Outcome reports can arrive stale (redundant wakes, replays):
+                // an outcome for insight X must only finalize or clear state
+                // that belongs to insight X, never a newer in-flight insight.
                 const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
-                if (awaiting) {
+                if (awaiting && awaiting.candidate.id === insightId) {
                   persona = ProactiveScheduler.finalizeDelivery(
                     persona,
                     awaiting.eventTimestamp,
@@ -1484,7 +1510,8 @@ export async function startGatewayServer(
                   );
                   persona.feedbackProfile.awaitingDeliveryConfirmation = null;
                 }
-                if (persona.feedbackProfile.pendingInsightDelivery) {
+                const pending = persona.feedbackProfile.pendingInsightDelivery;
+                if (pending && pending.candidate.id === insightId) {
                   persona.feedbackProfile.pendingInsightDelivery = null;
                 }
                 return persona;
@@ -1496,20 +1523,26 @@ export async function startGatewayServer(
             const record = await insightStore.load(agentId, userId, insightId);
             if (!record) {
               await cognitiveStore.update(agentId, userId, (persona) => {
-                persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
+                if (awaiting && awaiting.candidate.id === insightId) {
+                  persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                }
                 return persona;
               });
               return;
             }
             await cognitiveStore.update(agentId, userId, (persona) => {
               const awaiting = persona.feedbackProfile.awaitingDeliveryConfirmation;
+              const matching = awaiting?.candidate.id === insightId ? awaiting : undefined;
               const existing = persona.feedbackProfile.pendingInsightDelivery;
               if (existing && existing.generatedAt > record.generatedAt) {
-                persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                if (matching) {
+                  persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+                }
                 return persona;
               }
               const candidate: import("../cognitive/insight/types.js").InsightCandidate =
-                awaiting?.candidate ?? {
+                matching?.candidate ?? {
                   id: record.id,
                   content: record.content,
                   rationale: record.rationale,
@@ -1525,24 +1558,27 @@ export async function startGatewayServer(
                 };
               persona.feedbackProfile.pendingInsightDelivery = {
                 candidate,
-                generatedAt: awaiting?.eventTimestamp ?? record.generatedAt,
-                opportunityType: awaiting?.opportunityType ?? "redelivery",
+                generatedAt: matching?.eventTimestamp ?? record.generatedAt,
+                opportunityType: matching?.opportunityType ?? "redelivery",
                 attemptCount: (existing?.attemptCount ?? 0) + 1,
               };
-              persona.feedbackProfile.awaitingDeliveryConfirmation = null;
-              const ts = awaiting?.eventTimestamp ?? record.generatedAt;
+              if (matching) {
+                persona.feedbackProfile.awaitingDeliveryConfirmation = null;
+              }
+              const ts = matching?.eventTimestamp ?? record.generatedAt;
               if (ts > persona.feedbackProfile.lastProactiveAt) {
                 persona.feedbackProfile.lastProactiveAt = ts;
               }
-              const contents = [
-                ...(persona.feedbackProfile.recentInsightContents ?? []),
-                candidate.content,
-              ].slice(-5);
-              persona.feedbackProfile.recentInsightContents = contents;
-              const ids = [...(persona.feedbackProfile.recentInsightIds ?? []), candidate.id].slice(
-                -20,
-              );
-              persona.feedbackProfile.recentInsightIds = ids;
+              const prevContents = persona.feedbackProfile.recentInsightContents ?? [];
+              persona.feedbackProfile.recentInsightContents = (
+                prevContents[prevContents.length - 1] === candidate.content
+                  ? prevContents
+                  : [...prevContents, candidate.content]
+              ).slice(-10);
+              const prevIds = persona.feedbackProfile.recentInsightIds ?? [];
+              persona.feedbackProfile.recentInsightIds = (
+                prevIds[prevIds.length - 1] === candidate.id ? prevIds : [...prevIds, candidate.id]
+              ).slice(-20);
               return persona;
             });
           };
@@ -1623,9 +1659,23 @@ export async function startGatewayServer(
             {
               loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
               savePersona: async (agentId, userId, persona) => {
-                await cognitiveStore.save(agentId, userId, persona);
+                // Merge through update(): the scheduler snapshot was loaded
+                // before a multi-minute LLM resolve loop, and a blind save()
+                // would clobber concurrent writes (handshake clears, feedback,
+                // post-turn persona extraction) to every non-feedback field.
+                await cognitiveStore.update(agentId, userId, (current) => {
+                  current.feedbackProfile = persona.feedbackProfile;
+                  return current;
+                });
                 const domainKeys = Object.keys(persona.domains);
                 personaChangeSource.checkPersonaUpdate(userId, domainKeys);
+              },
+              listRecentInsightContents: async (agentId, userId, limit) => {
+                const { InsightStore: InsightStoreCls } =
+                  await import("../cognitive/insight/store.js");
+                const store = new InsightStoreCls(resolveConfigDir());
+                const records = await store.listRecent(agentId, userId, limit);
+                return records.map((r) => r.content);
               },
               async onInsightReady(agentId: string, userId: string, candidate) {
                 const record: import("../cognitive/types.js").InsightRecord = {

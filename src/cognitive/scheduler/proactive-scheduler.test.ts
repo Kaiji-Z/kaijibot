@@ -384,6 +384,244 @@ describeDet("ProactiveScheduler", () => {
     expect(persona.feedbackProfile.pendingInsightDelivery?.candidate.id).toBe("no-reply-insight");
   });
 
+  it("increments attemptCount when a pending retry fails again", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.pendingInsightDelivery = {
+      candidate: {
+        id: "infra-fail-insight",
+        content: "Insight whose delivery keeps failing at infra level",
+        rationale: "test",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+        compositeScore: 0.65,
+        sources: [],
+        verificationStatus: "unverified",
+      },
+      generatedAt: Date.now() - 30 * 60_000,
+      opportunityType: "cross_domain",
+    };
+    let savedPersona: PersonaTree | undefined;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => false,
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
+
+    expect(savedPersona?.feedbackProfile.pendingInsightDelivery?.attemptCount).toBe(1);
+  });
+
+  it("expires stale awaitingDeliveryConfirmation (TTL) and resumes generation", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.awaitingDeliveryConfirmation = {
+      candidate: {
+        id: "stale-awaiting-insight",
+        content: "Insight whose outcome was lost to a restart",
+        rationale: "test",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+        compositeScore: 0.65,
+        sources: [],
+        verificationStatus: "unverified",
+      },
+      opportunityType: "cross_domain",
+      eventTimestamp: Date.now() - 2 * 60 * 60 * 1000,
+    };
+    let savedPersona: PersonaTree | undefined;
+
+    const fakeInsight: InsightCandidate = {
+      id: "fresh-after-ttl",
+      content: "Fresh insight generated after awaiting expiry",
+      rationale: "test",
+      targetDomains: ["Rust"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [{ url: "https://example.com", title: "Test", credibility: 0.5 }],
+      verificationStatus: "unverified",
+    };
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => true,
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+      },
+      { insightGenerator: async () => [fakeInsight] },
+    );
+
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(result?.id).toBe("fresh-after-ttl");
+    expect(savedPersona?.feedbackProfile.awaitingDeliveryConfirmation?.candidate.id).toBe(
+      "fresh-after-ttl",
+    );
+  });
+
+  it("skips generation while awaitingDeliveryConfirmation is fresh", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.awaitingDeliveryConfirmation = {
+      candidate: {
+        id: "in-flight-insight",
+        content: "Insight currently being delivered",
+        rationale: "test",
+        targetDomains: ["Rust"],
+        sourceDomains: [],
+        relevanceScore: 0.8,
+        surpriseScore: 0.5,
+        compositeScore: 0.65,
+        sources: [],
+        verificationStatus: "unverified",
+      },
+      opportunityType: "cross_domain",
+      eventTimestamp: Date.now() - 5 * 60_000,
+    };
+    let generateCount = 0;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => true,
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => {
+          generateCount++;
+          return [];
+        },
+      },
+    );
+
+    const result = await scheduler.processEvent(
+      "user1",
+      { type: "timer", timestamp: Date.now() },
+      "main",
+    );
+
+    expect(result).toBeUndefined();
+    expect(generateCount).toBe(0);
+    expect(persona.feedbackProfile.awaitingDeliveryConfirmation?.candidate.id).toBe(
+      "in-flight-insight",
+    );
+  });
+
+  it("applies exponential cooldown backoff after repeated resolve failures", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.consecutiveResolveFailures = 4;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => true,
+        savePersona: async () => {},
+      },
+      {
+        insightGenerator: async () => [],
+      },
+    );
+
+    const t0 = Date.now();
+    await scheduler.processEvent("user1", { type: "timer", timestamp: t0 }, "main");
+    expect(persona.feedbackProfile.consecutiveResolveFailures).toBe(5);
+
+    // 1h later: with failures=5 the backoff factor is 2^3 = 8 → 4h cooldown,
+    // so this event must be skipped before the candidate loop.
+    await scheduler.processEvent("user1", { type: "timer", timestamp: t0 + 60 * 60_000 }, "main");
+    expect(persona.feedbackProfile.consecutiveResolveFailures).toBe(5);
+  });
+
+  it("backfills the dedup window from listRecentInsightContents", async () => {
+    const persona = personaWithDomains();
+    persona.feedbackProfile.recentInsightContents = ["persona-latest"];
+    let savedPersona: PersonaTree | undefined;
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => true,
+        savePersona: async (_agentId, _userId, p) => {
+          savedPersona = p;
+        },
+        listRecentInsightContents: async () => ["stored-old-1", "stored-old-2"],
+      },
+      { insightGenerator: async () => [] },
+    );
+
+    await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
+
+    const contents = savedPersona?.feedbackProfile.recentInsightContents ?? [];
+    expect(contents).toContain("persona-latest");
+    expect(contents).toContain("stored-old-1");
+    expect(contents).toContain("stored-old-2");
+  });
+
+  it("finalizeDelivery appends re-delivered insight content once and caps the window at 10", () => {
+    const persona = createDefaultPersona();
+    persona.feedbackProfile.recentInsightContents = [
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+      "c5",
+      "c6",
+      "c7",
+      "c8",
+      "c9",
+    ];
+    persona.feedbackProfile.recentInsightIds = ["id-old"];
+    const candidate: InsightCandidate = {
+      id: "redelivered-id",
+      content: "redelivered content",
+      rationale: "test",
+      targetDomains: ["Rust"],
+      sourceDomains: [],
+      relevanceScore: 0.8,
+      surpriseScore: 0.5,
+      compositeScore: 0.65,
+      sources: [],
+      verificationStatus: "unverified",
+    };
+
+    let updated = ProactiveScheduler.finalizeDelivery(
+      persona,
+      Date.now(),
+      candidate,
+      "cross_domain",
+    );
+    updated = ProactiveScheduler.finalizeDelivery(updated, Date.now(), candidate, "cross_domain");
+
+    expect(
+      updated.feedbackProfile.recentInsightContents.filter((c) => c === candidate.content),
+    ).toHaveLength(1);
+    expect(updated.feedbackProfile.recentInsightContents.length).toBe(10);
+    expect(
+      updated.feedbackProfile.recentInsightIds.filter((id) => id === candidate.id),
+    ).toHaveLength(1);
+  });
+
   it("updates lastProactiveAt when onInsightReady returns true", async () => {
     const persona = personaWithDomains();
     let savedPersona: PersonaTree | undefined;

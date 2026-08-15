@@ -64,6 +64,7 @@ const feedbackProfileSchema = z.object({
   promptBandits: z.record(z.string(), topicBanditSchema).optional(),
   modeBandits: z.record(z.string(), topicBanditSchema).optional(),
   consecutiveNoResponses: z.number().optional(),
+  consecutiveResolveFailures: z.number().optional(),
   recentInsightModes: z.array(z.string()).optional().default([]),
   lastNoResponseAt: z.number().optional(),
   pendingInsightDelivery: z

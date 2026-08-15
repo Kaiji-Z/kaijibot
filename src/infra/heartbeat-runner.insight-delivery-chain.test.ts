@@ -470,6 +470,66 @@ describe("runHeartbeatOnce insight event → prompt → reply → drain", () => 
     });
   });
 
+  it("reports insight outcome (idempotent guard) on the alerts-disabled early return", async () => {
+    await withTempHeartbeatSandbox(async ({ tmpDir, storePath, replySpy }) => {
+      const cfg = {
+        agents: {
+          defaults: {
+            workspace: tmpDir,
+            heartbeat: { every: "30m" },
+            model: { primary: "test/model" },
+          },
+        },
+        channels: {
+          telegram: { token: "test", heartbeat: { showAlerts: false } },
+        },
+        session: { store: storePath },
+      } as unknown as KaijiBotConfig;
+
+      const sessionKey = await seedMainSessionStore(storePath, cfg, {
+        sessionId: "sid_alerts_off",
+        lastChannel: "telegram",
+        lastProvider: "telegram",
+        lastTo: "123456789",
+      });
+
+      enqueueSystemEvent(
+        "[Cognitive Insight] 静默期的洞察\n（这是一条已生成的主动洞察，请用你自己的语言自然地分享给用户。）",
+        { sessionKey, contextKey: "insight:insight-alerts-off" },
+      );
+
+      const outcomes: Array<{ insightId: string; delivered: boolean }> = [];
+      replySpy.mockResolvedValue({ text: "静默期不该发送的洞察内容" });
+
+      const result = await runHeartbeatOnce({
+        cfg,
+        agentId: "main",
+        reason: "cognitive-insight",
+        sessionKey,
+        deps: {
+          getQueueSize: () => 0,
+          nowMs: () => Date.now(),
+          getReplyFromConfig: replySpy,
+          onInsightDeliveryOutcome: async (params: {
+            agentId: string;
+            sessionKey: string;
+            insightId: string;
+            delivered: boolean;
+          }) => {
+            outcomes.push(params);
+          },
+        } as never,
+      });
+
+      expect(result.status).toBe("ran");
+      // The insight event was consumed by this run without a send (alerts off);
+      // without an outcome report, awaitingDeliveryConfirmation would hang forever.
+      expect(outcomes).toHaveLength(1);
+      expect(outcomes[0]?.insightId).toBe("insight-alerts-off");
+      expect(outcomes[0]?.delivered).toBe(false);
+    });
+  });
+
   it("reports delivered=true (not false) for an already-delivered insight on a redundant empty wake", async () => {
     await withTempHeartbeatSandbox(async ({ tmpDir, storePath }) => {
       const prevStateDir = process.env.KAIJIBOT_STATE_DIR;
