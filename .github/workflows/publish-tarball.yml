@@ -38,8 +38,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Same-date "-N" versions look like semver prereleases to npm 11+, which
+      # refuses to publish them without an explicit dist-tag. They are real
+      # releases in our scheme, so pin them to latest (matches npm 10 behavior).
       - name: Publish to npm (trusted publishing / OIDC)
-        run: npm publish --access public --ignore-scripts
+        run: npm publish --access public --ignore-scripts --tag latest
 
   upload-tarball:
     runs-on: ubuntu-latest
