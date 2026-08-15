@@ -1,5 +1,8 @@
+import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveGlobalSingleton } from "../shared/global-singleton.js";
 import { notifyListeners, registerListener } from "../shared/listeners.js";
+
+const log = createSubsystemLogger("gateway/heartbeat");
 
 export type HeartbeatIndicatorType = "ok" | "alert" | "error";
 
@@ -51,6 +54,23 @@ const state = resolveGlobalSingleton<HeartbeatEventState>(HEARTBEAT_EVENT_STATE_
 export function emitHeartbeatEvent(evt: Omit<HeartbeatEventPayload, "ts">) {
   const enriched: HeartbeatEventPayload = { ts: Date.now(), ...evt };
   state.lastHeartbeat = enriched;
+  // Skip logging transient "requests-in-flight" skips: the wake layer retries
+  // every second while a turn streams, which would flood the rolling log.
+  const isTransientSkip = enriched.status === "skipped" && enriched.reason === "requests-in-flight";
+  if (!isTransientSkip) {
+    const message = `heartbeat ${enriched.status}${enriched.reason ? ` (${enriched.reason})` : ""}`;
+    const meta = {
+      status: enriched.status,
+      to: enriched.to,
+      channel: enriched.channel,
+      durationMs: enriched.durationMs,
+    };
+    if (enriched.status === "failed") {
+      log.warn(message, meta);
+    } else {
+      log.info(message, meta);
+    }
+  }
   notifyListeners(state.listeners, enriched);
 }
 

@@ -1,4 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import path from "node:path";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  registerLogTransport,
+  setLoggerOverride,
+  type LogTransportRecord,
+} from "../logging/logger.js";
 import {
   emitHeartbeatEvent,
   getLastHeartbeatEvent,
@@ -6,6 +12,7 @@ import {
   resetHeartbeatEventsForTest,
   resolveIndicatorType,
 } from "./heartbeat-events.js";
+import { resolvePreferredKaijiBotTmpDir } from "./tmp-kaijibot-dir.js";
 
 type HeartbeatEventsModule = typeof import("./heartbeat-events.js");
 
@@ -89,5 +96,89 @@ describe("heartbeat events", () => {
 
     stop();
     first.resetHeartbeatEventsForTest();
+  });
+});
+
+describe("heartbeat event file logging", () => {
+  // The subsystem logger caches its child logger per module instance, so a
+  // transport registered per-test would miss emits routed through the cached
+  // logger built by an earlier test. One shared transport + index slicing
+  // captures every test deterministically.
+  const records: LogTransportRecord[] = [];
+  let startIndex = 0;
+
+  beforeAll(() => {
+    registerLogTransport((record) => records.push(record));
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-09T12:00:00Z"));
+    startIndex = records.length;
+    setLoggerOverride({
+      level: "info",
+      consoleLevel: "silent",
+      file: path.join(
+        resolvePreferredKaijiBotTmpDir(),
+        `hb-events-test-${process.pid}-${Date.now()}.log`,
+      ),
+    });
+  });
+
+  afterEach(() => {
+    resetHeartbeatEventsForTest();
+    setLoggerOverride(null);
+    vi.useRealTimers();
+  });
+
+  function capturedLogs(): Array<Record<string, unknown>> {
+    // Subsystem log records use positional keys: "1" = meta, "2" = message.
+    return records.slice(startIndex).map((record) => ({
+      message: String(record["2"] ?? ""),
+      ...((record["1"] as Record<string, unknown> | undefined) ?? {}),
+    }));
+  }
+
+  it("logs delivery outcomes (sent) with routing metadata", () => {
+    emitHeartbeatEvent({
+      status: "sent",
+      to: "user:ou_123",
+      channel: "feishu",
+      durationMs: 29_203,
+    });
+
+    const entry = capturedLogs().find((e) => e.status === "sent");
+    expect(entry).toMatchObject({
+      status: "sent",
+      to: "user:ou_123",
+      channel: "feishu",
+      durationMs: 29_203,
+    });
+    expect(entry?.message).toContain("heartbeat sent");
+  });
+
+  it("logs skipped events with their reason", () => {
+    emitHeartbeatEvent({ status: "skipped", reason: "quiet-hours" });
+
+    expect(
+      capturedLogs().some(
+        (e) =>
+          e.status === "skipped" &&
+          typeof e.message === "string" &&
+          e.message.includes("quiet-hours"),
+      ),
+    ).toBe(true);
+  });
+
+  it("excludes transient requests-in-flight skips", () => {
+    emitHeartbeatEvent({ status: "skipped", reason: "requests-in-flight" });
+
+    expect(capturedLogs()).toHaveLength(0);
+  });
+
+  it("logs failed outcomes", () => {
+    emitHeartbeatEvent({ status: "failed" });
+
+    expect(capturedLogs().some((e) => e.status === "failed")).toBe(true);
   });
 });
