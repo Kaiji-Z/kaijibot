@@ -1,4 +1,4 @@
-name: Publish npm tarball to Release
+name: Publish release (npm + tarball)
 
 on:
   push:
@@ -6,6 +6,41 @@ on:
       - "v*"
 
 jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Trusted publishing (OIDC) needs npm >= 11.5.1. A bare "24" resolves to
+      # the latest 24.x (>= 24.5.0, which bundles npm 11.5.1+). An older npm
+      # silently falls back to token auth and fails with misleading ENEEDAUTH.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Verify npm >= 11.5.1
+        run: |
+          V=$(npm --version)
+          N=$(echo "$V" | cut -d. -f1-2 | tr -d '.')
+          [ "$N" -ge 115 ] || { echo "npm $V < 11.5.1: trusted publishing unsupported"; exit 1; }
+          echo "npm $V OK"
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install deps
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish to npm (trusted publishing / OIDC)
+        run: npm publish --access public --ignore-scripts
+
   upload-tarball:
     runs-on: ubuntu-latest
     permissions:

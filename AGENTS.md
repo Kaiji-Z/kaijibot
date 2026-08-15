@@ -391,8 +391,9 @@ Correction (system prompt injection):
 
 - **Versioning**: `YYYY.M.DD` format (e.g. `2026.6.27`). Multiple releases on the same date append `-1`, `-2`, `-3` (e.g. `2026.6.27-1`, `2026.6.27-2`). Do NOT use future dates.
 - **One command**: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.6.27-1`)
-- The script: bumps version → `pnpm build` → `npm publish --ignore-scripts` → `git tag` → `git push`
-- **CI auto-builds npm tarball**: `.github/workflows/publish-tarball.yml` triggers on tag push (`v*`), runs `npm pack`, uploads `kaijibot-<version>.tgz` to the corresponding GitHub Release
+- The script: bumps version → `pnpm build` (sanity gate) → `git commit` + `git tag` + `git push` (both remotes). It does NOT publish to npm itself.
+- **npm publishing runs in CI via trusted publishing (OIDC)**: `.github/workflows/publish-tarball.yml` triggers on tag push (`v*`) and runs two parallel jobs — `publish-npm` (Node 24 / npm ≥ 11.5.1, `id-token: write`, `npm publish --ignore-scripts`) and `upload-tarball` (`npm pack`, uploads `kaijibot-<version>.tgz` to the corresponding GitHub Release). No npm token lives on the machine or in repo secrets.
+- Prerequisite (one-time): trusted publisher registered on npmjs.com for `kaijibot` — org `Kaiji-Z`, repo `kaijibot`, workflow filename `publish-tarball.yml`, allowed action `npm publish`. Requires an interactive 2FA challenge on the npm website. Until registered, the `publish-npm` job fails (tarball job unaffected); publish manually per the manual-release section below. Re-publishing an already-published version fails with E403 (versions are immutable) — same-date `-N` suffixes already handle this.
 - Tarball is required for Android/Termux install (the install script downloads it from GitHub Releases instead of npmjs.org for China network reliability)
 - Launcher APK: `.github/workflows/android-build.yml` triggers on `android/**` changes, builds APK with bundled Termux, uploads to `launcher` release tag
 - Release guardrails: do not change version numbers without operator's explicit consent.
@@ -401,11 +402,12 @@ Correction (system prompt injection):
 
 These gotchas are handled by `release.sh` automatically. If doing manual steps:
 
-1. **`pnpm build` is mandatory before `npm publish`** — `dist/` is not committed to git; npm package includes it. Without rebuild, published package has stale code.
+1. **`pnpm build` is mandatory before publishing** — `dist/` is not committed to git; npm package includes it. Without rebuild, published package has stale code.
 2. **`npm publish --ignore-scripts` is mandatory** — the `prepack` script fails on Control UI build (non-fatal error exits with code 1). `--ignore-scripts` skips prepack.
-3. **GitHub push uses SSH** — `git push github main` (remote `github` = `git@github.com:Kaiji-Z/kaijibot.git`). Never use HTTPS to github.com (port 443 unreachable from this machine).
-4. **Gitee push uses HTTPS** — `git push origin main` (remote `origin` = Gitee).
-5. **Create GitHub Release tarball after publish** — `npm pack --ignore-scripts` → upload `.tgz` to GitHub Release for that tag. Android install script depends on it.
+3. **Prefer letting CI publish** (push the tag; trusted publishing handles auth). Local publish requires an interactive `npm login` 2FA session or a granular token — note npm deprecates bypass-2FA token publishing (direct publish via such tokens stops working January 2027).
+4. **GitHub push uses SSH** — `git push github main` (remote `github` = `git@github.com:Kaiji-Z/kaijibot.git`). Never use HTTPS to github.com (port 443 unreachable from this machine).
+5. **Gitee push uses HTTPS** — `git push origin main` (remote `origin` = Gitee).
+6. **GitHub Release tarball is uploaded by CI**; if manually publishing, also run `npm pack --ignore-scripts` and upload the `.tgz` to the Release for that tag. Android install script depends on it.
 
 ## Prompt Cache Stability
 
