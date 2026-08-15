@@ -44,4 +44,5 @@ echo "tarball:  https://github.com/Kaiji-Z/kaijibot/releases/download/v${VERSION
 echo ""
 echo "Note: publish-npm job requires the npm trusted publisher registration"
 echo "      (workflow filename: publish-tarball.yml). If it is not set up yet,"
-echo "      publish manually: pnpm build && npm publish --access public --ignore-scripts"
+echo "      publish manually: npm login && pnpm build && \\"
+echo "      npm publish --access public --ignore-scripts --tag latest"
