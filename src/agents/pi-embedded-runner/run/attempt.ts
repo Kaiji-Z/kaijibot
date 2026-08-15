@@ -2275,14 +2275,25 @@ export async function runEmbeddedAttempt(
                   params.config,
                   deps,
                 );
-                const merged = mergeExtraction(persona, extraction);
-                const pruned = prunePersona(merged);
 
-                const topic = inferTopicFromContext(pruned, extraction, userText);
-                const previousTopics = pruned.recentFocus;
-                const signals = extractImplicitSignals(userText, undefined, topic, previousTopics);
-                const feedbackUpdated = processImplicitFeedback(pruned, signals);
-                await store.save(agentId, userId, feedbackUpdated);
+                // Apply through update(): the LLM extraction above can take
+                // seconds, and a blind save() of the pre-LLM snapshot would
+                // clobber any concurrent persona write (scheduler saves,
+                // outcome finalize, handshake clear) that landed in between.
+                const feedbackUpdated = await store.update(agentId, userId, (current) => {
+                  const merged = mergeExtraction(current, extraction);
+                  const pruned = prunePersona(merged);
+
+                  const topic = inferTopicFromContext(pruned, extraction, userText);
+                  const previousTopics = pruned.recentFocus;
+                  const signals = extractImplicitSignals(
+                    userText,
+                    undefined,
+                    topic,
+                    previousTopics,
+                  );
+                  return processImplicitFeedback(pruned, signals);
+                });
 
                 try {
                   log.info(`fragment diag: entering collectFragments block`, {

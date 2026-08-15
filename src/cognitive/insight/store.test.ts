@@ -275,4 +275,29 @@ describe("InsightStore", () => {
       expect(found).toBeUndefined();
     });
   });
+  describe("cross-instance concurrency (process-global lock)", () => {
+    it("serializes concurrent saves from two store instances so neither record is lost", async () => {
+      const storeA = new InsightStore(tempDir);
+      const storeB = new InsightStore(tempDir);
+
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) =>
+          storeA
+            .save(AGENT, "u-conc", makeInsight({ id: `insight-${i}`, content: `content-${i}` }))
+            .then(() => undefined),
+        ),
+      );
+      // Interleave saves through the second instance too.
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) =>
+          storeB.save(AGENT, "u-conc", makeInsight({ id: `insight-b-${i}`, content: `b-${i}` })),
+        ),
+      );
+
+      for (let i = 0; i < 10; i++) {
+        expect(await storeA.load(AGENT, "u-conc", `insight-${i}`)).toBeDefined();
+        expect(await storeA.load(AGENT, "u-conc", `insight-b-${i}`)).toBeDefined();
+      }
+    });
+  });
 });

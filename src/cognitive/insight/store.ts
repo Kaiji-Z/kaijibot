@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { writeTextAtomic } from "../../infra/json-files.js";
+import { writeTextAtomic, getOrCreateScopedAsyncLock } from "../../infra/json-files.js";
 import type { InsightRecord } from "../types.js";
 
 const DEFAULT_INSIGHT_TTL_DAYS = 60;
@@ -15,6 +15,14 @@ type InsightStoreData = {
 
 export class InsightStore {
   constructor(private readonly configDir: string) {}
+
+  // Process-global scope: heartbeat delivery writes, scheduler saves, and
+  // dispatch feedback each construct their own InsightStore instance — a
+  // per-instance lock would not serialize their read-modify-write cycles.
+  private async withLock<T>(agentId: string, userId: string, fn: () => Promise<T>): Promise<T> {
+    const lock = getOrCreateScopedAsyncLock(`insight:${this.configDir}:${agentId}/${userId}`);
+    return lock(fn);
+  }
 
   private insightsDir(agentId: string): string {
     return join(this.configDir, "cognitive", "insights", agentId);
@@ -53,14 +61,16 @@ export class InsightStore {
   }
 
   async save(agentId: string, userId: string, record: InsightRecord): Promise<void> {
-    const records = await this.loadRecords(agentId, userId);
-    const idx = records.findIndex((r) => r.id === record.id);
-    if (idx >= 0) {
-      records[idx] = record;
-    } else {
-      records.push(record);
-    }
-    await this.writeRecords(agentId, userId, records);
+    await this.withLock(agentId, userId, async () => {
+      const records = await this.loadRecords(agentId, userId);
+      const idx = records.findIndex((r) => r.id === record.id);
+      if (idx >= 0) {
+        records[idx] = record;
+      } else {
+        records.push(record);
+      }
+      await this.writeRecords(agentId, userId, records);
+    });
   }
 
   async load(agentId: string, userId: string, id: string): Promise<InsightRecord | undefined> {
@@ -114,28 +124,32 @@ export class InsightStore {
     feedback: InsightRecord["feedback"],
     userResponse?: string,
   ): Promise<void> {
-    const records = await this.loadRecords(agentId, userId);
-    const record = records.find((r) => r.id === id);
-    if (!record) {
-      return;
-    }
-    record.feedback = feedback;
-    if (userResponse !== undefined) {
-      record.userResponse = userResponse;
-    }
-    await this.writeRecords(agentId, userId, records);
+    await this.withLock(agentId, userId, async () => {
+      const records = await this.loadRecords(agentId, userId);
+      const record = records.find((r) => r.id === id);
+      if (!record) {
+        return;
+      }
+      record.feedback = feedback;
+      if (userResponse !== undefined) {
+        record.userResponse = userResponse;
+      }
+      await this.writeRecords(agentId, userId, records);
+    });
   }
 
   async removeStale(agentId: string, userId: string, ttlDays?: number): Promise<number> {
-    const records = await this.loadRecords(agentId, userId);
-    const ttl = (ttlDays ?? DEFAULT_INSIGHT_TTL_DAYS) * 86_400_000;
-    const cutoff = Date.now() - ttl;
-    const active = records.filter((r) => r.generatedAt >= cutoff);
-    const removed = records.length - active.length;
-    if (removed > 0) {
-      await this.writeRecords(agentId, userId, active);
-    }
-    return removed;
+    return this.withLock(agentId, userId, async () => {
+      const records = await this.loadRecords(agentId, userId);
+      const ttl = (ttlDays ?? DEFAULT_INSIGHT_TTL_DAYS) * 86_400_000;
+      const cutoff = Date.now() - ttl;
+      const active = records.filter((r) => r.generatedAt >= cutoff);
+      const removed = records.length - active.length;
+      if (removed > 0) {
+        await this.writeRecords(agentId, userId, active);
+      }
+      return removed;
+    });
   }
 
   async listUserIds(agentId: string): Promise<string[]> {

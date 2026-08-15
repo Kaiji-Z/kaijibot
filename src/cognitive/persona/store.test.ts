@@ -326,4 +326,54 @@ describe("PersonaStore", () => {
       expect(result).toEqual({ migrated: [], skipped: [] });
     });
   });
+  describe("cross-instance concurrency (process-global lock)", () => {
+    it("serializes concurrent updates from two store instances so neither is lost", async () => {
+      const storeA = new PersonaStore(tempDir);
+      const storeB = new PersonaStore(tempDir);
+      const trait = (v: string) => ({
+        value: v,
+        confidence: 0.8,
+        evidenceCount: 1,
+        lastUpdated: Date.now(),
+        source: "inferred" as const,
+      });
+      await storeA.update("main", "u-conc", (persona) => persona);
+
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) =>
+          (i % 2 === 0 ? storeA : storeB).update("main", "u-conc", (persona) => {
+            persona.identity.coreTraits[`k${i}`] = trait(`v${i}`);
+            return persona;
+          }),
+        ),
+      );
+
+      const final = await storeA.load("main", "u-conc");
+      for (let i = 0; i < 10; i++) {
+        const t = final?.identity.coreTraits[`k${i}`] as { value: string } | undefined;
+        expect(t?.value).toBe(`v${i}`);
+      }
+    });
+  });
+
+  describe("invalid persona quarantine", () => {
+    it("writes an .invalid.bak copy when the persona fails schema validation", async () => {
+      const dir = join(tempDir, "cognitive", "persona", "main");
+      mkdirSync(dir, { recursive: true });
+      const filePath = join(dir, "u-bad.json");
+      // trustScore out of [0,1] makes safeParsePersona reject the whole file.
+      writeFileSync(
+        filePath,
+        JSON.stringify({
+          ...createDefaultPersona(),
+          rapport: { ...createDefaultPersona().rapport, trustScore: 5 },
+        }),
+        "utf-8",
+      );
+
+      const result = await store.load("main", "u-bad");
+      expect(result).toBeUndefined();
+      expect(existsSync(`${filePath}.invalid.bak`)).toBe(true);
+    });
+  });
 });

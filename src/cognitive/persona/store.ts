@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, stat } from "node:fs/promises";
-import { join } from "node:path";
-import { writeTextAtomic, createAsyncLock } from "../../infra/json-files.js";
+import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { writeTextAtomic, getOrCreateScopedAsyncLock } from "../../infra/json-files.js";
 import type { PersonaTree, DomainNode, InterestPhase } from "../types.js";
 import { safeParsePersona } from "./persona-schema.js";
 
@@ -81,18 +81,38 @@ function shouldMigrateFlatFile(userId: string, persona: PersonaTree | null): boo
   return Object.keys(persona.domains).length > 0 || persona.rapport.totalExchanges > 0;
 }
 
-export class PersonaStore {
-  private readonly locks = new Map<string, <T>(fn: () => Promise<T>) => Promise<T>>();
+/**
+ * Preserve an unloadable persona file before the next write replaces it with a
+ * default persona — without the .invalid.bak copy the reset is unrecoverable.
+ */
+async function quarantineInvalidPersona(
+  path: string,
+  agentId: string,
+  userId: string,
+  raw: string,
+): Promise<void> {
+  try {
+    const bakPath = `${path}.invalid.bak`;
+    if (!existsSync(bakPath)) {
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(bakPath, raw, "utf-8");
+      console.warn(`[PersonaStore] Quarantined invalid persona to ${bakPath}`);
+    }
+  } catch (err) {
+    console.warn(
+      `[PersonaStore] Failed to quarantine invalid persona for ${agentId}/${userId}: ${String(err)}`,
+    );
+  }
+}
 
+export class PersonaStore {
   constructor(private readonly configDir: string) {}
 
   private async withLock<T>(agentId: string, userId: string, fn: () => Promise<T>): Promise<T> {
-    const key = `${agentId}/${userId}`;
-    let lock = this.locks.get(key);
-    if (!lock) {
-      lock = createAsyncLock();
-      this.locks.set(key, lock);
-    }
+    // Process-global scope: multiple PersonaStore instances exist in one
+    // gateway process (scheduler, reply path, tools, consolidation), and a
+    // per-instance lock map would let their writes interleave.
+    const lock = getOrCreateScopedAsyncLock(`persona:${this.configDir}:${agentId}/${userId}`);
     return lock(fn);
   }
 
@@ -106,12 +126,14 @@ export class PersonaStore {
     agentId: string,
     userId: string,
     mutator: (persona: PersonaTree) => PersonaTree | Promise<PersonaTree>,
-  ): Promise<void> {
+  ): Promise<PersonaTree> {
+    let next!: PersonaTree;
     await this.withLock(agentId, userId, async () => {
       const current = await this.loadOrCreate(agentId, userId);
-      const next = await mutator(current);
+      next = await mutator(current);
       await this.saveUnlocked(agentId, userId, next);
     });
+    return next;
   }
 
   /**
@@ -187,11 +209,13 @@ export class PersonaStore {
       parsed = JSON.parse(raw);
     } catch {
       console.warn(`[PersonaStore] Malformed JSON for ${agentId}/${userId}, ignoring`);
+      await quarantineInvalidPersona(path, agentId, userId, raw);
       return undefined;
     }
     const validated = safeParsePersona(parsed);
     if (validated === null) {
       console.warn(`[PersonaStore] Invalid persona JSON for ${agentId}/${userId}, ignoring`);
+      await quarantineInvalidPersona(path, agentId, userId, raw);
       return undefined;
     }
     // Backfill userId for personas created before identity.userId was persisted

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { resolveGlobalMap } from "../shared/global-singleton.js";
 
 function getErrorCode(err: unknown): string | undefined {
   return err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
@@ -112,4 +113,22 @@ export function createAsyncLock() {
       release?.();
     }
   };
+}
+
+const scopedAsyncLocks = resolveGlobalMap<string, <T>(fn: () => Promise<T>) => Promise<T>>(
+  Symbol.for("kaijibot.scoped-async-locks"),
+);
+
+/**
+ * Process-wide async lock keyed by scope. Per-instance createAsyncLock results
+ * do not serialize writers that hold different store instances of the same
+ * underlying file; a process-global registry does.
+ */
+export function getOrCreateScopedAsyncLock(scope: string): <T>(fn: () => Promise<T>) => Promise<T> {
+  let lock = scopedAsyncLocks.get(scope);
+  if (!lock) {
+    lock = createAsyncLock();
+    scopedAsyncLocks.set(scope, lock);
+  }
+  return lock;
 }
