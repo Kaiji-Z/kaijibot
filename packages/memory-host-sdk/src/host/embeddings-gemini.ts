@@ -12,6 +12,7 @@ import type { SsrFPolicy } from "../../../../src/infra/net/ssrf.js";
 import type { EmbeddingInput } from "./embedding-inputs.js";
 import { sanitizeAndNormalizeEmbedding } from "./embedding-vectors.js";
 import { debugEmbeddingsLog } from "./embeddings-debug.js";
+import { hasRemoteEmbeddingCredentialSignal } from "./embeddings-remote-client.js";
 import type { EmbeddingProvider, EmbeddingProviderOptions } from "./embeddings.js";
 import { buildRemoteBaseUrlPolicy, withRemoteHttpResponse } from "./remote-http.js";
 import { resolveMemorySecretInputString } from "./secret-input.js";
@@ -296,11 +297,24 @@ export async function resolveGeminiEmbeddingClient(
   const apiKey = remoteApiKey
     ? remoteApiKey
     : requireApiKey(
-        await resolveApiKeyForProvider({
-          provider: "google",
-          cfg: options.config,
-          agentDir: options.agentDir,
-        }),
+        await (async () => {
+          if (
+            !hasRemoteEmbeddingCredentialSignal({
+              provider: "google",
+              config: options.config,
+              agentDir: options.agentDir,
+            })
+          ) {
+            throw new Error(
+              'No API key found for provider "google" (fast pre-check: no credential signal).',
+            );
+          }
+          return await resolveApiKeyForProvider({
+            provider: "google",
+            cfg: options.config,
+            agentDir: options.agentDir,
+          });
+        })(),
         "google",
       );
 

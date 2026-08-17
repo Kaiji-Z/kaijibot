@@ -85,6 +85,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.resetAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 function requireProvider(result: Awaited<ReturnType<typeof createEmbeddingProvider>>) {
@@ -350,6 +351,7 @@ describe("embedding provider auto selection", () => {
     }));
     installFetchMock(fetchMock as unknown as typeof globalThis.fetch);
     mockPublicPinnedHostname();
+    vi.stubEnv("OPENAI_API_KEY", "openai-key");
     vi.mocked(authModule.resolveApiKeyForProvider).mockImplementation(async ({ provider }) => {
       if (provider === "openai") {
         return { apiKey: "openai-key", source: "env: OPENAI_API_KEY", mode: "api-key" };
@@ -458,6 +460,7 @@ describe("embedding provider local fallback", () => {
     const fetchMock = createFetchMock();
     installFetchMock(fetchMock as unknown as typeof globalThis.fetch);
 
+    vi.stubEnv("OPENAI_API_KEY", "provider-key");
     mockResolvedProviderKey("provider-key");
 
     const result = await createLocalProvider({ fallback: "openai" });

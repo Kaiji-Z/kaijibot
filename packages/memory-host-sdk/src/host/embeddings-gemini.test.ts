@@ -91,9 +91,11 @@ afterEach(() => {
   vi.doUnmock("undici");
   vi.resetAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 function mockResolvedProviderKey(apiKey = "test-key") {
+  vi.stubEnv("GEMINI_API_KEY", apiKey);
   vi.mocked(authModule.resolveApiKeyForProvider).mockResolvedValue({
     apiKey,
     mode: "api-key",

@@ -1,4 +1,6 @@
+import fsSync from "node:fs";
 import type { KaijiBotConfig } from "../config/config.js";
+import { resolveConfigPath } from "../config/paths.js";
 import { compileConfigRegex } from "../security/config-regex.js";
 import { resolveNodeRequireFromMeta } from "./node-require.js";
 import { replacePatternBounded } from "./redact-bounded.js";
@@ -105,7 +107,63 @@ function redactText(text: string, patterns: RegExp[]): string {
   return next;
 }
 
+type LoggingRedactionFields = {
+  redactSensitive?: string;
+  redactPatterns?: string[];
+};
+
+/**
+ * Parse the logging redaction fields from raw config JSON without running
+ * full config loading (zod validation + plugin schema resolution), which can
+ * cost tens of seconds in fresh processes. Returns null when the payload is
+ * not plain JSON or the field shapes are unexpected so callers fall back to
+ * the full loader.
+ */
+export function resolveLoggingRedactionFieldsFromRaw(raw: string): LoggingRedactionFields | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const logging = (parsed as { logging?: unknown } | null)?.logging;
+  if (!logging || typeof logging !== "object" || Array.isArray(logging)) {
+    return {};
+  }
+  const { redactSensitive, redactPatterns } = logging as Record<string, unknown>;
+  if (redactSensitive !== undefined && typeof redactSensitive !== "string") {
+    return null;
+  }
+  if (
+    redactPatterns !== undefined &&
+    (!Array.isArray(redactPatterns) || redactPatterns.some((p) => typeof p !== "string"))
+  ) {
+    return null;
+  }
+  return { redactSensitive, redactPatterns };
+}
+
+function readLoggingRedactionFieldsFromConfigFile(): LoggingRedactionFields | null {
+  let raw: string;
+  try {
+    raw = fsSync.readFileSync(resolveConfigPath(), "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+      return {};
+    }
+    return null;
+  }
+  return resolveLoggingRedactionFieldsFromRaw(raw);
+}
+
 function resolveConfigRedaction(): RedactOptions {
+  const fast = readLoggingRedactionFieldsFromConfigFile();
+  if (fast) {
+    return {
+      mode: normalizeMode(fast.redactSensitive),
+      patterns: fast.redactPatterns,
+    };
+  }
   let cfg: KaijiBotConfig["logging"] | undefined;
   try {
     const loaded = requireConfig?.("../config/config.js") as

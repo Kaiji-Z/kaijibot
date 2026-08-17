@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { getDefaultRedactPatterns, redactSensitiveText } from "./redact.js";
+import fsp, { mkdtemp } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  getDefaultRedactPatterns,
+  redactSensitiveText,
+  resolveLoggingRedactionFieldsFromRaw,
+} from "./redact.js";
 
 const defaults = getDefaultRedactPatterns();
 
@@ -118,5 +125,63 @@ describe("redactSensitiveText", () => {
       patterns: defaults,
     });
     expect(output).toBe(input);
+  });
+});
+
+describe("resolveLoggingRedactionFieldsFromRaw", () => {
+  it("returns empty fields for config without a logging section", () => {
+    expect(resolveLoggingRedactionFieldsFromRaw("{}")).toEqual({});
+    expect(resolveLoggingRedactionFieldsFromRaw('{"agents":{}}')).toEqual({});
+  });
+
+  it("reads redactSensitive and redactPatterns when configured", () => {
+    expect(
+      resolveLoggingRedactionFieldsFromRaw(
+        '{"logging":{"redactSensitive":"off","redactPatterns":["secret-\\\\d+"]}}',
+      ),
+    ).toEqual({ redactSensitive: "off", redactPatterns: ["secret-\\d+"] });
+  });
+
+  it("rejects malformed field shapes so callers fall back to full config loading", () => {
+    expect(resolveLoggingRedactionFieldsFromRaw('{"logging":{"redactSensitive":3}}')).toBeNull();
+    expect(
+      resolveLoggingRedactionFieldsFromRaw('{"logging":{"redactPatterns":"nope"}}'),
+    ).toBeNull();
+    expect(
+      resolveLoggingRedactionFieldsFromRaw('{"logging":{"redactPatterns":["ok",7]}}'),
+    ).toBeNull();
+  });
+
+  it("rejects JSON5-style payloads instead of misreading them", () => {
+    expect(resolveLoggingRedactionFieldsFromRaw("{ // comment\n}")).toBeNull();
+  });
+});
+
+describe("redactSensitiveText config fast path", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("honors logging.redactSensitive=off read from the raw config file", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "redact-fast-"));
+    const configPath = path.join(dir, "kaijibot.json");
+    await fsp.writeFile(configPath, JSON.stringify({ logging: { redactSensitive: "off" } }));
+    vi.stubEnv("KAIJIBOT_CONFIG_PATH", configPath);
+    const input = "OPENAI_API_KEY=sk-1234567890abcdef";
+    expect(redactSensitiveText(input)).toBe(input);
+    await fsp.rm(dir, { recursive: true, force: true });
+  });
+
+  it("applies custom logging.redactPatterns from the raw config file", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "redact-fast-"));
+    const configPath = path.join(dir, "kaijibot.json");
+    await fsp.writeFile(
+      configPath,
+      JSON.stringify({ logging: { redactPatterns: ["internal-[a-z]{4}-token"] } }),
+    );
+    vi.stubEnv("KAIJIBOT_CONFIG_PATH", configPath);
+    const output = redactSensitiveText("leak internal-abcd-token now");
+    expect(output).toBe("leak intern…oken now");
+    await fsp.rm(dir, { recursive: true, force: true });
   });
 });
