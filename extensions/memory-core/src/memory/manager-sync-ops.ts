@@ -1140,6 +1140,9 @@ export abstract class MemoryManagerSyncOps {
     };
 
     this.db = tempDb;
+    // tempDb is a different database file; the in-memory serialized-meta cache
+    // must not suppress the meta write into it during build().
+    this.lastMetaSerialized = null;
     this.vectorReady = null;
     this.vector.available = null;
     this.vector.loadError = undefined;
@@ -1211,6 +1214,9 @@ export abstract class MemoryManagerSyncOps {
       });
 
       this.db = openMemoryDatabaseAtPath(dbPath, this.settings.store.vector.enabled);
+      // The swapped-in database was just written by build(); re-derive the
+      // serialized-meta cache from it instead of trusting stale in-memory state.
+      this.lastMetaSerialized = null;
       this.vectorReady = null;
       this.vector.available = null;
       this.vector.loadError = undefined;

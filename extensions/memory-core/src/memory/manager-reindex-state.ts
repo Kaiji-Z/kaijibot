@@ -97,7 +97,9 @@ export function shouldRunFullMemoryReindex(params: {
     meta.scopeHash !== params.configuredScopeHash ||
     meta.chunkTokens !== params.chunkTokens ||
     meta.chunkOverlap !== params.chunkOverlap ||
-    (params.vectorReady && !meta.vectorDims) ||
+    // FTS-only indexes never produce embeddings, so absent vectorDims is the
+    // steady state there — only demand dims when a provider is active.
+    (params.vectorReady && params.provider !== null && !meta.vectorDims) ||
     (meta.ftsTokenizer ?? "porter") !== (params.ftsTokenizer ?? "porter")
   );
 }

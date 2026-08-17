@@ -4,7 +4,7 @@ import {
 } from "kaijibot/plugin-sdk/memory-core-host-engine-storage";
 import { describe, expect, it } from "vitest";
 import { bm25RankToScore, buildFtsQuery } from "./hybrid.js";
-import { searchKeyword } from "./manager-search.js";
+import { searchKeyword, searchVector } from "./manager-search.js";
 
 describe("searchKeyword trigram fallback", () => {
   const { DatabaseSync } = requireNodeSqlite();
@@ -146,5 +146,85 @@ describe("searchKeyword trigram fallback", () => {
     });
 
     expect(repeated[0]?.score).toBe(unique[0]?.score);
+  });
+});
+
+describe("searchVector fallback scan cap", () => {
+  const { DatabaseSync } = requireNodeSqlite();
+  // Default cap enforced by manager-search.ts. Kept as a literal so this test
+  // fails loudly (not vacuously) when the cap logic is missing.
+  const MAX_FALLBACK_VECTOR_SCAN_ROWS_VALUE = 1000;
+
+  function createFallbackDb() {
+    const db = new DatabaseSync(":memory:");
+    ensureMemoryIndexSchema({
+      db,
+      embeddingCacheTable: "embedding_cache",
+      cacheEnabled: false,
+      ftsTable: "chunks_fts",
+      ftsEnabled: false,
+      ftsTokenizer: "porter",
+    });
+    return db;
+  }
+
+  function insertChunks(db: ReturnType<typeof createFallbackDb>, count: number) {
+    const insert = db.prepare(
+      "INSERT INTO chunks (id, path, source, start_line, end_line, hash, model, text, embedding, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    const near = JSON.stringify([1, 0]);
+    const far = JSON.stringify([0, 1]);
+    for (let index = 0; index < count; index += 1) {
+      insert.run(
+        `id-${index}`,
+        `memory/day-${index}.md`,
+        "memory",
+        1,
+        1,
+        `hash-${index}`,
+        "mock-embed",
+        `Content for day ${index}`,
+        index % 2 === 0 ? near : far,
+        1000 + index,
+      );
+    }
+  }
+
+  async function runFallbackSearch(db: ReturnType<typeof createFallbackDb>, limit: number) {
+    return await searchVector({
+      db,
+      vectorTable: "chunks_vec",
+      providerModel: "mock-embed",
+      queryVec: [1, 0],
+      limit,
+      snippetMaxChars: 200,
+      ensureVectorReady: async () => false,
+      sourceFilterVec: { sql: "", params: [] },
+      sourceFilterChunks: { sql: "", params: [] },
+    });
+  }
+
+  it("scores candidates in JS when the vector table is unavailable", async () => {
+    const db = createFallbackDb();
+    try {
+      insertChunks(db, 4);
+      const results = await runFallbackSearch(db, 3);
+      expect(results).toHaveLength(3);
+      expect(results[0]?.score).toBeGreaterThan(results[2]?.score ?? 0);
+      expect(results[0]?.path).toBe("memory/day-0.md");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("skips vector recall when fallback candidates exceed the scan cap", async () => {
+    const db = createFallbackDb();
+    try {
+      insertChunks(db, MAX_FALLBACK_VECTOR_SCAN_ROWS_VALUE + 1);
+      const results = await runFallbackSearch(db, 3);
+      expect(results).toEqual([]);
+    } finally {
+      db.close();
+    }
   });
 });

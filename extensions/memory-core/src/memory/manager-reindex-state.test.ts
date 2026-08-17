@@ -157,4 +157,33 @@ describe("memory reindex state", () => {
       ),
     ).toBe(false);
   });
+
+  it("does not require a reindex in FTS-only mode when vector dims are absent", () => {
+    expect(
+      shouldRunFullMemoryReindex(
+        createFullReindexParams({
+          meta: createMeta({
+            model: "fts-only",
+            provider: "none",
+            providerKey: "hash-of-none",
+            vectorDims: undefined,
+          }),
+          provider: null,
+          providerKey: "hash-of-none",
+          vectorReady: true,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("still requires a reindex when an embedding provider is active but vector dims are missing", () => {
+    expect(
+      shouldRunFullMemoryReindex(
+        createFullReindexParams({
+          meta: createMeta({ vectorDims: undefined }),
+          vectorReady: true,
+        }),
+      ),
+    ).toBe(true);
+  });
 });

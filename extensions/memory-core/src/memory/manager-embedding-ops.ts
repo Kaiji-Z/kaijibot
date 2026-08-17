@@ -58,6 +58,7 @@ export abstract class MemoryManagerEmbeddingOps extends MemoryManagerSyncOps {
   protected abstract batchFailureLastError?: string;
   protected abstract batchFailureLastProvider?: string;
   protected abstract batchFailureLock: Promise<void>;
+  private lastVectorDegradationWarnKey: string | undefined;
 
   protected pruneEmbeddingCacheIfNeeded(): void {
     if (!this.cache.enabled) {
@@ -568,11 +569,21 @@ export abstract class MemoryManagerEmbeddingOps extends MemoryManagerSyncOps {
           .run(chunk.text, id, entry.path, source, model, chunk.startLine, chunk.endLine);
       }
     }
+    if (vectorReady) {
+      this.lastVectorDegradationWarnKey = undefined;
+    }
     if (this.vector.enabled && !vectorReady && chunks.length > 0) {
       const errDetail = this.vector.loadError ? `: ${this.vector.loadError}` : "";
-      log.warn(
-        `chunks written for ${entry.path} without vector embeddings — chunks_vec not updated (sqlite-vec unavailable${errDetail}). Vector recall degraded for this file.`,
-      );
+      if (this.lastVectorDegradationWarnKey !== errDetail) {
+        this.lastVectorDegradationWarnKey = errDetail;
+        log.warn(
+          `chunks written for ${entry.path} without vector embeddings — chunks_vec not updated (sqlite-vec unavailable${errDetail}). Vector recall degraded for this file.`,
+        );
+      } else {
+        log.debug(
+          `chunks written without vector embeddings (${entry.path}); sqlite-vec unavailable${errDetail}`,
+        );
+      }
     }
     this.upsertFileRecord(entry, source);
   }

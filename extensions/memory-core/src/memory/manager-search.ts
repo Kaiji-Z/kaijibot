@@ -10,6 +10,12 @@ const vectorToBlob = (embedding: number[]): Buffer =>
 const FTS_QUERY_TOKEN_RE = /[\p{L}\p{N}_]+/gu;
 const SHORT_CJK_TRIGRAM_RE = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u3131-\u3163]/u;
 
+// Without sqlite-vec, vector recall falls back to loading every candidate row
+// and scoring in JS on the synchronous sqlite thread. Past this row count the
+// scan would block the event loop for hundreds of ms, so vector recall is
+// dropped and hybrid search continues on FTS results alone.
+export const MAX_FALLBACK_VECTOR_SCAN_ROWS = 1000;
+
 export type SearchSource = string;
 
 export type SearchRowResult = {
@@ -158,6 +164,12 @@ export async function searchVector(params: {
     }));
   }
 
+  if (
+    countChunks(params.db, params.providerModel, params.sourceFilterChunks) >
+    MAX_FALLBACK_VECTOR_SCAN_ROWS
+  ) {
+    return [];
+  }
   const candidates = listChunks({
     db: params.db,
     providerModel: params.providerModel,
@@ -181,6 +193,17 @@ export async function searchVector(params: {
       snippet: truncateUtf16Safe(entry.chunk.text, params.snippetMaxChars),
       source: entry.chunk.source,
     }));
+}
+
+function countChunks(
+  db: DatabaseSync,
+  providerModel: string,
+  sourceFilter: { sql: string; params: SearchSource[] },
+): number {
+  const row = db
+    .prepare(`SELECT COUNT(*) as c FROM chunks WHERE model = ?${sourceFilter.sql}`)
+    .get(providerModel, ...sourceFilter.params) as { c: number } | undefined;
+  return row?.c ?? 0;
 }
 
 export function listChunks(params: {
