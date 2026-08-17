@@ -271,6 +271,16 @@ export abstract class MemoryManagerSyncOps {
     }
   }
 
+  // vector.available tracks the sqlite-vec extension, not the table: FTS-only
+  // indexes drop chunks_vec and never recreate it, so statements touching it
+  // must also require the table to exist.
+  private hasVectorTable(): boolean {
+    const row = this.db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(VECTOR_TABLE) as { "1": number } | undefined;
+    return row !== undefined;
+  }
+
   protected buildSourceFilter(alias?: string): { sql: string; params: MemorySource[] } {
     const sources = Array.from(this.sources);
     if (sources.length === 0) {
@@ -661,7 +671,7 @@ export abstract class MemoryManagerSyncOps {
       `DELETE FROM chunks WHERE path = ? AND source = ?`,
     );
     const deleteVectorRowsByPathAndSource =
-      this.vector.enabled && this.vector.available
+      this.vector.enabled && this.vector.available && this.hasVectorTable()
         ? this.db.prepare(
             `DELETE FROM ${VECTOR_TABLE} WHERE id IN (SELECT id FROM chunks WHERE path = ? AND source = ?)`,
           )
@@ -760,7 +770,7 @@ export abstract class MemoryManagerSyncOps {
       `DELETE FROM chunks WHERE path = ? AND source = ?`,
     );
     const deleteVectorRowsByPathAndSource =
-      this.vector.enabled && this.vector.available
+      this.vector.enabled && this.vector.available && this.hasVectorTable()
         ? this.db.prepare(
             `DELETE FROM ${VECTOR_TABLE} WHERE id IN (SELECT id FROM chunks WHERE path = ? AND source = ?)`,
           )
