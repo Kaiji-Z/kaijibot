@@ -266,7 +266,7 @@ create_config_dirs() {
 build_image() {
   print_step "构建 KaijiBot Docker 镜像（首次构建约需 5-10 分钟）..."
 
-  local extensions="feishu zai openai ollama lmstudio exa tavily browser memory-core memory-lancedb memory-wiki speech-core talk-voice media-understanding-core image-generation-core diffs llm-task device-pair webhooks shared"
+  local extensions="feishu zai openai ollama lmstudio exa tavily browser memory-core memory-lancedb knowledge-wiki speech-core talk-voice media-understanding-core image-generation-core diffs llm-task device-pair webhooks"
 
   cd "$PROJECT_ROOT"
 

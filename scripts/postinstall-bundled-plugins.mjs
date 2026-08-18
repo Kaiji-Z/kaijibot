@@ -6,7 +6,7 @@
 // plugin deps from the workspace root, so stale plugin-local node_modules must
 // not linger under extensions/* and shadow the root graph.
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
