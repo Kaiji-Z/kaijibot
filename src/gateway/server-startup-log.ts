@@ -1,5 +1,9 @@
 import chalk from "chalk";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
+import {
+  DEFAULT_MODEL,
+  DEFAULT_PROVIDER,
+  MissingAgentModelConfigError,
+} from "../agents/defaults.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
 import type { loadConfig } from "../config/config.js";
 import { getResolvedLoggerSettings } from "../logging.js";
@@ -16,15 +20,30 @@ export function logGatewayStartup(params: {
   log: { info: (msg: string, meta?: Record<string, unknown>) => void; warn: (msg: string) => void };
   isNixMode: boolean;
 }) {
-  const { provider: agentProvider, model: agentModel } = resolveConfiguredModelRef({
-    cfg: params.cfg,
-    defaultProvider: DEFAULT_PROVIDER,
-    defaultModel: DEFAULT_MODEL,
-  });
-  const modelRef = `${agentProvider}/${agentModel}`;
-  params.log.info(`agent model: ${modelRef}`, {
-    consoleMessage: `agent model: ${chalk.whiteBright(modelRef)}`,
-  });
+  // `gateway --allow-unconfigured` (the Docker image default CMD) must boot
+  // without an agent model; degrade the banner instead of aborting startup.
+  let modelRef: string | null = null;
+  try {
+    const { provider: agentProvider, model: agentModel } = resolveConfiguredModelRef({
+      cfg: params.cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+      defaultModel: DEFAULT_MODEL,
+    });
+    modelRef = `${agentProvider}/${agentModel}`;
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+  }
+  if (modelRef) {
+    params.log.info(`agent model: ${modelRef}`, {
+      consoleMessage: `agent model: ${chalk.whiteBright(modelRef)}`,
+    });
+  } else {
+    params.log.warn(
+      "agent model: not configured — set `agents.defaults.model.primary` in kaijibot.json or run `kaijibot onboard`",
+    );
+  }
   const startupDurationMs =
     typeof params.startupStartedAt === "number" ? Date.now() - params.startupStartedAt : null;
   const startupDurationLabel =

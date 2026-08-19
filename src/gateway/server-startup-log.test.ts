@@ -12,6 +12,7 @@ describe("gateway startup log", () => {
 
     logGatewayStartup({
       cfg: {
+        agents: { defaults: { model: { primary: "zai/glm-5" } } },
         gateway: {
           controlUi: {
             dangerouslyDisableDeviceAuth: true,
@@ -38,7 +39,9 @@ describe("gateway startup log", () => {
     const warn = vi.fn();
 
     logGatewayStartup({
-      cfg: {},
+      cfg: {
+        agents: { defaults: { model: { primary: "zai/glm-5" } } },
+      },
       bindHost: "127.0.0.1",
       pluginCount: 0,
       port: 18789,
@@ -71,5 +74,41 @@ describe("gateway startup log", () => {
       .map((call) => call[0])
       .filter((message) => message.startsWith("ready ("));
     expect(readyMessages).toEqual(["ready (8 plugins, 16.0s)"]);
+  });
+
+  it("logs the resolved agent model when configured", () => {
+    const info = vi.fn();
+    const warn = vi.fn();
+
+    logGatewayStartup({
+      cfg: {
+        agents: { defaults: { model: { primary: "zai/glm-5" } } },
+      },
+      bindHost: "127.0.0.1",
+      pluginCount: 0,
+      port: 18789,
+      log: { info, warn },
+      isNixMode: false,
+    });
+
+    expect(info).toHaveBeenCalledWith("agent model: zai/glm-5", expect.anything());
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("degrades to a warning instead of throwing when no agent model is configured", () => {
+    const info = vi.fn();
+    const warn = vi.fn();
+
+    logGatewayStartup({
+      cfg: {},
+      bindHost: "127.0.0.1",
+      pluginCount: 0,
+      port: 18789,
+      log: { info, warn },
+      isNixMode: false,
+    });
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("agent model: not configured"));
+    expect(info.mock.calls.map((call) => call[0]).some((m) => m.startsWith("ready ("))).toBe(true);
   });
 });
