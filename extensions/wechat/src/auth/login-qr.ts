@@ -28,6 +28,14 @@ type ActiveLogin = {
 };
 
 const ACTIVE_LOGIN_TTL_MS = 5 * 60_000;
+const WAIT_TICK_INTERVAL_MS = 30_000;
+
+export function formatWaitCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `⏳ 等待扫码中… 超时还剩 ${minutes}:${String(seconds).padStart(2, "0")}`;
+}
 /** Client-side timeout for the long-poll get_qrcode_status request. */
 const QR_LONG_POLL_TIMEOUT_MS = 35_000;
 
@@ -287,6 +295,7 @@ export async function waitForWeixinLogin(opts: {
   sessionKey: string;
   apiBaseUrl: string;
   botType?: string;
+  onWaitTick?: (remainingMs: number) => void;
 }): Promise<WeixinQrWaitResult> {
   let activeLogin = activeLogins.get(opts.sessionKey);
 
@@ -311,6 +320,7 @@ export async function waitForWeixinLogin(opts: {
   const deadline = Date.now() + timeoutMs;
   let scannedPrinted = false;
   let qrRefreshCount = 1;
+  let lastWaitTickMs = 0;
 
   // Initialize the effective polling base URL; may be updated on IDC redirect.
   activeLogin.currentApiBaseUrl = FIXED_BASE_URL;
@@ -334,6 +344,10 @@ export async function waitForWeixinLogin(opts: {
         case "wait":
           if (opts.verbose) {
             process.stdout.write(".");
+          }
+          if (opts.onWaitTick && Date.now() - lastWaitTickMs >= WAIT_TICK_INTERVAL_MS) {
+            lastWaitTickMs = Date.now();
+            opts.onWaitTick(deadline - Date.now());
           }
           break;
         case "scaned":

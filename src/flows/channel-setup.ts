@@ -30,7 +30,7 @@ import { formatErrorMessage } from "../infra/errors.js";
 import { enablePluginInConfig } from "../plugins/enable.js";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 import type { RuntimeEnv } from "../runtime.js";
-import type { WizardPrompter } from "../wizard/prompts.js";
+import { WizardCancelledError, type WizardPrompter } from "../wizard/prompts.js";
 import {
   maybeConfigureDmPolicies,
   promptConfiguredAction,
@@ -473,7 +473,7 @@ export async function setupChannels(
     await refreshStatus(channel);
   };
 
-  const handleChannelChoice = async (channel: ChannelChoice) => {
+  const runChannelChoice = async (channel: ChannelChoice) => {
     const { catalogById, installedCatalogById } = getChannelEntries();
     const catalogEntry = catalogById.get(channel);
     const installedCatalogEntry = installedCatalogById.get(channel);
@@ -533,6 +533,25 @@ export async function setupChannels(
       return;
     }
     await configureChannel(channel);
+  };
+
+  const handleChannelChoice = async (channel: ChannelChoice) => {
+    try {
+      await runChannelChoice(channel);
+    } catch (err) {
+      // A single channel's failure (e.g. QR login timeout) must not abort the
+      // whole onboarding flow; user cancellation must still propagate.
+      if (err instanceof WizardCancelledError) {
+        throw err;
+      }
+      await prompter.note(
+        [
+          `${channel} setup failed: ${formatErrorMessage(err)}`,
+          "You can retry this channel, pick another one, or finish onboarding now.",
+        ].join("\n"),
+        "Channel setup",
+      );
+    }
   };
 
   if (options?.quickstartDefaults) {

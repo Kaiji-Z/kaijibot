@@ -20,6 +20,7 @@ import {
   startWeixinLoginWithQr,
   waitForWeixinLogin,
   displayQRCode,
+  formatWaitCountdown,
 } from "./auth/login-qr.js";
 import type { WeixinQrStartResult, WeixinQrWaitResult } from "./auth/login-qr.js";
 import { downloadRemoteImageToTemp } from "./cdn/upload.js";
@@ -287,6 +288,9 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         sessionKey: startResult.sessionKey,
         apiBaseUrl: DEFAULT_BASE_URL,
         timeoutMs: 480_000,
+        onWaitTick: (remainingMs) => {
+          process.stdout.write(`${formatWaitCountdown(remainingMs)}\n`);
+        },
       });
 
       if (waitResult.connected && waitResult.botToken && waitResult.accountId) {
@@ -305,8 +309,10 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           );
         }
         void triggerWeixinChannelReload();
+        process.stdout.write(`\n✅ 已将此 KaijiBot 连接到微信（账号：${normalizedId}）。\n`);
         return { cfg, accountId: normalizedId };
       } else if (waitResult.alreadyConnected) {
+        process.stdout.write(`\n✅ 微信账号已连接（${accountId ?? "default"}），无需重新扫码。\n`);
         return { cfg, accountId: accountId ?? "default" };
       }
       throw new Error(waitResult.message);
@@ -471,7 +477,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
       await displayQRCode(startResult.qrcodeUrl!);
 
       const loginTimeoutMs = 480_000;
-      log(`\n正在等待操作...\n`);
+      log(`\n正在等待操作...（超时 ${Math.floor(loginTimeoutMs / 60_000)} 分钟）\n`);
 
       const waitResult: WeixinQrWaitResult = await waitForWeixinLogin({
         sessionKey: startResult.sessionKey,
@@ -479,6 +485,9 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         timeoutMs: loginTimeoutMs,
         verbose: Boolean(verbose),
         botType: DEFAULT_ILINK_BOT_TYPE,
+        onWaitTick: (remainingMs) => {
+          log(formatWaitCountdown(remainingMs));
+        },
       });
 
       if (waitResult.connected && waitResult.botToken && waitResult.accountId) {

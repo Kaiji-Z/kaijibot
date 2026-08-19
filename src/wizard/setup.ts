@@ -665,6 +665,8 @@ export async function runSetupWizard(
       quickstartDefaults: flow === "quickstart",
       secretInputMode: opts.secretInputMode,
     });
+    const { noteChannelStatus } = await import("../flows/channel-setup.status.js");
+    await noteChannelStatus({ cfg: nextConfig, prompter });
   }
 
   await writeConfigFile(nextConfig);
