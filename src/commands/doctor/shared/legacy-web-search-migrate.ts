@@ -47,6 +47,11 @@ function hasMappedLegacyWebSearchConfig(raw: unknown): boolean {
   if (hasOwnKey(search, "apiKey")) {
     return true;
   }
+  // The global legacy provider (brave) also had a provider-scoped shape that
+  // resolveLegacyGlobalWebSearchMigration consumes; detect it too.
+  if (isRecord(search[LEGACY_GLOBAL_WEB_SEARCH_PROVIDER_ID])) {
+    return true;
+  }
   return LEGACY_WEB_SEARCH_PROVIDER_IDS.some((providerId) => isRecord(search[providerId]));
 }
 
@@ -135,6 +140,12 @@ export function listLegacyWebSearchConfigPaths(raw: unknown): string[] {
 
   if ("apiKey" in search) {
     paths.push("tools.web.search.apiKey");
+  }
+  const globalScoped = search[LEGACY_GLOBAL_WEB_SEARCH_PROVIDER_ID];
+  if (isRecord(globalScoped)) {
+    for (const key of Object.keys(globalScoped)) {
+      paths.push(`tools.web.search.${LEGACY_GLOBAL_WEB_SEARCH_PROVIDER_ID}.${key}`);
+    }
   }
   for (const providerId of LEGACY_WEB_SEARCH_PROVIDER_IDS) {
     const scoped = search[providerId];

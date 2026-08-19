@@ -2,6 +2,7 @@ import type { KaijiBotConfig } from "../config/config.js";
 import { normalizeOptionalString } from "../shared/string-coerce.js";
 import { isRecord } from "../utils.js";
 import { ensureAuthProfileStore, listProfilesForProvider } from "./auth-profiles.js";
+import { MissingAgentModelConfigError } from "./defaults.js";
 import { resolveDefaultModelForAgent } from "./model-selection.js";
 
 export type CodexNativeSearchMode = "cached" | "live";
@@ -268,10 +269,20 @@ export function isCodexNativeWebSearchRelevant(params: {
     return true;
   }
 
-  const defaultModel = resolveDefaultModelForAgent({
-    cfg: params.config,
-    agentId: params.agentId,
-  });
+  // Fresh installs may have no configured model yet; wizard flows call this
+  // before any model exists, so degrade to "not relevant" instead of throwing.
+  let defaultModel: ReturnType<typeof resolveDefaultModelForAgent>;
+  try {
+    defaultModel = resolveDefaultModelForAgent({
+      cfg: params.config,
+      agentId: params.agentId,
+    });
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+    return false;
+  }
   const configuredProvider = params.config.models?.providers?.[defaultModel.provider];
   const configuredModelApi = configuredProvider?.models?.find(
     (candidate) => candidate.id === defaultModel.model,

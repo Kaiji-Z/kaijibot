@@ -1,5 +1,9 @@
 import { ensureAuthProfileStore, listProfilesForProvider } from "../agents/auth-profiles.js";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
+import {
+  DEFAULT_MODEL,
+  DEFAULT_PROVIDER,
+  MissingAgentModelConfigError,
+} from "../agents/defaults.js";
 import { hasUsableCustomProviderApiKey, resolveEnvApiKey } from "../agents/model-auth.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import {
@@ -418,12 +422,21 @@ export async function promptDefaultModel(
     ? normalizeProviderId(preferredProviderRaw)
     : undefined;
   const configuredRaw = resolveConfiguredModelRaw(cfg);
-  const resolved = resolveConfiguredModelRef({
-    cfg,
-    defaultProvider: DEFAULT_PROVIDER,
-    defaultModel: DEFAULT_MODEL,
-  });
-  const resolvedKey = modelKey(resolved.provider, resolved.model);
+  // This picker often runs before the first model is configured (onboarding);
+  // degrade to "no current selection" instead of throwing.
+  let resolved: { provider: string; model: string } | undefined;
+  try {
+    resolved = resolveConfiguredModelRef({
+      cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+      defaultModel: DEFAULT_MODEL,
+    });
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+  }
+  const resolvedKey = resolved ? modelKey(resolved.provider, resolved.model) : "";
   const configuredKey = configuredRaw ? resolvedKey : "";
 
   const catalog = await loadModelCatalog({ config: cfg, useCache: false });
@@ -484,7 +497,9 @@ export async function promptDefaultModel(
       value: KEEP_VALUE,
       label: configuredRaw
         ? `Keep current (${configuredRaw})`
-        : `Keep current (default: ${resolvedKey})`,
+        : resolvedKey
+          ? `Keep current (default: ${resolvedKey})`
+          : "Keep current",
       hint:
         configuredRaw && configuredRaw !== resolvedKey ? `resolves to ${resolvedKey}` : undefined,
     });
@@ -519,7 +534,7 @@ export async function promptDefaultModel(
     allowKeep &&
     hasPreferredProvider &&
     preferredProvider &&
-    !matchesPreferredProvider?.(resolved.provider)
+    (!resolved || !matchesPreferredProvider?.(resolved.provider))
   ) {
     const firstModel = filteredModels[0];
     if (firstModel) {
@@ -586,12 +601,20 @@ export async function promptModelAllowlist(params: {
   const preferredProvider = preferredProviderRaw
     ? normalizeProviderId(preferredProviderRaw)
     : undefined;
-  const resolved = resolveConfiguredModelRef({
-    cfg,
-    defaultProvider: DEFAULT_PROVIDER,
-    defaultModel: DEFAULT_MODEL,
-  });
-  const resolvedKey = modelKey(resolved.provider, resolved.model);
+  // Degrade to no seed when no model is configured yet (fresh installs).
+  let resolvedKey = "";
+  try {
+    const resolved = resolveConfiguredModelRef({
+      cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+      defaultModel: DEFAULT_MODEL,
+    });
+    resolvedKey = modelKey(resolved.provider, resolved.model);
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+  }
   const initialSeeds = normalizeModelKeys([
     ...existingKeys,
     resolvedKey,

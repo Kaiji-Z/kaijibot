@@ -1,4 +1,8 @@
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
+import {
+  DEFAULT_MODEL,
+  DEFAULT_PROVIDER,
+  MissingAgentModelConfigError,
+} from "../agents/defaults.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
 import type { SessionEntry } from "../config/sessions.js";
 import type { KaijiBotConfig } from "../config/types.kaijibot.js";
@@ -71,14 +75,21 @@ export function toSessionDisplayRows(store: Record<string, SessionEntry>): Sessi
 }
 
 export function resolveSessionDisplayDefaults(cfg: KaijiBotConfig): SessionDisplayDefaults {
-  const resolved = resolveConfiguredModelRef({
-    cfg,
-    defaultProvider: DEFAULT_PROVIDER,
-    defaultModel: DEFAULT_MODEL,
-  });
-  return {
-    model: resolved.model ?? DEFAULT_MODEL,
-  };
+  // Session listing/cleanup must work on unconfigured installs; degrade to the
+  // empty default instead of throwing MissingAgentModelConfigError.
+  try {
+    const resolved = resolveConfiguredModelRef({
+      cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+      defaultModel: DEFAULT_MODEL,
+    });
+    return { model: resolved.model ?? DEFAULT_MODEL };
+  } catch (err) {
+    if (!(err instanceof MissingAgentModelConfigError)) {
+      throw err;
+    }
+    return { model: DEFAULT_MODEL };
+  }
 }
 
 export function resolveSessionDisplayModel(
