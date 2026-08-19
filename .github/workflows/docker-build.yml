@@ -1,0 +1,97 @@
+name: docker-build
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - "scripts/docker/**"
+      - "scripts/postinstall-bundled-plugins.mjs"
+      - "scripts/tsdown-build.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".github/workflows/docker-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - "scripts/docker/**"
+      - "scripts/postinstall-bundled-plugins.mjs"
+      - "scripts/tsdown-build.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".github/workflows/docker-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default
+            variant: default
+            extensions: ""
+            smoke: true
+          - name: slim
+            variant: slim
+            extensions: ""
+            smoke: false
+          - name: default-with-extensions
+            variant: default
+            extensions: "feishu zai memory-core"
+            smoke: false
+    name: docker build (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          docker build \
+            --build-arg KAIJIBOT_VARIANT="${{ matrix.variant }}" \
+            --build-arg KAIJIBOT_EXTENSIONS="${{ matrix.extensions }}" \
+            -t "kaijibot:${{ matrix.name }}" .
+
+      - name: Smoke test (unconfigured gateway boots and passes health checks)
+        if: matrix.smoke
+        run: |
+          docker run -d --name kb-smoke "kaijibot:${{ matrix.name }}"
+          for i in $(seq 1 30); do
+            if docker exec kb-smoke node -e \
+              "fetch('http://127.0.0.1:18789/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              echo "healthz responded OK (attempt $i)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::gateway did not become healthy within 60s; dumping logs"
+          docker logs kb-smoke
+          exit 1
+
+      - name: Verify Docker HEALTHCHECK reaches healthy
+        if: matrix.smoke
+        run: |
+          for i in $(seq 1 24); do
+            status="$(docker inspect --format '{{.State.Health.Status}}' kb-smoke)"
+            echo "health status: $status (attempt $i)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::HEALTHCHECK did not reach healthy within 120s; dumping logs"
+          docker logs kb-smoke
+          exit 1

@@ -43,6 +43,12 @@ RUN mkdir -p /out && \
 FROM ${KAIJIBOT_NODE_BOOKWORM_IMAGE} AS build
 ARG KAIJIBOT_BUNDLED_PLUGIN_DIR
 
+# bun.sh/install fetches release tarballs from GitHub, which may be
+# unreachable in some regions. Override with a GitHub release proxy for those
+# builds, e.g. --build-arg BUN_GITHUB_BASE="https://<gh-proxy>/https://github.com".
+ARG BUN_GITHUB_BASE="https://github.com"
+ENV GITHUB=${BUN_GITHUB_BASE}
+
 # Install Bun (required for build scripts). Retry the whole bootstrap flow to
 # tolerate transient 5xx failures from bun.sh/GitHub during CI image builds.
 RUN set -eux; \
