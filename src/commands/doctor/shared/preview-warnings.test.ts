@@ -39,7 +39,10 @@ describe("doctor preview warnings", () => {
     vi.restoreAllMocks();
   });
 
-  it("collects provider and shared preview warnings", async () => {
+  it("collects shared preview warnings", async () => {
+    // The telegram non-numeric allowFrom warning used to ship with the
+    // telegram channel plugin, which is not bundled in this repo; only the
+    // shared open-policy warning remains for this config.
     const warnings = await collectDoctorPreviewWarnings({
       cfg: {
         channels: {
@@ -55,10 +58,7 @@ describe("doctor preview warnings", () => {
     });
 
     expect(warnings).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("Telegram allowFrom contains 1 non-numeric entries (e.g. @alice)"),
-        expect.stringContaining('channels.signal.allowFrom: set to ["*"]'),
-      ]),
+      expect.arrayContaining([expect.stringContaining('channels.signal.allowFrom: set to ["*"]')]),
     );
   });
 

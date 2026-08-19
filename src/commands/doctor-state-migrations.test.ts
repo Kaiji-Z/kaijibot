@@ -228,7 +228,10 @@ describe("doctor legacy state migrations", () => {
     expect(store["agent:main:subagent:xyz"]?.sessionId).toBe("e");
   });
 
-  it("keeps shipped WhatsApp legacy group keys channel-qualified during migration", async () => {
+  // WhatsApp and Telegram shipped their state migrations as bundled channel
+  // plugin lifecycle hooks, which are not bundled in this repo; their legacy
+  // files stay in place and legacy group keys fall into the generic bucket.
+  it("routes WhatsApp-shaped legacy group keys into the generic channel bucket", async () => {
     const root = await makeTempRoot();
     const cfg: KaijiBotConfig = {};
     const targetDir = path.join(root, "agents", "main", "sessions");
@@ -248,7 +251,7 @@ describe("doctor legacy state migrations", () => {
       now: () => 123,
     });
 
-    expect(store["agent:main:whatsapp:group:123@g.us"]?.sessionId).toBe("wa");
+    expect(store["agent:main:unknown:group:123@g.us"]?.sessionId).toBe("wa");
     expect(store["agent:main:unknown:group:abc"]?.sessionId).toBe("generic");
   });
 
@@ -309,7 +312,7 @@ describe("doctor legacy state migrations", () => {
     expect(fs.existsSync(path.join(targetDir, "sessions.json"))).toBe(true);
   });
 
-  it("migrates legacy WhatsApp auth files without touching oauth.json", async () => {
+  it("leaves legacy WhatsApp auth files in place without touching oauth.json", async () => {
     const { root, cfg } = await makeRootWithEmptyCfg();
     const oauthDir = ensureCredentialsDir(root);
     fs.writeFileSync(path.join(oauthDir, "oauth.json"), "{}", "utf-8");
@@ -319,30 +322,25 @@ describe("doctor legacy state migrations", () => {
     await detectAndRunMigrations({ root, cfg, now: () => 123 });
 
     const target = path.join(oauthDir, "whatsapp", "default");
-    expect(fs.existsSync(path.join(target, "creds.json"))).toBe(true);
-    expect(fs.existsSync(path.join(target, "session-abc.json"))).toBe(true);
+    expect(fs.existsSync(path.join(target, "creds.json"))).toBe(false);
+    expect(fs.existsSync(path.join(target, "session-abc.json"))).toBe(false);
     expect(fs.existsSync(path.join(oauthDir, "oauth.json"))).toBe(true);
-    expect(fs.existsSync(path.join(oauthDir, "creds.json"))).toBe(false);
+    expect(fs.existsSync(path.join(oauthDir, "creds.json"))).toBe(true);
+    expect(fs.existsSync(path.join(oauthDir, "session-abc.json"))).toBe(true);
   });
 
-  it("migrates legacy Telegram pairing allowFrom store to account-scoped default file", async () => {
+  it("keeps the legacy Telegram pairing allowFrom store unmigrated without a bundled telegram plugin", async () => {
     const { root, cfg } = await makeRootWithEmptyCfg();
     const { oauthDir, detected, result } = await runTelegramAllowFromMigration({ root, cfg });
-    expect(detected.channelPlans.hasLegacy).toBe(true);
-    expect(detected.channelPlans.plans.map((plan) => path.basename(plan.targetPath))).toEqual([
-      "telegram-default-allowFrom.json",
-    ]);
+    expect(detected.channelPlans.hasLegacy).toBe(false);
+    expect(detected.channelPlans.plans).toEqual([]);
     expect(result.warnings).toEqual([]);
 
-    const target = path.join(oauthDir, "telegram-default-allowFrom.json");
-    expect(fs.existsSync(target)).toBe(true);
-    expect(JSON.parse(fs.readFileSync(target, "utf-8"))).toEqual({
-      version: 1,
-      allowFrom: ["123456"],
-    });
+    expect(fs.existsSync(path.join(oauthDir, "telegram-allowFrom.json"))).toBe(true);
+    expect(fs.existsSync(path.join(oauthDir, "telegram-default-allowFrom.json"))).toBe(false);
   });
 
-  it("does not fan out legacy Telegram pairing allowFrom store to configured named accounts", async () => {
+  it("does not fan out legacy Telegram pairing allowFrom store without a bundled telegram plugin", async () => {
     const root = await makeTempRoot();
     const cfg: KaijiBotConfig = {
       channels: {
@@ -356,25 +354,21 @@ describe("doctor legacy state migrations", () => {
       },
     };
     const { oauthDir, detected, result } = await runTelegramAllowFromMigration({ root, cfg });
-    expect(detected.channelPlans.hasLegacy).toBe(true);
-    expect(detected.channelPlans.plans.map((plan) => path.basename(plan.targetPath))).toEqual([
-      "telegram-bot2-allowFrom.json",
-    ]);
+    expect(detected.channelPlans.hasLegacy).toBe(false);
+    expect(detected.channelPlans.plans).toEqual([]);
     expect(result.warnings).toEqual([]);
 
     const bot1Target = path.join(oauthDir, "telegram-bot1-allowFrom.json");
     const bot2Target = path.join(oauthDir, "telegram-bot2-allowFrom.json");
     const defaultTarget = path.join(oauthDir, "telegram-default-allowFrom.json");
+    const legacyStore = path.join(oauthDir, "telegram-allowFrom.json");
     expect(fs.existsSync(bot1Target)).toBe(false);
-    expect(fs.existsSync(bot2Target)).toBe(true);
+    expect(fs.existsSync(bot2Target)).toBe(false);
     expect(fs.existsSync(defaultTarget)).toBe(false);
-    expect(JSON.parse(fs.readFileSync(bot2Target, "utf-8"))).toEqual({
-      version: 1,
-      allowFrom: ["123456"],
-    });
+    expect(fs.existsSync(legacyStore)).toBe(true);
   });
 
-  it("migrates legacy Telegram pairing allowFrom store to the default agent bound account", async () => {
+  it("keeps agent-bound telegram accounts uninvolved without a bundled telegram plugin", async () => {
     const root = await makeTempRoot();
     const cfg: KaijiBotConfig = {
       agents: {
@@ -392,22 +386,18 @@ describe("doctor legacy state migrations", () => {
     };
 
     const { oauthDir, detected, result } = await runTelegramAllowFromMigration({ root, cfg });
-    expect(detected.channelPlans.hasLegacy).toBe(true);
-    expect(detected.channelPlans.plans.map((plan) => path.basename(plan.targetPath))).toEqual([
-      "telegram-alerts-allowFrom.json",
-    ]);
+    expect(detected.channelPlans.hasLegacy).toBe(false);
+    expect(detected.channelPlans.plans).toEqual([]);
     expect(result.warnings).toEqual([]);
 
     const alertsTarget = path.join(oauthDir, "telegram-alerts-allowFrom.json");
     const backupTarget = path.join(oauthDir, "telegram-backup-allowFrom.json");
     const defaultTarget = path.join(oauthDir, "telegram-default-allowFrom.json");
-    expect(fs.existsSync(alertsTarget)).toBe(true);
+    const legacyStore = path.join(oauthDir, "telegram-allowFrom.json");
+    expect(fs.existsSync(alertsTarget)).toBe(false);
     expect(fs.existsSync(backupTarget)).toBe(false);
     expect(fs.existsSync(defaultTarget)).toBe(false);
-    expect(JSON.parse(fs.readFileSync(alertsTarget, "utf-8"))).toEqual({
-      version: 1,
-      allowFrom: ["123456"],
-    });
+    expect(fs.existsSync(legacyStore)).toBe(true);
   });
 
   it("no-ops when nothing detected", async () => {

@@ -147,7 +147,7 @@ describe("buildGatewayInstallPlan", () => {
     });
 
     await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
       warn,
@@ -166,7 +166,7 @@ describe("buildGatewayInstallPlan", () => {
     });
 
     const plan = await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
       config: {
@@ -196,7 +196,7 @@ describe("buildGatewayInstallPlan", () => {
     });
 
     const plan = await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
       config: {
@@ -217,7 +217,7 @@ describe("buildGatewayInstallPlan", () => {
     mockNodeGatewayPlanFixture();
 
     const plan = await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
       config: {
@@ -238,7 +238,7 @@ describe("buildGatewayInstallPlan", () => {
     mockNodeGatewayPlanFixture({ serviceEnvironment: {} });
 
     const plan = await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
       config: {
@@ -264,7 +264,7 @@ describe("buildGatewayInstallPlan", () => {
     });
 
     const plan = await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
       config: {
@@ -305,6 +305,7 @@ describe("buildGatewayInstallPlan", () => {
 
     const plan = await buildGatewayInstallPlan({
       env: {
+        HOME: isolatedHome,
         OPENAI_API_KEY: "sk-openai-test", // pragma: allowlist secret
         ANTHROPIC_TOKEN: "ant-test-token",
       },
@@ -346,6 +347,7 @@ describe("buildGatewayInstallPlan", () => {
     const warn = vi.fn();
     const plan = await buildGatewayInstallPlan({
       env: {
+        HOME: isolatedHome,
         NODE_OPTIONS: "--require ./pwn.js",
         GIT_ASKPASS: "/tmp/askpass.sh",
         OPENAI_API_KEY: "sk-openai-test", // pragma: allowlist secret
@@ -381,6 +383,7 @@ describe("buildGatewayInstallPlan", () => {
 
     const plan = await buildGatewayInstallPlan({
       env: {
+        HOME: isolatedHome,
         "BAD KEY": "should-not-pass",
       },
       port: 3000,
@@ -408,7 +411,7 @@ describe("buildGatewayInstallPlan", () => {
     });
 
     const plan = await buildGatewayInstallPlan({
-      env: {},
+      env: { HOME: isolatedHome },
       port: 3000,
       runtime: "node",
     });

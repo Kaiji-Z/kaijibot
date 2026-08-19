@@ -39,7 +39,10 @@ const mocks = vi.hoisted(() => ({
   note: vi.fn(),
 }));
 
-vi.mock("../config/paths.js", () => ({
+// Non-isolated local runner shares module mocks across files in a worker, so
+// keep every other paths.js export real instead of replacing the whole module.
+vi.mock("../config/paths.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/paths.js")>()),
   resolveGatewayPort: mocks.resolveGatewayPort,
   resolveIsNixMode: mocks.resolveIsNixMode,
 }));
@@ -73,6 +76,11 @@ vi.mock("../daemon/service-audit.js", () => ({
 
 vi.mock("../daemon/service.js", () => ({
   resolveGatewayService: () => ({
+    readCommand: mocks.readCommand,
+    stage: mocks.stage,
+    install: mocks.install,
+  }),
+  tryResolveGatewayService: () => ({
     readCommand: mocks.readCommand,
     stage: mocks.stage,
     install: mocks.install,

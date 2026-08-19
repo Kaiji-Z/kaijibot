@@ -157,7 +157,7 @@ describe("agentCommand runtime config", () => {
       });
       const targetIds = resolveConfigWithSecretsSpy.mock.calls[0]?.[0].targetIds;
       expect(targetIds.has("models.providers.*.apiKey")).toBe(true);
-      expect(targetIds.has("channels.telegram.botToken")).toBe(false);
+      expect(targetIds.has("channels.feishu.appSecret")).toBe(false);
       expect(setRuntimeConfigSnapshotSpy).toHaveBeenCalledWith(resolvedConfig, sourceConfig);
       expect(prepared.cfg).toBe(resolvedConfig);
     });
@@ -180,7 +180,7 @@ describe("agentCommand runtime config", () => {
       });
 
       const targetIds = resolveConfigWithSecretsSpy.mock.calls[0]?.[0].targetIds;
-      expect(targetIds.has("channels.telegram.botToken")).toBe(true);
+      expect(targetIds.has("channels.feishu.appSecret")).toBe(true);
     });
   });
 

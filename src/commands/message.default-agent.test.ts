@@ -1,10 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChannelPlugin } from "../channels/plugins/types.js";
 import type { CliDeps } from "../cli/outbound-send-deps.js";
+import { setActivePluginRegistry } from "../plugins/runtime.js";
 import type { RuntimeEnv } from "../runtime.js";
+import { createTestRegistry } from "../test-utils/channel-plugins.js";
 import { messageCommand } from "./message.js";
 
 let testConfig: Record<string, unknown> = {};
 const applyPluginAutoEnable = vi.hoisted(() => vi.fn(({ config }) => ({ config, changes: [] })));
+
+const telegramStubPlugin: ChannelPlugin = {
+  id: "telegram",
+  meta: {
+    id: "telegram",
+    label: "Telegram",
+    selectionLabel: "Telegram",
+    docsPath: "/channels/telegram",
+    blurb: "test stub.",
+  },
+  capabilities: { chatTypes: ["direct"] },
+  config: {
+    listAccountIds: () => ["default"],
+    resolveAccount: () => ({}),
+    isConfigured: async () => true,
+  },
+};
 
 const resolveCommandSecretRefsViaGateway = vi.hoisted(() =>
   vi.fn(async ({ config }: { config: unknown }) => ({
@@ -47,6 +67,11 @@ vi.mock("../infra/outbound/message-action-runner.js", () => ({
 describe("messageCommand agent routing", () => {
   beforeEach(() => {
     testConfig = {};
+    // telegram is not a bundled channel in this repo; register it so the command
+    // recognizes it as deliverable and scopes secret targets to channels.telegram.*
+    setActivePluginRegistry(
+      createTestRegistry([{ pluginId: "telegram", source: "test", plugin: telegramStubPlugin }]),
+    );
     applyPluginAutoEnable.mockClear();
     resolveCommandSecretRefsViaGateway.mockClear();
     runMessageAction.mockClear();

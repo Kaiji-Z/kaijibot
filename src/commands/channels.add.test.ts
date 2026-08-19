@@ -321,14 +321,16 @@ describe("channelsAddCommand", () => {
     expect(ensureChannelSetupPluginInstalled).toHaveBeenCalledWith(
       expect.objectContaining({ entry: catalogEntry }),
     );
-    expect(loadChannelSetupPluginRegistrySnapshotForChannel).not.toHaveBeenCalled();
+    // After install the flow resolves the setup plugin through the read-only
+    // scoped snapshot instead of mutating the active registry.
+    expect(loadChannelSetupPluginRegistrySnapshotForChannel).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "msteams", pluginId: "@kaijibot/msteams-plugin" }),
+    );
     expect(configMocks.writeConfigFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        channels: {
-          msteams: {
-            enabled: true,
-          },
-        },
+        channels: expect.objectContaining({
+          msteams: expect.objectContaining({ enabled: true, tenantId: "tenant-scoped" }),
+        }),
       }),
     );
     expect(runtime.error).not.toHaveBeenCalled();
@@ -362,14 +364,14 @@ describe("channelsAddCommand", () => {
     );
 
     expect(ensureChannelSetupPluginInstalled).not.toHaveBeenCalled();
-    expect(loadChannelSetupPluginRegistrySnapshotForChannel).not.toHaveBeenCalled();
+    expect(loadChannelSetupPluginRegistrySnapshotForChannel).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "msteams", pluginId: "@kaijibot/msteams-plugin" }),
+    );
     expect(configMocks.writeConfigFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        channels: {
-          msteams: {
-            enabled: true,
-          },
-        },
+        channels: expect.objectContaining({
+          msteams: expect.objectContaining({ enabled: true, tenantId: "tenant-installed" }),
+        }),
       }),
     );
   });
@@ -435,14 +437,14 @@ describe("channelsAddCommand", () => {
       { hasFlags: true },
     );
 
-    expect(loadChannelSetupPluginRegistrySnapshotForChannel).not.toHaveBeenCalled();
+    expect(loadChannelSetupPluginRegistrySnapshotForChannel).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "msteams", pluginId: "@vendor/teams-runtime" }),
+    );
     expect(configMocks.writeConfigFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        channels: {
-          msteams: {
-            enabled: true,
-          },
-        },
+        channels: expect.objectContaining({
+          msteams: expect.objectContaining({ enabled: true, tenantId: "tenant-scoped" }),
+        }),
       }),
     );
     expect(runtime.error).not.toHaveBeenCalled();

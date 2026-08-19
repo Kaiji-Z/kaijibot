@@ -50,6 +50,7 @@ vi.mock("../daemon/service.js", async () => {
   return {
     ...actual,
     resolveGatewayService: () => service,
+    tryResolveGatewayService: () => service,
   };
 });
 

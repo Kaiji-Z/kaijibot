@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   resolveOutboundTarget: vi.fn(() => ({ ok: true as const, to: "+15551234567" })),
 }));
 
+// Delivery routing rejects channels that are neither bundled (feishu/wechat)
+// nor registered as plugins, so these tests use bundled channel ids.
 vi.mock("../channels/plugins/index.js", () => ({
   getChannelPlugin: mocks.getChannelPlugin,
   getLoadedChannelPlugin: mocks.getChannelPlugin,
@@ -89,7 +91,7 @@ describe("deliverAgentCommandResult", () => {
       opts: {
         message: "hello",
         deliver: true,
-        channel: "whatsapp",
+        channel: "feishu",
         accountId: "kev",
         to: "+15551234567",
       },
@@ -108,11 +110,11 @@ describe("deliverAgentCommandResult", () => {
       opts: {
         message: "hello",
         deliver: true,
-        channel: "whatsapp",
+        channel: "feishu",
       },
       sessionEntry: {
         lastAccountId: "legacy",
-        lastChannel: "whatsapp",
+        lastChannel: "feishu",
       } as SessionEntry,
     });
 
@@ -126,7 +128,7 @@ describe("deliverAgentCommandResult", () => {
       opts: {
         message: "hello",
         deliver: true,
-        channel: "whatsapp",
+        channel: "feishu",
         to: "+15551234567",
         deliveryTargetMode: "explicit",
       },
@@ -148,16 +150,16 @@ describe("deliverAgentCommandResult", () => {
       opts: {
         message: "hello",
         deliver: true,
-        channel: "whatsapp",
+        channel: "feishu",
       },
       sessionEntry: {
         lastAccountId: "legacy",
-        lastChannel: "telegram",
+        lastChannel: "wechat",
       } as SessionEntry,
     });
 
     expect(mocks.resolveOutboundTarget).toHaveBeenCalledWith(
-      expect.objectContaining({ accountId: undefined, channel: "whatsapp" }),
+      expect.objectContaining({ accountId: undefined, channel: "feishu" }),
     );
   });
 
@@ -168,13 +170,13 @@ describe("deliverAgentCommandResult", () => {
         deliver: true,
       },
       sessionEntry: {
-        lastChannel: "telegram",
+        lastChannel: "feishu",
         lastTo: "123",
       } as SessionEntry,
     });
 
     expect(mocks.resolveOutboundTarget).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: "telegram", to: "123" }),
+      expect.objectContaining({ channel: "feishu", to: "123" }),
     );
   });
 
@@ -185,18 +187,18 @@ describe("deliverAgentCommandResult", () => {
         deliver: true,
         to: "+15551234567",
         replyTo: "#reports",
-        replyChannel: "slack",
+        replyChannel: "wechat",
         replyAccountId: "ops",
       },
       sessionEntry: {
-        lastChannel: "telegram",
+        lastChannel: "feishu",
         lastTo: "123",
         lastAccountId: "legacy",
       } as SessionEntry,
     });
 
     expect(mocks.resolveOutboundTarget).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: "slack", to: "#reports", accountId: "ops" }),
+      expect.objectContaining({ channel: "wechat", to: "#reports", accountId: "ops" }),
     );
   });
 
@@ -206,20 +208,20 @@ describe("deliverAgentCommandResult", () => {
         message: "hello",
         deliver: true,
         runContext: {
-          messageChannel: "whatsapp",
+          messageChannel: "feishu",
           currentChannelId: "+15559876543",
           accountId: "work",
         },
       },
       sessionEntry: {
-        lastChannel: "slack",
+        lastChannel: "wechat",
         lastTo: "U_WRONG",
         lastAccountId: "wrong",
       } as SessionEntry,
     });
 
     expect(mocks.resolveOutboundTarget).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: "whatsapp", to: "+15559876543", accountId: "work" }),
+      expect.objectContaining({ channel: "feishu", to: "+15559876543", accountId: "work" }),
     );
   });
 
@@ -229,17 +231,17 @@ describe("deliverAgentCommandResult", () => {
         message: "hello",
         deliver: true,
         runContext: {
-          messageChannel: "whatsapp",
+          messageChannel: "feishu",
         },
       },
       sessionEntry: {
-        lastChannel: "slack",
+        lastChannel: "wechat",
         lastTo: "U_WRONG",
       } as SessionEntry,
     });
 
     expect(mocks.resolveOutboundTarget).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: "whatsapp", to: undefined }),
+      expect.objectContaining({ channel: "feishu", to: undefined }),
     );
   });
 
@@ -248,7 +250,7 @@ describe("deliverAgentCommandResult", () => {
       opts: {
         message: "hello",
         deliver: true,
-        channel: "whatsapp",
+        channel: "feishu",
         to: "+15551234567",
       },
       outboundSession: {

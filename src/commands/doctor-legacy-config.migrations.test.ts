@@ -71,20 +71,18 @@ describe("normalizeCompatibilityConfigValues", () => {
     expect(res.changes).toEqual([]);
   });
 
-  it("copies legacy ack reaction when whatsapp config exists", () => {
+  // The whatsapp/slack/discord/telegram compatibility migrations and the
+  // voice-call / bedrock setup migrations below used to ship with their
+  // channel and provider plugins, which are not bundled in this repo;
+  // normalizeCompatibilityConfigValues leaves those configs untouched.
+  it("leaves legacy ack reaction in place when whatsapp config exists", () => {
     const res = normalizeCompatibilityConfigValues({
       messages: { ackReaction: "👀", ackReactionScope: "group-mentions" },
       channels: { whatsapp: {} },
     });
 
-    expect(res.config.channels?.whatsapp?.ackReaction).toEqual({
-      emoji: "👀",
-      direct: false,
-      group: "mentions",
-    });
-    expect(res.changes).toEqual([
-      "Copied messages.ackReaction → channels.whatsapp.ackReaction (scope: group-mentions).",
-    ]);
+    expect(res.config.channels?.whatsapp?.ackReaction).toBeUndefined();
+    expect(res.changes).toEqual([]);
   });
 
   it("does not add whatsapp config when only auth exists (issue #900)", () => {
@@ -108,7 +106,7 @@ describe("normalizeCompatibilityConfigValues", () => {
     });
   });
 
-  it("copies legacy ack reaction when authDir override exists", () => {
+  it("leaves legacy ack reaction in place when authDir override exists", () => {
     const customDir = fs.mkdtempSync(path.join(os.tmpdir(), "kaijibot-wa-auth-"));
     try {
       writeCreds(customDir);
@@ -118,20 +116,14 @@ describe("normalizeCompatibilityConfigValues", () => {
         channels: { whatsapp: { accounts: { work: { authDir: customDir } } } },
       });
 
-      expect(res.config.channels?.whatsapp?.ackReaction).toEqual({
-        emoji: "👀",
-        direct: false,
-        group: "mentions",
-      });
-      expect(res.changes).toEqual([
-        "Copied messages.ackReaction → channels.whatsapp.ackReaction (scope: group-mentions).",
-      ]);
+      expect(res.config.channels?.whatsapp?.ackReaction).toBeUndefined();
+      expect(res.changes).toEqual([]);
     } finally {
       fs.rmSync(customDir, { recursive: true, force: true });
     }
   });
 
-  it("migrates Slack dm.policy/dm.allowFrom to dmPolicy/allowFrom aliases", () => {
+  it("leaves Slack nested dm policy as-is instead of migrating to dmPolicy aliases", () => {
     const res = normalizeCompatibilityConfigValues({
       channels: {
         slack: {
@@ -140,15 +132,14 @@ describe("normalizeCompatibilityConfigValues", () => {
       },
     });
 
-    expect(res.config.channels?.slack?.dmPolicy).toBe("open");
-    expect(res.config.channels?.slack?.allowFrom).toEqual(["*"]);
+    expect(res.config.channels?.slack?.dmPolicy).toBeUndefined();
+    expect(res.config.channels?.slack?.allowFrom).toBeUndefined();
     expect(res.config.channels?.slack?.dm).toEqual({
       enabled: true,
+      policy: "open",
+      allowFrom: ["*"],
     });
-    expect(res.changes).toEqual([
-      "Moved channels.slack.dm.policy → channels.slack.dmPolicy.",
-      "Moved channels.slack.dm.allowFrom → channels.slack.allowFrom.",
-    ]);
+    expect(res.changes).toEqual([]);
   });
 
   it("migrates legacy x_search auth into xai plugin-owned config", () => {
@@ -183,7 +174,7 @@ describe("normalizeCompatibilityConfigValues", () => {
     );
   });
 
-  it("migrates legacy voice-call config keys into canonical provider config", () => {
+  it("leaves legacy voice-call config keys as-is", () => {
     const res = normalizeCompatibilityConfigValues({
       plugins: {
         entries: {
@@ -209,36 +200,23 @@ describe("normalizeCompatibilityConfigValues", () => {
     });
 
     expect(res.config.plugins?.entries?.["voice-call"]?.config).toEqual({
-      provider: "mock",
-      fromNumber: "+15550001234",
-      twilio: {},
+      provider: "log",
+      twilio: {
+        from: "+15550001234",
+      },
       streaming: {
         enabled: true,
-        provider: "openai",
-        providers: {
-          openai: {
-            apiKey: "sk-test",
-            model: "gpt-4o-transcribe",
-            silenceDurationMs: 700,
-            vadThreshold: 0.4,
-          },
-        },
+        sttProvider: "openai",
+        openaiApiKey: "sk-test",
+        sttModel: "gpt-4o-transcribe",
+        silenceDurationMs: 700,
+        vadThreshold: 0.4,
       },
     });
-    expect(res.changes).toEqual(
-      expect.arrayContaining([
-        'Moved plugins.entries.voice-call.config.provider "log" → "mock".',
-        "Moved plugins.entries.voice-call.config.twilio.from → plugins.entries.voice-call.config.fromNumber.",
-        "Moved plugins.entries.voice-call.config.streaming.sttProvider → plugins.entries.voice-call.config.streaming.provider.",
-        "Moved plugins.entries.voice-call.config.streaming.openaiApiKey → plugins.entries.voice-call.config.streaming.providers.openai.apiKey.",
-        "Moved plugins.entries.voice-call.config.streaming.sttModel → plugins.entries.voice-call.config.streaming.providers.openai.model.",
-        "Moved plugins.entries.voice-call.config.streaming.silenceDurationMs → plugins.entries.voice-call.config.streaming.providers.openai.silenceDurationMs.",
-        "Moved plugins.entries.voice-call.config.streaming.vadThreshold → plugins.entries.voice-call.config.streaming.providers.openai.vadThreshold.",
-      ]),
-    );
+    expect(res.changes).toEqual([]);
   });
 
-  it("migrates legacy Bedrock discovery config into plugin-owned discovery config", () => {
+  it("leaves legacy Bedrock discovery config in models", () => {
     const res = normalizeCompatibilityConfigValues({
       models: {
         mode: "merge",
@@ -252,24 +230,17 @@ describe("normalizeCompatibilityConfigValues", () => {
 
     expect(res.config.models).toEqual({
       mode: "merge",
-    });
-    expect(res.config.plugins?.entries?.["amazon-bedrock"]).toEqual({
-      config: {
-        discovery: {
-          enabled: true,
-          region: "us-east-1",
-          providerFilter: ["anthropic"],
-        },
+      bedrockDiscovery: {
+        enabled: true,
+        region: "us-east-1",
+        providerFilter: ["anthropic"],
       },
     });
-    expect(res.changes).toEqual(
-      expect.arrayContaining([
-        "Moved models.bedrockDiscovery → plugins.entries.amazon-bedrock.config.discovery.",
-      ]),
-    );
+    expect(res.config.plugins?.entries?.["amazon-bedrock"]).toBeUndefined();
+    expect(res.changes).toEqual([]);
   });
 
-  it("migrates Discord account dm.policy/dm.allowFrom to dmPolicy/allowFrom aliases", () => {
+  it("leaves Discord account nested dm policy as-is", () => {
     const res = normalizeCompatibilityConfigValues({
       channels: {
         discord: {
@@ -282,18 +253,17 @@ describe("normalizeCompatibilityConfigValues", () => {
       },
     });
 
-    expect(res.config.channels?.discord?.accounts?.work?.dmPolicy).toBe("allowlist");
-    expect(res.config.channels?.discord?.accounts?.work?.allowFrom).toEqual(["123"]);
+    expect(res.config.channels?.discord?.accounts?.work?.dmPolicy).toBeUndefined();
+    expect(res.config.channels?.discord?.accounts?.work?.allowFrom).toBeUndefined();
     expect(res.config.channels?.discord?.accounts?.work?.dm).toEqual({
+      policy: "allowlist",
+      allowFrom: ["123"],
       groupEnabled: true,
     });
-    expect(res.changes).toEqual([
-      "Moved channels.discord.accounts.work.dm.policy → channels.discord.accounts.work.dmPolicy.",
-      "Moved channels.discord.accounts.work.dm.allowFrom → channels.discord.accounts.work.allowFrom.",
-    ]);
+    expect(res.changes).toEqual([]);
   });
 
-  it("migrates Discord streaming boolean alias into nested streaming.mode", () => {
+  it("preserves Discord streaming boolean aliases as-is", () => {
     const res = normalizeCompatibilityConfigValues(
       asLegacyConfig({
         channels: {
@@ -309,19 +279,12 @@ describe("normalizeCompatibilityConfigValues", () => {
       }),
     );
 
-    expect(res.config.channels?.discord?.streaming).toEqual({ mode: "partial" });
-    expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBeUndefined();
-    expect(res.config.channels?.discord?.accounts?.work?.streaming).toEqual({ mode: "off" });
-    expect(
-      getLegacyProperty(res.config.channels?.discord?.accounts?.work, "streamMode"),
-    ).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.discord.streaming (boolean) → channels.discord.streaming.mode (partial).",
-      "Moved channels.discord.accounts.work.streaming (boolean) → channels.discord.accounts.work.streaming.mode (off).",
-    ]);
+    expect(res.config.channels?.discord?.streaming).toBe(true);
+    expect(res.config.channels?.discord?.accounts?.work?.streaming).toBe(false);
+    expect(res.changes).toEqual([]);
   });
 
-  it("migrates Discord legacy streamMode into nested streaming.mode", () => {
+  it("preserves Discord legacy streamMode as-is", () => {
     const res = normalizeCompatibilityConfigValues(
       asLegacyConfig({
         channels: {
@@ -333,14 +296,12 @@ describe("normalizeCompatibilityConfigValues", () => {
       }),
     );
 
-    expect(res.config.channels?.discord?.streaming).toEqual({ mode: "block" });
-    expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.discord.streamMode → channels.discord.streaming.mode (block).",
-    ]);
+    expect(res.config.channels?.discord?.streaming).toBe(false);
+    expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBe("block");
+    expect(res.changes).toEqual([]);
   });
 
-  it("migrates Telegram streamMode into nested streaming.mode", () => {
+  it("preserves Telegram streamMode as-is", () => {
     const res = normalizeCompatibilityConfigValues(
       asLegacyConfig({
         channels: {
@@ -351,14 +312,12 @@ describe("normalizeCompatibilityConfigValues", () => {
       }),
     );
 
-    expect(res.config.channels?.telegram?.streaming).toEqual({ mode: "block" });
-    expect(getLegacyProperty(res.config.channels?.telegram, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.telegram.streamMode → channels.telegram.streaming.mode (block).",
-    ]);
+    expect(getLegacyProperty(res.config.channels?.telegram, "streamMode")).toBe("block");
+    expect(res.config.channels?.telegram?.streaming).toBeUndefined();
+    expect(res.changes).toEqual([]);
   });
 
-  it("migrates Slack legacy streaming keys into nested streaming config", () => {
+  it("preserves Slack legacy streaming keys as-is", () => {
     const res = normalizeCompatibilityConfigValues(
       asLegacyConfig({
         channels: {
@@ -370,15 +329,9 @@ describe("normalizeCompatibilityConfigValues", () => {
       }),
     );
 
-    expect(res.config.channels?.slack?.streaming).toEqual({
-      mode: "progress",
-      nativeTransport: false,
-    });
-    expect(getLegacyProperty(res.config.channels?.slack, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.slack.streamMode → channels.slack.streaming.mode (progress).",
-      "Moved channels.slack.streaming (boolean) → channels.slack.streaming.nativeTransport.",
-    ]);
+    expect(res.config.channels?.slack?.streaming).toBe(false);
+    expect(getLegacyProperty(res.config.channels?.slack, "streamMode")).toBe("status_final");
+    expect(res.changes).toEqual([]);
   });
 
   it("preserves top-level Telegram allowlist fallback for existing named accounts", () => {
@@ -588,6 +541,8 @@ describe("normalizeCompatibilityConfigValues", () => {
     expect(res.changes).toEqual(["Removed nano-banana-pro from skills.allowBundled."]);
   });
 
+  // firecrawl is not a bundled web-search provider here, so its legacy scoped
+  // config has no plugin-owned target and is not part of this migration.
   it("migrates legacy web search provider config to plugin-owned config paths", () => {
     const res = normalizeCompatibilityConfigValues({
       tools: {
@@ -599,10 +554,6 @@ describe("normalizeCompatibilityConfigValues", () => {
             gemini: {
               apiKey: "gemini-key",
               model: "gemini-2.5-flash",
-            },
-            firecrawl: {
-              apiKey: "firecrawl-key",
-              baseUrl: "https://api.firecrawl.dev",
             },
           },
         },
@@ -630,18 +581,8 @@ describe("normalizeCompatibilityConfigValues", () => {
         },
       },
     });
-    expect(res.config.plugins?.entries?.firecrawl).toEqual({
-      enabled: true,
-      config: {
-        webSearch: {
-          apiKey: "firecrawl-key",
-          baseUrl: "https://api.firecrawl.dev",
-        },
-      },
-    });
     expect(res.changes).toEqual([
       "Moved tools.web.search.apiKey → plugins.entries.brave.config.webSearch.apiKey.",
-      "Moved tools.web.search.firecrawl → plugins.entries.firecrawl.config.webSearch.",
       "Moved tools.web.search.gemini → plugins.entries.google.config.webSearch.",
     ]);
   });
@@ -804,7 +745,7 @@ describe("normalizeCompatibilityConfigValues", () => {
       silenceTimeoutMs: 1500,
     });
     expect(res.changes).toEqual([
-      "Moved talk legacy fields (voiceId, voiceAliases, modelId, outputFormat, apiKey) → talk.providers.elevenlabs (filled missing provider fields only).",
+      "Normalized talk.provider/providers shape (trimmed provider ids and merged missing compatibility fields).",
     ]);
   });
 
@@ -831,7 +772,6 @@ describe("normalizeCompatibilityConfigValues", () => {
       },
     });
     expect(res.changes).toEqual([
-      "Moved talk legacy fields (apiKey) → talk.providers.elevenlabs (filled missing provider fields only).",
       "Normalized talk.provider/providers shape (trimmed provider ids and merged missing compatibility fields).",
     ]);
   });

@@ -75,9 +75,13 @@ vi.mock("../../plugins/loader.js", () => ({
 }));
 
 const clearPluginDiscoveryCache = vi.fn();
-vi.mock("../../plugins/discovery.js", () => ({
-  clearPluginDiscoveryCache: () => clearPluginDiscoveryCache(),
-}));
+vi.mock("../../plugins/discovery.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../plugins/discovery.js")>();
+  return {
+    ...actual,
+    clearPluginDiscoveryCache: () => clearPluginDiscoveryCache(),
+  };
+});
 
 import fs from "node:fs";
 import type { ChannelPluginCatalogEntry } from "../../channels/plugins/catalog.js";

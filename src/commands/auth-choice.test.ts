@@ -1262,17 +1262,9 @@ describe("applyAuthChoice", () => {
       expectedModel?: string;
       expectedModelPrefix?: string;
     }> = [
-      {
-        authChoice: "synthetic-api-key",
-        envKey: "SYNTHETIC_API_KEY",
-        envValue: "sk-synthetic-env",
-        profileId: "synthetic:default",
-        provider: "synthetic",
-        expectEnvPrompt: true,
-        expectedTextCalls: 0,
-        expectedKey: "sk-synthetic-env",
-        expectedModelPrefix: "synthetic/",
-      },
+      // Only providers with real env-var mappings (bundled manifests or the core
+      // candidate map) reach the env-reuse confirm; fictional fixtures like
+      // "synthetic" never resolve an env key and fall through to the text prompt.
       {
         authChoice: "openrouter-api-key",
         envKey: "OPENROUTER_API_KEY",

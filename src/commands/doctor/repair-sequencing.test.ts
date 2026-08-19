@@ -55,10 +55,11 @@ describe("doctor repair sequencing", () => {
     });
 
     expect(result.state.pendingChanges).toBe(true);
-    expect(result.state.candidate.channels?.discord?.allowFrom).toEqual(["123"]);
+    // Discord's numeric allowFrom repair lives in the discord channel doctor
+    // adapter, which is not bundled in this fork; the raw value passes through.
+    expect(result.state.candidate.channels?.discord?.allowFrom).toEqual([123]);
     expect(result.changeNotes).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("channels.discord.allowFrom: converted 1 numeric ID to strings"),
         expect.stringContaining(
           "channels.tools.exec.toolsBySender: migrated 1 legacy key to typed id: entries",
         ),
@@ -76,7 +77,7 @@ describe("doctor repair sequencing", () => {
     expect(result.warningNotes.join("\n")).not.toContain("\r");
   });
 
-  it("emits Discord warnings when unsafe numeric ids block repair", async () => {
+  it("leaves allowFrom untouched and reports nothing when no channel doctor adapter claims it", async () => {
     const result = await runDoctorRepairSequence({
       state: {
         cfg: {
@@ -99,10 +100,10 @@ describe("doctor repair sequencing", () => {
       doctorFixCommand: "kaijibot doctor --fix",
     });
 
+    // Discord's unsafe-numeric-id warning lived in the discord channel doctor
+    // adapter, which is not bundled in this fork; nothing claims the value.
     expect(result.changeNotes).toEqual([]);
-    expect(result.warningNotes).toHaveLength(1);
-    expect(result.warningNotes[0]).toContain("cannot be auto-repaired");
-    expect(result.warningNotes[0]).toContain("channels.discord.allowFrom[0]");
+    expect(result.warningNotes).toEqual([]);
     expect(result.state.pendingChanges).toBe(false);
     expect(result.state.candidate.channels?.discord?.allowFrom).toEqual([106232522769186816]);
   });

@@ -19,7 +19,7 @@ vi.mock("../../gateway-install-token.js", () => ({
 }));
 
 vi.mock("../../../daemon/service.js", () => ({
-  resolveGatewayService: vi.fn(() => ({
+  tryResolveGatewayService: vi.fn(() => ({
     install: serviceInstall,
   })),
 }));

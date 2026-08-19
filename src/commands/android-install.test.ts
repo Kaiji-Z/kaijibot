@@ -58,11 +58,13 @@ function defaultSpawnMap(call: { cmd: string; args: SpawnArgs }): {
   if (cmd === "node" && args[0] === "--version") {
     return { status: 0, stdout: "v22.5.0\n" };
   }
-  if (cmd === "which") {
-    return { status: 0, stdout: `/data/data/com.termux/files/usr/bin/${args[0]}\n` };
+  // findBinary probes PATH via `sh -c 'command -v "<name>"'` (POSIX standard).
+  const probe = /^command -v "(.+)"$/.exec(args[1] ?? "");
+  if (cmd === "sh" && args[0] === "-c" && probe) {
+    return { status: 0, stdout: `/data/data/com.termux/files/usr/bin/${probe[1]}\n` };
   }
   if (cmd === "kaijibot" && args[0] === "--version") {
-    return { status: 0, stdout: "kaijibot/1.2.3\n" };
+    return { status: 0, stdout: "" };
   }
   if (cmd === "npm") {
     return { status: 0, stdout: "" };
@@ -149,8 +151,8 @@ describe("runAndroidInstall - full happy path", () => {
     const calls = hoisted.spawnSync.mock.calls as unknown as [string, SpawnArgs][];
     const cmds = calls.map(([c, a]) => `${c} ${(a ?? []).join(" ")}`);
     expect(cmds.some((c) => c.startsWith("node --version"))).toBe(true);
-    expect(cmds.some((c) => c.startsWith("which imagemagick"))).toBe(true);
-    expect(cmds.some((c) => c.startsWith("which ffmpeg"))).toBe(true);
+    expect(cmds.some((c) => c.includes('command -v "magick"'))).toBe(true);
+    expect(cmds.some((c) => c.includes('command -v "ffmpeg"'))).toBe(true);
     expect(cmds.some((c) => c.startsWith("kaijibot --version"))).toBe(true);
     expect(cmds.some((c) => c.startsWith("npm install -g kaijibot"))).toBe(true);
     expect(cmds.some((c) => c.includes("@img/sharp-wasm32"))).toBe(true);
@@ -170,7 +172,7 @@ describe("runAndroidInstall - full happy path", () => {
     expect(bootOpts.mode).toBe(0o755);
   });
 
-  it("skips onboard launch when confirm is cancelled", async () => {
+  it("launches onboard without a confirmation prompt in interactive mode", async () => {
     setupSpawn();
     hoisted.confirm.mockResolvedValue(false);
     const captured = { logs: [] as string[], errors: [] as string[], exits: [] as number[] };
@@ -178,8 +180,9 @@ describe("runAndroidInstall - full happy path", () => {
 
     await runAndroidInstall(runtime, {});
 
+    expect(hoisted.confirm).not.toHaveBeenCalled();
     const calls = hoisted.spawnSync.mock.calls as unknown as [string, SpawnArgs][];
-    expect(calls.some(([c, a]) => c === "kaijibot" && a?.[0] === "onboard")).toBe(false);
+    expect(calls.some(([c, a]) => c === "kaijibot" && a?.[0] === "onboard")).toBe(true);
   });
 
   it("skips onboard prompt entirely in non-interactive mode", async () => {
@@ -210,7 +213,7 @@ describe("runAndroidInstall - node version handling", () => {
     await runAndroidInstall(makeRuntime(captured), {});
 
     const calls = hoisted.spawnSync.mock.calls as unknown as [string, SpawnArgs][];
-    expect(calls.some(([c, a]) => c === "pkg" && a?.includes("nodejs-lts"))).toBe(true);
+    expect(calls.some(([c, a]) => c === "apt-get" && a?.includes("nodejs-lts"))).toBe(true);
     expect(captured.exits).toEqual([]);
   });
 
@@ -230,7 +233,7 @@ describe("runAndroidInstall - node version handling", () => {
     await runAndroidInstall(makeRuntime(captured), {});
 
     const calls = hoisted.spawnSync.mock.calls as unknown as [string, SpawnArgs][];
-    expect(calls.some(([c, a]) => c === "pkg" && a?.includes("nodejs-lts"))).toBe(true);
+    expect(calls.some(([c, a]) => c === "apt-get" && a?.includes("nodejs-lts"))).toBe(true);
   });
 });
 
@@ -239,7 +242,8 @@ describe("runAndroidInstall - required packages", () => {
     const ffmpegChecks: boolean[] = [false, true];
     let ffmpegIndex = 0;
     setupSpawn(({ cmd, args }) => {
-      if (cmd === "which" && args[0] === "ffmpeg") {
+      const probe = /^command -v "(.+)"$/.exec(args[1] ?? "");
+      if (cmd === "sh" && args[0] === "-c" && probe && probe[1] === "ffmpeg") {
         const present = ffmpegChecks[ffmpegIndex] ?? true;
         ffmpegIndex += 1;
         return present
@@ -253,7 +257,7 @@ describe("runAndroidInstall - required packages", () => {
     await runAndroidInstall(makeRuntime(captured), {});
 
     const calls = hoisted.spawnSync.mock.calls as unknown as [string, SpawnArgs][];
-    expect(calls.some(([c, a]) => c === "pkg" && a?.includes("ffmpeg"))).toBe(true);
+    expect(calls.some(([c, a]) => c === "apt-get" && a?.includes("ffmpeg"))).toBe(true);
     expect(captured.exits).toEqual([]);
   });
 });

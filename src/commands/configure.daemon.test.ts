@@ -55,7 +55,7 @@ vi.mock("../daemon/service.js", async () => {
     await vi.importActual<typeof import("../daemon/service.js")>("../daemon/service.js");
   return {
     ...actual,
-    resolveGatewayService: vi.fn(() => ({
+    tryResolveGatewayService: vi.fn(() => ({
       isLoaded: serviceIsLoaded,
       install: serviceInstall,
       restart: serviceRestart,

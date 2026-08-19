@@ -292,7 +292,8 @@ vi.mock("../channels/config-presence.js", () => ({
     Object.keys(cfg.channels ?? {}).filter((key) => key !== "defaults" && key !== "modelByChannel"),
 }));
 
-vi.mock("../plugins/memory-runtime.js", () => ({
+vi.mock("../plugins/memory-runtime.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../plugins/memory-runtime.js")>()),
   getActiveMemorySearchManager: vi.fn(async ({ agentId }: { agentId: string }) => ({
     manager: {
       probeVectorAvailability: vi.fn(async () => true),
@@ -322,16 +323,20 @@ vi.mock("../plugins/memory-runtime.js", () => ({
   })),
 }));
 
-vi.mock("../config/sessions/main-session.js", () => ({
+vi.mock("../config/sessions/main-session.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/sessions/main-session.js")>()),
   resolveMainSessionKey: mocks.resolveMainSessionKey,
 }));
-vi.mock("../config/sessions/paths.js", () => ({
+vi.mock("../config/sessions/paths.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/sessions/paths.js")>()),
   resolveStorePath: mocks.resolveStorePath,
 }));
-vi.mock("../config/sessions/store-read.js", () => ({
+vi.mock("../config/sessions/store-read.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/sessions/store-read.js")>()),
   readSessionStoreReadOnly: mocks.loadSessionStore,
 }));
-vi.mock("../config/sessions/types.js", () => ({
+vi.mock("../config/sessions/types.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/sessions/types.js")>()),
   resolveFreshSessionTotalTokens: vi.fn(
     (entry?: { totalTokens?: number; totalTokensFresh?: boolean }) =>
       typeof entry?.totalTokens === "number" && entry?.totalTokensFresh !== false
@@ -339,90 +344,60 @@ vi.mock("../config/sessions/types.js", () => ({
         : undefined,
   ),
 }));
-vi.mock("../channels/plugins/index.js", () => ({
-  listChannelPlugins: () => {
-    const plugins = [
-      {
+vi.mock("../channels/plugins/index.js", async (importOriginal) => {
+  const plugins = [
+    {
+      id: "whatsapp",
+      meta: {
         id: "whatsapp",
-        meta: {
-          id: "whatsapp",
-          label: "WhatsApp",
-          selectionLabel: "WhatsApp",
-          docsPath: "/platforms/whatsapp",
-          blurb: "mock",
-        },
-        config: {
-          hasPersistentAuth: () => true,
-          listAccountIds: () => ["default"],
-          resolveAccount: () => ({}),
-        },
-        status: {
-          buildChannelSummary: async () => ({ linked: true, authAgeMs: 5000 }),
-        },
+        label: "WhatsApp",
+        selectionLabel: "WhatsApp",
+        docsPath: "/platforms/whatsapp",
+        blurb: "mock",
       },
-      {
-        ...createErrorChannelPlugin({
-          id: "signal",
-          label: "Signal",
-          docsPath: "/platforms/signal",
-        }),
+      config: {
+        hasPersistentAuth: () => true,
+        listAccountIds: () => ["default"],
+        resolveAccount: () => ({}),
       },
-      {
-        ...createErrorChannelPlugin({
-          id: "imessage",
-          label: "iMessage",
-          docsPath: "/platforms/mac",
-        }),
+      status: {
+        buildChannelSummary: async () => ({ linked: true, authAgeMs: 5000 }),
       },
-    ] as const;
-    return plugins as unknown;
-  },
-  getChannelPlugin: (channelId: string) =>
-    [
-      {
-        id: "whatsapp",
-        meta: {
-          id: "whatsapp",
-          label: "WhatsApp",
-          selectionLabel: "WhatsApp",
-          docsPath: "/platforms/whatsapp",
-          blurb: "mock",
-        },
-        config: {
-          hasPersistentAuth: () => true,
-          listAccountIds: () => ["default"],
-          resolveAccount: () => ({}),
-        },
-        status: {
-          buildChannelSummary: async () => ({ linked: true, authAgeMs: 5000 }),
-        },
-      },
-      {
-        ...createErrorChannelPlugin({
-          id: "signal",
-          label: "Signal",
-          docsPath: "/platforms/signal",
-        }),
-      },
-      {
-        ...createErrorChannelPlugin({
-          id: "imessage",
-          label: "iMessage",
-          docsPath: "/platforms/mac",
-        }),
-      },
-    ].find((plugin) => plugin.id === channelId) as unknown,
-}));
+    },
+    {
+      ...createErrorChannelPlugin({
+        id: "signal",
+        label: "Signal",
+        docsPath: "/platforms/signal",
+      }),
+    },
+    {
+      ...createErrorChannelPlugin({
+        id: "imessage",
+        label: "iMessage",
+        docsPath: "/platforms/mac",
+      }),
+    },
+  ] as const;
+  return {
+    ...(await importOriginal<typeof import("../channels/plugins/index.js")>()),
+    listChannelPlugins: () => plugins as unknown,
+    getChannelPlugin: (channelId: string) =>
+      plugins.find((plugin) => plugin.id === channelId) as unknown,
+  };
+});
 vi.mock("../plugins/runtime/runtime-web-channel-plugin.js", () => ({
   webAuthExists: mocks.webAuthExists,
   getWebAuthAgeMs: mocks.getWebAuthAgeMs,
   readWebSelfId: mocks.readWebSelfId,
   logWebSelfId: mocks.logWebSelfId,
 }));
-vi.mock("../gateway/probe.js", () => ({
+vi.mock("../gateway/probe.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../gateway/probe.js")>()),
   probeGateway: mocks.probeGateway,
 }));
-vi.mock("../gateway/call.js", () => ({
+vi.mock("../gateway/call.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../gateway/call.js")>()),
   callGateway: mocks.callGateway,
   buildGatewayConnectionDetails: vi.fn(() => ({
     message: "Gateway mode: local\nGateway target: ws://127.0.0.1:18789",
@@ -446,14 +421,23 @@ vi.mock("../gateway/call.js", () => ({
     },
   ),
 }));
-vi.mock("../gateway/agent-list.js", () => ({
+vi.mock("../gateway/agent-list.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../gateway/agent-list.js")>()),
   listGatewayAgentsBasic: mocks.listGatewayAgentsBasic,
 }));
-vi.mock("../infra/kaijibot-root.js", () => ({
+// The real loader require()s bundled extension sources, which cannot resolve the
+// kaijibot/plugin-sdk alias under vitest; channel plugin data is faked above instead.
+vi.mock("../cli/plugin-registry-loader.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../cli/plugin-registry-loader.js")>()),
+  ensureCliPluginRegistryLoaded: vi.fn(async () => {}),
+}));
+vi.mock("../infra/kaijibot-root.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../infra/kaijibot-root.js")>()),
   resolveKaijiBotPackageRoot: vi.fn().mockResolvedValue("/tmp/kaijibot"),
   resolveKaijiBotPackageRootSync: vi.fn(() => "/tmp/kaijibot"),
 }));
-vi.mock("../infra/os-summary.js", () => ({
+vi.mock("../infra/os-summary.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../infra/os-summary.js")>()),
   resolveOsSummary: () => ({
     platform: "darwin",
     arch: "arm64",
@@ -461,7 +445,8 @@ vi.mock("../infra/os-summary.js", () => ({
     label: "macos 14.0 (arm64)",
   }),
 }));
-vi.mock("../infra/update-check.js", () => ({
+vi.mock("../infra/update-check.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../infra/update-check.js")>()),
   checkUpdateStatus: vi.fn().mockResolvedValue({
     root: "/tmp/kaijibot",
     installKind: "git",
@@ -486,28 +471,35 @@ vi.mock("../infra/update-check.js", () => ({
   formatGitInstallLabel: vi.fn(() => "main · @ deadbeef"),
   compareSemverStrings: vi.fn(() => 0),
 }));
-vi.mock("../config/config.js", () => ({
+vi.mock("../config/config.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/config.js")>()),
   loadConfig: mocks.loadConfig,
   readBestEffortConfig: vi.fn(async () => mocks.loadConfig()),
   resolveGatewayPort: vi.fn(() => 18789),
 }));
-vi.mock("../daemon/service.js", () => ({
+vi.mock("../daemon/service.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../daemon/service.js")>()),
   resolveGatewayService: mocks.resolveGatewayService,
 }));
-vi.mock("../daemon/node-service.js", () => ({
+vi.mock("../daemon/node-service.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../daemon/node-service.js")>()),
   resolveNodeService: mocks.resolveNodeService,
 }));
-vi.mock("../node-host/config.js", () => ({
+vi.mock("../node-host/config.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../node-host/config.js")>()),
   loadNodeHostConfig: mocks.loadNodeHostConfig,
 }));
-vi.mock("../tasks/task-registry.maintenance.js", () => ({
+vi.mock("../tasks/task-registry.maintenance.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../tasks/task-registry.maintenance.js")>()),
   getInspectableTaskRegistrySummary: mocks.getInspectableTaskRegistrySummary,
   getInspectableTaskAuditSummary: mocks.getInspectableTaskAuditSummary,
 }));
-vi.mock("../security/audit.js", () => ({
+vi.mock("../security/audit.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../security/audit.js")>()),
   runSecurityAudit: mocks.runSecurityAudit,
 }));
-vi.mock("../plugins/status.js", () => ({
+vi.mock("../plugins/status.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../plugins/status.js")>()),
   buildPluginCompatibilityNotices: mocks.buildPluginCompatibilityNotices,
   summarizePluginCompatibility: (warnings: PluginCompatibilityNotice[]) => ({
     noticeCount: warnings.length,
@@ -702,6 +694,10 @@ describe("statusCommand", () => {
 
   it("prints JSON when requested", async () => {
     mocks.hasPotentialConfiguredChannels.mockReturnValue(false);
+    mocks.loadConfig.mockReturnValue({
+      session: {},
+      agents: { defaults: { model: "zai/glm-4.7" } },
+    });
     mocks.buildPluginCompatibilityNotices.mockReturnValue([
       createCompatibilityNotice({ pluginId: "legacy-plugin", code: "legacy-before-agent-start" }),
     ]);

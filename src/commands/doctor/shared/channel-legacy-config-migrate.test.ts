@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { applyChannelDoctorCompatibilityMigrations } from "./channel-legacy-config-migrate.js";
 
 describe("bundled channel legacy config migrations", () => {
-  it("normalizes legacy private-network aliases exposed through bundled contract surfaces", () => {
-    const result = applyChannelDoctorCompatibilityMigrations({
+  // The mattermost private-network alias normalization used to ship with the
+  // mattermost channel plugin, which is not bundled in this repo; the channel
+  // doctor compatibility pass leaves unknown channels untouched.
+  it("leaves legacy private-network aliases in place without a bundled channel contract", () => {
+    const raw = {
       channels: {
         mattermost: {
           allowPrivateNetwork: true,
@@ -14,29 +17,10 @@ describe("bundled channel legacy config migrations", () => {
           },
         },
       },
-    });
-
-    const nextChannels = (result.next.channels ?? {}) as {
-      mattermost?: Record<string, unknown>;
     };
+    const result = applyChannelDoctorCompatibilityMigrations(raw);
 
-    expect(nextChannels.mattermost).toEqual({
-      network: {
-        dangerouslyAllowPrivateNetwork: true,
-      },
-      accounts: {
-        work: {
-          network: {
-            dangerouslyAllowPrivateNetwork: false,
-          },
-        },
-      },
-    });
-    expect(result.changes).toEqual(
-      expect.arrayContaining([
-        "Moved channels.mattermost.allowPrivateNetwork → channels.mattermost.network.dangerouslyAllowPrivateNetwork (true).",
-        "Moved channels.mattermost.accounts.work.allowPrivateNetwork → channels.mattermost.accounts.work.network.dangerouslyAllowPrivateNetwork (false).",
-      ]),
-    );
+    expect(result.next).toEqual(raw);
+    expect(result.changes).toEqual([]);
   });
 });

@@ -12,6 +12,9 @@ function getLegacyProperty(value: unknown, key: string): unknown {
   }
   return (value as Record<string, unknown>)[key];
 }
+// Streaming alias rewrites happen in the doctor legacy migration step
+// (migrateLegacyConfig), not in normalizeCompatibilityConfigValues; preview
+// normalization must pass the raw aliases through untouched.
 describe("normalizeCompatibilityConfigValues preview streaming aliases", () => {
   it("preserves telegram boolean streaming aliases as-is", () => {
     const res = normalizeCompatibilityConfigValues(
@@ -24,11 +27,9 @@ describe("normalizeCompatibilityConfigValues preview streaming aliases", () => {
       }),
     );
 
-    expect(res.config.channels?.telegram?.streaming).toEqual({ mode: "off" });
+    expect(res.config.channels?.telegram?.streaming).toBe(false);
     expect(getLegacyProperty(res.config.channels?.telegram, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.telegram.streaming (boolean) → channels.telegram.streaming.mode (off).",
-    ]);
+    expect(res.changes).toEqual([]);
   });
 
   it("preserves discord boolean streaming aliases as-is", () => {
@@ -42,11 +43,9 @@ describe("normalizeCompatibilityConfigValues preview streaming aliases", () => {
       }),
     );
 
-    expect(res.config.channels?.discord?.streaming).toEqual({ mode: "partial" });
+    expect(res.config.channels?.discord?.streaming).toBe(true);
     expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.discord.streaming (boolean) → channels.discord.streaming.mode (partial).",
-    ]);
+    expect(res.changes).toEqual([]);
   });
 
   it("preserves explicit discord streaming=false as-is", () => {
@@ -60,14 +59,12 @@ describe("normalizeCompatibilityConfigValues preview streaming aliases", () => {
       }),
     );
 
-    expect(res.config.channels?.discord?.streaming).toEqual({ mode: "off" });
+    expect(res.config.channels?.discord?.streaming).toBe(false);
     expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.discord.streaming (boolean) → channels.discord.streaming.mode (off).",
-    ]);
+    expect(res.changes).toEqual([]);
   });
 
-  it("preserves discord streamMode when legacy config resolves to off", () => {
+  it("preserves discord streamMode as-is when legacy config resolves to off", () => {
     const res = normalizeCompatibilityConfigValues(
       asLegacyConfig({
         channels: {
@@ -78,12 +75,9 @@ describe("normalizeCompatibilityConfigValues preview streaming aliases", () => {
       }),
     );
 
-    expect(res.config.channels?.discord?.streaming).toEqual({ mode: "off" });
-    expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.discord.streamMode → channels.discord.streaming.mode (off).",
-      'channels.discord.streaming remains off by default to avoid Discord preview-edit rate limits; set channels.discord.streaming.mode="partial" to opt in explicitly.',
-    ]);
+    expect(getLegacyProperty(res.config.channels?.discord, "streamMode")).toBe("off");
+    expect(res.config.channels?.discord?.streaming).toBeUndefined();
+    expect(res.changes).toEqual([]);
   });
 
   it("preserves slack boolean streaming aliases as-is", () => {
@@ -97,15 +91,9 @@ describe("normalizeCompatibilityConfigValues preview streaming aliases", () => {
       }),
     );
 
-    expect(res.config.channels?.slack?.streaming).toEqual({
-      mode: "off",
-      nativeTransport: false,
-    });
+    expect(res.config.channels?.slack?.streaming).toBe(false);
     expect(getLegacyProperty(res.config.channels?.slack, "streamMode")).toBeUndefined();
-    expect(res.changes).toEqual([
-      "Moved channels.slack.streaming (boolean) → channels.slack.streaming.mode (off).",
-      "Moved channels.slack.streaming (boolean) → channels.slack.streaming.nativeTransport.",
-    ]);
+    expect(res.changes).toEqual([]);
   });
 });
 

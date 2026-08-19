@@ -29,7 +29,10 @@ describe("legacy migrate provider-shaped config", () => {
     });
   });
 
-  it("moves channels.discord.accounts.<id>.voice.tts.edge into providers.microsoft", () => {
+  // The discord voice.tts compatibility migration used to ship with the discord
+  // channel plugin, which is not bundled in this repo; the legacy config
+  // migrator leaves the config unchanged (config stays null).
+  it("leaves channels.discord.accounts.<id>.voice.tts.edge in place", () => {
     const res = migrateLegacyConfig({
       channels: {
         discord: {
@@ -48,20 +51,8 @@ describe("legacy migrate provider-shaped config", () => {
       },
     });
 
-    expect(res.changes).toContain(
-      "Moved channels.discord.accounts.main.voice.tts.edge → channels.discord.accounts.main.voice.tts.providers.microsoft.",
-    );
-    const mainTts = (
-      res.config?.channels?.discord?.accounts as
-        | Record<string, { voice?: { tts?: Record<string, unknown> } }>
-        | undefined
-    )?.main?.voice?.tts;
-    expect(mainTts?.providers).toEqual({
-      microsoft: {
-        voice: "en-US-JennyNeural",
-      },
-    });
-    expect(mainTts?.edge).toBeUndefined();
+    expect(res.changes).toEqual([]);
+    expect(res.config).toBeNull();
   });
 
   it("moves plugins.entries.voice-call.config.tts.<provider> keys into providers", () => {

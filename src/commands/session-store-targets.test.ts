@@ -3,7 +3,8 @@ import { resolveSessionStoreTargets } from "./session-store-targets.js";
 
 const resolveSessionStoreTargetsMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../config/sessions.js", () => ({
+vi.mock("../config/sessions.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../config/sessions.js")>()),
   resolveSessionStoreTargets: resolveSessionStoreTargetsMock,
 }));
 
