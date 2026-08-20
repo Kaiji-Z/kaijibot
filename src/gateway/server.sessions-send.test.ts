@@ -194,6 +194,11 @@ describe("sessions_send label lookup", () => {
 
       const tool = createKaijiBotTools({
         config: {
+          agents: {
+            defaults: {
+              model: { primary: "anthropic/claude-opus-4-6" },
+            },
+          },
           tools: {
             sessions: {
               visibility: "all",

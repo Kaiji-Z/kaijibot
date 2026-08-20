@@ -289,6 +289,28 @@ async function resetGatewayTestState(options: { uniqueConfigRoot: boolean }) {
     await fs.mkdir(tempConfigRoot, { recursive: true });
   }
   setTestConfigRoot(tempConfigRoot);
+  // Seed the config file itself (not just the config-module mock) so paths
+  // that read the raw file — e.g. agent-command's secret resolution, which
+  // replaces the runtime config snapshot — also see a resolvable default
+  // model. Without this, the snapshot loses agents.defaults after the first
+  // agent request and later model-override checks throw
+  // MissingAgentModelConfigError.
+  await fs.writeFile(
+    path.join(tempConfigRoot, "kaijibot.json"),
+    JSON.stringify(
+      {
+        agents: {
+          defaults: {
+            model: { primary: "anthropic/claude-opus-4-6" },
+            workspace: path.join(os.tmpdir(), "kaijibot-gateway-test"),
+          },
+        },
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
   tempControlUiRoot = path.join(tempHome, ".kaijibot-test-control-ui");
   await fs.rm(tempControlUiRoot, {
     recursive: true,

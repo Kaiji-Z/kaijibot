@@ -77,6 +77,7 @@ describe("heartbeat runner skips when target session lane is busy", () => {
 
       const result = await runHeartbeatOnce({
         cfg,
+        reason: "exec-event",
         deps: {
           getQueueSize,
           nowMs: () => Date.now(),
@@ -93,10 +94,11 @@ describe("heartbeat runner skips when target session lane is busy", () => {
   });
 
   it("proceeds normally when session lane is idle", async () => {
-    await withTempHeartbeatSandbox(async ({ storePath, replySpy }) => {
+    await withTempHeartbeatSandbox(async ({ tmpDir, storePath, replySpy }) => {
       const cfg: KaijiBotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: { every: "30m" },
             model: { primary: "test/model" },
           },
