@@ -19,6 +19,7 @@ describe("zai onboard", () => {
     expect(defaultCfg.models?.providers?.zai?.api).toBe("openai-completions");
     const ids = defaultCfg.models?.providers?.zai?.models?.map((m) => m.id);
     expect(ids).toEqual([
+      "glm-5.2",
       "glm-5.1",
       "glm-5",
       "glm-5-turbo",

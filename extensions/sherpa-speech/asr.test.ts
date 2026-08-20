@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +13,9 @@ import { isAsrReadySync, resolveDefaultAsrEngine } from "./engine.js";
 
 let tmpRoot: string;
 let env: NodeJS.ProcessEnv;
+
+/** The transcode step shells out to ffmpeg, so CI runners without ffmpeg skip these. */
+const hasFfmpeg = spawnSync("ffmpeg", ["-version"], { stdio: "ignore" }).status === 0;
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "sherpa-asr-test-"));
@@ -133,7 +136,7 @@ describe("resolveAsrEngine", () => {
   });
 });
 
-describe("transcribeWithSherpa", () => {
+describe.skipIf(!hasFfmpeg)("transcribeWithSherpa", () => {
   it("runs the CLI against transcoded audio and returns the transcript", async () => {
     const { wavPath } = setupFakeEngine({ stdout: "Text:今天天气不错\n" });
     const buffer = fs.readFileSync(wavPath);
@@ -166,7 +169,7 @@ describe("transcribeWithSherpa", () => {
   });
 });
 
-describe("isAsrReadySync", () => {
+describe.skipIf(!hasFfmpeg)("isAsrReadySync", () => {
   it("reports ready when binary + model files exist", () => {
     setupFakeEngine();
     expect(isAsrReadySync(env)).toBe(true);
