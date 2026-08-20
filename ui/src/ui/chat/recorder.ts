@@ -62,8 +62,7 @@ export type VoiceRecorderCallbacks = {
 const MAX_RECORDING_MS = 60_000;
 
 const MIC_ERROR_BY_NAME: Record<string, string> = {
-  NotAllowedError:
-    "Microphone permission denied — allow it via the site icon in the address bar",
+  NotAllowedError: "Microphone permission denied — allow it via the site icon in the address bar",
   PermissionDeniedError:
     "Microphone permission denied — allow it via the site icon in the address bar",
   NotFoundError: "No microphone device found",

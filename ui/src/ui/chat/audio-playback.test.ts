@@ -10,10 +10,7 @@ type SourceHandle = {
   emitEnded: () => void;
 };
 
-function installFakeAudioContext(options?: {
-  running?: boolean;
-  decodeError?: Error;
-}) {
+function installFakeAudioContext(options?: { running?: boolean; decodeError?: Error }) {
   const sources: SourceHandle[] = [];
   const ctx = {
     state: "suspended",
@@ -148,4 +145,3 @@ describe("speakViaGatewayOrBrowser", () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 });
-

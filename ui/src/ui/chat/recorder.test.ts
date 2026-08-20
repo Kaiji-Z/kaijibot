@@ -41,9 +41,7 @@ describe("VoiceRecorder.start error mapping", () => {
   }
 
   it("maps NotAllowedError to the site-permission hint", async () => {
-    stubGetUserMedia(
-      new DOMException("denied", "NotAllowedError") as unknown as DOMException,
-    );
+    stubGetUserMedia(new DOMException("denied", "NotAllowedError") as unknown as DOMException);
     const onError = vi.fn();
     const recorder = new VoiceRecorder({ onError });
     expect(await recorder.start()).toBe(false);
@@ -54,15 +52,11 @@ describe("VoiceRecorder.start error mapping", () => {
   });
 
   it("maps NotReadableError to the device-busy hint", async () => {
-    stubGetUserMedia(
-      new DOMException("busy", "NotReadableError") as unknown as DOMException,
-    );
+    stubGetUserMedia(new DOMException("busy", "NotReadableError") as unknown as DOMException);
     const onError = vi.fn();
     const recorder = new VoiceRecorder({ onError });
     expect(await recorder.start()).toBe(false);
-    expect(onError).toHaveBeenCalledWith(
-      "Microphone is in use by another application",
-    );
+    expect(onError).toHaveBeenCalledWith("Microphone is in use by another application");
     vi.unstubAllGlobals();
   });
 });

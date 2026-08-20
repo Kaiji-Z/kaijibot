@@ -17,10 +17,7 @@ export function setDefaultSecurityHeaders(
   // microphone=(self): the Control UI voice input records locally in the
   // browser before sending audio to the gateway. camera/geolocation stay
   // disabled — nothing in the UI uses them.
-  res.setHeader(
-    "Permissions-Policy",
-    "camera=(), microphone=(self), geolocation=()",
-  );
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
   const strictTransportSecurity = opts?.strictTransportSecurity;
   if (typeof strictTransportSecurity === "string" && strictTransportSecurity.length > 0) {
     res.setHeader("Strict-Transport-Security", strictTransportSecurity);
