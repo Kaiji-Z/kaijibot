@@ -263,7 +263,7 @@ importers:
         version: 0.34.5
       '@larksuite/cli':
         specifier: latest
-        version: 1.0.71
+        version: 1.0.87
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -634,6 +634,12 @@ importers:
         version: link:../../packages/plugin-sdk
 
   extensions/sglang:
+    devDependencies:
+      '@kaijibot/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+
+  extensions/sherpa-speech:
     devDependencies:
       '@kaijibot/plugin-sdk':
         specifier: workspace:*
@@ -1597,8 +1603,8 @@ packages:
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
 
-  '@larksuite/cli@1.0.71':
-    resolution: {integrity: sha512-sHxRSyggLQ468n8XaKcborJdPOdrKTocG/mfzTr8Pw9qynJN6DOfYfVnxhFNgfksY+5ggUYpJ8STQsLnT1JPtA==}
+  '@larksuite/cli@1.0.87':
+    resolution: {integrity: sha512-IQ5rsrbWS9JrCiWN19TQJ3tLmHwwYxhCJuKSTPeBPtD5lJuQElKrrFmLRonA0DXkk5V5cJl5lLLG5gmLwaLN8w==}
     engines: {node: '>=16'}
     cpu: [x64, arm64, riscv64]
     os: [darwin, linux, win32]
@@ -6541,7 +6547,7 @@ snapshots:
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
 
-  '@larksuite/cli@1.0.71':
+  '@larksuite/cli@1.0.87':
     dependencies:
       '@clack/prompts': 1.2.0
     optional: true
