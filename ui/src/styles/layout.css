@@ -38,15 +38,11 @@
   padding-bottom: 8px;
 }
 
+/* Chat variant: the scroll container is .chat-thread (sibling below the
+   header), so content never scrolls under the header — glass/sticky styling
+   here only painted a translucent stripe that clashed with the page bg. */
 .content--chat .content-header {
   padding-bottom: 4px;
-  background: var(--shell-glass-bg);
-  backdrop-filter: blur(var(--shell-glass-blur)) saturate(var(--shell-glass-saturate));
-  -webkit-backdrop-filter: blur(var(--shell-glass-blur)) saturate(var(--shell-glass-saturate));
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .page-title {
