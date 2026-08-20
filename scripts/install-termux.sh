@@ -75,5 +75,15 @@ else
 fi
 ok "KaijiBot $(kaijibot --version)"
 
+# Optional: local speech engine (voice input + read-aloud). Non-fatal.
+info "安装本地语音引擎 (sherpa-onnx, 可选)..."
+SHERPA_INSTALLER="$(dirname "$0")/install-sherpa-onnx-termux.sh"
+if [ -f "$SHERPA_INSTALLER" ]; then
+  bash "$SHERPA_INSTALLER" || info "语音引擎安装跳过（不影响核心功能）。之后可重试 scripts/install-sherpa-onnx-termux.sh。"
+else
+  curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-sherpa-onnx-termux.sh | bash \
+    || info "语音引擎安装跳过（不影响核心功能）。"
+fi
+
 info "启动配置向导，按提示操作..."
 exec kaijibot android-install < /dev/tty

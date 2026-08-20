@@ -231,3 +231,50 @@ npm install -g kaijibot --force
 - 关闭不必要的后台应用
 - 在 Termux 中限制 Node.js 内存：`export NODE_OPTIONS="--max-old-space-size=512"`
 - 使用轻量模型（如 `zai/glm-5-turbo`）减少推理时的内存占用
+
+## 本地语音（语音输入 + 朗读）
+
+KaijiBot 的语音输入（按住说话→转文字）和自然中文朗读由本地 sherpa-onnx 引擎提供，Termux 上有三种部署方式：
+
+### 方式一：静态构建（推荐，零编译）
+
+`scripts/install-sherpa-onnx-termux.sh` 会下载官方 **linux-aarch64 静态构建**（完全静态链接，无需编译，Termux 直接运行）到 `~/.kaijibot/sherpa-speech/runtime`：
+
+```bash
+bash scripts/install-sherpa-onnx-termux.sh
+# 中国大陆网络建议先设置镜像前缀：
+export SHERPA_ONNX_DOWNLOAD_MIRROR=https://gh-proxy.com
+```
+
+运行时二进制就位后，网关启动时会**自动后台下载模型**（ASR sense-voice int8 约 155MB + TTS kokoro v1.1 约 347MB），下载完成后语音输入与本地朗读即可离线使用。
+
+### 方式二：源码编译（静态构建失败时的后备）
+
+```bash
+pkg install -y git cmake clang ninja
+git clone --depth 1 --branch v1.13.6 https://github.com/k2-fsa/sherpa-onnx.git
+cd sherpa-onnx
+# 注意：Termux 是 bionic libc，需要在 CMakeLists.txt 中为 sherpa-onnx 核心库
+# 的 target_link_libraries(...) 追加 android log 库（参考 k2-fsa/sherpa-onnx#1459）
+cmake -B build -DSHERPA_ONNX_ENABLE_BINARY=ON -DSHERPA_ONNX_ENABLE_TTS=ON \
+      -DSHERPA_ONNX_ENABLE_PYTHON=OFF -DSHERPA_ONNX_ENABLE_TESTS=OFF \
+      -DSHERPA_ONNX_ENABLE_CHECK=OFF -DSHERPA_ONNX_ENABLE_PORTAUDIO=OFF \
+      -DBUILD_SHARED_LIBS=OFF
+cmake --build build -j "$(nproc)"
+mkdir -p ~/.kaijibot/sherpa-speech/runtime/bin
+cp build/bin/sherpa-onnx-offline build/bin/sherpa-onnx-offline-tts ~/.kaijibot/sherpa-speech/runtime/bin/
+```
+
+### 方式三：proot-distro（免编译兜底）
+
+```bash
+pkg install proot-distro
+proot-distro login ubuntu
+# 在 ubuntu 内下载官方 linux-aarch64 静态构建，解压到宿主 Termux 可访问的路径
+```
+
+### 手机端注意事项
+
+- **内存**：SenseVoice int8 推理时运行内存约 600MB（转写结束即释放）。低内存设备可在网关配置 `SHERPA_ONNX_AUTO_DOWNLOAD=0` 关闭自动下载，语音输入将自动走云端 provider（如已配置）。
+- **镜像**：模型与运行时默认从 GitHub Releases 下载；不可达时设置 `SHERPA_ONNX_DOWNLOAD_MIRROR`（URL 前缀）走代理镜像。
+- **语音输入 UX**：手机浏览器（Chrome Custom Tabs）中长按麦克风按钮说话、松开转文字；桌面浏览器点击切换。
