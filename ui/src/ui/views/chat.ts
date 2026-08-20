@@ -28,6 +28,13 @@ import { InputHistory } from "../chat/input-history.ts";
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer.ts";
 import { PinnedMessages } from "../chat/pinned-messages.ts";
 import { getPinnedMessageSummary } from "../chat/pinned-summary.ts";
+import {
+  RECORDING_MAX_MS,
+  VoiceRecorder,
+  formatElapsed,
+  isMicBlockedByInsecureOrigin,
+  isRecorderSupported,
+} from "../chat/recorder.ts";
 import { messageMatchesSearchQuery } from "../chat/search-match.ts";
 import { getOrCreateSessionCacheValue } from "../chat/session-cache.ts";
 import {
@@ -89,6 +96,7 @@ export type ChatProps = {
   onDraftChange: (next: string) => void;
   onRequestUpdate?: () => void;
   onSend: () => void;
+  onVoiceTranscribe?: (audio: Blob) => Promise<string>;
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
   onNewSession: () => void;
@@ -140,6 +148,12 @@ function getDeletedMessages(sessionKey: string): DeletedMessages {
 interface ChatEphemeralState {
   sttRecording: boolean;
   sttInterimText: string;
+  voiceMode: boolean;
+  voiceRecording: boolean;
+  voiceStartedAt: number;
+  voiceElapsedMs: number;
+  voiceTranscribing: boolean;
+  voiceError: string;
   slashMenuOpen: boolean;
   slashMenuItems: SlashCommandDef[];
   slashMenuIndex: number;
@@ -159,6 +173,12 @@ function createChatEphemeralState(): ChatEphemeralState {
   return {
     sttRecording: false,
     sttInterimText: "",
+    voiceMode: false,
+    voiceRecording: false,
+    voiceStartedAt: 0,
+    voiceElapsedMs: 0,
+    voiceTranscribing: false,
+    voiceError: "",
     slashMenuOpen: false,
     slashMenuItems: [],
     slashMenuIndex: 0,
@@ -177,6 +197,128 @@ function createChatEphemeralState(): ChatEphemeralState {
 
 const vs = createChatEphemeralState();
 
+let viewProps: ChatProps | null = null;
+let requestHostUpdate: (() => void) | null = null;
+
+const voiceRecorder = new VoiceRecorder({
+  onError: (error) => setVoiceError(error),
+});
+let voiceTimerId: ReturnType<typeof setInterval> | null = null;
+let voiceErrorTimerId: ReturnType<typeof setTimeout> | null = null;
+
+function clearVoiceTimer() {
+  if (voiceTimerId) {
+    clearInterval(voiceTimerId);
+    voiceTimerId = null;
+  }
+}
+
+function setVoiceError(message: string) {
+  vs.voiceError = message;
+  if (voiceErrorTimerId) {
+    clearTimeout(voiceErrorTimerId);
+  }
+  voiceErrorTimerId = setTimeout(() => {
+    vs.voiceError = "";
+    voiceErrorTimerId = null;
+    requestHostUpdate?.();
+  }, 3000);
+}
+
+function appendToDraft(text: string) {
+  const current = viewProps?.getDraft?.() ?? viewProps?.draft ?? "";
+  const sep = current && !current.endsWith(" ") ? " " : "";
+  viewProps?.onDraftChange(current + sep + text);
+}
+
+async function startVoiceRecording() {
+  if (vs.voiceRecording || vs.voiceTranscribing) {
+    return;
+  }
+  vs.voiceError = "";
+  const started = await voiceRecorder.start();
+  if (!started) {
+    requestHostUpdate?.();
+    return;
+  }
+  vs.voiceRecording = true;
+  vs.voiceStartedAt = Date.now();
+  vs.voiceElapsedMs = 0;
+  clearVoiceTimer();
+  voiceTimerId = setInterval(() => {
+    vs.voiceElapsedMs = Date.now() - vs.voiceStartedAt;
+    if (vs.voiceElapsedMs >= RECORDING_MAX_MS) {
+      void finishVoiceRecording();
+    }
+    requestHostUpdate?.();
+  }, 250);
+  requestHostUpdate?.();
+}
+
+async function finishVoiceRecording() {
+  if (!vs.voiceRecording) {
+    return;
+  }
+  clearVoiceTimer();
+  const durationMs = Date.now() - vs.voiceStartedAt;
+  vs.voiceRecording = false;
+  const blob = await voiceRecorder.stop();
+  requestHostUpdate?.();
+  if (!blob || durationMs < 300 || !viewProps?.onVoiceTranscribe) {
+    return;
+  }
+  vs.voiceTranscribing = true;
+  requestHostUpdate?.();
+  try {
+    const text = (await viewProps.onVoiceTranscribe(blob)).trim();
+    if (text) {
+      appendToDraft(text);
+      if (vs.voiceMode) {
+        vs.voiceMode = false;
+        requestHostUpdate?.();
+        focusDraftTextareaEnd();
+      }
+    }
+  } catch {
+    setVoiceError("Voice transcription failed");
+  } finally {
+    vs.voiceTranscribing = false;
+    requestHostUpdate?.();
+  }
+}
+
+async function cancelVoiceRecording() {
+  if (!vs.voiceRecording) {
+    return;
+  }
+  clearVoiceTimer();
+  vs.voiceRecording = false;
+  await voiceRecorder.cancel();
+  requestHostUpdate?.();
+}
+
+/** Leave voice input mode; an in-progress hold recording is discarded. */
+function exitVoiceMode() {
+  if (vs.voiceRecording) {
+    void cancelVoiceRecording();
+  }
+  vs.voiceMode = false;
+  requestHostUpdate?.();
+}
+
+function focusDraftTextareaEnd() {
+  // rAF so this runs after lit's async re-render recreates the textarea row
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLTextAreaElement>(".agent-chat__input > textarea");
+    if (!el) {
+      return;
+    }
+    el.focus();
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  });
+}
+
 /**
  * Reset chat view ephemeral state when navigating away.
  * Stops STT recording and clears search/slash UI that should not survive navigation.
@@ -185,6 +327,15 @@ export function resetChatViewState() {
   if (vs.sttRecording) {
     stopStt();
   }
+  if (voiceTimerId) {
+    clearInterval(voiceTimerId);
+    voiceTimerId = null;
+  }
+  if (voiceErrorTimerId) {
+    clearTimeout(voiceErrorTimerId);
+    voiceErrorTimerId = null;
+  }
+  void voiceRecorder.cancel();
   Object.assign(vs, createChatEphemeralState());
 }
 
@@ -930,6 +1081,8 @@ export function renderChat(props: ChatProps) {
 
   const requestUpdate = props.onRequestUpdate ?? (() => {});
   const getDraft = props.getDraft ?? (() => props.draft);
+  viewProps = props;
+  requestHostUpdate = requestUpdate;
 
   const splitRatio = props.splitRatio ?? 0.6;
   const sidebarOpen = Boolean(props.sidebarOpen && props.onCloseSidebar);
@@ -1266,7 +1419,7 @@ export function renderChat(props: ChatProps) {
         : nothing}
 
       <!-- Input bar -->
-      <div class="agent-chat__input">
+      <div class="agent-chat__input ${vs.voiceMode ? "agent-chat__input--voice-mode" : ""}">
         ${renderSlashMenu(requestUpdate, props)} ${renderAttachmentPreview(props)}
 
         <input
@@ -1278,9 +1431,26 @@ export function renderChat(props: ChatProps) {
           @change=${(e: Event) => handleFileSelect(e, props)}
         />
 
-        ${vs.sttRecording && vs.sttInterimText
-          ? html`<div class="agent-chat__stt-interim">${vs.sttInterimText}</div>`
-          : nothing}
+        ${(() => {
+          if (vs.sttRecording && vs.sttInterimText) {
+            return html`<div class="agent-chat__stt-interim">${vs.sttInterimText}</div>`;
+          }
+          if (vs.voiceError) {
+            return html`<div class="agent-chat__stt-interim agent-chat__stt-interim--error">
+              ${vs.voiceError}
+            </div>`;
+          }
+          if (vs.voiceRecording && !vs.voiceMode) {
+            return html`<div class="agent-chat__stt-interim agent-chat__stt-interim--recording">
+              <span class="agent-chat__rec-dot"></span> Recording
+              ${formatElapsed(vs.voiceElapsedMs)} — release to send
+            </div>`;
+          }
+          if (vs.voiceTranscribing && !vs.voiceMode) {
+            return html`<div class="agent-chat__stt-interim">Transcribing…</div>`;
+          }
+          return nothing;
+        })()}
         ${(() => {
           const appState = props.appState as AppViewState | undefined;
           if (!appState) {
@@ -1310,6 +1480,49 @@ export function renderChat(props: ChatProps) {
             </div>
           `;
         })()}
+        ${vs.voiceMode
+          ? html`
+              <div class="agent-chat__voice-mode">
+                <button
+                  class="agent-chat__input-btn"
+                  @click=${exitVoiceMode}
+                  title="Back to keyboard"
+                  aria-label="Back to keyboard"
+                >
+                  ${icons.keyboard}
+                </button>
+                <button
+                  class="agent-chat__voice-btn agent-chat__hold-btn ${vs.voiceRecording
+                    ? "agent-chat__hold-btn--recording"
+                    : ""} ${vs.voiceTranscribing ? "agent-chat__hold-btn--transcribing" : ""}"
+                  @pointerdown=${(e: PointerEvent) => {
+                    e.preventDefault();
+                    void startVoiceRecording();
+                  }}
+                  @pointerup=${() => void finishVoiceRecording()}
+                  @pointercancel=${() => void cancelVoiceRecording()}
+                  @pointerleave=${(e: PointerEvent) => {
+                    if (e.pointerType !== "touch" && vs.voiceRecording) {
+                      void cancelVoiceRecording();
+                    }
+                  }}
+                  ?disabled=${!props.connected || (!canCompose && !vs.voiceRecording)}
+                  title="Hold to talk"
+                >
+                  ${vs.voiceRecording
+                    ? html`<span class="agent-chat__rec-dot"></span>
+                        <span class="agent-chat__hold-btn__elapsed"
+                          >${formatElapsed(vs.voiceElapsedMs)}</span
+                        >
+                        <span>Release to recognize</span>`
+                    : vs.voiceTranscribing
+                      ? html`<span class="agent-chat__hold-btn__spinner">${icons.loader}</span>
+                          <span>Recognizing…</span>`
+                      : "Hold to talk"}
+                </button>
+              </div>
+            `
+          : nothing}
 
         <textarea
           ${ref((el) => el && adjustTextareaHeight(el as HTMLTextAreaElement))}
@@ -1319,7 +1532,7 @@ export function renderChat(props: ChatProps) {
           @keydown=${handleKeyDown}
           @input=${handleInput}
           @paste=${(e: ClipboardEvent) => handlePaste(e, props)}
-          placeholder=${vs.sttRecording ? "Listening..." : placeholder}
+          placeholder=${vs.sttRecording || vs.voiceRecording ? "Listening..." : placeholder}
           aria-label="Message input"
           rows="1"
         ></textarea>
@@ -1338,59 +1551,88 @@ export function renderChat(props: ChatProps) {
               ${icons.paperclip}
             </button>
 
-            ${isSttSupported()
+            ${isMicBlockedByInsecureOrigin()
               ? html`
                   <button
-                    class="agent-chat__input-btn ${vs.sttRecording
-                      ? "agent-chat__input-btn--recording"
-                      : ""}"
-                    @click=${() => {
-                      if (vs.sttRecording) {
-                        stopStt();
-                        vs.sttRecording = false;
-                        vs.sttInterimText = "";
-                        requestUpdate();
-                      } else {
-                        const started = startStt({
-                          onTranscript: (text, isFinal) => {
-                            if (isFinal) {
-                              const current = getDraft();
-                              const sep = current && !current.endsWith(" ") ? " " : "";
-                              props.onDraftChange(current + sep + text);
-                              vs.sttInterimText = "";
-                            } else {
-                              vs.sttInterimText = text;
-                            }
-                            requestUpdate();
-                          },
-                          onStart: () => {
-                            vs.sttRecording = true;
-                            requestUpdate();
-                          },
-                          onEnd: () => {
-                            vs.sttRecording = false;
-                            vs.sttInterimText = "";
-                            requestUpdate();
-                          },
-                          onError: () => {
-                            vs.sttRecording = false;
-                            vs.sttInterimText = "";
-                            requestUpdate();
-                          },
-                        });
-                        if (started) {
-                          vs.sttRecording = true;
-                          requestUpdate();
-                        }
-                      }
-                    }}
-                    title=${vs.sttRecording ? "Stop recording" : "Voice input"}
-                    ?disabled=${!props.connected}
+                    class="agent-chat__input-btn"
+                    @click=${() =>
+                      setVoiceError(
+                        "麦克风被浏览器禁用：当前通过局域网 IP 访问。请在网关本机用 127.0.0.1 打开，或使用 HTTPS / 隧道转发。",
+                      )}
+                    title="Voice input unavailable"
+                    aria-label="Voice input unavailable"
                   >
-                    ${vs.sttRecording ? icons.micOff : icons.mic}
+                    ${icons.micOff}
                   </button>
                 `
-              : nothing}
+              : isRecorderSupported() && props.onVoiceTranscribe
+                ? html`
+                    <button
+                      class="agent-chat__input-btn agent-chat__voice-toggle"
+                      @click=${() => {
+                        vs.voiceMode = true;
+                        requestUpdate();
+                      }}
+                      title="Voice input"
+                      aria-label="Voice input"
+                      ?disabled=${!props.connected || !canCompose}
+                    >
+                      ${icons.mic}
+                    </button>
+                  `
+                : isSttSupported()
+                  ? html`
+                      <button
+                        class="agent-chat__input-btn ${vs.sttRecording
+                          ? "agent-chat__input-btn--recording"
+                          : ""}"
+                        @click=${() => {
+                          if (vs.sttRecording) {
+                            stopStt();
+                            vs.sttRecording = false;
+                            vs.sttInterimText = "";
+                            requestUpdate();
+                          } else {
+                            const started = startStt({
+                              onTranscript: (text, isFinal) => {
+                                if (isFinal) {
+                                  const current = getDraft();
+                                  const sep = current && !current.endsWith(" ") ? " " : "";
+                                  props.onDraftChange(current + sep + text);
+                                  vs.sttInterimText = "";
+                                } else {
+                                  vs.sttInterimText = text;
+                                }
+                                requestUpdate();
+                              },
+                              onStart: () => {
+                                vs.sttRecording = true;
+                                requestUpdate();
+                              },
+                              onEnd: () => {
+                                vs.sttRecording = false;
+                                vs.sttInterimText = "";
+                                requestUpdate();
+                              },
+                              onError: () => {
+                                vs.sttRecording = false;
+                                vs.sttInterimText = "";
+                                requestUpdate();
+                              },
+                            });
+                            if (started) {
+                              vs.sttRecording = true;
+                              requestUpdate();
+                            }
+                          }
+                        }}
+                        title=${vs.sttRecording ? "Stop recording" : "Voice input"}
+                        ?disabled=${!props.connected}
+                      >
+                        ${vs.sttRecording ? icons.micOff : icons.mic}
+                      </button>
+                    `
+                  : nothing}
             ${(() => {
               const appState = props.appState as AppViewState | undefined;
               if (!appState) {

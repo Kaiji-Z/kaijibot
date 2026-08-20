@@ -15,7 +15,7 @@ import { SKIP_DELETE_CONFIRM_KEY } from "../chat/grouped-render.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
 import type { ModelCatalogEntry } from "../types.ts";
 import type { SessionsListResult } from "../types.ts";
-import { renderChat, type ChatProps } from "./chat.ts";
+import { renderChat, resetChatViewState, type ChatProps } from "./chat.ts";
 
 function readDeleteConfirmPreference(): string | null {
   try {
@@ -659,10 +659,60 @@ describe("chat view", () => {
     const newSessionButton = container.querySelector<HTMLButtonElement>(
       'button[title="New session"]',
     );
-    expect(newSessionButton).not.toBeUndefined();
+    expect(newSessionButton).not.toBeNull();
     newSessionButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onNewSession).toHaveBeenCalledTimes(1);
     expect(container.textContent).not.toContain("Stop");
+  });
+
+  it("toggles voice input mode from the mic button and exits via the keyboard button", async () => {
+    const mediaDevicesDescriptor = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
+    Object.defineProperty(navigator, "mediaDevices", {
+      value: { getUserMedia: () => Promise.resolve() },
+      configurable: true,
+    });
+    vi.stubGlobal("MediaRecorder", class {});
+    try {
+      const container = document.createElement("div");
+      const props = createProps({ onVoiceTranscribe: vi.fn(async () => "hello") });
+      const rerender = () => render(renderChat(props), container);
+      rerender();
+
+      expect(container.querySelector(".agent-chat__voice-mode")).toBeNull();
+      const micButton = container.querySelector<HTMLButtonElement>(
+        'button[aria-label="Voice input"]',
+      );
+      expect(micButton).not.toBeNull();
+
+      micButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flushTasks();
+      rerender();
+
+      const input = container.querySelector(".agent-chat__input");
+      expect(input?.classList.contains("agent-chat__input--voice-mode")).toBe(true);
+      const holdButton = container.querySelector<HTMLButtonElement>(".agent-chat__hold-btn");
+      expect(holdButton).not.toBeNull();
+      expect(holdButton?.textContent).toContain("Hold to talk");
+
+      const keyboardButton = container.querySelector<HTMLButtonElement>(
+        'button[aria-label="Back to keyboard"]',
+      );
+      expect(keyboardButton).not.toBeNull();
+      keyboardButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flushTasks();
+      rerender();
+
+      expect(container.querySelector(".agent-chat__voice-mode")).toBeNull();
+      expect(input?.classList.contains("agent-chat__input--voice-mode")).toBe(false);
+    } finally {
+      resetChatViewState();
+      vi.unstubAllGlobals();
+      if (mediaDevicesDescriptor) {
+        Object.defineProperty(navigator, "mediaDevices", mediaDevicesDescriptor);
+      } else {
+        delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+      }
+    }
   });
 
   it("shows sender labels from sanitized gateway messages instead of generic You", () => {

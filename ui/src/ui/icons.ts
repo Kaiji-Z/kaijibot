@@ -328,6 +328,19 @@ export const icons = {
       <line x1="12" x2="12" y1="19" y2="22" />
     </svg>
   `,
+  keyboard: html`
+    <svg viewBox="0 0 24 24">
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="M6 8h.01" />
+      <path d="M10 8h.01" />
+      <path d="M14 8h.01" />
+      <path d="M18 8h.01" />
+      <path d="M8 12h.01" />
+      <path d="M12 12h.01" />
+      <path d="M16 12h.01" />
+      <path d="M7 16h10" />
+    </svg>
+  `,
   volume2: html`
     <svg viewBox="0 0 24 24">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
