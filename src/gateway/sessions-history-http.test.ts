@@ -235,13 +235,7 @@ describe("session history HTTP endpoints", () => {
     });
   });
 
-  // Skipped: seeding duplicate case-variant main keys now gets canonicalized
-  // by the startup session migration before the HTTP read happens, so the
-  // e2e flow can no longer exercise the read-time freshest-duplicate path.
-  // That path stays covered by the resolveFreshestSessionEntryFromStoreKeys
-  // unit tests in session-utils.test.ts. Revisit if the migration ordering
-  // changes.
-  test.skip("prefers the freshest duplicate row for direct history reads", async () => {
+  test("prefers the freshest duplicate row for direct history reads", async () => {
     const storePath = await createSessionStoreFile();
     const dir = path.dirname(storePath);
     const staleTranscriptPath = path.join(dir, "sess-stale-main.jsonl");
@@ -266,6 +260,11 @@ describe("session history HTTP endpoints", () => {
       ].join("\n"),
       "utf-8",
     );
+    // Recent timestamps: session-store maintenance (enforce mode) prunes
+    // entries older than 30d on save, so epoch-scale values would be pruned
+    // before the history read happens.
+    const staleUpdatedAt = Date.now() - 60_000;
+    const freshUpdatedAt = Date.now() - 30_000;
     await fs.writeFile(
       storePath,
       JSON.stringify(
@@ -273,12 +272,12 @@ describe("session history HTTP endpoints", () => {
           "agent:main:main": {
             sessionId: "sess-stale-main",
             sessionFile: staleTranscriptPath,
-            updatedAt: 1,
+            updatedAt: staleUpdatedAt,
           },
           "agent:main:MAIN": {
             sessionId: "sess-fresh-main",
             sessionFile: freshTranscriptPath,
-            updatedAt: 2,
+            updatedAt: freshUpdatedAt,
           },
         },
         null,

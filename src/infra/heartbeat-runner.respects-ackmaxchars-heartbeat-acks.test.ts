@@ -302,17 +302,14 @@ describe("runHeartbeatOnce ack handling", () => {
     });
   });
 
-  // FIXME(product bug): after runHeartbeatOnce completes, the seeded
-  // agent:main:main entry disappears from the session store entirely (file
-  // rewritten as {}). Observed with the same symptom in the gateway
-  // sessions-history harness — a save path in the heartbeat delivery chain is
-  // dropping store entries. Keep this test fixme'd until that write-back bug
-  // is fixed; see also the skipped freshest-duplicate e2e in
-  // sessions-history-http.test.ts.
-  it.skip("does not regress updatedAt when restoring heartbeat sessions", async () => {
+  it("does not regress updatedAt when restoring heartbeat sessions", async () => {
     await withTempHeartbeatSandbox(async ({ tmpDir, storePath, replySpy }) => {
-      const originalUpdatedAt = 1000;
-      const bumpedUpdatedAt = 2000;
+      // Realistic recent timestamps: session-store maintenance (enforce mode)
+      // prunes entries older than 30d on save, so epoch-scale values would be
+      // pruned mid-run. 60s/30s ago also keeps the restore guard
+      // (now - currentUpdatedAt < 5000) inactive, matching the test intent.
+      const originalUpdatedAt = Date.now() - 60_000;
+      const bumpedUpdatedAt = Date.now() - 30_000;
       const cfg = createWhatsAppHeartbeatConfig({
         tmpDir,
         storePath,
