@@ -1,0 +1,16 @@
+{
+  "id": "sherpa-speech",
+  "activation": {
+    "onStartup": false
+  },
+  "enabledByDefault": true,
+  "providers": ["sherpa-speech"],
+  "contracts": {
+    "mediaUnderstandingProviders": ["sherpa-speech"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

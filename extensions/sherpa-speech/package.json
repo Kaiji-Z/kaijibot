@@ -1,0 +1,15 @@
+{
+  "name": "@kaijibot/sherpa-speech",
+  "version": "2026.8.19",
+  "private": true,
+  "description": "KaijiBot local ASR plugin (sherpa-onnx, offline)",
+  "type": "module",
+  "devDependencies": {
+    "@kaijibot/plugin-sdk": "workspace:*"
+  },
+  "kaijibot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
