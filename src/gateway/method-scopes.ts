@@ -134,6 +134,7 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "tts.disable",
     "tts.convert",
     "tts.setProvider",
+    "stt.transcribe",
     "voicewake.set",
     "node.invoke",
     "chat.send",

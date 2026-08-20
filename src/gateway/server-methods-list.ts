@@ -29,6 +29,7 @@ const BASE_METHODS = [
   "tts.disable",
   "tts.convert",
   "tts.setProvider",
+  "stt.transcribe",
   "config.get",
   "config.set",
   "config.apply",
