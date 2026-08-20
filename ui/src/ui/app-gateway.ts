@@ -17,6 +17,7 @@ import {
 import { handleAgentEvent, resetToolStream, type AgentEventPayload } from "./app-tool-stream.ts";
 import type { KaijiBotApp } from "./app.ts";
 import { shouldReloadHistoryForFinalEvent } from "./chat-event-reload.ts";
+import { setGatewayAudioClient } from "./chat/audio-playback.ts";
 import { formatConnectError } from "./connect-error.ts";
 import { loadAgents } from "./controllers/agents.ts";
 import { loadAssistantIdentity } from "./controllers/assistant-identity.ts";
@@ -290,6 +291,7 @@ export function connectGateway(host: GatewayHost, options?: ConnectGatewayOption
     },
   });
   host.client = client;
+  setGatewayAudioClient(client);
   previousClient?.stop();
   client.start();
 }

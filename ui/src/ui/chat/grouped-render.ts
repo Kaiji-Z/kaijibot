@@ -9,6 +9,11 @@ import { normalizeLowercaseStringOrEmpty } from "../string-coerce.ts";
 import { detectTextDirection } from "../text-direction.ts";
 import type { MessageGroup, ToolCard } from "../types/chat-types.ts";
 import { agentLogoUrl } from "../views/agents-utils.ts";
+import {
+  isGatewayAudioSpeaking,
+  speakViaGatewayOrBrowser,
+  stopGatewayAudio,
+} from "./audio-playback.ts";
 import { renderCopyAsMarkdownButton } from "./copy-as-markdown.ts";
 import {
   extractTextCached,
@@ -16,7 +21,7 @@ import {
   formatReasoningMarkdown,
 } from "./message-extract.ts";
 import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
-import { isTtsSupported, speakText, stopTts, isTtsSpeaking } from "./speech.ts";
+import { isTtsSupported } from "./speech.ts";
 import { extractToolCards, renderToolCardSidebar } from "./tool-cards.ts";
 
 type ImageBlock = {
@@ -461,14 +466,15 @@ function renderTtsButton(group: MessageGroup) {
     <button
       class="btn btn--xs chat-tts-btn"
       type="button"
-      title=${isTtsSpeaking() ? "Stop speaking" : "Read aloud"}
-      aria-label=${isTtsSpeaking() ? "Stop speaking" : "Read aloud"}
+      title=${isGatewayAudioSpeaking() ? "Stop speaking" : "Read aloud"}
+      aria-label=${isGatewayAudioSpeaking() ? "Stop speaking" : "Read aloud"}
       @click=${(e: Event) => {
         const btn = e.currentTarget as HTMLButtonElement;
-        if (isTtsSpeaking()) {
-          stopTts();
+        if (isGatewayAudioSpeaking()) {
+          stopGatewayAudio();
           btn.classList.remove("chat-tts-btn--active");
           btn.title = "Read aloud";
+          btn.setAttribute("aria-label", "Read aloud");
           return;
         }
         const text = extractGroupText(group);
@@ -477,7 +483,7 @@ function renderTtsButton(group: MessageGroup) {
         }
         btn.classList.add("chat-tts-btn--active");
         btn.title = "Stop speaking";
-        speakText(text, {
+        void speakViaGatewayOrBrowser(text, {
           onEnd: () => {
             if (btn.isConnected) {
               btn.classList.remove("chat-tts-btn--active");

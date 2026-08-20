@@ -1,5 +1,6 @@
 import { resetToolStream } from "../app-tool-stream.ts";
 import { extractText } from "../chat/message-extract.ts";
+import { blobToBase64 } from "../chat/recorder.ts";
 import { formatConnectError } from "../connect-error.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
 import { normalizeLowercaseStringOrEmpty } from "../string-coerce.ts";
@@ -372,4 +373,16 @@ export function handleChatEvent(state: ChatState, payload?: ChatEventPayload) {
     state.lastError = payload.errorMessage ?? "chat error";
   }
   return payload.state;
+}
+
+export async function transcribeVoiceInput(state: ChatState, audio: Blob): Promise<string> {
+  if (!state.client || !state.connected) {
+    throw new Error("not connected");
+  }
+  const audioBase64 = await blobToBase64(audio);
+  const response = await state.client.request<{ text: string }>("stt.transcribe", {
+    audioBase64,
+    ...(audio.type ? { mimeType: audio.type } : {}),
+  });
+  return response.text;
 }
