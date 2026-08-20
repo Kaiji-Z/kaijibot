@@ -234,7 +234,7 @@ npm install -g kaijibot --force
 
 ## 本地语音（语音输入 + 朗读）
 
-KaijiBot 的语音输入（按住说话→转文字）和自然中文朗读由本地 sherpa-onnx 引擎提供，Termux 上有三种部署方式：
+KaijiBot 的语音输入（按住说话→转文字）由本地 sherpa-onnx 引擎提供，朗读由 edge-tts 提供；Termux 上 sherpa-onnx 有三种部署方式：
 
 ### 方式一：静态构建（推荐，零编译）
 
@@ -246,7 +246,7 @@ bash scripts/install-sherpa-onnx-termux.sh
 export SHERPA_ONNX_DOWNLOAD_MIRROR=https://gh-proxy.com
 ```
 
-运行时二进制就位后，网关启动时会**自动后台下载模型**（ASR sense-voice int8 约 155MB + TTS kokoro v1.1 约 347MB），下载完成后语音输入与本地朗读即可离线使用。
+运行时二进制就位后，网关启动时会**自动后台下载 ASR 模型**（sense-voice int8 约 155MB），下载完成后语音输入即可离线使用。语音朗读走 edge-tts 云服务（微软免费接口），无本地模型、不占额外磁盘。
 
 ### 方式二：源码编译（静态构建失败时的后备）
 
@@ -262,7 +262,7 @@ cmake -B build -DSHERPA_ONNX_ENABLE_BINARY=ON -DSHERPA_ONNX_ENABLE_TTS=ON \
       -DBUILD_SHARED_LIBS=OFF
 cmake --build build -j "$(nproc)"
 mkdir -p ~/.kaijibot/sherpa-speech/runtime/bin
-cp build/bin/sherpa-onnx-offline build/bin/sherpa-onnx-offline-tts ~/.kaijibot/sherpa-speech/runtime/bin/
+cp build/bin/sherpa-onnx-offline ~/.kaijibot/sherpa-speech/runtime/bin/
 ```
 
 ### 方式三：proot-distro（免编译兜底）
