@@ -135,7 +135,7 @@ describe("heartbeat event file logging", () => {
     // Subsystem log records use positional keys: "1" = meta, "2" = message.
     return records.slice(startIndex).map((record) => ({
       message: String(record["2"] ?? ""),
-      ...((record["1"] as Record<string, unknown> | undefined) ?? {}),
+      ...(record["1"] as Record<string, unknown> | undefined),
     }));
   }
 
