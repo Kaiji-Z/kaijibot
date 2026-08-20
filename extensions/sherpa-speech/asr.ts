@@ -5,6 +5,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { runFfmpeg } from "kaijibot/plugin-sdk/media-runtime";
@@ -203,10 +204,7 @@ export async function transcribeWithSherpa(
 
   const tmpRoot = resolvePreferredKaijiBotTmpDir();
   await fs.mkdir(tmpRoot, { recursive: true, mode: 0o700 });
-  const tempDir = path.join(
-    tmpRoot,
-    `sherpa-asr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  );
+  const tempDir = path.join(tmpRoot, `sherpa-asr-${randomUUID()}`);
   await fs.mkdir(tempDir, { recursive: true, mode: 0o700 });
   try {
     const inputPath = path.join(tempDir, `input${resolveAudioExtension(req.fileName, req.mime)}`);

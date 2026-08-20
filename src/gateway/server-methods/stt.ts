@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadConfig } from "../../config/config.js";
@@ -89,10 +90,7 @@ export const sttHandlers: GatewayRequestHandlers = {
       buffer: decoded.buffer,
     });
     const tmpRoot = resolvePreferredKaijiBotTmpDir();
-    const tempDir = path.join(
-      tmpRoot,
-      `stt-transcribe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    );
+    const tempDir = path.join(tmpRoot, `stt-transcribe-${randomUUID()}`);
     let filePath: string | undefined;
     try {
       await fs.mkdir(tempDir, { recursive: true, mode: 0o700 });
