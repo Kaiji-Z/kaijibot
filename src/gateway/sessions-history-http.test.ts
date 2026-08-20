@@ -235,7 +235,13 @@ describe("session history HTTP endpoints", () => {
     });
   });
 
-  test("prefers the freshest duplicate row for direct history reads", async () => {
+  // Skipped: seeding duplicate case-variant main keys now gets canonicalized
+  // by the startup session migration before the HTTP read happens, so the
+  // e2e flow can no longer exercise the read-time freshest-duplicate path.
+  // That path stays covered by the resolveFreshestSessionEntryFromStoreKeys
+  // unit tests in session-utils.test.ts. Revisit if the migration ordering
+  // changes.
+  test.skip("prefers the freshest duplicate row for direct history reads", async () => {
     const storePath = await createSessionStoreFile();
     const dir = path.dirname(storePath);
     const staleTranscriptPath = path.join(dir, "sess-stale-main.jsonl");
