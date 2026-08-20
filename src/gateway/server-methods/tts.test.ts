@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorCodes } from "../protocol/index.js";
 
@@ -80,5 +83,48 @@ describe("ttsHandlers", () => {
       }),
     );
     expect(mocks.textToSpeech).not.toHaveBeenCalled();
+  });
+
+  it("returns base64 audio when includeAudio is set", async () => {
+    const tmpFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "tts-audio-")), "out.mp3");
+    fs.writeFileSync(tmpFile, Buffer.from("mp3-bytes"));
+    mocks.textToSpeech.mockResolvedValue({
+      success: true,
+      audioPath: tmpFile,
+      provider: "openai",
+      outputFormat: "mp3",
+      voiceCompatible: false,
+    });
+
+    const { ttsHandlers } = await import("./tts.js");
+    const respond = vi.fn();
+
+    await ttsHandlers["tts.convert"]({
+      params: { text: "hello", includeAudio: true },
+      respond,
+    } as never);
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        audioPath: tmpFile,
+        audioBase64: Buffer.from("mp3-bytes").toString("base64"),
+      }),
+    );
+    fs.rmSync(path.dirname(tmpFile), { recursive: true, force: true });
+  });
+
+  it("omits audio payload without includeAudio", async () => {
+    const { ttsHandlers } = await import("./tts.js");
+    const respond = vi.fn();
+
+    await ttsHandlers["tts.convert"]({
+      params: { text: "hello" },
+      respond,
+    } as never);
+
+    const payload = respond.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(payload.audioBase64).toBeUndefined();
+    expect(payload.audioPath).toBe("/tmp/tts.mp3");
   });
 });

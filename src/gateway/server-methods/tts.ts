@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { loadConfig } from "../../config/config.js";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
 import {
@@ -114,11 +115,18 @@ export const ttsHandlers: GatewayRequestHandlers = {
         disableFallback: Boolean(overrides.provider || modelId || voiceId),
       });
       if (result.success && result.audioPath) {
+        const includeAudio = params.includeAudio === true;
+        let audioBase64: string | undefined;
+        if (includeAudio) {
+          const audioBuffer = await readFile(result.audioPath);
+          audioBase64 = audioBuffer.toString("base64");
+        }
         respond(true, {
           audioPath: result.audioPath,
           provider: result.provider,
           outputFormat: result.outputFormat,
           voiceCompatible: result.voiceCompatible,
+          ...(audioBase64 ? { audioBase64 } : {}),
         });
         return;
       }
