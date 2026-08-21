@@ -118,6 +118,78 @@ describe("appendAssistantMessageToSessionTranscript", () => {
     expect(messageLine.message.content[0].text).toBe("Hello from delivery mirror!");
   });
 
+  function appendAgentTurn(params: { text: string; model?: string }) {
+    return appendExactAssistantMessageToSessionTranscript({
+      sessionKey,
+      storePath: fixture.storePath(),
+      message: {
+        role: "assistant",
+        content: [{ type: "text", text: params.text }],
+        api: "openai-responses",
+        provider: "zai",
+        model: params.model ?? "glm-5.2",
+        usage: {
+          input: 10,
+          output: 20,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 30,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+    });
+  }
+
+  it("skips a delivery mirror that duplicates the last assistant turn", async () => {
+    writeTranscriptStore();
+    await appendAgentTurn({ text: "晚上好——今天第二条了" });
+
+    const result = await appendAssistantMessageToSessionTranscript({
+      sessionKey,
+      text: "晚上好——今天第二条了",
+      storePath: fixture.storePath(),
+    });
+
+    expect(result).toMatchObject({ ok: true, deduplicated: true, messageId: null });
+    const sessionFile = resolveSessionTranscriptPathInDir(sessionId, fixture.sessionsDir());
+    const lines = fs.readFileSync(sessionFile, "utf-8").trim().split("\n");
+    expect(lines.length).toBe(2);
+  });
+
+  it("treats a glued NO_REPLY agent turn as the same text as the stripped mirror", async () => {
+    writeTranscriptStore();
+    await appendAgentTurn({ text: "NO_REPLY晚上好——今天第二条了" });
+
+    const result = await appendAssistantMessageToSessionTranscript({
+      sessionKey,
+      text: "晚上好——今天第二条了",
+      storePath: fixture.storePath(),
+    });
+
+    expect(result).toMatchObject({ ok: true, deduplicated: true });
+    const sessionFile = resolveSessionTranscriptPathInDir(sessionId, fixture.sessionsDir());
+    const lines = fs.readFileSync(sessionFile, "utf-8").trim().split("\n");
+    expect(lines.length).toBe(2);
+  });
+
+  it("keeps a delivery mirror that differs from the last assistant turn", async () => {
+    writeTranscriptStore();
+    await appendAgentTurn({ text: "NO_REPLY晚上好——今天第二条了" });
+
+    const result = await appendAssistantMessageToSessionTranscript({
+      sessionKey,
+      text: "NO_REPLY: 晚上好，这条是补充说明",
+      storePath: fixture.storePath(),
+    });
+
+    expect(result).toMatchObject({ ok: true, messageId: expect.any(String) });
+    const sessionFile = resolveSessionTranscriptPathInDir(sessionId, fixture.sessionsDir());
+    const lines = fs.readFileSync(sessionFile, "utf-8").trim().split("\n");
+    expect(lines.length).toBe(3);
+  });
+
   it("finds session entry using normalized (lowercased) key", async () => {
     const storeKey = "agent:main:bluebubbles:direct:+15551234567";
     const store = {

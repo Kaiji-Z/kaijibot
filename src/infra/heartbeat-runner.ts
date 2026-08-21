@@ -24,7 +24,11 @@ import {
   stripHeartbeatToken,
   type HeartbeatTask,
 } from "../auto-reply/heartbeat.js";
-import { HEARTBEAT_TOKEN } from "../auto-reply/tokens.js";
+import {
+  HEARTBEAT_TOKEN,
+  startsWithSilentToken,
+  stripLeadingSilentToken,
+} from "../auto-reply/tokens.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
 import { getChannelPlugin } from "../channels/plugins/index.js";
 import type { ChannelHeartbeatDeps } from "../channels/plugins/types.public.js";
@@ -462,7 +466,18 @@ function normalizeHeartbeatReply(
   ackMaxChars: number,
 ) {
   const rawText = typeof payload.text === "string" ? payload.text : "";
-  const textForStrip = stripLeadingHeartbeatResponsePrefix(rawText, responsePrefix);
+  // Relay turns occasionally emit "NO_REPLY<visible text>" glued together when
+  // the model intends a real reply but adds the silent token first. Strip only
+  // the glued form so it never leaks to channels or the delivery mirror; the
+  // punctuation-separated form ("NO_REPLY: note") stays visible, matching the
+  // chat streaming path (#19537).
+  const rawTextWithoutSilentToken = startsWithSilentToken(rawText)
+    ? stripLeadingSilentToken(rawText)
+    : rawText;
+  const textForStrip = stripLeadingHeartbeatResponsePrefix(
+    rawTextWithoutSilentToken,
+    responsePrefix,
+  );
   const stripped = stripHeartbeatToken(textForStrip, {
     mode: "heartbeat",
     maxAckChars: ackMaxChars,

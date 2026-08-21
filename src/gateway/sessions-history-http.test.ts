@@ -108,6 +108,9 @@ async function appendTranscriptMessage(params: {
   if (!appended.ok) {
     throw new Error(`append failed: ${appended.reason}`);
   }
+  if (appended.messageId === null) {
+    throw new Error("append unexpectedly deduplicated");
+  }
   return appended.messageId;
 }
 

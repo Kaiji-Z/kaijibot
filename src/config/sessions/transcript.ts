@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CURRENT_SESSION_VERSION, SessionManager } from "@earendil-works/pi-coding-agent";
+import { startsWithSilentToken, stripLeadingSilentToken } from "../../auto-reply/tokens.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { emitSessionTranscriptUpdate } from "../../sessions/transcript-events.js";
 import {
@@ -38,6 +39,7 @@ async function ensureSessionHeader(params: {
 
 export type SessionTranscriptAppendResult =
   | { ok: true; sessionFile: string; messageId: string }
+  | { ok: true; sessionFile: string; messageId: null; deduplicated: true }
   | { ok: false; reason: string };
 
 export type SessionTranscriptUpdateMode = "inline" | "file-only" | "none";
@@ -201,6 +203,18 @@ export async function appendExactAssistantMessageToSessionTranscript(params: {
     return { ok: true, sessionFile, messageId: existingMessageId };
   }
 
+  // Delivery mirrors are a second write path for text the agent turn may have
+  // already persisted (heartbeat relays write the turn, then mirror on send).
+  // Skipping an exact duplicate of the current transcript tail keeps session
+  // history from showing the same message twice without dropping real sends.
+  if (params.message.model === "delivery-mirror") {
+    const tailText = await readLastAssistantTextFromTranscript(sessionFile);
+    const mirrorText = resolveTranscriptMessageText(params.message);
+    if (tailText != null && isSameTextAfterGluedTokenStrip(tailText, mirrorText)) {
+      return { ok: true, sessionFile, messageId: null, deduplicated: true };
+    }
+  }
+
   const message = {
     ...params.message,
     ...(explicitIdempotencyKey ? { idempotencyKey: explicitIdempotencyKey } : {}),
@@ -251,4 +265,63 @@ async function transcriptHasIdempotencyKey(
     return undefined;
   }
   return undefined;
+}
+
+function resolveTranscriptMessageText(message: SessionTranscriptAssistantMessage): string {
+  return message.content
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("")
+    .trim();
+}
+
+// The relay agent turn persists glued "NO_REPLY<text>" while the delivery
+// mirror holds the stripped text; compare both in stripped form so the mirror
+// is recognized as a duplicate of that turn (and only the glued form —
+// "NO_REPLY: note" is visible content, matching the chat path (#19537)).
+function isSameTextAfterGluedTokenStrip(a: string, b: string): boolean {
+  if (a === b) {
+    return true;
+  }
+  const stripped = (text: string) =>
+    startsWithSilentToken(text) ? stripLeadingSilentToken(text) : text;
+  return stripped(a) === stripped(b);
+}
+
+/** Last assistant message text in the transcript, or null when it has none. */
+async function readLastAssistantTextFromTranscript(transcriptPath: string): Promise<string | null> {
+  try {
+    const raw = await fs.promises.readFile(transcriptPath, "utf-8");
+    const lines = raw.split(/\r?\n/);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      if (!line?.trim()) {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(line) as {
+          type?: unknown;
+          message?: { role?: unknown; content?: unknown };
+        };
+        if (parsed.type !== "message" || parsed.message?.role !== "assistant") {
+          continue;
+        }
+        const content = parsed.message.content;
+        if (typeof content === "string") {
+          return content.trim();
+        }
+        if (!Array.isArray(content)) {
+          return null;
+        }
+        return content
+          .map((part) => (part?.type === "text" && typeof part.text === "string" ? part.text : ""))
+          .join("")
+          .trim();
+      } catch {
+        continue;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
