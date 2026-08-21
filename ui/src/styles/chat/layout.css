@@ -1059,7 +1059,9 @@
 }
 
 /* =============================================
-   Chat input — mobile responsive overrides
+   Chat input — narrow-screen overrides
+   Two-row floating rounded container, same as
+   desktop (textarea on top, buttons row below).
    ============================================= */
 
 @media (max-width: 768px) {
@@ -1068,85 +1070,45 @@
   }
 
   .agent-chat__input {
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 4px;
-    padding: 6px 8px;
-    margin: 0;
-    position: relative;
-  }
-
-  .agent-chat__toolbar,
-  .agent-chat__toolbar-left,
-  .agent-chat__toolbar-right {
-    display: contents;
-  }
-
-  .input-settings-wrapper {
-    position: static;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 2px 10px 4px;
+    margin: 0 8px 10px;
   }
 
   .agent-chat__input > textarea {
-    flex: 1;
-    order: 2;
-    min-height: 36px;
-    max-height: 100px;
+    min-height: 44px;
+    max-height: 110px;
+    /* ≥16px prevents iOS auto-zoom on focus */
     font-size: 16px;
-    padding: 8px 10px;
-    border-radius: 18px;
-    border: 1px solid var(--border);
-    background: var(--bg);
+    padding: 10px 12px 6px;
+  }
+
+  .agent-chat__toolbar {
+    padding: 4px 2px 2px;
   }
 
   .agent-chat__input-btn {
-    order: 1;
-    flex-shrink: 0;
     width: 44px;
     height: 44px;
-    min-width: 44px;
-    min-height: 44px;
     border-radius: 50%;
   }
 
+  .chat-send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+
+  /* Single mic entry point on phones: hide the plain STT / blocked-mic
+     button (2nd input-btn in the toolbar) and keep only the hold-to-talk
+     voice toggle. */
   .agent-chat__input-btn:nth-of-type(2) {
     display: none;
   }
 
   .agent-chat__toolbar-left .agent-chat__voice-toggle {
     display: inline-flex;
-  }
-
-  .agent-chat__voice-mode {
-    flex: 1;
-    padding: 0;
-  }
-
-  .agent-chat__voice-mode .agent-chat__input-btn {
-    order: 0;
-  }
-
-  .agent-chat__hold-btn {
-    min-height: 56px;
-    font-size: 16px;
-  }
-
-  .input-settings-wrapper {
-    order: 3;
-    flex-shrink: 0;
-  }
-
-  .input-settings-wrapper .agent-chat__input-btn {
-    order: unset;
-  }
-
-  .chat-send-btn {
-    order: 4;
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    border-radius: 50%;
   }
 
   .agent-chat__token-count {
@@ -1156,6 +1118,22 @@
   .agent-chat__toolbar-right .btn--ghost,
   .agent-chat__toolbar-right .token-ring {
     display: none;
+  }
+
+  .agent-chat__voice-mode {
+    padding: 4px 0 6px;
+  }
+
+  .agent-chat__hold-btn {
+    min-height: 56px;
+    font-size: 16px;
+  }
+
+  /* position:static anchors the popover to .agent-chat__input instead of
+     the gear button, so a wide popover cannot overflow the screen's left
+     edge (the gear sits near it). */
+  .input-settings-wrapper {
+    position: static;
   }
 
   .input-settings-popover {
