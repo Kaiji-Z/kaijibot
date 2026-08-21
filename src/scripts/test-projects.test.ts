@@ -272,6 +272,39 @@ describe("test-projects args", () => {
     ]);
   });
 
+  it("routes control ui targets to the ui config", () => {
+    expect(buildVitestRunPlans(["ui/src/ui/views/chat.test.ts"])).toEqual([
+      {
+        config: "vitest/vitest.ui.config.ts",
+        forwardedArgs: [],
+        includePatterns: ["ui/src/ui/views/chat.test.ts"],
+        watchMode: false,
+      },
+    ]);
+  });
+
+  it("routes control ui i18n targets to the ui config", () => {
+    expect(buildVitestRunPlans(["ui/src/i18n/test/translate.test.ts"])).toEqual([
+      {
+        config: "vitest/vitest.ui.config.ts",
+        forwardedArgs: [],
+        includePatterns: ["ui/src/i18n/test/translate.test.ts"],
+        watchMode: false,
+      },
+    ]);
+  });
+
+  it("routes the ui package root to the ui config", () => {
+    expect(buildVitestRunPlans(["ui"])).toEqual([
+      {
+        config: "vitest/vitest.ui.config.ts",
+        forwardedArgs: [],
+        includePatterns: ["ui/**/*.test.ts"],
+        watchMode: false,
+      },
+    ]);
+  });
+
   it("routes tui targets to the tui config", () => {
     expect(buildVitestRunPlans(["src/tui/tui.test.ts"])).toEqual([
       {

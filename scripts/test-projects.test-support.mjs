@@ -377,7 +377,7 @@ function classifyTarget(arg, cwd) {
   if (relative.startsWith("src/plugins/")) {
     return "plugin";
   }
-  if (relative.startsWith("ui/src/ui/")) {
+  if (relative === "ui" || relative.startsWith("ui/")) {
     return "ui";
   }
   if (relative.startsWith("src/utils/")) {

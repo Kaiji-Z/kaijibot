@@ -48,7 +48,7 @@ const FULL_SUITE_CONFIG_WEIGHT = new Map([
   ["vitest/vitest.commands-light.config.ts", 48],
   ["vitest/vitest.plugin-sdk.config.ts", 46],
   ["vitest/vitest.auto-reply-top-level.config.ts", 45],
-  ["vitest/vitest.unit-ui.config.ts", 40],
+  ["vitest/vitest.ui.config.ts", 40],
   ["vitest/vitest.plugin-sdk-light.config.ts", 38],
   ["vitest/vitest.daemon.config.ts", 36],
   ["vitest/vitest.boundary.config.ts", 34],

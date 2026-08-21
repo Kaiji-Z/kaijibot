@@ -25,6 +25,7 @@ overrides:
   yauzl: 3.2.1
   protobufjs: 7.6.5
   undici: 8.7.0
+  jsdom>undici: 7.24.5
   fast-uri: 3.1.3
   ws: 8.21.1
 
@@ -263,7 +264,7 @@ importers:
         version: 0.34.5
       '@larksuite/cli':
         specifier: latest
-        version: 1.0.87
+        version: 1.0.88
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -1603,8 +1604,8 @@ packages:
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
 
-  '@larksuite/cli@1.0.87':
-    resolution: {integrity: sha512-IQ5rsrbWS9JrCiWN19TQJ3tLmHwwYxhCJuKSTPeBPtD5lJuQElKrrFmLRonA0DXkk5V5cJl5lLLG5gmLwaLN8w==}
+  '@larksuite/cli@1.0.88':
+    resolution: {integrity: sha512-Z6GcJ442sHFsGDviu4KFsLun6bklK23WeFkPQopioDepNixYC1WeJMILK1RAGetSzp/KKent7pjQFEKduK5tLA==}
     engines: {node: '>=16'}
     cpu: [x64, arm64, riscv64]
     os: [darwin, linux, win32]
@@ -5158,6 +5159,10 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
+  undici@7.24.5:
+    resolution: {integrity: sha512-3IWdCpjgxp15CbJnsi/Y9TCDE7HWVN19j1hmzVhoAkY/+CJx449tVxT5wZc1Gwg8J+P0LWvzlBzxYRnHJ+1i7Q==}
+    engines: {node: '>=20.18.1'}
+
   undici@8.7.0:
     resolution: {integrity: sha512-N7iQtfyLhIMOFgQubvmLV26svHpO0bqKnAiWotTQCVKCmWrcGbBotPuW1x+xwYZ2VHdSTVUfPQQnlEt1/LouTQ==}
     engines: {node: '>=22.19.0'}
@@ -6547,7 +6552,7 @@ snapshots:
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
 
-  '@larksuite/cli@1.0.87':
+  '@larksuite/cli@1.0.88':
     dependencies:
       '@clack/prompts': 1.2.0
     optional: true
@@ -8878,7 +8883,7 @@ snapshots:
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 4.1.4
-      undici: 8.7.0
+      undici: 7.24.5
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -10207,6 +10212,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   undici-types@7.18.2: {}
+
+  undici@7.24.5: {}
 
   undici@8.7.0: {}
 
