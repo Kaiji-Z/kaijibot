@@ -59,6 +59,10 @@ import { loadOrCreateDeviceIdentity } from "./device-identity.js";
 import { formatErrorMessage, hasErrnoCode } from "./errors.js";
 import { isWithinActiveHours } from "./heartbeat-active-hours.js";
 import {
+  buildDegenerateReplyFallback,
+  isDegenerateReplyText,
+} from "./heartbeat-degeneration-guard.js";
+import {
   buildEvolutionEventPrompt,
   buildInsightEventPrompt,
   buildExecEventPrompt,
@@ -118,6 +122,8 @@ export type HeartbeatDeps = OutboundSendDeps &
   };
 
 const log = createSubsystemLogger("gateway/heartbeat");
+
+const DEFAULT_HEARTBEAT_RUN_TIMEOUT_SECONDS = 600;
 let heartbeatRunnerRuntimePromise: Promise<typeof import("./heartbeat-runner.runtime.js")> | null =
   null;
 
@@ -1061,8 +1067,13 @@ export async function runHeartbeatOnce(opts: {
   try {
     const heartbeatModelOverride = normalizeOptionalString(heartbeat?.model);
     const suppressToolErrorWarnings = heartbeat?.suppressToolErrorWarnings === true;
+    // Background relay turns must never inherit the multi-day global agent
+    // timeout: a degenerating stream once ran 16-18 minutes before the
+    // provider gave up. 10 minutes is generous for relay turns with tools.
     const timeoutOverrideSeconds =
-      typeof heartbeat?.timeoutSeconds === "number" ? heartbeat.timeoutSeconds : undefined;
+      typeof heartbeat?.timeoutSeconds === "number"
+        ? heartbeat.timeoutSeconds
+        : DEFAULT_HEARTBEAT_RUN_TIMEOUT_SECONDS;
     const bootstrapContextMode: "lightweight" | undefined =
       heartbeat?.lightContext === true ? "lightweight" : undefined;
     const replyOpts = {
@@ -1123,6 +1134,28 @@ export async function runHeartbeatOnce(opts: {
     if (eventFallbackText) {
       normalized.text = eventFallbackText;
       normalized.shouldSkip = false;
+    }
+    // Last-line circuit breaker: a relay turn stuck in a degenerate loop must
+    // never reach a channel. The stored insight event is itself verified, so
+    // insight relays fall back to the original text instead of the garbage.
+    let degenerateBlocked: { reason: "length" | "repetition"; replyChars: number } | null = null;
+    const relaySourceText = normalized.text.trim();
+    if (relaySourceText && !normalized.shouldSkip) {
+      const verdict = isDegenerateReplyText(relaySourceText);
+      if (verdict.degenerate) {
+        const insightEventText = preflight.pendingEventEntries.find((event) =>
+          String(event.contextKey ?? "").startsWith("insight:"),
+        )?.text;
+        normalized.text = buildDegenerateReplyFallback(insightEventText);
+        normalized.shouldSkip = false;
+        degenerateBlocked = { reason: verdict.reason, replyChars: relaySourceText.length };
+        log.warn("heartbeat reply blocked by degeneration guard; delivering fallback", {
+          reason: verdict.reason,
+          replyChars: relaySourceText.length,
+          shingleRatio: verdict.shingleRatio,
+          hasInsightFallback: Boolean(insightEventText),
+        });
+      }
     }
     const shouldSkipMain =
       normalized.shouldSkip && !normalized.hasMedia && !hasExecCompletion && !hasEvolutionSignal;
@@ -1346,6 +1379,10 @@ export async function runHeartbeatOnce(opts: {
       channel: delivery.channel,
       accountId: delivery.accountId,
       indicatorType: visibility.useIndicator ? resolveIndicatorType("sent") : undefined,
+      replyChars: normalized.text.length,
+      ...(degenerateBlocked
+        ? { degenerateBlocked: degenerateBlocked.reason, blockedReplyChars: degenerateBlocked.replyChars }
+        : {}),
     });
     await updateTaskTimestamps();
     consumeInspectedSystemEvents();

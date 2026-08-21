@@ -21,6 +21,12 @@ export type HeartbeatEventPayload = {
   silent?: boolean;
   /** Indicator type for UI status display. */
   indicatorType?: HeartbeatIndicatorType;
+  /** Length of the delivered reply text (incident forensics: 2026-08 events had no size trail). */
+  replyChars?: number;
+  /** Set when the degeneration guard replaced the reply with a bounded fallback. */
+  degenerateBlocked?: "length" | "repetition";
+  /** Length of the original (blocked) reply when the guard fired. */
+  blockedReplyChars?: number;
 };
 
 export function resolveIndicatorType(
@@ -64,6 +70,10 @@ export function emitHeartbeatEvent(evt: Omit<HeartbeatEventPayload, "ts">) {
       to: enriched.to,
       channel: enriched.channel,
       durationMs: enriched.durationMs,
+      replyChars: enriched.replyChars,
+      ...(enriched.degenerateBlocked
+        ? { degenerateBlocked: enriched.degenerateBlocked, blockedReplyChars: enriched.blockedReplyChars }
+        : {}),
     };
     if (enriched.status === "failed") {
       log.warn(message, meta);
