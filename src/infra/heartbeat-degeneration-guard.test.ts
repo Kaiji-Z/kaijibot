@@ -10,7 +10,7 @@ function legitVariedText(chars: number): string {
   while (parts.join("\n").length < chars) {
     i += 1;
     parts.push(
-      `检查项 ${i}：深蹲容量 ${(i * 7) % 300}kg、静息心率 ${(i * 3) % 40 + 50}bpm、睡眠窗口 ${i % 8}h——每行内容互不相同，用于构造高区分度的合法长文本样本。`,
+      `检查项 ${i}：深蹲容量 ${(i * 7) % 300}kg、静息心率 ${((i * 3) % 40) + 50}bpm、睡眠窗口 ${i % 8}h——每行内容互不相同，用于构造高区分度的合法长文本样本。`,
     );
   }
   return parts.join("\n");

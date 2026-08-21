@@ -72,7 +72,10 @@ export function emitHeartbeatEvent(evt: Omit<HeartbeatEventPayload, "ts">) {
       durationMs: enriched.durationMs,
       replyChars: enriched.replyChars,
       ...(enriched.degenerateBlocked
-        ? { degenerateBlocked: enriched.degenerateBlocked, blockedReplyChars: enriched.blockedReplyChars }
+        ? {
+            degenerateBlocked: enriched.degenerateBlocked,
+            blockedReplyChars: enriched.blockedReplyChars,
+          }
         : {}),
     };
     if (enriched.status === "failed") {

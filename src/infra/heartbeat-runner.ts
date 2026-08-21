@@ -1381,7 +1381,10 @@ export async function runHeartbeatOnce(opts: {
       indicatorType: visibility.useIndicator ? resolveIndicatorType("sent") : undefined,
       replyChars: normalized.text.length,
       ...(degenerateBlocked
-        ? { degenerateBlocked: degenerateBlocked.reason, blockedReplyChars: degenerateBlocked.replyChars }
+        ? {
+            degenerateBlocked: degenerateBlocked.reason,
+            blockedReplyChars: degenerateBlocked.replyChars,
+          }
         : {}),
     });
     await updateTaskTimestamps();
