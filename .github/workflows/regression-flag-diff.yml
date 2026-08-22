@@ -10,9 +10,16 @@ permissions:
 
 jobs:
   flag-diff:
-    name: Cognitive flag on/off regression
+    name: Flag on/off regression (${{ matrix.flag }})
     runs-on: ubuntu-22.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        flag:
+          - cognitive.enabled
+          - cognitive.evolution.enabled
+          - cognitive.correction.enabled
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,5 +28,5 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Run flag-based regression diff (cognitive on vs off)
-        run: node scripts/regression-flag-diff.mjs src/cognitive
+      - name: Run flag-based regression diff (${{ matrix.flag }})
+        run: node scripts/regression-flag-diff.mjs src/cognitive --flag ${{ matrix.flag }}
