@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { createSupervisor, type SupervisionResult } from "../../../test/helpers/eval/supervisor.js";
 import type { PersonaTree } from "../types.js";
 import type { Fragment, FragmentCluster } from "./fragment-types.js";
 import {
@@ -15,6 +16,34 @@ import {
 } from "./llm-engine.js";
 import type { WebSearchResult } from "./llm-engine.js";
 import type { InsightEngineInput } from "./types.js";
+
+// §3.2 clean-context judge wiring (VERIFICATION.md Layer 2). The judge sees ONLY
+// the frozen acceptance text below + the generated insight — never the code,
+// persona fixture, or prompt. Expected text frozen from docs/ACCEPTANCE.md §1.
+const EXPECTED_INSIGHT = [
+  "The system proactively pushes an insight to the user.",
+  "It references at least one real domain from the user's actual interests",
+  "(e.g. cognitive-system design, TypeScript, MCP, Rust, Feishu integration).",
+  "It reads like a friend sharing a thought in natural conversational Chinese,",
+  "not a formal report or notification.",
+  "It is semantically distinct from prior insights already delivered.",
+  "Web-search evidence, if cited, appears as supporting context (e.g. 根据 [0]),",
+  "never as an imperative instruction to the user.",
+  "It MUST NOT: invent domains the user never expressed interest in, contain",
+  "citation-index leaks like [12], or include commands directed at the user",
+  "(click / download / transfer money / share API key).",
+].join(" ");
+
+const EXPECTED_PATTERN_INSIGHT = [
+  "The system shares a behavioral observation about the user's own thinking pattern,",
+  "grounded in these observed fragments: a methodological habit of reaching for a",
+  "default solution (caching) before analyzing the bottleneck; a gap between stated",
+  "priority (ship fast) and actual choices (optimize for completeness); a hidden",
+  "assumption that every problem has an elegant abstraction.",
+  "It is phrased as a personal, tentative observation about the user in natural",
+  "conversational Chinese — not a generic productivity tip, not a command, and not",
+  "a restatement of one fragment as a bullet point.",
+].join(" ");
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
@@ -275,6 +304,8 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
   () => {
     const ROUNDS = 3;
     const TARGET_DOMAINS = ["认知系统设计", "TypeScript", "MCP", "Rust"];
+    const { supervise } = createSupervisor({ generateText: callLLM });
+    const supervisions: SupervisionResult[] = [];
 
     it(`generates ${ROUNDS} rounds of insights and evaluates quality`, async () => {
       const persona = makePersona();
@@ -328,6 +359,22 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
           }
         }
 
+        const supervision = await supervise({
+          expected: EXPECTED_INSIGHT,
+          actual: insights[0]!.content ?? "",
+          artifactKind: "proactive insight (knowledge mode)",
+        });
+        supervisions.push(supervision);
+        console.log(
+          `  Supervisor: ${supervision.passed ? "PASS" : "FAIL"} (mean ${supervision.mean.toFixed(2)}) ` +
+            Object.entries(supervision.scores)
+              .map(([d, s]) => `${d}=${s.toFixed(2)}`)
+              .join(" "),
+        );
+        if (supervision.deductions.length > 0) {
+          console.log(`  Supervisor deductions: ${supervision.deductions.join("; ")}`);
+        }
+
         if (insights[0]) {
           persona.feedbackProfile.recentInsightContents.push(insights[0].content);
           if (persona.feedbackProfile.recentInsightContents.length > 5) {
@@ -375,6 +422,10 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
       expect(naturalRate).toBeGreaterThanOrEqual(0.7);
       expect(indexLeakRate).toBe(0);
 
+      for (const s of supervisions) {
+        expect(s.passed, `supervisor rejected insight: ${s.deductions.join("; ")}`).toBe(true);
+      }
+
       const openings = rawInsights.map((c) => c.slice(0, 8));
       const uniqueOpenings = new Set(openings);
       expect(uniqueOpenings.size).toBeGreaterThanOrEqual(Math.ceil(rawInsights.length * 0.5));
@@ -385,6 +436,8 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)(
 // ═════════════════════════════════════════════════════════════════════════
 
 describe.skipIf(!isLive || !ZAI_API_KEY)("pattern mode", () => {
+  const { supervise } = createSupervisor({ generateText: callLLM });
+
   function makeFragments(): Fragment[] {
     const now = Date.now();
     return [
@@ -473,6 +526,22 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("pattern mode", () => {
     const content = insights[0]!.content ?? "";
     expect(content.length).toBeGreaterThan(20);
     expect(isSubstantiveContent(content)).toBe(true);
+
+    const supervision = await supervise({
+      expected: EXPECTED_PATTERN_INSIGHT,
+      actual: content,
+      artifactKind: "proactive insight (pattern mode)",
+    });
+    console.log(
+      `  Supervisor: ${supervision.passed ? "PASS" : "FAIL"} (mean ${supervision.mean.toFixed(2)})`,
+    );
+    if (supervision.deductions.length > 0) {
+      console.log(`  Supervisor deductions: ${supervision.deductions.join("; ")}`);
+    }
+    expect(
+      supervision.passed,
+      `supervisor rejected pattern insight: ${supervision.deductions.join("; ")}`,
+    ).toBe(true);
 
     const bannedHits = GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(content));
     expect(bannedHits.length).toBe(0);

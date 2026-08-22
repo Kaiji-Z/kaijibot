@@ -5,8 +5,26 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { createSupervisor } from "../../../test/helpers/eval/supervisor.js";
 import { generateSkillDraftLLM, buildPrompt, validateAndRepair } from "./llm-draft-generator.js";
 import type { EvolutionCandidate } from "./types.js";
+
+// §3.2 clean-context judge wiring (VERIFICATION.md Layer 2). The judge sees ONLY
+// the frozen acceptance text below + the generated draft — never the code,
+// candidate fixture, or prompt. Expected text frozen from docs/ACCEPTANCE.md §2.
+const EXPECTED_SKILL_DRAFT = [
+  "The system generated a SKILL.md draft that captures a repeated complex workflow",
+  "(e.g. archiving Feishu meeting notes into a knowledge base and creating tracking",
+  "tasks, or debugging a RAG retrieval-precision problem) so the agent can re-run it",
+  "on similar future requests.",
+  "A good draft has: a kebab-case name, a description that states what the skill",
+  "does, at least 3 trigger phrases covering both Chinese and English phrasings,",
+  "a workflow section with concrete steps, references to the real tools involved",
+  "(Feishu VC/doc/wiki/task tools, or code search/edit/test tools), and a body",
+  "under 200 lines.",
+  "It MUST NOT: reference tools that do not exist, be a generic template unrelated",
+  "to the observed task, or bury the core procedure in vague prose.",
+].join(" ");
 
 const isLive = process.env.KAIJIBOT_LIVE_TEST === "1" || process.env.LIVE === "1";
 const ZAI_API_KEY = process.env.ZAI_API_KEY;
@@ -190,6 +208,8 @@ function evaluateDraft(
 }
 
 describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM skill draft", () => {
+  const { supervise } = createSupervisor({ generateText: callLLM });
+
   it("generates a valid SKILL.md for a complex feishu task", async () => {
     const candidate = makeComplexCandidate();
 
@@ -223,11 +243,27 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
     );
     console.log(`  References real tools: ${report.referencesRealTools}\n`);
 
+    const supervision = await supervise({
+      expected: EXPECTED_SKILL_DRAFT,
+      actual: `name: ${draft.name}\ndescription: ${draft.description}\ntriggers: ${draft.triggerPhrases.join(", ")}\n\n${draft.bodyMarkdown}`,
+      artifactKind: "self-evolved skill draft",
+    });
+    console.log(
+      `  Supervisor: ${supervision.passed ? "PASS" : "FAIL"} (mean ${supervision.mean.toFixed(2)})`,
+    );
+    if (supervision.deductions.length > 0) {
+      console.log(`  Supervisor deductions: ${supervision.deductions.join("; ")}`);
+    }
+    expect(
+      supervision.passed,
+      `supervisor rejected draft: ${supervision.deductions.join("; ")}`,
+    ).toBe(true);
+
     expect(draft.name).toBeTruthy();
     expect(draft.description.length).toBeGreaterThan(5);
     expect(draft.triggerPhrases.length).toBeGreaterThanOrEqual(3);
     expect(report.score).toBeGreaterThanOrEqual(6);
-  }, 120_000);
+  }, 180_000);
 
   it("generates a valid SKILL.md for a trial-and-error debug task", async () => {
     const candidate = makeTrialErrorCandidate();
@@ -242,9 +278,22 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
 
     const report = evaluateDraft(draft, candidate);
 
+    const supervision = await supervise({
+      expected: EXPECTED_SKILL_DRAFT,
+      actual: `name: ${draft.name}\ndescription: ${draft.description}\ntriggers: ${draft.triggerPhrases.join(", ")}\n\n${draft.bodyMarkdown}`,
+      artifactKind: "self-evolved skill draft",
+    });
+    console.log(
+      `  Supervisor: ${supervision.passed ? "PASS" : "FAIL"} (mean ${supervision.mean.toFixed(2)})`,
+    );
+    expect(
+      supervision.passed,
+      `supervisor rejected draft: ${supervision.deductions.join("; ")}`,
+    ).toBe(true);
+
     expect(draft.name).toBeTruthy();
     expect(report.score).toBeGreaterThanOrEqual(5);
-  }, 120_000);
+  }, 180_000);
 
   it("prompt contains skill-creator spec and candidate info", () => {
     const candidate = makeComplexCandidate();
@@ -309,6 +358,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
 
     const names = new Set<string>();
     const reports: DraftQualityReport[] = [];
+    const supervisions: Array<{ passed: boolean; mean: number; deductions: string[] }> = [];
 
     for (let i = 0; i < candidates.length; i++) {
       const candidate = candidates[i]!;
@@ -317,6 +367,17 @@ describe.skipIf(!isLive || !ZAI_API_KEY)("live evolution quality — real LLM sk
 
       const report = evaluateDraft(draft, candidate);
       reports.push(report);
+
+      const supervision = await supervise({
+        expected: EXPECTED_SKILL_DRAFT,
+        actual: `name: ${draft.name}\ndescription: ${draft.description}\ntriggers: ${draft.triggerPhrases.join(", ")}\n\n${draft.bodyMarkdown}`,
+        artifactKind: "self-evolved skill draft",
+      });
+      supervisions.push(supervision);
+      expect(
+        supervision.passed,
+        `supervisor rejected draft "${draft.name}": ${supervision.deductions.join("; ")}`,
+      ).toBe(true);
 
       console.log(
         `\n  [Round ${i + 1}] "${candidate.taskSummary.slice(0, 30)}..." → ${draft.name}`,
