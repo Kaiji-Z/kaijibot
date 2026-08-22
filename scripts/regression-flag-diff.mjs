@@ -8,7 +8,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
  * (flag=on) and once with it DISABLED (flag=off) — then diffs the per-test
  * results to surface "what silently broke" when the feature is active.
  *
- * Mechanism: toggles `cognitive.enabled` via two temp configs pointed at by
+ * Mechanism: toggles the flag path via two temp configs pointed at by
  * `KAIJIBOT_CONFIG_PATH`, leaving the operator's real config untouched. Vitest
  * is invoked with `--reporter=json` so results are parsed deterministically
  * (no fragile stdout scraping).
@@ -22,8 +22,12 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
  *   ALWAYS-BROKEN   — FAIL both runs (pre-existing, independent of the flag).
  *
  * Usage:
- *   node scripts/regression-flag-diff.mjs [target]   # target defaults to src/cognitive
+ *   node scripts/regression-flag-diff.mjs [target] [--flag <config.path>]
  *   node scripts/regression-flag-diff.mjs src/cognitive/insight
+ *   node scripts/regression-flag-diff.mjs src/cognitive --flag cognitive.evolution.enabled
+ *
+ * The flag path defaults to `cognitive.enabled`. Any dotted config path
+ * pointing at a boolean can be toggled (e.g. cognitive.correction.enabled).
  *
  * Exit code: 1 if any REGRESSION found, else 0.
  */
@@ -32,6 +36,27 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
+
+// ---------------------------------------------------------------------------
+// Args.
+// ---------------------------------------------------------------------------
+function parseArgs(argv) {
+  const positional = [];
+  let flagPath = "cognitive.enabled";
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--flag") {
+      flagPath = argv[i + 1] ?? "";
+      i += 1;
+    } else {
+      positional.push(argv[i]);
+    }
+  }
+  if (!/^[a-zA-Z_][\w]*(:?\.[a-zA-Z_][\w]*)*$/.test(flagPath)) {
+    console.error(`Invalid --flag path: "${flagPath}"`);
+    process.exit(2);
+  }
+  return { target: positional[0] ?? "src/cognitive", flagPath };
+}
 
 // ---------------------------------------------------------------------------
 // Config resolution (mirrors src/config: KAIJIBOT_CONFIG_PATH > KAIJIBOT_HOME).
@@ -52,11 +77,28 @@ async function readJsonMaybe(filePath) {
   }
 }
 
-/** Deep-merge a partial override into a config object (shallow-per-key is enough here). */
-function withCognitiveToggle(config, enabled) {
+/** Deep-merge a flag override into a config object, creating intermediate objects. */
+function setFlagByPath(config, flagPath, enabled) {
   const clone = structuredClone(config);
-  clone.cognitive = { ...clone.cognitive, enabled };
+  const parts = flagPath.split(".");
+  let node = clone;
+  for (let i = 0; i < parts.length - 1; i++) {
+    node[parts[i]] = { ...node[parts[i]] };
+    node = node[parts[i]];
+  }
+  node[parts[parts.length - 1]] = enabled;
   return clone;
+}
+
+function getFlagByPath(config, flagPath) {
+  let node = config;
+  for (const part of flagPath.split(".")) {
+    if (node === null || typeof node !== "object") {
+      return undefined;
+    }
+    node = node[part];
+  }
+  return node;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,12 +196,12 @@ function classifyDiff(onResults, offResults) {
 // Main.
 // ---------------------------------------------------------------------------
 async function main() {
-  const target = process.argv[2] ?? "src/cognitive";
+  const { target, flagPath } = parseArgs(process.argv.slice(2));
   const realConfigPath = resolveRealConfigPath();
   const baseConfig = await readJsonMaybe(realConfigPath);
 
-  if (baseConfig.cognitive?.enabled === false) {
-    console.warn(`⚠️  Real config has cognitive.enabled=false; the "off" run will match baseline.`);
+  if (getFlagByPath(baseConfig, flagPath) === false) {
+    console.warn(`⚠️  Real config has ${flagPath}=false; the "off" run will match baseline.`);
   }
 
   const workDir = await mkdtemp(path.join(tmpdir(), "kaiji-flagdiff-"));
@@ -168,22 +210,25 @@ async function main() {
   const onOutput = path.join(workDir, "on-results.json");
   const offOutput = path.join(workDir, "off-results.json");
 
-  await writeFile(onConfigPath, JSON.stringify(withCognitiveToggle(baseConfig, true), null, 2));
-  await writeFile(offConfigPath, JSON.stringify(withCognitiveToggle(baseConfig, false), null, 2));
+  await writeFile(onConfigPath, JSON.stringify(setFlagByPath(baseConfig, flagPath, true), null, 2));
+  await writeFile(
+    offConfigPath,
+    JSON.stringify(setFlagByPath(baseConfig, flagPath, false), null, 2),
+  );
 
-  console.log(`Flag-regression diff — target: ${target}`);
+  console.log(`Flag-regression diff — target: ${target}, flag: ${flagPath}`);
   console.log(`Real config: ${realConfigPath}`);
   console.log(`Temp configs: ${workDir}\n`);
 
   try {
-    console.log("▶ Run 1/2: cognitive ENABLED (flag=on)…");
+    console.log(`▶ Run 1/2: ${flagPath} ENABLED (flag=on)…`);
     await runVitestWithConfig({
       configPath: onConfigPath,
       target,
       outputFile: onOutput,
       env: process.env,
     });
-    console.log("▶ Run 2/2: cognitive DISABLED (flag=off)…\n");
+    console.log(`▶ Run 2/2: ${flagPath} DISABLED (flag=off)…\n`);
     await runVitestWithConfig({
       configPath: offConfigPath,
       target,
@@ -201,7 +246,7 @@ async function main() {
     console.log(`Tests run: ${totalOn} (on) / ${totalOff} (off)`);
     console.log(`Stable: ${diff.stablePassed} pass, ${diff.stableFailed} same-status-non-pass`);
     console.log(
-      `Feature-only (pass-on / fail-off): ${diff.featureOnly.length}  ← expected for cognitive suites`,
+      `Feature-only (pass-on / fail-off): ${diff.featureOnly.length}  ← expected for flag-dependent suites`,
     );
     console.log(`Always-broken (fail both): ${diff.alwaysBroken.length}`);
     console.log(`🔴 REGRESSIONS (pass-off / fail-on): ${diff.regression.length}`);
@@ -221,7 +266,7 @@ async function main() {
     console.log("━".repeat(60));
     console.log(
       diff.regression.length === 0
-        ? "✅ No regressions introduced by cognitive=on."
+        ? `✅ No regressions introduced by ${flagPath}=on.`
         : `❌ ${diff.regression.length} regression(s) — see above.`,
     );
 
