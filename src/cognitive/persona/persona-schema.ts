@@ -67,6 +67,9 @@ const feedbackProfileSchema = z.object({
   consecutiveResolveFailures: z.number().optional(),
   recentInsightModes: z.array(z.string()).optional().default([]),
   lastNoResponseAt: z.number().optional(),
+  lastReEngageAttemptAt: z.number().optional(),
+  dailySendAnchorDay: z.number().optional(),
+  dailySendCount: z.number().optional(),
   pendingInsightDelivery: z
     .object({
       candidate: z.unknown(),

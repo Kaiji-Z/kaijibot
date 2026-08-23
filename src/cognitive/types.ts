@@ -126,6 +126,20 @@ export type FeedbackProfile = {
    */
   lastNoResponseAt?: number;
   /**
+   * Timestamp of the last re-engagement budget attempt (the low-rate
+   * check-in channel for long-silent users). Rate-limited to one attempt
+   * per 14 days; see scheduler/re-engagement.ts.
+   */
+  lastReEngageAttemptAt?: number;
+  /**
+   * Day index (UTC day, floor(ts/24h)) the daily insight budget counter
+   * belongs to. A mismatch with the current day means the counter rolled
+   * over. See scheduler/delivery-pacing.ts.
+   */
+  dailySendAnchorDay?: number;
+  /** Insights already delivered within dailySendAnchorDay (self-restraint cap). */
+  dailySendCount?: number;
+  /**
    * Insight generated but not delivered by proactive push. Retried at most once
    * on a scheduler event (bypassing gate and LLM); after that it is kept for
    * handshake injection only (next user conversation) until it expires (24h).

@@ -15,6 +15,7 @@ export const CognitiveProactiveSchema = z
     digestMode: z.enum(["realtime", "daily", "weekly"]).optional(),
     costFalseNegative: z.number().min(0.1).max(100).optional(),
     costFalseAlarm: z.number().min(0.1).max(100).optional(),
+    maxDailyInsights: z.number().min(1).max(20).optional(),
   })
   .strict()
   .optional();

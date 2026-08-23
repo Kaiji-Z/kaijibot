@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import type { UserLifecycle } from "../types.js";
 import {
   computeLifecycleStage,
-  shouldReEngage,
   getDecayMultiplier,
   getProactiveFrequencyFactor,
 } from "./lifecycle.js";
@@ -55,25 +54,9 @@ describe("computeLifecycleStage", () => {
   });
 });
 
-describe("shouldReEngage", () => {
-  it("returns true for dormant user after 7 days silence", () => {
-    const now = Date.now();
-    const lc = makeLifecycle({ stage: "dormant", lastActiveAt: now - 8 * DAY_MS });
-    expect(shouldReEngage(lc, now)).toBe(true);
-  });
-
-  it("returns false for dormant user within 7 days", () => {
-    const now = Date.now();
-    const lc = makeLifecycle({ stage: "dormant", lastActiveAt: now - 5 * DAY_MS });
-    expect(shouldReEngage(lc, now)).toBe(false);
-  });
-
-  it("returns false for active users", () => {
-    const now = Date.now();
-    const lc = makeLifecycle({ stage: "active", lastActiveAt: now - 20 * DAY_MS });
-    expect(shouldReEngage(lc, now)).toBe(false);
-  });
-});
+// MIGRATED (goal 洞察投放人化重构): shouldReEngage removed — dormant
+// re-engagement is a low-rate budget channel in the scheduler, not a pNeed
+// multiplier. See human-cadence.sim.test.ts dormant scenario.
 
 describe("getDecayMultiplier", () => {
   it("returns 1.0 for active", () => {
@@ -102,8 +85,11 @@ describe("getProactiveFrequencyFactor", () => {
     expect(getProactiveFrequencyFactor(makeLifecycle({ stage: "new" }))).toBe(2.0);
   });
 
-  it("returns 0.5 for dormant", () => {
-    expect(getProactiveFrequencyFactor(makeLifecycle({ stage: "dormant" }))).toBe(0.5);
+  // MIGRATED (goal 洞察投放人化重构): dormant 0.5 → 1.5 — silent users are
+  // contacted LESS often; the old 0.5 doubled pNeed for exactly the users
+  // most likely to experience contact as disturbance.
+  it("returns 1.5 for dormant", () => {
+    expect(getProactiveFrequencyFactor(makeLifecycle({ stage: "dormant" }))).toBe(1.5);
   });
 
   it("returns 3.0 for lapsed", () => {

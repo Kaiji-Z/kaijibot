@@ -1,0 +1,44 @@
+
+> kaijibot@2026.8.21-1 test /home/kaiji/projects/KaijiBot
+> node scripts/test-projects.mjs src/cognitive/
+
+
+ RUN  v4.1.9 /home/kaiji/projects/KaijiBot
+
+ ❯ |unit| src/cognitive/scheduler/human-cadence.sim.test.ts (6 tests | 2 failed) 1615ms
+     × sometimes user: contact strictly between ignore-all and responsive 891ms
+     × dormant user: low-rate check-ins, strictly fewer contacts than active user 309ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: scenarios (30-day) > sometimes user: contact strictly between ignore-all and responsive
+AssertionError: expected 180 to be less than 180
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:301:41
+    299|
+    300|     expect(sometimes.deliveries.length).toBeGreaterThan(ignoreAll.deli…
+    301|     expect(sometimes.deliveries.length).toBeLessThan(responsive.delive…
+       |                                         ^
+    302|   }, 300_000);
+    303|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: scenarios (30-day) > dormant user: low-rate check-ins, strictly fewer contacts than active user
+AssertionError: expected 0 to be greater than or equal to 1
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:317:39
+    315|     const responsive = await runScenario("responsive");
+    316|
+    317|     expect(dormant.deliveries.length).toBeGreaterThanOrEqual(1);
+       |                                       ^
+    318|     expect(dormant.deliveries.length).toBeLessThanOrEqual(3);
+    319|     expect(dormant.deliveries.length).toBeLessThan(responsive.deliveri…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 75 passed | 9 skipped (85)
+      Tests  2 failed | 1413 passed | 63 skipped (1478)
+   Start at  14:55:44
+   Duration  15.54s (transform 4.86s, setup 406ms, import 7.10s, tests 22.57s, environment 11ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

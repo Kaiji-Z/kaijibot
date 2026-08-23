@@ -1655,6 +1655,7 @@ export async function startGatewayServer(
               epsilonGreedy: cfgAtStart.cognitive?.proactive?.epsilonGreedy,
               costFalseNegative: cfgAtStart.cognitive?.proactive?.costFalseNegative,
               costFalseAlarm: cfgAtStart.cognitive?.proactive?.costFalseAlarm,
+              maxDailyInsights: cfgAtStart.cognitive?.proactive?.maxDailyInsights,
             },
             {
               loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),

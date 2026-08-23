@@ -1518,6 +1518,11 @@ describe("ProactiveScheduler.search — blacklist integration", () => {
 });
 
 describeDet("ProactiveScheduler — semantic dedup", () => {
+  // MIGRATED (goal 洞察投放人化重构): the generator previously returned an
+  // AI-domains candidate through a Rust opportunity — under the old code the
+  // mismatch slipped through (only opportunity domains were freshness-checked).
+  // Candidate-level domain dedup now blocks repeats regardless of opportunity
+  // type, so the generator follows its opportunity's domains like a real LLM.
   it("pre-gen freshness blocks domain-overlapping candidates, exploration passes through", async () => {
     const persona = personaWithDomains();
     persona.feedbackProfile.recentInsightDomains = [["AI/机器学习"]];
@@ -1526,7 +1531,7 @@ describeDet("ProactiveScheduler — semantic dedup", () => {
       id: "dedup-test",
       content: "重复洞察",
       rationale: "test",
-      targetDomains: ["AI/机器学习"],
+      targetDomains: ["Rust"],
       sourceDomains: [],
       relevanceScore: 0.8,
       surpriseScore: 0.5,
@@ -3961,7 +3966,12 @@ describe("applyEpsilonGreedy", () => {
   });
 });
 
-describeDet("ProactiveScheduler — time-based no-response penalty", () => {
+// MIGRATED (goal 洞察投放人化重构): "time-based no-response penalty" →
+// "social ledger lazy transition". The 2×-interval wait was a proxy for
+// "enough time to reply"; the ledger now transitions at the FIRST event
+// after an unanswered send — the reply-side clear (curator) is what keeps
+// this honest.
+describeDet("ProactiveScheduler — social ledger lazy transition", () => {
   const noResponseConfig: SchedulerConfig = {
     minIntervalHours: 4,
     minTrustScore: 0.3,
@@ -3979,7 +3989,7 @@ describeDet("ProactiveScheduler — time-based no-response penalty", () => {
     return persona;
   }
 
-  it("applies no-response penalty when 2× interval elapsed without reply", async () => {
+  it("applies no-response penalty at the first event after an unanswered send", async () => {
     const persona = personaWithStaleProactive();
     let savedPersona: PersonaTree | undefined;
     const scheduler = new ProactiveScheduler(
@@ -4049,7 +4059,11 @@ describeDet("ProactiveScheduler — time-based no-response penalty", () => {
     }
   });
 
-  it("does not fire when less than 2× interval has elapsed", async () => {
+  // MIGRATED (goal 洞察投放人化重构): the 2×-interval wait is gone — the
+  // ledger transitions at the first event after an unanswered send, so this
+  // scenario now FIRES (U becomes 1). Reply-side clearing prevents false
+  // increments; the interval wait no longer does.
+  it("fires immediately even when less than 2× interval has elapsed", async () => {
     const persona = personaWithStaleProactive();
     persona.feedbackProfile.lastProactiveAt = Date.now() - 5 * 3600_000;
     let savedPersona: PersonaTree | undefined;
@@ -4067,9 +4081,8 @@ describeDet("ProactiveScheduler — time-based no-response penalty", () => {
 
     await scheduler.processEvent("user1", { type: "timer", timestamp: Date.now() }, "main");
 
-    if (savedPersona) {
-      expect(savedPersona.feedbackProfile.consecutiveNoResponses).toBe(0);
-    }
+    expect(savedPersona).toBeDefined();
+    expect(savedPersona!.feedbackProfile.consecutiveNoResponses).toBe(1);
   });
 
   it("penalizes the previous insight's domains and mode", async () => {

@@ -1,0 +1,13 @@
+
+> kaijibot@2026.8.21-1 test /home/kaiji/projects/KaijiBot
+> node scripts/test-projects.mjs src/cognitive/scheduler/human-cadence.sim.test.ts
+
+
+ RUN  v4.1.9 /home/kaiji/projects/KaijiBot
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  15:36:14
+   Duration  5.83s (transform 1.71s, setup 18ms, import 4.86s, tests 668ms, environment 0ms)
+

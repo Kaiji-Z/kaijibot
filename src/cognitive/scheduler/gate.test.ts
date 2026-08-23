@@ -182,62 +182,48 @@ describe("computeGradedGate", () => {
     expect(result.pAct).toBeCloseTo(Math.sqrt(result.pNeed * result.pAccept), 10);
   });
 
-  it("p_need increases with time since last proactive (recovery)", () => {
+  // MIGRATED (goal 洞察投放人化重构): pNeed no longer depends on time since
+  // last proactive — anti-double-send belongs to the scheduler's min-interval
+  // cooldown, and waiting longer must not revive propensity (non-revival
+  // invariant, see human-cadence.sim.test.ts).
+  it("p_need is independent of time since last proactive (non-revival)", () => {
     const now = Date.now();
-    const recentCtx = makeGateContext({
-      persona: (() => {
-        const p = createDefaultPersona();
-        p.rapport.trustScore = 0.7;
-        p.rapport.totalExchanges = 10;
-        p.feedbackProfile.lastProactiveAt = now - 1 * 3600_000;
-        p.feedbackProfile.optimalFrequencyHours = 4;
-        p.lifecycle.stage = "active";
-        p.lifecycle.lastActiveAt = now - 2 * 3600_000;
-        p.lifecycle.totalActiveDays = 10;
-        p.domains = {
-          AI: {
-            depth: 5,
-            recurrence: 10,
-            lastMentioned: now,
-            keyInsights: [],
-            activeQuestions: [],
-            negationSignals: 0,
-          },
-        };
-        return p;
-      })(),
-      event: { type: "timer", timestamp: now },
-    });
+    const makePersonaWith = (lastProactiveOffsetMs: number) => {
+      const p = createDefaultPersona();
+      p.rapport.trustScore = 0.7;
+      p.rapport.totalExchanges = 10;
+      p.feedbackProfile.lastProactiveAt = now - lastProactiveOffsetMs;
+      p.feedbackProfile.optimalFrequencyHours = 4;
+      p.lifecycle.stage = "active";
+      p.lifecycle.lastActiveAt = now - 2 * 3600_000;
+      p.lifecycle.totalActiveDays = 10;
+      p.domains = {
+        AI: {
+          depth: 5,
+          recurrence: 10,
+          lastMentioned: now,
+          keyInsights: [],
+          activeQuestions: [],
+          negationSignals: 0,
+        },
+      };
+      return p;
+    };
 
-    const oldCtx = makeGateContext({
-      persona: (() => {
-        const p = createDefaultPersona();
-        p.rapport.trustScore = 0.7;
-        p.rapport.totalExchanges = 10;
-        p.feedbackProfile.lastProactiveAt = now - 24 * 3600_000;
-        p.feedbackProfile.optimalFrequencyHours = 4;
-        p.lifecycle.stage = "active";
-        p.lifecycle.lastActiveAt = now - 2 * 3600_000;
-        p.lifecycle.totalActiveDays = 10;
-        p.domains = {
-          AI: {
-            depth: 5,
-            recurrence: 10,
-            lastMentioned: now,
-            keyInsights: [],
-            activeQuestions: [],
-            negationSignals: 0,
-          },
-        };
-        return p;
-      })(),
-      event: { type: "timer", timestamp: now },
-    });
+    const recentResult = computeGradedGate(
+      makeGateContext({
+        persona: makePersonaWith(1 * 3600_000),
+        event: { type: "timer", timestamp: now },
+      }),
+    );
+    const oldResult = computeGradedGate(
+      makeGateContext({
+        persona: makePersonaWith(24 * 3600_000),
+        event: { type: "timer", timestamp: now },
+      }),
+    );
 
-    const recentResult = computeGradedGate(recentCtx);
-    const oldResult = computeGradedGate(oldCtx);
-
-    expect(oldResult.pNeed).toBeGreaterThan(recentResult.pNeed);
+    expect(oldResult.pNeed).toBeCloseTo(recentResult.pNeed, 10);
   });
 
   it("p_need is higher for persona_change vs timer events", () => {
@@ -780,67 +766,83 @@ describe("computeEngagementFactor", () => {
     expect(factor).toBeGreaterThanOrEqual(0.08);
   });
 
-  it("dormant users get re-engagement boost in pNeed via shouldReEngage", () => {
+  // MIGRATED (goal 洞察投放人化重构): inverted — dormant users must have
+  // LOWER pNeed (lifecycleFactor 1.5, no re-engage multiplier). The old test
+  // asserted dormant > active, which produced 3×/day bombardment of silent
+  // users (sim evidence: .goal/evidence/round1-red-old-code.txt).
+  it("dormant users get reduced p_need vs active users", () => {
     const now = Date.now();
-    const dormantPersona = createDefaultPersona();
-    dormantPersona.rapport.trustScore = 0.7;
-    dormantPersona.rapport.totalExchanges = 20;
-    dormantPersona.feedbackProfile.lastProactiveAt = now - 10 * 3600_000;
-    dormantPersona.feedbackProfile.optimalFrequencyHours = 4;
+    const basePersona = () => {
+      const p = createDefaultPersona();
+      p.rapport.trustScore = 0.7;
+      p.rapport.totalExchanges = 20;
+      p.feedbackProfile.lastProactiveAt = now - 10 * 3600_000;
+      p.feedbackProfile.optimalFrequencyHours = 4;
+      p.lifecycle.lastActiveAt = now - 2 * 3600_000;
+      p.lifecycle.totalActiveDays = 15;
+      p.domains = {
+        AI: {
+          depth: 3,
+          recurrence: 5,
+          lastMentioned: now - 2 * 3600_000,
+          keyInsights: [],
+          activeQuestions: [],
+          negationSignals: 0,
+        },
+      };
+      return p;
+    };
+
+    const dormantPersona = basePersona();
     dormantPersona.lifecycle.stage = "dormant";
-    dormantPersona.lifecycle.lastActiveAt = now - 10 * DAY_MS;
-    dormantPersona.lifecycle.totalActiveDays = 15;
-    dormantPersona.domains = {
-      AI: {
-        depth: 3,
-        recurrence: 5,
-        lastMentioned: now - 10 * DAY_MS,
-        keyInsights: [],
-        activeQuestions: [],
-        negationSignals: 0,
-      },
-    };
-
-    const activePersona = createDefaultPersona();
-    activePersona.rapport.trustScore = 0.7;
-    activePersona.rapport.totalExchanges = 20;
-    activePersona.feedbackProfile.lastProactiveAt = now - 10 * 3600_000;
-    activePersona.feedbackProfile.optimalFrequencyHours = 4;
+    const activePersona = basePersona();
     activePersona.lifecycle.stage = "active";
-    activePersona.lifecycle.lastActiveAt = now - 10 * DAY_MS;
-    activePersona.lifecycle.totalActiveDays = 15;
-    activePersona.domains = {
-      AI: {
-        depth: 3,
-        recurrence: 5,
-        lastMentioned: now - 10 * DAY_MS,
-        keyInsights: [],
-        activeQuestions: [],
-        negationSignals: 0,
-      },
-    };
 
-    const dormantCtx: GateContext = {
+    const dormantResult = computeGradedGate({
       persona: dormantPersona,
       event: { type: "timer", timestamp: now },
       recentInsightCount: 0,
       config: baseConfig,
-    };
-    const activeCtx: GateContext = {
+    });
+    const activeResult = computeGradedGate({
       persona: activePersona,
       event: { type: "timer", timestamp: now },
       recentInsightCount: 0,
       config: baseConfig,
-    };
+    });
 
-    const dormantResult = computeGradedGate(dormantCtx);
-    const activeResult = computeGradedGate(activeCtx);
+    expect(dormantResult.pNeed).toBeLessThan(activeResult.pNeed);
+  });
 
-    expect(dormantResult.pNeed).toBeGreaterThan(activeResult.pNeed);
+  // NEW (goal 洞察投放人化重构): social ledger hard veto.
+  it("ledger veto: U >= 3 hard-vetoes for trusted users", () => {
+    const ctx = makeGateContext();
+    ctx.persona.feedbackProfile.consecutiveNoResponses = 3;
+    ctx.persona.rapport.trustScore = 0.8;
+    const result = computeGradedGate(ctx);
+    expect(result.decision).toBe(false);
+    expect(result.reasons).toEqual(expect.arrayContaining([expect.stringContaining("Ledger")]));
+  });
+
+  it("ledger veto: low-trust users get tighter cap of 2", () => {
+    const ctx = makeGateContext();
+    ctx.persona.rapport.trustScore = 0.6;
+    ctx.persona.feedbackProfile.consecutiveNoResponses = 2;
+    const result = computeGradedGate(ctx);
+    expect(result.decision).toBe(false);
+    expect(result.reasons).toEqual(expect.arrayContaining([expect.stringContaining("cap 2")]));
+  });
+
+  it("ledger below cap does not veto", () => {
+    const ctx = makeGateContext();
+    ctx.persona.rapport.trustScore = 0.8;
+    ctx.persona.feedbackProfile.consecutiveNoResponses = 2;
+    const result = computeGradedGate(ctx);
+    expect(result.reasons).not.toEqual(expect.arrayContaining([expect.stringContaining("Ledger")]));
   });
 });
 
-// ── Time factor (conversation-adaptive) tests ───────────────────────
+// ── Time factor (social-decay: momentum × ledger) tests ──────────────
 
 describe("computeTimeFactor", () => {
   const HR = 3600_000;
@@ -859,201 +861,102 @@ describe("computeTimeFactor", () => {
     return persona;
   }
 
-  it("peaks when user was active near cadencePeak and recovery is high", () => {
+  // MIGRATED (goal 洞察投放人化重构): the entire block below replaces the
+  // cadence-gaussian/recovery/linear-backoff/compensatory semantics with
+  // momentum × ledger-decay semantics. Migration reasons per test are noted
+  // inline; the behavioral contract is enforced end-to-end by
+  // human-cadence.sim.test.ts.
+
+  it("momentum is highest right after user activity and decays with silence", () => {
     const now = Date.now();
-    const optFreq = 4;
-    const cadencePeak = optFreq * 0.6; // 2.4h
+    const at = (offsetH: number) =>
+      computeTimeFactor(
+        makeTimePersona({ lastActiveAt: now - offsetH * HR, lastProactiveAt: 0 }),
+        baseConfig,
+        now,
+      );
 
-    const persona = makeTimePersona({
-      lastActiveAt: now - cadencePeak * HR,
-      lastProactiveAt: now - optFreq * 2 * HR,
-      optimalFrequencyHours: optFreq,
-    });
+    const fresh = at(0.25);
+    const two = at(2);
+    const atDay = at(24);
+    const beyondDay = at(25);
 
-    const factor = computeTimeFactor(persona, baseConfig, now);
-    expect(factor).toBeGreaterThan(0.3);
+    expect(fresh).toBeCloseTo(1.0, 5);
+    expect(two).toBeCloseTo((1.0 / 1.3) * 1.0, 5);
+    expect(atDay).toBeCloseTo(0.85 / 1.3, 5);
+    expect(beyondDay).toBe(0);
+    expect(fresh).toBeGreaterThan(two);
+    expect(two).toBeGreaterThan(atDay);
   });
 
-  it("is near zero right after sending (recoveryFactor depleted)", () => {
+  // MIGRATED: "is near zero right after sending" + "recovers over time" —
+  // anti-double-send moved to the scheduler min-interval cooldown.
+  it("factor is independent of time since last proactive (non-revival)", () => {
     const now = Date.now();
-    const persona = makeTimePersona({
-      lastActiveAt: now - 2 * HR,
-      lastProactiveAt: now - 1000,
-      optimalFrequencyHours: 4,
-    });
+    const recent = makeTimePersona({ lastActiveAt: now - 2 * HR, lastProactiveAt: now - 1000 });
+    const old = makeTimePersona({ lastActiveAt: now - 2 * HR, lastProactiveAt: now - 48 * HR });
 
-    const factor = computeTimeFactor(persona, baseConfig, now);
-    expect(factor).toBeLessThan(0.05);
-  });
-
-  it("recovers over time after sending", () => {
-    const now = Date.now();
-    const optFreq = 4;
-
-    const justSent = makeTimePersona({
-      lastActiveAt: now - 3 * HR,
-      lastProactiveAt: now - 1 * HR,
-      optimalFrequencyHours: optFreq,
-    });
-    const longAgo = makeTimePersona({
-      lastActiveAt: now - 3 * HR,
-      lastProactiveAt: now - 8 * HR,
-      optimalFrequencyHours: optFreq,
-    });
-
-    const factorJust = computeTimeFactor(justSent, baseConfig, now);
-    const factorLong = computeTimeFactor(longAgo, baseConfig, now);
-    expect(factorLong).toBeGreaterThan(factorJust);
-  });
-
-  it("backoffFactor decays mildly with consecutive no-responses (linear, floored at 0.7)", () => {
-    const now = Date.now();
-    const base = {
-      lastActiveAt: now - 3 * HR,
-      lastProactiveAt: now - 6 * HR,
-      optimalFrequencyHours: 4,
-    };
-
-    const noBacklog = makeTimePersona({ ...base, consecutiveNoResponses: 0 });
-    const backlog3 = makeTimePersona({ ...base, consecutiveNoResponses: 3 });
-
-    const factor0 = computeTimeFactor(noBacklog, baseConfig, now);
-    const factor3 = computeTimeFactor(backlog3, baseConfig, now);
-
-    expect(factor0).toBeGreaterThan(factor3);
-    // Linear: (1.0 - 0.03*3) / 1.0 = 0.91
-    const expectedRatio = 1.0 - 0.03 * 3;
-    expect(factor3).toBeCloseTo(factor0 * expectedRatio, 2);
-  });
-
-  it("no death spiral: high ignore count still retains floor (>0)", () => {
-    const now = Date.now();
-    const base = {
-      lastActiveAt: now - 3 * HR,
-      lastProactiveAt: now - 6 * HR,
-      optimalFrequencyHours: 4,
-    };
-
-    const factor0 = computeTimeFactor(
-      makeTimePersona({ ...base, consecutiveNoResponses: 0 }),
-      baseConfig,
-      now,
+    expect(computeTimeFactor(recent, baseConfig, now)).toBeCloseTo(
+      computeTimeFactor(old, baseConfig, now),
+      10,
     );
-    const factor5 = computeTimeFactor(
-      makeTimePersona({ ...base, consecutiveNoResponses: 5 }),
-      baseConfig,
-      now,
-    );
-    const factor10 = computeTimeFactor(
-      makeTimePersona({ ...base, consecutiveNoResponses: 10 }),
-      baseConfig,
-      now,
-    );
-    const factor20 = computeTimeFactor(
-      makeTimePersona({ ...base, consecutiveNoResponses: 20 }),
-      baseConfig,
-      now,
-    );
-
-    // Floor at 0.7: even at streak=20, factor retains ~76% of normal
-    expect(factor20).toBeGreaterThan(0);
-    expect(factor20).toBeGreaterThanOrEqual(factor0 * 0.7);
-
-    // Diminishing penalty: factor10 ≈ factor20 (capped at MAX_EFFECTIVE_IGNORES=8)
-    expect(factor10).toBeCloseTo(factor20, 3);
-
-    // All within reasonable range
-    expect(factor5).toBeGreaterThan(factor10);
-    expect(factor10).toBeGreaterThan(0);
   });
 
-  it("compensatory signal grows with silence after last proactive", () => {
+  // MIGRATED: linear 0.03-slope floored at 0.7 was too weak to change
+  // behavior — replaced by geometric ledger decay {1.0, 0.45, 0.12}.
+  it("ledger decay is geometric: g(1)=0.45, g(2+)=0.12", () => {
     const now = Date.now();
-    const optFreq = 4;
+    const at = (unanswered: number) =>
+      computeTimeFactor(
+        makeTimePersona({ lastActiveAt: now - 2 * HR, consecutiveNoResponses: unanswered }),
+        baseConfig,
+        now,
+      );
 
-    const base = {
+    expect(at(0)).toBeGreaterThan(0);
+    expect(at(1)).toBeCloseTo(at(0) * 0.45, 5);
+    expect(at(2)).toBeCloseTo(at(0) * 0.12, 5);
+    expect(at(5)).toBeCloseTo(at(2), 10);
+    expect(at(20)).toBeCloseTo(at(2), 10);
+  });
+
+  // MIGRATED: "compensatory signal grows with silence" inverted — growing
+  // silence must never RAISE propensity (non-revival invariant).
+  it("longer mutual silence never increases the factor", () => {
+    const now = Date.now();
+    const recent = makeTimePersona({
       lastActiveAt: now - 10 * 24 * HR,
-      optimalFrequencyHours: optFreq,
-      consecutiveNoResponses: 3,
-    };
-
-    const recentProactive = makeTimePersona({
-      ...base,
       lastProactiveAt: now - 2 * HR,
+      consecutiveNoResponses: 3,
     });
     const longSilence = makeTimePersona({
-      ...base,
+      lastActiveAt: now - 10 * 24 * HR,
       lastProactiveAt: now - 10 * 24 * HR,
+      consecutiveNoResponses: 3,
     });
 
-    const factorRecent = computeTimeFactor(recentProactive, baseConfig, now);
-    const factorLong = computeTimeFactor(longSilence, baseConfig, now);
-
-    // Longer silence since last proactive → compensatory signal grows → higher factor
-    expect(factorLong).toBeGreaterThan(factorRecent);
+    expect(computeTimeFactor(longSilence, baseConfig, now)).toBeLessThanOrEqual(
+      computeTimeFactor(recent, baseConfig, now),
+    );
+    expect(computeTimeFactor(longSilence, baseConfig, now)).toBe(0);
   });
 
-  it("silence breaker: high no-response count with extreme silence retains re-engagement capability", () => {
+  // MIGRATED: "silence breaker" / "long-silence correction" floors removed —
+  // users silent >24h are served only by the re-engagement budget, never by
+  // the cadence path.
+  it("user silent beyond 24h closes the normal cadence path (factor 0)", () => {
     const now = Date.now();
-
     const persona = makeTimePersona({
       lastActiveAt: now - 60 * 24 * HR,
       lastProactiveAt: now - 60 * 24 * HR,
-      optimalFrequencyHours: 4,
-      consecutiveNoResponses: 8,
+      consecutiveNoResponses: 0,
     });
-
-    const factor = computeTimeFactor(persona, baseConfig, now);
-    expect(factor).toBeGreaterThanOrEqual(0.15);
+    expect(computeTimeFactor(persona, baseConfig, now)).toBe(0);
   });
 
-  it("long-silence correction prevents zero for dormant users", () => {
+  it("never-active user has zero momentum", () => {
     const now = Date.now();
-    const optFreq = 4;
-
-    const persona = makeTimePersona({
-      lastActiveAt: now - 30 * 24 * HR,
-      lastProactiveAt: now - 60 * 24 * HR,
-      optimalFrequencyHours: optFreq,
-    });
-
-    const factor = computeTimeFactor(persona, baseConfig, now);
-    expect(factor).toBeGreaterThan(0);
-    expect(factor).toBeGreaterThanOrEqual(0.1);
-  });
-
-  it("never-active user uses cadencePeak as default", () => {
-    const now = Date.now();
-    const persona = makeTimePersona({
-      lastActiveAt: 0,
-      lastProactiveAt: 0,
-      optimalFrequencyHours: 4,
-    });
-
-    const factor = computeTimeFactor(persona, baseConfig, now);
-    expect(factor).toBeGreaterThan(0);
-    expect(factor).toBeLessThanOrEqual(1);
-  });
-
-  it("user just active now: cadenceFactor starts rising toward peak", () => {
-    const now = Date.now();
-    const optFreq = 4;
-    const cadencePeak = Math.min(6, Math.max(2, optFreq * 0.6));
-
-    const justActive = makeTimePersona({
-      lastActiveAt: now,
-      lastProactiveAt: now - 10 * HR,
-      optimalFrequencyHours: optFreq,
-    });
-
-    const atPeak = makeTimePersona({
-      lastActiveAt: now - cadencePeak * HR,
-      lastProactiveAt: now - 10 * HR,
-      optimalFrequencyHours: optFreq,
-    });
-
-    const factorJust = computeTimeFactor(justActive, baseConfig, now);
-    const factorPeak = computeTimeFactor(atPeak, baseConfig, now);
-    expect(factorPeak).toBeGreaterThan(factorJust);
+    const persona = makeTimePersona({ lastActiveAt: 0, lastProactiveAt: 0 });
+    expect(computeTimeFactor(persona, baseConfig, now)).toBe(0);
   });
 });

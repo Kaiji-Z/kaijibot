@@ -2223,8 +2223,12 @@ export async function runEmbeddedAttempt(
                 const { mergeExtraction, prunePersona } =
                   await import("../../../cognitive/persona/curator.js");
                 const { resolveConfigDir } = await import("../../../utils.js");
-                const { extractImplicitSignals, processImplicitFeedback, inferTopicFromContext } =
-                  await import("../../../cognitive/feedback/collector.js");
+                const {
+                  extractImplicitSignals,
+                  processImplicitFeedback,
+                  inferTopicFromContext,
+                  applyInsightReplyAttribution,
+                } = await import("../../../cognitive/feedback/collector.js");
 
                 const configDir = resolveConfigDir();
                 const store = new PersonaStore(configDir);
@@ -2268,6 +2272,11 @@ export async function runEmbeddedAttempt(
                 if (!params.config) {
                   return;
                 }
+                // cognitive.feedback.implicitFeedback (default true) gates the
+                // whole implicit pipeline: signal extraction AND insight-reply
+                // attribution.
+                const implicitFeedbackEnabled =
+                  params.config.cognitive?.feedback?.implicitFeedback !== false;
                 const extraction = await extractFromMessageLLM(
                   userText,
                   assistantText,
@@ -2284,6 +2293,9 @@ export async function runEmbeddedAttempt(
                   const merged = mergeExtraction(current, extraction);
                   const pruned = prunePersona(merged);
 
+                  if (!implicitFeedbackEnabled) {
+                    return pruned;
+                  }
                   const topic = inferTopicFromContext(pruned, extraction, userText);
                   const previousTopics = pruned.recentFocus;
                   const signals = extractImplicitSignals(
@@ -2292,7 +2304,11 @@ export async function runEmbeddedAttempt(
                     topic,
                     previousTopics,
                   );
-                  return processImplicitFeedback(pruned, signals);
+                  const withSignals = processImplicitFeedback(pruned, signals);
+                  // Reply-to-insight attribution: if this turn is the user
+                  // answering a recent proactive insight, credit/penalize the
+                  // insight's own domain bandits.
+                  return applyInsightReplyAttribution(withSignals, userText);
                 });
 
                 try {

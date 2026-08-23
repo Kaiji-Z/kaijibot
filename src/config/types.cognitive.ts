@@ -21,6 +21,8 @@ export type CognitiveConfig = {
     costFalseNegative?: number;
     /** Cost of false alarm — bothering user with unwanted insight. Higher = more conservative. Default: 3 */
     costFalseAlarm?: number;
+    /** Max delivered proactive insights per user per UTC day (default: 2). The daily self-restraint cap. */
+    maxDailyInsights?: number;
   };
   /** User cognitive model settings */
   persona?: {

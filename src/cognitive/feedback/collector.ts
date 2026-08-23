@@ -201,6 +201,89 @@ export function extractImplicitSignals(
 const INSIGHT_FEEDBACK_SENTIMENT = ["positive", "negative", "neutral", "engaged"] as const;
 export type InsightFeedbackSentiment = (typeof INSIGHT_FEEDBACK_SENTIMENT)[number];
 
+export type ResponseQuality = "engaged" | "normal" | "dismissive";
+
+/** Window in which a user turn counts as a reply to the last proactive insight. */
+export const INSIGHT_REPLY_WINDOW_MS = 48 * 3_600_000;
+
+/**
+ * Classify how the user received the last proactive insight from their reply
+ * text — the "察言观色" signal. Text-only heuristics sharing thresholds with
+ * classifySentimentFromSignals:
+ *   engaged:    >100 chars or a deep follow-up question
+ *   dismissive: <20 chars (嗯 / ok / 好吧)
+ *   normal:     everything between
+ */
+export function classifyResponseQuality(userText: string): ResponseQuality {
+  const text = userText.trim();
+  if (text.length > 100 || /(为什么|如何|怎样|what if|why|how come|深层|本质)/.test(text)) {
+    return "engaged";
+  }
+  if (text.length < 20) {
+    return "dismissive";
+  }
+  return "normal";
+}
+
+/**
+ * Attribute a user reply to the last delivered proactive insight and update
+ * the insight's domain bandits (goal 洞察投放人化重构 Phase 3). Applies only
+ * when the turn lands inside the reply window after the last send and the
+ * insight's domains are known. engaged rewards, dismissive penalizes, normal
+ * leaves bandits untouched. Frequency nudges mirror processInsightFeedback
+ * at implicit scale.
+ */
+export function applyInsightReplyAttribution(
+  persona: PersonaTree,
+  userText: string,
+  nowMs?: number,
+): PersonaTree {
+  const now = nowMs ?? Date.now();
+  const lastSendAt = persona.feedbackProfile.lastProactiveAt;
+  if (lastSendAt <= 0 || now - lastSendAt > INSIGHT_REPLY_WINDOW_MS) {
+    return persona;
+  }
+  const insightDomains = (persona.feedbackProfile.recentInsightDomains ?? []).at(-1) ?? [];
+  if (insightDomains.length === 0) {
+    return persona;
+  }
+
+  const quality = classifyResponseQuality(userText);
+  if (quality === "normal") {
+    return persona;
+  }
+
+  const updatedBandits = { ...persona.feedbackProfile.topicBandits };
+  for (const domain of insightDomains) {
+    const bandit = updatedBandits[domain] ?? { alpha: 2, beta: 1 };
+    updatedBandits[domain] =
+      quality === "engaged"
+        ? { ...bandit, alpha: bandit.alpha + 0.5, lastUpdated: now }
+        : { ...bandit, beta: bandit.beta + 0.4, lastUpdated: now };
+  }
+
+  const freqDelta = quality === "engaged" ? -0.25 : 1;
+  const newFrequency = Math.max(
+    1,
+    Math.min(48, persona.feedbackProfile.optimalFrequencyHours + freqDelta),
+  );
+
+  log.info("insight reply attribution applied", {
+    domains: insightDomains,
+    quality,
+    newFrequency,
+  });
+
+  return {
+    ...persona,
+    feedbackProfile: {
+      ...persona.feedbackProfile,
+      topicBandits: updatedBandits,
+      optimalFrequencyHours: newFrequency,
+    },
+  };
+}
+
 /**
  * Map implicit signals extracted from a user reply into a coarse sentiment
  * label that processInsightFeedback can consume. Heuristics (in priority order):

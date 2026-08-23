@@ -401,6 +401,10 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
       proactive.minIntervalHours = 0.5;
       mutated = true;
     }
+    if (proactive.maxDailyInsights === undefined) {
+      proactive.maxDailyInsights = 2;
+      mutated = true;
+    }
     if (mutated) {
       next.proactive = proactive;
     }

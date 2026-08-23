@@ -1,0 +1,5 @@
+insight-live-quality.test.ts 首跑(2026-08-23 15:36):2/4 失败
+- "generates 3 rounds": supervisor FAIL mean 0.60 (relevance 0.00 单轮) — Round 3 同跑 PASS 0.97
+- "pattern mode": supervisor FAIL mean 0.85 (relevance 0.40 < 0.7 边缘)
+复跑(同日 15:52):4/4 全部通过。
+结论:LLM-as-judge 内容判定方差,非本次调度器改动引入(本次未修改洞察内容生成路径)。

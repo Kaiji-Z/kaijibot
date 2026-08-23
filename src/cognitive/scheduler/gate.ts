@@ -1,6 +1,6 @@
 import { jaccardSimilarity } from "../../infra/text-similarity.js";
 import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
-import { getProactiveFrequencyFactor, shouldReEngage } from "../persona/lifecycle.js";
+import { getProactiveFrequencyFactor } from "../persona/lifecycle.js";
 import type { PersonaTree } from "../types.js";
 import type {
   GateDecision,
@@ -15,11 +15,16 @@ import type {
 const DEFAULT_C_FN = 7.0;
 const DEFAULT_C_FA = 3.0;
 const BASE_NEED = 0.6;
+const LEDGER_TRUST_FLOOR_FOR_CAP = 0.7;
 
+// Event-driven contact mirrors human motivation: "I saw something that
+// reminded me of you" (persona_change) dominates; a periodic sweep that
+// found something (info_scan) is moderate; a bare clock tick (timer) is the
+// weakest excuse a friend could have.
 const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {
-  timer: 0.7,
+  timer: 0.3,
   persona_change: 0.9,
-  info_scan: 0.8,
+  info_scan: 0.7,
   evolution_scan: 0.75,
   activity_scan: 0.8,
   external: 0.85,
@@ -127,6 +132,17 @@ export function computeGradedGate(context: GateContext): GradedGateDecision {
     reasons.push(`Only ${persona.rapport.totalExchanges} exchanges — need at least 5`);
   }
 
+  // Social ledger hard veto: too many unanswered proactive messages means
+  // silence, regardless of everything else. Low-trust users get a tighter
+  // cap. The ledger is cleared to zero by the user-reply path (curator
+  // mergeExtraction), so this veto is always escapable by engagement —
+  // that is the death-spiral guard, not a probability floor.
+  const unanswered = persona.feedbackProfile.consecutiveNoResponses ?? 0;
+  const ledgerCap = persona.rapport.trustScore < LEDGER_TRUST_FLOOR_FOR_CAP ? 2 : 3;
+  if (unanswered >= ledgerCap) {
+    reasons.push(`Ledger: ${unanswered} unanswered proactive messages (cap ${ledgerCap})`);
+  }
+
   // If any hard veto fires, return early with zero probabilities
   if (reasons.length > 0) {
     return {
@@ -224,85 +240,49 @@ export function computeEngagementFactor(persona: PersonaTree, now: number): numb
 }
 
 /**
- * Conversation-adaptive time factor replacing the fixed sigmoid timer.
+ * Social-decay time factor: momentum × ledger decay.
  *
- * Three sub-factors:
- *   cadenceFactor:   Gaussian peak at optimal cadence — high when user is
- *                    due for contact, low when too soon or too late
- *   recoveryFactor:  Exponential recovery after sending — depleted right
- *                    after delivery, recovers over time
- *   backoffFactor:   0.7^n decay for consecutive no-responses
+ * momentum mirrors human availability — reaching out feels natural soon after
+ * the user was active (1.3 within 30min, 1.0 at 2h, 0.85 approaching 24h).
+ * Beyond 24h of user silence the normal cadence path closes entirely (0):
+ * long-silent users are served only by the re-engagement budget, never by
+ * the cadence machinery. Anti-double-send is NOT here — the scheduler's
+ * min-interval cooldown owns that.
  *
- * Also includes a long-silence correction: when the user has been silent
- * for >2× optimalFrequency, the Gaussian would collapse to near-zero.
- * A logarithmic reEngageSignal floor prevents the system from going silent
- * on dormant users.
+ * g(U) is the social ledger decay {1.0, 0.45, 0.12} for U = 0, 1, 2+:
+ * a friend's reticence compounds geometrically; a 3%-per-count linear slope
+ * with a 0.7 floor proved too weak to influence behavior.
  */
+export const LEDGER_DECAY = [1.0, 0.45, 0.12] as const;
+
+export function computeLedgerFactor(persona: PersonaTree): number {
+  const unanswered = persona.feedbackProfile.consecutiveNoResponses ?? 0;
+  return LEDGER_DECAY[Math.min(unanswered, LEDGER_DECAY.length - 1)]!;
+}
+
+export function computeMomentum(persona: PersonaTree, now: number): number {
+  if (persona.lifecycle.lastActiveAt <= 0) {
+    return 0;
+  }
+  const hours = Math.max(0, (now - persona.lifecycle.lastActiveAt) / 3_600_000);
+  if (hours > 24) {
+    return 0;
+  }
+  if (hours <= 0.5) {
+    return 1.3;
+  }
+  if (hours <= 2) {
+    return 1.3 - (0.3 * (hours - 0.5)) / 1.5;
+  }
+  return 1.0 - (0.15 * (hours - 2)) / 22;
+}
+
 export function computeTimeFactor(
   persona: PersonaTree,
-  config: SchedulerConfig,
+  _config: SchedulerConfig,
   now: number,
 ): number {
-  const optFreq = persona.feedbackProfile.optimalFrequencyHours;
-  const cadencePeak = Math.min(6, Math.max(2, optFreq * 0.6));
-  const sigma = Math.max(1.5, cadencePeak * 0.4);
-
-  const hoursSinceUserActive =
-    persona.lifecycle.lastActiveAt > 0
-      ? Math.max(0, (now - persona.lifecycle.lastActiveAt) / (60 * 60 * 1000))
-      : cadencePeak;
-
-  const gaussianArg = -Math.pow(hoursSinceUserActive - cadencePeak, 2) / (2 * sigma * sigma);
-  let cadenceFactor = Math.exp(gaussianArg);
-
-  if (hoursSinceUserActive > optFreq * 2) {
-    const reEngageSignal = Math.min(
-      0.9,
-      0.21 * Math.log2(1 + hoursSinceUserActive / (optFreq * 2)),
-    );
-    cadenceFactor = Math.max(cadenceFactor, reEngageSignal);
-  }
-
-  const hoursSinceLastProactive =
-    persona.feedbackProfile.lastProactiveAt > 0
-      ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
-      : optFreq * 2;
-  const recoveryFactor = 1 - Math.exp(-hoursSinceLastProactive / optFreq);
-
-  // Linear backoff: mild signal-level decay. Per-topic adjustment happens via
-  // bandits (processNoResponse); backoff provides a gentle global signal that
-  // the user is less engaged. Floor 0.7 ensures pAct drops at most ~13%,
-  // preventing death spirals where accumulated noResp locks the system silent.
-  const noResponseCount = persona.feedbackProfile.consecutiveNoResponses ?? 0;
-  const MAX_EFFECTIVE_IGNORES = 8;
-  const effectiveIgnores = Math.min(noResponseCount, MAX_EFFECTIVE_IGNORES);
-  const ignoreBackoff = 1.0 - 0.03 * effectiveIgnores;
-
-  // Compensatory signal: grows with silence since last proactive, counteracting
-  // ignore penalty — mirrors human "compensatory investment" after long silence.
-  const silenceHours =
-    persona.feedbackProfile.lastProactiveAt > 0
-      ? Math.max(0, (now - persona.feedbackProfile.lastProactiveAt) / (60 * 60 * 1000))
-      : 0;
-  // Silence breaker: trigger earlier (24h vs 48h) and allow stronger compensation
-  // (0.35 vs 0.25). Prevents the silence spiral where sparse feedback → posterior
-  // collapse → permanent silence. The system retains re-engagement capability
-  // even after long no-response streaks.
-  const COMPENSATORY_RATE = 0.08;
-  const COMPENSATORY_FLOOR_HOURS = 24;
-  const COMPENSATORY_CAP = 0.35;
-  const compensatorySignal =
-    silenceHours > COMPENSATORY_FLOOR_HOURS
-      ? Math.min(
-          COMPENSATORY_CAP,
-          COMPENSATORY_RATE *
-            Math.log2(1 + (silenceHours - COMPENSATORY_FLOOR_HOURS) / COMPENSATORY_FLOOR_HOURS),
-        )
-      : 0;
-
-  const backoffFactor = Math.max(0.7, ignoreBackoff + compensatorySignal);
-
-  return clamp01(cadenceFactor * recoveryFactor * backoffFactor);
+  return clamp01((computeMomentum(persona, now) / 1.3) * computeLedgerFactor(persona));
 }
 
 function computePNeed(
@@ -318,11 +298,7 @@ function computePNeed(
   const deepDomains = Object.values(persona.domains).filter((d) => d.depth >= 3).length;
   const depthBonus = 1 + 0.2 * Math.min(1, deepDomains / 3);
 
-  const reEngageBoost = shouldReEngage(persona.lifecycle, now) ? 1.3 : 1.0;
-
-  return clamp01(
-    BASE_NEED * timeFactor * eventFactor * engagementFactor * depthBonus * reEngageBoost,
-  );
+  return clamp01(BASE_NEED * timeFactor * eventFactor * engagementFactor * depthBonus);
 }
 
 // ── p_accept computation ─────────────────────────────────────────────

@@ -23,8 +23,10 @@ import type { LlmInsightDeps } from "../insight/llm-engine.js";
 import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insight/types.js";
 import type { PersonaTree } from "../types.js";
 import { computeContentStrategy } from "./content-strategy.js";
+import { bumpDailySend, checkDailyBudget, checkStochasticSpacing } from "./delivery-pacing.js";
 import { computeGradedGate } from "./gate.js";
 import { selectMode } from "./mode-selection.js";
+import { evaluateReEngagementBudget } from "./re-engagement.js";
 import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
 
 const log = createSubsystemLogger("cognitive/scheduler");
@@ -300,6 +302,7 @@ export class ProactiveScheduler {
     agentId: string,
     persona: PersonaTree,
     opportunity: Opportunity,
+    opts?: { bypassDomainDedup?: boolean },
   ): Promise<InsightCandidate | null> {
     const recentInsightIds = persona.feedbackProfile.recentInsightIds ?? [];
     const recentInsightContents = persona.feedbackProfile.recentInsightContents ?? [];
@@ -323,114 +326,124 @@ export class ProactiveScheduler {
     if (mode === "pattern") {
       const userId = persona.identity?.userId;
       if (!userId) {
-        return null;
-      }
+        // Same fallback rationale as empty clusters below: pattern mode
+        // cannot run, but that must not discard the delivery opportunity.
+        log.info("pattern mode: no user id — falling back to knowledge path");
+        mode = "surprise";
+      } else {
+        const [fragments, clusters] = await Promise.all([
+          this.fragmentStore.load(agentId, userId),
+          this.fragmentStore.findClusters(agentId, userId),
+        ]);
 
-      const [fragments, clusters] = await Promise.all([
-        this.fragmentStore.load(agentId, userId),
-        this.fragmentStore.findClusters(agentId, userId),
-      ]);
-
-      if (clusters.length === 0) {
-        log.info("pattern mode: no clusters available", { userId, clusterCount: clusters.length });
-        return null;
-      }
-
-      const result = await this.generateInsights(
-        persona,
-        {
-          targetDomains: [],
-          recentFocus: persona.recentFocus,
-          trustScore: persona.rapport.trustScore,
-          recentInsightIds,
-          recentInsightContents,
-          mode: "pattern",
-          recentQueryHistory,
-          recentInsightDomains,
-          fragmentClusters: clusters,
-          fragments,
-        },
-        {
-          verificationLevel: "basic",
-          maxCandidates: 1,
-          mode: "pattern",
-        },
-      );
-
-      if (!result || result.length === 0) {
-        log.info("pattern mode: LLM generated no candidates", { userId });
-        return null;
-      }
-
-      const candidate = result[0]!;
-      candidate.source = "pattern";
-
-      if (recentInsightContents.length > 0) {
-        if (
-          isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, {
-            trigramThreshold: 0.95,
-            contentWordThreshold: 0.8,
-          })
-        ) {
-          log.info("safety-net dedup: near-identical content blocked", {
+        if (clusters.length === 0) {
+          // Falling back to the knowledge path instead of wasting the whole
+          // event: pattern mode needs clusters; without them a null return
+          // discards the delivery opportunity entirely (and made scheduler
+          // behavior depend on the mode-selection roll).
+          log.info("pattern mode: no clusters available — falling back to knowledge path", {
             userId,
-            contentPreview: candidate.content.slice(0, 60),
+            clusterCount: clusters.length,
           });
-          return null;
+          mode = "surprise";
+        } else {
+          const result = await this.generateInsights(
+            persona,
+            {
+              targetDomains: [],
+              recentFocus: persona.recentFocus,
+              trustScore: persona.rapport.trustScore,
+              recentInsightIds,
+              recentInsightContents,
+              mode: "pattern",
+              recentQueryHistory,
+              recentInsightDomains,
+              fragmentClusters: clusters,
+              fragments,
+            },
+            {
+              verificationLevel: "basic",
+              maxCandidates: 1,
+              mode: "pattern",
+            },
+          );
+
+          if (!result || result.length === 0) {
+            log.info("pattern mode: LLM generated no candidates", { userId });
+            return null;
+          }
+
+          const candidate = result[0]!;
+          candidate.source = "pattern";
+
+          if (recentInsightContents.length > 0) {
+            if (
+              isDuplicateBySemanticOverlap(candidate.content, recentInsightContents, {
+                trigramThreshold: 0.95,
+                contentWordThreshold: 0.8,
+              })
+            ) {
+              log.info("safety-net dedup: near-identical content blocked", {
+                userId,
+                contentPreview: candidate.content.slice(0, 60),
+              });
+              return null;
+            }
+          }
+
+          if (
+            this.llmDeps &&
+            this.botConfig &&
+            this.config.llmFreshnessCheck !== false &&
+            recentInsightContents.length >= 3
+          ) {
+            const freshness = await checkSemanticNoveltyWithLLM(
+              candidate,
+              recentInsightContents,
+              this.botConfig,
+              this.llmDeps,
+            );
+            if (!freshness.isNovel) {
+              log.info("LLM freshness check: pattern semantically repetitive", {
+                userId,
+                reason: freshness.reason,
+              });
+              return null;
+            }
+          }
+
+          candidate.verificationStatus = "partial";
+
+          if (this.llmDeps && this.botConfig && this.config.patternVerification !== false) {
+            const verification = await verifyInsightWithLLM(
+              candidate,
+              persona,
+              this.botConfig,
+              this.llmDeps,
+            );
+            candidate.verificationStatus = verification.status;
+          }
+
+          log.info("pattern-mode insight verification complete", {
+            userId,
+            content: candidate.content.slice(0, 60),
+            clusterCount: clusters.length,
+            fragmentCount: fragments.length,
+            verificationStatus: candidate.verificationStatus,
+          });
+
+          if (candidate.verificationStatus === "contradicted") {
+            log.warn("pattern-mode insight contradicted by verification, skipping delivery", {
+              userId,
+              content: candidate.content.slice(0, 80),
+            });
+            return null;
+          }
+
+          candidate.resolvedMode = "pattern";
+          return candidate;
         }
       }
-
-      if (
-        this.llmDeps &&
-        this.botConfig &&
-        this.config.llmFreshnessCheck !== false &&
-        recentInsightContents.length >= 3
-      ) {
-        const freshness = await checkSemanticNoveltyWithLLM(
-          candidate,
-          recentInsightContents,
-          this.botConfig,
-          this.llmDeps,
-        );
-        if (!freshness.isNovel) {
-          log.info("LLM freshness check: pattern semantically repetitive", {
-            userId,
-            reason: freshness.reason,
-          });
-          return null;
-        }
-      }
-
-      candidate.verificationStatus = "partial";
-
-      if (this.llmDeps && this.botConfig && this.config.patternVerification !== false) {
-        const verification = await verifyInsightWithLLM(
-          candidate,
-          persona,
-          this.botConfig,
-          this.llmDeps,
-        );
-        candidate.verificationStatus = verification.status;
-      }
-
-      log.info("pattern-mode insight verification complete", {
-        userId,
-        content: candidate.content.slice(0, 60),
-        clusterCount: clusters.length,
-        fragmentCount: fragments.length,
-        verificationStatus: candidate.verificationStatus,
-      });
-
-      if (candidate.verificationStatus === "contradicted") {
-        log.warn("pattern-mode insight contradicted by verification, skipping delivery", {
-          userId,
-          content: candidate.content.slice(0, 80),
-        });
-        return null;
-      }
-
-      candidate.resolvedMode = "pattern";
-      return candidate;
     }
 
     // Knowledge mode: generate with self-refine (or blind retry fallback)
@@ -608,6 +621,33 @@ export class ProactiveScheduler {
       }
     }
 
+    // Candidate-level domain dedup: the pre-gen staleness check only sees
+    // OPPORTUNITY domains — a generator returning already-delivered domains
+    // would slip through on differing content alone. The current attempt's
+    // own appended entry (== opportunity.targetDomains) is excluded: a
+    // candidate covering its own opportunity is expected, not a repeat.
+    const deliveredDomainHistory = recentInsightDomains.filter(
+      (prev, idx) =>
+        !(
+          idx === recentInsightDomains.length - 1 &&
+          [...prev].toSorted().join("\u0000") ===
+            [...opportunity.targetDomains].toSorted().join("\u0000")
+        ),
+    );
+    if (
+      !opts?.bypassDomainDedup &&
+      candidate.targetDomains.length > 0 &&
+      deliveredDomainHistory.some(
+        (prev) => computeDomainOverlap(candidate.targetDomains, prev) > 0.5,
+      )
+    ) {
+      log.info("candidate covers recently-delivered domains, skipping", {
+        userId: persona.identity?.userId,
+        targetDomains: candidate.targetDomains,
+      });
+      return null;
+    }
+
     if (
       this.llmDeps &&
       this.botConfig &&
@@ -709,21 +749,6 @@ export class ProactiveScheduler {
     insight: InsightCandidate,
     opportunityType: string,
   ): PersonaTree {
-    if (
-      persona.feedbackProfile.lastProactiveAt > 0 &&
-      persona.feedbackProfile.lastProactiveAt > persona.lifecycle.lastActiveAt
-    ) {
-      const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-      const prevInsightDomains =
-        recentDomains.length >= 1 ? recentDomains[recentDomains.length - 1] : [];
-      const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
-      const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
-      persona = processNoResponse(persona, {
-        previousDomains: prevInsightDomains ?? [],
-        previousMode: prevMode,
-      });
-    }
-
     persona.feedbackProfile.lastProactiveAt = eventTimestamp;
     persona.feedbackProfile.pendingInsightDelivery = null;
 
@@ -789,6 +814,14 @@ export class ProactiveScheduler {
           ageMs: Math.round(ageMs / 60_000),
         });
       } else {
+        // Pending retries respect the daily cap too: a user who already got
+        // today's allotment waits for tomorrow even for a redelivery.
+        if (
+          !checkDailyBudget(persona, event.timestamp, this.config.maxDailyInsights ?? 2).allowed
+        ) {
+          log.info("pending retry deferred by daily budget", { userId });
+          return undefined;
+        }
         log.info("retrying pending insight delivery", {
           userId,
           insightId: pending.candidate.id,
@@ -796,6 +829,7 @@ export class ProactiveScheduler {
         });
         const retryResult = await this.callbacks.onInsightReady(agentId, userId, pending.candidate);
         if (retryResult !== false) {
+          bumpDailySend(persona, event.timestamp);
           persona.feedbackProfile.awaitingDeliveryConfirmation = {
             candidate: pending.candidate,
             opportunityType: pending.opportunityType,
@@ -854,29 +888,15 @@ export class ProactiveScheduler {
       }
     }
 
-    // Only reset no-response streak before gate — we always want to clear the
-    // counter when the user has been active since the last proactive.
-    // The increment is deferred to AFTER a successful insight delivery, so
-    // the counter only grows when we actually sent something and got no reply.
-    const currentNoResp = persona.feedbackProfile.consecutiveNoResponses ?? 0;
-    if (
-      persona.lifecycle.lastActiveAt > 0 &&
-      persona.lifecycle.lastActiveAt > persona.feedbackProfile.lastProactiveAt &&
-      currentNoResp > 0
-    ) {
-      persona.feedbackProfile.consecutiveNoResponses = currentNoResp - 1;
-    }
-
-    // Time-based no-response: if the last proactive message went unanswered
-    // for more than 2× the configured interval, penalize the relevant
-    // domain/mode bandits. Fires at most once per lastProactiveAt value
-    // (deduped via lastNoResponseAt) so repeated ticks don't over-penalize.
-    const noResponseThresholdMs = 2 * this.config.minIntervalHours * 3600_000;
+    // Social ledger lazy transition: when the last proactive message went
+    // unanswered (user inactive since it was sent), record it exactly once
+    // per send (deduped via lastNoResponseAt). The user-reply path clears
+    // the ledger to zero (curator mergeExtraction), making silence
+    // conditional: answered → resume instantly; ignored → go quiet.
     const lastProactiveAt = persona.feedbackProfile.lastProactiveAt;
     if (
       lastProactiveAt > 0 &&
-      event.timestamp - lastProactiveAt > noResponseThresholdMs &&
-      persona.lifecycle.lastActiveAt < lastProactiveAt &&
+      lastProactiveAt > persona.lifecycle.lastActiveAt &&
       persona.feedbackProfile.lastNoResponseAt !== lastProactiveAt
     ) {
       const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
@@ -889,12 +909,49 @@ export class ProactiveScheduler {
         previousMode: prevMode,
       });
       persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
-      log.info("time-based no-response penalty applied", {
+      log.info("ledger: unanswered proactive recorded", {
         userId,
-        lastProactiveAt,
-        consecutiveNoResponses: persona.feedbackProfile.consecutiveNoResponses,
+        unanswered: persona.feedbackProfile.consecutiveNoResponses,
       });
       await this.callbacks.savePersona(agentId, userId, persona);
+    }
+
+    // Re-engagement budget: the only channel allowed to reach a user whose
+    // silence has closed the normal cadence path (momentum 0). Bypasses the
+    // graded gate; rate-limited and ledger-capped by its own rules.
+    const budget = evaluateReEngagementBudget(
+      persona,
+      event.timestamp,
+      seededRandom(event.timestamp),
+    );
+
+    // Daily self-restraint cap (checked before the gate to save LLM cost):
+    // at most maxDailyInsights delivered sends per user per UTC day.
+    const dailyCap = this.config.maxDailyInsights ?? 2;
+    const dailyBudget = checkDailyBudget(persona, event.timestamp, dailyCap);
+    if (!dailyBudget.allowed) {
+      return undefined;
+    }
+
+    // Stochastic hazard spacing (replaces the deterministic interval floor,
+    // which made the rhythm metronomic). The re-engagement channel has its
+    // own 14-day cadence and skips the hazard draw. Failures here defer to
+    // the next event — the hazard only rises with elapsed time.
+    if (!budget.allowed) {
+      const pacing = checkStochasticSpacing(
+        persona,
+        event.type,
+        event.timestamp,
+        seededRandom(
+          event.timestamp ^ Math.max(1, Math.floor(persona.feedbackProfile.lastProactiveAt / 1000)),
+        ),
+      );
+      if (!pacing.allowed) {
+        return undefined;
+      }
+      if (pacing.allowed && pacing.reason === "conversational moment") {
+        log.info("pacing: conversational burst window", { userId, eventType: event.type });
+      }
     }
 
     const gateContext: GateContext = {
@@ -903,7 +960,22 @@ export class ProactiveScheduler {
       recentInsightCount: 0,
       config: this.config,
     };
-    const gateResult = computeGradedGate(gateContext);
+    const gateResult = budget.allowed
+      ? ({
+          pNeed: 0.5,
+          pAccept: 0.5,
+          pAct: 0.5,
+          decision: true,
+          reasons: ["re-engagement budget"],
+        } as const)
+      : computeGradedGate(gateContext);
+    if (budget.allowed) {
+      persona.feedbackProfile.lastReEngageAttemptAt = event.timestamp;
+      log.info("re-engagement budget check-in", {
+        userId,
+        unanswered: persona.feedbackProfile.consecutiveNoResponses ?? 0,
+      });
+    }
     if (!gateResult.decision) {
       await this.callbacks.savePersona(agentId, userId, persona);
       log.info("gate vetoed", {
@@ -994,7 +1066,11 @@ export class ProactiveScheduler {
     let selected: Opportunity | undefined;
     let attemptedResolve = false;
     for (const candidate of orderedCandidates) {
-      if (isTopicStale(candidate, recentInsightContents, recentInsightDomains)) {
+      // Budget check-ins ("long time no see") bypass the domain freshness
+      // window: for a user silent for weeks, the "recent" insight history is
+      // itself weeks old — stale dedup constraints must not veto a greeting.
+      // Content-level dedup inside resolve() still applies.
+      if (!budget.allowed && isTopicStale(candidate, recentInsightContents, recentInsightDomains)) {
         log.info("pre-gen freshness check: skipping stale candidate", {
           userId,
           type: candidate.type,
@@ -1016,7 +1092,9 @@ export class ProactiveScheduler {
       persona.feedbackProfile.recentInsightTypes = attemptedTypes;
 
       attemptedResolve = true;
-      insight = await this.resolve(agentId, persona, selected);
+      insight = await this.resolve(agentId, persona, selected, {
+        bypassDomainDedup: budget.allowed,
+      });
       if (insight) {
         break;
       }
@@ -1083,6 +1161,7 @@ export class ProactiveScheduler {
       eventTimestamp: event.timestamp,
     };
     persona.feedbackProfile.consecutiveResolveFailures = 0;
+    bumpDailySend(persona, event.timestamp);
     await this.callbacks.savePersona(agentId, userId, persona);
 
     return insight;

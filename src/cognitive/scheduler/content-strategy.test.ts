@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import type { PersonaTree } from "../types.js";
 import { computeContentStrategy } from "./content-strategy.js";
 
@@ -61,7 +61,10 @@ describe("computeContentStrategy", () => {
     expect(hint.noveltyBoost).toBe(false);
   });
 
-  it("streak 2 excludes last 2 insights domains and forces different mode", () => {
+  // MIGRATED (goal 洞察投放人化重构): from streak 2 the ledger itself
+  // throttles contact (g(U) + veto) — the strategy no longer forces modes
+  // or boosts novelty; being ignored means going quiet, not trying harder.
+  it("streak 2 excludes last 2 insight domains without forcing a mode", () => {
     const persona = makePersona({
       consecutiveNoResponses: 2,
       recentInsightDomains: [["ai"], ["rust"], ["web"]],
@@ -69,32 +72,36 @@ describe("computeContentStrategy", () => {
     });
     const hint = computeContentStrategy(persona);
     expect(hint.excludeDomains.toSorted()).toEqual(["rust", "web"].toSorted());
-    expect(hint.forceMode).toBeDefined();
-    expect(hint.forceMode).not.toBe("extend");
+    expect(hint.forceMode).toBeUndefined();
     expect(hint.noveltyBoost).toBe(false);
   });
 
-  it("streak 3+ forces surprise with noveltyBoost", () => {
+  // MIGRATED (goal 洞察投放人化重构): streak ≥3 previously forced surprise +
+  // noveltyBoost ("try harder"); now the ledger has priority — exclusions
+  // only, no force, no boost.
+  it("streak 3+ excludes recent domains, no forced mode, no novelty boost", () => {
     const persona = makePersona({
       consecutiveNoResponses: 5,
       recentInsightDomains: [["a"], ["b", "c"], ["d"], ["e"]],
       recentInsightModes: ["pattern", "surprise", "extend"],
     });
     const hint = computeContentStrategy(persona);
-    expect(hint.excludeDomains.toSorted()).toEqual(["b", "c", "d", "e"].toSorted());
-    expect(hint.forceMode).toBe("surprise");
-    expect(hint.noveltyBoost).toBe(true);
+    expect(hint.excludeDomains.toSorted()).toEqual(["d", "e"].toSorted());
+    expect(hint.forceMode).toBeUndefined();
+    expect(hint.noveltyBoost).toBe(false);
   });
 
-  it("empty recentInsightDomains produces no exclusions", () => {
+  // MIGRATED (goal 洞察投放人化重构): same as above — no forced mode at
+  // high streaks even with no domain history.
+  it("empty recentInsightDomains produces no exclusions or forced mode", () => {
     const persona = makePersona({
       consecutiveNoResponses: 3,
       recentInsightDomains: [],
     });
     const hint = computeContentStrategy(persona);
     expect(hint.excludeDomains).toEqual([]);
-    expect(hint.forceMode).toBe("surprise");
-    expect(hint.noveltyBoost).toBe(true);
+    expect(hint.forceMode).toBeUndefined();
+    expect(hint.noveltyBoost).toBe(false);
   });
 
   it("streak 2 with no recentInsightModes does not force mode", () => {
@@ -107,25 +114,9 @@ describe("computeContentStrategy", () => {
     expect(hint.forceMode).toBeUndefined();
   });
 
-  it("modeBandits influence mode selection at streak 2", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.5);
-
-    const persona = makePersona({
-      consecutiveNoResponses: 2,
-      recentInsightDomains: [["a"], ["b"]],
-      recentInsightModes: ["pattern"],
-      modeBandits: {
-        surprise: { alpha: 10, beta: 1 },
-        extend: { alpha: 1, beta: 10 },
-      },
-    });
-
-    const hint = computeContentStrategy(persona);
-    expect(hint.forceMode).toBe("surprise");
-    expect(hint.noveltyBoost).toBe(false);
-
-    vi.restoreAllMocks();
-  });
+  // MIGRATED (goal 洞察投放人化重构): deleted "modeBandits influence mode
+  // selection at streak 2" — strategy no longer selects modes; Thompson
+  // Sampling mode selection lives in mode-selection.ts (selectMode).
 
   it("does not mutate input persona", () => {
     const persona = makePersona({

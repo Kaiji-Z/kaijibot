@@ -1,0 +1,83 @@
+
+> kaijibot@2026.8.21-1 test /home/kaiji/projects/KaijiBot
+> node scripts/test-projects.mjs src/cognitive/scheduler/human-cadence.sim.test.ts
+
+
+ RUN  v4.1.9 /home/kaiji/projects/KaijiBot
+
+ ❯ |unit| src/cognitive/scheduler/human-cadence.sim.test.ts (6 tests | 5 failed) 660ms
+     × responsive user: steady contact, recovers within one eligible tick after each reply 106ms
+     × sometimes user: contact strictly between ignore-all and responsive 232ms
+     × ignore-all user: ≤3 messages then silence; ≤2 re-approaches in 30 days 114ms
+     × dormant user: low-rate check-ins, strictly fewer contacts than active user 202ms
+     × M — non-revival: pAct never rises as silence since my last send grows (U≥1) 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: scenarios (30-day) > responsive user: steady contact, recovers within one eligible tick after each reply
+AssertionError: expected 228600000 to be less than or equal to 28800000
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:283:31
+    281|       const next = deliveries.find((d) => d > replyTs);
+    282|       expect(next).toBeDefined();
+    283|       expect(next! - replyTs).toBeLessThanOrEqual(8 * HR);
+       |                               ^
+    284|     }
+    285|   }, 120_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: scenarios (30-day) > sometimes user: contact strictly between ignore-all and responsive
+AssertionError: expected 14 to be greater than 28
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:292:41
+    290|     const responsive = await runScenario("responsive");
+    291|
+    292|     expect(sometimes.deliveries.length).toBeGreaterThan(ignoreAll.deli…
+       |                                         ^
+    293|     expect(sometimes.deliveries.length).toBeLessThan(responsive.delive…
+    294|   }, 300_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: scenarios (30-day) > ignore-all user: ≤3 messages then silence; ≤2 re-approaches in 30 days
+AssertionError: expected 28 to be less than or equal to 3
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:299:31
+    297|     const { deliveries } = await runScenario("ignoreAll");
+    298|
+    299|     expect(deliveries.length).toBeLessThanOrEqual(3);
+       |                               ^
+    300|
+    301|     const reApproaches = deliveries.filter((d) => d > T0 + 3 * DAY);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: scenarios (30-day) > dormant user: low-rate check-ins, strictly fewer contacts than active user
+AssertionError: expected 90 to be less than or equal to 3
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:310:39
+    308|
+    309|     expect(dormant.deliveries.length).toBeGreaterThanOrEqual(1);
+    310|     expect(dormant.deliveries.length).toBeLessThanOrEqual(3);
+       |                                       ^
+    311|     expect(dormant.deliveries.length).toBeLessThan(responsive.deliveri…
+    312|   }, 240_000);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |unit| src/cognitive/scheduler/human-cadence.sim.test.ts > human-cadence simulation: gate invariants > M — non-revival: pAct never rises as silence since my last send grows (U≥1)
+AssertionError: expected 0.26804256671623794 to be less than or equal to 1.0000000000244226e-9
+ ❯ src/cognitive/scheduler/human-cadence.sim.test.ts:350:24
+    348|
+    349|     for (let i = 1; i < pActs.length; i++) {
+    350|       expect(pActs[i]).toBeLessThanOrEqual(pActs[i - 1]! + 1e-9);
+       |                        ^
+    351|     }
+    352|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
+   Start at  13:22:36
+   Duration  5.91s (transform 1.45s, setup 28ms, import 4.95s, tests 660ms, environment 0ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

@@ -22511,6 +22511,14 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 description:
                   "Cost penalty for sending an insight the user does not value, used by the PRISM gate to balance push frequency against relevance. Higher values make the system more conservative.",
               },
+              maxDailyInsights: {
+                type: "number",
+                minimum: 1,
+                maximum: 20,
+                title: "Max Daily Insights",
+                description:
+                  "Hard cap on delivered proactive insights per user per UTC day (default: 2). Combined with stochastic inter-send pacing, this keeps contact at a human-cadence 1-2 messages/day for engaged users instead of a metronomic schedule.",
+              },
             },
             required: ["enabled", "minIntervalHours", "activeHours"],
             additionalProperties: false,
@@ -22625,9 +22633,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               },
               implicitFeedback: {
                 type: "boolean",
-                title: "Implicit Feedback (Reserved)",
+                title: "Implicit Feedback",
                 description:
-                  "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and engagement signals (default: true). Currently always true in practice.",
+                  "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and insight-reply attribution (default: true). Set false to disable the entire implicit feedback pipeline.",
               },
             },
             additionalProperties: false,
@@ -27434,6 +27442,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Cost penalty for NOT sending an insight the user would have valued, used by the PRISM gate. Higher values make the system more aggressive in pushing insights.",
       tags: ["advanced"],
     },
+    "cognitive.proactive.maxDailyInsights": {
+      label: "Max Daily Insights",
+      help: "Hard cap on delivered proactive insights per user per UTC day (default: 2). Combined with stochastic inter-send pacing, this keeps contact at a human-cadence 1-2 messages/day for engaged users instead of a metronomic schedule.",
+      tags: ["performance"],
+    },
     "cognitive.persona": {
       label: "Persona Model",
       help: "User cognitive model settings controlling how KaijiBot builds and maintains a per-user persona from conversations.",
@@ -27525,8 +27538,8 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["storage"],
     },
     "cognitive.feedback.implicitFeedback": {
-      label: "Implicit Feedback (Reserved)",
-      help: "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and engagement signals (default: true). Currently always true in practice.",
+      label: "Implicit Feedback",
+      help: "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and insight-reply attribution (default: true). Set false to disable the entire implicit feedback pipeline.",
       tags: ["storage"],
     },
     secrets: {
@@ -28837,6 +28850,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced", "url-secret"],
     },
   },
-  version: "2026.7.23-4",
+  version: "2026.8.21-1",
   generatedAt: "2026-03-22T21:17:33.302Z",
 };

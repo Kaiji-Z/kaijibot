@@ -4,6 +4,22 @@ import { createDefaultPersona } from "./store.js";
 import type { ExtractionResult } from "./types.js";
 
 describe("mergeExtraction", () => {
+  // NEW (goal 洞察投放人化重构): the user-message path must clear the social
+  // ledger — an answered friend resumes instantly; the gate's ledger veto is
+  // escaped exactly here. This is the production wiring of
+  // resetNoResponseStreak (previously dead code).
+  it("clears the unanswered-proactive ledger on user activity", () => {
+    const persona = createDefaultPersona();
+    persona.feedbackProfile.consecutiveNoResponses = 2;
+    const extraction: ExtractionResult = {
+      attributes: [],
+      domains: [],
+      recentFocus: [],
+    };
+    const result = mergeExtraction(persona, extraction);
+    expect(result.feedbackProfile.consecutiveNoResponses).toBe(0);
+  });
+
   it("adds new core traits from extraction", () => {
     const persona = createDefaultPersona();
     const extraction: ExtractionResult = {

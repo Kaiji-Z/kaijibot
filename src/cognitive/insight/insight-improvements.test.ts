@@ -648,6 +648,22 @@ describe.skipIf(process.env.CI)("Combined: full pipeline with all 3 improvements
       "Rust",
     ]);
 
+    // MIGRATED (goal 洞察投放人化重构): emulate the gateway delivery-outcome
+    // handler (server.impl.ts delivered path) — finalize + clear awaiting.
+    // Without this, scheduler2/scheduler3 skip on "awaiting delivery
+    // confirmation" and step 4 can never deliver (pre-existing local-only
+    // breakage; the suite is skipIf(CI)).
+    const awaiting1 = saved.feedbackProfile.awaitingDeliveryConfirmation;
+    if (awaiting1) {
+      ProactiveScheduler.finalizeDelivery(
+        saved,
+        awaiting1.eventTimestamp,
+        awaiting1.candidate,
+        awaiting1.opportunityType,
+      );
+      saved.feedbackProfile.awaitingDeliveryConfirmation = null;
+    }
+
     // Step 3: Try same domains again — dedup should block
     const insight2: InsightCandidate = {
       id: "e2e-2",
@@ -697,6 +713,11 @@ describe.skipIf(process.env.CI)("Combined: full pipeline with all 3 improvements
 
     const latestPersona = savedPersonas[savedPersonas.length - 1]!;
     latestPersona.feedbackProfile.lastProactiveAt = Date.now() - 8 * 3600_000;
+    // MIGRATED (goal 洞察投放人化重构): scheduler2's blocked attempt appended
+    // a randomly-picked exploration domain to the attempt window; reset to the
+    // delivered history so step 4 tests exactly its contract — a domain that
+    // differs from the DELIVERED insight1 passes dedup.
+    latestPersona.feedbackProfile.recentInsightDomains = [["MCP", "Rust"]];
 
     const scheduler3 = new ProactiveScheduler(
       config,

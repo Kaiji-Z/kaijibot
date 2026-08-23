@@ -38,17 +38,6 @@ export function computeLifecycleStage(
 }
 
 /**
- * Whether the scheduler should attempt re-engagement for this user.
- * True when dormant AND silent for more than 7 days.
- */
-export function shouldReEngage(lifecycle: UserLifecycle, nowMs: number): boolean {
-  if (lifecycle.stage !== "dormant") {
-    return false;
-  }
-  return nowMs - lifecycle.lastActiveAt > 7 * DAY_MS;
-}
-
-/**
  * Domain depth decay multiplier by lifecycle stage.
  * Higher values = faster decay = observations are less stable.
  */
@@ -67,7 +56,9 @@ export function getDecayMultiplier(lifecycle: UserLifecycle): number {
 
 /**
  * Factor to multiply optimalFrequencyHours by.
- * Higher = less frequent proactive contact.
+ * Higher = less frequent proactive contact. Dormant users are contacted
+ * LESS often (1.5×), not more — long-silent users get a low-rate budget
+ * channel, never a cadence boost.
  */
 export function getProactiveFrequencyFactor(lifecycle: UserLifecycle): number {
   switch (lifecycle.stage) {
@@ -76,7 +67,7 @@ export function getProactiveFrequencyFactor(lifecycle: UserLifecycle): number {
     case "new":
       return 2.0;
     case "dormant":
-      return 0.5;
+      return 1.5;
     case "lapsed":
       return 3.0;
   }

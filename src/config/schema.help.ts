@@ -1547,6 +1547,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Cost penalty for sending an insight the user does not value, used by the PRISM gate to balance push frequency against relevance. Higher values make the system more conservative.",
   "cognitive.proactive.costFalseNegative":
     "Cost penalty for NOT sending an insight the user would have valued, used by the PRISM gate. Higher values make the system more aggressive in pushing insights.",
+  "cognitive.proactive.maxDailyInsights":
+    "Hard cap on delivered proactive insights per user per UTC day (default: 2). Combined with stochastic inter-send pacing, this keeps contact at a human-cadence 1-2 messages/day for engaged users instead of a metronomic schedule.",
   "cognitive.persona":
     "User cognitive model settings controlling how KaijiBot builds and maintains a per-user persona from conversations.",
   "cognitive.persona.autoExtract":
@@ -1584,7 +1586,7 @@ export const FIELD_HELP: Record<string, string> = {
   "cognitive.feedback.mechanism":
     'Reserved for future use. Intended feedback mechanism: "emoji", "buttons", or "text". Currently unused — feedback is always implicit.',
   "cognitive.feedback.implicitFeedback":
-    "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and engagement signals (default: true). Currently always true in practice.",
+    "Collect implicit feedback from user reply patterns such as response length, follow-up questions, and insight-reply attribution (default: true). Set false to disable the entire implicit feedback pipeline.",
   secrets:
     "Secrets management system for resolving credentials from external sources (environment variables, files, or command execution) instead of storing plaintext in config. See docs/gateway/secrets.md for the full SecretRef contract.",
   "secrets.providers":

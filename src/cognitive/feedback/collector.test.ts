@@ -8,6 +8,9 @@ import {
   extractImplicitSignals,
   processImplicitFeedback,
   classifySentimentFromSignals,
+  classifyResponseQuality,
+  applyInsightReplyAttribution,
+  INSIGHT_REPLY_WINDOW_MS,
 } from "./collector.js";
 import type { NoResponseContext } from "./collector.js";
 
@@ -666,5 +669,84 @@ describe("classifySentimentFromSignals", () => {
       { type: "question_depth" as const, topic: "test", value: 1, timestamp: Date.now() },
     ];
     expect(classifySentimentFromSignals(signals)).toBe("engaged");
+  });
+});
+
+// ── Insight-reply attribution (goal 洞察投放人化重构 Phase 3) ────────
+
+describe("classifyResponseQuality", () => {
+  it("engaged: long reply", () => {
+    expect(
+      classifyResponseQuality(
+        "这个问题很有意思,我想了很久,我觉得可以从三个角度来展开讨论,首先是概念层面,其次是实践层面".repeat(
+          3,
+        ),
+      ),
+    ).toBe("engaged");
+  });
+
+  it("engaged: deep follow-up question even when short", () => {
+    expect(classifyResponseQuality("为什么会这样?")).toBe("engaged");
+  });
+
+  it("dismissive: very short reply", () => {
+    expect(classifyResponseQuality("嗯")).toBe("dismissive");
+    expect(classifyResponseQuality("ok")).toBe("dismissive");
+  });
+
+  it("normal: medium reply", () => {
+    expect(classifyResponseQuality("这个观点不错,我回头看看相关的资料再说。")).toBe("normal");
+  });
+});
+
+describe("applyInsightReplyAttribution", () => {
+  const NOW = 1_700_000_005_000;
+  const base = {
+    lastProactiveAt: NOW - 3_600_000,
+    recentInsightDomains: [["AI/机器学习", "认知科学"]],
+  };
+
+  it("engaged reply rewards the insight's domain bandits and tightens frequency", () => {
+    const persona = makePersona(base);
+    const next = applyInsightReplyAttribution(
+      persona,
+      "这个洞察很有意思,为什么认知科学和机器学习会有这样的交叉?我想深入了解一下背后的机制",
+      NOW,
+    );
+    expect(next.feedbackProfile.topicBandits["AI/机器学习"]!.alpha).toBeCloseTo(3.5, 5);
+    expect(next.feedbackProfile.topicBandits["认知科学"]!.alpha).toBeCloseTo(2.5, 5);
+    expect(next.feedbackProfile.optimalFrequencyHours).toBeCloseTo(3.75, 5);
+  });
+
+  it("dismissive reply penalizes the insight's domain bandits and loosens frequency", () => {
+    const persona = makePersona(base);
+    const next = applyInsightReplyAttribution(persona, "嗯", NOW);
+    expect(next.feedbackProfile.topicBandits["AI/机器学习"]!.beta).toBeCloseTo(2.4, 5);
+    expect(next.feedbackProfile.optimalFrequencyHours).toBeCloseTo(5, 5);
+  });
+
+  it("normal reply leaves bandits untouched", () => {
+    const persona = makePersona(base);
+    const next = applyInsightReplyAttribution(
+      persona,
+      "这个观点不错,我回头看看相关的资料再说。",
+      NOW,
+    );
+    expect(next).toBe(persona);
+  });
+
+  it("no attribution outside the 48h reply window", () => {
+    const persona = makePersona({
+      ...base,
+      lastProactiveAt: NOW - (INSIGHT_REPLY_WINDOW_MS + 1),
+    });
+    const next = applyInsightReplyAttribution(persona, "嗯", NOW);
+    expect(next).toBe(persona);
+  });
+
+  it("no attribution without delivered-insight domains", () => {
+    const persona = makePersona({ lastProactiveAt: NOW - 3_600_000 });
+    const next = applyInsightReplyAttribution(persona, "嗯", NOW);
+    expect(next).toBe(persona);
   });
 });

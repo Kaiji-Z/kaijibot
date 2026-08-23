@@ -70,4 +70,10 @@ export type SchedulerConfig = {
   llmFreshnessCheck?: boolean;
   /** Epsilon-greedy exploration probability (0-1, default 0.2). With probability ε, an exploration candidate is promoted to the front of the resolve loop. Set to 0 to disable. */
   epsilonGreedy?: number;
+  /**
+   * Hard cap on delivered proactive insights per user per UTC day
+   * (default 2). The friend's daily self-restraint — see
+   * scheduler/delivery-pacing.ts.
+   */
+  maxDailyInsights?: number;
 };

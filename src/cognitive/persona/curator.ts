@@ -1,4 +1,5 @@
 import { createSubsystemLogger } from "../../logging/subsystem.js";
+import { resetNoResponseStreak } from "../feedback/collector.js";
 import { decayAllBandits, decayBandit } from "../feedback/preference-learner.js";
 import type {
   PersonaTree,
@@ -628,6 +629,10 @@ export function mergeExtraction(
     moodHistory: newMoodHistory.slice(-10),
     domainBlacklist: newBlacklist,
     lifecycle: newLifecycle,
+    // A user message clears the social ledger (unanswered-proactive count
+    // → 0): an answered friend resumes instantly; the gate's ledger veto is
+    // escapable exactly through this path.
+    feedbackProfile: resetNoResponseStreak(persona).feedbackProfile,
   };
 }
 
