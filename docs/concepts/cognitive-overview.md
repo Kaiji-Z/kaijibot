@@ -96,14 +96,26 @@ The ProactiveScheduler (`proactive-scheduler.ts`) runs a **Search → Identify �
 3. **Resolve**: Call LLM engine to generate insight content
 4. **Inform**: Deliver to user via `onInsightReady` callback
 
-### PRISM cost-sensitive gate
+### Lexicographic routing + PRISM cost-sensitive gate
 
-Before each proactive attempt, the gate (`gate.ts`) computes:
+Delivery is routed lexicographically (earlier layers cannot be offset by later ones):
 
-- **Hard vetoes**: outside active hours, suppressed, <5 total exchanges
-- **pNeed** = sigmoid(time) × eventFactor × domainActivity ÷ lifecycleFactor
+1. **Social ledger veto** (`consecutiveNoResponses` ≥ 3; ≥ 2 for low trust) — silence. Any user message clears the ledger to zero.
+2. **Re-engagement budget** — the only channel for users silent >24h: mutual silence >10d, 14d attempt cooldown, p=0.6, consumes a ledger slot.
+3. **Normal cadence path** (user active within 24h) — daily budget → stochastic spacing → PRISM gate.
+
+The gate (`gate.ts`) computes:
+
+- **Hard vetoes**: outside active hours, suppressed, <5 total exchanges, ledger cap
+- **pNeed** = (momentum × ledgerDecay g(U)) × eventFactor × domainActivity ÷ lifecycleFactor — momentum decays monotonically with user silence (1.3 at 30min → 0.85 at 24h → 0 beyond); eventFactor: persona_change 0.9 ≫ info_scan 0.7 ≫ timer 0.3
 - **pAccept** = 0.5×trust + 0.3×banditMean + 0.2×feedbackRatio, then calibration-corrected
-- **Decision**: `pAct = pNeed × pAccept > C_FA / (C_FN + C_FA)` (default threshold 0.25)
+- **Decision**: `pAct = √(pNeed × pAccept) > C_FA / (C_FN + C_FA)`
+
+### Delivery pacing (human cadence)
+
+- **Daily budget**: at most `maxDailyInsights` (default 2) delivered insights per user per UTC day — the friend's daily self-restraint. Self-resetting; pending redeliveries are also bound.
+- **Stochastic hazard spacing**: no deterministic interval floors (they made the rhythm metronomic). 1h absolute floor, then P(send) rises linearly to 1 at floor + F (F = learned frequency; doubled when the last send went unanswered). Some days 0 sends, some 2 — never a fixed schedule.
+- **Conversational bypass**: a `persona_change` event while the user was active <2h ago skips the hazard roll ("you're into X? see this") — still bound by the floor and the daily cap.
 
 ### Event sources
 
@@ -158,13 +170,16 @@ Classification is priority-ordered with Chinese + English pattern matching.
 ```
 Event source fires (timer / persona_change / info_scan)
   → ProactiveScheduler.processEvent(userId, event)
-    → Gate: hard veto check → compute pNeed × pAccept → threshold comparison
-      → Search: scan opportunities (cross-domain, questions, depth, exploration)
-        → Identify: sort by pAct, pick best above threshold
-          → Resolve: LLM generates insight (+ optional web search)
-            → Dedup: check domain overlap with recent 5 insights
-              → Deliver: find user session → send via Feishu
-                → Feedback: collect response signals → update persona
+    → Ledger lazy transition: last send unanswered → U+1 (once per send); user reply → U=0
+    → Lexicographic routing: U ≥ cap → silence | silent >24h → re-engagement budget | else normal path
+      → Normal path: daily budget (≤2/day) → stochastic hazard / conversational bypass
+        → Gate: hard veto check → compute pNeed × pAccept → threshold comparison
+          → Search: scan opportunities (cross-domain, questions, depth, exploration)
+            → Identify: sort by pAct, pick best above threshold
+              → Resolve: LLM generates insight (+ optional web search)
+                → Dedup: candidate domain overlap with recent 5 insights + trigram content dedup
+                  → Deliver: find user session → send via Feishu → bump daily count
+                    → Feedback: implicit reply-quality attribution (48h window) → update persona
 ```
 
 ## Configuration

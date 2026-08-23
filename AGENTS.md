@@ -20,7 +20,7 @@ Before developing any feature or changing any code, read and follow `VERIFICATIO
   - `persona/` — per-user cognitive model (identity, domains, interests, trust). LLM-driven extraction with structured `TypedInsight` (6 categories: domain_knowledge, behavioral_pattern, stated_preference, tool_config, contextual_fact, goal_or_aspiration). Dynamic domain discovery via LLM (no hardcoded keywords). Interest lifecycle tracking (emergent/stable/declining/dormant/revived). Category-aware decay (`HALF_LIFE_BY_CATEGORY`). Persistence at `~/.kaijibot/cognitive/persona/`
   - `insight/` — proactive insight generation (cross-domain connections, domain depth, exploration). Unified pipeline with contrastive dedup, LLM self-refine loop (critique→rewrite), LLM-as-judge verification, semantic freshness check. Knowledge mode consumes TypedInsights (filtered by category) + cognitive fragments. Pattern mode uses dialog fragment clusters. Web search results serve as supporting evidence (not primary content). `FragmentStore` for behavioral pattern mining
   - `evolution/` — agent-driven self-evolution: hard-trigger detects complex tasks (≥3 tool calls), enqueues system event for agent to evaluate; LLM skill draft generator (with embedded skill-creator spec), skill writer (`~/.kaijibot/skills/`), lifecycle manager (dedup via Levenshtein+Jaccard, 30-day expiry), preference adapter (Thompson Sampling), safety gate, audit log, ClawHub publisher/catalog
-  - `scheduler/` — proactive timing (PRISM cost-sensitive gate, SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
+  - `scheduler/` — proactive timing (lexicographic decision: social-ledger veto → re-engagement budget → delivery pacing (daily cap + stochastic hazard) → PRISM gate; SIRI search-identify-resolve loop, timer/persona-change/info-scan/evolution-scan event sources)
   - `feedback/` — feedback collection (explicit + implicit), Thompson Sampling preference learner, trust/rapport calculator (SARA framework)
   - `correction/` — error-correction self-evolution: dual-path detection (agent self-report via `record_correction` tool + post-session LLM extraction on `/new`/`/reset`), `CorrectionStore` with Jaccard-based dedup and reinforcement (TTL=90d, MAX=50, threshold=0.6), system prompt injection via `context-writer.ts` (top 15 corrections sorted by reinforcement count). Persistence at `~/.kaijibot/cognitive/corrections/{agentId}/{userId}.json`
   - `mode-router.ts` — classifies turns into task/insight/hybrid/proactive modes (Chinese + English pattern matching)
@@ -144,16 +144,25 @@ The cognitive system identifies users through a single unified function: `resolv
 ```
 Event Sources (timer / persona_change / info_scan)
   → ProactiveScheduler.processEvent(userId, event)
-    → computeGradedGate() [pNeed × pAccept vs cost threshold]
+    → pending-delivery retry (daily-budget bound, at most one timer retry)
+    → ledger lazy transition: last send unanswered → U+1 (exactly once per send)
+    → lexicographic routing:
+        U ≥ ledger cap (3; 2 for low trust) → silence (hard veto, no offsets)
+        user active within 24h → normal cadence path:
+          daily budget (maxDailyInsights, default 2/UTC-day)
+            → stochastic hazard spacing (1h floor, hazard→1 at floor+F; conversational bypass for persona_change while user active <2h)
+              → computeGradedGate() [momentum × ledger-decay × eventFactor …]
+        else → re-engagement budget ONLY (mutual silence >10d, attempt cooldown 14d, p=0.6, consumes a ledger slot)
       → search() [scan opportunities: cross-domain, domain depth, exploration]
         → scanExploration: mode selection deferred to resolve() via banditWeightedSelect
-            modeCandidates: ["pattern", "surprise", "extend"] (or forced single mode via content strategy)
+            modeCandidates: ["pattern", "surprise", "extend"]
             resolve() calls selectMode() → banditWeightedSelect() with BASE_WEIGHTS (pattern:0.5, surprise:0.4, extend:0.1)
         → identify() [pick best by pAct, with domain cooldown + type cooldown]
       → applyEpsilonGreedy() [with probability ε, promote one exploration candidate to front]
         → resolve loop tries candidates in order (promoted exploration first if triggered)
           → resolve():
-              pattern mode: load fragments+clusters → buildPatternInsightPrompt → generateInsightCandidatesLLM(mode="pattern") → partial status, no verification
+              pattern mode: load fragments+clusters → if no clusters, fall back to knowledge path (never wastes the event)
+                else buildPatternInsightPrompt → generateInsightCandidatesLLM(mode="pattern") → partial status, no verification
               knowledge mode (surprise/extend):
                 1. checkSemanticNoveltyWithLLM — reject semantically repetitive candidates early
                 2. generateInsightCandidatesLLM — LLM generates from TypedInsights (getFilteredInsights, excludes tool_config/contextual_fact) + fragments + web search results
@@ -162,14 +171,26 @@ Event Sources (timer / persona_change / info_scan)
                 5. critiqueInsightWithLLM → refineInsightWithLLM — self-refine loop (critique→rewrite, up to 3 quality retries, early exit at score ≥ 0.85)
                 6. verifyInsightWithLLM — LLM-as-judge verification (sources present = verified)
                 7. checkSemanticNoveltyWithLLM — post-generation freshness gate
-            → safety-net trigram dedup → onInsightReady callback → resolveCognitiveDeliveryTarget → deliverOutboundPayloads → user receives message
+              candidate-level domain dedup (bypassed for re-engagement check-ins)
+            → safety-net trigram dedup → onInsightReady callback → bumpDailySend → resolveCognitiveDeliveryTarget → deliverOutboundPayloads → user receives message
 ```
 
 **Unified Pipeline (knowledge + pattern modes):**
 
 - **Knowledge mode** (`generateInsightCandidatesLLM`): LLM generates insight candidates from TypedInsights + cognitive fragments + web search results. `getFilteredInsights()` selects up to N insights per domain, excluding `tool_config` and `contextual_fact` categories. Uses `DIVERSE_FEW_SHOT_SETS` (4 sets × 2 examples) with `DIVERSITY_INSTRUCTION` to avoid formulaic output. `pickPromptVariant` selects prompt variant via Thompson Sampling from `feedbackProfile.topicBandits`. `CONTRASTIVE_INSTRUCTION` ensures each insight differs from past insights. Surprise mode uses `inferSearchStrategy` for web search queries (web results serve as supporting evidence, not primary content). After generation: `critiqueInsightWithLLM` → `refineInsightWithLLM` self-refine loop, quality retries up to 3 attempts with early exit at score ≥ 0.85. Post-generation: `checkSemanticNoveltyWithLLM` freshness gate.
 - **Pattern mode** (`buildPatternInsightPrompt`): Fragment clusters loaded from `FragmentStore` → top fragments by strength → `PATTERN_PROMPT_FRAMES` (4 behavioral observation frames, randomly selected) → LLM generates behavioral insight about the user's thinking patterns. Also uses `pickPromptVariant` for Thompson Sampling prompt selection and `CONTRASTIVE_INSTRUCTION` for dedup. No web search, no verification. Verification status is always `"partial"`.
-- **Mode routing**: `scanExploration()` creates exploration opportunities with `modeCandidates: ["pattern", "surprise", "extend"]`. Mode selection is deferred to `resolve()` which calls `selectMode()` → `banditWeightedSelect()` using `BASE_WEIGHTS` (pattern:0.5, surprise:0.4, extend:0.1) with a 30% probability floor (`BASE_PROBABILITY_FLOOR=0.3`) to prevent starvation. Content strategy override (`computeContentStrategy`) can force a specific mode when no-response streak ≥ 2. The actual resolved mode is propagated via `InsightCandidate.resolvedMode`.
+- **Mode routing**: `scanExploration()` creates exploration opportunities with `modeCandidates: ["pattern", "surprise", "extend"]`. Mode selection is deferred to `resolve()` which calls `selectMode()` → `banditWeightedSelect()` using `BASE_WEIGHTS` (pattern:0.5, surprise:0.4, extend:0.1) with a 30% probability floor (`BASE_PROBABILITY_FLOOR=0.3`) to prevent starvation. The actual resolved mode is propagated via `InsightCandidate.resolvedMode`.
+
+**Delivery Pacing & Social Ledger (human cadence):**
+
+- **Social ledger** (`consecutiveNoResponses`, U): one lazy increment per unanswered send (deduped via `lastNoResponseAt`); cleared to zero on ANY user message (`curator.mergeExtraction` → `resetNoResponseStreak`). Hard veto at U≥3 (U≥2 when trust <0.7). g(U) = {1.0, 0.45, 0.12} geometric decay inside `computeTimeFactor`.
+- **Momentum** replaces the cadence gaussian: user active ≤0.5h→1.3, 2h→1.0, 24h→0.85, >24h→0 (normal cadence path closed; only the re-engagement budget may reach such users).
+- **Daily budget** (`delivery-pacing.ts`): hard cap `maxDailyInsights` (default 2) per user per UTC day, self-resetting via `dailySendAnchorDay`/`dailySendCount`; pending retries are also bound. `bumpDailySend` is called at both delivery confirmation points.
+- **Stochastic hazard spacing**: replaces deterministic interval floors (which made rhythm metronomic). 1h absolute floor; P(send) rises linearly to 1 at floor + F (replied since send) or floor + 2F (unanswered); per-event seeded roll. Conversational bypass: `persona_change` while user active <2h skips the roll.
+- **Re-engagement budget** (`re-engagement.ts`): the ONLY channel for users silent >24h. Mutual silence >10d, attempt cooldown 14d, p=0.6, capped by the ledger. Check-ins bypass the domain freshness window (stale dedup constraints must not veto a greeting); content dedup still applies.
+- **Event factors**: persona_change 0.9 ≫ info_scan 0.7 ≫ timer 0.3 ("saw something that reminded me" ≫ bare clock tick). `dormant` lifecycle factor is 1.5 (contacted LESS), never a boost.
+- **Invariant tests** (`human-cadence.sim.test.ts`): 4 user-persona scenarios (responsive/sometimes/ignore-all/dormant) + 2 math invariants (pAct monotone non-increasing in U; reply → recovery within one cycle). ignore-all converges to ≤3 sends/30d; dormant < responsive; ≤2/day cap holds.
+- **Implicit feedback** (`feedback/collector.ts`): reply-quality classification (engaged/normal/dismissive) attributes a reply within 48h of a send to the insight's domain bandits (±0.5/±0.4) and nudges `optimalFrequencyHours`; gated by `cognitive.feedback.implicitFeedback` (default true).
 
 **Scheduler Diversification:**
 
@@ -421,7 +442,7 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 - Config lives in `~/.kaijibot/kaijibot.json`. CLI: `kaijibot config set <key> <value>`.
 - Set model via `kaijibot config set agent.model "<provider>/<model>"`.
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
-- Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.activeHours`
+- Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.maxDailyInsights` (default 2, daily self-restraint cap), `cognitive.proactive.activeHours`
 - Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)
 - Persona config: TypedInsight categories with `HALF_LIFE_BY_CATEGORY` decay; `InsightCategory` enum; `InterestPhase` lifecycle; dynamic domain discovery via LLM (no hardcoded keywords)
 - Evolution config: `cognitive.evolution.enabled`. The fields `minComplexity`, `errorComplexityThreshold`, `clawhubEnabled`, `clawhubRegistry`, `clawhubAutoPublish` are deprecated, stripped at load time with a console warning, and have no effect (no production code reads them). Note: `minTrustScore` is a separate, live field in scheduler config (`cognitive.proactive`), not evolution config.
