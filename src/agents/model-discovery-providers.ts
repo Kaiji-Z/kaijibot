@@ -44,26 +44,33 @@ function trimTrailingSlash(baseUrl: string): string {
   return baseUrl.replace(/\/$/, "");
 }
 
-/** Fetches model ids from an OpenAI-compatible /models endpoint. Never throws. */
-export async function fetchOpenAICompatibleModelIds(params: {
-  baseUrl: string;
+type OpenAiModelsFetchOutcome =
+  | { kind: "ok"; ids: string[] }
+  | { kind: "http-error"; status: number }
+  | { kind: "fetch-error"; error: unknown };
+
+function stripTrailingV1Segment(baseUrl: string): string | null {
+  if (!baseUrl.endsWith("/v1")) {
+    return null;
+  }
+  const parent = baseUrl.slice(0, -"/v1".length);
+  return parent ? parent : null;
+}
+
+async function fetchOpenAiModelsFromUrl(params: {
+  url: string;
   apiKey: string;
   fetchFn?: typeof fetch;
-}): Promise<string[]> {
-  const url = `${trimTrailingSlash(params.baseUrl)}/models`;
+}): Promise<OpenAiModelsFetchOutcome> {
   try {
     const res = await fetchWithTimeout(
-      url,
+      params.url,
       { headers: { Accept: "application/json", Authorization: `Bearer ${params.apiKey}` } },
       PROVIDER_FETCH_TIMEOUT_MS,
       params.fetchFn ?? fetch,
     );
     if (!res.ok) {
-      log.warn("openai-compatible model discovery non-OK status", {
-        status: res.status,
-        url,
-      });
-      return [];
+      return { kind: "http-error", status: res.status };
     }
     const json = (await res.json()) as { data?: Array<{ id?: unknown }> };
     const data = Array.isArray(json?.data) ? json.data : [];
@@ -74,14 +81,47 @@ export async function fetchOpenAICompatibleModelIds(params: {
         ids.push(id);
       }
     }
-    return ids;
+    return { kind: "ok", ids };
   } catch (err) {
-    log.warn("openai-compatible model discovery failed", {
-      url,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return [];
+    return { kind: "fetch-error", error: err };
   }
+}
+
+/** Fetches model ids from an OpenAI-compatible /models endpoint. Never throws. */
+export async function fetchOpenAICompatibleModelIds(params: {
+  baseUrl: string;
+  apiKey: string;
+  fetchFn?: typeof fetch;
+}): Promise<string[]> {
+  const base = trimTrailingSlash(params.baseUrl);
+  const primary = await fetchOpenAiModelsFromUrl({ url: `${base}/models`, ...params });
+  if (primary.kind === "ok") {
+    return primary.ids;
+  }
+  // Some providers accept OpenAI-SDK-style base URLs ending in "/v1" for chat
+  // requests but only expose the model list at the parent path (e.g. z.ai
+  // coding endpoints serve /v4/chat/completions but 404 on /v4/v1/models).
+  // Retry once without the cosmetic "/v1" segment when the primary path 404s.
+  if (primary.kind === "http-error" && primary.status === 404) {
+    const parentBase = stripTrailingV1Segment(base);
+    if (parentBase) {
+      const retry = await fetchOpenAiModelsFromUrl({ url: `${parentBase}/models`, ...params });
+      if (retry.kind === "ok") {
+        return retry.ids;
+      }
+    }
+  }
+  log.warn("openai-compatible model discovery failed", {
+    url: `${base}/models`,
+    status: primary.kind === "http-error" ? primary.status : undefined,
+    error:
+      primary.kind === "fetch-error"
+        ? primary.error instanceof Error
+          ? primary.error.message
+          : String(primary.error)
+        : undefined,
+  });
+  return [];
 }
 
 /**

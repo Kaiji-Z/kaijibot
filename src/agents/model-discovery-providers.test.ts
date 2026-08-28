@@ -78,6 +78,102 @@ describe("R14 fetchOpenAICompatibleModelIds — non-200 returns []", () => {
   });
 });
 
+describe("R14b fetchOpenAICompatibleModelIds — 404 retry without trailing /v1", () => {
+  function mockResponse(body: string, status: number): Response {
+    return new Response(body, {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  it("retries the parent path when {base}/v1/models returns 404", async () => {
+    const mockFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(mockResponse(JSON.stringify({ error: "not found" }), 404))
+      .mockResolvedValueOnce(
+        mockResponse(JSON.stringify({ data: [{ id: "glm-5.3" }, { id: "glm-5.3-flash" }] }), 200),
+      );
+
+    const ids = await fetchOpenAICompatibleModelIds({
+      baseUrl: "https://api.z.ai/api/coding/paas/v4/v1",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+
+    expect(ids).toEqual(["glm-5.3", "glm-5.3-flash"]);
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      "https://api.z.ai/api/coding/paas/v4/v1/models",
+      expect.anything(),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      "https://api.z.ai/api/coding/paas/v4/models",
+      expect.anything(),
+    );
+  });
+
+  it("does not retry when the primary request succeeds", async () => {
+    const mockFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(mockResponse(JSON.stringify({ data: [{ id: "model-a" }] }), 200));
+
+    const ids = await fetchOpenAICompatibleModelIds({
+      baseUrl: "https://api.test.com/v1",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+
+    expect(ids).toEqual(["model-a"]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry when baseUrl has no trailing /v1", async () => {
+    const mockFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(mockResponse(JSON.stringify({ error: "not found" }), 404));
+
+    const ids = await fetchOpenAICompatibleModelIds({
+      baseUrl: "https://api.test.com/v4",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+
+    expect(ids).toEqual([]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on auth failures (401)", async () => {
+    const mockFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(mockResponse(JSON.stringify({ error: "unauthorized" }), 401));
+
+    const ids = await fetchOpenAICompatibleModelIds({
+      baseUrl: "https://api.test.com/v1",
+      apiKey: "bad-key",
+      fetchFn: mockFetch,
+    });
+
+    expect(ids).toEqual([]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns [] when the retry also fails", async () => {
+    const mockFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(mockResponse(JSON.stringify({ error: "not found" }), 404));
+
+    const ids = await fetchOpenAICompatibleModelIds({
+      baseUrl: "https://api.test.com/v1",
+      apiKey: "k",
+      fetchFn: mockFetch,
+    });
+
+    expect(ids).toEqual([]);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("R15 fetchOpenAICompatibleModelIds — invalid JSON returns []", () => {
   it("returns empty list on JSON parse error without throwing", async () => {
     const mockFetch = mockFetchJson("not valid json at all", 200);
