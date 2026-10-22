@@ -15,10 +15,10 @@ describe("Dockerfile", () => {
   it("uses shared multi-arch base image refs for all root Node stages", async () => {
     const dockerfile = await readFile(dockerfilePath, "utf8");
     expect(dockerfile).toContain(
-      'ARG KAIJIBOT_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"',
+      'ARG KAIJIBOT_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:6449e19d8184d84062525b6a7524def03146c2cb04a7f08b076680d0e8e4240a"',
     );
     expect(dockerfile).toContain(
-      'ARG KAIJIBOT_NODE_BOOKWORM_SLIM_IMAGE="node:24-bookworm-slim@sha256:e8e2e91b1378f83c5b2dd15f0247f34110e2fe895f6ca7719dbb780f929368eb"',
+      'ARG KAIJIBOT_NODE_BOOKWORM_SLIM_IMAGE="node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205"',
     );
     expect(dockerfile).toContain("FROM ${KAIJIBOT_NODE_BOOKWORM_IMAGE} AS ext-deps");
     expect(dockerfile).toContain("FROM ${KAIJIBOT_NODE_BOOKWORM_IMAGE} AS build");
