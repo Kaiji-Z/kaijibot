@@ -24,8 +24,8 @@ overrides:
   tough-cookie: 4.1.4
   yauzl: 3.2.1
   protobufjs: 7.6.5
-  undici: 8.7.0
-  jsdom>undici: 7.24.5
+  undici: 8.12.3
+  jsdom>undici: 7.30.1
   fast-uri: 3.1.3
   ws: 8.21.1
 
@@ -180,8 +180,8 @@ importers:
         specifier: ^1.1
         version: 1.2.9
       undici:
-        specifier: 8.7.0
-        version: 8.7.0
+        specifier: 8.12.3
+        version: 8.12.3
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -264,7 +264,7 @@ importers:
         version: 0.34.5
       '@larksuite/cli':
         specifier: latest
-        version: 1.0.88
+        version: 1.0.98
       openshell:
         specifier: 0.1.0
         version: 0.1.0
@@ -1604,8 +1604,8 @@ packages:
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
 
-  '@larksuite/cli@1.0.88':
-    resolution: {integrity: sha512-Z6GcJ442sHFsGDviu4KFsLun6bklK23WeFkPQopioDepNixYC1WeJMILK1RAGetSzp/KKent7pjQFEKduK5tLA==}
+  '@larksuite/cli@1.0.98':
+    resolution: {integrity: sha512-1AzjdhZ3VXRWnaftb7Mx/SWA3zvs7Mk5W5R1OfThKruQa1ABO8dFZB3V20ZngJigDYiqoUvL/bNqlKZOYLaZbg==}
     engines: {node: '>=16'}
     cpu: [x64, arm64, riscv64]
     os: [darwin, linux, win32]
@@ -5159,12 +5159,12 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
-  undici@7.24.5:
-    resolution: {integrity: sha512-3IWdCpjgxp15CbJnsi/Y9TCDE7HWVN19j1hmzVhoAkY/+CJx449tVxT5wZc1Gwg8J+P0LWvzlBzxYRnHJ+1i7Q==}
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
-  undici@8.7.0:
-    resolution: {integrity: sha512-N7iQtfyLhIMOFgQubvmLV26svHpO0bqKnAiWotTQCVKCmWrcGbBotPuW1x+xwYZ2VHdSTVUfPQQnlEt1/LouTQ==}
+  undici@8.12.3:
+    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
     engines: {node: '>=22.19.0'}
 
   unist-util-is@6.0.1:
@@ -6205,7 +6205,7 @@ snapshots:
       semver: 7.8.0
       strip-ansi: 7.2.0
       typebox: 1.2.9
-      undici: 8.7.0
+      undici: 8.12.3
       yaml: 2.9.0
     optionalDependencies:
       '@mariozechner/clipboard': 0.3.9
@@ -6552,7 +6552,7 @@ snapshots:
       '@lancedb/lancedb-win32-arm64-msvc': 0.27.2
       '@lancedb/lancedb-win32-x64-msvc': 0.27.2
 
-  '@larksuite/cli@1.0.88':
+  '@larksuite/cli@1.0.98':
     dependencies:
       '@clack/prompts': 1.2.0
     optional: true
@@ -8883,7 +8883,7 @@ snapshots:
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 4.1.4
-      undici: 7.24.5
+      undici: 7.30.1
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -10213,9 +10213,9 @@ snapshots:
 
   undici-types@7.18.2: {}
 
-  undici@7.24.5: {}
+  undici@7.30.1: {}
 
-  undici@8.7.0: {}
+  undici@8.12.3: {}
 
   unist-util-is@6.0.1:
     dependencies:
