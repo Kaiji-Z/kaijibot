@@ -36,7 +36,14 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Build
-        run: pnpm build
+        run: |
+          set -o pipefail
+          pnpm build 2>&1 | tee build.log
+          st=0
+          if [ "" -ne 0 ]; then
+            tail -n 30 build.log | cut -c1-240 | sed 's/^/::error::/' >&2 || true
+          fi
+          exit ""
 
       # Same-date "-N" versions look like semver prereleases to npm 11+, which
       # refuses to publish them without an explicit dist-tag. They are real
@@ -63,7 +70,14 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Build
-        run: pnpm build
+        run: |
+          set -o pipefail
+          pnpm build 2>&1 | tee build.log
+          st=0
+          if [ "" -ne 0 ]; then
+            tail -n 30 build.log | cut -c1-240 | sed 's/^/::error::/' >&2 || true
+          fi
+          exit ""
 
       - name: Create tarball
         run: npm pack --ignore-scripts
