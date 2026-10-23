@@ -30,7 +30,11 @@ jobs:
           echo "npm $V OK"
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        # Pin to the packageManager version: a newer global pnpm self-switches to the
+        # managed @pnpm/exe native binary, whose npm_execpath then breaks build-all's
+        # pnpm runner (node executes the ELF as JS -> SyntaxError). --allow-scripts
+        # because npm 11 blocks pnpm's install scripts by default.
+        run: npm install -g pnpm@10.32.1 --allow-scripts=pnpm
 
       - name: Install deps
         run: pnpm install --no-frozen-lockfile
@@ -64,7 +68,11 @@ jobs:
           node-version: "22"
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        # Pin to the packageManager version: a newer global pnpm self-switches to the
+        # managed @pnpm/exe native binary, whose npm_execpath then breaks build-all's
+        # pnpm runner (node executes the ELF as JS -> SyntaxError). --allow-scripts
+        # because npm 11 blocks pnpm's install scripts by default.
+        run: npm install -g pnpm@10.32.1 --allow-scripts=pnpm
 
       - name: Install deps
         run: pnpm install --no-frozen-lockfile
