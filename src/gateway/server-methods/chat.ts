@@ -53,6 +53,7 @@ import {
   parseMessageWithAttachments,
 } from "../chat-attachments.js";
 import { stripEnvelopeFromMessage, stripEnvelopeFromMessages } from "../chat-sanitize.js";
+import { stripInboundMetadata } from "../../auto-reply/reply/strip-inbound-meta.js";
 import { augmentChatHistoryWithCliSessionImports } from "../cli-session-history.js";
 import { isSuppressedControlReplyText } from "../control-reply-text.js";
 import { ADMIN_SCOPE } from "../method-scopes.js";
@@ -444,6 +445,36 @@ function extractTranscriptUserText(content: unknown): string | undefined {
   return textBlocks.length > 0 ? textBlocks.join("") : undefined;
 }
 
+/**
+ * True when a transcript user turn is the chat.send message (bare text) and
+ * carries no media fields yet. The persisted turn carries AI-facing prefixes
+ * (timestamp envelope, untrusted sender metadata) that chat.send's bare
+ * message never has, so the stripped form is compared as well — otherwise
+ * MediaPath fields can never attach and attachments leave no durable record.
+ */
+export function matchesChatSendUserTurnForMediaRewrite(
+  entry: { type: string; message?: { role?: string; content?: unknown } & Record<string, unknown> },
+  message: string,
+): boolean {
+  if (entry.type !== "message" || entry.message?.role !== "user") {
+    return false;
+  }
+  const existingPaths = Array.isArray(entry.message.MediaPaths)
+    ? (entry.message.MediaPaths as unknown[])
+    : undefined;
+  if (
+    (typeof entry.message.MediaPath === "string" && entry.message.MediaPath) ||
+    (existingPaths && existingPaths.length > 0)
+  ) {
+    return false;
+  }
+  const text = extractTranscriptUserText(entry.message.content);
+  if (text === undefined) {
+    return false;
+  }
+  return text === message || stripInboundMetadata(text) === message;
+}
+
 async function rewriteChatSendUserTurnMediaPaths(params: {
   transcriptPath: string;
   sessionKey: string;
@@ -456,24 +487,12 @@ async function rewriteChatSendUserTurnMediaPaths(params: {
   }
   const sessionManager = SessionManager.open(params.transcriptPath);
   const branch = sessionManager.getBranch();
-  const target = [...branch].toReversed().find((entry) => {
-    if (entry.type !== "message" || entry.message.role !== "user") {
-      return false;
-    }
-    const existingPaths = Array.isArray((entry.message as { MediaPaths?: unknown }).MediaPaths)
-      ? (entry.message as { MediaPaths?: unknown[] }).MediaPaths
-      : undefined;
-    if (
-      (typeof (entry.message as { MediaPath?: unknown }).MediaPath === "string" &&
-        (entry.message as { MediaPath?: string }).MediaPath) ||
-      (existingPaths && existingPaths.length > 0)
-    ) {
-      return false;
-    }
-    return (
-      extractTranscriptUserText((entry.message as { content?: unknown }).content) === params.message
-    );
-  });
+  const target = [...branch].toReversed().find((entry) =>
+    matchesChatSendUserTurnForMediaRewrite(
+      entry as { type: string; message?: { role?: string; content?: unknown } },
+      params.message,
+    ),
+  );
   if (!target || target.type !== "message") {
     return;
   }
