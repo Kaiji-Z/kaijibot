@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createAsyncLock, writeTextAtomic } from "../../infra/json-files.js";
+import { getOrCreateScopedAsyncLock, writeTextAtomic } from "../../infra/json-files.js";
 import { textSimilarity } from "../../infra/text-similarity.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PatternRegistry } from "./pattern-registry.js";
@@ -17,8 +17,6 @@ const log = createSubsystemLogger("correction");
 const CORRECTIONS_DIR = "cognitive/corrections";
 
 const PROMOTE_AT_REINFORCEMENT_COUNT = 5;
-
-type AsyncLock = <T>(fn: () => Promise<T>) => Promise<T>;
 
 const MAX_USER_FACING_FIELD_CHARS = 2000;
 
@@ -105,7 +103,6 @@ const TOKEN_STOPWORDS = new Set([
 
 export class CorrectionStore {
   private patternRegistry: PatternRegistry | null = null;
-  private readonly locks = new Map<string, AsyncLock>();
 
   constructor(private readonly configDir: string) {}
 
@@ -114,12 +111,12 @@ export class CorrectionStore {
   }
 
   private async withLock<T>(agentId: string, userId: string, fn: () => Promise<T>): Promise<T> {
-    const key = `${agentId}/${userId}`;
-    let lock = this.locks.get(key);
-    if (!lock) {
-      lock = createAsyncLock();
-      this.locks.set(key, lock);
-    }
+    // Scoped (cross-instance) lock: this store is instantiated per call site
+    // (agent tool, session-memory hook, consolidation cron), so per-instance
+    // locks would not serialize concurrent writers to the same file.
+    const lock = getOrCreateScopedAsyncLock(
+      `correction:${this.configDir}:${agentId}/${userId}`,
+    );
     return lock(fn);
   }
 

@@ -150,6 +150,64 @@ describeDet("ProactiveScheduler", () => {
     expect(result).toBeUndefined();
   });
 
+  it("routes the no-response ledger through applyNoResponseLedger when provided", async () => {
+    const persona = personaWithDomains();
+    const now = Date.now();
+    // Last proactive send is more recent than the user's last activity → unanswered.
+    persona.feedbackProfile.lastProactiveAt = now - 2 * 3600_000;
+    persona.lifecycle.lastActiveAt = now - 8 * 3600_000;
+
+    let ledgerCalls = 0;
+    const savedLedger: number[] = [];
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async (_agentId, _userId, p) => {
+        savedLedger.push(p.feedbackProfile.consecutiveNoResponses ?? -1);
+      },
+      applyNoResponseLedger: async (_agentId, _userId, lastProactiveAt) => {
+        ledgerCalls++;
+        expect(lastProactiveAt).toBe(persona.feedbackProfile.lastProactiveAt);
+        const updated = personaWithDomains();
+        updated.feedbackProfile.lastProactiveAt = lastProactiveAt;
+        updated.feedbackProfile.consecutiveNoResponses = 1;
+        updated.feedbackProfile.lastNoResponseAt = lastProactiveAt;
+        updated.lifecycle.lastActiveAt = persona.lifecycle.lastActiveAt;
+        return updated;
+      },
+    });
+
+    await scheduler.processEvent("user1", { type: "timer", timestamp: now }, "main");
+
+    expect(ledgerCalls).toBe(1);
+    // Every later save (if the gate lets the event proceed) must carry the
+    // ledger state returned by the atomic callback, not the stale snapshot.
+    for (const value of savedLedger) {
+      expect(value).toBe(1);
+    }
+  });
+
+  it("falls back to snapshot mutation when no ledger callback is provided", async () => {
+    const persona = personaWithDomains();
+    const now = Date.now();
+    persona.feedbackProfile.lastProactiveAt = now - 2 * 3600_000;
+    persona.lifecycle.lastActiveAt = now - 8 * 3600_000;
+
+    const savedLedger: number[] = [];
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async () => persona,
+      onInsightReady: async () => {},
+      savePersona: async (_agentId, _userId, p) => {
+        savedLedger.push(p.feedbackProfile.consecutiveNoResponses ?? -1);
+      },
+    });
+
+    await scheduler.processEvent("user1", { type: "timer", timestamp: now }, "main");
+
+    expect(savedLedger.length).toBeGreaterThanOrEqual(1);
+    expect(savedLedger[0]).toBe(1);
+  });
+
   it("generates insight when all gates pass", async () => {
     const persona = personaWithDomains();
     let savedPersona: PersonaTree | undefined;
@@ -3944,6 +4002,26 @@ describe("applyEpsilonGreedy", () => {
       }
     }
     expect(foundNonTrigger).toBe(true);
+  });
+
+  it("does not bias the exploration pick toward the first candidate (epsilon < 1)", () => {
+    // Regression: reusing the gate roll (uniform on [0, epsilon)) for the
+    // index made floor(rng * L) collapse to 0 for the default epsilon=0.2,
+    // so the promote branch always promoted the first exploration candidate.
+    const cands = [
+      makeOpp("cross_domain", 0.8),
+      makeOpp("exploration", 0.5),
+      makeOpp("exploration", 0.45),
+      makeOpp("exploration", 0.4),
+    ];
+    const promotedDomains = new Set<string>();
+    for (let seed = 1; seed <= 500; seed++) {
+      const result = applyEpsilonGreedy(cands, 0.2, seed);
+      if (result !== cands) {
+        promotedDomains.add(result[0]!.targetDomains[0]!);
+      }
+    }
+    expect(promotedDomains.size).toBeGreaterThan(1);
   });
 
   it("returns same array when seed triggers epsilon but no exploration candidates", () => {

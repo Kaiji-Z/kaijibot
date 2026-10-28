@@ -309,4 +309,20 @@ describe("CJK tokenizer — Jaccard dedup for Chinese", () => {
     const result = await store.addOrReinforce(AGENT, USER, incoming);
     expect(result).toBe("reinforced");
   });
+
+  it("concurrent addOrReinforce on separate store instances loses no records", async () => {
+    // Regression: per-instance locks did not serialize the agent tool, the
+    // session-memory hook, and the consolidation cron writing the same file.
+    const storeA = new CorrectionStore(tempDir);
+    const storeB = new CorrectionStore(tempDir);
+
+    await Promise.all([
+      storeA.addOrReinforce(AGENT, USER, makeCorrection({ domain: "code", mistake: "alpha mistake" })),
+      storeB.addOrReinforce(AGENT, USER, makeCorrection({ domain: "code", mistake: "beta mistake" })),
+    ]);
+
+    const loaded = await store.loadAll(AGENT, USER);
+    expect(loaded).toHaveLength(2);
+  });
 });
+

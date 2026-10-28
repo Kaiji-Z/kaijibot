@@ -519,4 +519,26 @@ describe("FragmentStore", () => {
       expect(clusters).toHaveLength(0);
     });
   });
+
+  // ─── Cross-instance concurrency ───
+
+  describe("cross-instance concurrency", () => {
+    it("concurrent addFragment on separate store instances loses no fragments", async () => {
+      // Regression: per-instance locks did not serialize the post-turn
+      // collector and the consolidation cron writing the same file.
+      const storeA = new FragmentStore(tempDir);
+      const storeB = new FragmentStore(tempDir);
+      const fragmentsA = [makeFragment(), makeFragment(), makeFragment()];
+      const fragmentsB = [makeFragment(), makeFragment(), makeFragment()];
+
+      await Promise.all([
+        ...fragmentsA.map((f) => storeA.addFragment("main", "test-user", f)),
+        ...fragmentsB.map((f) => storeB.addFragment("main", "test-user", f)),
+      ]);
+
+      const loaded = await store.load("main", "test-user");
+      expect(loaded).toHaveLength(fragmentsA.length + fragmentsB.length);
+    });
+  });
 });
+

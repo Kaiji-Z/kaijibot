@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createAsyncLock, writeTextAtomic } from "../../infra/json-files.js";
+import { getOrCreateScopedAsyncLock, writeTextAtomic } from "../../infra/json-files.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { Fragment, FragmentCluster, FragmentStoreFile } from "./fragment-types.js";
 import { isFragmentExpired, computeFragmentDecay } from "./fragment-types.js";
@@ -13,26 +13,17 @@ const FRAGMENTS_DIR = "cognitive/fragments";
 export class FragmentStore {
   constructor(private readonly configDir: string) {}
 
-  private cache = new Map<string, { fragments: Fragment[]; loadedAt: number }>();
-  private static CACHE_TTL_MS = 60_000;
-  private readonly locks = new Map<string, <T>(fn: () => Promise<T>) => Promise<T>>();
-
   private async withLock<T>(agentId: string, userId: string, fn: () => Promise<T>): Promise<T> {
-    const key = `${agentId}/${userId}`;
-    let lock = this.locks.get(key);
-    if (!lock) {
-      lock = createAsyncLock();
-      this.locks.set(key, lock);
-    }
+    // Scoped (cross-instance) lock: this store is instantiated per writer
+    // (post-turn collector, consolidation cron, gateway bootstrap), so
+    // per-instance locks would not serialize concurrent writers to the same
+    // fragment file.
+    const lock = getOrCreateScopedAsyncLock(`fragments:${this.configDir}:${agentId}/${userId}`);
     return lock(fn);
   }
 
   private filePath(agentId: string, userId: string): string {
     return join(this.configDir, FRAGMENTS_DIR, agentId, `${userId}.json`);
-  }
-
-  private cacheKey(agentId: string, userId: string): string {
-    return `${agentId}/${userId}`;
   }
 
   private pruneAndDecay(fragments: Fragment[], userId?: string): Fragment[] {
@@ -48,13 +39,10 @@ export class FragmentStore {
     return result;
   }
 
+  // No read cache: multiple store instances share one file per
+  // (agentId, userId), and a per-instance cache cannot be invalidated by
+  // other instances' writes — a 60s stale window would merge into old data.
   async load(agentId: string, userId: string): Promise<Fragment[]> {
-    const key = this.cacheKey(agentId, userId);
-    const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.loadedAt < FragmentStore.CACHE_TTL_MS) {
-      return this.pruneAndDecay(cached.fragments, userId);
-    }
-
     const path = this.filePath(agentId, userId);
     if (!existsSync(path)) {
       return [];
@@ -71,23 +59,26 @@ export class FragmentStore {
       ) {
         return [];
       }
-      const fragments = this.pruneAndDecay((parsed as FragmentStoreFile).fragments, userId);
-      this.cache.set(key, {
-        fragments: (parsed as FragmentStoreFile).fragments,
-        loadedAt: Date.now(),
-      });
-      return fragments;
+      return this.pruneAndDecay((parsed as FragmentStoreFile).fragments, userId);
     } catch (err) {
       log.warn("Failed to load fragments", { agentId, userId, error: String(err) });
       return [];
     }
   }
 
-  async save(agentId: string, userId: string, fragments: Fragment[]): Promise<void> {
+  // Raw write, for use INSIDE withLock (the scoped lock is non-reentrant).
+  private async writeFragments(
+    agentId: string,
+    userId: string,
+    fragments: Fragment[],
+  ): Promise<void> {
     const targetPath = this.filePath(agentId, userId);
     const payload: FragmentStoreFile = { version: 1, fragments };
     await writeTextAtomic(targetPath, JSON.stringify(payload, null, 2));
-    this.cache.set(this.cacheKey(agentId, userId), { fragments, loadedAt: Date.now() });
+  }
+
+  async save(agentId: string, userId: string, fragments: Fragment[]): Promise<void> {
+    await this.withLock(agentId, userId, () => this.writeFragments(agentId, userId, fragments));
   }
 
   async addFragment(agentId: string, userId: string, fragment: Fragment): Promise<Fragment[]> {
@@ -134,7 +125,7 @@ export class FragmentStore {
           domains: fragment.domains,
         });
       }
-      await this.save(agentId, userId, existing);
+      await this.writeFragments(agentId, userId, existing);
       return existing;
     });
   }
@@ -264,19 +255,23 @@ export class FragmentStore {
   }
 
   async removeFragment(agentId: string, userId: string, fragmentId: string): Promise<void> {
-    const fragments = await this.load(agentId, userId);
-    const filtered = fragments.filter((f) => f.id !== fragmentId);
-    await this.save(agentId, userId, filtered);
+    await this.withLock(agentId, userId, async () => {
+      const fragments = await this.load(agentId, userId);
+      const filtered = fragments.filter((f) => f.id !== fragmentId);
+      await this.writeFragments(agentId, userId, filtered);
+    });
   }
 
   async touchFragment(agentId: string, userId: string, fragmentId: string): Promise<void> {
-    const fragments = await this.load(agentId, userId);
-    const target = fragments.find((f) => f.id === fragmentId);
-    if (target) {
-      target.strength = Math.min(1.0, target.strength + 0.1);
-      target.initialStrength = Math.min(1.0, (target.initialStrength ?? target.strength) + 0.1);
-      await this.save(agentId, userId, fragments);
-    }
+    await this.withLock(agentId, userId, async () => {
+      const fragments = await this.load(agentId, userId);
+      const target = fragments.find((f) => f.id === fragmentId);
+      if (target) {
+        target.strength = Math.min(1.0, target.strength + 0.1);
+        target.initialStrength = Math.min(1.0, (target.initialStrength ?? target.strength) + 0.1);
+        await this.writeFragments(agentId, userId, fragments);
+      }
+    });
   }
 
   async listUserIds(agentId: string): Promise<string[]> {

@@ -141,8 +141,12 @@ export function applyEpsilonGreedy(
     return candidates;
   }
 
+  // Independent second roll: the first rng value is already < epsilon by the
+  // gate above, so reusing it would bias the pick (floor(epsilon * L) is 0
+  // for the common epsilon values) and always promote the first candidate.
+  const pickRng = seededRandom(seed ^ 0x9e3779b9);
   const pickIdx =
-    explorationIndices[Math.floor(rng * explorationIndices.length) % explorationIndices.length]!;
+    explorationIndices[Math.floor(pickRng * explorationIndices.length) % explorationIndices.length]!;
   const promoted = candidates[pickIdx]!;
   const rest = candidates.filter((_, i) => i !== pickIdx);
 
@@ -168,6 +172,25 @@ export class ProactiveScheduler {
         candidate: InsightCandidate,
       ) => Promise<boolean | void>;
       savePersona: (agentId: string, userId: string, persona: PersonaTree) => Promise<void>;
+      /**
+       * Atomic no-response ledger transition on freshly-loaded state.
+       *
+       * When provided, the host re-evaluates the unanswered condition against
+       * the CURRENT persona (a user reply that landed after this scheduler's
+       * snapshot was loaded resets the streak and refreshes
+       * lifecycle.lastActiveAt, making the transition void) and persists the
+       * increment in a single store.update. Returns the updated persona, or
+       * undefined when the store cannot load it.
+       *
+       * Without this callback the scheduler falls back to mutating its
+       * snapshot and saving via savePersona — correct only when no reply can
+       * interleave (tests).
+       */
+      applyNoResponseLedger?: (
+        agentId: string,
+        userId: string,
+        lastProactiveAt: number,
+      ) => Promise<PersonaTree | undefined>;
       listRecentInsightContents?: (
         agentId: string,
         userId: string,
@@ -899,21 +922,41 @@ export class ProactiveScheduler {
       lastProactiveAt > persona.lifecycle.lastActiveAt &&
       persona.feedbackProfile.lastNoResponseAt !== lastProactiveAt
     ) {
-      const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
-      const prevDomains =
-        recentDomains.length >= 1 ? (recentDomains[recentDomains.length - 1] ?? []) : [];
-      const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
-      const prevMode = recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
-      persona = processNoResponse(persona, {
-        previousDomains: prevDomains,
-        previousMode: prevMode,
-      });
-      persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
-      log.info("ledger: unanswered proactive recorded", {
-        userId,
-        unanswered: persona.feedbackProfile.consecutiveNoResponses,
-      });
-      await this.callbacks.savePersona(agentId, userId, persona);
+      if (this.callbacks.applyNoResponseLedger) {
+        // Atomic transition on freshly-loaded state. The gateway re-checks
+        // the condition against current data, so a reply that landed while
+        // this event was queued resets the streak instead of being clobbered
+        // by this snapshot.
+        const updated = await this.callbacks.applyNoResponseLedger(
+          agentId,
+          userId,
+          lastProactiveAt,
+        );
+        if (updated) {
+          persona = updated;
+        }
+        log.info("ledger: unanswered proactive recorded", {
+          userId,
+          unanswered: persona.feedbackProfile.consecutiveNoResponses,
+        });
+      } else {
+        const recentDomains = persona.feedbackProfile.recentInsightDomains ?? [];
+        const prevDomains =
+          recentDomains.length >= 1 ? (recentDomains[recentDomains.length - 1] ?? []) : [];
+        const recentModes = persona.feedbackProfile.recentInsightModes ?? [];
+        const prevMode =
+          recentModes.length >= 1 ? (recentModes[recentModes.length - 1] ?? undefined) : undefined;
+        persona = processNoResponse(persona, {
+          previousDomains: prevDomains,
+          previousMode: prevMode,
+        });
+        persona.feedbackProfile.lastNoResponseAt = lastProactiveAt;
+        log.info("ledger: unanswered proactive recorded", {
+          userId,
+          unanswered: persona.feedbackProfile.consecutiveNoResponses,
+        });
+        await this.callbacks.savePersona(agentId, userId, persona);
+      }
     }
 
     // Re-engagement budget: the only channel allowed to reach a user whose

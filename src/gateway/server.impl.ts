@@ -10,6 +10,7 @@ import { runChannelPluginStartupMaintenance } from "../channels/plugins/lifecycl
 import { formatCliCommand } from "../cli/command-format.js";
 import { createDefaultDeps } from "../cli/deps.js";
 import type { SchedulerEvent } from "../cognitive/scheduler/types.js";
+import { mergeSchedulerFeedbackProfile } from "./cognitive-persona-merge.js";
 import { isRestartEnabled } from "../config/commands.js";
 import {
   type ConfigFileSnapshot,
@@ -1660,16 +1661,50 @@ export async function startGatewayServer(
             {
               loadPersona: async (agentId, userId) => cognitiveStore.load(agentId, userId),
               savePersona: async (agentId, userId, persona) => {
-                // Merge through update(): the scheduler snapshot was loaded
-                // before a multi-minute LLM resolve loop, and a blind save()
-                // would clobber concurrent writes (handshake clears, feedback,
-                // post-turn persona extraction) to every non-feedback field.
+                // Field-level merge through update(): the scheduler snapshot
+                // was loaded before a multi-minute LLM resolve loop, and a
+                // wholesale feedbackProfile replacement would clobber
+                // concurrent reply-path writes (ledger resets via
+                // resetNoResponseStreak, bandit updates, attribution). Only
+                // scheduler-owned pacing/dedup fields are copied; the ledger
+                // itself is persisted exclusively by applyNoResponseLedger.
                 await cognitiveStore.update(agentId, userId, (current) => {
-                  current.feedbackProfile = persona.feedbackProfile;
+                  current.feedbackProfile = mergeSchedulerFeedbackProfile(
+                    current.feedbackProfile,
+                    persona.feedbackProfile,
+                  );
                   return current;
                 });
                 const domainKeys = Object.keys(persona.domains);
                 personaChangeSource.checkPersonaUpdate(userId, domainKeys);
+              },
+              applyNoResponseLedger: async (agentId, userId, lastProactiveAt) => {
+                const { processNoResponse } = await import("../cognitive/feedback/collector.js");
+                return await cognitiveStore.update(agentId, userId, (current) => {
+                  // Re-check on fresh state: a reply since the scheduler's
+                  // snapshot was loaded resets the streak (making this send
+                  // answered) and bumps lifecycle.lastActiveAt.
+                  if (current.feedbackProfile.lastNoResponseAt === lastProactiveAt) {
+                    return current;
+                  }
+                  if (!(lastProactiveAt > 0 && lastProactiveAt > current.lifecycle.lastActiveAt)) {
+                    return current;
+                  }
+                  const recentDomains = current.feedbackProfile.recentInsightDomains ?? [];
+                  const previousDomains =
+                    recentDomains.length >= 1
+                      ? (recentDomains[recentDomains.length - 1] ?? [])
+                      : [];
+                  const recentModes = current.feedbackProfile.recentInsightModes ?? [];
+                  const previousMode =
+                    recentModes.length >= 1 ? recentModes[recentModes.length - 1] : undefined;
+                  const updated = processNoResponse(current, {
+                    previousDomains,
+                    previousMode,
+                  });
+                  updated.feedbackProfile.lastNoResponseAt = lastProactiveAt;
+                  return updated;
+                });
               },
               listRecentInsightContents: async (agentId, userId, limit) => {
                 const { InsightStore: InsightStoreCls } =
