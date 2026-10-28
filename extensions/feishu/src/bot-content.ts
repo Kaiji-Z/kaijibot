@@ -232,15 +232,26 @@ export function checkBotMentioned(event: FeishuMessageLike, botOpenId?: string):
   if (!botOpenId) {
     return false;
   }
+  if (event.message.message_type === "post") {
+    // Rich text encodes a real @所有人 as an at element with user_id="all";
+    // the literal string "@_all" in a post is always prose, never a mention,
+    // so the raw substring check must not run here (pasted text like
+    // "I typed @_all but nothing happened" must not trigger a reply).
+    const parsed = parsePostContent(event.message.content);
+    if (parsed.mentionedOpenIds.includes("all")) {
+      return true;
+    }
+    return parsed.mentionedOpenIds.some((id) => id === botOpenId);
+  }
+  // Plain text: Feishu renders a real @所有人 as the literal text "@_all"
+  // with no mentions metadata — indistinguishable from typed prose at the
+  // protocol level, so the substring check is the only available signal.
   if ((event.message.content ?? "").includes("@_all")) {
     return true;
   }
   const mentions = event.message.mentions ?? [];
   if (mentions.length > 0) {
     return mentions.some((mention) => mention.id.open_id === botOpenId);
-  }
-  if (event.message.message_type === "post") {
-    return parsePostContent(event.message.content).mentionedOpenIds.some((id) => id === botOpenId);
   }
   return false;
 }
