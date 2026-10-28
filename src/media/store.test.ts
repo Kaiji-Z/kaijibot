@@ -423,6 +423,26 @@ describe("media store", () => {
       run: async (store: typeof import("./store.js")) => await store.cleanOldMedia(1_000),
     },
     {
+      // Regression: shallow sweeps (media host TTL, saveMediaSource) must not
+      // descend into first-level subdirectories — doing so deleted the
+      // gateway's inbound/ claim-check files long before media.ttlHours.
+      name: "keeps first-level inbound files during shallow cleanup",
+      setup: async (store: typeof import("./store.js")) => {
+        const oldInbound = await store.saveMediaBuffer(
+          Buffer.from("old inbound"),
+          "text/plain",
+          "inbound",
+        );
+        const past = Date.now() - 10_000;
+        await fs.utimes(oldInbound.path, past / 1000, past / 1000);
+        return {
+          removedFiles: [],
+          preservedFiles: [oldInbound.path],
+        };
+      },
+      run: async (store: typeof import("./store.js")) => await store.cleanOldMedia(1_000),
+    },
+    {
       name: "prunes empty directory chains after recursive cleanup",
       setup: async (store: typeof import("./store.js")) => {
         const nested = await store.saveMediaBuffer(

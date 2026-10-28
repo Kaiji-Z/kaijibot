@@ -502,8 +502,16 @@ export async function detectAndLoadPromptImages(params: {
   const allRefs = detectImageReferences(params.prompt);
 
   if (allRefs.length === 0) {
+    // All-inline batches (no path markers in text) must still pass through
+    // sanitization — otherwise a huge-dimension inline screenshot skips the
+    // dimension clamp that mixed inline/offloaded batches do get.
+    const sanitized = await sanitizeImagesWithLog(
+      params.existingImages ?? [],
+      "prompt:images",
+      { maxDimensionPx: params.maxDimensionPx },
+    );
     return {
-      images: params.existingImages ?? [],
+      images: sanitized,
       detectedRefs: [],
       loadedCount: 0,
       skippedCount: 0,

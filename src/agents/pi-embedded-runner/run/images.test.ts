@@ -291,6 +291,23 @@ describe("detectAndLoadPromptImages", () => {
     expectNoPromptImages(result);
   });
 
+  it("sanitizes all-inline batches (no prompt refs) instead of passing them through raw", async () => {
+    // Regression: batches made only of inline attachments produce no path
+    // markers, so the zero-refs early return used to skip sanitization that
+    // mixed inline/offloaded batches do get.
+    const result = await detectAndLoadPromptImages({
+      prompt: "caption only, no file paths",
+      workspaceDir: "/tmp",
+      model: { input: ["text", "image"] },
+      existingImages: [
+        { type: "image", data: "not!!valid!!base64!!", mimeType: "image/png" },
+      ],
+    });
+
+    expect(result.detectedRefs).toHaveLength(0);
+    expect(result.images).toHaveLength(0);
+  });
+
   it("preserves attachment order when offloaded refs and inline images are mixed", async () => {
     const merged = mergePromptAttachmentImages({
       imageOrder: ["offloaded", "inline"],

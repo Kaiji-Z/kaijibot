@@ -91,17 +91,15 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/gif": ".gif",
   "image/heic": ".heic",
   "image/heif": ".heif",
-  // bmp/tiff excluded from SUPPORTED_OFFLOAD_MIMES to avoid extension-loss
-  // bug in store.ts; entries kept here for future extension support
   "image/bmp": ".bmp",
   "image/tiff": ".tiff",
 };
 
 // Module-level Set for O(1) lookup — not rebuilt on every attachment iteration.
 //
-// heic/heif are included only if store.ts's extensionForMime maps them to an
-// extension. If it does not (same extension-loss risk as bmp/tiff), remove
-// them from this set.
+// Every mime here must map to a file extension in store.ts's extensionForMime
+// (EXT_BY_MIME); otherwise the offloaded file loses its extension and
+// extension-based downstream detection (image refs in prompts) breaks.
 const SUPPORTED_OFFLOAD_MIMES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -110,6 +108,8 @@ const SUPPORTED_OFFLOAD_MIMES = new Set([
   "image/gif",
   "image/heic",
   "image/heif",
+  "image/bmp",
+  "image/tiff",
 ]);
 
 /**

@@ -15,7 +15,9 @@ export function buildAgentMediaPayload(
 ): AgentMediaPayload {
   const first = mediaList[0];
   const mediaPaths = mediaList.map((media) => media.path);
-  const mediaTypes = mediaList.map((media) => media.contentType).filter(Boolean) as string[];
+  // Keep MediaTypes index-aligned with MediaPaths: a missing contentType must
+  // not shift subsequent entries left (consumers pair them positionally).
+  const mediaTypes = mediaList.map((media) => media.contentType ?? "application/octet-stream");
   return {
     MediaPath: first?.path,
     MediaType: first?.contentType ?? undefined,

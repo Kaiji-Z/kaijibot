@@ -160,9 +160,15 @@ export async function cleanOldMedia(ttlMs = DEFAULT_TTL_MS, options: CleanOldMed
       continue;
     }
     if (stat.isDirectory()) {
-      const dirIsEmpty = await removeExpiredFilesInDir(full);
-      if (dirIsEmpty) {
-        await fs.rmdir(full).catch(() => {});
+      // Shallow sweeps only clean root-level files. Descending here would let
+      // short-TTL callers (media host, saveMediaSource) delete files inside
+      // sibling subdirectories such as the gateway's inbound/ claim-check
+      // store, which is governed by the much longer media.ttlHours retention.
+      if (recursive) {
+        const dirIsEmpty = await removeExpiredFilesInDir(full);
+        if (dirIsEmpty) {
+          await fs.rmdir(full).catch(() => {});
+        }
       }
       continue;
     }
