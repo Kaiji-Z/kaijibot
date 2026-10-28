@@ -1,9 +1,10 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createHostSandboxFsBridge } from "../../test-helpers/host-sandbox-fs-bridge.js";
 import { createUnsafeMountedSandbox } from "../../test-helpers/unsafe-mounted-sandbox.js";
+import { createTempHomeEnv } from "../../../test-utils/temp-home.js";
 import {
   detectAndLoadPromptImages,
   detectImageReferences,
@@ -12,6 +13,10 @@ import {
   modelSupportsImages,
   splitPromptAndAttachmentRefs,
 } from "./images.js";
+
+// 1x1 transparent PNG.
+const PNG_1X1_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 function expectNoPromptImages(result: { detectedRefs: unknown[]; images: unknown[] }) {
   expect(result.detectedRefs).toHaveLength(0);
@@ -279,6 +284,47 @@ describe("detectAndLoadPromptImages", () => {
     });
 
     expectNoPromptImages(result);
+    // Garbage payloads produce no marker either (nothing persisted).
+    expect(result.textOnlyImageMarkers ?? []).toHaveLength(0);
+  });
+
+  describe("text-only model failover markers", () => {
+    let tempHome: Awaited<ReturnType<typeof createTempHomeEnv>>;
+
+    beforeAll(async () => {
+      tempHome = await createTempHomeEnv("kaijibot-images-test-");
+    });
+
+    afterAll(async () => {
+      await tempHome.restore();
+    });
+
+    it("persists inline images and returns path markers for text-only models", async () => {
+      const result = await detectAndLoadPromptImages({
+        prompt: "what is in this picture",
+        workspaceDir: "/tmp",
+        model: { input: ["text"] },
+        existingImages: [{ type: "image", data: PNG_1X1_BASE64, mimeType: "image/png" }],
+      });
+
+      expect(result.images).toHaveLength(0);
+      expect(result.detectedRefs).toHaveLength(0);
+      expect(result.textOnlyImageMarkers).toHaveLength(1);
+      const marker = result.textOnlyImageMarkers?.[0] ?? "";
+      expect(marker).toMatch(/^\[image attached: .+\.png\]$/);
+      const savedPath = marker.slice("[image attached: ".length, -1);
+      await expect(fs.access(savedPath)).resolves.toBeUndefined();
+    });
+
+    it("returns no markers when no inline images were provided", async () => {
+      const result = await detectAndLoadPromptImages({
+        prompt: "plain text",
+        workspaceDir: "/tmp",
+        model: { input: ["text"] },
+      });
+
+      expect(result.textOnlyImageMarkers ?? []).toHaveLength(0);
+    });
   });
 
   it("returns no detected refs when prompt has no image references", async () => {

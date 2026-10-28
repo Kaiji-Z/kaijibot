@@ -3,7 +3,8 @@ import type { ImageContent } from "@earendil-works/pi-ai";
 import { formatErrorMessage } from "../../../infra/errors.js";
 import { assertNoWindowsNetworkPath, safeFileURLToPath } from "../../../infra/local-file-access.js";
 import type { PromptImageOrderEntry } from "../../../media/prompt-image-order.js";
-import { resolveMediaBufferPath, getMediaDir } from "../../../media/store.js";
+import { resolveMediaBufferPath, getMediaDir, saveMediaBuffer } from "../../../media/store.js";
+import { sniffMimeFromBase64 } from "../../../media/sniff-mime-from-base64.js";
 import { loadWebMedia } from "../../../media/web-media.js";
 import { normalizeLowercaseStringOrEmpty } from "../../../shared/string-coerce.js";
 import { resolveUserPath } from "../../../utils.js";
@@ -487,14 +488,49 @@ export async function detectAndLoadPromptImages(params: {
   detectedRefs: DetectedImageRef[];
   loadedCount: number;
   skippedCount: number;
+  /**
+   * `[image attached: <media-store path>]` lines for text-only models when
+   * inline images were provided. The gateway decides inline-vs-offload from
+   * the session model; when a run fails over to a text-only model, the image
+   * blocks cannot be submitted — the caller appends these markers to the
+   * prompt so the model gets resolvable paths (image tool) instead of losing
+   * the images with no textual trace.
+   */
+  textOnlyImageMarkers?: string[];
 }> {
   // If model doesn't support images, return empty results
   if (!modelSupportsImages(params.model)) {
+    const markers: string[] = [];
+    for (const [index, image] of (params.existingImages ?? []).entries()) {
+      try {
+        // Only persist decodable images — a garbage payload would produce a
+        // marker pointing at an unusable file.
+        const sniffed = await sniffMimeFromBase64(image.data);
+        if (!sniffed || !sniffed.startsWith("image/")) {
+          log.debug(
+            `Native image: skipping inline image ${index} for text-only model (not a decodable image)`,
+          );
+          continue;
+        }
+        const saved = await saveMediaBuffer(
+          Buffer.from(image.data, "base64"),
+          sniffed,
+          "inbound",
+          params.maxBytes,
+        );
+        markers.push(`[image attached: ${saved.path}]`);
+      } catch (err) {
+        log.debug(
+          `Native image: failed to persist inline image ${index} for text-only model: ${formatErrorMessage(err)}`,
+        );
+      }
+    }
     return {
       images: [],
       detectedRefs: [],
       loadedCount: 0,
       skippedCount: 0,
+      textOnlyImageMarkers: markers,
     };
   }
 

@@ -1752,6 +1752,14 @@ export async function runEmbeddedAttempt(
                 : undefined,
           });
 
+          // Text-only attempt model (e.g. mid-run failover from a vision
+          // model): image blocks cannot be submitted; the persisted-path
+          // markers keep the images reachable instead of silently dropped.
+          const textOnlyImageMarkers = imageResult.textOnlyImageMarkers ?? [];
+          if (textOnlyImageMarkers.length > 0) {
+            effectivePrompt = `${effectivePrompt}\n${textOnlyImageMarkers.join("\n")}`;
+          }
+
           cacheTrace?.recordStage("prompt:images", {
             prompt: effectivePrompt,
             messages: activeSession.messages,
