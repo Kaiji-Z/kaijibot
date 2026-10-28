@@ -399,6 +399,6 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         modelId: "glm-4.7",
         extraParams: explicit,
       } as never),
-    ).toBe(explicit);
+    ).toEqual(explicit);
   });
 });

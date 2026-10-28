@@ -19,6 +19,9 @@ describe("zai onboard", () => {
     expect(defaultCfg.models?.providers?.zai?.api).toBe("openai-completions");
     const ids = defaultCfg.models?.providers?.zai?.models?.map((m) => m.id);
     expect(ids).toEqual([
+      "glm-5.3",
+      "glm-5.3-flash",
+      "glm-5.3-flashx",
       "glm-5.2",
       "glm-5.1",
       "glm-5",
@@ -29,6 +32,8 @@ describe("zai onboard", () => {
       "glm-4.7-flashx",
       "glm-4.6",
       "glm-4.6v",
+      "glm-4.6v-flashx",
+      "glm-4.6v-flash",
       "glm-4.5",
       "glm-4.5-air",
       "glm-4.5-flash",
