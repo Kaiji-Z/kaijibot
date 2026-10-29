@@ -3,8 +3,8 @@ import type { ImageContent } from "@earendil-works/pi-ai";
 import { formatErrorMessage } from "../../../infra/errors.js";
 import { assertNoWindowsNetworkPath, safeFileURLToPath } from "../../../infra/local-file-access.js";
 import type { PromptImageOrderEntry } from "../../../media/prompt-image-order.js";
-import { resolveMediaBufferPath, getMediaDir, saveMediaBuffer } from "../../../media/store.js";
 import { sniffMimeFromBase64 } from "../../../media/sniff-mime-from-base64.js";
+import { resolveMediaBufferPath, getMediaDir, saveMediaBuffer } from "../../../media/store.js";
 import { loadWebMedia } from "../../../media/web-media.js";
 import { normalizeLowercaseStringOrEmpty } from "../../../shared/string-coerce.js";
 import { resolveUserPath } from "../../../utils.js";
@@ -541,11 +541,9 @@ export async function detectAndLoadPromptImages(params: {
     // All-inline batches (no path markers in text) must still pass through
     // sanitization — otherwise a huge-dimension inline screenshot skips the
     // dimension clamp that mixed inline/offloaded batches do get.
-    const sanitized = await sanitizeImagesWithLog(
-      params.existingImages ?? [],
-      "prompt:images",
-      { maxDimensionPx: params.maxDimensionPx },
-    );
+    const sanitized = await sanitizeImagesWithLog(params.existingImages ?? [], "prompt:images", {
+      maxDimensionPx: params.maxDimensionPx,
+    });
     return {
       images: sanitized,
       detectedRefs: [],

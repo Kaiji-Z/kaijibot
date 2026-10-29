@@ -146,7 +146,9 @@ export function applyEpsilonGreedy(
   // for the common epsilon values) and always promote the first candidate.
   const pickRng = seededRandom(seed ^ 0x9e3779b9);
   const pickIdx =
-    explorationIndices[Math.floor(pickRng * explorationIndices.length) % explorationIndices.length]!;
+    explorationIndices[
+      Math.floor(pickRng * explorationIndices.length) % explorationIndices.length
+    ]!;
   const promoted = candidates[pickIdx]!;
   const rest = candidates.filter((_, i) => i !== pickIdx);
 

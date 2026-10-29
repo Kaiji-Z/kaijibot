@@ -10,7 +10,6 @@ import { runChannelPluginStartupMaintenance } from "../channels/plugins/lifecycl
 import { formatCliCommand } from "../cli/command-format.js";
 import { createDefaultDeps } from "../cli/deps.js";
 import type { SchedulerEvent } from "../cognitive/scheduler/types.js";
-import { mergeSchedulerFeedbackProfile } from "./cognitive-persona-merge.js";
 import { isRestartEnabled } from "../config/commands.js";
 import {
   type ConfigFileSnapshot,
@@ -102,6 +101,7 @@ import { runSetupWizard } from "../wizard/setup.js";
 import { createAuthRateLimiter, type AuthRateLimiter } from "./auth-rate-limit.js";
 import { resolveGatewayAuth } from "./auth.js";
 import { startChannelHealthMonitor } from "./channel-health-monitor.js";
+import { mergeSchedulerFeedbackProfile } from "./cognitive-persona-merge.js";
 import { resolveGatewayReloadSettings, startGatewayConfigReloader } from "./config-reload.js";
 import type { ControlUiRootState } from "./control-ui.js";
 import {

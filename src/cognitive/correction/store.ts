@@ -114,9 +114,7 @@ export class CorrectionStore {
     // Scoped (cross-instance) lock: this store is instantiated per call site
     // (agent tool, session-memory hook, consolidation cron), so per-instance
     // locks would not serialize concurrent writers to the same file.
-    const lock = getOrCreateScopedAsyncLock(
-      `correction:${this.configDir}:${agentId}/${userId}`,
-    );
+    const lock = getOrCreateScopedAsyncLock(`correction:${this.configDir}:${agentId}/${userId}`);
     return lock(fn);
   }
 

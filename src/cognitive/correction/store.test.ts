@@ -317,12 +317,19 @@ describe("CJK tokenizer — Jaccard dedup for Chinese", () => {
     const storeB = new CorrectionStore(tempDir);
 
     await Promise.all([
-      storeA.addOrReinforce(AGENT, USER, makeCorrection({ domain: "code", mistake: "alpha mistake" })),
-      storeB.addOrReinforce(AGENT, USER, makeCorrection({ domain: "code", mistake: "beta mistake" })),
+      storeA.addOrReinforce(
+        AGENT,
+        USER,
+        makeCorrection({ domain: "code", mistake: "alpha mistake" }),
+      ),
+      storeB.addOrReinforce(
+        AGENT,
+        USER,
+        makeCorrection({ domain: "code", mistake: "beta mistake" }),
+      ),
     ]);
 
     const loaded = await store.loadAll(AGENT, USER);
     expect(loaded).toHaveLength(2);
   });
 });
-

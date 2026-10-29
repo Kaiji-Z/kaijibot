@@ -419,6 +419,11 @@ describe("Pipeline: audit logging", () => {
     // Wait to ensure different timestamp
     await new Promise((r) => setTimeout(r, 5));
 
+    // Capture the cutoff BEFORE the append: deriving it from Date.now()
+    // after the append makes the test flaky under load — any delay longer
+    // than the window also excludes new_op. append() stamps its own
+    // Date.now(), so new_op.timestamp >= cutoff always holds here.
+    const since = Date.now();
     await audit.append({
       operation: "new_op",
       actor: "user-1",
@@ -426,7 +431,7 @@ describe("Pipeline: audit logging", () => {
       outcome: "success",
     });
 
-    const recent = await audit.query({ since: Date.now() - 2 });
+    const recent = await audit.query({ since });
     expect(recent.length).toBe(1);
     expect(recent[0].operation).toBe("new_op");
   });

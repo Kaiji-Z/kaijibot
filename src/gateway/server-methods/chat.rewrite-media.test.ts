@@ -60,8 +60,8 @@ describe("matchesChatSendUserTurnForMediaRewrite", () => {
   });
 
   it("rejects turns with different text", () => {
-    expect(matchesChatSendUserTurnForMediaRewrite(userTurn("[Wed 2026-10-28 14:22 UTC] bye"), "hello")).toBe(
-      false,
-    );
+    expect(
+      matchesChatSendUserTurnForMediaRewrite(userTurn("[Wed 2026-10-28 14:22 UTC] bye"), "hello"),
+    ).toBe(false);
   });
 });

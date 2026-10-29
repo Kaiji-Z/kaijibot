@@ -11,6 +11,7 @@ import {
 } from "../../agents/tools/chat-history-text.js";
 import { dispatchInboundMessage } from "../../auto-reply/dispatch.js";
 import { createReplyDispatcher } from "../../auto-reply/reply/reply-dispatcher.js";
+import { stripInboundMetadata } from "../../auto-reply/reply/strip-inbound-meta.js";
 import type { MsgContext } from "../../auto-reply/templating.js";
 import type { ReplyPayload } from "../../auto-reply/types.js";
 import { resolveOperatorSenderId } from "../../cognitive/identity.js";
@@ -53,7 +54,6 @@ import {
   parseMessageWithAttachments,
 } from "../chat-attachments.js";
 import { stripEnvelopeFromMessage, stripEnvelopeFromMessages } from "../chat-sanitize.js";
-import { stripInboundMetadata } from "../../auto-reply/reply/strip-inbound-meta.js";
 import { augmentChatHistoryWithCliSessionImports } from "../cli-session-history.js";
 import { isSuppressedControlReplyText } from "../control-reply-text.js";
 import { ADMIN_SCOPE } from "../method-scopes.js";
@@ -487,12 +487,14 @@ async function rewriteChatSendUserTurnMediaPaths(params: {
   }
   const sessionManager = SessionManager.open(params.transcriptPath);
   const branch = sessionManager.getBranch();
-  const target = [...branch].toReversed().find((entry) =>
-    matchesChatSendUserTurnForMediaRewrite(
-      entry as { type: string; message?: { role?: string; content?: unknown } },
-      params.message,
-    ),
-  );
+  const target = [...branch]
+    .toReversed()
+    .find((entry) =>
+      matchesChatSendUserTurnForMediaRewrite(
+        entry as { type: string; message?: { role?: string; content?: unknown } },
+        params.message,
+      ),
+    );
   if (!target || target.type !== "message") {
     return;
   }

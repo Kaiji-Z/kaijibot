@@ -2,9 +2,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { createTempHomeEnv } from "../../../test-utils/temp-home.js";
 import { createHostSandboxFsBridge } from "../../test-helpers/host-sandbox-fs-bridge.js";
 import { createUnsafeMountedSandbox } from "../../test-helpers/unsafe-mounted-sandbox.js";
-import { createTempHomeEnv } from "../../../test-utils/temp-home.js";
 import {
   detectAndLoadPromptImages,
   detectImageReferences,
@@ -345,9 +345,7 @@ describe("detectAndLoadPromptImages", () => {
       prompt: "caption only, no file paths",
       workspaceDir: "/tmp",
       model: { input: ["text", "image"] },
-      existingImages: [
-        { type: "image", data: "not!!valid!!base64!!", mimeType: "image/png" },
-      ],
+      existingImages: [{ type: "image", data: "not!!valid!!base64!!", mimeType: "image/png" }],
     });
 
     expect(result.detectedRefs).toHaveLength(0);

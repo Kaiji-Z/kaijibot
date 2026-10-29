@@ -526,10 +526,12 @@ describe("FragmentStore", () => {
     it("concurrent addFragment on separate store instances loses no fragments", async () => {
       // Regression: per-instance locks did not serialize the post-turn
       // collector and the consolidation cron writing the same file.
+      // Distinct structuralTags keep addFragment's tag+domains dedup from
+      // collapsing the six adds into one entry.
       const storeA = new FragmentStore(tempDir);
       const storeB = new FragmentStore(tempDir);
-      const fragmentsA = [makeFragment(), makeFragment(), makeFragment()];
-      const fragmentsB = [makeFragment(), makeFragment(), makeFragment()];
+      const fragmentsA = [0, 1, 2].map((i) => makeFragment({ structuralTag: `concurrent-a-${i}` }));
+      const fragmentsB = [3, 4, 5].map((i) => makeFragment({ structuralTag: `concurrent-b-${i}` }));
 
       await Promise.all([
         ...fragmentsA.map((f) => storeA.addFragment("main", "test-user", f)),
@@ -541,4 +543,3 @@ describe("FragmentStore", () => {
     });
   });
 });
-
