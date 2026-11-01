@@ -92,10 +92,13 @@ async function stopChromeWithProc(proc: ReturnType<typeof makeChromeTestProc>, t
   );
 }
 
-function makeChromeTestProc(overrides?: Partial<{ killed: boolean; exitCode: number | null }>) {
+function makeChromeTestProc(
+  overrides?: Partial<{ killed: boolean; exitCode: number | null; signalCode: string | null }>,
+) {
   return {
     killed: overrides?.killed ?? false,
     exitCode: overrides?.exitCode ?? null,
+    signalCode: overrides?.signalCode ?? null,
     kill: vi.fn(),
   };
 }
@@ -446,5 +449,19 @@ describe("browser chrome helpers", () => {
     await stopChromeWithProc(proc, 1);
     expect(proc.kill).toHaveBeenNthCalledWith(1, "SIGTERM");
     expect(proc.kill).toHaveBeenNthCalledWith(2, "SIGKILL");
+  });
+
+  it("stopKaijiBotChrome returns without SIGKILL once the process exited via signal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ webSocketDebuggerUrl: "ws://127.0.0.1/devtools" }),
+      } as unknown as Response),
+    );
+    const proc = makeChromeTestProc({ signalCode: "SIGTERM" });
+    await stopChromeWithProc(proc, 50);
+    expect(proc.kill).toHaveBeenCalledTimes(1);
+    expect(proc.kill).toHaveBeenCalledWith("SIGTERM");
   });
 });

@@ -448,6 +448,56 @@ export async function launchKaijiBotChrome(
   };
 }
 
+const CHROME_GRACEFUL_CLOSE_TIMEOUT_MS = 5000;
+
+/**
+ * Ask Chrome to close itself gracefully via CDP `Browser.close`. A graceful
+ * exit lets Chrome flush its profile stores — persisted cookies (i.e. login
+ * sessions) are lost when the process is killed with signals in current
+ * Chrome builds. Returns true when the close request was accepted (the
+ * socket dropped as the browser shut down).
+ */
+async function requestGracefulCdpClose(running: RunningChrome): Promise<boolean> {
+  try {
+    const wsUrl = await getChromeWebSocketUrl(cdpUrlForPort(running.cdpPort));
+    if (!wsUrl) {
+      return false;
+    }
+    return await new Promise<boolean>((resolve) => {
+      const ws = openCdpWebSocket(wsUrl, {
+        handshakeTimeoutMs: CHROME_GRACEFUL_CLOSE_TIMEOUT_MS,
+      });
+      const timer = setTimeout(() => {
+        try {
+          ws.terminate();
+        } catch {
+          // ignore
+        }
+        resolve(false);
+      }, CHROME_GRACEFUL_CLOSE_TIMEOUT_MS);
+      ws.once("open", () => {
+        try {
+          ws.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+        } catch {
+          clearTimeout(timer);
+          resolve(false);
+        }
+      });
+      // The server drops the socket as it shuts down — that is the success path.
+      ws.once("close", () => {
+        clearTimeout(timer);
+        resolve(true);
+      });
+      ws.once("error", () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
+  } catch {
+    return false;
+  }
+}
+
 export async function stopKaijiBotChrome(
   running: RunningChrome,
   timeoutMs = CHROME_STOP_TIMEOUT_MS,
@@ -456,6 +506,22 @@ export async function stopKaijiBotChrome(
   if (proc.killed) {
     return;
   }
+  // A process terminated by signal keeps exitCode === null; signalCode is
+  // only set once it has actually exited.
+  const hasExited = () => proc.exitCode !== null || proc.signalCode != null;
+
+  // Graceful close first: flushes profile stores (persisted login cookies).
+  const closedGracefully = await requestGracefulCdpClose(running);
+  if (closedGracefully) {
+    const gracefulStart = Date.now();
+    while (Date.now() - gracefulStart < timeoutMs) {
+      if (hasExited()) {
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
   try {
     proc.kill("SIGTERM");
   } catch {
@@ -464,8 +530,8 @@ export async function stopKaijiBotChrome(
 
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    if (!proc.exitCode && proc.killed) {
-      break;
+    if (hasExited()) {
+      return;
     }
     if (!(await isChromeReachable(cdpUrlForPort(running.cdpPort), CHROME_STOP_PROBE_TIMEOUT_MS))) {
       return;
