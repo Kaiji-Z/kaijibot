@@ -58,6 +58,8 @@ export type ResolvedBrowserConfig = {
   headless: boolean;
   noSandbox: boolean;
   attachOnly: boolean;
+  /** Whether the per-agent browser login proxy is enabled (browser.proxy.enabled). */
+  proxyEnabled: boolean;
   defaultProfile: string;
   profiles: Record<string, BrowserProfileConfig>;
   ssrfPolicy?: SsrFPolicy;
@@ -234,6 +236,7 @@ export function resolveBrowserConfig(
   const headless = cfg?.headless === true;
   const noSandbox = cfg?.noSandbox === true;
   const attachOnly = cfg?.attachOnly === true;
+  const proxyEnabled = cfg?.proxy?.enabled === true;
   const executablePath = normalizeOptionalString(cfg?.executablePath);
   const defaultProfileFromConfig = normalizeOptionalString(cfg?.defaultProfile);
 
@@ -281,6 +284,7 @@ export function resolveBrowserConfig(
     headless,
     noSandbox,
     attachOnly,
+    proxyEnabled,
     defaultProfile,
     profiles,
     ssrfPolicy: resolveBrowserSsrFPolicy(cfg),

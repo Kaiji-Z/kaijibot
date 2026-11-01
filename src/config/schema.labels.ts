@@ -129,6 +129,8 @@ export const FIELD_LABELS: Record<string, string> = {
   "browser.profiles.*.driver": "Browser Profile Driver",
   "browser.profiles.*.attachOnly": "Browser Profile Attach-only Mode",
   "browser.profiles.*.color": "Browser Profile Accent Color",
+  "browser.proxy": "Browser Login Proxy",
+  "browser.proxy.enabled": "Browser Login Proxy Enabled",
   tools: "Tools",
   "tools.allow": "Tool Allowlist",
   "tools.deny": "Tool Denylist",

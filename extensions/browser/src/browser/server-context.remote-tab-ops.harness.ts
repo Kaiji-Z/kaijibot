@@ -27,6 +27,7 @@ export function makeState(
       headless: true,
       noSandbox: false,
       attachOnly: false,
+      proxyEnabled: false,
       ssrfPolicy: { allowPrivateNetwork: true },
       defaultProfile: profile,
       profiles: {

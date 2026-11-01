@@ -647,6 +647,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             description:
               "Server-side request forgery guardrail settings for browser/network fetch paths that could reach internal hosts. Keep restrictive defaults in production and open only explicitly approved targets.",
           },
+          proxy: {
+            type: "object",
+            properties: {
+              enabled: {
+                type: "boolean",
+                title: "Browser Login Proxy Enabled",
+                description:
+                  "Enables the browser login proxy: per-agent persistent Chrome profiles, a manual-login-once window, and reuse of the logged-in session for unattended browser steps. Default false; keep disabled unless per-agent logged-in browsing is intended.",
+              },
+            },
+            additionalProperties: false,
+            title: "Browser Login Proxy",
+            description:
+              "Per-agent browser login proxy settings. When enabled, each agent gets a persistent dedicated browser profile and can open a manual login window so the user signs in once; the agent only holds the resulting session, never credentials.",
+          },
           profiles: {
             type: "object",
             propertyNames: {
@@ -24035,6 +24050,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       label: "Browser Profile Accent Color",
       help: "Per-profile accent color for visual differentiation in dashboards and browser-related UI hints. Use distinct colors for high-signal operator recognition of active profiles.",
       tags: ["storage"],
+    },
+    "browser.proxy": {
+      label: "Browser Login Proxy",
+      help: "Per-agent browser login proxy settings. When enabled, each agent gets a persistent dedicated browser profile and can open a manual login window so the user signs in once; the agent only holds the resulting session, never credentials.",
+      tags: ["advanced"],
+    },
+    "browser.proxy.enabled": {
+      label: "Browser Login Proxy Enabled",
+      help: "Enables the browser login proxy: per-agent persistent Chrome profiles, a manual-login-once window, and reuse of the logged-in session for unattended browser steps. Default false; keep disabled unless per-agent logged-in browsing is intended.",
+      tags: ["advanced"],
     },
     "tools.allow": {
       label: "Tool Allowlist",

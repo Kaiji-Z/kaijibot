@@ -378,6 +378,12 @@ export const KaijiBotSchema = z
           })
           .strict()
           .optional(),
+        proxy: z
+          .object({
+            enabled: z.boolean().optional(),
+          })
+          .strict()
+          .optional(),
         profiles: z
           .record(
             z

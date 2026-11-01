@@ -44,6 +44,7 @@ export function makeBrowserServerState(params?: {
       headless: true,
       noSandbox: false,
       attachOnly: false,
+      proxyEnabled: false,
       ssrfPolicy: { allowPrivateNetwork: true },
       defaultProfile: profile.name,
       profiles: {

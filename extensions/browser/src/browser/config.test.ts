@@ -439,4 +439,19 @@ describe("browser config", () => {
       expect(resolved.defaultProfile).toBe("custom");
     });
   });
+
+  describe("browser.proxy login-proxy flag", () => {
+    it("defaults to disabled when browser config is absent", () => {
+      expect(resolveBrowserConfig(undefined).proxyEnabled).toBe(false);
+    });
+
+    it("defaults to disabled when the proxy section is absent or sparse", () => {
+      expect(resolveBrowserConfig({ enabled: true }).proxyEnabled).toBe(false);
+      expect(resolveBrowserConfig({ enabled: true, proxy: {} }).proxyEnabled).toBe(false);
+    });
+
+    it("preserves an explicit enable", () => {
+      expect(resolveBrowserConfig({ proxy: { enabled: true } }).proxyEnabled).toBe(true);
+    });
+  });
 });

@@ -20,6 +20,7 @@ describe("browser chrome launch args", () => {
         headless: false,
         noSandbox: false,
         attachOnly: false,
+        proxyEnabled: false,
         ssrfPolicy: { allowPrivateNetwork: true },
         defaultProfile: "kaijibot",
         profiles: {

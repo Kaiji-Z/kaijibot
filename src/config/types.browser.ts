@@ -30,6 +30,14 @@ export type BrowserSsrFPolicyConfig = {
    */
   hostnameAllowlist?: string[];
 };
+export type BrowserProxyConfig = {
+  /**
+   * Enable the per-agent browser login proxy: persistent agent-scoped Chrome
+   * profiles, a manual-login-once window, and logged-in session reuse for
+   * unattended browser steps. Default: false.
+   */
+  enabled?: boolean;
+};
 export type BrowserConfig = {
   enabled?: boolean;
   /** If false, disable browser act:evaluate (arbitrary JS). Default: true */
@@ -60,6 +68,8 @@ export type BrowserConfig = {
   snapshotDefaults?: BrowserSnapshotDefaults;
   /** SSRF policy for browser navigation/open-tab operations. */
   ssrfPolicy?: BrowserSsrFPolicyConfig;
+  /** Per-agent browser login proxy settings. */
+  proxy?: BrowserProxyConfig;
   /**
    * Additional Chrome launch arguments.
    * Useful for stealth flags, window size overrides, or custom user-agent strings.

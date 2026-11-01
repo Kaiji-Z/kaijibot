@@ -41,6 +41,7 @@ function makeState(): BrowserServerState {
       headless: false,
       noSandbox: false,
       attachOnly: false,
+      proxyEnabled: false,
       defaultProfile: "chrome-live",
       profiles: {
         "chrome-live": {

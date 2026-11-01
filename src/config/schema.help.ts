@@ -258,6 +258,10 @@ export const FIELD_HELP: Record<string, string> = {
     "Per-profile attach-only override that skips local browser launch and only attaches to an existing CDP endpoint. Useful when one profile is externally managed but others are locally launched.",
   "browser.profiles.*.color":
     "Per-profile accent color for visual differentiation in dashboards and browser-related UI hints. Use distinct colors for high-signal operator recognition of active profiles.",
+  "browser.proxy":
+    "Per-agent browser login proxy settings. When enabled, each agent gets a persistent dedicated browser profile and can open a manual login window so the user signs in once; the agent only holds the resulting session, never credentials.",
+  "browser.proxy.enabled":
+    "Enables the browser login proxy: per-agent persistent Chrome profiles, a manual-login-once window, and reuse of the logged-in session for unattended browser steps. Default false; keep disabled unless per-agent logged-in browsing is intended.",
   "browser.evaluateEnabled":
     "Enables browser-side evaluate helpers for runtime script evaluation capabilities where supported. Keep disabled unless your workflows require evaluate semantics beyond snapshots/navigation.",
   "browser.snapshotDefaults":
