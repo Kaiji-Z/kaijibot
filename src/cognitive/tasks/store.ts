@@ -20,6 +20,9 @@ export type CreateTaskInput = {
   origin?: TaskRecord["origin"];
   maxSteps?: number;
   maxWallClockMs?: number;
+  /** Delegated-subtask linkage (M3 multi-agent). */
+  parentTaskId?: string;
+  parentAgentId?: string;
 };
 
 /**
@@ -129,6 +132,46 @@ export class TaskStore {
     }
   }
 
+  /**
+   * Find a task by id across every agent's files for this user (task ids are
+   * UUIDs, so a hit is unambiguous). Used by parent aggregation and task RPCs
+   * where the owning agent is not known upfront.
+   */
+  async findTaskAcrossAgents(
+    userId: string,
+    taskId: string,
+  ): Promise<{ agentId: string; task: TaskRecord } | undefined> {
+    for (const agentId of await this.listAgentIds()) {
+      const tasks = await this.list(agentId, userId);
+      const task = tasks.find((t) => t.id === taskId);
+      if (task) {
+        return { agentId, task };
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * All non-evicted subtasks of a parent task across agents (children live in
+   * the assigned agent's namespace). Order is deterministic (agent id, then
+   * creation time) for stable aggregation.
+   */
+  async listSubtasks(
+    userId: string,
+    parentTaskId: string,
+  ): Promise<Array<{ agentId: string; task: TaskRecord }>> {
+    const out: Array<{ agentId: string; task: TaskRecord }> = [];
+    for (const agentId of await this.listAgentIds()) {
+      const tasks = await this.list(agentId, userId);
+      for (const task of tasks.filter((t) => t.parentTaskId === parentTaskId)) {
+        out.push({ agentId, task });
+      }
+    }
+    return out.toSorted(
+      (a, b) => a.task.createdAt - b.task.createdAt || a.agentId.localeCompare(b.agentId),
+    );
+  }
+
   /** All agentIds that have at least one task file. */
   async listAgentIds(): Promise<string[]> {
     try {
@@ -167,6 +210,8 @@ export class TaskStore {
       createdAt: now,
       updatedAt: now,
       origin: input.origin ?? "user",
+      ...(input.parentTaskId ? { parentTaskId: input.parentTaskId } : {}),
+      ...(input.parentAgentId ? { parentAgentId: input.parentAgentId } : {}),
     };
     await this.withLock(agentId, userId, async () => {
       const data = await this.readUnlocked(agentId, userId);

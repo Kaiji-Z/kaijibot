@@ -59,6 +59,13 @@ export type TaskRecord = {
   createdAt: number;
   updatedAt: number;
   origin: TaskOrigin;
+  /**
+   * Set on delegated subtasks: the task this one was split from. The parent
+   * stays `blocked` while non-terminal children remain (multi-agent M3).
+   */
+  parentTaskId?: string;
+  /** The agent that owns the parent task (direct lookup for aggregation). */
+  parentAgentId?: string;
 };
 
 export type TaskStoreData = {
