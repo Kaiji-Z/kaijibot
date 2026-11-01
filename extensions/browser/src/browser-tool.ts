@@ -7,6 +7,7 @@ import {
   executeTabsAction,
 } from "./browser-tool.actions.js";
 import { BrowserToolSchema } from "./browser-tool.schema.js";
+import { findAgentBrowserProfile } from "./browser/agent-profiles.js";
 import {
   type AnyAgentTool,
   type NodeListNode,
@@ -370,6 +371,8 @@ export function createBrowserTool(opts?: {
   sandboxBridgeUrl?: string;
   allowHostControl?: boolean;
   agentSessionKey?: string;
+  /** Agent identity for login-proxy profile routing (browser.proxy.enabled). */
+  agentId?: string;
 }): AnyAgentTool {
   const targetDefault = opts?.sandboxBridgeUrl ? "sandbox" : "host";
   const hostHint =
@@ -392,7 +395,16 @@ export function createBrowserTool(opts?: {
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
       const action = readStringParam(params, "action", { required: true });
-      const profile = readStringParam(params, "profile");
+      let profile = readStringParam(params, "profile");
+      // Login-proxy routing (browser.proxy.enabled): when the caller did not pin
+      // a profile and this agent already has a persistent profile, route there so
+      // manually established logins are reused. Flag off → behavior unchanged.
+      if (!profile && opts?.agentId) {
+        const cfg = browserToolDeps.loadConfig();
+        if (resolveBrowserConfig(cfg.browser, cfg).proxyEnabled) {
+          profile = findAgentBrowserProfile(cfg, opts.agentId) ?? undefined;
+        }
+      }
       const requestedNode = readStringParam(params, "node");
       let target = readStringParam(params, "target") as "sandbox" | "host" | "node" | undefined;
 

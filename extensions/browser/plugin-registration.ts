@@ -31,6 +31,7 @@ export function registerBrowserPlugin(api: KaijiBotPluginApi) {
       sandboxBridgeUrl: ctx.browser?.sandboxBridgeUrl,
       allowHostControl: ctx.browser?.allowHostControl,
       agentSessionKey: ctx.sessionKey,
+      agentId: ctx.agentId,
     })) as KaijiBotPluginToolFactory);
   api.registerCli(({ program }) => registerBrowserCli(program), { commands: ["browser"] });
   api.registerGatewayMethod("browser.request", handleBrowserGatewayRequest, {

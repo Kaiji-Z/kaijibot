@@ -54,6 +54,7 @@ const browserConfigMocks = vi.hoisted(() => ({
   resolveBrowserConfig: vi.fn(() => ({
     enabled: true,
     controlPort: 18791,
+    proxyEnabled: false,
     profiles: {},
     defaultProfile: "kaijibot",
   })),
@@ -166,6 +167,7 @@ function resetBrowserToolMocks() {
   browserConfigMocks.resolveBrowserConfig.mockReturnValue({
     enabled: true,
     controlPort: 18791,
+    proxyEnabled: false,
     profiles: {},
     defaultProfile: "kaijibot",
   });
@@ -208,6 +210,7 @@ function setResolvedBrowserProfiles(
   browserConfigMocks.resolveBrowserConfig.mockReturnValue({
     enabled: true,
     controlPort: 18791,
+    proxyEnabled: false,
     profiles,
     defaultProfile,
   });
@@ -824,5 +827,89 @@ describe("browser tool act stale target recovery", () => {
     ).rejects.toThrow(/Run action=tabs profile="user"/i);
 
     expect(browserActionsMocks.browserAct).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("browser tool agent profile auto-routing (browser.proxy.enabled)", () => {
+  registerBrowserToolAfterEachReset();
+
+  function enableLoginProxy(agentProfile?: Record<string, unknown>) {
+    configMocks.loadConfig.mockReturnValue({
+      browser: {
+        proxy: { enabled: true },
+        ...(agentProfile ? { profiles: { "agent-main": agentProfile } } : {}),
+      },
+    });
+    browserConfigMocks.resolveBrowserConfig.mockReturnValue({
+      enabled: true,
+      controlPort: 18791,
+      proxyEnabled: true,
+      profiles: {},
+      defaultProfile: "kaijibot",
+    });
+  }
+
+  it("routes to the agent profile when the flag is on and the profile exists", async () => {
+    enableLoginProxy({ cdpPort: 18805, color: "#0066CC" });
+    const tool = createBrowserTool({ agentId: "main" });
+    await tool.execute?.("call-1", { action: "status" });
+
+    expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ profile: "agent-main" }),
+    );
+  });
+
+  it("does not route when the flag is off even if the agent profile exists", async () => {
+    configMocks.loadConfig.mockReturnValue({
+      browser: { profiles: { "agent-main": { cdpPort: 18805, color: "#0066CC" } } },
+    });
+    browserConfigMocks.resolveBrowserConfig.mockReturnValue({
+      enabled: true,
+      controlPort: 18791,
+      proxyEnabled: false,
+      profiles: {},
+      defaultProfile: "kaijibot",
+    });
+    const tool = createBrowserTool({ agentId: "main" });
+    await tool.execute?.("call-1", { action: "status" });
+
+    expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ profile: undefined }),
+    );
+  });
+
+  it("never creates a profile implicitly when none exists yet", async () => {
+    enableLoginProxy(undefined);
+    const tool = createBrowserTool({ agentId: "main" });
+    await tool.execute?.("call-1", { action: "status" });
+
+    expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ profile: undefined }),
+    );
+  });
+
+  it("an explicit profile param wins over the agent profile", async () => {
+    enableLoginProxy({ cdpPort: 18805, color: "#0066CC" });
+    const tool = createBrowserTool({ agentId: "main" });
+    await tool.execute?.("call-1", { action: "status", profile: "kaijibot" });
+
+    expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ profile: "kaijibot" }),
+    );
+  });
+
+  it("no agentId (legacy registration) → no routing even with the flag on", async () => {
+    enableLoginProxy({ cdpPort: 18805, color: "#0066CC" });
+    const tool = createBrowserTool();
+    await tool.execute?.("call-1", { action: "status" });
+
+    expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ profile: undefined }),
+    );
   });
 });
