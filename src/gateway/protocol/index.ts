@@ -228,6 +228,10 @@ import {
   SessionsDeleteParamsSchema,
   type SessionsListParams,
   SessionsListParamsSchema,
+  type TasksListParams,
+  TasksListParamsSchema,
+  type TasksGetParams,
+  TasksGetParamsSchema,
   type SessionsMessagesSubscribeParams,
   SessionsMessagesSubscribeParamsSchema,
   type SessionsMessagesUnsubscribeParams,
@@ -376,6 +380,9 @@ export const validateSecretsResolveResult = compileTypeBoxValidator<SecretsResol
 );
 export const validateSessionsListParams =
   compileTypeBoxValidator<SessionsListParams>(SessionsListParamsSchema);
+export const validateTasksListParams =
+  compileTypeBoxValidator<TasksListParams>(TasksListParamsSchema);
+export const validateTasksGetParams = compileTypeBoxValidator<TasksGetParams>(TasksGetParamsSchema);
 export const validateSessionsPreviewParams = compileTypeBoxValidator<SessionsPreviewParams>(
   SessionsPreviewParamsSchema,
 );
@@ -632,6 +639,8 @@ export {
   NodePendingEnqueueParamsSchema,
   NodePendingEnqueueResultSchema,
   SessionsListParamsSchema,
+  TasksListParamsSchema,
+  TasksGetParamsSchema,
   SessionsPreviewParamsSchema,
   SessionsResolveParamsSchema,
   SessionsCompactionListParamsSchema,

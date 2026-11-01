@@ -9,6 +9,7 @@ import { agentsHandlers } from "./server-methods/agents.js";
 import { channelsHandlers } from "./server-methods/channels.js";
 import { chatHandlers } from "./server-methods/chat.js";
 import { cognitiveHandlers } from "./server-methods/cognitive.js";
+import { cognitiveTaskHandlers } from "./server-methods/cognitive.js";
 import { configHandlers } from "./server-methods/config.js";
 import { connectHandlers } from "./server-methods/connect.js";
 import { cronHandlers } from "./server-methods/cron.js";
@@ -70,6 +71,7 @@ function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["c
 
 export const coreGatewayHandlers: GatewayRequestHandlers = {
   ...cognitiveHandlers,
+  ...cognitiveTaskHandlers,
   ...connectHandlers,
   ...logsHandlers,
   ...voicewakeHandlers,

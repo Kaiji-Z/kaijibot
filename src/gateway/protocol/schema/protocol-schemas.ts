@@ -183,6 +183,7 @@ import {
   SessionsUsageParamsSchema,
 } from "./sessions.js";
 import { PresenceEntrySchema, SnapshotSchema, StateVersionSchema } from "./snapshot.js";
+import { TasksGetParamsSchema, TasksListParamsSchema } from "./tasks.js";
 import {
   WizardCancelParamsSchema,
   WizardNextParamsSchema,
@@ -362,6 +363,8 @@ export const ProtocolSchemas = {
   UpdateRunParams: UpdateRunParamsSchema,
   TickEvent: TickEventSchema,
   ShutdownEvent: ShutdownEventSchema,
+  TasksListParams: TasksListParamsSchema,
+  TasksGetParams: TasksGetParamsSchema,
 } satisfies Record<string, TSchema>;
 
 export const PROTOCOL_VERSION = 3 as const;
