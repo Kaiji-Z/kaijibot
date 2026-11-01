@@ -159,7 +159,7 @@ function collectExtensionsTestFiles(target) {
     }
   };
   walk(root);
-  return out.toSorted();
+  return out.toSorted((a, b) => a.localeCompare(b));
 }
 
 /**
