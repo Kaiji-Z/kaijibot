@@ -77,7 +77,7 @@ export class TaskStore {
     const terminal = new Set(
       data.tasks.filter((t) => isTerminalTaskStatus(t.status)).map((t) => t.id),
     );
-    const sorted = [...data.tasks].sort((a, b) => a.updatedAt - b.updatedAt);
+    const sorted = data.tasks.toSorted((a, b) => a.updatedAt - b.updatedAt);
     const evict = new Set<string>();
     let excess = data.tasks.length - MAX_TASKS_PER_USER;
     for (const task of sorted) {

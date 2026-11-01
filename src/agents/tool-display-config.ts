@@ -598,6 +598,21 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Record Correction",
       detailKeys: ["domain", "saved", "reinforced"],
     },
+    task_create: {
+      emoji: "🎯",
+      title: "Create Task",
+      detailKeys: ["goal", "maxSteps", "taskId", "status"],
+    },
+    task_status: {
+      emoji: "📋",
+      title: "Task Status",
+      detailKeys: ["active", "finished", "status"],
+    },
+    task_step_report: {
+      emoji: "🪜",
+      title: "Report Task Step",
+      detailKeys: ["taskId", "stepIndex", "done"],
+    },
     dialogue_list: {
       emoji: "💬",
       title: "Dialogue List",

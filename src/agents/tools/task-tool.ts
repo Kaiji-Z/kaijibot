@@ -183,10 +183,10 @@ export function createTaskStatusTool(deps: {
         if (tasks.length === 0) {
           return jsonResult({ status: "none", message: "No tasks." });
         }
-        const ACTIVE_STATUSES = ["queued", "running", "blocked"];
-        const active = tasks.filter((t) => ACTIVE_STATUSES.includes(t.status)).map(summarizeTask);
+        const ACTIVE_STATUSES = new Set(["queued", "running", "blocked"]);
+        const active = tasks.filter((t) => ACTIVE_STATUSES.has(t.status)).map(summarizeTask);
         const finished = tasks
-          .filter((t) => !ACTIVE_STATUSES.includes(t.status))
+          .filter((t) => !ACTIVE_STATUSES.has(t.status))
           .slice(-5)
           .map(summarizeTask);
         return jsonResult({ status: "ok", active, finished });

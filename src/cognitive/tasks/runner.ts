@@ -63,7 +63,7 @@ export class TaskRunner {
     const tasks = await this.deps.store.list(agentId, userId);
     const runnable = tasks
       .filter((t) => t.status === "queued" || t.status === "running")
-      .sort((a, b) => a.createdAt - b.createdAt);
+      .toSorted((a, b) => a.createdAt - b.createdAt);
     const candidate = runnable[0];
     if (!candidate) {
       return undefined;
