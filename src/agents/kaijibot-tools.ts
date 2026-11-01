@@ -1,3 +1,4 @@
+import { tasksEnabled } from "../../cognitive/tasks/service.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { callGateway } from "../gateway/call.js";
 import { getActiveRuntimeWebToolsMetadata } from "../secrets/runtime.js";
@@ -41,6 +42,7 @@ import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
 import { createSessionsYieldTool } from "./tools/sessions-yield-tool.js";
 import { createSwitchSoulTool } from "./tools/soul-preset-tool.js";
 import { createSubagentsTool } from "./tools/subagents-tool.js";
+import { createTaskStatusTool, createTaskTool } from "./tools/task-tool.js";
 import { createTtsTool } from "./tools/tts-tool.js";
 import { createUpdatePlanTool } from "./tools/update-plan-tool.js";
 import { createVideoGenerateTool } from "./tools/video-generate-tool.js";
@@ -321,6 +323,22 @@ export function createKaijiBotTools(
       ...(resolvedConfig?.cognitive?.correction?.enabled !== false
         ? [
             createCorrectionReportTool({
+              config: resolvedConfig,
+              sessionKey: options?.agentSessionKey,
+              deliveryTo: options?.agentTo,
+              agentId: sessionAgentId,
+            }),
+          ]
+        : []),
+      ...(tasksEnabled(resolvedConfig)
+        ? [
+            createTaskTool({
+              config: resolvedConfig,
+              sessionKey: options?.agentSessionKey,
+              deliveryTo: options?.agentTo,
+              agentId: sessionAgentId,
+            }),
+            createTaskStatusTool({
               config: resolvedConfig,
               sessionKey: options?.agentSessionKey,
               deliveryTo: options?.agentTo,
