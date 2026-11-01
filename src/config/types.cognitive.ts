@@ -57,6 +57,13 @@ export type CognitiveConfig = {
     /** Use LLM to check semantic novelty after trigram dedup passes (default: true). */
     llmFreshnessCheck?: boolean;
   };
+  /** Cognitive task system — unattended multi-step task execution */
+  tasks?: {
+    /** Enable the task system (default: false). Task creation is rejected when disabled. */
+    enabled?: boolean;
+    /** Default step ceiling per task (default: 12). Reaching it halts the task. */
+    maxSteps?: number;
+  };
   /** Feedback settings (reserved — currently unused by runtime; feedback is collected implicitly by default) */
   feedback?: {
     /** Feedback mechanism (reserved — not yet implemented) */

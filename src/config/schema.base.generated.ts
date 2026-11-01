@@ -22663,6 +22663,31 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             description:
               "Skill self-evolution settings controlling how KaijiBot detects complex repeated tasks and autonomously creates reusable skills.",
           },
+          tasks: {
+            type: "object",
+            properties: {
+              enabled: {
+                default: false,
+                type: "boolean",
+                title: "Cognitive Tasks Enabled",
+                description:
+                  "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+              },
+              maxSteps: {
+                type: "number",
+                minimum: 1,
+                maximum: 100,
+                title: "Cognitive Task Max Steps",
+                description:
+                  "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
+              },
+            },
+            required: ["enabled"],
+            additionalProperties: false,
+            title: "Cognitive Tasks",
+            description:
+              "Unattended multi-step task execution: delegate an outcome and the agent works on it in bounded steps, then reports back. Tasks respect the same pacing gates as proactive insights.",
+          },
         },
         required: ["enabled"],
         additionalProperties: false,
@@ -27467,6 +27492,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Interval in hours between L1 identity memory refresh cycles (default: 24). Lower values refresh more frequently but consume more tokens.",
       tags: ["advanced"],
     },
+    "cognitive.tasks": {
+      label: "Cognitive Tasks",
+      help: "Unattended multi-step task execution: delegate an outcome and the agent works on it in bounded steps, then reports back. Tasks respect the same pacing gates as proactive insights.",
+      tags: ["advanced"],
+    },
+    "cognitive.tasks.enabled": {
+      label: "Cognitive Tasks Enabled",
+      help: "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+      tags: ["advanced"],
+    },
+    "cognitive.tasks.maxSteps": {
+      label: "Cognitive Task Max Steps",
+      help: "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
+      tags: ["performance"],
+    },
     "cognitive.insight": {
       label: "Insight Engine",
       help: "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",
@@ -28850,6 +28890,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced", "url-secret"],
     },
   },
-  version: "2026.8.21-1",
+  version: "2026.10.29",
   generatedAt: "2026-03-22T21:17:33.302Z",
 };

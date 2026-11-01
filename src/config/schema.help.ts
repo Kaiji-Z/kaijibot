@@ -1557,6 +1557,12 @@ export const FIELD_HELP: Record<string, string> = {
     'Lightweight model used for persona extraction (format: "provider/model"). When unset, the main agent model is used. Setting a faster/cheaper model here reduces extraction cost.',
   "cognitive.persona.identityRefreshHours":
     "Interval in hours between L1 identity memory refresh cycles (default: 24). Lower values refresh more frequently but consume more tokens.",
+  "cognitive.tasks":
+    "Unattended multi-step task execution: delegate an outcome and the agent works on it in bounded steps, then reports back. Tasks respect the same pacing gates as proactive insights.",
+  "cognitive.tasks.enabled":
+    "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+  "cognitive.tasks.maxSteps":
+    "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
   "cognitive.insight":
     "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",
   "cognitive.insight.inferenceModel":

@@ -85,6 +85,14 @@ export const CognitiveEvolutionSchema = z
   }, z.object({ enabled: z.boolean().default(true), qualityGateModel: z.string().optional() }).strict())
   .optional();
 
+export const CognitiveTasksSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    maxSteps: z.number().min(1).max(100).optional(),
+  })
+  .strict()
+  .optional();
+
 export const CognitiveSchema = z
   .object({
     enabled: z.boolean().default(true),
@@ -93,6 +101,7 @@ export const CognitiveSchema = z
     insight: CognitiveInsightSchema,
     feedback: CognitiveFeedbackSchema,
     evolution: CognitiveEvolutionSchema,
+    tasks: CognitiveTasksSchema,
   })
   .strict()
   .optional();
