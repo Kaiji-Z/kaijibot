@@ -116,5 +116,30 @@ export function collectBrowserSecurityAuditFindings(ctx: KaijiBotPluginSecurityA
     }
   }
 
+  // Login-proxy surface: agent profiles hold manually established sessions on
+  // disk. Not a misconfiguration by itself — the user opted in — but worth a
+  // standing warning because anyone with filesystem access to the config dir
+  // can reuse those logins.
+  if (resolved.proxyEnabled) {
+    const agentProfiles = Object.keys(resolved.profiles).filter((name) =>
+      name.startsWith("agent-"),
+    );
+    if (agentProfiles.length > 0) {
+      const preview = agentProfiles.slice(0, 3).join(", ");
+      const suffix = agentProfiles.length > 3 ? `, +${agentProfiles.length - 3} more` : "";
+      findings.push({
+        checkId: "browser.proxy_persistent_login_profiles",
+        severity: "warn" as const,
+        title: "Persistent agent login sessions on disk",
+        detail:
+          `browser.proxy.enabled is on and ${agentProfiles.length} agent browser profile(s) (${preview}${suffix}) ` +
+          "keep persistent user-data dirs (with any manually established logins/cookies) under the " +
+          "kaijibot config directory until the profile is deleted.",
+        remediation:
+          "Keep the kaijibot config directory private (it already holds credentials). Delete unused agent profiles (browser tool action=profiles, or DELETE /profiles/<name>) to trash their user-data dirs and end those sessions.",
+      });
+    }
+  }
+
   return findings;
 }

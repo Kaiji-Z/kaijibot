@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 /**
  * Flag-based regression comparison (VERIFICATION.md §4).
@@ -34,8 +35,10 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // ---------------------------------------------------------------------------
 // Args.
@@ -117,22 +120,68 @@ function resolveVitestNodeArgs(env = process.env) {
 }
 
 /**
+ * Pick the vitest project config for a target. Cognitive targets (default)
+ * use the cognitive lane; extensions/* targets need the extensions lane
+ * (otherwise the filter matches zero files and the diff is vacuous).
+ */
+function resolveVitestConfigForTarget(target) {
+  return target.startsWith("extensions/")
+    ? "vitest/vitest.extensions.config.ts"
+    : "vitest/vitest.cognitive.config.ts";
+}
+
+/**
+ * The extensions vitest project resolves positional filters relative to its
+ * `dir: "extensions"` root, so directory-prefix targets from the repo root
+ * match nothing. Collect the test files explicitly instead (mirrors the
+ * router's include-file mechanism).
+ */
+function collectExtensionsTestFiles(target) {
+  const root = path.join(repoRoot, target);
+  const out = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === "dist" || entry.name === "node_modules") {
+        continue;
+      }
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (
+        entry.name.endsWith(".test.ts") &&
+        !entry.name.endsWith(".e2e.test.ts") &&
+        !entry.name.endsWith(".live.test.ts")
+      ) {
+        out.push(path.relative(repoRoot, full));
+      }
+    }
+  };
+  walk(root);
+  return out.toSorted();
+}
+
+/**
  * Run vitest once with the given config-path env override, writing JSON
  * results to `outputFile`. Returns the parsed vitest JSON report.
  */
 function runVitestWithConfig({ configPath, target, outputFile, env }) {
   return new Promise((resolve, reject) => {
     const vitestEntry = resolveVitestCliEntry();
+    const targetArgs = target.startsWith("extensions/")
+      ? collectExtensionsTestFiles(target)
+      : [target];
     const args = [
       ...resolveVitestNodeArgs(env),
       vitestEntry,
       "run",
       "--config",
-      "vitest/vitest.cognitive.config.ts",
+      resolveVitestConfigForTarget(target),
       "--reporter=json",
       "--outputFile",
       outputFile,
-      target,
+      ...targetArgs,
     ];
     const child = spawn("pnpm", ["exec", "node", ...args], {
       env: { ...env, KAIJIBOT_CONFIG_PATH: configPath },
