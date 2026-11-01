@@ -1,3 +1,4 @@
+import { listAgentIds } from "../../agents/agent-scope.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
@@ -21,7 +22,7 @@ export function tasksEnabled(cfg: KaijiBotConfig | undefined): boolean {
 
 export type CreateTaskResult =
   | { ok: true; task: TaskRecord }
-  | { ok: false; code: "disabled" | "pacing_vetoed"; reason: string };
+  | { ok: false; code: "disabled" | "pacing_vetoed" | "unknown_agent"; reason: string };
 
 export type TaskServiceDeps = {
   store: TaskStore;
@@ -30,6 +31,15 @@ export type TaskServiceDeps = {
   loadPersona: (agentId: string, userId: string) => Promise<PersonaTree | undefined>;
   /** Kick after successful creation (heartbeat wake / scheduler nudge). */
   onTaskCreated?: (task: TaskRecord) => void | Promise<void>;
+};
+
+export type DelegateCreateInput = CreateTaskInput & {
+  /**
+   * Delegate the task to a different agent instance (M3 multi-agent): the
+   * record is created in the target agent's namespace so its runner and step
+   * driver execute the task on the target agent's session.
+   */
+  assignToAgent?: string;
 };
 
 /**
@@ -44,7 +54,7 @@ export async function createTaskSafely(
   deps: TaskServiceDeps,
   agentId: string,
   userId: string,
-  input: CreateTaskInput,
+  input: DelegateCreateInput,
 ): Promise<CreateTaskResult> {
   if (!tasksEnabled(deps.config)) {
     return {
@@ -68,12 +78,43 @@ export async function createTaskSafely(
   }
   // No persona yet = brand-new relationship: no ledger debt, no suppression.
 
+  const targetAgentId = input.assignToAgent?.trim() || undefined;
+  if (targetAgentId && targetAgentId !== agentId) {
+    const knownAgents = listAgentIds(deps.config ?? ({} as KaijiBotConfig));
+    if (!knownAgents.includes(targetAgentId)) {
+      return {
+        ok: false,
+        code: "unknown_agent",
+        reason: `agent "${targetAgentId}" is not configured (known: ${knownAgents.join(", ")})`,
+      };
+    }
+  }
+
   const maxSteps = input.maxSteps ?? deps.config?.cognitive?.tasks?.maxSteps;
-  const task = await deps.store.create(agentId, userId, {
+  const ownerAgentId = targetAgentId ?? agentId;
+  const task = await deps.store.create(ownerAgentId, userId, {
     ...input,
+    ...(input.parentTaskId ? { parentTaskId: input.parentTaskId, parentAgentId: agentId } : {}),
     ...(maxSteps !== undefined ? { maxSteps } : {}),
   });
+
+  // Creating a subtask parks the parent until aggregation wakes it (M3): the
+  // runner pauses on `blocked`, children run on their assigned agents.
+  if (input.parentTaskId) {
+    await deps.store.update(agentId, userId, input.parentTaskId, (parent) =>
+      parent.status === "queued" || parent.status === "running"
+        ? { ...parent, status: "blocked" }
+        : parent,
+    );
+  }
+
   await deps.onTaskCreated?.(task);
-  log.info("task created", { agentId, userId, taskId: task.id, goal: task.goal.slice(0, 80) });
+  log.info("task created", {
+    agentId: ownerAgentId,
+    userId,
+    taskId: task.id,
+    goal: task.goal.slice(0, 80),
+    ...(targetAgentId ? { assignedBy: agentId } : {}),
+  });
   return { ok: true, task };
 }

@@ -195,6 +195,14 @@ export class TaskRunner {
         log.info("task done", { taskId: current.id, steps: current.budget.usedSteps });
         return;
       }
+
+      // The step delegated subtasks (creation flips this task to `blocked`):
+      // pause driving here — aggregation wakes the parent when children reach
+      // terminal states (M3 multi-agent).
+      if (updated.status === "blocked") {
+        log.info("task paused waiting on subtasks", { taskId: current.id });
+        return;
+      }
       // Not done, budget remains — continue to the next step.
     }
   }

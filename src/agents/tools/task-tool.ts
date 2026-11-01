@@ -22,6 +22,18 @@ const TaskCreateSchema = Type.Object({
       description: "Optional step ceiling override (default from config, 12)",
     }),
   ),
+  assignToAgent: Type.Optional(
+    Type.String({
+      description:
+        "Delegate this task to another configured agent instance (e.g. 'researcher'). The task then runs unattended on that agent's session.",
+    }),
+  ),
+  parentTaskId: Type.Optional(
+    Type.String({
+      description:
+        "When splitting the current task into subtasks: the parent task id from the [Task Step] instruction. The parent pauses until all subtasks finish.",
+    }),
+  ),
 });
 
 const TaskStatusSchema = Type.Object({});
@@ -97,7 +109,12 @@ export function createTaskTool(deps: {
       "Create an unattended multi-step task. The agent works on it in bounded steps and reports the result when done. Use when the user delegates an outcome that needs multiple steps or background work.",
     parameters: TaskCreateSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
-      const params = rawParams as { goal: string; maxSteps?: number };
+      const params = rawParams as {
+        goal: string;
+        maxSteps?: number;
+        assignToAgent?: string;
+        parentTaskId?: string;
+      };
 
       const userId = resolveCorrectionUserId(deps.sessionKey, deps.deliveryTo);
       if (!userId) {
@@ -121,8 +138,10 @@ export function createTaskTool(deps: {
           userId,
           {
             goal: params.goal,
-            origin: "user",
+            origin: params.parentTaskId ? "agent" : "user",
             ...(params.maxSteps ? { maxSteps: params.maxSteps } : {}),
+            ...(params.assignToAgent ? { assignToAgent: params.assignToAgent } : {}),
+            ...(params.parentTaskId ? { parentTaskId: params.parentTaskId } : {}),
           },
         );
 
@@ -132,7 +151,7 @@ export function createTaskTool(deps: {
             message:
               result.code === "disabled"
                 ? "Task system is disabled (cognitive.tasks.enabled is false)."
-                : `Task vetoed by pacing gate: ${result.reason}`,
+                : `Task not created: ${result.reason}`,
           });
         }
 
@@ -142,8 +161,13 @@ export function createTaskTool(deps: {
           taskId: result.task.id,
           goal: result.task.goal,
           maxSteps: result.task.budget.maxSteps,
-          message:
-            "Task queued. It runs unattended in bounded steps; the result will be delivered when done. Use task_status to check progress.",
+          agent: result.task.agentId,
+          ...(params.parentTaskId ? { parentTaskId: params.parentTaskId } : {}),
+          message: params.parentTaskId
+            ? "Subtask created; the parent task pauses until all its subtasks finish, then aggregates their results."
+            : params.assignToAgent && params.assignToAgent !== agentId
+              ? `Task delegated to agent "${result.task.agentId}"; it runs on that agent's session and reports back when done.`
+              : "Task queued. It runs unattended in bounded steps; the result will be delivered when done. Use task_status to check progress.",
         });
       } catch (err) {
         log.warn("task_create failed", { error: String(err) });
