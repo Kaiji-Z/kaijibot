@@ -168,6 +168,7 @@ export const de: TranslationMap = {
     aiAgents: "KI & Agenten",
     debug: "Debug",
     logs: "Protokolle",
+    tasks: "Aufgaben",
   },
   subtitles: {
     agents: "Agent-Arbeitsbereiche, Tools und Identitäten verwalten.",
@@ -188,6 +189,7 @@ export const de: TranslationMap = {
     aiAgents: "Agenten, Modelle, Skills, Tools, Speicher, Sitzung.",
     debug: "Gateway-Snapshots, Ereignisse und manuelle RPC-Aufrufe.",
     logs: "Live-Verfolgung der Gateway-Protokolldateien.",
+    tasks: "Ausführungsverläufe unbeaufsichtigter Aufgaben.",
   },
   overview: {
     access: {

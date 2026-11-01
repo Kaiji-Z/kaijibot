@@ -105,6 +105,7 @@ const lazyAgents = createLazy(() => import("./views/agents.ts"));
 const lazyCron = createLazy(() => import("./views/cron.ts"));
 const lazyCognitive = createLazy(() => import("./views/cognitive.ts"));
 const lazyInsights = createLazy(() => import("./views/insights.ts"));
+const lazyTasks = createLazy(() => import("./views/tasks.ts"));
 const lazyEvolution = createLazy(() => import("./views/evolution.ts"));
 const lazyUsage = createLazy(() => import("./views/usage.ts"));
 const lazySkillsManager = createLazy(() => import("./views/skills-manager.ts"));
@@ -1051,6 +1052,40 @@ export function renderApp(state: AppViewState) {
                 onRefresh: () => {
                   import("./controllers/insights.ts").then((c) => {
                     void c.loadInsights(state as Parameters<typeof c.loadInsights>[0]);
+                  });
+                },
+              }),
+            )
+          : nothing}
+        ${state.tab === "tasks"
+          ? lazyRender(lazyTasks, (m) =>
+              m.renderTasks({
+                loading: state.tasksLoading,
+                error: state.tasksError,
+                tasks: state.tasksList,
+                selectedId: state.tasksSelectedId,
+                detail: state.tasksDetail,
+                detailLoading: state.tasksDetailLoading,
+                includeFinished: state.tasksIncludeFinished,
+                onSelect: (taskId: string, userId: string) => {
+                  import("./controllers/tasks.ts").then((c) => {
+                    void c.loadTaskDetail(
+                      state as Parameters<typeof c.loadTaskDetail>[0],
+                      taskId,
+                      userId,
+                    );
+                  });
+                },
+                onRefresh: (includeFinished: boolean) => {
+                  import("./controllers/tasks.ts").then((c) => {
+                    void c.loadTasks(state as Parameters<typeof c.loadTasks>[0], includeFinished);
+                  });
+                },
+                onToggleFinished: (includeFinished: boolean) => {
+                  state.tasksIncludeFinished = includeFinished;
+                  (state as unknown as { requestUpdate?: () => void }).requestUpdate?.();
+                  import("./controllers/tasks.ts").then((c) => {
+                    void c.loadTasks(state as Parameters<typeof c.loadTasks>[0], includeFinished);
                   });
                 },
               }),

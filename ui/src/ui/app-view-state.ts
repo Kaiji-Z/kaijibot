@@ -145,6 +145,13 @@ export type AppViewState = {
   insightsAgentId: string | null;
   insightsUserId: string | null;
   insightsList: unknown[];
+  tasksLoading: boolean;
+  tasksError: string | null;
+  tasksList: unknown[];
+  tasksSelectedId: string | null;
+  tasksDetail: unknown | null;
+  tasksDetailLoading: boolean;
+  tasksIncludeFinished: boolean;
   evolutionLoading: boolean;
   evolutionError: string | null;
   evolutionAgentId: string | null;

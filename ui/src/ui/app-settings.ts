@@ -294,6 +294,15 @@ export async function refreshActiveTab(host: SettingsHost) {
       });
     }
   }
+  if (host.tab === "tasks") {
+    const appTasks = host as unknown as KaijiBotApp;
+    void import("./controllers/tasks.ts").then((c) => {
+      void c.loadTasks(
+        appTasks as Parameters<typeof c.loadTasks>[0],
+        appTasks.tasksIncludeFinished,
+      );
+    });
+  }
   if (host.tab === "insights") {
     const app2 = host as unknown as KaijiBotApp;
     if (!app2.insightsAgentId || !app2.insightsUserId) {

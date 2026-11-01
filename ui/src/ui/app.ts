@@ -341,6 +341,13 @@ export class KaijiBotApp extends LitElement {
   @state() insightsList: unknown[] = [];
   @state() insightsAgentId: string | null = null;
   @state() insightsUserId: string | null = null;
+  @state() tasksLoading = false;
+  @state() tasksError: string | null = null;
+  @state() tasksList: unknown[] = [];
+  @state() tasksSelectedId: string | null = null;
+  @state() tasksDetail: unknown | null = null;
+  @state() tasksDetailLoading = false;
+  @state() tasksIncludeFinished = false;
 
   client: GatewayBrowserClient | null = null;
   private chatScrollFrame: number | null = null;

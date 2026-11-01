@@ -9,6 +9,7 @@ export const TABS = [
   "insights",
   "evolution",
   "corrections",
+  "tasks",
   "skills",
   "usage",
   "history",
@@ -38,6 +39,7 @@ const TAB_PATHS: Record<Tab, string> = {
   insights: "/insights",
   evolution: "/evolution",
   corrections: "/corrections",
+  tasks: "/tasks",
   skills: "/skills",
   usage: "/usage",
   history: "/history",
@@ -143,6 +145,8 @@ export function iconForTab(tab: Tab): IconName {
       return "puzzle";
     case "corrections":
       return "check";
+    case "tasks":
+      return "zap";
     case "skills":
       return "wrench";
     case "usage":
