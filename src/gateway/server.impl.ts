@@ -1840,7 +1840,9 @@ export async function startGatewayServer(
             const { TaskRunner } = await import("../cognitive/tasks/runner.js");
             const { createProductionStepDriver } =
               await import("../cognitive/tasks/step-driver.js");
+            const { aggregateOnTaskTerminal } = await import("../cognitive/tasks/aggregate.js");
             const { resolveConfigDir: resolveConfigDirForTasks } = await import("../utils.js");
+            const { resolveAgentWorkspaceDir } = await import("../agents/agent-scope.js");
             const { findSessionKeyForUserId } = await import("./cognitive-delivery.js");
             const { enqueueSystemEvent } = await import("../infra/system-events.js");
             const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
@@ -1860,6 +1862,14 @@ export async function startGatewayServer(
                   sessionKey,
                   enqueueSystemEvent,
                   requestHeartbeatNow,
+                  // Shared per-task workspace (M3): hierarchy tasks point at
+                  // the parent agent's workspace so cooperating agents share
+                  // one WORKING_MEMORY.md.
+                  resolveSharedTaskDir: (task2) => {
+                    const rootId = task2.parentTaskId ?? task2.id;
+                    const ownerAgentId = task2.parentAgentId ?? task2.agentId;
+                    return `${resolveAgentWorkspaceDir(cfgAtStart, ownerAgentId)}/.kaijibot/tasks/${rootId}`;
+                  },
                 })(task);
               },
               deliver: async (task, message) => {
@@ -1875,6 +1885,25 @@ export async function startGatewayServer(
                   { sessionKey, contextKey: `task-result:${task.id}` },
                 );
                 requestHeartbeatNow({ reason: "cognitive-task", sessionKey });
+              },
+              onTaskTerminal: async (task) => {
+                await aggregateOnTaskTerminal(
+                  {
+                    store: gatewayTaskStore,
+                    wakeParent: async ({ agentId, userId, taskId }) => {
+                      const sessionKey = findSessionKeyForUserId(cfgAtStart, userId, agentId);
+                      if (!sessionKey) {
+                        // The 60s tick still re-claims the released parent.
+                        log.info(
+                          `cognitive task: no session to wake for parent ${taskId}; tick will resume it`,
+                        );
+                        return;
+                      }
+                      requestHeartbeatNow({ reason: "cognitive-task", sessionKey });
+                    },
+                  },
+                  task,
+                );
               },
             });
 

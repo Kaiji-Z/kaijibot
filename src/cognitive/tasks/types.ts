@@ -46,6 +46,15 @@ export type TaskStep = {
 
 export type TaskOrigin = "user" | "agent" | "system";
 
+/** Terminal snapshot of one subtask, attached to the parent at aggregation. */
+export type SubtaskResult = {
+  taskId: string;
+  agentId: string;
+  goal: string;
+  status: TaskStatus;
+  result?: string;
+};
+
 export type TaskRecord = {
   id: string;
   agentId: string;
@@ -66,6 +75,11 @@ export type TaskRecord = {
   parentTaskId?: string;
   /** The agent that owns the parent task (direct lookup for aggregation). */
   parentAgentId?: string;
+  /**
+   * Filled when all subtasks reached terminal states: the parent re-queues
+   * and its next step prompt carries these results for aggregation.
+   */
+  subtaskResults?: SubtaskResult[];
 };
 
 export type TaskStoreData = {

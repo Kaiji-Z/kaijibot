@@ -70,18 +70,38 @@ export type ProductionStepDriverDeps = {
     options: { sessionKey: string; contextKey?: string },
   ) => boolean;
   requestHeartbeatNow: (opts: { reason: string; sessionKey: string }) => void;
+  /**
+   * Shared per-task workspace directory (M3): when the task participates in
+   * a parent/subtask hierarchy, its path is included in the step prompt so
+   * cooperating agents read/write the same WORKING_MEMORY.md.
+   */
+  resolveSharedTaskDir?: (task: TaskRecord) => string | undefined;
   stepTimeoutMs?: number;
 };
 
-function buildStepPrompt(task: TaskRecord, stepIndex: number): string {
+function buildStepPrompt(task: TaskRecord, stepIndex: number, sharedDir?: string): string {
   const progress = task.steps
     .map((s) => `  ${s.index}. ${s.summary}${s.error ? `（错误：${s.error}）` : ""}`)
     .join("\n");
   const progressBlock = progress ? `\n已完成步骤：\n${progress}` : "\n（这是第一步）";
+  const subtaskBlock = task.subtaskResults?.length
+    ? `\n子任务结果（已全部完成，请汇总进最终结果）：\n${task.subtaskResults
+        .map(
+          (s) =>
+            `  - [${s.status}]（${s.agentId}）${s.goal}${s.result ? `：${clampText(s.result, 800)}` : ""}`,
+        )
+        .join("\n")}`
+    : "";
+  const sharedBlock =
+    task.parentTaskId || task.subtaskResults?.length
+      ? `\n共享工作区：${sharedDir ?? "（不可用）"}\n跨 agent 协作可通过该目录下的 WORKING_MEMORY.md 记录与读取进展（先读后追加）。`
+      : "";
   return [
     `[Task Step ${stepIndex}/${task.budget.maxSteps}]`,
     `任务目标：${task.goal}`,
     progressBlock,
+    subtaskBlock,
+    sharedBlock,
     "请立即执行本步骤的实际工作（可使用工具）。完成后调用 task_step_report 工具汇报本步结果：",
     "- summary：本步做了什么、进展如何",
     "- done：目标已达成时为 true，并把最终结果写进 summary",
@@ -101,7 +121,8 @@ export function createProductionStepDriver(deps: ProductionStepDriverDeps) {
     const stepIndex = task.budget.usedSteps + 1;
     const key = awaiterKey(task.id, stepIndex);
 
-    const enqueued = deps.enqueueSystemEvent(buildStepPrompt(task, stepIndex), {
+    const sharedDir = deps.resolveSharedTaskDir?.(task);
+    const enqueued = deps.enqueueSystemEvent(buildStepPrompt(task, stepIndex, sharedDir), {
       sessionKey: deps.sessionKey,
       contextKey: `task:${task.id}:${stepIndex}`,
     });

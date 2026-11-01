@@ -28,6 +28,12 @@ export type TaskRunnerDeps = {
   runStep: (task: TaskRecord) => Promise<TaskStepOutcome>;
   /** Deliver a terminal notification (done/failed/halted) to the user. */
   deliver: (task: TaskRecord, message: string) => Promise<void>;
+  /**
+   * Called after any terminal transition with the final record (parent
+   * aggregation, M3). Errors are logged, never propagated — the child's own
+   * lifecycle must complete regardless.
+   */
+  onTaskTerminal?: (task: TaskRecord) => Promise<void> | void;
   now?: () => number;
 };
 
@@ -124,7 +130,19 @@ export class TaskRunner {
     const finalTask = halted ?? task;
     await this.deps.deliver(finalTask, `${message}\n\n部分进展：\n${clampText(partial, 2000)}`);
     log.info("task halted", { taskId: task.id, reason, steps: finalTask.budget.usedSteps });
+    await this.notifyTerminal(finalTask);
     return finalTask;
+  }
+
+  private async notifyTerminal(task: TaskRecord): Promise<void> {
+    if (!this.deps.onTaskTerminal) {
+      return;
+    }
+    try {
+      await this.deps.onTaskTerminal(task);
+    } catch (err) {
+      log.warn("onTaskTerminal hook failed", { taskId: task.id, error: String(err) });
+    }
   }
 
   /** Drive one task to a terminal state with checkpoints after every step. */
@@ -181,6 +199,7 @@ export class TaskRunner {
         }));
         await this.deps.deliver(failed ?? current, message);
         log.warn("task step failed", { taskId: current.id, step: stepIndex });
+        await this.notifyTerminal(failed ?? current);
         return;
       }
 
@@ -193,6 +212,7 @@ export class TaskRunner {
         }));
         await this.deps.deliver(doneTask ?? current, message);
         log.info("task done", { taskId: current.id, steps: current.budget.usedSteps });
+        await this.notifyTerminal(doneTask ?? current);
         return;
       }
 
