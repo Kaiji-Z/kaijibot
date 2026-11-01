@@ -167,7 +167,10 @@ export function createProfileAvailability({
     );
   };
 
-  const ensureBrowserAvailable = async (): Promise<void> => {
+  const ensureBrowserAvailable = async (ensureOpts?: {
+    /** Launch headed even when browser.headless is set (manual login window). */
+    forceHeaded?: boolean;
+  }): Promise<void> => {
     await reconcileProfileRuntime();
     if (capabilities.usesChromeMcp) {
       if (profile.userDataDir && !fs.existsSync(profile.userDataDir)) {
@@ -210,7 +213,10 @@ export function createProfileAvailability({
             : `Browser attachOnly is enabled and profile "${profile.name}" is not running.`,
         );
       }
-      const launched = await launchKaijiBotChrome(current.resolved, profile);
+      const launched = await launchKaijiBotChrome(
+        ensureOpts?.forceHeaded ? { ...current.resolved, headless: false } : current.resolved,
+        profile,
+      );
       attachRunning(launched);
       try {
         await waitForCdpReadyAfterLaunch();
@@ -257,7 +263,10 @@ export function createProfileAvailability({
     await stopKaijiBotChrome(profileState.running);
     setProfileRunning(null);
 
-    const relaunched = await launchKaijiBotChrome(current.resolved, profile);
+    const relaunched = await launchKaijiBotChrome(
+      ensureOpts?.forceHeaded ? { ...current.resolved, headless: false } : current.resolved,
+      profile,
+    );
     attachRunning(relaunched);
 
     if (!(await isReachable(PROFILE_POST_RESTART_WS_TIMEOUT_MS))) {

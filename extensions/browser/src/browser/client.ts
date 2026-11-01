@@ -126,9 +126,14 @@ export async function browserProfiles(baseUrl?: string): Promise<ProfileStatus[]
   return res.profiles ?? [];
 }
 
-export async function browserStart(baseUrl?: string, opts?: { profile?: string }): Promise<void> {
-  const q = buildProfileQuery(opts?.profile);
-  await fetchBrowserJson(withBaseUrl(baseUrl, `/start${q}`), {
+export async function browserStart(
+  baseUrl?: string,
+  opts?: { profile?: string; headed?: boolean },
+): Promise<void> {
+  const profileQ = buildProfileQuery(opts?.profile);
+  const headedPrefix = opts?.headed ? (profileQ ? "&" : "?") : "";
+  const headedQ = opts?.headed ? `${headedPrefix}headed=1` : "";
+  await fetchBrowserJson(withBaseUrl(baseUrl, `/start${profileQ}${headedQ}`), {
     method: "POST",
     timeoutMs: 15000,
   });

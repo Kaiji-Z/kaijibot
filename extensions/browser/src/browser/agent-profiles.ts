@@ -91,7 +91,7 @@ export async function ensureAgentBrowserProfile(
     browser: {
       ...cfg.browser,
       profiles: {
-        ...(cfg.browser?.profiles),
+        ...cfg.browser?.profiles,
         [name]: profileConfig,
       },
     },

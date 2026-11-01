@@ -243,7 +243,7 @@ export function createBrowserRouteContext(opts: ContextOptions): BrowserRouteCon
     forProfile,
     listProfiles,
     // Legacy methods delegate to default profile
-    ensureBrowserAvailable: () => getDefaultContext().ensureBrowserAvailable(),
+    ensureBrowserAvailable: (ensureOpts) => getDefaultContext().ensureBrowserAvailable(ensureOpts),
     ensureTabAvailable: (targetId) => getDefaultContext().ensureTabAvailable(targetId),
     isHttpReachable: (timeoutMs) => getDefaultContext().isHttpReachable(timeoutMs),
     isReachable: (timeoutMs) => getDefaultContext().isReachable(timeoutMs),

@@ -913,3 +913,130 @@ describe("browser tool agent profile auto-routing (browser.proxy.enabled)", () =
     );
   });
 });
+
+describe("browser tool login action (browser.proxy.enabled)", () => {
+  registerBrowserToolAfterEachReset();
+
+  function parseResultText(result: unknown) {
+    const text = (result as { content?: Array<{ type?: string; text?: string }> })?.content?.find(
+      (c) => c.type === "text",
+    )?.text;
+    return text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  }
+
+  function enableLoginProxy() {
+    configMocks.loadConfig.mockReturnValue({ browser: { proxy: { enabled: true } } });
+    browserConfigMocks.resolveBrowserConfig.mockReturnValue({
+      enabled: true,
+      controlPort: 18791,
+      proxyEnabled: true,
+      profiles: {},
+      defaultProfile: "kaijibot",
+    });
+    const ensureMock = vi.fn(async () => ({ profile: "agent-main", created: true }));
+    browserToolTesting.setDepsForTest({ ensureAgentBrowserProfile: ensureMock });
+    return ensureMock;
+  }
+
+  it("opens a headed login window on the agent profile, restarting a running instance", async () => {
+    const ensureMock = enableLoginProxy();
+    const tool = createBrowserTool({ agentId: "main" });
+    const result = await tool.execute?.("call-1", {
+      action: "login",
+      url: "https://example.com/login",
+    });
+
+    expect(ensureMock).toHaveBeenCalledWith("main");
+    expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(undefined, {
+      profile: "agent-main",
+    });
+    expect(browserClientMocks.browserStop).toHaveBeenCalledWith(undefined, {
+      profile: "agent-main",
+    });
+    expect(browserClientMocks.browserStart).toHaveBeenCalledWith(undefined, {
+      profile: "agent-main",
+      headed: true,
+    });
+    expect(browserClientMocks.browserOpenTab).toHaveBeenCalledWith(
+      undefined,
+      "https://example.com/login",
+      { profile: "agent-main" },
+    );
+    const payload = parseResultText(result);
+    expect(payload.ok).toBe(true);
+    expect(payload.profile).toBe("agent-main");
+  });
+
+  it("does not stop anything when no browser is running", async () => {
+    enableLoginProxy();
+    browserClientMocks.browserStatus.mockResolvedValue({
+      ok: true,
+      running: false,
+    } as never);
+    const tool = createBrowserTool({ agentId: "main" });
+    await tool.execute?.("call-1", { action: "login" });
+
+    expect(browserClientMocks.browserStop).not.toHaveBeenCalled();
+    expect(browserClientMocks.browserStart).toHaveBeenCalledWith(undefined, {
+      profile: "agent-main",
+      headed: true,
+    });
+    expect(browserClientMocks.browserOpenTab).not.toHaveBeenCalled();
+  });
+
+  it("is rejected while the proxy flag is off", async () => {
+    const ensureMock = enableLoginProxy();
+    browserConfigMocks.resolveBrowserConfig.mockReturnValue({
+      enabled: true,
+      controlPort: 18791,
+      proxyEnabled: false,
+      profiles: {},
+      defaultProfile: "kaijibot",
+    });
+    const tool = createBrowserTool({ agentId: "main" });
+    const result = await tool.execute?.("call-1", { action: "login" });
+
+    const payload = parseResultText(result);
+    expect(payload.ok).toBe(false);
+    expect(String(payload.error)).toContain("browser.proxy.enabled is false");
+    expect(ensureMock).not.toHaveBeenCalled();
+    expect(browserClientMocks.browserStart).not.toHaveBeenCalled();
+  });
+
+  it("never accepts credential-like params (manual login only)", async () => {
+    const ensureMock = enableLoginProxy();
+    const tool = createBrowserTool({ agentId: "main" });
+    const result = await tool.execute?.("call-1", {
+      action: "login",
+      password: "hunter2",
+    });
+
+    const payload = parseResultText(result);
+    expect(payload.ok).toBe(false);
+    expect(String(payload.error)).toContain("never handles credentials");
+    expect(ensureMock).not.toHaveBeenCalled();
+  });
+
+  it("requires an agent identity", async () => {
+    enableLoginProxy();
+    const tool = createBrowserTool();
+    const result = await tool.execute?.("call-1", { action: "login" });
+
+    const payload = parseResultText(result);
+    expect(payload.ok).toBe(false);
+    expect(String(payload.error)).toContain("agent identity");
+  });
+
+  it("requires the local host browser (no sandbox/node routing)", async () => {
+    enableLoginProxy();
+    const sandboxed = createBrowserTool({
+      agentId: "main",
+      sandboxBridgeUrl: "http://127.0.0.1:9999",
+    });
+    const result = await sandboxed.execute?.("call-1", { action: "login" });
+    const payload = parseResultText(result);
+    expect(payload.ok).toBe(false);
+    expect(String(payload.error)).toContain("local host browser");
+    expect(browserClientMocks.browserStart).not.toHaveBeenCalled();
+  });
+});

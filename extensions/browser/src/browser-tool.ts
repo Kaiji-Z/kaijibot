@@ -7,7 +7,7 @@ import {
   executeTabsAction,
 } from "./browser-tool.actions.js";
 import { BrowserToolSchema } from "./browser-tool.schema.js";
-import { findAgentBrowserProfile } from "./browser/agent-profiles.js";
+import { ensureAgentBrowserProfile, findAgentBrowserProfile } from "./browser/agent-profiles.js";
 import {
   type AnyAgentTool,
   type NodeListNode,
@@ -57,6 +57,7 @@ const browserToolDeps = {
   browserStart,
   browserStatus,
   browserStop,
+  ensureAgentBrowserProfile,
   imageResultFromFile,
   loadConfig,
   listNodes,
@@ -81,6 +82,7 @@ export const __testing = {
       browserStart: typeof browserStart;
       browserStatus: typeof browserStatus;
       browserStop: typeof browserStop;
+      ensureAgentBrowserProfile: typeof ensureAgentBrowserProfile;
       imageResultFromFile: typeof imageResultFromFile;
       loadConfig: typeof loadConfig;
       listNodes: typeof listNodes;
@@ -104,6 +106,8 @@ export const __testing = {
     browserToolDeps.browserStart = overrides?.browserStart ?? browserStart;
     browserToolDeps.browserStatus = overrides?.browserStatus ?? browserStatus;
     browserToolDeps.browserStop = overrides?.browserStop ?? browserStop;
+    browserToolDeps.ensureAgentBrowserProfile =
+      overrides?.ensureAgentBrowserProfile ?? ensureAgentBrowserProfile;
     browserToolDeps.imageResultFromFile = overrides?.imageResultFromFile ?? imageResultFromFile;
     browserToolDeps.loadConfig = overrides?.loadConfig ?? loadConfig;
     browserToolDeps.listNodes = overrides?.listNodes ?? listNodes;
@@ -384,6 +388,7 @@ export function createBrowserTool(opts?: {
       "Control the browser via KaijiBot's browser control server (status/start/stop/profiles/tabs/open/snapshot/screenshot/actions).",
       "Browser choice: omit profile by default for the isolated KaijiBot-managed browser (`kaijibot`).",
       'For the logged-in user browser on the local host, use profile="user". A supported Chromium-based browser (v144+) must be running. Use only when existing logins/cookies matter and the user is present.',
+      "When browser.proxy.enabled is on and this agent has a persistent profile (agent-<id>), calls without an explicit profile route there. action=login opens a headed manual-login window for that profile — the user types credentials by hand; the agent never handles them.",
       'When a node-hosted browser proxy is available, the tool may auto-route to it. Pin a node with node=<id|name> or target="node".',
       "When using refs from snapshot (e.g. e12), keep the same tab: prefer passing targetId from the snapshot response into subsequent actions (act/click/type/etc).",
       'For stable, self-resolving refs across calls, use snapshot with refs="aria" (Playwright aria-ref ids). Default refs="role" are role+name-based.',
@@ -512,6 +517,85 @@ export function createBrowserTool(opts?: {
           }
           await browserToolDeps.browserStop(baseUrl, { profile });
           return jsonResult(await browserToolDeps.browserStatus(baseUrl, { profile }));
+        case "login": {
+          // Manual login window for the login proxy (browser.proxy.enabled):
+          // the user signs in by hand; the agent only holds the resulting
+          // session — credentials never pass through the agent.
+          if (nodeTarget) {
+            return jsonResult({
+              ok: false,
+              error: "login requires the local host browser; remove node/target=node.",
+            });
+          }
+          if (target === "sandbox") {
+            return jsonResult({
+              ok: false,
+              error: "login requires the local host browser; target=sandbox is not supported.",
+            });
+          }
+          if (opts?.sandboxBridgeUrl && target !== "host") {
+            return jsonResult({
+              ok: false,
+              error:
+                "login requires the local host browser; this tool is sandbox-bridged. Use target=host explicitly.",
+            });
+          }
+          for (const forbidden of ["password", "username", "credentials", "secret", "token"]) {
+            if (params[forbidden] !== undefined) {
+              return jsonResult({
+                ok: false,
+                error: `param "${forbidden}" is not accepted: log in manually in the opened window — the agent never handles credentials.`,
+              });
+            }
+          }
+          const loginCfg = browserToolDeps.loadConfig();
+          if (!resolveBrowserConfig(loginCfg.browser, loginCfg).proxyEnabled) {
+            return jsonResult({
+              ok: false,
+              error:
+                "browser.proxy.enabled is false — the login proxy is disabled. Enable it in ~/.kaijibot/kaijibot.json to use manual login sessions.",
+            });
+          }
+          if (!opts?.agentId) {
+            return jsonResult({
+              ok: false,
+              error: "login requires an agent identity for the dedicated profile.",
+            });
+          }
+          const loginBaseUrl = resolveBrowserBaseUrl({
+            target: "host",
+            sandboxBridgeUrl: undefined,
+            allowHostControl: opts?.allowHostControl,
+          });
+          const ensured = await browserToolDeps.ensureAgentBrowserProfile(opts.agentId);
+          // A headless instance would be invisible to the user; restart headed.
+          const status = await browserToolDeps.browserStatus(loginBaseUrl, {
+            profile: ensured.profile,
+          });
+          if (status?.running) {
+            await browserToolDeps.browserStop(loginBaseUrl, { profile: ensured.profile });
+          }
+          await browserToolDeps.browserStart(loginBaseUrl, {
+            profile: ensured.profile,
+            headed: true,
+          });
+          const loginUrl = readStringParam(params, "url") ?? readStringParam(params, "targetUrl");
+          if (loginUrl) {
+            await browserToolDeps.browserOpenTab(loginBaseUrl, loginUrl, {
+              profile: ensured.profile,
+            });
+          }
+          return jsonResult({
+            ok: true,
+            profile: ensured.profile,
+            created: ensured.created,
+            ...(loginUrl ? { url: loginUrl } : {}),
+            message:
+              `Login window opened (headed) for profile "${ensured.profile}". ` +
+              "The user signs in manually; the session persists in the agent's dedicated browser profile across restarts. " +
+              "The agent never sees credentials. Subsequent browser actions reuse the session via this profile.",
+          });
+        }
         case "profiles":
           if (proxyRequest) {
             const result = await proxyRequest({

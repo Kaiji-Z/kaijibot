@@ -6,7 +6,7 @@ import { createBrowserProfilesService } from "../profiles-service.js";
 import type { BrowserRouteContext, ProfileContext } from "../server-context.js";
 import { resolveProfileContext } from "./agent.shared.js";
 import type { BrowserRequest, BrowserResponse, BrowserRouteRegistrar } from "./types.js";
-import { getProfileContext, jsonError, toStringOrEmpty } from "./utils.js";
+import { getProfileContext, jsonError, toBoolean, toStringOrEmpty } from "./utils.js";
 
 function handleBrowserRouteError(res: BrowserResponse, err: unknown) {
   const mapped = toBrowserErrorResponse(err);
@@ -128,14 +128,16 @@ export function registerBrowserBasicRoutes(app: BrowserRouteRegistrar, ctx: Brow
     }
   });
 
-  // Start browser (profile-aware)
+  // Start browser (profile-aware). `headed=1` overrides browser.headless for
+  // this launch — used by the login-proxy window so the user can see it.
   app.post("/start", async (req, res) => {
+    const forceHeaded = toBoolean(req.query.headed) === true;
     await withBasicProfileRoute({
       req,
       res,
       ctx,
       run: async (profileCtx) => {
-        await profileCtx.ensureBrowserAvailable();
+        await profileCtx.ensureBrowserAvailable(forceHeaded ? { forceHeaded: true } : undefined);
         res.json({ ok: true, profile: profileCtx.profile.name });
       },
     });
