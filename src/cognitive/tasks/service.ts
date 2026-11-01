@@ -58,8 +58,12 @@ export async function createTaskSafely(
   if (persona) {
     const gate = evaluateTaskCreationGate(persona);
     if (!gate.allowed) {
-      log.info("task creation vetoed by pacing gate", { agentId, userId, reason: gate.reason });
-      return { ok: false, code: "pacing_vetoed", reason: gate.reason };
+      log.info("task creation vetoed by pacing gate", {
+        agentId,
+        userId,
+        reason: gate.reason ?? "pacing gate",
+      });
+      return { ok: false, code: "pacing_vetoed", reason: gate.reason ?? "pacing gate rejected" };
     }
   }
   // No persona yet = brand-new relationship: no ledger debt, no suppression.

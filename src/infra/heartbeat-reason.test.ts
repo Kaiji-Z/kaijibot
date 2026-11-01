@@ -30,6 +30,8 @@ describe("heartbeat-reason", () => {
     { value: "cognitive-insight:scan", expected: "wake" },
     { value: "cognitive-evolution", expected: "wake" },
     { value: "cognitive-evolution:suggest", expected: "wake" },
+    { value: "cognitive-task", expected: "wake" },
+    { value: "cognitive-task:step", expected: "wake" },
     { value: "requested", expected: "other" },
     { value: "slow", expected: "other" },
     { value: "", expected: "other" },

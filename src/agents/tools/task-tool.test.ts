@@ -8,8 +8,9 @@ function cfg(tasks?: { enabled?: boolean }): KaijiBotConfig {
   return { cognitive: { enabled: true, tasks } } as unknown as KaijiBotConfig;
 }
 
-function parsePayload(result: { content: Array<{ text?: string }> }): Record<string, unknown> {
-  const text = result.content.find((b) => typeof b?.text === "string")?.text ?? "{}";
+function parsePayload(result: unknown): Record<string, unknown> {
+  const content = (result as { content?: Array<{ text?: string }> }).content ?? [];
+  const text = content.find((b) => typeof b?.text === "string")?.text ?? "{}";
   return JSON.parse(text) as Record<string, unknown>;
 }
 

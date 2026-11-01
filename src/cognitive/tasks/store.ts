@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { getOrCreateScopedAsyncLock, writeTextAtomic } from "../../infra/json-files.js";
 import {
@@ -114,6 +114,36 @@ export class TaskStore {
   async get(agentId: string, userId: string, taskId: string): Promise<TaskRecord | undefined> {
     const tasks = await this.list(agentId, userId);
     return tasks.find((t) => t.id === taskId);
+  }
+
+  /** All userIds under an agent that have a task file (for tick fan-out). */
+  async listUserIds(agentId: string): Promise<string[]> {
+    try {
+      const entries = await readdir(join(this.configDir, TASKS_DIR, agentId));
+      return entries
+        .filter((name) => name.endsWith(".json"))
+        .map((name) => name.slice(0, -5))
+        .toSorted();
+    } catch {
+      return [];
+    }
+  }
+
+  /** All agentIds that have at least one task file. */
+  async listAgentIds(): Promise<string[]> {
+    try {
+      const entries = await readdir(join(this.configDir, TASKS_DIR));
+      const result: string[] = [];
+      for (const name of entries) {
+        const entryStat = await stat(join(this.configDir, TASKS_DIR, name));
+        if (entryStat.isDirectory()) {
+          result.push(name);
+        }
+      }
+      return result.toSorted();
+    } catch {
+      return [];
+    }
   }
 
   async create(agentId: string, userId: string, input: CreateTaskInput): Promise<TaskRecord> {

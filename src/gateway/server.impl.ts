@@ -1830,6 +1830,82 @@ export async function startGatewayServer(
           }, schedulerIntervalMs);
           backgroundStoppable.push(proactiveScheduler);
 
+          // ── Cognitive task runner bootstrap ──
+          // Unattended multi-step task execution (cognitive.tasks.enabled,
+          // default off). Steps and results flow through the same
+          // system-event + heartbeat idiom as insight delivery, so the agent
+          // shares results naturally and no intermediate step messages leak.
+          if (cfgAtStart.cognitive?.tasks?.enabled === true && !minimalTestGateway) {
+            const { TaskStore: TaskStoreCls } = await import("../cognitive/tasks/store.js");
+            const { TaskRunner } = await import("../cognitive/tasks/runner.js");
+            const { createProductionStepDriver } =
+              await import("../cognitive/tasks/step-driver.js");
+            const { resolveConfigDir: resolveConfigDirForTasks } = await import("../utils.js");
+            const { findSessionKeyForUserId } = await import("./cognitive-delivery.js");
+            const { enqueueSystemEvent } = await import("../infra/system-events.js");
+            const { requestHeartbeatNow } = await import("../infra/heartbeat-wake.js");
+
+            const gatewayTaskStore = new TaskStoreCls(resolveConfigDirForTasks());
+            const gatewayTaskRunner = new TaskRunner({
+              store: gatewayTaskStore,
+              runStep: async (task) => {
+                const sessionKey = findSessionKeyForUserId(cfgAtStart, task.userId, task.agentId);
+                if (!sessionKey) {
+                  return {
+                    summary: "",
+                    error: `No routable session for ${task.userId}; cannot run task steps`,
+                  };
+                }
+                return await createProductionStepDriver({
+                  sessionKey,
+                  enqueueSystemEvent,
+                  requestHeartbeatNow,
+                })(task);
+              },
+              deliver: async (task, message) => {
+                const sessionKey = findSessionKeyForUserId(cfgAtStart, task.userId, task.agentId);
+                if (!sessionKey) {
+                  log.info(
+                    `cognitive task: no routable session for ${task.userId}; result not delivered`,
+                  );
+                  return;
+                }
+                enqueueSystemEvent(
+                  `[Task Result] ${message}\n（这是一个后台任务的完成通知，请用你自己的语言自然地告知用户。）`,
+                  { sessionKey, contextKey: `task-result:${task.id}` },
+                );
+                requestHeartbeatNow({ reason: "cognitive-task", sessionKey });
+              },
+            });
+
+            const runTaskTickForAllUsers = async () => {
+              try {
+                for (const agentId of await gatewayTaskStore.listAgentIds()) {
+                  for (const userId of await gatewayTaskStore.listUserIds(agentId)) {
+                    await gatewayTaskRunner.tick(agentId, userId).catch((e) => {
+                      log.warn(`cognitive task tick failed for ${agentId}/${userId}: ${String(e)}`);
+                    });
+                  }
+                }
+              } catch (err) {
+                log.warn(`cognitive task tick fan-out failed: ${String(err)}`);
+              }
+            };
+            // Boot-time pass resumes tasks left running by a crash.
+            void runTaskTickForAllUsers();
+            const taskTickMs = process.env.KAIJIBOT_TASK_TICK_MS
+              ? Number(process.env.KAIJIBOT_TASK_TICK_MS)
+              : 60_000;
+            const taskTicker = setInterval(() => void runTaskTickForAllUsers(), taskTickMs);
+            taskTicker.unref?.();
+            backgroundStoppable.push({
+              stop: () => {
+                clearInterval(taskTicker);
+              },
+            });
+            log.info("cognitive task runner started", { tickMs: taskTickMs });
+          }
+
           log.info(
             `cognitive proactive scheduler started (interval=${schedulerIntervalMs}ms, multi-user timer + info-scan + persona-change)`,
           );

@@ -1,6 +1,7 @@
 import { Type } from "typebox";
 import { resolveCorrectionUserId } from "../../cognitive/correction/userid.js";
 import { createTaskSafely } from "../../cognitive/tasks/service.js";
+import { reportStepOutcome } from "../../cognitive/tasks/step-driver.js";
 import { TaskStore } from "../../cognitive/tasks/store.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
@@ -24,6 +25,50 @@ const TaskCreateSchema = Type.Object({
 });
 
 const TaskStatusSchema = Type.Object({});
+
+const TaskStepReportSchema = Type.Object({
+  taskId: Type.String({ description: "The task id from the [Task Step] instruction" }),
+  stepIndex: Type.Number({
+    minimum: 1,
+    description: "The step number from the instruction header",
+  }),
+  summary: Type.String({
+    description: "What this step accomplished; for the final step, the complete result",
+  }),
+  done: Type.Optional(
+    Type.Boolean({ description: "true when the task goal is fully achieved by this step" }),
+  ),
+  error: Type.Optional(Type.String({ description: "Failure reason if this step failed" })),
+});
+
+/**
+ * Resolves a pending task step (see cognitive/tasks/step-driver.ts). Called
+ * by the agent at the end of a task-step turn; stateless — the registry
+ * matches on (taskId, stepIndex).
+ */
+export function createTaskStepReportTool(): AnyAgentTool {
+  return {
+    name: "task_step_report",
+    label: "Report Task Step",
+    description:
+      "Report the outcome of the current task step (from a [Task Step] instruction). Always call this exactly once at the end of the step's work.",
+    parameters: TaskStepReportSchema,
+    async execute(_toolCallId: string, rawParams: unknown) {
+      const params = rawParams as {
+        taskId: string;
+        stepIndex: number;
+        summary: string;
+        done?: boolean;
+        error?: string;
+      };
+      const result = reportStepOutcome(params);
+      if (!result.delivered) {
+        return jsonResult({ status: "no_pending_step", message: result.reason });
+      }
+      return jsonResult({ status: "recorded", taskId: params.taskId, stepIndex: params.stepIndex });
+    },
+  };
+}
 
 function summarizeTask(task: {
   id: string;
