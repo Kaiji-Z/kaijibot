@@ -54,25 +54,25 @@ function formatRelativeTime(ts: number | null): string {
   }
   const seconds = Math.floor((Date.now() - ts) / 1000);
   if (seconds < 60) {
-    return "刚刚";
+    return t("insights.justNow");
   }
   if (seconds < 3600) {
-    return `${Math.floor(seconds / 60)}分钟前`;
+    return t("insights.minutesAgo", { count: String(Math.floor(seconds / 60)) });
   }
   if (seconds < 86400) {
-    return `${Math.floor(seconds / 3600)}小时前`;
+    return t("insights.hoursAgo", { count: String(Math.floor(seconds / 3600)) });
   }
-  return `${Math.floor(seconds / 86400)}天前`;
+  return t("insights.daysAgo", { count: String(Math.floor(seconds / 86400)) });
 }
 
 function triggerLabel(src: string): string {
   switch (src) {
     case "scheduled":
-      return "定时";
+      return t("insights.triggerScheduled");
     case "event":
-      return "事件";
+      return t("insights.triggerEvent");
     case "conversational":
-      return "对话";
+      return t("insights.triggerConversational");
     default:
       return src;
   }
@@ -96,15 +96,15 @@ function feedbackColor(fb: string | undefined): string {
 function feedbackLabel(fb: string | undefined): string {
   switch (fb) {
     case "positive":
-      return "正面";
+      return t("insights.feedbackPositive");
     case "negative":
-      return "负面";
+      return t("insights.feedbackNegative");
     case "neutral":
-      return "中立";
+      return t("insights.feedbackNeutral");
     case "engaged":
-      return "互动";
+      return t("insights.feedbackEngaged");
     default:
-      return "无反馈";
+      return t("insights.feedbackNone");
   }
 }
 
@@ -116,7 +116,7 @@ function inferMode(record: InsightRecord): string {
 }
 
 function modeLabel(mode: string): string {
-  return mode === "pattern" ? "行为模式" : "知识";
+  return mode === "pattern" ? t("insights.modePattern") : t("insights.modeKnowledge");
 }
 
 // --- Sub-renders ---
@@ -134,7 +134,9 @@ function renderInsightCard(
         <span
           class="pill"
           style="font-size: 12px; padding: 3px 8px;"
-          title=${mode === "pattern" ? "行为模式洞察" : "知识洞察"}
+          title=${mode === "pattern"
+            ? t("insights.modePatternTitle")
+            : t("insights.modeKnowledgeTitle")}
         >
           ${modeLabel(mode)}
         </span>
@@ -167,7 +169,7 @@ function renderInsightCard(
       ${record.sources.length > 0
         ? html`
             <div style="margin-bottom: 10px;">
-              <span style="font-size: 12px; color: var(--muted);">来源：</span>
+              <span style="font-size: 12px; color: var(--muted);">${t("insights.sources")}</span>
               ${record.sources.map(
                 (s) =>
                   html`<a
@@ -196,7 +198,7 @@ function renderInsightCard(
           style=${record.feedback === "positive"
             ? "color: #22c55e; border-color: rgba(34,197,94,0.4);"
             : ""}
-          title="正面反馈"
+          title=${t("insights.feedbackPositiveTitle")}
           @click=${() => onFeedback(record.id, "positive")}
         >
           👍
@@ -206,7 +208,7 @@ function renderInsightCard(
           style=${record.feedback === "negative"
             ? "color: #ef4444; border-color: rgba(239,68,68,0.4);"
             : ""}
-          title="负面反馈"
+          title=${t("insights.feedbackNegativeTitle")}
           @click=${() => onFeedback(record.id, "negative")}
         >
           👎
@@ -234,7 +236,7 @@ export function renderInsights(props: InsightsProps) {
       <section class="stack">
         <div class="card">
           <div class="card-title">${t("tabs.insights")}</div>
-          <div class="callout info">暂无用户画像数据。先与机器人对话后，画像会自动生成。</div>
+          <div class="callout info">${t("insights.emptyPersona")}</div>
         </div>
       </section>
     `;
@@ -246,9 +248,9 @@ export function renderInsights(props: InsightsProps) {
 
   let detailContent: unknown;
   if (!hasSelection) {
-    detailContent = renderEmptyDetail("请选择一个用户查看洞察", "点击左侧用户卡片查看洞察记录。");
+    detailContent = renderEmptyDetail(t("insights.selectUserTitle"), t("insights.selectUserHint"));
   } else if (records.length === 0) {
-    detailContent = html`<div class="callout info">该用户暂无洞察记录。</div>`;
+    detailContent = html`<div class="callout info">${t("insights.emptyRecords")}</div>`;
   } else {
     detailContent = html`
       <div class="stack">${records.map((r) => renderInsightCard(r, props.onFeedback))}</div>
@@ -262,7 +264,7 @@ export function renderInsights(props: InsightsProps) {
       selectedAgentId: props.agentId,
       onUserSelect: props.onUserSelect,
       onRefresh: props.onRefresh,
-      headerTitle: "用户",
+      headerTitle: t("insights.usersHeader"),
     }),
     detailContent,
     !!hasSelection,

@@ -95,26 +95,26 @@ export type EvolutionProps = {
 function relativeTime(epochMs: number): string {
   const diff = Date.now() - epochMs;
   if (diff < 0) {
-    return t("common.justNow") ?? "刚刚";
+    return t("evolution.justNow");
   }
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) {
-    return t("common.justNow") ?? "刚刚";
+    return t("evolution.justNow");
   }
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) {
-    return `${minutes}分钟前`;
+    return t("evolution.minutesAgo", { count: String(minutes) });
   }
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours}小时前`;
+    return t("evolution.hoursAgo", { count: String(hours) });
   }
   const days = Math.floor(hours / 24);
   if (days < 30) {
-    return `${days}天前`;
+    return t("evolution.daysAgo", { count: String(days) });
   }
   const months = Math.floor(days / 30);
-  return `${months}个月前`;
+  return t("evolution.monthsAgo", { count: String(months) });
 }
 
 function formatDuration(ms: number): string {
@@ -142,19 +142,19 @@ function complexityColor(score: number): string {
 
 function userResponseBadge(response: EvolutionUserResponse | undefined) {
   if (!response) {
-    return html`<span class="pill" style="opacity:0.6;">无回应</span>`;
+    return html`<span class="pill" style="opacity:0.6;">${t("evolution.noResponse")}</span>`;
   }
   const config: Record<EvolutionUserResponse, { label: string; style: string }> = {
     accepted: {
-      label: "已接受",
+      label: t("evolution.accepted"),
       style: "color: #22c55e; border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08);",
     },
     modified: {
-      label: "已修改",
+      label: t("evolution.modified"),
       style: "color: #eab308; border-color: rgba(234,179,8,0.3); background: rgba(234,179,8,0.08);",
     },
     rejected: {
-      label: "已拒绝",
+      label: t("evolution.rejected"),
       style: "color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);",
     },
   };
@@ -165,15 +165,15 @@ function userResponseBadge(response: EvolutionUserResponse | undefined) {
 function outcomeBadge(outcome: "success" | "failure" | "skipped") {
   const config = {
     success: {
-      label: "成功",
+      label: t("evolution.success"),
       style: "color: #22c55e; border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08);",
     },
     failure: {
-      label: "失败",
+      label: t("evolution.failure"),
       style: "color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08);",
     },
     skipped: {
-      label: "已跳过",
+      label: t("evolution.skipped"),
       style: "color: var(--muted); opacity: 0.6;",
     },
   };
@@ -185,7 +185,7 @@ function outcomeBadge(outcome: "success" | "failure" | "skipped") {
 
 function renderRecordTimeline(records: EvolutionRecord[]) {
   if (records.length === 0) {
-    return html`<div class="callout info">暂无进化记录。</div>`;
+    return html`<div class="callout info">${t("evolution.emptyRecords")}</div>`;
   }
 
   return html`
@@ -239,11 +239,16 @@ function renderRecordTimeline(records: EvolutionRecord[]) {
               >
                 <span class="pill">${c.domain}</span>
                 <span class="pill" style="font-size:0.8em;"
-                  >${c.toolCalls.length}次调用 · ${c.uniqueToolCount}个独立</span
+                  >${t("evolution.toolCallStats", {
+                    calls: String(c.toolCalls.length),
+                    unique: String(c.uniqueToolCount),
+                  })}</span
                 >
                 <span class="pill" style="font-size:0.8em;">${formatDuration(c.durationMs)}</span>
                 ${c.hasTrialAndError
-                  ? html`<span class="pill warning" style="font-size:0.8em;">试错</span>`
+                  ? html`<span class="pill warning" style="font-size:0.8em;"
+                      >${t("evolution.trialAndError")}</span
+                    >`
                   : nothing}
                 ${d
                   ? html`
@@ -251,16 +256,18 @@ function renderRecordTimeline(records: EvolutionRecord[]) {
                         class="pill"
                         style="font-size:0.8em; ${complexityColor(d.complexityScore)}"
                       >
-                        复杂度：${(d.complexityScore * 100).toFixed(0)}%
+                        ${t("evolution.complexity", {
+                          percent: (d.complexityScore * 100).toFixed(0),
+                        })}
                       </span>
                       <span
                         class="pill ${d.shouldSuggest ? "success" : ""}"
                         style="font-size:0.8em;"
                       >
-                        ${d.shouldSuggest ? "已建议" : "跳过"}
+                        ${d.shouldSuggest ? t("evolution.suggested") : t("evolution.notSuggested")}
                       </span>
                       <span class="pill" style="font-size:0.8em;">
-                        置信度：${(d.confidence * 100).toFixed(0)}%
+                        ${t("evolution.confidence", { percent: (d.confidence * 100).toFixed(0) })}
                       </span>
                     `
                   : nothing}
@@ -289,7 +296,9 @@ function renderRecordTimeline(records: EvolutionRecord[]) {
               ${rec.draft
                 ? html`
                     <div class="callout info" style="padding:8px 12px; margin-top:4px;">
-                      <div style="font-weight:600; margin-bottom:4px;">草稿：${rec.draft.name}</div>
+                      <div style="font-weight:600; margin-bottom:4px;">
+                        ${t("evolution.draft", { name: rec.draft.name })}
+                      </div>
                       <div class="text-muted" style="font-size:0.85em; margin-bottom:4px;">
                         ${rec.draft.description}
                       </div>
@@ -316,7 +325,7 @@ function renderRecordTimeline(records: EvolutionRecord[]) {
 
 function renderAuditTable(entries: AuditEntry[]) {
   if (entries.length === 0) {
-    return html`<div class="callout info">暂无审计日志。</div>`;
+    return html`<div class="callout info">${t("evolution.emptyAudit")}</div>`;
   }
 
   return html`
@@ -324,11 +333,11 @@ function renderAuditTable(entries: AuditEntry[]) {
       <table style="width:100%; border-collapse:collapse; font-size:0.9em;">
         <thead>
           <tr style="border-bottom:2px solid var(--border, #e5e7eb); text-align:left;">
-            <th style="padding:8px 12px;">时间</th>
-            <th style="padding:8px 12px;">操作</th>
-            <th style="padding:8px 12px;">执行者</th>
-            <th style="padding:8px 12px;">目标</th>
-            <th style="padding:8px 12px;">结果</th>
+            <th style="padding:8px 12px;">${t("evolution.time")}</th>
+            <th style="padding:8px 12px;">${t("evolution.operation")}</th>
+            <th style="padding:8px 12px;">${t("evolution.actor")}</th>
+            <th style="padding:8px 12px;">${t("evolution.target")}</th>
+            <th style="padding:8px 12px;">${t("evolution.outcome")}</th>
           </tr>
         </thead>
         <tbody>
@@ -368,7 +377,7 @@ export function renderEvolution(props: EvolutionProps) {
 
   const parsed = parsePersonaList(props.personaList);
   if (!parsed || parsed.agents.length === 0) {
-    return renderEmptyDetail("暂无用户数据", "先与机器人对话后，画像会自动生成。");
+    return renderEmptyDetail(t("evolution.noUserData"), t("evolution.noUserDataHint"));
   }
 
   const sidebar = renderUserSidebar({
@@ -377,14 +386,14 @@ export function renderEvolution(props: EvolutionProps) {
     selectedAgentId: props.agentId,
     onUserSelect: props.onUserSelect,
     onRefresh: props.onRefresh,
-    headerTitle: "用户",
+    headerTitle: t("evolution.users"),
   });
 
   // No user selected → empty detail
   if (!props.agentId || !props.userId) {
     return renderTwoColumnLayout(
       sidebar,
-      renderEmptyDetail("请选择一个用户查看进化记录", "点击左侧用户卡片查看进化历史。"),
+      renderEmptyDetail(t("evolution.selectUser"), t("evolution.selectUserHint")),
       false,
     );
   }
@@ -404,8 +413,10 @@ export function renderEvolution(props: EvolutionProps) {
         <div
           style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;"
         >
-          <h4 style="margin:0;">进化记录</h4>
-          <span class="text-muted" style="font-size:0.85em;">${sortedRecords.length}条记录</span>
+          <h4 style="margin:0;">${t("evolution.recordsTitle")}</h4>
+          <span class="text-muted" style="font-size:0.85em;"
+            >${t("evolution.recordCount", { count: String(sortedRecords.length) })}</span
+          >
         </div>
         ${renderRecordTimeline(sortedRecords)}
       </div>
@@ -415,8 +426,10 @@ export function renderEvolution(props: EvolutionProps) {
         <div
           style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;"
         >
-          <h4 style="margin:0;">审计日志</h4>
-          <span class="text-muted" style="font-size:0.85em;">${sortedAudit.length}条审计</span>
+          <h4 style="margin:0;">${t("evolution.auditTitle")}</h4>
+          <span class="text-muted" style="font-size:0.85em;"
+            >${t("evolution.auditCount", { count: String(sortedAudit.length) })}</span
+          >
         </div>
         ${renderAuditTable(sortedAudit)}
       </div>

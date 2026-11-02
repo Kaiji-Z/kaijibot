@@ -440,7 +440,7 @@ These gotchas are handled by `release.sh` automatically. If doing manual steps:
 ## Config and Environment
 
 - Config lives in `~/.kaijibot/kaijibot.json`. CLI: `kaijibot config set <key> <value>`.
-- Set model via `kaijibot config set agent.model "<provider>/<model>"`.
+- Set model via `kaijibot config set agents.defaults.model.primary "<provider>/<model>"` (per-agent overrides under `agents.list.<id>.model`).
 - Feishu channel config: `channels.feishu.appId`, `channels.feishu.appSecret`.
 - Cognitive config: `cognitive.enabled`, `cognitive.proactive.enabled`, `cognitive.proactive.minIntervalHours`, `cognitive.proactive.maxDailyInsights` (default 2, daily self-restraint cap), `cognitive.proactive.activeHours`
 - Insight config: `cognitive.insight.engine` ("knowledge"/"pattern"/"unified", default "unified"; legacy aliases "v1"→"knowledge", "v2"→"pattern", "dual"→"unified"), `cognitive.proactive.epsilonGreedy` (0-1, default 0.2; probability of promoting exploration candidates to front of resolve loop; set to 0 to disable)

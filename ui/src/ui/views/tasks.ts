@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 
 // ── Types mirroring the tasks.list / tasks.get RPC shapes ───────
 
@@ -59,18 +60,18 @@ export type TasksProps = {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const STATUS_STYLES: Record<string, { color: string; label: string }> = {
-  queued: { color: "#94a3b8", label: "排队" },
-  running: { color: "#3b82f6", label: "运行中" },
-  blocked: { color: "#eab308", label: "等待子任务" },
-  done: { color: "#22c55e", label: "完成" },
-  failed: { color: "#ef4444", label: "失败" },
-  halted: { color: "#f97316", label: "已暂停" },
-  cancelled: { color: "#94a3b8", label: "已取消" },
+const STATUS_STYLES: Record<string, { color: string; key: string }> = {
+  queued: { color: "#94a3b8", key: "tasks.status.queued" },
+  running: { color: "#3b82f6", key: "tasks.status.running" },
+  blocked: { color: "#eab308", key: "tasks.status.blocked" },
+  done: { color: "#22c55e", key: "tasks.status.done" },
+  failed: { color: "#ef4444", key: "tasks.status.failed" },
+  halted: { color: "#f97316", key: "tasks.status.halted" },
+  cancelled: { color: "#94a3b8", key: "tasks.status.cancelled" },
 };
 
-export function statusStyle(status: string): { color: string; label: string } {
-  return STATUS_STYLES[status] ?? { color: "#94a3b8", label: status };
+export function statusStyle(status: string): { color: string; key: string | null } {
+  return STATUS_STYLES[status] ?? { color: "#94a3b8", key: null };
 }
 
 export function formatRelative(ts: number | null | undefined): string {
@@ -79,23 +80,24 @@ export function formatRelative(ts: number | null | undefined): string {
   }
   const seconds = Math.floor((Date.now() - ts) / 1000);
   if (seconds < 60) {
-    return "刚刚";
+    return t("tasks.time.justNow");
   }
   if (seconds < 3600) {
-    return `${Math.floor(seconds / 60)}分钟前`;
+    return t("tasks.time.minutesAgo", { n: String(Math.floor(seconds / 60)) });
   }
   if (seconds < 86400) {
-    return `${Math.floor(seconds / 3600)}小时前`;
+    return t("tasks.time.hoursAgo", { n: String(Math.floor(seconds / 3600)) });
   }
-  return `${Math.floor(seconds / 86400)}天前`;
+  return t("tasks.time.daysAgo", { n: String(Math.floor(seconds / 86400)) });
 }
 
 function pill(status: string) {
   const s = statusStyle(status);
+  const label = s.key ? t(s.key) : status;
   return html`<span
     class="pill"
     style="font-size: 12px; padding: 3px 8px; color: ${s.color}; border-color: ${s.color}44; background: ${s.color}14;"
-    >${s.label}</span
+    >${label}</span
   >`;
 }
 
@@ -119,7 +121,9 @@ function renderTaskCard(task: TaskSnapshot, selected: boolean, onSelect: TasksPr
       <div class="row" style="margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
         ${pill(task.status)}
         ${task.parentTaskId
-          ? html`<span class="pill" style="font-size: 12px; padding: 3px 8px;">子任务</span>`
+          ? html`<span class="pill" style="font-size: 12px; padding: 3px 8px;">
+              ${t("tasks.subtaskBadge")}
+            </span>`
           : nothing}
         <span style="font-size: 12px; color: var(--muted); margin-left: auto;">
           ${formatRelative(task.updatedAt)}
@@ -130,7 +134,9 @@ function renderTaskCard(task: TaskSnapshot, selected: boolean, onSelect: TasksPr
       </div>
       <div class="row" style="font-size: 12px; color: var(--muted); flex-wrap: wrap;">
         <span>${task.agentId} · ${task.userId}</span>
-        <span style="margin-left: auto;">步骤 ${task.usedSteps}/${task.maxSteps}</span>
+        <span style="margin-left: auto;">
+          ${t("tasks.stepsProgress", { used: String(task.usedSteps), max: String(task.maxSteps) })}
+        </span>
       </div>
     </div>
   `;
@@ -141,14 +147,14 @@ function renderStep(step: TaskStepTrail) {
   return html`
     <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
       <div class="row" style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">
-        <span
-          >第 ${step.index} 步 ·
-          ${ok ? "成功" : step.status === "error" ? "错误" : step.status}</span
-        >
+        <span>
+          ${t("tasks.stepLabel", { index: String(step.index) })} ·
+          ${ok ? t("tasks.stepOk") : step.status === "error" ? t("tasks.stepError") : step.status}
+        </span>
         <span style="margin-left: auto;">${formatRelative(step.startedAt)}</span>
       </div>
       <div style="font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere;">
-        ${step.summary || "（无摘要）"}
+        ${step.summary || t("tasks.noSummary")}
       </div>
       ${step.error
         ? html`<div style="font-size: 12px; color: var(--danger); margin-top: 4px;">
@@ -165,11 +171,14 @@ function renderDetail(task: TaskFull) {
       <div class="row" style="margin-bottom: 10px; flex-wrap: wrap; align-items: center;">
         ${pill(task.status)}
         <span class="pill" style="font-size: 12px; padding: 3px 8px;">
-          步骤 ${task.budget.usedSteps}/${task.budget.maxSteps}
+          ${t("tasks.stepsProgress", {
+            used: String(task.budget.usedSteps),
+            max: String(task.budget.maxSteps),
+          })}
         </span>
         ${task.origin
           ? html`<span class="pill" style="font-size: 12px; padding: 3px 8px;">
-              来源：${task.origin}
+              ${t("tasks.origin", { origin: task.origin })}
             </span>`
           : nothing}
         <span style="font-size: 12px; color: var(--muted); margin-left: auto;">
@@ -184,7 +193,7 @@ function renderDetail(task: TaskFull) {
         ? html`
             <div style="margin-bottom: 12px;">
               <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">
-                子任务结果
+                ${t("tasks.subtaskResults")}
               </div>
               ${task.subtaskResults.map(
                 (s) => html`
@@ -207,14 +216,18 @@ function renderDetail(task: TaskFull) {
           `
         : nothing}
 
-      <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">执行轨迹</div>
+      <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">
+        ${t("tasks.trail")}
+      </div>
       ${task.steps.length
         ? task.steps.map(renderStep)
-        : html`<div style="font-size: 13px; color: var(--muted);">尚无已执行步骤</div>`}
+        : html`<div style="font-size: 13px; color: var(--muted);">${t("tasks.noSteps")}</div>`}
       ${task.result
         ? html`
             <div style="margin-top: 12px;">
-              <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">最终结果</div>
+              <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">
+                ${t("tasks.finalResult")}
+              </div>
               <div style="font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere;">
                 ${task.result}
               </div>
@@ -232,7 +245,7 @@ export function renderTasks(props: TasksProps) {
   return html`
     <section style="max-width: 960px; margin: 0 auto; padding: 16px;">
       <div class="row" style="margin-bottom: 16px; align-items: center;">
-        <div style="font-size: 18px; font-weight: 600;">任务</div>
+        <div style="font-size: 18px; font-weight: 600;">${t("tabs.tasks")}</div>
         <label
           style="font-size: 13px; color: var(--muted); margin-left: 16px; display: flex; gap: 6px; align-items: center;"
         >
@@ -241,14 +254,14 @@ export function renderTasks(props: TasksProps) {
             .checked=${props.includeFinished}
             @change=${(e: Event) => props.onToggleFinished((e.target as HTMLInputElement).checked)}
           />
-          显示已完结
+          ${t("tasks.showFinished")}
         </label>
         <button
           class="btn"
           style="margin-left: auto;"
           @click=${() => props.onRefresh(props.includeFinished)}
         >
-          刷新
+          ${t("common.refresh")}
         </button>
       </div>
 
@@ -256,15 +269,16 @@ export function renderTasks(props: TasksProps) {
         ? html`<div class="card" style="color: var(--danger);">${props.error}</div>`
         : nothing}
       ${props.loading
-        ? html`<div class="card" style="color: var(--muted);">加载中…</div>`
+        ? html`<div class="card" style="color: var(--muted);">${t("common.loading")}</div>`
         : tasks.length === 0
           ? html`<div class="card" style="color: var(--muted);">
-              当前没有${props.includeFinished ? "" : "活跃"}任务。通过聊天委派一个任务（需开启
-              cognitive.tasks.enabled）后，这里会显示执行轨迹。
+              ${props.includeFinished ? t("tasks.emptyAll") : t("tasks.emptyActive")}
             </div>`
           : tasks.map((task) => renderTaskCard(task, task.id === props.selectedId, props.onSelect))}
       ${props.detailLoading
-        ? html`<div class="card" style="color: var(--muted); margin-top: 12px;">加载轨迹…</div>`
+        ? html`<div class="card" style="color: var(--muted); margin-top: 12px;">
+            ${t("tasks.loadingTrail")}
+          </div>`
         : props.detail
           ? html`<div style="margin-top: 12px;">${renderDetail(props.detail as TaskFull)}</div>`
           : nothing}

@@ -38,25 +38,25 @@ const MS_PER_DAY = 86_400_000;
 function relativeTime(epochMs: number): string {
   const diff = Date.now() - epochMs;
   if (diff < 0) {
-    return t("common.justNow") ?? "刚刚";
+    return t("corrections.justNow");
   }
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) {
-    return t("common.justNow") ?? "刚刚";
+    return t("corrections.justNow");
   }
   if (minutes < 60) {
-    return `${minutes}分钟前`;
+    return t("corrections.minutesAgo", { count: String(minutes) });
   }
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours}小时前`;
+    return t("corrections.hoursAgo", { count: String(hours) });
   }
   const days = Math.floor(hours / 24);
   if (days < 30) {
-    return `${days}天前`;
+    return t("corrections.daysAgo", { count: String(days) });
   }
   const months = Math.floor(days / 30);
-  return `${months}个月前`;
+  return t("corrections.monthsAgo", { count: String(months) });
 }
 
 function daysRemaining(createdAtMs: number): number {
@@ -65,7 +65,7 @@ function daysRemaining(createdAtMs: number): number {
 }
 
 function provenanceBadge(provenance: CorrectionProvenance) {
-  const label = provenance === "self" ? "Agent" : "用户";
+  const label = provenance === "self" ? "Agent" : t("corrections.provenanceUser");
   const cls = provenance === "self" ? "info" : "warning";
   return html`<span class="pill ${cls}">${label}</span>`;
 }
@@ -73,6 +73,7 @@ function provenanceBadge(provenance: CorrectionProvenance) {
 function renderCorrectionCard(rec: CorrectionRecord) {
   const ttlLeft = daysRemaining(rec.createdAt);
   const ttlCls = ttlLeft <= 7 ? "danger" : ttlLeft <= 30 ? "warning" : "";
+  const ttlText = t("corrections.ttlDays", { count: String(ttlLeft) });
 
   return html`
     <div class="card" style="padding: 12px;">
@@ -86,21 +87,22 @@ function renderCorrectionCard(rec: CorrectionRecord) {
           ×${rec.reinforcedCount}
         </span>
         ${ttlCls
-          ? html`<span class="pill ${ttlCls}">TTL ${ttlLeft}天</span>`
-          : html`<span class="pill" style="opacity:0.6;">TTL ${ttlLeft}天</span>`}
+          ? html`<span class="pill ${ttlCls}">${ttlText}</span>`
+          : html`<span class="pill" style="opacity:0.6;">${ttlText}</span>`}
       </div>
       <div style="margin-bottom:6px;">
-        <strong>触发：</strong>
+        <strong>${t("corrections.triggerLabel")}</strong>
         <span class="text-muted">${rec.trigger}</span>
       </div>
       <div class="callout danger" style="margin-bottom:6px; padding:6px 10px;">
-        <strong>错误：</strong> ${rec.mistake}
+        <strong>${t("corrections.mistakeLabel")}</strong> ${rec.mistake}
       </div>
       <div class="callout success" style="margin-bottom:6px; padding:6px 10px;">
-        <strong>纠正：</strong> ${rec.correction}
+        <strong>${t("corrections.correctionLabel")}</strong> ${rec.correction}
       </div>
       <div class="text-muted" style="font-size:0.85em;">
-        创建于 ${relativeTime(rec.createdAt)} · 上次强化于 ${relativeTime(rec.lastReinforced)}
+        ${t("corrections.createdAt", { time: relativeTime(rec.createdAt) })} ·
+        ${t("corrections.lastReinforced", { time: relativeTime(rec.lastReinforced) })}
       </div>
     </div>
   `;
@@ -119,7 +121,7 @@ export function renderCorrections(props: CorrectionsProps) {
   if (!list || list.agents.length === 0) {
     return html`
       <div class="card" style="padding:24px;text-align:center;">
-        <div class="muted">暂无用户数据。先与机器人对话后，画像会自动生成。</div>
+        <div class="muted">${t("corrections.emptyPersona")}</div>
       </div>
     `;
   }
@@ -132,19 +134,19 @@ export function renderCorrections(props: CorrectionsProps) {
     selectedAgentId: props.agentId,
     onUserSelect: props.onUserSelect,
     onRefresh: props.onRefresh,
-    headerTitle: "用户",
+    headerTitle: t("corrections.usersHeader"),
   });
 
   let detail: unknown;
   if (!props.userId) {
-    detail = renderEmptyDetail("请选择一个用户查看纠错记录", "点击左侧用户卡片查看纠错历史。");
+    detail = renderEmptyDetail(t("corrections.selectUserTitle"), t("corrections.selectUserHint"));
   } else if (sorted.length === 0) {
     detail = html`
       <div style="display:flex;flex-direction:column;gap:8px;">
         <div class="row" style="justify-content:space-between;align-items:center;">
           <h3 style="font-size:16px;font-weight:600;margin:0;">${t("tabs.corrections")}</h3>
         </div>
-        <div class="callout info">暂无纠错记录。</div>
+        <div class="callout info">${t("corrections.emptyRecords")}</div>
       </div>
     `;
   } else {
@@ -152,7 +154,9 @@ export function renderCorrections(props: CorrectionsProps) {
       <div style="display:flex;flex-direction:column;gap:8px;">
         <div class="row" style="justify-content:space-between;align-items:center;">
           <h3 style="font-size:16px;font-weight:600;margin:0;">${t("tabs.corrections")}</h3>
-          <span class="text-muted" style="white-space:nowrap;">${sorted.length} 条</span>
+          <span class="text-muted" style="white-space:nowrap;"
+            >${t("corrections.count", { count: String(sorted.length) })}</span
+          >
         </div>
         <div class="stack">${sorted.map((rec) => renderCorrectionCard(rec))}</div>
       </div>

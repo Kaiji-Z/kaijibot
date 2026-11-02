@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { t } from "../../i18n/index.ts";
 import { formatMs } from "../format.ts";
 
 // ── Shared types (mirrors cognitive.persona.list response) ──────────
@@ -101,8 +102,8 @@ export function renderUserSidebar(opts: {
     selectedAgentId,
     onUserSelect,
     onRefresh,
-    headerTitle = "用户",
-    emptyMessage = "暂无用户数据。先与机器人对话后，画像会自动生成。",
+    headerTitle = t("cognitiveShared.sidebarTitle"),
+    emptyMessage = t("cognitiveShared.sidebarEmpty"),
   } = opts;
 
   const agents = list.agents;
@@ -111,7 +112,7 @@ export function renderUserSidebar(opts: {
     <div style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;">
       <div class="row" style="justify-content:space-between;">
         <h3 style="font-size:16px;font-weight:600;margin:0;">${headerTitle}</h3>
-        <button class="btn btn--sm" @click=${onRefresh}>刷新</button>
+        <button class="btn btn--sm" @click=${onRefresh}>${t("common.refresh")}</button>
       </div>
       ${agents.length === 0
         ? html`<div class="muted" style="text-align:center;padding:32px 16px;">
@@ -127,7 +128,9 @@ export function renderUserSidebar(opts: {
                     >
                       ${agent.agentId}
                       <span style="font-weight:400;text-transform:none;"
-                        >(${agent.users.length} 用户)</span
+                        >(${t("cognitiveShared.userCount", {
+                          count: String(agent.users.length),
+                        })})</span
                       >
                     </div>
                     <div style="display:grid;gap:6px;">
@@ -157,7 +160,11 @@ export function renderUserSidebar(opts: {
                             <div
                               style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);"
                             >
-                              <span>${user.domainCount} 领域</span>
+                              <span
+                                >${t("cognitiveShared.domainCount", {
+                                  count: String(user.domainCount),
+                                })}</span
+                              >
                               ${user.lastActive
                                 ? html`<span>·</span><span>${formatMs(user.lastActive)}</span>`
                                 : nothing}
