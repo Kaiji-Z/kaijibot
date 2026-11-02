@@ -239,6 +239,21 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Selectable card (role="button"): keyboard focus ring + persistent selected state. */
+.card--selectable {
+  cursor: pointer;
+}
+
+.card--selectable:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
+
+.card--selected,
+.card--selected:hover {
+  border-color: var(--info);
+}
+
 .card-title {
   font-size: 17px;
   font-weight: 600;

@@ -104,11 +104,17 @@ function pill(status: string) {
 function renderTaskCard(task: TaskSnapshot, selected: boolean, onSelect: TasksProps["onSelect"]) {
   return html`
     <div
-      class="card"
-      style="animation-delay: 0s; cursor: pointer; ${selected
-        ? "outline: 1px solid var(--info);"
-        : ""}"
+      class="card card--selectable${selected ? " card--selected" : ""}"
+      role="button"
+      tabindex="0"
+      aria-current=${selected ? "true" : nothing}
       @click=${() => onSelect(task.id, task.userId)}
+      @keydown=${(e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(task.id, task.userId);
+        }
+      }}
     >
       <div class="row" style="margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
         ${pill(task.status)}
@@ -119,7 +125,9 @@ function renderTaskCard(task: TaskSnapshot, selected: boolean, onSelect: TasksPr
           ${formatRelative(task.updatedAt)}
         </span>
       </div>
-      <div style="font-size: 15px; line-height: 1.5; margin-bottom: 8px;">${task.goal}</div>
+      <div style="font-size: 15px; line-height: 1.5; margin-bottom: 8px; overflow-wrap: anywhere;">
+        ${task.goal}
+      </div>
       <div class="row" style="font-size: 12px; color: var(--muted); flex-wrap: wrap;">
         <span>${task.agentId} · ${task.userId}</span>
         <span style="margin-left: auto;">步骤 ${task.usedSteps}/${task.maxSteps}</span>
@@ -139,7 +147,9 @@ function renderStep(step: TaskStepTrail) {
         >
         <span style="margin-left: auto;">${formatRelative(step.startedAt)}</span>
       </div>
-      <div style="font-size: 13px; white-space: pre-wrap;">${step.summary || "（无摘要）"}</div>
+      <div style="font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere;">
+        ${step.summary || "（无摘要）"}
+      </div>
       ${step.error
         ? html`<div style="font-size: 12px; color: var(--danger); margin-top: 4px;">
             ${step.error}
@@ -166,7 +176,9 @@ function renderDetail(task: TaskFull) {
           ${task.agentId} · ${task.userId}
         </span>
       </div>
-      <div style="font-size: 16px; line-height: 1.5; margin-bottom: 12px;">${task.goal}</div>
+      <div style="font-size: 16px; line-height: 1.5; margin-bottom: 12px; overflow-wrap: anywhere;">
+        ${task.goal}
+      </div>
 
       ${task.subtaskResults?.length
         ? html`
@@ -182,7 +194,11 @@ function renderDetail(task: TaskFull) {
                     ${pill(s.status)}
                     <span style="margin-left: 6px;">${s.agentId} · ${s.goal}</span>
                     ${s.result
-                      ? html`<div style="white-space: pre-wrap; margin-top: 4px;">${s.result}</div>`
+                      ? html`<div
+                          style="white-space: pre-wrap; margin-top: 4px; overflow-wrap: anywhere;"
+                        >
+                          ${s.result}
+                        </div>`
                       : nothing}
                   </div>
                 `,
@@ -199,7 +215,9 @@ function renderDetail(task: TaskFull) {
         ? html`
             <div style="margin-top: 12px;">
               <div style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">最终结果</div>
-              <div style="font-size: 14px; white-space: pre-wrap;">${task.result}</div>
+              <div style="font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere;">
+                ${task.result}
+              </div>
             </div>
           `
         : nothing}
