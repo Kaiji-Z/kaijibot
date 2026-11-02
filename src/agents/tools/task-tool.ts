@@ -106,7 +106,7 @@ export function createTaskTool(deps: {
     name: "task_create",
     label: "Create Task",
     description:
-      "Create an unattended multi-step task. The agent works on it in bounded steps and reports the result when done. Use when the user delegates an outcome that needs multiple steps or background work.",
+      "Create an unattended multi-step task. The agent works on it in bounded steps and reports the result when done. Use when the user delegates an outcome that needs multiple steps or background work. For a goal with multiple independent tracks, split it into one subtask per track (each call sets parentTaskId, optionally assignToAgent) so the tracks run in parallel; the parent pauses and aggregates their results.",
     parameters: TaskCreateSchema,
     async execute(_toolCallId: string, rawParams: unknown) {
       const params = rawParams as {
