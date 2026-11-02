@@ -106,7 +106,7 @@ export function buildStepPrompt(task: TaskRecord, stepIndex: number, sharedDir?:
     "请立即执行本步骤的实际工作（可使用工具）。完成后调用 task_step_report 工具汇报本步结果：",
     `- taskId / stepIndex：使用上面的任务ID和步骤号（${stepIndex}）`,
     "- summary：本步做了什么、进展如何",
-    "- done：目标已达成时为 true，并把最终结果写进 summary",
+    "- done：目标已达成时为 true，并把最终结果写进 summary（summary 已含最终结果时应立即置 true，不必为凑满步骤数而留到后续步骤）",
     "- error：本步失败时填写原因",
     "不要向用户发送中间进度消息；除非需要用户补充信息。",
   ].join("\n");
