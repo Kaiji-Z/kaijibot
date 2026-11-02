@@ -79,7 +79,7 @@ export type ProductionStepDriverDeps = {
   stepTimeoutMs?: number;
 };
 
-function buildStepPrompt(task: TaskRecord, stepIndex: number, sharedDir?: string): string {
+export function buildStepPrompt(task: TaskRecord, stepIndex: number, sharedDir?: string): string {
   const progress = task.steps
     .map((s) => `  ${s.index}. ${s.summary}${s.error ? `（错误：${s.error}）` : ""}`)
     .join("\n");
@@ -98,11 +98,13 @@ function buildStepPrompt(task: TaskRecord, stepIndex: number, sharedDir?: string
       : "";
   return [
     `[Task Step ${stepIndex}/${task.budget.maxSteps}]`,
+    `任务ID：${task.id}`,
     `任务目标：${task.goal}`,
     progressBlock,
     subtaskBlock,
     sharedBlock,
     "请立即执行本步骤的实际工作（可使用工具）。完成后调用 task_step_report 工具汇报本步结果：",
+    `- taskId / stepIndex：使用上面的任务ID和步骤号（${stepIndex}）`,
     "- summary：本步做了什么、进展如何",
     "- done：目标已达成时为 true，并把最终结果写进 summary",
     "- error：本步失败时填写原因",

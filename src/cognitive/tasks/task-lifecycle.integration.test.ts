@@ -156,6 +156,9 @@ describe("task lifecycle e2e (T1)", () => {
     expect(stepPrompts).toHaveLength(3);
     expect(stepPrompts[0]!.text).toContain("调研本地 Grok Bot 对标并写一页摘要");
     expect(stepPrompts[0]!.text).toContain("（这是第一步）");
+    // The prompt must carry the task id — task_step_report requires it and a
+    // real model has no other way to know it.
+    expect(stepPrompts[0]!.text).toContain(`任务ID：${task!.id}`);
     expect(stepPrompts[0]!.text).not.toContain("已完成步骤");
     expect(stepPrompts[1]!.text).toContain("已完成步骤");
     expect(stepPrompts[1]!.text).toContain("收集了资料");
