@@ -351,3 +351,10 @@ operator 拍板：多数用户以飞书为唯一界面，看不到 Control UI—
 
 - 新增 ui/src/ui/controllers/tasks.test.ts 5/5（列表加载/错误记录/断连短路/慢响应不覆盖/旧错误不覆盖）
 - pnpm tsgo 0、oxlint 0、pnpm check 0、format 干净
+
+# R29 — v2026.11.02 发版收口（2026-11-02）
+
+- 主干 CI 41472094004 全绿（22 分钟）→ `release.sh 2026.11.02` → tag + 双远端 + Release tarball 上传成功。
+- **npm 发版事故与处置（流程教训入档）**：首次 publish-npm job 日志显示完全成功（`+ kaijibot@2026.11.2`、provenance 签发 logIndex 3643641387），但 registry 上版本端点 404、packument 无此版本、40+ 分钟未落地——**npm 侧"接受但未摄取"失败，状态页/成功日志在此场景下是假信号**。处置：版本未落地即重发合法 → `gh run rerun --job` 仅重跑 publish-npm → 约 5 分钟后落地，`npm view kaijibot version` = **2026.11.2**（semver 规范化剥掉日期前导零；下次发版版本号直接用不补零写法，tag 名与 npm 版本号保持一致）。
+- 终态：npm latest = 2026.11.2 ✅；GitHub Release tarball = kaijibot-2026.11.02.tgz ✅；Android 安装链路 ✅。
+- 验证发布成功以 **registry 版本端点 200** 为准，publish job success 不足为凭。
