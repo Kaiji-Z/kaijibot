@@ -30,8 +30,8 @@ describe("task tools", () => {
     agentId: "main",
   };
 
-  it("task_create rejects when the flag is off", async () => {
-    const tool = createTaskTool({ config: cfg({}), ...sessionDeps })!;
+  it("task_create rejects when the flag is explicitly off", async () => {
+    const tool = createTaskTool({ config: cfg({ enabled: false }), ...sessionDeps })!;
     const result = await tool.execute("call-1", { goal: "x" });
     const payload = parsePayload(result);
     expect(payload.status).toBe("disabled");

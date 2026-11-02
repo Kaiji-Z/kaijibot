@@ -59,7 +59,7 @@ export type CognitiveConfig = {
   };
   /** Cognitive task system — unattended multi-step task execution */
   tasks?: {
-    /** Enable the task system (default: false). Task creation is rejected when disabled. */
+    /** Enable the task system (default: true). Task creation is rejected when disabled. */
     enabled?: boolean;
     /** Default step ceiling per task (default: 12). Reaching it halts the task. */
     maxSteps?: number;

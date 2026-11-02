@@ -101,7 +101,7 @@ function summarizeTask(task: {
 /**
  * Agent tools for the cognitive task system: create tasks from conversation
  * requests and report their status. Registered only when
- * cognitive.tasks.enabled is true (flag default off).
+ * cognitive.tasks.enabled is true (flag default on).
  */
 export function createTaskTool(deps: {
   config?: KaijiBotConfig;

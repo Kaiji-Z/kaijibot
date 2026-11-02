@@ -1564,7 +1564,7 @@ export const FIELD_HELP: Record<string, string> = {
   "cognitive.tasks":
     "Unattended multi-step task execution: delegate an outcome and the agent works on it in bounded steps, then reports back. Tasks respect the same pacing gates as proactive insights.",
   "cognitive.tasks.enabled":
-    "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+    "Enable the cognitive task system (default: true). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
   "cognitive.tasks.maxSteps":
     "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
   "cognitive.tasks.progressMessages":

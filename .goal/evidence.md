@@ -311,6 +311,24 @@ operator 拍板：多数用户以飞书为唯一界面，看不到 Control UI—
 
 - runner.ts / runner.test.ts / step-driver.ts / task-tool.ts / task-tool.test.ts / config 六件 / cognitive-tasks-defaults.test.ts / server.impl.ts
 
+# R28 — 生产上线 + 默认值翻转 + 发版（operator 指示，2026-11-02）
+
+## 生产实机上线（operator dogfood 通过：「试了，不错」）
+
+- `cognitive.tasks.enabled=true` + 生产模型 `agents.defaults.model.primary=zai/glm-5.3-flash` 写入运行配置；`gw:deploy` 启动；boot log：`agent model: zai/glm-5.3-flash` + `cognitive task runner started`；飞书 WS 双 profile 已连。
+- **过程中排掉的两层过期 key 遮蔽**（401 根因）：① 项目 `.env` 旧 key 遮蔽 `~/.kaijibot/.env` 新 key（env 源优先级：进程 env → 项目 .env → home .env）；② `~/.kaijibot/agents/main/agent/auth-profiles.json` 的 `zai:default` 存储优先级高于 env，仍持旧 key（头 7b0c）——推理走此存储，状态页配额探针走另一路径，**导致"状态页健康但推理 401"的误导性假象**。修复两处后以真实 agent turn 实证（status ok，回复"正常"，zai/glm-5.3-flash，真实 token 计费）。教训入档：验证推理链必须打真实推理，不能只看状态探针。
+- 顺带发现 AGENTS.md 的 `kaijibot config set agent.model` 已过时（实际键 `agents.defaults.model.primary`）。
+
+## 仓库默认值翻转（operator 同意链：先 dogfood → 本轮翻转）
+
+- `cognitive.tasks.enabled` 默认 **false → true**：defaults.ts（缺席节也填充——修掉外层 `mutated` 写回门控漏掉 tasks 块的 bug）、zod-schema（字段 default true）、types/schema.help 文案、config-baseline 基线再生成、defaults 测试 4 例重锚定（缺席填充 / 稀疏填充 / 显式 opt-out 保留 / zod 默认）、task-tool 测试改显式 false 语义。
+- `browser.proxy.enabled` 维持默认 false（登录态风险等级不同，永久 opt-in，operator 已认可）。
+
+## 验证（全绿）
+
+- 定向：tasks 46/46 + config defaults 4/4 + task-tool 8/8；全 config lane exit 0；gateway tasks RPC 5/5
+- `pnpm check` 0；`config:schema:check` 0；`config:docs:check` 0；flag-diff（显式 on/off）0 回归——opt-out 语义不变
+
 # R27 — Control UI 任务面板 audit 修复（operator 指示，2026-11-02）
 
 ## 审查（impeccable audit，源码级）

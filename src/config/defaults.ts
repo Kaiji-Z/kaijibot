@@ -410,23 +410,24 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
     }
   }
 
-  if (next.tasks) {
-    const tasks = { ...next.tasks };
-    if (tasks.enabled === undefined) {
-      tasks.enabled = false;
-      mutated = true;
-    }
-    if (tasks.maxSteps === undefined) {
-      tasks.maxSteps = 12;
-      mutated = true;
-    }
-    if (tasks.progressMessages === undefined) {
-      tasks.progressMessages = true;
-      mutated = true;
-    }
-    if (mutated) {
-      next.tasks = tasks;
-    }
+  const tasks = { ...next.tasks };
+  if (next.tasks === undefined) {
+    mutated = true;
+  }
+  if (tasks.enabled === undefined) {
+    tasks.enabled = true;
+    mutated = true;
+  }
+  if (tasks.maxSteps === undefined) {
+    tasks.maxSteps = 12;
+    mutated = true;
+  }
+  if (tasks.progressMessages === undefined) {
+    tasks.progressMessages = true;
+    mutated = true;
+  }
+  if (mutated) {
+    next.tasks = tasks;
   }
 
   if (next.persona) {
