@@ -98,4 +98,41 @@ describe("task tools", () => {
     const payload = parsePayload(await statusTool.execute("call-7", {}));
     expect(payload.status).toBe("none");
   });
+
+  it("task_status with taskId returns the full step trajectory (chat-side detail view)", async () => {
+    const { resolveConfigDir } = await import("../../utils.js");
+    const store = new TaskStore(resolveConfigDir());
+    // Seed a finished two-step task for ou_alice.
+    const created = await store.create("main", "ou_alice", { goal: "详情任务" });
+    await store.update("main", "ou_alice", created.id, (t) => ({
+      ...t,
+      status: "done",
+      result: "最终结果",
+      steps: [
+        { index: 1, startedAt: 1, endedAt: 2, summary: "第一步", status: "ok" },
+        { index: 2, startedAt: 2, endedAt: 3, summary: "第二步", status: "ok" },
+      ],
+      budget: { ...t.budget, usedSteps: 2 },
+    }));
+
+    const statusTool = createTaskStatusTool({ config: cfg({ enabled: true }), ...sessionDeps })!;
+    const payload = parsePayload(await statusTool.execute("call-8", { taskId: created.id }));
+    expect(payload.status).toBe("ok");
+    const task = payload.task as {
+      goal: string;
+      status: string;
+      result?: string;
+      steps: Array<{ summary: string }>;
+    };
+    expect(task.goal).toBe("详情任务");
+    expect(task.status).toBe("done");
+    expect(task.result).toBe("最终结果");
+    expect(task.steps.map((s) => s.summary)).toEqual(["第一步", "第二步"]);
+  });
+
+  it("task_status with an unknown taskId reports not_found", async () => {
+    const statusTool = createTaskStatusTool({ config: cfg({ enabled: true }), ...sessionDeps })!;
+    const payload = parsePayload(await statusTool.execute("call-9", { taskId: "no-such-task" }));
+    expect(payload.status).toBe("not_found");
+  });
 });

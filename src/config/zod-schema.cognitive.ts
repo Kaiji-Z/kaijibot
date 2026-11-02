@@ -89,6 +89,7 @@ export const CognitiveTasksSchema = z
   .object({
     enabled: z.boolean().default(false),
     maxSteps: z.number().min(1).max(100).optional(),
+    progressMessages: z.boolean().default(true),
   })
   .strict()
   .optional();

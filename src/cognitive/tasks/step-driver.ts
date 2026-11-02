@@ -108,7 +108,7 @@ export function buildStepPrompt(task: TaskRecord, stepIndex: number, sharedDir?:
     "- summary：本步做了什么、进展如何",
     "- done：目标已达成时为 true，并把最终结果写进 summary（summary 已含最终结果时应立即置 true，不必为凑满步骤数而留到后续步骤）",
     "- error：本步失败时填写原因",
-    "不要向用户发送中间进度消息；除非需要用户补充信息。",
+    "每步的进度由系统自动汇报给用户，你无需发送中间进度消息；除非确实需要用户补充信息才能继续。",
   ].join("\n");
 }
 

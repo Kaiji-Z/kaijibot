@@ -36,7 +36,14 @@ const TaskCreateSchema = Type.Object({
   ),
 });
 
-const TaskStatusSchema = Type.Object({});
+const TaskStatusSchema = Type.Object({
+  taskId: Type.Optional(
+    Type.String({
+      description:
+        "Optional task id for a detail view: full step trajectory, subtask results, and the final result.",
+    }),
+  ),
+});
 
 const TaskStepReportSchema = Type.Object({
   taskId: Type.String({ description: "The task id from the [Task Step] instruction" }),
@@ -192,9 +199,9 @@ export function createTaskStatusTool(deps: {
     name: "task_status",
     label: "Task Status",
     description:
-      "List the current user's cognitive tasks (active first, then recent finished ones).",
+      "Show the user's cognitive tasks. Without taskId: active tasks first, then recent finished ones. With taskId: full detail — step trajectory, subtask results, and the final result (chat-side equivalent of the Control UI task view).",
     parameters: TaskStatusSchema,
-    async execute() {
+    async execute(_toolCallId: string, rawParams: unknown) {
       const userId = resolveCorrectionUserId(deps.sessionKey, deps.deliveryTo);
       if (!userId) {
         return textResult("No user session.", { status: "no_session" });
@@ -203,6 +210,34 @@ export function createTaskStatusTool(deps: {
       try {
         const { resolveConfigDir } = await import("../../utils.js");
         const taskStore = new TaskStore(resolveConfigDir());
+        const params = (rawParams ?? {}) as { taskId?: string };
+
+        if (params.taskId) {
+          const found = await taskStore.findTaskAcrossAgents(userId, params.taskId);
+          if (!found) {
+            return jsonResult({ status: "not_found", taskId: params.taskId });
+          }
+          const task = found.task;
+          return jsonResult({
+            status: "ok",
+            task: {
+              id: task.id,
+              goal: task.goal,
+              status: task.status,
+              steps: task.steps.map((s) => ({
+                index: s.index,
+                summary: s.summary,
+                status: s.status,
+                ...(s.error ? { error: s.error } : {}),
+              })),
+              budget: { usedSteps: task.budget.usedSteps, maxSteps: task.budget.maxSteps },
+              ...(task.parentTaskId ? { parentTaskId: task.parentTaskId } : {}),
+              ...(task.subtaskResults?.length ? { subtaskResults: task.subtaskResults } : {}),
+              ...(task.result ? { result: task.result } : {}),
+            },
+          });
+        }
+
         const tasks = await taskStore.list(agentId, userId);
         if (tasks.length === 0) {
           return jsonResult({ status: "none", message: "No tasks." });

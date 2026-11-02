@@ -1834,7 +1834,8 @@ export async function startGatewayServer(
           // Unattended multi-step task execution (cognitive.tasks.enabled,
           // default off). Steps and results flow through the same
           // system-event + heartbeat idiom as insight delivery, so the agent
-          // shares results naturally and no intermediate step messages leak.
+          // shares results naturally; per-step progress goes straight to the
+          // user's channel via deliverProgress (chat-first visibility, M5).
           if (cfgAtStart.cognitive?.tasks?.enabled === true && !minimalTestGateway) {
             const { TaskStore: TaskStoreCls } = await import("../cognitive/tasks/store.js");
             const { TaskRunner } = await import("../cognitive/tasks/runner.js");
@@ -1886,6 +1887,41 @@ export async function startGatewayServer(
                 );
                 requestHeartbeatNow({ reason: "cognitive-task", sessionKey });
               },
+              // Chat-first progress visibility (M5): short deterministic
+              // messages straight to the user's channel after every
+              // non-terminal step. Most users never open the Control UI.
+              // Runner swallows errors here — delivery must never break the loop.
+              deliverProgress:
+                cfgAtStart.cognitive?.tasks?.progressMessages === false
+                  ? undefined
+                  : async (task, stepIndex, summary) => {
+                      const { resolveCognitiveDeliveryTarget } =
+                        await import("./cognitive-delivery.js");
+                      const target = resolveCognitiveDeliveryTarget(
+                        cfgAtStart,
+                        task.userId,
+                        task.agentId,
+                      );
+                      if (!target) {
+                        // Session has no channel binding (e.g. TUI-only) —
+                        // progress is a chat concern; nothing to send.
+                        return;
+                      }
+                      const { deliverOutboundPayloads } =
+                        await import("../infra/outbound/deliver.js");
+                      const { clampText } = await import("../cognitive/tasks/types.js");
+                      await deliverOutboundPayloads({
+                        cfg: cfgAtStart,
+                        channel: target.channel,
+                        to: target.to,
+                        ...(target.accountId ? { accountId: target.accountId } : {}),
+                        payloads: [
+                          {
+                            text: `[任务进度] ${clampText(task.goal, 40)}（步骤 ${stepIndex}/${task.budget.maxSteps}）：${clampText(summary, 200)}`,
+                          },
+                        ],
+                      });
+                    },
               onTaskTerminal: async (task) => {
                 await aggregateOnTaskTerminal(
                   {

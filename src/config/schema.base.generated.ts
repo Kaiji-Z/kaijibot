@@ -27532,6 +27532,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
       tags: ["performance"],
     },
+    "cognitive.tasks.progressMessages": {
+      label: "Cognitive Task Progress Messages",
+      help: "Send a short chat message after each non-terminal task step (default: true). Chat-first progress visibility for users who never open the Control UI. Terminal outcomes (done/failed/halted) always deliver regardless.",
+      tags: ["advanced"],
+    },
     "cognitive.insight": {
       label: "Insight Engine",
       help: "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",

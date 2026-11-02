@@ -839,6 +839,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "cognitive.tasks": "Cognitive Tasks",
   "cognitive.tasks.enabled": "Cognitive Tasks Enabled",
   "cognitive.tasks.maxSteps": "Cognitive Task Max Steps",
+  "cognitive.tasks.progressMessages": "Cognitive Task Progress Messages",
   "cognitive.insight": "Insight Engine",
   "cognitive.insight.inferenceModel": "Insight Inference Model",
   "cognitive.insight.outputLanguage": "Insight Output Language",

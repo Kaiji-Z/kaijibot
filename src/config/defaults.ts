@@ -420,6 +420,10 @@ export function applyCognitiveDefaults(cfg: KaijiBotConfig): KaijiBotConfig {
       tasks.maxSteps = 12;
       mutated = true;
     }
+    if (tasks.progressMessages === undefined) {
+      tasks.progressMessages = true;
+      mutated = true;
+    }
     if (mutated) {
       next.tasks = tasks;
     }

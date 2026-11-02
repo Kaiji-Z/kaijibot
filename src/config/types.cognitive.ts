@@ -63,6 +63,12 @@ export type CognitiveConfig = {
     enabled?: boolean;
     /** Default step ceiling per task (default: 12). Reaching it halts the task. */
     maxSteps?: number;
+    /**
+     * Send a short chat message after each non-terminal task step
+     * (default: true). Chat-first progress visibility — most users never see
+     * the Control UI. Terminal outcomes always deliver regardless.
+     */
+    progressMessages?: boolean;
   };
   /** Feedback settings (reserved — currently unused by runtime; feedback is collected implicitly by default) */
   feedback?: {

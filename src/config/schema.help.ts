@@ -1567,6 +1567,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
   "cognitive.tasks.maxSteps":
     "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
+  "cognitive.tasks.progressMessages":
+    "Send a short chat message after each non-terminal task step (default: true). Chat-first progress visibility for users who never open the Control UI. Terminal outcomes (done/failed/halted) always deliver regardless.",
   "cognitive.insight":
     "Insight generation engine settings controlling how cross-domain connections, domain-depth follow-ups, and exploration candidates are produced.",
   "cognitive.insight.inferenceModel":

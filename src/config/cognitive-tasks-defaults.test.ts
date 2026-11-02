@@ -21,20 +21,23 @@ describe("cognitive.tasks config flag", () => {
     } as KaijiBotConfig);
     expect(cfg.cognitive?.tasks?.enabled).toBe(false);
     expect(cfg.cognitive?.tasks?.maxSteps).toBe(12);
+    expect(cfg.cognitive?.tasks?.progressMessages).toBe(true);
   });
 
   it("preserves explicit values", () => {
     const cfg = applyCognitiveDefaults({
       ...base,
-      cognitive: { tasks: { enabled: true, maxSteps: 3 } },
+      cognitive: { tasks: { enabled: true, maxSteps: 3, progressMessages: false } },
     } as KaijiBotConfig);
     expect(cfg.cognitive?.tasks?.enabled).toBe(true);
     expect(cfg.cognitive?.tasks?.maxSteps).toBe(3);
+    expect(cfg.cognitive?.tasks?.progressMessages).toBe(false);
   });
 
   it("zod schema defaults tasks.enabled to false and rejects unknown keys", () => {
     const parsed = CognitiveSchema.parse({ tasks: {} });
     expect(parsed?.tasks?.enabled).toBe(false);
+    expect(parsed?.tasks?.progressMessages).toBe(true);
 
     expect(() => CognitiveSchema.parse({ tasks: { unknownKey: true } })).toThrow();
   });

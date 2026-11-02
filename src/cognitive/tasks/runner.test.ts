@@ -106,6 +106,60 @@ describe("TaskRunner", () => {
     expect(final?.budget.usedSteps).toBe(3);
   });
 
+  it("reports progress only for non-terminal steps (chat-first visibility)", async () => {
+    const created = await store.create(AGENT, USER, { goal: "三步任务" });
+    let calls = 0;
+    const progress: Array<{ taskId: string; stepIndex: number; summary: string }> = [];
+    const runner = new TaskRunner({
+      store,
+      runStep: async () => {
+        calls++;
+        return calls < 3 ? { summary: `进展 ${calls}` } : { summary: "完成", done: true };
+      },
+      deliver,
+      deliverProgress: async (task, stepIndex, summary) => {
+        progress.push({ taskId: task.id, stepIndex, summary });
+      },
+    });
+
+    await runner.tick(AGENT, USER);
+
+    // Steps 1-2 continue the task → progress fires; step 3 is terminal
+    // (done) → covered by the final deliver, never double-notified.
+    expect(progress).toEqual([
+      { taskId: created.id, stepIndex: 1, summary: "进展 1" },
+      { taskId: created.id, stepIndex: 2, summary: "进展 2" },
+    ]);
+    expect(delivered).toHaveLength(1);
+  });
+
+  it("does not fire progress for error steps, and a failing progress channel never breaks the loop", async () => {
+    await store.create(AGENT, USER, { goal: "先成功后失败" });
+    let calls = 0;
+    const progressCalls: number[] = [];
+    const runner = new TaskRunner({
+      store,
+      runStep: async () => {
+        calls++;
+        return calls === 1 ? { summary: "ok" } : { summary: "", error: "第二步挂了" };
+      },
+      deliver,
+      deliverProgress: async (_task, stepIndex) => {
+        progressCalls.push(stepIndex);
+        throw new Error("progress channel down");
+      },
+    });
+
+    await runner.tick(AGENT, USER);
+
+    // Step 1 would fire progress (channel errors are swallowed); step 2 is
+    // an error step → no progress call at all, only the failure delivery.
+    expect(progressCalls).toEqual([1]);
+    expect(delivered[0]!.message).toContain("第二步挂了");
+    const final = await store.list(AGENT, USER);
+    expect(final[0]?.status).toBe("failed");
+  });
+
   it("marks a task failed when a step errors, and delivers the error", async () => {
     const created = await store.create(AGENT, USER, { goal: "会失败的任务" });
     const runner = makeRunner(async () => ({

@@ -29,6 +29,14 @@ export type TaskRunnerDeps = {
   /** Deliver a terminal notification (done/failed/halted) to the user. */
   deliver: (task: TaskRecord, message: string) => Promise<void>;
   /**
+   * Report one non-terminal step to the user (chat-first progress
+   * visibility — most users never see the Control UI). Called after the
+   * step checkpoint, only for steps that continue the task; terminal
+   * outcomes have their own `deliver` message. Errors are logged, never
+   * propagated.
+   */
+  deliverProgress?: (task: TaskRecord, stepIndex: number, summary: string) => Promise<void>;
+  /**
    * Called after any terminal transition with the final record (parent
    * aggregation, M3). Errors are logged, never propagated — the child's own
    * lifecycle must complete regardless.
@@ -214,6 +222,21 @@ export class TaskRunner {
         log.info("task done", { taskId: current.id, steps: current.budget.usedSteps });
         await this.notifyTerminal(doneTask ?? current);
         return;
+      }
+
+      // Non-terminal step: report progress (chat-first visibility). Fires for
+      // continuing and blocked-pausing steps; done/error have their own
+      // terminal delivery and must not double-notify.
+      if (this.deps.deliverProgress) {
+        try {
+          await this.deps.deliverProgress(current, stepIndex, step.summary);
+        } catch (err) {
+          log.warn("task progress delivery failed", {
+            taskId: current.id,
+            step: stepIndex,
+            error: String(err),
+          });
+        }
       }
 
       // The step delegated subtasks (creation flips this task to `blocked`):
