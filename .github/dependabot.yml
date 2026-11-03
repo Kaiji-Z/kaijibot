@@ -4,15 +4,10 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-    groups:
-      runtime:
-        update-types: [minor, patch]
-      dev-tools:
-        update-types: [minor, patch]
-        exclude-patterns:
-          - vitest
-          - oxlint
-          - oxfmt
-      security-only:
-        update-types: [patch]
+      interval: monthly
+    # Routine dependency bumps are handled directly via pnpm on main — zero
+    # dependabot version-update PRs (they previously piled up unmerged and
+    # rotted: conflicting branches, red CI). Security updates are a separate
+    # mechanism driven by repo Security settings and still open PRs
+    # regardless of this limit.
+    open-pull-requests-limit: 0
