@@ -35,7 +35,7 @@ function waitForEnqueued(
   return vi.waitFor(
     () => {
       // Last match: any earlier duplicate is superseded by the freshest one.
-      const hit = [...enqueued].reverse().find((e) => match(e.text, e.sessionKey));
+      const hit = enqueued.toReversed().find((e) => match(e.text, e.sessionKey));
       if (!hit) {
         // Throwing (instead of expect()) also narrows the return type.
         throw new Error(
