@@ -140,6 +140,7 @@ export function createScopedVitestConfig(
     name?: string;
     pool?: "forks" | "threads";
     passWithNoTests?: boolean;
+    retry?: number;
     setupFiles?: string[];
     useNonIsolatedRunner?: boolean;
   },
@@ -181,6 +182,7 @@ export function createScopedVitestConfig(
       include: relativizeScopedPatterns(includeFromEnv ?? cliInclude ?? include, scopedDir),
       exclude,
       ...(options?.pool ? { pool: options.pool } : {}),
+      ...(options?.retry !== undefined ? { retry: options.retry } : {}),
       ...(scopedGroupOrder === undefined
         ? {}
         : {
