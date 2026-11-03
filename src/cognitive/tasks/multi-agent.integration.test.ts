@@ -36,10 +36,12 @@ function waitForEnqueued(
     () => {
       // Last match: any earlier duplicate is superseded by the freshest one.
       const hit = [...enqueued].reverse().find((e) => match(e.text, e.sessionKey));
-      expect(
-        hit,
-        `no enqueued event matched within the wait window (${enqueued.length} events so far)`,
-      ).toBeTruthy();
+      if (!hit) {
+        // Throwing (instead of expect()) also narrows the return type.
+        throw new Error(
+          `no enqueued event matched within the wait window (${enqueued.length} events so far)`,
+        );
+      }
       return hit;
     },
     { timeout: 10_000 },
