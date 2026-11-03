@@ -358,3 +358,22 @@ operator 拍板：多数用户以飞书为唯一界面，看不到 Control UI—
 - **npm 发版事故与处置（流程教训入档）**：首次 publish-npm job 日志显示完全成功（`+ kaijibot@2026.11.2`、provenance 签发 logIndex 3643641387），但 registry 上版本端点 404、packument 无此版本、40+ 分钟未落地——**npm 侧"接受但未摄取"失败，状态页/成功日志在此场景下是假信号**。处置：版本未落地即重发合法 → `gh run rerun --job` 仅重跑 publish-npm → 约 5 分钟后落地，`npm view kaijibot version` = **2026.11.2**（semver 规范化剥掉日期前导零；下次发版版本号直接用不补零写法，tag 名与 npm 版本号保持一致）。
 - 终态：npm latest = 2026.11.2 ✅；GitHub Release tarball = kaijibot-2026.11.02.tgz ✅；Android 安装链路 ✅。
 - 验证发布成功以 **registry 版本端点 200** 为准，publish job success 不足为凭。
+
+# R30 — CI flake 链根治 + 仓库清理（2026-11-02/03）
+
+## 长尾实况
+
+连续 5 轮 CI 出现 5 个不同 flake：preauth-hardening（墙钟 2582>2500）、node-invoke（3s 连接预算）、health 心跳（订阅竞态）、T9 多 agent（固定 50ms 协调竞态）、shared-auth-rotation（token 轮换）——逐个硬修是打地鼠。
+
+## 两层根治
+
+1. **确定性重写（慢性号）**：4 个最常犯测试改 vi.waitFor 真状态等待；preauth 上界改宽松兜底+下界证明超时生效；node-invoke 连接预算 3s/2s→15s/10s；health emit 重试窗口；T9 四处 sleep 全部 waitFor 化（释放断言从 agentId 升级为结果非空可见——强化非弱化）。连续两轮全量 CI Test job 全绿实证。
+2. **gateway lane retry:1（长尾吸收）**：vitest.scoped-config 新增 retry 选项，仅 gateway 工厂启用。真回归两次都红照样红——只吸收真 flake。落地轮 CI 全绿（41590643479，37 分钟）。
+
+## 过程自省
+
+根修提交自身连续红了三轮——两轮是我的 Check 低级错（expect 不做 TS 类型收窄→改 throw；[...arr].reverse 违反 toReversed lint 规则），教训：提交前对该文件直跑 oxlint+tsgo --force，不信聚合命令的增量缓存。
+
+## 仓库清理
+
+5 个 Dependabot 过期 PR（#3/#4/#5/#6/#24，全部 CI 红/冲突）+ 5 个分支关闭删除；仓库剩 main 单分支、0 开放 PR。dependabot.yml 仍在（每周），调频/关闭待 operator 拍板。
