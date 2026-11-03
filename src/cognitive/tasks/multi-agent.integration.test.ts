@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTaskTool, createTaskStepReportTool } from "../../agents/tools/task-tool.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { aggregateOnTaskTerminal } from "./aggregate.js";
@@ -22,6 +22,29 @@ import { TaskStore } from "./store.js";
 
 const USER = "ou_t9";
 const PARENT_SESSION = "agent:main:ou_t9";
+
+/**
+ * Wait until a matching system event has been enqueued. Coordination via
+ * waitFor instead of fixed sleeps: full-CI parallel load regularly blew the
+ * fixed 50ms budgets and turned this suite into the flakiest lane.
+ */
+function waitForEnqueued(
+  enqueued: Array<{ text: string; sessionKey: string }>,
+  match: (text: string, sessionKey: string) => boolean,
+) {
+  return vi.waitFor(
+    () => {
+      // Last match: any earlier duplicate is superseded by the freshest one.
+      const hit = [...enqueued].reverse().find((e) => match(e.text, e.sessionKey));
+      expect(
+        hit,
+        `no enqueued event matched within the wait window (${enqueued.length} events so far)`,
+      ).toBeTruthy();
+      return hit;
+    },
+    { timeout: 10_000 },
+  );
+}
 
 function config(): KaijiBotConfig {
   return {
@@ -78,7 +101,13 @@ describe("multi-agent task e2e (T9)", () => {
     })!;
     const parentRunner = makeRunner("main");
     const parentTick1 = parentRunner.tick("main", USER);
-    await new Promise((r) => setTimeout(r, 50));
+    await waitForEnqueued(
+      enqueued,
+      (text, sessionKey) =>
+        sessionKey === PARENT_SESSION &&
+        text.includes("[Task Step 1/") &&
+        text.includes("分别调研 A 与起草 B"),
+    );
 
     const splitA = await createTool.execute("split-a", {
       goal: "调研 A 侧事实",
@@ -108,7 +137,13 @@ describe("multi-agent task e2e (T9)", () => {
 
     // 3. Both assigned agents execute their subtasks unattended.
     const researcherTick = makeRunner("researcher").tick("researcher", USER);
-    await new Promise((r) => setTimeout(r, 50));
+    await waitForEnqueued(
+      enqueued,
+      (text, sessionKey) =>
+        sessionKey === `agent:researcher:${USER}` &&
+        text.includes("[Task Step 1/") &&
+        text.includes("调研 A 侧事实"),
+    );
     await reportTool.execute("researcher-step-1", {
       taskId: childAId,
       stepIndex: 1,
@@ -121,7 +156,13 @@ describe("multi-agent task e2e (T9)", () => {
     expect((await store.get("main", USER, parent!.id))?.status).toBe("blocked");
 
     const writerTick = makeRunner("writer").tick("writer", USER);
-    await new Promise((r) => setTimeout(r, 50));
+    await waitForEnqueued(
+      enqueued,
+      (text, sessionKey) =>
+        sessionKey === `agent:writer:${USER}` &&
+        text.includes("[Task Step 1/") &&
+        text.includes("起草 B 侧草稿"),
+    );
     await reportTool.execute("writer-step-1", {
       taskId: childBId,
       stepIndex: 1,
@@ -130,23 +171,34 @@ describe("multi-agent task e2e (T9)", () => {
     });
     expect(await writerTick).toBe(1);
 
-    // 4. All children terminal → parent released with both results.
-    const released = await store.get("main", USER, parent!.id);
-    expect(released?.status).toBe("queued");
-    expect(released?.subtaskResults?.map((s) => s.agentId).toSorted()).toEqual([
-      "researcher",
-      "writer",
-    ]);
+    // 4. All children terminal → parent released with both results (results
+    // must be fully visible, not just agent ids — the merge prompt below is
+    // built from this record).
+    await vi.waitFor(
+      async () => {
+        const r = await store.get("main", USER, parent!.id);
+        expect(r?.status).toBe("queued");
+        const results = r?.subtaskResults ?? [];
+        expect(results.map((s) => s.agentId).toSorted()).toEqual(["researcher", "writer"]);
+        for (const s of results) {
+          expect(s.result?.length ?? 0).toBeGreaterThan(0);
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     // 5. Parent resumes, merges, delivers.
     const parentTick2 = parentRunner.tick("main", USER);
-    await new Promise((r) => setTimeout(r, 50));
-    const mergePrompt = enqueued.find(
-      (e) => e.text.includes("[Task Step 2/") && e.text.includes("合并成一份简报"),
+    const mergePrompt = await waitForEnqueued(
+      enqueued,
+      (text, sessionKey) =>
+        sessionKey === PARENT_SESSION &&
+        text.includes("[Task Step 2/") &&
+        text.includes("合并成一份简报"),
     );
-    expect(mergePrompt?.text).toContain("事实甲成立");
-    expect(mergePrompt?.text).toContain("建议乙");
-    expect(mergePrompt?.text).toContain("/ws/main/");
+    expect(mergePrompt.text).toContain("事实甲成立");
+    expect(mergePrompt.text).toContain("建议乙");
+    expect(mergePrompt.text).toContain("/ws/main/");
 
     await reportTool.execute("parent-step-2", {
       taskId: parent!.id,

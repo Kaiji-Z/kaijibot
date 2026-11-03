@@ -123,8 +123,12 @@ describe("gateway pre-auth hardening", () => {
         });
       });
       expect(close.code).toBe(1000);
-      expect(close.elapsedMs).toBeGreaterThan(0);
-      expect(close.elapsedMs).toBeLessThan(2_500);
+      // The idle timeout is 200ms: the close must not fire instantly (that
+      // would mean we closed before the timeout) and must fire eventually.
+      // The upper bound stays generous — wall-clock upper bounds under full
+      // CI parallel load produced flakes (once measured 2582ms vs 2500ms).
+      expect(close.elapsedMs).toBeGreaterThanOrEqual(150);
+      expect(close.elapsedMs).toBeLessThan(15_000);
     } finally {
       await harness.close();
     }

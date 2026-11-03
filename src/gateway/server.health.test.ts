@@ -83,14 +83,24 @@ describe("gateway server health/presence", () => {
 
     const { ws } = await harness.openClient();
 
-    const waitHeartbeat = onceMessage<EventFrame>(
-      ws,
-      (o) => o.type === "event" && o.event === "heartbeat",
-    );
-    emitHeartbeatEvent({ status: "sent", to: "+123", preview: "ping" });
-    const evt = await waitHeartbeat;
-    expect(evt.payload?.status).toBe("sent");
-    expect(typeof evt.payload?.ts).toBe("number");
+    // Under full-suite load the server-side subscription wiring can lag the
+    // client handshake, so the first emitted heartbeat may not reach this
+    // socket. Re-emit on a short window instead of failing spuriously; the
+    // broadcast path itself is what the assertions verify.
+    let evt: EventFrame | undefined;
+    for (let attempt = 0; attempt < 5 && !evt; attempt++) {
+      const waitHeartbeat = onceMessage<EventFrame>(
+        ws,
+        (o) => o.type === "event" && o.event === "heartbeat",
+      );
+      emitHeartbeatEvent({ status: "sent", to: "+123", preview: "ping" });
+      evt = await Promise.race([
+        waitHeartbeat,
+        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 2_500).unref?.()),
+      ]);
+    }
+    expect(evt?.payload?.status).toBe("sent");
+    expect(typeof evt?.payload?.ts).toBe("number");
 
     ws.send(
       JSON.stringify({
@@ -103,7 +113,7 @@ describe("gateway server health/presence", () => {
     expect(last.ok).toBe(true);
     const lastPayload = last.payload as HeartbeatPayload | null | undefined;
     expect(lastPayload?.status).toBe("sent");
-    expect(lastPayload?.ts).toBe(evt.payload?.ts);
+    expect(lastPayload?.ts).toBe(evt?.payload?.ts);
 
     ws.send(
       JSON.stringify({

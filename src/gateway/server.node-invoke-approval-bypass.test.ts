@@ -21,8 +21,11 @@ import {
 } from "./test-helpers.js";
 
 installGatewayTestHooks({ scope: "suite" });
-const NODE_CONNECT_TIMEOUT_MS = 3_000;
-const CONNECT_REQ_TIMEOUT_MS = 2_000;
+// Node connect + signed connect-request budgets. Generous on purpose: these
+// are scaffolding waits (the assertions under test are about payload
+// validation), and full-suite parallel runs saturate the event loop.
+const NODE_CONNECT_TIMEOUT_MS = 15_000;
+const CONNECT_REQ_TIMEOUT_MS = 10_000;
 
 function createDeviceIdentity(): DeviceIdentity {
   const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
