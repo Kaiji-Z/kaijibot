@@ -12,6 +12,26 @@ set -euo pipefail
 
 VERSION="${1:?Usage: bash scripts/release.sh <version>}"
 
+# Normalize date components to valid semver (leading zeros forbidden): npm
+# strips them server-side, which silently desyncs the git tag from the
+# published version (v2026.11.02 tag -> npm 2026.11.2, tarball name mismatch).
+# Normalize once here so tag, package.json, npm, and the Release tarball all
+# agree. Keeps a trailing same-date revision suffix (-1, -2, ...).
+normalize_version() {
+  local v="$1" suffix=""
+  if [[ "$v" == *"-"* ]]; then
+    suffix="-${v##*-}"
+    v="${v%-*}"
+  fi
+  IFS=. read -r Y M D <<< "$v"
+  printf '%d.%d.%d%s\n' "$((10#$Y))" "$((10#$M))" "$((10#$D))" "$suffix"
+}
+NORMALIZED="$(normalize_version "$VERSION")"
+if [ "$NORMALIZED" != "$VERSION" ]; then
+  echo "[release] normalized version ${VERSION} -> ${NORMALIZED} (semver forbids leading zeros)"
+  VERSION="$NORMALIZED"
+fi
+
 echo "=== Releasing KaijiBot v${VERSION} ==="
 
 # 1. Bump version

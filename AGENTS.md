@@ -411,7 +411,7 @@ Correction (system prompt injection):
 
 ## Release Process
 
-- **Versioning**: `YYYY.M.DD` format (e.g. `2026.6.27`). Multiple releases on the same date append `-1`, `-2`, `-3` (e.g. `2026.6.27-1`, `2026.6.27-2`). Do NOT use future dates.
+- **Versioning**: `YYYY.M.DD` format (e.g. `2026.6.27`). Multiple releases on the same date append `-1`, `-2`, `-3` (e.g. `2026.6.27-1`, `2026.6.27-2`). Do NOT use future dates. Semver forbids leading zeros — `release.sh` auto-normalizes them (e.g. `2026.11.02` → `2026.11.2`) so the tag, package.json, npm version, and Release tarball name always agree; don't rely on npm's server-side cleanup.
 - **One command**: `bash scripts/release.sh <version>` (e.g. `bash scripts/release.sh 2026.6.27-1`)
 - The script: bumps version → `pnpm build` (sanity gate) → `git commit` + `git tag` + `git push` (both remotes). It does NOT publish to npm itself.
 - **npm publishing runs in CI via trusted publishing (OIDC)**: `.github/workflows/publish-tarball.yml` triggers on tag push (`v*`) and runs two parallel jobs — `publish-npm` (Node 24 / npm ≥ 11.5.1, `id-token: write`, `npm publish --ignore-scripts`) and `upload-tarball` (`npm pack`, uploads `kaijibot-<version>.tgz` to the corresponding GitHub Release). No npm token lives on the machine or in repo secrets.
