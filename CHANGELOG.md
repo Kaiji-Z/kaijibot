@@ -11,6 +11,62 @@ Repo: https://github.com/Kaiji-Z/kaijibot · Backup: https://gitee.com/kaiji1126
 
 ---
 
+## Unreleased (after v2026.11.02)
+
+- **CI stability root-fix.** Chronic timing flakes replaced with deterministic `waitFor` coordination; gateway socket lane retries once for the long tail; audit timestamp filter made deterministic. Final CI green.
+- **dependabot: monthly scan, security updates only** — zero routine version-bump PRs.
+- **Release tooling.** `release.sh` normalizes zero-padded date components to semver at release time (see 2026.11.02 note below); executable bit restored.
+- **Cognitive cleanup.** Insight import cycle broken (filtered-insights leaf module); dead config knobs `epsilonGreedy` / `patternVerification` / `llmFreshnessCheck` now accepted by strict zod schemas (were silently rejected); correction pre-screen regex fix; freshness window `slice(-5)` fix.
+- **wechat.** Per-message failure isolation in monitor loop (a failing message no longer loses the batch); slash commands gated behind DM auth.
+- **Full-tree audit round (2026.11.11).** Persona decay made idempotent via undecayed base anchors (`baseConfidence` / `baseDepth`); PRISM cost constants unified (identify and gate now share 7.0/3.0); mode-selection probability floor normalized correctly; `seededRandom` rewritten as mulberry32; prompt cache split into stable system sections vs per-turn context; O(transcript) hot paths replaced with an incremental append-only message counter and a negative insight-window cache; chat RPC double-respond race fixed; followup drain loop capped at 5 consecutive failures; explicit `dmScope: "main"` no longer auto-promoted to per-peer; lark-cli bootstrap extracted from `server.impl.ts`; media tool returns null instead of crashing when no model is configured; dead cognitive code removed (legacy gate, stub insight builders, concluded A/B harness, unused exports); `check:loc` excludes `*.generated.ts`; three green gates (`config:schema:check`, `check:import-cycles`, `docs:check-links`) wired into CI.
+- **i18n.** Cognitive family views localized (107 keys × 13 locales); remaining locale-key gap backfilled across 11 locales (English fallback where no translation provider is configured — tracked in `.i18n/*.meta.json`, auto-upgraded on a later provider-configured run).
+- **Repo hygiene.** Dead scripts/modules removed; local-only generated baselines untracked; AGENTS.md fact sync; dead-link purge.
+
+## 2026.11.02 — Task system & browser login-proxy (M1–M5)
+
+- **Task system (default on, dogfood approved).** `TaskStore` with scoped locks and cap eviction; bounded `TaskRunner` with budget brakes and crash-recovery boot pass; `task_create` / `task_status` agent tools (registered only when `cognitive.tasks.enabled`) with pacing gate parity to the proactive ledger veto; production step driver via system-event + heartbeat wake (`cognitive-task` reason) with `task_step_report` closing the step handshake; per-user tick fan-out; task delegation (`assignToAgent`, `parentTaskId`, blocked-waits semantics); parent aggregation + shared task workspace prompts; `tasks.list` / `tasks.get` audit RPCs with contract tests; Control UI tasks panel (list/detail audit view); chat-first per-step progress messages + `task_status` detail view.
+- **Browser login-proxy.** Per-agent persistent browser profiles (`agent-<id>` naming, `ensureAgentBrowserProfile`), login-proxy auto-routing, and headed manual-login window — all gated by `browser.proxy.enabled` (default off); graceful CDP `Browser.close` so login sessions survive restarts.
+- **Live verification.** Task live contract on `glm-5.3-flash`; dual-agent task e2e (real `task_create` split, two assigned agents execute, parent merges); browser-step task e2e with real Chromium agent-profile step.
+- **Note — tag/npm version desync.** The git tag is `v2026.11.02` but the published npm package is `2026.11.2` (semver strips the leading zero; npm versions are immutable, so the tag stays as-is). `release.sh` now normalizes padded dates at release time so tag, package.json, npm, and the Release tarball always agree going forward.
+
+## 2026.10.23 – 2026.10.29 — Dependency/security maintenance & correctness fixes
+
+- **Security/deps.** undici bumped to 8.12.3 and `jsdom>undici` override to 7.30.1 (GHSA-9fm3-97px-rjf6); `node:24-bookworm(-slim)` Docker digest pins (Oct 2026 Node security releases); CI runner pins to `ubuntu-24.04` (ubuntu-latest flipped to Ubuntu 26 on 2026-10-19 and broke `pnpm build`); pnpm pinned to 10.32.1 in the publish workflow.
+- **Cognitive ledger atomicity.** `applyNoResponseLedger` + field-level `feedbackProfile` merge — reply-path ledger resets and bandit updates can no longer be clobbered by the scheduler snapshot; scoped cross-instance locks for CorrectionStore/FragmentStore; independent exploration roll in `applyEpsilonGreedy`.
+- **Media.** Text-only attempt models (mid-run failover) persist inline images to the media store with `[image attached]` markers instead of dropping them; shallow TTL sweep no longer deletes inbound claim-check files; bmp/tiff mime mappings; sanitized all-inline image batches.
+- **feishu.** Post messages detect structured at-all (`user_id="all"`) instead of a literal `@_all` substring that only matched prose.
+- **zai.** Model catalog updated to GLM-5.3 series (5.3 / 5.3-flash / 5.3-flashx, 4.6v-flashx/flash) with refreshed pricing.
+
+## 2026.8.17 – 2026.8.29 — Voice, memory persistence, human cadence
+
+- **Offline/voice stack.** sherpa-onnx runtime resolution, model manifests, tarball download manager, ffmpeg pre-encode ASR, readiness probes + background warm-up; sherpa-speech registered as local ASR provider with edge-tts as default TTS; `stt.transcribe` gateway RPC; `tts.convert` can inline base64 audio for Control UI read-aloud; browser voice recorder + WebAudio playback + feishu-style hold-to-talk input; Termux install script; speech temp dirs use `crypto.randomUUID`.
+- **Memory.** Index meta persisted across atomic reindex (no redundant full rebuilds); incremental vector-row deletes guarded on `chunks_vec` existence; embedding auth misses and redaction config load fast-pathed.
+- **Heartbeat relay safety (2026-08 incident).** Degenerate-reply circuit breaker; relay turns bounded to 10 minutes; replies screened before delivery; glued `NO_REPLY` stripped; delivery-mirror transcript writes deduped.
+- **Human-cadence delivery scheduling.** Social-ledger veto → re-engagement budget → delivery pacing (daily cap + stochastic hazard spacing) → PRISM gate, with implicit reply attribution to domain bandits; documented in AGENTS.md and covered by the human-cadence simulation invariants.
+- **Verification.** Clean-context LLM supervisor wired into live quality suites; regression flag-diff CI matrix expanded to 3 flags.
+- **Providers.** OpenAI-compatible model discovery retries without trailing `/v1` on 404.
+
+## 2026.8.1 – 2026.8.15-3 — Insight delivery hardening & first npm release
+
+- **Delivery chain fixes.** Heartbeat never executed for non-default agents (fixed + regression test); insight delivery state machine self-heal and id-matching; pending-insight retry bounded to one attempt; `NO_REPLY` dedup, gradual decay, on-load cap, and persona persisted on gate veto; per-user `processEvent` cooldown prevents multi-source stacking; 33× repeat loop broken; `awaitingDeliveryConfirmation` / `pendingInsightDelivery` / `lastNoResponseAt` added to the persona zod schema; finalize deferred to delivery confirmation; domain history append race fixed; heartbeat reports delivery outcome on interrupted/failed runs.
+- **Continuity & feedback.** Continuity handshake added to the cognitive layer; gate pAct joint model fixed; silence breaker strengthened; `PersonaChangeSource` feedback loop broken; insight feedback loop via heartbeat messageId tracking + followup discussion detection; insight delivery recovery + PRISM threshold tuning.
+- **Store hardening.** Process-global scoped locks, update-merge, and invalid-persona quarantine across cognitive stores; atomic secure JSON writes.
+- **Model fallback.** Primary model is always attempted regardless of cooldown state.
+- **UI.** Mobile chat input fixes (Chrome Custom Tabs, `visualViewport` height, fixed-position shell, locked body scroll); two-column layout with independent scroll + sticky mobile back bar.
+- **Channels.** Telegram ported from upstream (channel since re-removed — the current bundled channel surface is feishu + wechat).
+- **npm trusted publishing (OIDC).** `publish-tarball.yml` publishes via trusted publishing with provenance signing; first verified release `v2026.8.15-3` (npm job green, sigstore logIndex 2477083775); `--tag latest` passed for same-date `-N` versions.
+
+## 2026.7.19-1 – 2026.7.29-1 — Context transparency & cognitive refinements
+
+- **wechat.** `SenderId` set in inbound `MsgContext` — enables the cognitive layer on the wechat channel.
+- **TypedInsight simplification.** 6 categories collapsed to 2 (`durable` / `ephemeral`), live A/B validated; legacy values migrated at load via `LEGACY_CATEGORY_MAP`; category-aware half-life decay; `InterestPhase` lifecycle wired into scheduler scoring (dormant penalized, revived boosted); `qualityGateModel` config for an independent judge model.
+- **Prompt cache stability.** Cognitive prompt sections reordered (stable first, dynamic last); prompt data extracted from `llm-engine.ts` into `llm-engine-data.ts`.
+- **Context transparency.** `context_show` agent tool + `context-organize` skill (iterated from CLI to agent-native); summary layer A/B tested and rejected (−1.8pt quality); `KAIJIBOT-GUIDE.md` rewritten 63→28 lines (−600 tok/turn); MEMORY.md excluded from trim (consolidation-managed); provenance tags and trigger-based corrections; soul-preset override warning; hardcoded vendor model defaults removed.
+- **CI stabilization.** Full test suite green on CI (test isolation, skip guards for environment-dependent cases, `KAIJIBOT_BUNDLED_PLUGINS_DIR`, vitest cache clearing); runtime-config vitest project wired into the runner (100+ `src/config/` tests now execute); doc-path resolution CI check; weekly regression flag-diff workflow.
+- **Distribution.** soul-presets copied to dist during build (fixed ENOENT on npm installs); dist cleaned before build in release/deploy scripts.
+
+---
+
 ## 2026.7.19 — Adversarial audit fixes (distribution readiness)
 
 ### ⚠️ Breaking
