@@ -353,7 +353,7 @@ Multi-lingual audio transcription via OpenRouter (Gemini, etc). Available on Cla
   Control and automate Home Assistant devices via natural language.
 </Card>
 
-<Card title="Nix Packaging" icon="snowflake" href="https://github.com/kaijibot/nix-kaijibot">
+<Card title="Nix Packaging" icon="snowflake" href="https://github.com/openclaw/nix-openclaw">
   **@kaijibot** • `nix` `packaging` `deployment`
   
   Batteries-included nixified KaijiBot configuration for reproducible deployments.

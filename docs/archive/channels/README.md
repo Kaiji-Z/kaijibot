@@ -6,7 +6,7 @@ Each page retains its original "not supported in KaijiBot" warning banner.
 
 For active channel support, see:
 
-- [Feishu](../channels/feishu.md) — first-class channel
-- [WeChat](../channels/wechat.md) — first-class channel
+- [Feishu](../../channels/feishu.md) — first-class channel
+- [WeChat](../../channels/wechat.md) — first-class channel
 
 For the upstream implementations these pages describe, see the [OpenClaw project](https://github.com/openclaw/openclaw).

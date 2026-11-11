@@ -171,7 +171,7 @@ cp .env.example .env
 
 # 2. 构建镜像
 docker build \
-  --build-arg KAIJIBOT_EXTENSIONS="feishu zai openai ollama lmstudio exa tavily browser memory-core memory-lancedb memory-wiki speech-core talk-voice media-understanding-core image-generation-core diffs llm-task device-pair webhooks shared" \
+  --build-arg KAIJIBOT_EXTENSIONS="feishu zai openai ollama lmstudio exa tavily browser memory-core memory-lancedb knowledge-wiki speech-core talk-voice media-understanding-core image-generation-core diffs llm-task device-pair webhooks" \
   -t kaijibot:local .
 
 # 3. 启动

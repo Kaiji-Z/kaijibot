@@ -36,7 +36,7 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/kaijibot/kaijibot",
+        "href": "https://github.com/Kaiji-Z/kaijibot",
         "icon": "github"
       },
       {
@@ -185,11 +185,11 @@
     },
     {
       "source": "/mattermost",
-      "destination": "/channels/mattermost"
+      "destination": "/archive/channels/mattermost"
     },
     {
       "source": "/line",
-      "destination": "/channels/line"
+      "destination": "/archive/channels/line"
     },
     {
       "source": "/glm",
@@ -205,19 +205,19 @@
     },
     {
       "source": "/providers/discord",
-      "destination": "/channels/discord"
+      "destination": "/archive/channels/discord"
     },
     {
       "source": "/providers/googlechat",
-      "destination": "/channels/googlechat"
+      "destination": "/archive/channels/googlechat"
     },
     {
       "source": "/providers/grammy",
-      "destination": "/channels/telegram"
+      "destination": "/archive/channels/telegram"
     },
     {
       "source": "/providers/imessage",
-      "destination": "/channels/imessage"
+      "destination": "/archive/channels/imessage"
     },
     {
       "source": "/providers/location",
@@ -225,27 +225,27 @@
     },
     {
       "source": "/providers/mattermost",
-      "destination": "/channels/mattermost"
+      "destination": "/archive/channels/mattermost"
     },
     {
       "source": "/providers/msteams",
-      "destination": "/channels/msteams"
+      "destination": "/archive/channels/msteams"
     },
     {
       "source": "/providers/line",
-      "destination": "/channels/line"
+      "destination": "/archive/channels/line"
     },
     {
       "source": "/providers/signal",
-      "destination": "/channels/signal"
+      "destination": "/archive/channels/signal"
     },
     {
       "source": "/providers/slack",
-      "destination": "/channels/slack"
+      "destination": "/archive/channels/slack"
     },
     {
       "source": "/providers/telegram",
-      "destination": "/channels/telegram"
+      "destination": "/archive/channels/telegram"
     },
     {
       "source": "/providers/troubleshooting",
@@ -253,11 +253,11 @@
     },
     {
       "source": "/providers/zalo",
-      "destination": "/channels/zalo"
+      "destination": "/archive/channels/zalo"
     },
     {
       "source": "/providers/whatsapp",
-      "destination": "/channels/whatsapp"
+      "destination": "/archive/channels/whatsapp"
     },
     {
       "source": "/sandbox",
@@ -393,7 +393,7 @@
     },
     {
       "source": "/discord",
-      "destination": "/channels/discord"
+      "destination": "/archive/channels/discord"
     },
     {
       "source": "/discovery",
@@ -441,11 +441,11 @@
     },
     {
       "source": "/grammy",
-      "destination": "/channels/telegram"
+      "destination": "/archive/channels/telegram"
     },
     {
       "source": "/channels/grammy",
-      "destination": "/channels/telegram"
+      "destination": "/archive/channels/telegram"
     },
     {
       "source": "/group-messages",
@@ -473,7 +473,7 @@
     },
     {
       "source": "/imessage",
-      "destination": "/channels/imessage"
+      "destination": "/archive/channels/imessage"
     },
     {
       "source": "/ios",
@@ -673,7 +673,7 @@
     },
     {
       "source": "/signal",
-      "destination": "/channels/signal"
+      "destination": "/archive/channels/signal"
     },
     {
       "source": "/skills",
@@ -685,7 +685,7 @@
     },
     {
       "source": "/slack",
-      "destination": "/channels/slack"
+      "destination": "/archive/channels/slack"
     },
     {
       "source": "/slash-commands",
@@ -705,7 +705,7 @@
     },
     {
       "source": "/telegram",
-      "destination": "/channels/telegram"
+      "destination": "/archive/channels/telegram"
     },
     {
       "source": "/templates/AGENTS",
@@ -781,7 +781,7 @@
     },
     {
       "source": "/whatsapp",
-      "destination": "/channels/whatsapp"
+      "destination": "/archive/channels/whatsapp"
     },
     {
       "source": "/windows",
@@ -906,6 +906,90 @@
     {
       "source": "/automation/gmail-pubsub",
       "destination": "/automation/cron-jobs"
+    },
+    {
+      "source": "/channels/bluebubbles",
+      "destination": "/archive/channels/bluebubbles"
+    },
+    {
+      "source": "/channels/discord",
+      "destination": "/archive/channels/discord"
+    },
+    {
+      "source": "/channels/googlechat",
+      "destination": "/archive/channels/googlechat"
+    },
+    {
+      "source": "/channels/imessage",
+      "destination": "/archive/channels/imessage"
+    },
+    {
+      "source": "/channels/irc",
+      "destination": "/archive/channels/irc"
+    },
+    {
+      "source": "/channels/line",
+      "destination": "/archive/channels/line"
+    },
+    {
+      "source": "/channels/matrix",
+      "destination": "/archive/channels/matrix"
+    },
+    {
+      "source": "/channels/mattermost",
+      "destination": "/archive/channels/mattermost"
+    },
+    {
+      "source": "/channels/msteams",
+      "destination": "/archive/channels/msteams"
+    },
+    {
+      "source": "/channels/nextcloud-talk",
+      "destination": "/archive/channels/nextcloud-talk"
+    },
+    {
+      "source": "/channels/nostr",
+      "destination": "/archive/channels/nostr"
+    },
+    {
+      "source": "/channels/qqbot",
+      "destination": "/archive/channels/qqbot"
+    },
+    {
+      "source": "/channels/signal",
+      "destination": "/archive/channels/signal"
+    },
+    {
+      "source": "/channels/slack",
+      "destination": "/archive/channels/slack"
+    },
+    {
+      "source": "/channels/synology-chat",
+      "destination": "/archive/channels/synology-chat"
+    },
+    {
+      "source": "/channels/telegram",
+      "destination": "/archive/channels/telegram"
+    },
+    {
+      "source": "/channels/tlon",
+      "destination": "/archive/channels/tlon"
+    },
+    {
+      "source": "/channels/twitch",
+      "destination": "/archive/channels/twitch"
+    },
+    {
+      "source": "/channels/whatsapp",
+      "destination": "/archive/channels/whatsapp"
+    },
+    {
+      "source": "/channels/zalo",
+      "destination": "/archive/channels/zalo"
+    },
+    {
+      "source": "/channels/zalouser",
+      "destination": "/archive/channels/zalouser"
     }
   ],
   "navigation": {
@@ -998,30 +1082,7 @@
               },
               {
                 "group": "Messaging platforms",
-                "pages": [
-                  "channels/bluebubbles",
-                  "channels/discord",
-                  "channels/feishu",
-                  "channels/googlechat",
-                  "channels/imessage",
-                  "channels/irc",
-                  "channels/line",
-                  "channels/matrix",
-                  "channels/mattermost",
-                  "channels/msteams",
-                  "channels/nextcloud-talk",
-                  "channels/nostr",
-                  "channels/qqbot",
-                  "channels/signal",
-                  "channels/slack",
-                  "channels/synology-chat",
-                  "channels/telegram",
-                  "channels/tlon",
-                  "channels/twitch",
-                  "channels/whatsapp",
-                  "channels/zalo",
-                  "channels/zalouser"
-                ]
+                "pages": ["channels/feishu", "channels/wechat"]
               },
               {
                 "group": "Configuration",
@@ -1583,10 +1644,6 @@
               {
                 "group": "Developer setup",
                 "pages": ["start/setup", "pi-dev"]
-              },
-              {
-                "group": "Contributing",
-                "pages": ["ci"]
               },
               {
                 "group": "Docs meta",

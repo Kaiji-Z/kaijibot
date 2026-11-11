@@ -139,7 +139,7 @@ KAIJIBOT_NAMESPACE=my-namespace ./scripts/k8s/deploy.sh
 Edit the `image` field in `scripts/k8s/manifests/deployment.yaml`:
 
 ```yaml
-image: ghcr.io/kaijibot/kaijibot:latest # or pin to a specific version from https://github.com/kaijibot/kaijibot/releases
+image: ghcr.io/kaijibot/kaijibot:latest # or pin to a specific version from https://github.com/Kaiji-Z/kaijibot/releases
 ```
 
 ### Expose beyond port-forward

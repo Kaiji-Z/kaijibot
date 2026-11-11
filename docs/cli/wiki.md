@@ -1,20 +1,20 @@
 ---
-summary: "CLI reference for `kaijibot wiki` (memory-wiki vault status, search, compile, lint, apply, bridge, and Obsidian helpers)"
+summary: "CLI reference for `kaijibot wiki` (knowledge-wiki vault status, search, compile, lint, apply, bridge, and Obsidian helpers)"
 read_when:
-  - You want to use the memory-wiki CLI
+  - You want to use the knowledge-wiki CLI
   - You are documenting or changing `kaijibot wiki`
 title: "wiki"
 ---
 
 # `kaijibot wiki`
 
-Inspect and maintain the `memory-wiki` vault.
+Inspect and maintain the `knowledge-wiki` vault.
 
-Provided by the bundled `memory-wiki` plugin.
+Provided by the bundled `knowledge-wiki` plugin.
 
 Related:
 
-- [Memory Wiki plugin](/plugins/memory-wiki)
+- [Memory Wiki plugin](/plugins/knowledge-wiki)
 - [Memory Overview](/concepts/memory)
 - [CLI: memory](/cli/memory)
 
@@ -203,12 +203,12 @@ These require the official `obsidian` CLI on `PATH` when
 
 `kaijibot wiki` behavior is shaped by:
 
-- `plugins.entries.memory-wiki.config.vaultMode`
-- `plugins.entries.memory-wiki.config.search.backend`
-- `plugins.entries.memory-wiki.config.search.corpus`
-- `plugins.entries.memory-wiki.config.bridge.*`
-- `plugins.entries.memory-wiki.config.obsidian.*`
-- `plugins.entries.memory-wiki.config.render.*`
-- `plugins.entries.memory-wiki.config.context.includeCompiledDigestPrompt`
+- `plugins.entries.knowledge-wiki.config.vaultMode`
+- `plugins.entries.knowledge-wiki.config.search.backend`
+- `plugins.entries.knowledge-wiki.config.search.corpus`
+- `plugins.entries.knowledge-wiki.config.bridge.*`
+- `plugins.entries.knowledge-wiki.config.obsidian.*`
+- `plugins.entries.knowledge-wiki.config.render.*`
+- `plugins.entries.knowledge-wiki.config.context.includeCompiledDigestPrompt`
 
-See [Memory Wiki plugin](/plugins/memory-wiki) for the full config model.
+See [Memory Wiki plugin](/plugins/knowledge-wiki) for the full config model.

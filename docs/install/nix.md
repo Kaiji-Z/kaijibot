@@ -9,10 +9,10 @@ title: "Nix"
 
 # Nix Installation
 
-Install KaijiBot declaratively with **[nix-kaijibot](https://github.com/kaijibot/nix-kaijibot)** -- a batteries-included Home Manager module.
+Install KaijiBot declaratively with **[nix-kaijibot](https://github.com/openclaw/nix-openclaw)** -- a batteries-included Home Manager module.
 
 <Info>
-The [nix-kaijibot](https://github.com/kaijibot/nix-kaijibot) repo is the source of truth for Nix installation. This page is a quick overview.
+The [nix-kaijibot](https://github.com/openclaw/nix-openclaw) repo is the source of truth for Nix installation. This page is a quick overview.
 </Info>
 
 ## What You Get
@@ -48,7 +48,7 @@ The [nix-kaijibot](https://github.com/kaijibot/nix-kaijibot) repo is the source 
   </Step>
 </Steps>
 
-See the [nix-kaijibot README](https://github.com/kaijibot/nix-kaijibot) for full module options and examples.
+See the [nix-kaijibot README](https://github.com/openclaw/nix-openclaw) for full module options and examples.
 
 ## Nix Mode Runtime Behavior
 
@@ -84,6 +84,6 @@ KaijiBot reads JSON5 config from `KAIJIBOT_CONFIG_PATH` and stores mutable data 
 
 ## Related
 
-- [nix-kaijibot](https://github.com/kaijibot/nix-kaijibot) -- full setup guide
+- [nix-kaijibot](https://github.com/openclaw/nix-openclaw) -- full setup guide
 - [Wizard](/start/wizard) -- non-Nix CLI setup
 - [Docker](/install/docker) -- containerized setup

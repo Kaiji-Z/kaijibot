@@ -24,7 +24,7 @@
 │           │                      │                          │
 │  ┌────────┴─────────┐  ┌────────┴─────────┐                │
 │  │ 3. 知识库         │  │ 4. 认知人格       │                │
-│  │ (memory-wiki)     │  │ (persona store)   │                │
+│  │ (knowledge-wiki)     │  │ (persona store)   │                │
 │  │ Obsidian兼容      │  │ JSON持久化        │                │
 │  │ 结构化声明+证据   │  │ Thompson Sampling │                │
 │  └────────┬─────────┘  └────────┬─────────┘                │
@@ -50,7 +50,7 @@
 | --- | ------------ | ------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
 | 1   | **语义记忆** | SQLite + sqlite-vec + FTS5            | 混合检索（0.7向量+0.3文本）→ 时间衰减 → MMR去重 | `memory-core/src/memory/hybrid.ts`, `mmr.ts`, `temporal-decay.ts` |
 | 2   | **短期晋升** | JSON (.dreams/short-term-recall.json) | 6因子加权评分 → cron晋升到MEMORY.md             | `memory-core/src/short-term-promotion.ts`                         |
-| 3   | **知识库**   | Markdown文件（Obsidian兼容）          | 声明+证据+置信度+新鲜度多信号排序               | `memory-wiki/src/query.ts`, `vault.ts`                            |
+| 3   | **知识库**   | Markdown文件（Obsidian兼容）          | 声明+证据+置信度+新鲜度多信号排序               | `knowledge-wiki/src/query.ts`, `vault.ts`                         |
 | 4   | **认知人格** | JSON (persona/{userId}.json)          | LLM提取+规则兜底 → 置信度合并 → 修剪            | `cognitive/persona/store.ts`, `llm-extractor.ts`, `curator.ts`    |
 | 5   | **洞察存储** | JSON (insights/{userId}/{id}.json)    | LLM生成+模板兜底 → 意外性评分 → 验证管道        | `cognitive/insight/llm-engine.ts`, `serendipity-scorer.ts`        |
 | 6   | **会话历史** | NDJSON (sessions/)                    | LLM驱动压缩 + 磁盘预算 + 历史轮次限制           | `agents/compaction.ts`, `config/sessions/`                        |

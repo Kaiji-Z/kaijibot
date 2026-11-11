@@ -25,7 +25,7 @@ KaijiBot is different. After a few conversations on Feishu, it starts **reaching
 | **Correction learning** | None                           | None                        | **Dual-path correction memory** (never makes the same mistake twice)                      |
 | **Deployment**          | Cloud SaaS                     | Cloud SaaS                  | **Cloud / local / Android phone local** (Termux, full agent, not a thin client)           |
 
-> Channel integration: Feishu · WeChat (first-class channels, deep support); 18 additional channels bundled from upstream (Telegram/Discord/Slack etc., not deeply tested). EN/zh CLI / wizard / cognitive prompts auto-switch. 40+ LLM providers pluggable.
+> Channel integration: Feishu · WeChat (first-class channels, deep support); 20 additional upstream channels (Telegram/Discord/Slack etc., reference only — no bundled code, docs archived). EN/zh CLI / wizard / cognitive prompts auto-switch. 40+ LLM providers pluggable.
 
 ## ✨ Core Features
 
@@ -242,10 +242,10 @@ curl -fsSL https://github.com/Kaiji-Z/kaijibot/raw/main/scripts/install-termux.s
 
 Before you start, you'll need:
 
-| Requirement           | What for                       | How to get it                                                                                                                                                                                                                                                                          |
-| --------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **LLM API key**       | At least one AI provider's key | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [Qwen](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) — pick one                                                |
-| **Messaging channel** | For sending/receiving messages | [Feishu](https://open.feishu.cn/) (recommended, wizard supports QR-code auto-creation) · [WeChat](./docs/channels/) (first-class channel, run `kaijibot channels login --channel wechat` to connect) · 18 additional bundled channels (Telegram/Discord/Slack etc., not deeply tested) |
+| Requirement           | What for                       | How to get it                                                                                                                                                                                                                                                                                                         |
+| --------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **LLM API key**       | At least one AI provider's key | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [Qwen](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) — pick one                                                                               |
+| **Messaging channel** | For sending/receiving messages | [Feishu](https://open.feishu.cn/) (recommended, wizard supports QR-code auto-creation) · [WeChat](./docs/channels/) (first-class channel, run `kaijibot channels login --channel wechat` to connect) · 20 additional upstream channels (Telegram/Discord/Slack etc., reference only — no bundled code, docs archived) |
 
 ### Install (recommended)
 

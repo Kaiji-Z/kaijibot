@@ -9,7 +9,7 @@ title: "Android App"
 
 # Android App (Node)
 
-> **Note:** The Android app has not been publicly released yet. The source code is available in the [KaijiBot repository](https://github.com/kaijibot/kaijibot) under `apps/android`. You can build it yourself using Java 17 and the Android SDK (`./gradlew :app:assemblePlayDebug`). See [apps/android/README.md](https://github.com/kaijibot/kaijibot/blob/main/apps/android/README.md) for build instructions.
+> **Note:** The Android app has not been publicly released yet. The source code is available in the [KaijiBot repository](https://github.com/Kaiji-Z/kaijibot) under `apps/android`. You can build it yourself using Java 17 and the Android SDK (`./gradlew :app:assemblePlayDebug`). See [apps/android/README.md](https://github.com/Kaiji-Z/kaijibot/blob/main/apps/android/README.md) for build instructions.
 
 ## Support snapshot
 

@@ -362,5 +362,21 @@
   {
     "source": "Testing",
     "target": "测试"
+  },
+  {
+    "source": "QA Channel",
+    "target": "QA 渠道"
+  },
+  {
+    "source": "Memory Overview",
+    "target": "记忆总览"
+  },
+  {
+    "source": "CLI: memory",
+    "target": "CLI：memory"
+  },
+  {
+    "source": "CLI: wiki",
+    "target": "CLI：wiki"
   }
 ]

@@ -116,7 +116,7 @@ Moltbot never quite rolled off the tongue. And so, at 4am GMT, the team gathered
 
 In just 3 hours:
 
-- GitHub renamed: `github.com/kaijibot/kaijibot` ✅
+- GitHub renamed: `github.com/Kaiji-Z/kaijibot` ✅
 - X handle `@kaijibot` secured with GOLD CHECKMARK 💰
 - npm packages released under new name
 - Docs live in-repo at `docs/`

@@ -211,6 +211,5 @@ Event source fires (timer / persona_change / info_scan)
 
 ## Related
 
-- [Cognitive Persona Research](/concepts/cognitive-persona-research) — academic foundations and design rationale
 - [Architecture](/concepts/architecture) — overall Gateway architecture
 - [Features](/concepts/features) — full capability list

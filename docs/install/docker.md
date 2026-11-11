@@ -43,7 +43,7 @@ Docker is **optional**. Use it only if you want a containerized gateway or to va
     ```
 
     Pre-built images are published at the
-    [GitHub Container Registry](https://github.com/kaijibot/kaijibot/pkgs/container/kaijibot).
+    [GitHub Container Registry](https://github.com/Kaiji-Z/kaijibot/pkgs/container/kaijibot).
     Common tags: `main`, `latest`, `<version>` (e.g. `2026.2.26`).
 
   </Step>
@@ -353,7 +353,7 @@ scripts/sandbox-setup.sh
 <AccordionGroup>
   <Accordion title="Image missing or sandbox container not starting">
     Build the sandbox image with
-    [`scripts/sandbox-setup.sh`](https://github.com/kaijibot/kaijibot/blob/main/scripts/sandbox-setup.sh)
+    [`scripts/sandbox-setup.sh`](https://github.com/Kaiji-Z/kaijibot/blob/main/scripts/sandbox-setup.sh)
     or set `agents.defaults.sandbox.docker.image` to your custom image.
     Containers are auto-created per session on demand.
   </Accordion>

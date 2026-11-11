@@ -308,7 +308,7 @@ surfaces, not as the default pattern for new third-party plugins.
 
 ## Beta Release Testing
 
-1. Watch for GitHub release tags on [kaijibot/kaijibot](https://github.com/kaijibot/kaijibot/releases) and subscribe via `Watch` > `Releases`. Beta tags look like `v2026.3.N-beta.1`. You can also turn on notifications for the official KaijiBot X account [@kaijibot](https://x.com/kaijibot) for release announcements.
+1. Watch for GitHub release tags on [kaijibot/kaijibot](https://github.com/Kaiji-Z/kaijibot/releases) and subscribe via `Watch` > `Releases`. Beta tags look like `v2026.3.N-beta.1`. You can also turn on notifications for the official KaijiBot X account [@kaijibot](https://x.com/kaijibot) for release announcements.
 2. Test your plugin against the beta tag as soon as it appears. The window before stable is typically only a few hours.
 3. Post in your plugin's thread in the `plugin-forum` Discord channel after testing with either `all good` or what broke. If you do not have a thread yet, create one.
 4. If something breaks, open or update an issue titled `Beta blocker: <plugin-name> - <summary>` and apply the `beta-blocker` label. Put the issue link in your thread.

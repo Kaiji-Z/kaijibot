@@ -151,7 +151,7 @@ Bundled plugins can add more slash commands. Current bundled commands in this re
 - `/pair [qr|status|pending|approve|cleanup|notify]` manages device pairing/setup flow. See [Pairing](/channels/pairing).
 - `/phone status|arm <camera|screen|writes|all> [duration]|disarm` temporarily arms high-risk phone node commands.
 - `/voice status|list [limit]|set <voiceId|name>` manages Talk voice config. On Discord, the native command name is `/talkvoice`.
-- `/card ...` sends LINE rich card presets. See [LINE](/channels/line).
+- `/card ...` sends LINE rich card presets. See [LINE](/archive/channels/line).
 - QQBot-only commands:
   - `/bot-ping`
   - `/bot-version`

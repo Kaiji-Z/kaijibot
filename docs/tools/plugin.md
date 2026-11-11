@@ -81,14 +81,14 @@ and the [Plugin SDK Overview](/plugins/sdk-overview).
 
 ### Installable (npm)
 
-| Plugin          | Package                | Docs                                 |
-| --------------- | ---------------------- | ------------------------------------ |
-| Matrix          | `@kaijibot/matrix`     | [Matrix](/channels/matrix)           |
-| Microsoft Teams | `@kaijibot/msteams`    | [Microsoft Teams](/channels/msteams) |
-| Nostr           | `@kaijibot/nostr`      | [Nostr](/channels/nostr)             |
-| Voice Call      | `@kaijibot/voice-call` | [Voice Call](/plugins/voice-call)    |
-| Zalo            | `@kaijibot/zalo`       | [Zalo](/channels/zalo)               |
-| Zalo Personal   | `@kaijibot/zalouser`   | [Zalo Personal](/plugins/zalouser)   |
+| Plugin          | Package                | Docs                                         |
+| --------------- | ---------------------- | -------------------------------------------- |
+| Matrix          | `@kaijibot/matrix`     | [Matrix](/archive/channels/matrix)           |
+| Microsoft Teams | `@kaijibot/msteams`    | [Microsoft Teams](/archive/channels/msteams) |
+| Nostr           | `@kaijibot/nostr`      | [Nostr](/archive/channels/nostr)             |
+| Voice Call      | `@kaijibot/voice-call` | [Voice Call](/plugins/voice-call)            |
+| Zalo            | `@kaijibot/zalo`       | [Zalo](/archive/channels/zalo)               |
+| Zalo Personal   | `@kaijibot/zalouser`   | [Zalo Personal](/plugins/zalouser)           |
 
 ### Core (shipped with KaijiBot)
 

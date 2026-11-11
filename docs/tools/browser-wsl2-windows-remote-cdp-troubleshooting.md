@@ -15,7 +15,7 @@ This guide covers the common split-host setup where:
 - Chrome runs on Windows
 - browser control must cross the WSL2/Windows boundary
 
-It also covers the layered failure pattern from [issue #39369](https://github.com/kaijibot/kaijibot/issues/39369): several independent problems can show up at once, which makes the wrong layer look broken first.
+It also covers the layered failure pattern from [issue #39369](https://github.com/Kaiji-Z/kaijibot/issues/39369): several independent problems can show up at once, which makes the wrong layer look broken first.
 
 ## Choose the right browser mode first
 

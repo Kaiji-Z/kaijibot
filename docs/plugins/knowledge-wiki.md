@@ -1,19 +1,19 @@
 ---
-summary: "memory-wiki: compiled knowledge vault with provenance, claims, dashboards, and bridge mode"
+summary: "knowledge-wiki: compiled knowledge vault with provenance, claims, dashboards, and bridge mode"
 read_when:
   - You want persistent knowledge beyond plain MEMORY.md notes
-  - You are configuring the bundled memory-wiki plugin
+  - You are configuring the bundled knowledge-wiki plugin
   - You want to understand wiki_search, wiki_get, or bridge mode
 title: "Memory Wiki"
 ---
 
 # Memory Wiki
 
-`memory-wiki` is a bundled plugin that turns durable memory into a compiled
+`knowledge-wiki` is a bundled plugin that turns durable memory into a compiled
 knowledge vault.
 
 It does **not** replace the active memory plugin. The active memory plugin still
-owns recall, promotion, indexing, and dreaming. `memory-wiki` sits beside it
+owns recall, promotion, indexing, and dreaming. `knowledge-wiki` sits beside it
 and compiles durable knowledge into a navigable wiki with deterministic pages,
 structured claims, provenance, dashboards, and machine-readable digests.
 
@@ -37,7 +37,7 @@ Think of the split like this:
 | Layer                                                   | Owns                                                                                       |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Active memory plugin (`memory-core`, QMD, Honcho, etc.) | Recall, semantic search, promotion, dreaming, memory runtime                               |
-| `memory-wiki`                                           | Compiled wiki pages, provenance-rich syntheses, dashboards, wiki-specific search/get/apply |
+| `knowledge-wiki`                                        | Compiled wiki pages, provenance-rich syntheses, dashboards, wiki-specific search/get/apply |
 
 If the active memory plugin exposes shared recall artifacts, KaijiBot can search
 both layers in one pass with `memory_search corpus=all`.
@@ -47,7 +47,7 @@ wiki-native tools instead.
 
 ## Vault modes
 
-`memory-wiki` supports three vault modes:
+`knowledge-wiki` supports three vault modes:
 
 ### `isolated`
 
@@ -176,7 +176,7 @@ These reports track things like:
 
 ## Search and retrieval
 
-`memory-wiki` supports two search backends:
+`knowledge-wiki` supports two search backends:
 
 - `shared`: use the shared memory search flow when available
 - `local`: search the wiki locally
@@ -240,13 +240,13 @@ engines or legacy prompt assembly that explicitly consume memory supplements.
 
 ## Configuration
 
-Put config under `plugins.entries.memory-wiki.config`:
+Put config under `plugins.entries.knowledge-wiki.config`:
 
 ```json5
 {
   plugins: {
     entries: {
-      "memory-wiki": {
+      "knowledge-wiki": {
         enabled: true,
         config: {
           vaultMode: "isolated",
@@ -306,7 +306,7 @@ Key toggles:
 
 ## CLI
 
-`memory-wiki` also exposes a top-level CLI surface:
+`knowledge-wiki` also exposes a top-level CLI surface:
 
 ```bash
 kaijibot wiki status
@@ -342,7 +342,7 @@ This is optional. The wiki still works in native mode without Obsidian.
 ## Recommended workflow
 
 1. Keep your active memory plugin for recall/promotion/dreaming.
-2. Enable `memory-wiki`.
+2. Enable `knowledge-wiki`.
 3. Start with `isolated` mode unless you explicitly want bridge mode.
 4. Use `wiki_search` / `wiki_get` when provenance matters.
 5. Use `wiki_apply` for narrow syntheses or metadata updates.
@@ -354,4 +354,4 @@ This is optional. The wiki still works in native mode without Obsidian.
 - [Memory Overview](/concepts/memory)
 - [CLI: memory](/cli/memory)
 - [CLI: wiki](/cli/wiki)
-- [Plugin SDK overview](/plugins/sdk-overview)
+- [Plugin SDK Overview](/plugins/sdk-overview)

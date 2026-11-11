@@ -25,7 +25,7 @@ KaijiBot 不一样。你在飞书里跟它聊了几次之后，它会开始**主
 | **纠错学习** | 无           | 无                       | **双路径纠错记忆**(同样的错误不犯第二次)                             |
 | **部署形态** | 云端 SaaS    | 云端 SaaS                | **云端 / 本地 / Android 手机本地运行**(Termux,完整 agent,非瘦客户端) |
 
-> 渠道集成方面：**飞书 + 微信**（一等渠道，深度支持）；另打包 16 个继承自上游的渠道（Telegram/Discord/Slack 等，未深度测试，仅供参考）。中英文 CLI / 向导 / 认知层 prompt 自动切换，40+ LLM 提供商可插拔。各数字以 `docs/channels/index.md` 为准。
+> 渠道集成方面：**飞书 + 微信**（一等渠道，深度支持）；另有 20 个上游渠道仅供参考（Telegram/Discord/Slack 等，无打包代码，文档已归档）。中英文 CLI / 向导 / 认知层 prompt 自动切换，40+ LLM 提供商可插拔。各数字以 `docs/channels/index.md` 为准。
 
 ## ✨ 核心特性
 
@@ -242,10 +242,10 @@ curl -fsSL https://gitee.com/kaiji1126/kaijibot/raw/main/scripts/install-termux.
 
 开始前你需要准备：
 
-| 条件            | 说明                     | 获取方式                                                                                                                                                                                                                                  |
-| --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **LLM API Key** | 至少一个 AI 提供商的密钥 | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) 任选其一 |
-| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· [微信](./docs/channels/wechat)（一等渠道，运行 `kaijibot channels login --channel wechat` 接入）· 另打包 16 个继承渠道（Telegram/Discord/Slack 等，未深度测试，仅供参考）  |
+| 条件            | 说明                     | 获取方式                                                                                                                                                                                                                                         |
+| --------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **LLM API Key** | 至少一个 AI 提供商的密钥 | [DeepSeek](https://platform.deepseek.com/) · [Claude](https://console.anthropic.com/) · [Gemini](https://aistudio.google.com/apikey) · [通义千问](https://dashscope.console.aliyun.com/) · [Kimi](https://platform.moonshot.cn/) 任选其一        |
+| **消息渠道**    | 用于收发消息             | [飞书](https://open.feishu.cn/)（推荐，向导支持扫码自动创建）· [微信](./docs/channels/wechat)（一等渠道，运行 `kaijibot channels login --channel wechat` 接入）· 另有 20 个上游渠道仅供参考（Telegram/Discord/Slack 等，无打包代码，文档已归档） |
 
 ### 安装（推荐方式）
 

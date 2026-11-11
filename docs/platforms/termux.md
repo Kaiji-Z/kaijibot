@@ -19,7 +19,7 @@ KaijiBot 可以在 Android 手机的 Termux 终端模拟器中运行。把一台
 
 **Termux 安装**：从 F-Droid 安装，不要用 Google Play 版本（Play 版已废弃，版本滞后且不接收更新）。
 
-下载地址：https://f-droid.org/packages/com.termux/
+下载地址：<https://f-droid.org/packages/com.termux/>
 
 **设备要求**：
 

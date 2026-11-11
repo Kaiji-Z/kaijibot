@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD024 --><!-- per-workflow sections intentionally repeat "Happy path" / "Reverse acceptance" child headings -->
+
 # ACCEPTANCE — Core Workflow Acceptance Criteria
 
 > Frozen happy-path + reverse acceptance for the 5 core KaijiBot workflows.

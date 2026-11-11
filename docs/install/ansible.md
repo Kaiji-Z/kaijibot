@@ -9,10 +9,10 @@ title: "Ansible"
 
 # Ansible Installation
 
-Deploy KaijiBot to production servers with **[kaijibot-ansible](https://github.com/kaijibot/kaijibot-ansible)** -- an automated installer with security-first architecture.
+Deploy KaijiBot to production servers with **[kaijibot-ansible](https://github.com/Kaiji-Z/kaijibot-ansible)** -- an automated installer with security-first architecture.
 
 <Info>
-The [kaijibot-ansible](https://github.com/kaijibot/kaijibot-ansible) repo is the source of truth for Ansible deployment. This page is a quick overview.
+The [kaijibot-ansible](https://github.com/Kaiji-Z/kaijibot-ansible) repo is the source of truth for Ansible deployment. This page is a quick overview.
 </Info>
 
 ## Prerequisites
@@ -132,7 +132,7 @@ If you prefer manual control over the automation:
   </Step>
   <Step title="Clone the repository">
     ```bash
-    git clone https://github.com/kaijibot/kaijibot-ansible.git
+    git clone https://github.com/Kaiji-Z/kaijibot-ansible.git
     cd kaijibot-ansible
     ```
   </Step>
@@ -218,13 +218,13 @@ This is idempotent and safe to run multiple times.
 
 For detailed security architecture and troubleshooting, see the kaijibot-ansible repo:
 
-- [Security Architecture](https://github.com/kaijibot/kaijibot-ansible/blob/main/docs/security.md)
-- [Technical Details](https://github.com/kaijibot/kaijibot-ansible/blob/main/docs/architecture.md)
-- [Troubleshooting Guide](https://github.com/kaijibot/kaijibot-ansible/blob/main/docs/troubleshooting.md)
+- [Security Architecture](https://github.com/Kaiji-Z/kaijibot-ansible/blob/main/docs/security.md)
+- [Technical Details](https://github.com/Kaiji-Z/kaijibot-ansible/blob/main/docs/architecture.md)
+- [Troubleshooting Guide](https://github.com/Kaiji-Z/kaijibot-ansible/blob/main/docs/troubleshooting.md)
 
 ## Related
 
-- [kaijibot-ansible](https://github.com/kaijibot/kaijibot-ansible) -- full deployment guide
+- [kaijibot-ansible](https://github.com/Kaiji-Z/kaijibot-ansible) -- full deployment guide
 - [Docker](/install/docker) -- containerized gateway setup
 - [Sandboxing](/gateway/sandboxing) -- agent sandbox configuration
 - [Multi-Agent Sandbox and Tools](/tools/multi-agent-sandbox-tools) -- per-agent isolation
