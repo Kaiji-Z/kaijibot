@@ -34,10 +34,15 @@ function gitLsFilesAll(): string[] {
   const stdout = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
     encoding: "utf8",
   });
-  return stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+  return (
+    stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      // Machine-generated files (e.g. src/config/schema.base.generated.ts) are
+      // written by tooling; an LOC budget does not apply to them.
+      .filter((filePath) => !filePath.endsWith(".generated.ts"))
+  );
 }
 
 async function countLines(filePath: string): Promise<number> {

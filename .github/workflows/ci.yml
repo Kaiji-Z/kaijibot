@@ -43,6 +43,9 @@ jobs:
       - run: NODE_OPTIONS=--max-old-space-size=8192 pnpm plugin-sdk:api:check
       - run: node scripts/check-doc-paths.mjs
       - run: pnpm config:docs:check
+      - run: pnpm config:schema:check
+      - run: pnpm check:import-cycles
+      - run: pnpm docs:check-links
 
   test:
     name: Test
