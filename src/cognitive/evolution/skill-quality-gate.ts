@@ -1,3 +1,5 @@
+import { formatErrorMessage } from "../../infra/errors.js";
+import { parseJsonLoose, STRICT_JSON_SUFFIX, truncateForJudge } from "./judge-utils.js";
 import { validateAndRepair } from "./llm-draft-generator.js";
 /**
  * Skill quality gate (LLM-as-judge) and draft refiner.
@@ -5,6 +7,11 @@ import { validateAndRepair } from "./llm-draft-generator.js";
  * `evaluateSkillQuality` runs BEFORE a generated skill is persisted. It asks an
  * LLM to rate the draft on four actionable dimensions and only lets high-quality
  * skills through (mean score >= QUALITY_THRESHOLD).
+ *
+ * Evaluator infrastructure failures (call timeout / rate limit / non-JSON
+ * response) are retried once, then reported via `QualityResult.failure` with a
+ * distinguishable mode — they must never masquerade as a genuine quality
+ * verdict of 0 (issue #27).
  *
  * `refineSkillDraft` asks the LLM to rewrite a rejected draft to address the
  * recorded critique/issues, then re-parses the result via the shared
@@ -16,22 +23,39 @@ import type { EvolutionCandidate, SkillDraft } from "./types.js";
 /** Mean-score cutoff below which a draft is rejected. */
 const QUALITY_THRESHOLD = 0.7;
 
+/** Judge attempts before giving up: initial call + one stricter retry. */
+const EVALUATOR_ATTEMPTS = 2;
+
+export type QualityFailureMode = "evaluator_call_failed" | "evaluator_invalid_json";
+
+export type QualityFailure = {
+  mode: QualityFailureMode;
+  /** Short human-readable cause (error message or response shape). */
+  detail: string;
+};
+
 export type QualityResult = {
   passed: boolean;
   /** Mean of the four dimension scores (0-1). */
   score: number;
   critique: string;
   issues: string[];
+  /** Present only when the evaluator itself failed — never for a genuine low score. */
+  failure?: QualityFailure;
 };
 
 export type QualityDeps = {
   generateText: (prompt: string) => Promise<string>;
   /** When provided, surfaced to the LLM so it can flag unknown tool references. */
   validToolNames?: string[];
+  /** Diagnostic sink for evaluator failures (defaults to console.warn). */
+  log?: (message: string) => void;
 };
 
 export type RefineDeps = {
   generateText: (prompt: string) => Promise<string>;
+  /** Diagnostic sink for refine failures (defaults to console.warn). */
+  log?: (message: string) => void;
 };
 
 type RawQualityScores = {
@@ -41,13 +65,6 @@ type RawQualityScores = {
   solvesProblem?: number;
   critique?: string;
   issues?: unknown;
-};
-
-const FALLBACK_RESULT: QualityResult = {
-  passed: false,
-  score: 0,
-  critique: "Evaluation failed",
-  issues: ["LLM parse error"],
 };
 
 function clamp01(value: unknown): number {
@@ -78,7 +95,7 @@ function buildEvaluatePrompt(draft: SkillDraft, deps: QualityDeps): string {
     `Description: ${draft.description}`,
     `Triggers: ${draft.triggerPhrases.join(", ")}`,
     "Body:",
-    draft.bodyMarkdown,
+    truncateForJudge(draft.bodyMarkdown),
   ];
 
   if (deps.validToolNames && deps.validToolNames.length > 0) {
@@ -93,29 +110,43 @@ function buildEvaluatePrompt(draft: SkillDraft, deps: QualityDeps): string {
   return lines.join("\n");
 }
 
-function parseJsonLoose(text: string): unknown {
-  const trimmed = text.trim();
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("No JSON object found in LLM response");
-  }
-  const jsonText = trimmed.slice(start, end + 1);
-  return JSON.parse(jsonText) as unknown;
+type JudgeAttempt =
+  | { ok: true; raw: RawQualityScores }
+  | { ok: false; failure: { mode: QualityFailureMode; detail: string } };
+
+function describeUnparseable(response: string, error: unknown): string {
+  const snippet = JSON.stringify(response.trim().slice(0, 80).replace(/\s+/g, " "));
+  return `judge response was not valid JSON (${formatErrorMessage(error)}); length=${response.length}, starts with: ${snippet}`;
 }
 
-export async function evaluateSkillQuality(
-  draft: SkillDraft,
+async function runJudgeAttempt(
+  prompt: string,
   deps: QualityDeps,
-): Promise<QualityResult> {
-  let raw: RawQualityScores;
+  log: (message: string) => void,
+  attempt: number,
+): Promise<JudgeAttempt> {
+  let response: string;
   try {
-    const response = await deps.generateText(buildEvaluatePrompt(draft, deps));
-    raw = parseJsonLoose(response) as RawQualityScores;
-  } catch {
-    return { ...FALLBACK_RESULT };
+    response = await deps.generateText(prompt);
+  } catch (error) {
+    const detail = formatErrorMessage(error);
+    log(
+      `[skill-quality-gate] evaluator call failed (attempt ${attempt}/${EVALUATOR_ATTEMPTS}): ${detail}`,
+    );
+    return { ok: false, failure: { mode: "evaluator_call_failed", detail } };
   }
+  try {
+    return { ok: true, raw: parseJsonLoose(response) as RawQualityScores };
+  } catch (error) {
+    const detail = describeUnparseable(response, error);
+    log(
+      `[skill-quality-gate] evaluator response unparseable (attempt ${attempt}/${EVALUATOR_ATTEMPTS}): ${detail}`,
+    );
+    return { ok: false, failure: { mode: "evaluator_invalid_json", detail } };
+  }
+}
 
+function scoredResult(raw: RawQualityScores): QualityResult {
   const actionable = clamp01(raw.actionable);
   const validTools = clamp01(raw.validTools);
   const meaningfulTriggers = clamp01(raw.meaningfulTriggers);
@@ -129,6 +160,35 @@ export async function evaluateSkillQuality(
     score,
     critique,
     issues,
+  };
+}
+
+export async function evaluateSkillQuality(
+  draft: SkillDraft,
+  deps: QualityDeps,
+): Promise<QualityResult> {
+  const log = deps.log ?? ((message: string) => console.warn(message));
+  const basePrompt = buildEvaluatePrompt(draft, deps);
+
+  let failure: { mode: QualityFailureMode; detail: string } | null = null;
+  for (let attempt = 1; attempt <= EVALUATOR_ATTEMPTS; attempt++) {
+    const prompt = attempt === 1 ? basePrompt : basePrompt + STRICT_JSON_SUFFIX;
+    const result = await runJudgeAttempt(prompt, deps, log, attempt);
+    if (result.ok) {
+      return scoredResult(result.raw);
+    }
+    failure = result.failure;
+  }
+
+  // Fail-closed (no skill is persisted), but clearly attributed: this is an
+  // evaluator outage, not a quality verdict on the draft. The loop above always
+  // executes at least once, so `failure` is set here.
+  return {
+    passed: false,
+    score: 0,
+    critique: `Evaluation failed (${failure!.mode}) — not a quality verdict`,
+    issues: [failure!.mode],
+    failure: failure!,
   };
 }
 
@@ -148,7 +208,7 @@ function buildRefinePrompt(draft: SkillDraft, critique: string, issues: string[]
     `Description: ${draft.description}`,
     `Triggers: ${draft.triggerPhrases.join(", ")}`,
     "Body:",
-    draft.bodyMarkdown,
+    truncateForJudge(draft.bodyMarkdown),
   ].join("\n");
 }
 
@@ -183,7 +243,11 @@ export async function refineSkillDraft(
   let response: string;
   try {
     response = await deps.generateText(buildRefinePrompt(draft, critique, issues));
-  } catch {
+  } catch (error) {
+    const log = deps.log ?? ((message: string) => console.warn(message));
+    log(
+      `[skill-quality-gate] refine call failed, keeping original draft: ${formatErrorMessage(error)}`,
+    );
     return draft;
   }
 

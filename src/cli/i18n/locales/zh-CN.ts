@@ -551,6 +551,8 @@ export const zhCN: TranslationMap = {
         duplicateSuggestion:
           "发现和已有技能「{name}」太相似，跳过创建。建议用 patch_skill 改进已有技能。",
         qualityRejectedSuggestion: "技能质量不达标（{score}），已跳过创建。",
+        evaluatorFailedSuggestion:
+          "质量评估器本身调用失败（{mode}）——这不是对技能质量的判定。可能是模型超时或限流，稍后重试即可。",
         savedSuggestion:
           "我自主进化了，创建了一个技能「{name}」—— {description}。如果不需要，可以说「删除技能 {name}」来移除。",
       },

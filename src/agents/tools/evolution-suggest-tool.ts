@@ -208,7 +208,10 @@ export function createEvolutionSuggestTool(deps: {
           let quality = await evaluateSkillQuality(draft, { generateText: judgeGenText });
           let refinedDraft = draft;
           let attempts = 0;
-          while (!quality.passed && attempts < 2) {
+          // Refining only helps a genuine low score — an evaluator outage
+          // (quality.failure) would feed the refiner a garbage critique and
+          // waste calls that cannot change the outcome (issue #27).
+          while (!quality.passed && !quality.failure && attempts < 2) {
             attempts++;
             refinedDraft = await refineSkillDraft(refinedDraft, quality.critique, quality.issues, {
               generateText: judgeGenText,
@@ -243,9 +246,14 @@ export function createEvolutionSuggestTool(deps: {
               score: quality.score,
               issues: quality.issues,
               critique: quality.critique,
-              suggestionText: t("cli.tool.evolution.qualityRejectedSuggestion", {
-                score: quality.score.toFixed(2),
-              }),
+              evaluatorFailed: quality.failure?.mode,
+              suggestionText: quality.failure
+                ? t("cli.tool.evolution.evaluatorFailedSuggestion", {
+                    mode: quality.failure.mode,
+                  })
+                : t("cli.tool.evolution.qualityRejectedSuggestion", {
+                    score: quality.score.toFixed(2),
+                  }),
             });
           }
           draft = refinedDraft;

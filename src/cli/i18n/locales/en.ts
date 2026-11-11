@@ -685,6 +685,8 @@ export const en: TranslationMap = {
         duplicateSuggestion:
           "Too similar to existing skill '{name}'. Skipped creation. Suggest using patch_skill to improve the existing skill.",
         qualityRejectedSuggestion: "Skill quality below threshold ({score}). Skipped creation.",
+        evaluatorFailedSuggestion:
+          "The quality evaluator itself failed ({mode}) — this is not a quality verdict on the skill. Likely a model timeout or rate limit; retrying later is safe.",
         savedSuggestion:
           "I self-evolved and created a skill '{name}' — {description}. If not needed, say 'delete skill {name}' to remove.",
       },

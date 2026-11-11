@@ -66,6 +66,8 @@ describe("reviewSkill", () => {
     });
     expect(result.approved).toBe(false);
     expect(result.confidence).toBe(0);
+    expect(result.failure?.mode).toBe("reviewer_invalid_json");
+    expect(mockLLM).toHaveBeenCalledTimes(2);
   });
 
   it("handles LLM throwing an error safely", async () => {
@@ -74,5 +76,48 @@ describe("reviewSkill", () => {
     const result = await reviewSkill(makeDraft(), "x", { generateText: asGenerate(mockLLM) });
     expect(result.approved).toBe(false);
     expect(result.confidence).toBe(0);
+    expect(result.failure?.mode).toBe("reviewer_call_failed");
+    expect(result.failure?.detail).toContain("boom");
+  });
+
+  it("accepts fence-wrapped JSON", async () => {
+    const { reviewSkill } = await import("./skill-reviewer.js");
+    const mockLLM = vi
+      .fn()
+      .mockResolvedValue(
+        "```json\n" + JSON.stringify({ approved: true, confidence: 0.9, notes: "ok" }) + "\n```",
+      );
+    const result = await reviewSkill(makeDraft(), "x", { generateText: asGenerate(mockLLM) });
+    expect(result.approved).toBe(true);
+    expect(mockLLM).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries once with a stricter JSON instruction, then succeeds", async () => {
+    const { reviewSkill } = await import("./skill-reviewer.js");
+    const mockLLM = vi
+      .fn()
+      .mockResolvedValueOnce("thinking out loud, no json")
+      .mockResolvedValueOnce(JSON.stringify({ approved: true, confidence: 0.8, notes: "ok" }));
+    const result = await reviewSkill(makeDraft(), "x", { generateText: asGenerate(mockLLM) });
+    expect(result.approved).toBe(true);
+    expect(result.failure).toBeUndefined();
+    const retryPrompt = String(mockLLM.mock.calls[1]?.[0] ?? "");
+    expect(retryPrompt).toContain("Respond with ONLY the JSON object");
+  });
+
+  it("truncates oversized bodies and never sets failure on genuine disapproval", async () => {
+    const { reviewSkill } = await import("./skill-reviewer.js");
+    const mockLLM = vi
+      .fn()
+      .mockResolvedValue(
+        JSON.stringify({ approved: false, confidence: 0.2, notes: "will not work" }),
+      );
+    const result = await reviewSkill(makeDraft({ bodyMarkdown: "step\n".repeat(4000) }), "x", {
+      generateText: asGenerate(mockLLM),
+    });
+    expect(result.approved).toBe(false);
+    expect(result.failure).toBeUndefined();
+    const prompt = String(mockLLM.mock.calls[0]?.[0] ?? "");
+    expect(prompt).toContain("body truncated");
   });
 });

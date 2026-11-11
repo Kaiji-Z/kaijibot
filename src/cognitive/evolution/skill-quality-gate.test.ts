@@ -92,6 +92,9 @@ describe("evaluateSkillQuality", () => {
     const result = await evaluateSkillQuality(goodDraft, { generateText: asGenerate(mockLLM) });
     expect(result.passed).toBe(false);
     expect(result.score).toBe(0);
+    expect(result.failure?.mode).toBe("evaluator_invalid_json");
+    expect(result.issues).toContain("evaluator_invalid_json");
+    expect(mockLLM).toHaveBeenCalledTimes(2);
   });
 
   it("handles LLM throwing an error safely", async () => {
@@ -100,7 +103,102 @@ describe("evaluateSkillQuality", () => {
     const result = await evaluateSkillQuality(goodDraft, { generateText: asGenerate(mockLLM) });
     expect(result.passed).toBe(false);
     expect(result.score).toBe(0);
-    expect(result.issues).toContain("LLM parse error");
+    expect(result.failure?.mode).toBe("evaluator_call_failed");
+    expect(result.failure?.detail).toContain("network down");
+    expect(result.issues).toContain("evaluator_call_failed");
+    expect(mockLLM).toHaveBeenCalledTimes(2);
+  });
+
+  it("accepts fence-wrapped JSON on the first attempt", async () => {
+    const { evaluateSkillQuality } = await import("./skill-quality-gate.js");
+    const mockLLM = vi.fn().mockResolvedValue(
+      "```json\n" +
+        JSON.stringify({
+          actionable: 0.9,
+          validTools: 0.9,
+          meaningfulTriggers: 0.9,
+          solvesProblem: 0.9,
+          critique: "fine",
+          issues: [],
+        }) +
+        "\n```",
+    );
+    const result = await evaluateSkillQuality(goodDraft, { generateText: asGenerate(mockLLM) });
+    expect(result.passed).toBe(true);
+    expect(result.failure).toBeUndefined();
+    expect(mockLLM).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries once with a stricter JSON instruction, then succeeds", async () => {
+    const { evaluateSkillQuality } = await import("./skill-quality-gate.js");
+    const valid = JSON.stringify({
+      actionable: 0.85,
+      validTools: 0.85,
+      meaningfulTriggers: 0.85,
+      solvesProblem: 0.85,
+      critique: "ok",
+      issues: [],
+    });
+    const mockLLM = vi
+      .fn()
+      .mockResolvedValueOnce("Sure! My evaluation follows below.\n{invalid")
+      .mockResolvedValueOnce(valid);
+    const result = await evaluateSkillQuality(goodDraft, { generateText: asGenerate(mockLLM) });
+    expect(result.passed).toBe(true);
+    expect(result.failure).toBeUndefined();
+    expect(mockLLM).toHaveBeenCalledTimes(2);
+    const retryPrompt = String(mockLLM.mock.calls[1]?.[0] ?? "");
+    expect(retryPrompt).toContain("Respond with ONLY the JSON object");
+  });
+
+  it("truncates oversized draft bodies before sending to the judge", async () => {
+    const { evaluateSkillQuality } = await import("./skill-quality-gate.js");
+    const longDraft = { ...goodDraft, bodyMarkdown: "step\n".repeat(4000) };
+    const mockLLM = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        actionable: 0.9,
+        validTools: 0.9,
+        meaningfulTriggers: 0.9,
+        solvesProblem: 0.9,
+        critique: "ok",
+        issues: [],
+      }),
+    );
+    await evaluateSkillQuality(longDraft, { generateText: asGenerate(mockLLM) });
+    const prompt = String(mockLLM.mock.calls[0]?.[0] ?? "");
+    expect(prompt).toContain("body truncated");
+    expect(prompt.length).toBeLessThan(longDraft.bodyMarkdown.length);
+  });
+
+  it("does not set failure for a genuine low score", async () => {
+    const { evaluateSkillQuality } = await import("./skill-quality-gate.js");
+    const mockLLM = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        actionable: 0.1,
+        validTools: 0.2,
+        meaningfulTriggers: 0.1,
+        solvesProblem: 0.2,
+        critique: "too vague",
+        issues: ["no concrete tools"],
+      }),
+    );
+    const result = await evaluateSkillQuality(goodDraft, { generateText: asGenerate(mockLLM) });
+    expect(result.passed).toBe(false);
+    expect(result.failure).toBeUndefined();
+    expect(result.critique).toBe("too vague");
+  });
+
+  it("logs evaluator failures to the provided sink", async () => {
+    const { evaluateSkillQuality } = await import("./skill-quality-gate.js");
+    const mockLLM = vi.fn().mockRejectedValue(new Error("boom"));
+    const logged: string[] = [];
+    await evaluateSkillQuality(goodDraft, {
+      generateText: asGenerate(mockLLM),
+      log: (message) => logged.push(message),
+    });
+    expect(logged.length).toBe(2);
+    expect(logged[0]).toContain("evaluator call failed");
+    expect(logged[0]).toContain("attempt 1/2");
   });
 });
 
