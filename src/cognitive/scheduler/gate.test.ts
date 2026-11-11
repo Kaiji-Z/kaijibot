@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createDefaultPersona } from "../persona/store.js";
 import {
-  checkProactiveGate,
   computeGradedGate,
   computeRepetitionDecay,
   computeEngagementFactor,
@@ -13,100 +12,6 @@ const baseConfig: SchedulerConfig = {
   minIntervalHours: 4,
   minTrustScore: 0.3,
 };
-
-// ── Legacy binary gate tests ─────────────────────────────────────────
-
-describe("checkProactiveGate", () => {
-  it("blocks when trust is too low", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.1;
-    persona.rapport.totalExchanges = 10;
-    const result = checkProactiveGate(persona, baseConfig);
-    expect(result.allowed).toBe(false);
-    expect(result.reasons).toEqual(
-      expect.arrayContaining([expect.stringContaining("Trust score")]),
-    );
-  });
-
-  it("blocks when too soon after last proactive", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.5;
-    persona.rapport.totalExchanges = 10;
-    persona.feedbackProfile.lastProactiveAt = Date.now() - 1000;
-    const result = checkProactiveGate(persona, baseConfig);
-    expect(result.allowed).toBe(false);
-    expect(result.reasons).toEqual(expect.arrayContaining([expect.stringContaining("Too soon")]));
-  });
-
-  it("blocks when suppressed", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.5;
-    persona.rapport.totalExchanges = 10;
-    persona.feedbackProfile.lastProactiveAt = 0;
-    persona.feedbackProfile.suppressUntil = Date.now() + 3600000;
-    const result = checkProactiveGate(persona, baseConfig);
-    expect(result.allowed).toBe(false);
-    expect(result.reasons).toEqual(expect.arrayContaining([expect.stringContaining("Suppressed")]));
-  });
-
-  it("blocks when total exchanges < 5", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.5;
-    persona.rapport.totalExchanges = 3;
-    persona.feedbackProfile.lastProactiveAt = 0;
-    const result = checkProactiveGate(persona, baseConfig);
-    expect(result.allowed).toBe(false);
-  });
-
-  it("allows when all conditions are met", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.5;
-    persona.rapport.totalExchanges = 10;
-    persona.feedbackProfile.lastProactiveAt = 0;
-    const result = checkProactiveGate(persona, baseConfig);
-    expect(result.allowed).toBe(true);
-    expect(result.reasons).toEqual([]);
-  });
-
-  it("blocks outside active hours", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.5;
-    persona.rapport.totalExchanges = 10;
-    persona.feedbackProfile.lastProactiveAt = 0;
-
-    const config: SchedulerConfig = {
-      ...baseConfig,
-      activeHoursStart: "09:00",
-      activeHoursEnd: "10:00",
-      timezone: "UTC",
-    };
-
-    const testTime = new Date("2026-04-11T15:00:00Z").getTime();
-    const result = checkProactiveGate(persona, config, testTime);
-    expect(result.allowed).toBe(false);
-    expect(result.reasons).toEqual(
-      expect.arrayContaining([expect.stringContaining("Outside active hours")]),
-    );
-  });
-
-  it("allows within active hours", () => {
-    const persona = createDefaultPersona();
-    persona.rapport.trustScore = 0.5;
-    persona.rapport.totalExchanges = 10;
-    persona.feedbackProfile.lastProactiveAt = 0;
-
-    const config: SchedulerConfig = {
-      ...baseConfig,
-      activeHoursStart: "09:00",
-      activeHoursEnd: "22:00",
-      timezone: "UTC",
-    };
-
-    const testTime = new Date("2026-04-11T14:00:00Z").getTime();
-    const result = checkProactiveGate(persona, config, testTime);
-    expect(result.allowed).toBe(true);
-  });
-});
 
 // ── PRISM graded gate tests ──────────────────────────────────────────
 

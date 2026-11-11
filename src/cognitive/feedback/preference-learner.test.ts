@@ -169,11 +169,16 @@ describe("decayBandit", () => {
     expect(result.beta).toBeGreaterThanOrEqual(1);
   });
 
-  it("preserves lastUpdated timestamp", () => {
+  it("advances the lastUpdated anchor to the decay time so repeated passes never compound", () => {
     const oldTs = 1700000000000;
     const bandit: TopicBandit = { alpha: 10, beta: 3, lastUpdated: oldTs };
-    const result = decayBandit(bandit, oldTs + DECAY_HALF_LIFE_MS);
-    expect(result.lastUpdated).toBe(oldTs);
+    const decayAt = oldTs + DECAY_HALF_LIFE_MS;
+    const once = decayBandit(bandit, decayAt);
+    expect(once.lastUpdated).toBe(decayAt);
+    // Decaying again immediately (0 elapsed) must be a no-op — idempotent.
+    const twice = decayBandit(once, decayAt);
+    expect(twice.alpha).toBe(once.alpha);
+    expect(twice.lastUpdated).toBe(decayAt);
   });
 
   it("accepts custom halfLife", () => {

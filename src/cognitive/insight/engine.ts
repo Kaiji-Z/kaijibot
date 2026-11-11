@@ -34,28 +34,11 @@ export function generateInsightCandidates(
     }
   }
 
-  // Strategy 2: Domain depth insights (connect user's deep domains with current events)
-  const deepDomains = Object.entries(persona.domains)
-    .filter(([, d]) => d.depth >= 4)
-    .toSorted(([, a], [, b]) => b.depth - a.depth);
-
-  for (const [domainName] of deepDomains.slice(0, 1)) {
-    const candidate = buildDomainDepthInsight(domainName);
-    if (candidate) {
-      candidates.push(candidate);
-    }
-  }
-
-  // Strategy 4: Exploration — target domains outside user's known graph
-  const unknownTargets = input.targetDomains.filter((td) => !persona.domains[td]);
-  if (userDomains.length > 0 && unknownTargets.length > 0) {
-    for (const targetDomain of unknownTargets.slice(0, 1)) {
-      const candidate = buildExplorationInsight(targetDomain);
-      if (candidate) {
-        candidates.push(candidate);
-      }
-    }
-  }
+  // NOTE: the template fallback engine previously also looped over deep
+  // domains and unknown-target domains calling stub builders that always
+  // returned undefined — dead branches removed. The LLM pipeline is the
+  // production generator; this template path only produces cross-domain
+  // candidates.
 
   // Score and rank all candidates
   const scored = candidates.map((c) => {
@@ -116,14 +99,6 @@ function buildCrossDomainCandidate(
     sources: [],
     verificationStatus: "unverified",
   };
-}
-
-function buildDomainDepthInsight(_domainName: string): undefined {
-  return undefined;
-}
-
-function buildExplorationInsight(_targetDomain: string): undefined {
-  return undefined;
 }
 
 export function isCandidateBlacklisted(

@@ -18,8 +18,8 @@ const BASE_PROBABILITY_FLOOR = 0.3;
  * Algorithm:
  * 1. Start with base weights for each candidate mode
  * 2. Multiply by bandit factor: alpha / (alpha + beta) — higher = more successful
- * 3. Apply 30% base probability floor to prevent starvation
- * 4. Normalize to sum = 1.0
+ * 3. Normalize to probabilities (sum = 1.0)
+ * 4. Apply the per-mode probability floor and renormalize to prevent starvation
  * 5. Deterministic selection using provided seed
  */
 export function banditWeightedSelect(
@@ -34,20 +34,27 @@ export function banditWeightedSelect(
     return candidates[0];
   }
 
-  const scores = candidates.map((mode) => {
+  const rawScores = candidates.map((mode) => {
     const baseWeight = BASE_WEIGHTS[mode] ?? 0.3;
     const bandit = modeBandits?.[mode];
     const banditFactor = bandit ? bandit.alpha / (bandit.alpha + bandit.beta) : 0.5;
-    const rawScore = baseWeight * banditFactor;
-    // Apply floor: score = floor + (1 - floor) * rawScore
-    const floored = BASE_PROBABILITY_FLOOR + (1 - BASE_PROBABILITY_FLOOR) * rawScore;
-    return { mode, score: floored };
+    return baseWeight * banditFactor;
   });
 
-  const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
-  const probabilities = scores.map((s) => ({
-    mode: s.mode,
-    prob: s.score / totalScore,
+  // Normalize to probabilities FIRST, then floor. Flooring the raw scores
+  // before normalizing made the floor ineffective: floored raw scores land in
+  // [floor, floor + (1-floor)*max] and normalization dragged a 3-way split as
+  // low as ~0.17 — below the intended 30% starvation guarantee.
+  const rawTotal = rawScores.reduce((sum, s) => sum + s, 0);
+  const normalized =
+    rawTotal > 0 ? rawScores.map((s) => s / rawTotal) : rawScores.map(() => 1 / rawScores.length);
+
+  const effectiveFloor = Math.min(BASE_PROBABILITY_FLOOR, 1 / candidates.length);
+  const floored = normalized.map((p) => Math.max(p, effectiveFloor));
+  const flooredTotal = floored.reduce((sum, p) => sum + p, 0);
+  const probabilities = candidates.map((mode, i) => ({
+    mode,
+    prob: floored[i]! / flooredTotal,
   }));
 
   const roll = (seed % 10000) / 10000;

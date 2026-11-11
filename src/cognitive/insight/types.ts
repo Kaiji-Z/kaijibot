@@ -85,6 +85,12 @@ export type InsightCandidate = {
   resolvedMode?: InsightMode;
   searchQueryUsed?: string;
   promptVariant?: InsightRecord["promptVariant"];
+  /** The generation prompt that produced this candidate — consumed by the
+   *  critique→refine loop so refineInsightWithLLM sees the original context. */
+  generationPrompt?: string;
+  /** Scheduler's predicted pAct for this candidate at delivery time — the
+   *  honest input for feedback calibration (vs. a hardcoded prior). */
+  predictedPAcT?: number;
   citedSourceIndices?: number[];
   webGroundedness?: number;
 };

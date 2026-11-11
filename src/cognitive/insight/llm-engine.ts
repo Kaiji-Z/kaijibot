@@ -312,6 +312,7 @@ export async function generateInsightCandidatesLLM(
           c.targetDomains = [...inputDomains];
         }
         c.promptVariant = variant;
+        c.generationPrompt = prompt;
         return c;
       });
     } catch (err) {
@@ -527,6 +528,7 @@ export async function generateInsightCandidatesLLM(
           enriched.searchQueryUsed = queryUsed;
         }
         enriched.promptVariant = variant;
+        enriched.generationPrompt = prompt;
         if (looksLikeImperativeInjection(enriched.content)) {
           log.warn("rejected insight candidate: matched imperative-injection pattern", {
             contentPreview: enriched.content.slice(0, 120),
@@ -1249,141 +1251,6 @@ function matchWebResultsToDomains(
   return result;
 }
 
-/**
- * LLM-based domain matching for web search results.
- *
- * Sends web result snippets to the LLM with the user's domain list and
- * asks it to classify each result into the most relevant domain(s).
- * Falls back to keyword/bigram matching (`matchWebResultsToDomains`) on
- * any failure (LLM error, JSON parse error, timeout, model prep failure).
- */
-export async function matchWebResultsToDomainsLLM(
-  webResults: WebSearchResult[],
-  persona: PersonaTree,
-  config: KaijiBotConfig,
-  deps: LlmInsightDeps,
-  extraTargetDomains: string[] = [],
-): Promise<Map<string, string[]>> {
-  if (webResults.length === 0) {
-    return new Map();
-  }
-
-  const domainEntries: Array<{ name: string; hints: string[] }> = [];
-  const seen = new Set<string>();
-  for (const [name, domain] of Object.entries(persona.domains)) {
-    if (!seen.has(name)) {
-      seen.add(name);
-      domainEntries.push({
-        name,
-        hints: getFilteredInsights(domain).slice(0, 2),
-      });
-    }
-  }
-  for (const td of extraTargetDomains) {
-    if (!seen.has(td)) {
-      seen.add(td);
-      domainEntries.push({ name: td, hints: [] });
-    }
-  }
-
-  const domainLines = domainEntries
-    .map((d) => {
-      const hint = d.hints.length > 0 ? `: ${d.hints.join(", ")}` : "";
-      return `- ${d.name}${hint}`;
-    })
-    .join("\n");
-
-  const resultLines = webResults.map((r, i) => `${i + 1}. [${r.title}] ${r.snippet}`).join("\n");
-
-  const prompt = `Classify each web search result into the most relevant user domain(s).
-
-User domains (with known interests):
-${domainLines}
-
-Web results:
-${resultLines}
-
-For each result number, list which domain(s) it relates to. Use JSON format:
-{"1": ["typescript"], "2": ["rust", "wasm"], ...}
-If a result doesn't match any domain, skip it. Respond with ONLY the JSON object.`;
-
-  try {
-    const modelRef = config.cognitive?.persona?.extractionModel;
-    const prepared = await deps.prepareModel(config, modelRef);
-    if ("error" in prepared) {
-      throw new Error(prepared.error);
-    }
-
-    const result = await deps.complete(
-      prepared.model,
-      { messages: [{ role: "user", content: prompt, timestamp: Date.now() }] },
-      {
-        apiKey: prepared.auth.apiKey,
-        maxTokens: 500,
-        temperature: 0.2,
-        signal: AbortSignal.timeout(30_000),
-      },
-    );
-
-    const text = result.content
-      .filter((block): block is { type: "text"; text: string } => block.type === "text")
-      .map((block) => block.text)
-      .join("")
-      .trim();
-
-    if (!text) {
-      throw new Error("LLM returned empty response for domain classification");
-    }
-
-    const objStart = text.indexOf("{");
-    const objEnd = text.lastIndexOf("}");
-    if (objStart === -1 || objEnd === -1 || objEnd <= objStart) {
-      throw new Error("No JSON object found in LLM domain classification response");
-    }
-
-    const jsonStr = text.slice(objStart, objEnd + 1);
-    const parsed: Record<string, string[]> = JSON.parse(jsonStr);
-
-    const domainMap = new Map<string, string[]>();
-    for (const [idxStr, domains] of Object.entries(parsed)) {
-      const idx = Number(idxStr) - 1;
-      if (idx < 0 || idx >= webResults.length || !Array.isArray(domains)) {
-        continue;
-      }
-      const snippet = webResults[idx]!.snippet;
-      for (const domain of domains) {
-        if (typeof domain !== "string") {
-          continue;
-        }
-        const list = domainMap.get(domain) ?? [];
-        list.push(snippet);
-        domainMap.set(domain, list);
-      }
-    }
-
-    return domainMap;
-  } catch (err) {
-    log.warn("LLM domain matching failed, falling back to keyword matching", {
-      error: String(err),
-    });
-    const keywordMap = buildDomainKeywordMap(persona.domains);
-    for (const td of extraTargetDomains) {
-      if (!keywordMap.has(td)) {
-        const keywords = new Set<string>();
-        keywords.add(td.toLowerCase());
-        for (const part of td.split(/[/+]/)) {
-          const trimmed = part.trim().toLowerCase();
-          if (trimmed.length >= 2) {
-            keywords.add(trimmed);
-          }
-        }
-        keywordMap.set(td, keywords);
-      }
-    }
-    return matchWebResultsToDomains(webResults, keywordMap);
-  }
-}
-
 const PATTERN_PROMPT_FRAMES = [
   (_topic: string, _extra: PromptFrameExtra) =>
     "Ask the user a direct, provocative question about a recurring pattern you've noticed. The question should make them reflect, not defend.",
@@ -1639,8 +1506,6 @@ export function buildInsightPrompt(
 
   const bannedSection = buildBannedOpeningsSection(recentInsightContents);
 
-  const coOccurrenceBlock = "";
-
   const domainNames = sortedDomainEntries.map(([name]) => name);
   const flatKeyInsights = sortedDomainEntries.flatMap(([, d]) =>
     getFilteredInsights(d).slice(0, 2),
@@ -1696,7 +1561,6 @@ ${identityBlock ? `USER:\n${identityBlock}` : ""}
 
 USER'S DOMAINS (sorted by recency — most active first):
 ${userDomains || "Not yet established"}
- ${coOccurrenceBlock ? `\nCROSS-DOMAIN CONNECTIONS:\n${coOccurrenceBlock}` : ""}
 
 SPECIFIC FACTS YOU KNOW ABOUT THIS USER (your insight MUST reference at least one):
 ${anchorBlock}
@@ -2040,23 +1904,6 @@ export function isSubstantiveContent(content: string): boolean {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
-}
-
-const PERSONA_WORKSPACE_FILES = ["SOUL.md", "IDENTITY.md", "USER.md"] as const;
-
-export async function loadWorkspacePersonaContext(workspaceDir?: string): Promise<string> {
-  const dir = workspaceDir ?? path.join(os.homedir(), ".kaijibot", "workspace");
-  const parts: string[] = [];
-  for (const filename of PERSONA_WORKSPACE_FILES) {
-    try {
-      const content = await fs.readFile(path.join(dir, filename), "utf-8");
-      const trimmed = content.trim();
-      if (trimmed) {
-        parts.push(`## ${filename}\n${trimmed}`);
-      }
-    } catch {}
-  }
-  return parts.join("\n\n");
 }
 
 /**

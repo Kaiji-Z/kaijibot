@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import type { PersonaTree, InsightRecord } from "../types.js";
 import {
   processInsightFeedback,
-  processInsightDeliverySignal,
   processNoResponse,
   inferTopicFromContext,
   extractImplicitSignals,
@@ -281,48 +280,6 @@ describe("processInsightFeedback", () => {
     expect(pb["frame:1"].alpha).toBe(3);
     expect(pb["pattern:3"].alpha).toBe(3);
     expect(pb["seed:3"]).toBeUndefined();
-  });
-});
-
-describe("processInsightDeliverySignal", () => {
-  it("updates lastProactiveAt from insight.deliveredAt", () => {
-    const persona = makePersona({ lastProactiveAt: 100 });
-    const insight = makeInsight({ deliveredAt: 500 });
-
-    const result = processInsightDeliverySignal(persona, insight);
-
-    expect(result.feedbackProfile.lastProactiveAt).toBe(500);
-  });
-
-  it("keeps higher lastProactiveAt when persona already has a later timestamp", () => {
-    const persona = makePersona({ lastProactiveAt: 900 });
-    const insight = makeInsight({ deliveredAt: 500 });
-
-    const result = processInsightDeliverySignal(persona, insight);
-
-    expect(result.feedbackProfile.lastProactiveAt).toBe(900);
-  });
-
-  it("does not change bandits or trust", () => {
-    const persona = makePersona();
-    const insight = makeInsight({ deliveredAt: 500 });
-
-    const result = processInsightDeliverySignal(persona, insight);
-
-    expect(result.feedbackProfile.topicBandits).toEqual(persona.feedbackProfile.topicBandits);
-    expect(result.rapport.trustScore).toBe(persona.rapport.trustScore);
-    expect(result.feedbackProfile.optimalFrequencyHours).toBe(
-      persona.feedbackProfile.optimalFrequencyHours,
-    );
-  });
-
-  it("does not mutate input persona", () => {
-    const persona = makePersona({ lastProactiveAt: 100 });
-    const insight = makeInsight({ deliveredAt: 500 });
-
-    processInsightDeliverySignal(persona, insight);
-
-    expect(persona.feedbackProfile.lastProactiveAt).toBe(100);
   });
 });
 

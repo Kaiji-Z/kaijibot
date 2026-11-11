@@ -2,18 +2,21 @@ import { jaccardSimilarity } from "../../infra/text-similarity.js";
 import { computeCalibrationSlope, applyCalibrationCorrection } from "../feedback/calibration.js";
 import { getProactiveFrequencyFactor } from "../persona/lifecycle.js";
 import type { PersonaTree } from "../types.js";
-import type {
-  GateDecision,
-  GateContext,
-  GradedGateDecision,
-  SchedulerConfig,
-  SchedulerEvent,
-} from "./types.js";
+import type { GateContext, GradedGateDecision, SchedulerConfig, SchedulerEvent } from "./types.js";
 
 // ── PRISM cost defaults ──────────────────────────────────────────────
 
-const DEFAULT_C_FN = 7.0;
-const DEFAULT_C_FA = 3.0;
+/**
+ * Single source of truth for PRISM cost defaults (documented as
+ * costFalseNegative default 7 / costFalseAlarm default 3). identify() and
+ * computeGradedGate() must not diverge — a split here makes the two pipeline
+ * stages apply different decision thresholds under default config.
+ */
+export const DEFAULT_PRISM_C_FN = 7.0;
+export const DEFAULT_PRISM_C_FA = 3.0;
+
+const DEFAULT_C_FN = DEFAULT_PRISM_C_FN;
+const DEFAULT_C_FA = DEFAULT_PRISM_C_FA;
 const BASE_NEED = 0.6;
 const LEDGER_TRUST_FLOOR_FOR_CAP = 0.7;
 
@@ -30,78 +33,9 @@ const EVENT_FACTORS: Record<SchedulerEvent["type"], number> = {
   external: 0.85,
 };
 
-// ── Legacy binary gate (backward compat wrapper) ─────────────────────
-
-export function checkProactiveGate(
-  persona: PersonaTree,
-  config: SchedulerConfig,
-  nowMs?: number,
-): GateDecision {
-  const now = nowMs ?? Date.now();
-  const reasons: string[] = [];
-  let suggestedDelayMs: number | undefined;
-
-  if (persona.rapport.trustScore < config.minTrustScore) {
-    reasons.push(
-      `Trust score ${persona.rapport.trustScore.toFixed(2)} below minimum ${config.minTrustScore}`,
-    );
-  }
-
-  const minIntervalMs = config.minIntervalHours * 60 * 60 * 1000;
-  const timeSinceLastProactive = now - persona.feedbackProfile.lastProactiveAt;
-  if (timeSinceLastProactive < minIntervalMs) {
-    const remaining = minIntervalMs - timeSinceLastProactive;
-    reasons.push(
-      `Too soon — ${Math.round(remaining / 3600000)}h remaining of ${config.minIntervalHours}h interval`,
-    );
-    suggestedDelayMs = remaining;
-  }
-
-  if (persona.feedbackProfile.suppressUntil && persona.feedbackProfile.suppressUntil > now) {
-    const remaining = persona.feedbackProfile.suppressUntil - now;
-    reasons.push(`Suppressed for ${Math.round(remaining / 3600000)}h`);
-    suggestedDelayMs = remaining;
-  }
-
-  if (config.activeHoursStart && config.activeHoursEnd) {
-    const nowDate = new Date(now);
-    const tz = config.timezone ?? "Asia/Shanghai";
-    try {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        hour: "numeric",
-        minute: "numeric",
-        hour12: false,
-      });
-      const timeStr = formatter.format(nowDate);
-      const parts = timeStr.split(":");
-      const currentHour = Number(parts[0]);
-      const currentMin = Number(parts[1]);
-      const currentMinutes = currentHour * 60 + currentMin;
-
-      const [startHour, startMin] = config.activeHoursStart.split(":").map(Number);
-      const [endHour, endMin] = config.activeHoursEnd.split(":").map(Number);
-      const startMinutes = startHour * 60 + startMin;
-      const endMinutes = endHour * 60 + endMin;
-
-      if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
-        reasons.push(`Outside active hours (${config.activeHoursStart}-${config.activeHoursEnd})`);
-      }
-    } catch {
-      // Invalid timezone, skip this gate
-    }
-  }
-
-  if (persona.rapport.totalExchanges < 5) {
-    reasons.push(`Only ${persona.rapport.totalExchanges} exchanges — need at least 5`);
-  }
-
-  return {
-    allowed: reasons.length === 0,
-    reasons,
-    suggestedDelayMs,
-  };
-}
+// NOTE: the legacy binary gate (checkProactiveGate) was removed — it had no
+// production callers and its active-hours check lacked the overnight-window
+// handling isOutsideActiveHours carries. computeGradedGate is the live gate.
 
 // ── PRISM cost-sensitive graded gate ─────────────────────────────────
 

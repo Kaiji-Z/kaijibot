@@ -2541,12 +2541,20 @@ describeDet("6-cycle integration test — all fixes together", () => {
         { insightGenerator: async () => [fakeInsight] },
       );
 
-      const cycleTime = baseTime + cycle * 3_601_000;
+      // persona_change events while the user is freshly active (<2h) get the
+      // deterministic conversational bypass — no hazard roll decides this
+      // test. 5h+1s cadence clears the 1h absolute floor and the 2h learned
+      // gap (replied → targetGap 2h → hazard saturates at 3h).
+      const cycleTime = baseTime + cycle * 18_001_000;
       const result = await scheduler.processEvent(
         "user1",
         {
-          type: "timer",
+          type: "persona_change",
           timestamp: cycleTime,
+          payload: {
+            newDomains: [Object.keys(currentPersona.domains)[cycle % 5]!],
+            domainCount: 3,
+          },
         },
         "main",
       );
@@ -2617,12 +2625,15 @@ describeDet("6-cycle integration test — all fixes together", () => {
         { insightGenerator: async () => [fakeInsight] },
       );
 
-      const cycleTime = baseTime + cycle * 3_601_000;
+      // persona_change + fresh activity = deterministic conversational bypass
+      // (no hazard roll); 5h+1s clears the absolute floor and learned gap.
+      const cycleTime = baseTime + cycle * 18_001_000;
       const result = await scheduler.processEvent(
         "user1",
         {
-          type: "timer",
+          type: "persona_change",
           timestamp: cycleTime,
+          payload: { newDomains: [targetDomain], domainCount: 3 },
         },
         "main",
       );

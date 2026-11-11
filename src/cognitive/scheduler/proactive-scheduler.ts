@@ -24,7 +24,7 @@ import type { InsightCandidate, InsightEngineInput, InsightMode } from "../insig
 import type { PersonaTree } from "../types.js";
 import { computeContentStrategy } from "./content-strategy.js";
 import { bumpDailySend, checkDailyBudget, checkStochasticSpacing } from "./delivery-pacing.js";
-import { computeGradedGate } from "./gate.js";
+import { computeGradedGate, DEFAULT_PRISM_C_FA, DEFAULT_PRISM_C_FN } from "./gate.js";
 import { selectMode } from "./mode-selection.js";
 import { evaluateReEngagementBudget } from "./re-engagement.js";
 import type { SchedulerEvent, SchedulerConfig, GateContext, Opportunity } from "./types.js";
@@ -106,9 +106,19 @@ export function isTopicStale(
   return false;
 }
 
+/**
+ * Deterministic seeded roll. Uses 32-bit mixing (mulberry32-style): the old
+ * `seed * 1103515245` multiply exceeded 2^53 for Date.now()-scale seeds, and
+ * float64 rounding quantized the product so `& 0x7fffffff` produced only
+ * ~8k distinct rolls across the day.
+ */
 function seededRandom(seed: number): number {
-  const s = (seed * 1103515245 + 12345) & 0x7fffffff;
-  return s / 0x7fffffff;
+  let s = seed >>> 0;
+  s = (s + 0x6d2b79f5) | 0;
+  let t = s;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
 const DEFAULT_EPSILON_GREEDY = 0.2;
@@ -556,7 +566,9 @@ export class ProactiveScheduler {
           }
 
           const refined = await refineInsightWithLLM(
-            "",
+            // The generation prompt gives the refiner the original brief;
+            // falling back to "" loses the context the refine design depends on.
+            bestCandidate.generationPrompt ?? "",
             bestCandidate,
             critique,
             persona,
@@ -1185,6 +1197,9 @@ export class ProactiveScheduler {
       return undefined;
     }
 
+    // Carry the scheduler's actual prediction onto the delivered candidate so
+    // feedback calibration regresses against real pAct values, not a constant.
+    insight.predictedPAcT = selected.pAct;
     const deliveryResult = await this.callbacks.onInsightReady(agentId, userId, insight);
     if (deliveryResult === false) {
       persona.feedbackProfile.pendingInsightDelivery = {
@@ -1343,8 +1358,10 @@ export class ProactiveScheduler {
   }
 }
 
-const DEFAULT_C_FN = 5.0;
-const DEFAULT_C_FA = 1.0;
+// PRISM cost defaults are shared with computeGradedGate (gate.ts) so the
+// identify() threshold and the graded-gate threshold cannot diverge.
+const DEFAULT_C_FN = DEFAULT_PRISM_C_FN;
+const DEFAULT_C_FA = DEFAULT_PRISM_C_FA;
 
 const defaultInsightGenerator: InsightGeneratorFn = (persona, input, options) => {
   return Promise.resolve(generateInsightCandidates(persona, input, options));

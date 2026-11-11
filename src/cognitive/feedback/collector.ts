@@ -371,7 +371,9 @@ export function processInsightFeedback(
     ? Math.max(persona.feedbackProfile.lastProactiveAt, insight.deliveredAt)
     : persona.feedbackProfile.lastProactiveAt;
 
-  const calRecord = recordCalibration(insight.id, 0.5, feedback);
+  // Regress against the scheduler's actual predicted pAct (persisted on the
+  // delivered insight record); the 0.5 fallback only covers legacy records.
+  const calRecord = recordCalibration(insight.id, insight.predictedPAcT ?? 0.5, feedback);
 
   return {
     ...persona,
@@ -387,31 +389,6 @@ export function processInsightFeedback(
       lastProactiveAt,
     },
     calibrationHistory: [...persona.calibrationHistory, calRecord].slice(-50),
-  };
-}
-
-/**
- * Record that an insight was delivered without explicit user feedback.
- * Updates lastProactiveAt only — does NOT change bandits or trust.
- */
-export function processInsightDeliverySignal(
-  persona: PersonaTree,
-  insight: InsightRecord,
-): PersonaTree {
-  log.info("insight delivery signal recorded", {
-    insightId: insight.id,
-    domains: insight.targetDomains,
-  });
-  const lastProactiveAt = insight.deliveredAt
-    ? Math.max(persona.feedbackProfile.lastProactiveAt, insight.deliveredAt)
-    : persona.feedbackProfile.lastProactiveAt;
-
-  return {
-    ...persona,
-    feedbackProfile: {
-      ...persona.feedbackProfile,
-      lastProactiveAt,
-    },
   };
 }
 

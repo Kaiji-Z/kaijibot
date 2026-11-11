@@ -1,5 +1,5 @@
 import type { TopicBandit, FeedbackProfile } from "../types.js";
-import type { FeedbackEvent, TopicFeedbackSummary } from "./types.js";
+import type { FeedbackEvent } from "./types.js";
 
 /**
  * Thompson Sampling preference learner.
@@ -39,7 +39,9 @@ export function decayBandit(
   return {
     alpha: Math.max(OPTIMISTIC_ALPHA, decayedAlpha),
     beta: Math.max(OPTIMISTIC_BETA, decayedBeta),
-    lastUpdated: bandit.lastUpdated ?? nowMs - halfLifeMs,
+    // Advance the anchor so the next per-turn decay pass only covers the
+    // newly elapsed interval — reusing the old anchor compounds the decay.
+    lastUpdated: nowMs,
   };
 }
 
@@ -145,21 +147,6 @@ export function pickBestTopic(
   }
 
   return bestTopic;
-}
-
-/**
- * Get a summary of all topic feedback.
- */
-export function getTopicSummaries(profile: FeedbackProfile): TopicFeedbackSummary[] {
-  return Object.entries(profile.topicBandits).map(([topic, bandit]) => ({
-    topic,
-    positiveCount: Math.max(0, bandit.alpha - OPTIMISTIC_ALPHA),
-    negativeCount: Math.max(0, bandit.beta - OPTIMISTIC_BETA),
-    neutralCount: 0,
-    engagedCount: 0,
-    lastFeedbackAt: 0,
-    samplingScore: bandit.alpha / (bandit.alpha + bandit.beta),
-  }));
 }
 
 /**
