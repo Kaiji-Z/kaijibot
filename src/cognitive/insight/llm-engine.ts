@@ -21,8 +21,9 @@ import {
   type LocalizableString,
 } from "../cognitive-locale.js";
 import { pickPromptVariant } from "../feedback/preference-learner.js";
-import type { DomainNode, InsightCategory, PersonaTree } from "../types.js";
+import type { PersonaTree } from "../types.js";
 import { isDuplicateBySemanticOverlap, extractContentThemes } from "./content-similarity.js";
+import { getFilteredInsights } from "./filtered-insights.js";
 import {
   CONTRASTIVE_INSTRUCTION,
   diversityInstructionFor,
@@ -42,21 +43,6 @@ import type {
 } from "./types.js";
 
 const log = createSubsystemLogger("cognitive/insight-llm");
-
-const EXCLUDED_INSIGHT_CATEGORIES: ReadonlySet<InsightCategory> = new Set(["ephemeral"]);
-
-export function getFilteredInsights(
-  domain: DomainNode,
-  exclude: ReadonlySet<InsightCategory> = EXCLUDED_INSIGHT_CATEGORIES,
-): string[] {
-  if (domain.insights && domain.insights.length > 0) {
-    return domain.insights
-      .filter((i) => !exclude.has(i.category))
-      .toSorted((a, b) => b.confidence * b.evidenceCount - a.confidence * a.evidenceCount)
-      .map((i) => i.text);
-  }
-  return domain.keyInsights;
-}
 
 const SEARCH_PROVIDER_DOMAINS = new Set([
   "exa.ai",
@@ -2549,7 +2535,7 @@ function buildFreshnessPrompt(
   recentInsightContents: string[],
 ): string {
   const MAX_PER_INSIGHT = 120;
-  const shown = recentInsightContents.slice(0, 5);
+  const shown = recentInsightContents.slice(-5);
 
   const pastBlock = shown
     .map(

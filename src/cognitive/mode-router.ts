@@ -34,7 +34,6 @@ export function classifyMode(
   const taskImperativePatterns = [
     /^(?:帮我|请|给我|让|把|去|发|删|建|创|运行|执行|查看|列出|搜索|找|下载|上传|安装|更新|启动|停止|重启|备份|恢复|清理)/,
     /^(?:help me |please |send |create |delete |run |execute |list |show |find |download |upload |install |update |start |stop |restart |back up|clean)/i,
-    /^(?:帮我|请|给我)/,
   ];
 
   const isImperative = taskImperativePatterns.some((p) => p.test(trimmed));

@@ -4,8 +4,8 @@ import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { PersonaTree } from "../types.js";
+import { getFilteredInsights } from "./filtered-insights.js";
 import type { Fragment } from "./fragment-types.js";
-import { getFilteredInsights } from "./llm-engine.js";
 import type { InferenceResult, InsightEngineInput, SearchStrategy } from "./types.js";
 
 const log = createSubsystemLogger("cognitive/interest-inference");

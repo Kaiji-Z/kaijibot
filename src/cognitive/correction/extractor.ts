@@ -29,7 +29,7 @@ const CORRECTION_SIGNAL_PATTERNS: RegExp[] = [
   // Chinese: action-oriented correction
   /重新来/,
   /重新[做试写]/,
-  /改[成一]*/,
+  /改[成一]/,
   /重做/,
   /不要[用这那样]/,
   /别[用这那样]/,
