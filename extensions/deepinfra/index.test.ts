@@ -51,20 +51,20 @@ describe.skipIf(process.env.CI)("deepinfra augmentModelCatalog", () => {
   });
 });
 
-// Skip on CI: requires upstream-only plugins/channels not bundled in KaijiBot
-describe.skipIf(process.env.CI)("deepinfra capability registration", () => {
-  it("registers all DeepInfra-backed OpenClaw provider surfaces", () => {
+// NOTE: the upstream "registers all DeepInfra-backed provider surfaces" test
+// was removed — the image/speech/video/embedding capability factories depend
+// on plugin-sdk helpers that are "not implemented in this build" stubs in
+// KaijiBot, so those surfaces cannot be registered here. Only
+// media-understanding is wired (see register() in index.ts). When the SDK
+// helpers land, re-add the full-surface test alongside the register() calls.
+describe.skipIf(process.env.CI)("deepinfra capability registration (current surface)", () => {
+  it("registers the media-understanding provider surface", () => {
     const captured = createCapturedPluginRegistration();
     deepinfraPlugin.register(captured.api);
 
-    expect(captured.providers.map((provider) => provider.id)).toEqual(["deepinfra"]);
-    expect(captured.imageGenerationProviders.map((provider) => provider.id)).toEqual(["deepinfra"]);
     expect(captured.mediaUnderstandingProviders.map((provider) => provider.id)).toEqual([
       "deepinfra",
     ]);
-    expect(captured.memoryEmbeddingProviders.map((provider) => provider.id)).toEqual(["deepinfra"]);
-    expect(captured.speechProviders.map((provider) => provider.id)).toEqual(["deepinfra"]);
-    expect(captured.videoGenerationProviders.map((provider) => provider.id)).toEqual(["deepinfra"]);
   });
 });
 

@@ -70,6 +70,10 @@ export default defineSingleProviderPluginEntry({
     isCacheTtlEligible: (ctx) => ctx.modelId.toLowerCase().startsWith("anthropic/"),
   },
   register(api) {
+    // NOTE: the image/speech/video/embedding capability factories in this
+    // package call plugin-sdk helpers that are "not implemented in this
+    // build" stubs in KaijiBot — registering them would throw at boot. Only
+    // the media-understanding provider is wired until those SDK helpers land.
     api.registerMediaUnderstandingProvider(deepinfraMediaUnderstandingProvider);
   },
 });
