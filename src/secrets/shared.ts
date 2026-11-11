@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 export { isRecord } from "../utils.js";
@@ -39,10 +40,6 @@ export function ensureDirForFile(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
 }
 
-export function writeJsonFileSecure(pathname: string, value: unknown): void {
-  writeTextFileAtomic(pathname, `${JSON.stringify(value, null, 2)}\n`);
-}
-
 export function readTextFileIfExists(pathname: string): string | null {
   if (!fs.existsSync(pathname)) {
     return null;
@@ -52,8 +49,24 @@ export function readTextFileIfExists(pathname: string): string | null {
 
 export function writeTextFileAtomic(pathname: string, value: string, mode = 0o600): void {
   ensureDirForFile(pathname);
-  const tempPath = `${pathname}.tmp-${process.pid}-${Date.now()}`;
+  const tempPath = `${pathname}.tmp-${randomUUID()}`;
   fs.writeFileSync(tempPath, value, "utf8");
   fs.chmodSync(tempPath, mode);
-  fs.renameSync(tempPath, pathname);
+  try {
+    fs.renameSync(tempPath, pathname);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (process.platform !== "win32" || (code !== "EPERM" && code !== "EEXIST")) {
+      throw err;
+    }
+    // Windows does not reliably support rename-based overwrite for existing
+    // files (same fallback as src/infra/json-files.ts, in sync form).
+    fs.copyFileSync(tempPath, pathname);
+    try {
+      fs.chmodSync(pathname, mode);
+    } catch {
+      // best-effort; ignore on platforms without chmod
+    }
+    fs.rmSync(tempPath, { force: true });
+  }
 }
