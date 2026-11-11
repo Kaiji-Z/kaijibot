@@ -178,6 +178,13 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
           typingTicket: cachedConfig.typingTicket,
           log: opts.runtime?.log ?? (() => {}),
           errLog,
+        }).catch((err) => {
+          // One failing message must not abort the rest of the batch — the
+          // sync cursor is already persisted, so the remaining messages would
+          // otherwise be permanently lost.
+          errLog(
+            `failed to process inbound message from=${full.from_user_id ?? ""}: ${String(err)}`,
+          );
         });
       }
     } catch (err) {

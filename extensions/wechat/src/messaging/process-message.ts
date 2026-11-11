@@ -86,26 +86,6 @@ export async function processOneMessage(
   const debugTs: Record<string, number> = { received: receivedAt };
 
   const textBody = extractTextBody(full.item_list);
-  if (textBody.startsWith("/")) {
-    const slashResult = await handleSlashCommand(
-      textBody,
-      {
-        to: full.from_user_id ?? "",
-        contextToken: full.context_token,
-        baseUrl: deps.baseUrl,
-        token: deps.token,
-        accountId: deps.accountId,
-        log: deps.log,
-        errLog: deps.errLog,
-      },
-      receivedAt,
-      full.create_time_ms,
-    );
-    if (slashResult.handled) {
-      logger.info(`[weixin] Slash command handled, skipping AI pipeline`);
-      return;
-    }
-  }
 
   if (debug) {
     const itemTypes = full.item_list?.map((i) => i.type).join(",") ?? "none";
@@ -210,6 +190,29 @@ export async function processOneMessage(
   if (directDmOutcome === "disabled" || directDmOutcome === "unauthorized") {
     logger.info(`authorization: dropping message from=${senderId} outcome=${directDmOutcome}`);
     return;
+  }
+
+  // Slash commands run AFTER the DM authorization gate so unauthorized senders
+  // cannot mutate account-wide state (e.g. /toggle-debug) or trigger replies.
+  if (textBody.startsWith("/")) {
+    const slashResult = await handleSlashCommand(
+      textBody,
+      {
+        to: full.from_user_id ?? "",
+        contextToken: full.context_token,
+        baseUrl: deps.baseUrl,
+        token: deps.token,
+        accountId: deps.accountId,
+        log: deps.log,
+        errLog: deps.errLog,
+      },
+      receivedAt,
+      full.create_time_ms,
+    );
+    if (slashResult.handled) {
+      logger.info(`[weixin] Slash command handled, skipping AI pipeline`);
+      return;
+    }
   }
 
   ctx.CommandAuthorized = commandAuthorized;
