@@ -18,6 +18,7 @@ import {
 import { deriveSessionName, pad, sliceLogLines, truncateMiddle } from "./bash-tools.shared.js";
 import { recordCommandPoll, resetCommandPollCount } from "./command-poll-backoff.js";
 import { encodeKeySequence, encodePaste, hasCursorModeSensitiveKeys } from "./pty-keys.js";
+import { stringEnum } from "./schema/typebox.js";
 import { PROCESS_TOOL_DISPLAY_SUMMARY } from "./tool-description-presets.js";
 import type { AgentToolWithMeta } from "./tools/common.js";
 
@@ -53,7 +54,10 @@ function defaultTailNote(totalLines: number, usingDefaultTail: boolean) {
 }
 
 const processSchema = Type.Object({
-  action: Type.String({ description: "Process action" }),
+  action: stringEnum(
+    ["list", "poll", "log", "write", "send-keys", "submit", "paste", "kill", "clear", "remove"],
+    { description: "Process action" },
+  ),
   sessionId: Type.Optional(Type.String({ description: "Session id for actions other than list" })),
   data: Type.Optional(Type.String({ description: "Data to write for write" })),
   keys: Type.Optional(

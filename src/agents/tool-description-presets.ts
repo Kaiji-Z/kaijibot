@@ -53,7 +53,7 @@ export function describeSessionStatusTool(): string {
 export function describeSessionTranscriptTool(): string {
   return [
     "Read a session transcript file (JSONL) and return preprocessed conversation text containing only user and assistant messages.",
-    "Automatically strips system metadata, tool call details, thinking blocks, slash commands, and feishu routing prefixes.",
+    "Automatically strips system metadata, tool call details, thinking blocks, slash commands, and channel routing prefixes.",
     "Pass `transcriptPath` from `sessions_list` output. Optional `maxMessages` controls how many recent messages to return (default 500).",
   ].join(" ");
 }

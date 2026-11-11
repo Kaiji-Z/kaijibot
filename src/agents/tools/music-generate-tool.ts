@@ -19,6 +19,7 @@ import type {
 import { normalizeOptionalLowercaseString } from "../../shared/string-coerce.js";
 import { resolveUserPath } from "../../utils.js";
 import type { DeliveryContext } from "../../utils/delivery-context.js";
+import { optionalStringEnum } from "../schema/typebox.js";
 import { ToolInputError, readNumberParam, readStringParam } from "./common.js";
 import { decodeDataUrl } from "./image-tool.helpers.js";
 import {
@@ -59,12 +60,10 @@ const MAX_INPUT_IMAGES = 10;
 const SUPPORTED_OUTPUT_FORMATS = new Set<MusicGenerationOutputFormat>(["mp3", "wav"]);
 
 const MusicGenerateToolSchema = Type.Object({
-  action: Type.Optional(
-    Type.String({
-      description:
-        'Optional action: "generate" (default), "status" to inspect the active session task, or "list" to inspect available providers/models.',
-    }),
-  ),
+  action: optionalStringEnum(["generate", "status", "list"], {
+    description:
+      'Optional action: "generate" (default), "status" to inspect the active session task, or "list" to inspect available providers/models.',
+  }),
   prompt: Type.Optional(Type.String({ description: "Music generation prompt." })),
   lyrics: Type.Optional(
     Type.String({
@@ -97,11 +96,9 @@ const MusicGenerateToolSchema = Type.Object({
       minimum: 1,
     }),
   ),
-  format: Type.Optional(
-    Type.String({
-      description: 'Optional output format hint: "mp3" or "wav" when the provider supports it.',
-    }),
-  ),
+  format: optionalStringEnum(["mp3", "wav"], {
+    description: 'Optional output format hint: "mp3" or "wav" when the provider supports it.',
+  }),
   filename: Type.Optional(
     Type.String({
       description:

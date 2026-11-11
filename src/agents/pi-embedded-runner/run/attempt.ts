@@ -27,7 +27,7 @@ import { isSubagentSessionKey } from "../../../routing/session-key.js";
 import { normalizeOptionalLowercaseString } from "../../../shared/string-coerce.js";
 import { normalizeOptionalString } from "../../../shared/string-coerce.js";
 import { buildTtsSystemPromptHint } from "../../../tts/tts.js";
-import { resolveUserPath } from "../../../utils.js";
+import { resolveConfigDir, resolveUserPath } from "../../../utils.js";
 import { normalizeMessageChannel } from "../../../utils/message-channel.js";
 import { isReasoningTagProvider } from "../../../utils/provider-utils.js";
 import { resolveKaijiBotAgentDir } from "../../agent-paths.js";
@@ -2230,7 +2230,6 @@ export async function runEmbeddedAttempt(
                 const { PersonaStore } = await import("../../../cognitive/persona/store.js");
                 const { mergeExtraction, prunePersona } =
                   await import("../../../cognitive/persona/curator.js");
-                const { resolveConfigDir } = await import("../../../utils.js");
                 const {
                   extractImplicitSignals,
                   processImplicitFeedback,
