@@ -66,7 +66,11 @@ class MemoryDB {
       return this.initPromise;
     }
 
-    this.initPromise = this.doInitialize();
+    this.initPromise = this.doInitialize().catch((err) => {
+      // A transient LanceDB failure must not poison the plugin until restart.
+      this.initPromise = null;
+      throw err;
+    });
     return this.initPromise;
   }
 
