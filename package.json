@@ -1301,7 +1301,9 @@
       "source-map-js": "1.2.2",
       "tinypool": "2.1.2",
       "glob": "14.0.2",
-      "esbuild": "0.28.2"
+      "esbuild": "0.28.2",
+      "@vitest/mocker": "4.1.12",
+      "@vitest/browser": "4.1.12"
     },
     "onlyBuiltDependencies": [
       "@lydell/node-pty",

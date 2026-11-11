@@ -16,7 +16,7 @@
     "marked": "^17.0.5"
   },
   "devDependencies": {
-    "@vitest/browser-playwright": "4.1.9",
+    "@vitest/browser-playwright": "4.1.12",
     "jsdom": "^29.0.1",
     "playwright": "^1.59.1",
     "vite": "8.3.8",
