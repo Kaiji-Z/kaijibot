@@ -83,12 +83,12 @@ repos:
         exclude: "^(vendor/|scripts/e2e/)"
 
   # Python checks for skills scripts
+  # (no ruff --config flag: pyproject.toml does not exist in this repo)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.1
     hooks:
       - id: ruff
         files: "^skills/.*\\.py$"
-        args: [--config, pyproject.toml]
 
   - repo: local
     hooks:

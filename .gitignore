@@ -39,6 +39,7 @@ vendor/a2ui/renderers/lit/dist/
 .local/
 docs/.local/
 docs/internal/
+.artifacts/
 docs/.generated/plugin-sdk-api-baseline.json
 docs/.generated/plugin-sdk-api-baseline.jsonl
 docs/.generated/config-baseline.json
