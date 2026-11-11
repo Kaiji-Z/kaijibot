@@ -3,7 +3,10 @@ import path from "node:path";
 import { resolvePreferredKaijiBotTmpDir } from "../infra/tmp-kaijibot-dir.js";
 import { runExec } from "../process/exec.js";
 
-type Sharp = typeof import("sharp");
+type SharpModule = typeof import("sharp");
+// sharp 0.35 exposes the constructor as the ESM default export; older lines
+// resolved `typeof import("sharp")` to the callable itself.
+type Sharp = SharpModule extends { default: infer S } ? S : SharpModule;
 
 export type ImageMetadata = {
   width: number;

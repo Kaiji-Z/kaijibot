@@ -67,11 +67,13 @@ function resolveDomain(domain: FeishuDomain | undefined): Lark.Domain | string {
 function createTimeoutHttpInstance(defaultTimeoutMs: number): Lark.HttpInstance {
   const base: FeishuHttpInstanceLike = feishuClientSdk.defaultHttpInstance;
 
-  function injectTimeout<D>(opts?: Lark.HttpRequestOptions<D>): Lark.HttpRequestOptions<D> {
-    return { timeout: defaultTimeoutMs, ...opts } as Lark.HttpRequestOptions<D>;
+  function injectTimeout<T extends { timeout?: number }>(opts?: T): T {
+    return { timeout: defaultTimeoutMs, ...opts } as T;
   }
 
-  return {
+  // Pure passthrough delegating to the SDK default instance with a default
+  // timeout injected.
+  const passthrough: FeishuHttpInstanceLike = {
     request: (opts) => base.request(injectTimeout(opts)),
     get: (url, opts) => base.get(url, injectTimeout(opts)),
     post: (url, data, opts) => base.post(url, data, injectTimeout(opts)),
@@ -81,6 +83,11 @@ function createTimeoutHttpInstance(defaultTimeoutMs: number): Lark.HttpInstance 
     head: (url, opts) => base.head(url, injectTimeout(opts)),
     options: (url, opts) => base.options(url, injectTimeout(opts)),
   };
+  // axios 1.20 re-typed the underlying methods (AxiosResponseResult generics),
+  // which no longer structurally satisfies the SDK's own Lark.HttpInstance
+  // signature under the extension build's type check; the delegation is a pure
+  // passthrough, so the structural cast is safe.
+  return passthrough as unknown as Lark.HttpInstance;
 }
 
 /**
