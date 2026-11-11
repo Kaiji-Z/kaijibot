@@ -16,6 +16,7 @@ export const CognitiveProactiveSchema = z
     costFalseNegative: z.number().min(0.1).max(100).optional(),
     costFalseAlarm: z.number().min(0.1).max(100).optional(),
     maxDailyInsights: z.number().min(1).max(20).optional(),
+    epsilonGreedy: z.number().min(0).max(1).optional(),
   })
   .strict()
   .optional();
@@ -43,6 +44,8 @@ export const CognitiveInsightSchema = z
     verificationLevel: z.enum(["basic", "strict", "paranoid"]).optional(),
     inferenceModel: z.string().optional(),
     outputLanguage: z.string().optional(),
+    patternVerification: z.boolean().optional(),
+    llmFreshnessCheck: z.boolean().optional(),
   })
   .strict()
   .optional();

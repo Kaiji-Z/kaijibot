@@ -22534,6 +22534,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 description:
                   "Hard cap on delivered proactive insights per user per UTC day (default: 2). Combined with stochastic inter-send pacing, this keeps contact at a human-cadence 1-2 messages/day for engaged users instead of a metronomic schedule.",
               },
+              epsilonGreedy: {
+                type: "number",
+                minimum: 0,
+                maximum: 1,
+              },
             },
             required: ["enabled", "minIntervalHours", "activeHours"],
             additionalProperties: false,
@@ -22630,6 +22635,12 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 description:
                   'Language for generated insight messages (e.g. "zh", "en", "ja"). When unset, KaijiBot auto-detects from the user persona.',
               },
+              patternVerification: {
+                type: "boolean",
+              },
+              llmFreshnessCheck: {
+                type: "boolean",
+              },
             },
             additionalProperties: false,
             title: "Insight Engine",
@@ -22682,11 +22693,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             type: "object",
             properties: {
               enabled: {
-                default: false,
+                default: true,
                 type: "boolean",
                 title: "Cognitive Tasks Enabled",
                 description:
-                  "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+                  "Enable the cognitive task system (default: true). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
               },
               maxSteps: {
                 type: "number",
@@ -22696,8 +22707,15 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 description:
                   "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
               },
+              progressMessages: {
+                default: true,
+                type: "boolean",
+                title: "Cognitive Task Progress Messages",
+                description:
+                  "Send a short chat message after each non-terminal task step (default: true). Chat-first progress visibility for users who never open the Control UI. Terminal outcomes (done/failed/halted) always deliver regardless.",
+              },
             },
-            required: ["enabled"],
+            required: ["enabled", "progressMessages"],
             additionalProperties: false,
             title: "Cognitive Tasks",
             description:
@@ -27524,7 +27542,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "cognitive.tasks.enabled": {
       label: "Cognitive Tasks Enabled",
-      help: "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+      help: "Enable the cognitive task system (default: true). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
       tags: ["advanced"],
     },
     "cognitive.tasks.maxSteps": {
@@ -28920,6 +28938,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced", "url-secret"],
     },
   },
-  version: "2026.10.29",
+  version: "2026.11.02",
   generatedAt: "2026-03-22T21:17:33.302Z",
 };

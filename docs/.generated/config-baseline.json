@@ -9710,6 +9710,16 @@
       "hasChildren": false
     },
     {
+      "path": "cognitive.insight.llmFreshnessCheck",
+      "kind": "core",
+      "type": "boolean",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
       "path": "cognitive.insight.outputLanguage",
       "kind": "core",
       "type": "string",
@@ -9721,6 +9731,16 @@
       ],
       "label": "Insight Output Language",
       "help": "Language for generated insight messages (e.g. \"zh\", \"en\", \"ja\"). When unset, KaijiBot auto-detects from the user persona.",
+      "hasChildren": false
+    },
+    {
+      "path": "cognitive.insight.patternVerification",
+      "kind": "core",
+      "type": "boolean",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
       "hasChildren": false
     },
     {
@@ -10004,6 +10024,16 @@
       "hasChildren": false
     },
     {
+      "path": "cognitive.proactive.epsilonGreedy",
+      "kind": "core",
+      "type": "number",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
       "path": "cognitive.proactive.maxDailyInsights",
       "kind": "core",
       "type": "number",
@@ -10051,14 +10081,14 @@
       "kind": "core",
       "type": "boolean",
       "required": true,
-      "defaultValue": false,
+      "defaultValue": true,
       "deprecated": false,
       "sensitive": false,
       "tags": [
         "advanced"
       ],
       "label": "Cognitive Tasks Enabled",
-      "help": "Enable the cognitive task system (default: false). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
+      "help": "Enable the cognitive task system (default: true). When false, task creation is rejected. Only effective when cognitive.enabled is true.",
       "hasChildren": false
     },
     {
@@ -10073,6 +10103,21 @@
       ],
       "label": "Cognitive Task Max Steps",
       "help": "Default step ceiling per task (default: 12). A task that reaches this ceiling is halted with a partial-result notification instead of running forever.",
+      "hasChildren": false
+    },
+    {
+      "path": "cognitive.tasks.progressMessages",
+      "kind": "core",
+      "type": "boolean",
+      "required": true,
+      "defaultValue": true,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [
+        "advanced"
+      ],
+      "label": "Cognitive Task Progress Messages",
+      "help": "Send a short chat message after each non-terminal task step (default: true). Chat-first progress visibility for users who never open the Control UI. Terminal outcomes (done/failed/halted) always deliver regardless.",
       "hasChildren": false
     },
     {
