@@ -257,13 +257,20 @@ describe("Phase 1c: consolidation resolves operator userId", () => {
 // Phase 1d: dmScope adaptive (no LLM)
 // ===========================================================================
 describe("Phase 1d: resolveEffectiveDmScope adaptive promotion", () => {
-  it("promotes main→per-peer when feishu channel configured", async () => {
+  it("promotes unset dmScope→per-peer when feishu channel configured (explicit main is respected)", async () => {
     const { resolveEffectiveDmScope } = await import("../routing/session-key.js");
     const result = resolveEffectiveDmScope({
-      session: { dmScope: "main" },
+      session: {},
       channels: { feishu: { appId: "cli_x", appSecret: "secret" } },
     });
     expect(result).toBe("per-peer");
+    // Explicit "main" always wins — no adaptive promotion for configured values.
+    expect(
+      resolveEffectiveDmScope({
+        session: { dmScope: "main" },
+        channels: { feishu: { appId: "cli_x", appSecret: "secret" } },
+      }),
+    ).toBe("main");
   });
 
   it("keeps main when no channels configured", async () => {

@@ -143,7 +143,7 @@ export function buildCognitiveModePrompt(params: {
   now?: number;
   /** Continuity handshake config. When enabled and the gap since last interaction exceeds minGapHours, a handshake section is injected. */
   handshakeConfig?: { enabled?: boolean; minGapHours?: number };
-}): { prompt: string; classification: ModeClassification } {
+}): { prompt: string; turnContext: string; classification: ModeClassification } {
   const {
     message,
     isHeartbeat,
@@ -166,7 +166,7 @@ export function buildCognitiveModePrompt(params: {
   });
 
   if (cognitiveEnabled === false) {
-    return { prompt: "", classification };
+    return { prompt: "", turnContext: "", classification };
   }
 
   const resolvedLocale = locale ?? detectCognitiveLocale(persona) ?? DEFAULT_COGNITIVE_LOCALE;
@@ -202,14 +202,19 @@ export function buildCognitiveModePrompt(params: {
     parts.push(buildSkillEvolutionSection(resolvedLocale));
   }
 
+  // Per-turn sections: the correction selection depends on the current message
+  // and the mode section IS the current message's classification. Keeping them
+  // out of the (cached) system prompt and returning them as turnContext lets
+  // the caller inject them into the per-turn user-message prefix instead, so
+  // the conversation-history cache segment stays byte-stable across turns.
+  const turnParts: string[] = [];
   if (corrections && corrections.length > 0) {
     const selected = selectRelevantCorrections(corrections, message);
     if (selected.length > 0) {
-      parts.push(formatCorrectionsPrompt(selected, resolvedLocale));
+      turnParts.push(formatCorrectionsPrompt(selected, resolvedLocale));
     }
   }
+  turnParts.push(buildModePromptSection(classification.mode));
 
-  parts.push(buildModePromptSection(classification.mode));
-
-  return { prompt: parts.join("\n\n"), classification };
+  return { prompt: parts.join("\n\n"), turnContext: turnParts.join("\n\n"), classification };
 }

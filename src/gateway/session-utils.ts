@@ -89,6 +89,7 @@ export {
   readSessionTitleFieldsFromTranscript,
   readSessionPreviewItemsFromTranscript,
   readSessionMessages,
+  countSessionMessages,
   resolveSessionTranscriptCandidates,
 } from "./session-utils.fs.js";
 export type {

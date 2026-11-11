@@ -1668,6 +1668,10 @@ export const chatHandlers: GatewayRequestHandlers = {
       }
     }
 
+    // Whether the RPC already got its "started" ack — set right after the
+    // acked respond(true) below so a later synchronous throw cannot produce a
+    // second respond(false) for the same request.
+    let acked = false;
     try {
       const abortController = new AbortController();
       context.chatAbortControllers.set(clientRunId, {
@@ -1684,6 +1688,9 @@ export const chatHandlers: GatewayRequestHandlers = {
         status: "started" as const,
       };
       respond(true, ackPayload, undefined, { runId: clientRunId });
+      // Past the ack the RPC already succeeded — a later synchronous throw must
+      // surface via broadcast/dedupe only, never a second respond(false).
+      acked = true;
 
       // Persist both inline images and already-offloaded refs to the media
       // store so that transcript media fields remain complete for all attachment
@@ -2015,6 +2022,10 @@ export const chatHandlers: GatewayRequestHandlers = {
           context.chatAbortControllers.delete(clientRunId);
         });
     } catch (err) {
+      // The dispatch promise's .finally only cleans up when the promise chain
+      // was created; a synchronous throw before that leaves the controller to
+      // be reaped by the maintenance sweep's expiry abort — clean it now.
+      context.chatAbortControllers.delete(clientRunId);
       const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
       const payload = {
         runId: clientRunId,
@@ -2031,10 +2042,21 @@ export const chatHandlers: GatewayRequestHandlers = {
           error,
         },
       });
-      respond(false, payload, error, {
-        runId: clientRunId,
-        error: formatForLog(err),
-      });
+      if (acked) {
+        // Client already received the "started" ack — report the failure the
+        // same way post-dispatch failures do instead of responding twice.
+        broadcastChatError({
+          context,
+          runId: clientRunId,
+          sessionKey,
+          errorMessage: String(err),
+        });
+      } else {
+        respond(false, payload, error, {
+          runId: clientRunId,
+          error: formatForLog(err),
+        });
+      }
     }
   },
   "chat.inject": async ({ params, respond, context }) => {

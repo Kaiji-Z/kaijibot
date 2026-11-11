@@ -7,6 +7,7 @@ import {
   normalizeOptionalLowercaseString,
   normalizeOptionalString,
 } from "../../shared/string-coerce.js";
+import { MissingAgentModelConfigError } from "../defaults.js";
 import { normalizeProviderId } from "../provider-id.js";
 import { ToolInputError, readStringArrayParam, readStringParam } from "./common.js";
 import type { ImageModelConfig } from "./image-tool.helpers.js";
@@ -185,9 +186,24 @@ export function resolveCapabilityModelCandidatesForTool<T extends CapabilityProv
     providerDefaults.set(providerId, `${providerId}/${modelId}`);
   }
 
-  const primaryProvider = resolveDefaultModelRef(params.cfg).provider;
+  const primaryProvider = (() => {
+    try {
+      return resolveDefaultModelRef(params.cfg).provider;
+    } catch (err) {
+      if (err instanceof MissingAgentModelConfigError) {
+        // Capability tools degrade to "not available" when no agent model is
+        // configured at all — the main agent loop fails fast on this, but a
+        // media tool must simply not register (see createMusicGenerateTool).
+        return undefined;
+      }
+      throw err;
+    }
+  })();
+  if (primaryProvider === undefined && providerDefaults.size === 0) {
+    return [];
+  }
   const orderedProviders = [
-    primaryProvider,
+    ...(primaryProvider !== undefined ? [primaryProvider] : []),
     ...[...providerDefaults.keys()]
       .filter((providerId) => providerId !== primaryProvider)
       .toSorted(),

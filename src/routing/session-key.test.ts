@@ -169,10 +169,19 @@ describe("resolveEffectiveDmScope", () => {
   it("promotes to per-peer when feishu channel is configured (S9)", async () => {
     const { resolveEffectiveDmScope } = await import("./session-key.js");
     const cfg = {
-      session: { dmScope: "main" },
+      session: {},
       channels: { feishu: { appId: "cli_xxx", appSecret: "secret" } },
     } as never;
     expect(resolveEffectiveDmScope(cfg)).toBe("per-peer");
+  });
+
+  it("respects an explicit main even when channels are configured", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    const cfg = {
+      session: { dmScope: "main" },
+      channels: { feishu: { appId: "cli_xxx", appSecret: "secret" } },
+    } as never;
+    expect(resolveEffectiveDmScope(cfg)).toBe("main");
   });
 
   it("returns main when no channels configured (S10)", async () => {

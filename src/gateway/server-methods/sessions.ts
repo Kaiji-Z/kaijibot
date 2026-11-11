@@ -80,6 +80,7 @@ import {
   type SessionsPreviewEntry,
   type SessionsPreviewResult,
   readSessionMessages,
+  countSessionMessages,
 } from "../session-utils.js";
 import { applySessionsPatchToStore } from "../sessions-patch.js";
 import { resolveSessionKeyFromResolveParams } from "../sessions-resolve.js";
@@ -479,7 +480,7 @@ async function handleSessionSend(params: {
     interruptedActiveRun = interruptResult.interrupted;
   }
 
-  const messageSeq = readSessionMessages(entry.sessionId, storePath, entry.sessionFile).length + 1;
+  const messageSeq = countSessionMessages(entry.sessionId, storePath, entry.sessionFile) + 1;
   let sendAcked = false;
   let sendPayload: unknown;
   let sendCached = false;
@@ -891,8 +892,7 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     let runError: unknown;
     let runMeta: Record<string, unknown> | undefined;
     const messageSeq = initialMessage
-      ? readSessionMessages(createdEntry.sessionId, target.storePath, createdEntry.sessionFile)
-          .length + 1
+      ? countSessionMessages(createdEntry.sessionId, target.storePath, createdEntry.sessionFile) + 1
       : undefined;
 
     if (initialMessage) {

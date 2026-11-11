@@ -146,6 +146,95 @@ export function readSessionMessages(
   return messages;
 }
 
+/** A transcript row counts toward the message sequence iff it has a `.message`
+ *  payload or is a compaction divider — mirrors readSessionMessages' filter. */
+function transcriptRowCountsAsMessage(line: string): boolean {
+  try {
+    const parsed = JSON.parse(line) as { message?: unknown; type?: unknown } | null;
+    return Boolean(parsed && (parsed.message !== undefined || parsed.type === "compaction"));
+  } catch {
+    return false;
+  }
+}
+
+type SessionMessageCountCacheEntry = { size: number; count: number };
+const sessionMessageCountCache = new Map<string, SessionMessageCountCacheEntry>();
+const MAX_SESSION_MESSAGE_COUNT_CACHE_ENTRIES = 256;
+
+/**
+ * Number of message rows in a session transcript — same result as
+ * `readSessionMessages(...).length` without reading/parsing the whole file on
+ * every call. Uses an append-only incremental counter: on repeated calls only
+ * the bytes appended since the last count are parsed. Falls back to a full
+ * read when the file shrank (rewrite/compaction) or the cached offset is not
+ * on a line boundary (mid-write snapshot).
+ */
+export function countSessionMessages(
+  sessionId: string,
+  storePath: string | undefined,
+  sessionFile?: string,
+): number {
+  const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile);
+  const filePath = candidates.find((p) => fs.existsSync(p));
+  if (!filePath) {
+    return 0;
+  }
+
+  const stat = fs.statSync(filePath);
+  const cached = sessionMessageCountCache.get(filePath);
+
+  if (cached && stat.size > cached.size) {
+    // Incremental counting is only safe when the cached offset sits exactly
+    // on a line boundary (the byte before it is '\n'). If the cached snapshot
+    // was taken mid-write (no trailing newline yet), bytes of the in-flight
+    // line may have landed after the offset — a line-straddling count would
+    // miss it, so fall back to a full recount.
+    let boundarySafe = cached.size === 0;
+    if (!boundarySafe) {
+      const preceding = Buffer.alloc(1);
+      const fd = fs.openSync(filePath, "r");
+      try {
+        fs.readSync(fd, preceding, 0, 1, cached.size - 1);
+      } finally {
+        fs.closeSync(fd);
+      }
+      boundarySafe = preceding[0] === 0x0a;
+    }
+    if (boundarySafe) {
+      // Slice BYTES (cached.size is a byte offset), then decode — string
+      // slicing would split multi-byte UTF-8 characters mid-sequence.
+      const appended = fs.readFileSync(filePath).subarray(cached.size).toString("utf-8");
+      let added = 0;
+      for (const line of appended.split(/\r?\n/)) {
+        if (line.trim() && transcriptRowCountsAsMessage(line)) {
+          added += 1;
+        }
+      }
+      const entry: SessionMessageCountCacheEntry = { size: stat.size, count: cached.count + added };
+      sessionMessageCountCache.delete(filePath);
+      sessionMessageCountCache.set(filePath, entry);
+      trimSessionMessageCountCache();
+      return entry.count;
+    }
+  }
+
+  const count = readSessionMessages(sessionId, storePath, sessionFile).length;
+  sessionMessageCountCache.delete(filePath);
+  sessionMessageCountCache.set(filePath, { size: stat.size, count });
+  trimSessionMessageCountCache();
+  return count;
+}
+
+function trimSessionMessageCountCache(): void {
+  while (sessionMessageCountCache.size > MAX_SESSION_MESSAGE_COUNT_CACHE_ENTRIES) {
+    const oldestKey = sessionMessageCountCache.keys().next().value;
+    if (typeof oldestKey !== "string" || !oldestKey) {
+      break;
+    }
+    sessionMessageCountCache.delete(oldestKey);
+  }
+}
+
 export {
   archiveFileOnDisk,
   archiveSessionTranscripts,

@@ -13,6 +13,8 @@ export type FollowupQueueState = {
   dropPolicy: QueueDropPolicy;
   droppedCount: number;
   summaryLines: string[];
+  /** Consecutive drain failures — capped so a persistently failing drain drops the queue instead of retrying forever. */
+  consecutiveDrainFailures: number;
   lastRun?: FollowupRun["run"];
 };
 
@@ -61,6 +63,7 @@ export function getFollowupQueue(key: string, settings: QueueSettings): Followup
         : DEFAULT_QUEUE_CAP,
     dropPolicy: settings.dropPolicy ?? DEFAULT_QUEUE_DROP,
     droppedCount: 0,
+    consecutiveDrainFailures: 0,
     summaryLines: [],
   };
   applyQueueRuntimeSettings({
@@ -80,6 +83,7 @@ export function clearFollowupQueue(key: string): number {
   const cleared = queue.items.length + queue.droppedCount;
   queue.items.length = 0;
   queue.droppedCount = 0;
+  queue.consecutiveDrainFailures = 0;
   queue.summaryLines = [];
   queue.lastRun = undefined;
   queue.lastEnqueuedAt = 0;

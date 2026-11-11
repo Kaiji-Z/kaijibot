@@ -271,6 +271,11 @@ export async function runPreparedReply(
   // Cognitive layer: classify mode, load persona, inject context into system prompt.
   let cognitivePersona: import("../../cognitive/types.js").PersonaTree | undefined;
   let corrections: import("../../cognitive/correction/types.js").CorrectionRecord[] | undefined;
+  // Per-turn cognitive context (mode section + message-relevant corrections) is
+  // injected into the user-message prefix, NOT the system prompt — the system
+  // prompt suffix must stay byte-stable across turns or the conversation-history
+  // cache segment is invalidated every turn (AGENTS.md Prompt Cache Stability).
+  let cognitiveTurnContext = "";
   try {
     const { buildCognitiveModePrompt, shouldBuildHandshake } =
       await import("../../cognitive/context-writer.js");
@@ -292,19 +297,23 @@ export async function runPreparedReply(
         }
       }
     } catch {}
-    const { prompt: cognitivePrompt, classification: cognitiveClassification } =
-      buildCognitiveModePrompt({
-        message: rawBodyTrimmed,
-        cognitiveEnabled: cognitiveCfg?.enabled,
-        evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
-        persona: cognitivePersona,
-        corrections,
-        pendingInsightDelivery: cognitivePersona?.feedbackProfile.pendingInsightDelivery ?? null,
-        handshakeConfig: cognitiveCfg?.handshake,
-      });
+    const {
+      prompt: cognitivePrompt,
+      turnContext,
+      classification: cognitiveClassification,
+    } = buildCognitiveModePrompt({
+      message: rawBodyTrimmed,
+      cognitiveEnabled: cognitiveCfg?.enabled,
+      evolutionEnabled: cognitiveCfg?.evolution?.enabled !== false,
+      persona: cognitivePersona,
+      corrections,
+      pendingInsightDelivery: cognitivePersona?.feedbackProfile.pendingInsightDelivery ?? null,
+      handshakeConfig: cognitiveCfg?.handshake,
+    });
     if (cognitivePrompt) {
       extraSystemPromptParts.push(cognitivePrompt);
     }
+    cognitiveTurnContext = turnContext;
 
     // Clear the pending insight only when the handshake section actually
     // carried its cue into this turn's prompt. Clearing unconditionally would
@@ -417,8 +426,10 @@ export async function runPreparedReply(
   }
 
   // Inject lark-cli profile hint so the agent uses --profile for multi-bot setups.
+  // Gated on the actual originating channel: AccountId alone is channel-agnostic
+  // (wechat accounts set it too) and must not earn a feishu-bot prompt.
   const accountId = sessionCtx.AccountId;
-  if (accountId) {
+  if (accountId && (sessionCtx.OriginatingChannel ?? ctx.OriginatingChannel) === "feishu") {
     extraSystemPromptParts.push(
       `## Lark CLI Profile\nYou are operating as feishu bot account "${accountId}". When using any lark-cli command, always add \`--profile ${accountId}\` to ensure the correct bot credentials are used.`,
     );
@@ -439,7 +450,7 @@ export async function runPreparedReply(
   );
   const baseBodyForPrompt = isBareSessionReset
     ? baseBodyFinal
-    : [inboundUserContext, baseBodyFinal].filter(Boolean).join("\n\n");
+    : [inboundUserContext, cognitiveTurnContext, baseBodyFinal].filter(Boolean).join("\n\n");
   const baseBodyTrimmed = baseBodyForPrompt.trim();
   const hasMediaAttachment = Boolean(
     sessionCtx.MediaPath || (sessionCtx.MediaPaths && sessionCtx.MediaPaths.length > 0),

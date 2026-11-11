@@ -1,6 +1,7 @@
 import { resolveCognitiveUserId } from "../cognitive/identity.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
+import { resolveGlobalMap } from "../shared/global-singleton.js";
 import type { DispatchFromConfigResult } from "./reply/dispatch-from-config.js";
 import { dispatchReplyFromConfig } from "./reply/dispatch-from-config.js";
 import { finalizeInboundContext } from "./reply/inbound-context.js";
@@ -154,6 +155,33 @@ async function detectInsightReplyFeedback(params: {
   }
 }
 
+// Negative-result cache for the followup window pre-check: avoids reading the
+// per-user insights file on EVERY inbound message when the user is (the common
+// case) outside the 30-minute followup window. Entries expire after
+// INSIGHT_WINDOW_RECHECK_MS so a newly delivered insight is noticed at most
+// that long after delivery — well inside the 30-minute window it opens.
+const INSIGHT_WINDOW_CACHE_KEY = Symbol.for("kaijibot.insightFollowupWindowCache");
+const INSIGHT_WINDOW_RECHECK_MS = 60_000;
+const INSIGHT_WINDOW_CACHE_MAX = 500;
+const insightWindowCache = resolveGlobalMap<string, { lastDeliveredAt: number; checkedAt: number }>(
+  INSIGHT_WINDOW_CACHE_KEY,
+);
+
+function rememberInsightWindow(
+  agentId: string,
+  userId: string,
+  lastDeliveredAt: number,
+  now: number,
+): void {
+  insightWindowCache.set(`${agentId}:${userId}`, { lastDeliveredAt, checkedAt: now });
+  if (insightWindowCache.size > INSIGHT_WINDOW_CACHE_MAX) {
+    const oldest = insightWindowCache.keys().next().value;
+    if (oldest !== undefined) {
+      insightWindowCache.delete(oldest);
+    }
+  }
+}
+
 async function detectInsightFollowupFeedback(params: {
   ctx: MsgContext | FinalizedMsgContext;
   cfg: KaijiBotConfig;
@@ -195,8 +223,25 @@ async function detectInsightFollowupFeedback(params: {
     // advanced by the time-based no-response penalty (proactive-scheduler),
     // so it no longer reflects the true last delivery time. Using it here
     // made the followup window effectively un-reachable after any penalty.
+    const now = Date.now();
+    const cachedWindow = insightWindowCache.get(`${agentId}:${userId}`);
+    if (
+      cachedWindow &&
+      now - cachedWindow.checkedAt < INSIGHT_WINDOW_RECHECK_MS &&
+      now - cachedWindow.lastDeliveredAt > FOLLOWUP_WINDOW_MS
+    ) {
+      // Verified outside the followup window within the recheck TTL — skip
+      // the per-message insights-file read entirely.
+      return;
+    }
     const insightStore = new insightStoreMod.InsightStore(configDir);
     const recentDelivered = await insightStore.listRecent(agentId, userId, 5);
+    rememberInsightWindow(
+      agentId,
+      userId,
+      recentDelivered.reduce((max, r) => Math.max(max, r.deliveredAt ?? 0), 0),
+      now,
+    );
     const insight = recentDelivered.find(
       (r) => r.deliveredAt !== undefined && Date.now() - r.deliveredAt <= FOLLOWUP_WINDOW_MS,
     );

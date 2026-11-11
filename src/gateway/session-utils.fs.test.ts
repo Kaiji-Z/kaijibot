@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vite
 import { createToolSummaryPreviewTranscriptLines } from "./session-preview.test-helpers.js";
 import {
   archiveSessionTranscripts,
+  countSessionMessages,
   readFirstUserMessageFromTranscript,
   readLastMessagePreviewFromTranscript,
   readLatestSessionUsageFromTranscript,
@@ -47,6 +48,55 @@ function buildBasicSessionTranscript(
     { message: { role: "assistant", content: assistantText } },
   ];
 }
+
+describe("countSessionMessages", () => {
+  let tmpDir = "";
+  let storePath = "";
+  const sessionId = "count-seq-session";
+
+  beforeAll(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kaijibot-count-seq-"));
+    storePath = path.join(tmpDir, "sessions.json");
+  });
+  afterAll(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("matches readSessionMessages length, including multi-byte rows", () => {
+    const lines = [
+      { type: "session", version: 1, id: sessionId },
+      { message: { role: "user", content: "你好，世界 — 多字节内容" } },
+      { type: "compaction", id: "c1", timestamp: "2026-01-01T00:00:00Z" },
+      { notAMessage: true },
+    ];
+    writeTranscript(tmpDir, sessionId, lines);
+    const expected = readSessionMessages(sessionId, storePath).length;
+    expect(expected).toBe(2);
+    expect(countSessionMessages(sessionId, storePath)).toBe(expected);
+  });
+
+  test("incremental path counts appended rows without touching earlier bytes", () => {
+    const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
+    fs.appendFileSync(
+      transcriptPath,
+      `\n${JSON.stringify({ message: { role: "user", content: "追加消息" } })}\n${JSON.stringify({ message: { role: "assistant", content: "reply" } })}\n`,
+      "utf-8",
+    );
+    expect(countSessionMessages(sessionId, storePath)).toBe(4);
+    // Idempotent at the same file state.
+    expect(countSessionMessages(sessionId, storePath)).toBe(4);
+  });
+
+  test("falls back to a full recount when the file shrinks (compaction rewrite)", () => {
+    const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
+    fs.writeFileSync(
+      transcriptPath,
+      `${JSON.stringify({ type: "session", version: 1, id: sessionId })}\n${JSON.stringify({ message: { role: "user", content: "compacted" } })}\n`,
+      "utf-8",
+    );
+    expect(countSessionMessages(sessionId, storePath)).toBe(1);
+  });
+});
 
 describe("readFirstUserMessageFromTranscript", () => {
   let tmpDir: string;

@@ -125,9 +125,12 @@ export type DmScopeConfig = {
 };
 
 export function resolveEffectiveDmScope(cfg: DmScopeConfig | undefined): DmScopeValue {
-  const configured = cfg?.session?.dmScope ?? "main";
-  if (configured !== "main") {
-    return configured as DmScopeValue;
+  // An explicitly configured value — including an explicit "main" — always
+  // wins ("Explicit settings are always respected"). Only an unset dmScope
+  // participates in the adaptive promotion below.
+  const raw = cfg?.session?.dmScope;
+  if (raw != null && String(raw).trim() !== "") {
+    return String(raw).trim() as DmScopeValue;
   }
   const channels = cfg?.channels;
   if (!channels) {

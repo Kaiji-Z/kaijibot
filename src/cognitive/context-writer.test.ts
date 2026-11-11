@@ -71,23 +71,24 @@ describe("buildCognitiveModePrompt", () => {
         lastReinforced: Date.now(),
       },
     ];
-    const { prompt } = buildCognitiveModePrompt({
+    const { turnContext } = buildCognitiveModePrompt({
       message: "test",
       corrections,
     });
-    expect(prompt).toContain("Known Corrections");
-    expect(prompt).toContain("创建飞书文档");
+    expect(turnContext).toContain("Known Corrections");
+    expect(turnContext).toContain("创建飞书文档");
   });
 
   it("omits correction section when corrections array is empty", () => {
-    const { prompt } = buildCognitiveModePrompt({
+    const { prompt, turnContext } = buildCognitiveModePrompt({
       message: "test",
       corrections: [],
     });
     expect(prompt).not.toContain("Known Corrections");
+    expect(turnContext).not.toContain("Known Corrections");
   });
 
-  it("places stable sections (evolution, corrections) before dynamic mode section for cache stability", () => {
+  it("splits per-turn sections (corrections, mode) out of the cacheable system prompt", () => {
     const corrections: CorrectionRecord[] = [
       {
         id: "test",
@@ -101,21 +102,22 @@ describe("buildCognitiveModePrompt", () => {
         lastReinforced: Date.now(),
       },
     ];
-    const { prompt } = buildCognitiveModePrompt({
+    const { prompt, turnContext } = buildCognitiveModePrompt({
       message: "帮我整理文档",
       cognitiveEnabled: true,
       evolutionEnabled: true,
       corrections,
     });
 
-    const evolutionIdx = prompt.indexOf("## Skill Evolution");
-    const correctionsIdx = prompt.indexOf("## Known Corrections");
-    const modeIdx = prompt.indexOf("## Current Mode:");
+    // Stable sections stay in the system prompt; per-turn sections do not.
+    expect(prompt).toContain("## Skill Evolution");
+    expect(prompt).not.toContain("## Current Mode:");
+    expect(prompt).not.toContain("## Known Corrections");
 
-    expect(evolutionIdx).toBeGreaterThan(-1);
+    const correctionsIdx = turnContext.indexOf("## Known Corrections");
+    const modeIdx = turnContext.indexOf("## Current Mode:");
     expect(correctionsIdx).toBeGreaterThan(-1);
     expect(modeIdx).toBeGreaterThan(-1);
-    expect(evolutionIdx).toBeLessThan(modeIdx);
     expect(correctionsIdx).toBeLessThan(modeIdx);
   });
 });
@@ -221,9 +223,9 @@ describe("Continuity Handshake", () => {
     expect(prompt).not.toContain("## Continuity Handshake");
   });
 
-  it("places handshake after persona context but before mode section", () => {
+  it("places handshake after persona context; mode lives in the per-turn context", () => {
     const persona = makePersonaWithGap(8);
-    const { prompt } = buildCognitiveModePrompt({
+    const { prompt, turnContext } = buildCognitiveModePrompt({
       message: "帮我整理文档",
       cognitiveEnabled: true,
       evolutionEnabled: true,
@@ -231,10 +233,11 @@ describe("Continuity Handshake", () => {
     });
     const personaIdx = prompt.indexOf("## User Cognitive Profile");
     const handshakeIdx = prompt.indexOf("## Continuity Handshake");
-    const modeIdx = prompt.indexOf("## Current Mode:");
     expect(personaIdx).toBeGreaterThan(-1);
     expect(handshakeIdx).toBeGreaterThan(personaIdx);
-    expect(modeIdx).toBeGreaterThan(handshakeIdx);
+    // The mode section is per-turn: system prompt stays byte-stable.
+    expect(prompt).not.toContain("## Current Mode:");
+    expect(turnContext).toContain("## Current Mode:");
   });
 
   it("shouldBuildHandshake matches the injection condition used by buildCognitiveModePrompt", () => {

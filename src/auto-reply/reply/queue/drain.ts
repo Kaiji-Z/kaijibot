@@ -18,6 +18,9 @@ import type { FollowupRun } from "./types.js";
 // enqueueFollowupRun can restart a drain that finished and deleted the queue.
 const FOLLOWUP_DRAIN_CALLBACKS_KEY = Symbol.for("kaijibot.followupDrainCallbacks");
 
+/** A drain that keeps failing is dropped after this many consecutive failures. */
+const MAX_CONSECUTIVE_DRAIN_FAILURES = 5;
+
 const FOLLOWUP_RUN_CALLBACKS = resolveGlobalMap<string, (run: FollowupRun) => Promise<void>>(
   FOLLOWUP_DRAIN_CALLBACKS_KEY,
 );
@@ -111,6 +114,7 @@ export function scheduleFollowupDrain(
             break;
           }
           if (collectDrainResult === "drained") {
+            queue.consecutiveDrainFailures = 0;
             continue;
           }
 
@@ -136,6 +140,7 @@ export function scheduleFollowupDrain(
             ...routing,
           });
           queue.items.splice(0, items.length);
+          queue.consecutiveDrainFailures = 0;
           if (summary) {
             clearQueueSummaryState(queue);
           }
@@ -167,15 +172,32 @@ export function scheduleFollowupDrain(
           continue;
         }
 
-        if (!(await drainNextQueueItem(queue.items, effectiveRunFollowup))) {
+        if (await drainNextQueueItem(queue.items, effectiveRunFollowup)) {
+          queue.consecutiveDrainFailures = 0;
+        } else {
           break;
         }
       }
     } catch (err) {
       queue.lastEnqueuedAt = Date.now();
-      defaultRuntime.error?.(`followup queue drain failed for ${key}: ${String(err)}`);
+      queue.consecutiveDrainFailures += 1;
+      defaultRuntime.error?.(
+        `followup queue drain failed for ${key} (${queue.consecutiveDrainFailures}/${MAX_CONSECUTIVE_DRAIN_FAILURES}): ${String(err)}`,
+      );
     } finally {
       queue.draining = false;
+      if (queue.consecutiveDrainFailures >= MAX_CONSECUTIVE_DRAIN_FAILURES) {
+        // Persistent failure: drop the queue instead of retrying forever —
+        // an endless one-attempt-per-debounce loop starves the session and
+        // never surfaces the stuck messages.
+        const dropped = queue.items.length + queue.droppedCount;
+        defaultRuntime.error?.(
+          `followup queue drain failed ${queue.consecutiveDrainFailures}x consecutively for ${key}; dropping ${dropped} queued message(s)`,
+        );
+        queue.items.length = 0;
+        queue.droppedCount = 0;
+        clearQueueSummaryState(queue);
+      }
       if (queue.items.length === 0 && queue.droppedCount === 0) {
         FOLLOWUP_QUEUES.delete(key);
         clearFollowupDrainCallback(key);

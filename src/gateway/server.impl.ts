@@ -20,7 +20,6 @@ import {
   loadConfig,
   registerConfigWriteListener,
   readConfigFileSnapshot,
-  setRuntimeConfigSnapshot,
   writeConfigFile,
 } from "../config/config.js";
 import { formatConfigIssueLines } from "../config/issue-format.js";
@@ -38,22 +37,8 @@ import { isTruthyEnvValue, logAcceptedEnvOption } from "../infra/env.js";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
 import { startHeartbeatRunner, type HeartbeatRunner } from "../infra/heartbeat-runner.js";
-import {
-  shouldDisableNativeTools,
-  buildDisabledToolsConfig,
-  buildDisabledSkillEntries,
-} from "../infra/lark-cli/auto-disable.ts";
-import {
-  buildLarkCliEnv,
-  isLarkCliAvailable,
-  healthCheck,
-  registerLarkCliProfiles,
-  buildAccountCredentialsList,
-  resolveLarkCliBinDir,
-} from "../infra/lark-cli/index.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { ensureKaijiBotCliOnPath } from "../infra/path-env.js";
-import { applyPathPrepend } from "../infra/path-prepend.js";
 import { setGatewaySigusr1RestartPolicy, setPreRestartDeferralCheck } from "../infra/restart.js";
 import {
   primeRemoteSkillsCache,
@@ -75,6 +60,7 @@ import { getActivePluginRegistry, setActivePluginRegistry } from "../plugins/run
 import { createPluginRuntime } from "../plugins/runtime/index.js";
 import type { PluginServicesHandle } from "../plugins/services.js";
 import { getTotalQueueSize } from "../process/command-queue.js";
+import { resolveEffectiveDmScope } from "../routing/session-key.js";
 import type { RuntimeEnv } from "../runtime.js";
 import {
   resolveCommandSecretsFromActiveRuntimeSnapshot,
@@ -110,6 +96,7 @@ import {
 } from "./events.js";
 import { createExecApprovalIosPushDelivery } from "./exec-approval-ios-push.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
+import { bootstrapLarkCliIntegration } from "./lark-cli-bootstrap.js";
 import { startMcpLoopbackServer } from "./mcp-http.js";
 import { startGatewayModelPricingRefresh } from "./model-pricing-cache.js";
 import { NodeRegistry } from "./node-registry.js";
@@ -163,9 +150,9 @@ import { resolveSharedGatewaySessionGeneration } from "./server/ws-shared-genera
 import { resolveSessionKeyForTranscriptFile } from "./session-transcript-key.js";
 import {
   attachKaijiBotTranscriptMeta,
+  countSessionMessages,
   loadGatewaySessionRow,
   loadSessionEntry,
-  readSessionMessages,
 } from "./session-utils.js";
 import {
   ensureGatewayStartupAuth,
@@ -607,7 +594,13 @@ export async function startGatewayServer(
   // per-user persona and cognitive insight delivery.  Explicit config wins.
   // Persist to disk so all config consumers (channel routing, getReply, etc.)
   // see the default — runtime-only mutation would not reach loadConfig() readers.
-  if (cfgAtStart.session?.dmScope === undefined) {
+  // Only persist when the adaptive resolver would actually promote (some
+  // channel has credentials) — persisting with zero channels configured would
+  // shadow the adaptive path for every future channel addition.
+  if (
+    cfgAtStart.session?.dmScope === undefined &&
+    resolveEffectiveDmScope(cfgAtStart) === "per-peer"
+  ) {
     cfgAtStart = {
       ...cfgAtStart,
       session: { ...cfgAtStart.session, dmScope: "per-channel-peer" },
@@ -624,107 +617,8 @@ export async function startGatewayServer(
   // --- Lark-CLI integration ---
   // When lark-cli binary is available, propagate feishu credentials as env vars
   // and auto-disable native feishu tools/skills in favor of CLI-based operations.
-  const feishuChannelCfg = cfgAtStart.channels?.feishu as Record<string, unknown> | undefined;
-  if (feishuChannelCfg && isLarkCliAvailable()) {
-    const appId = feishuChannelCfg.appId as string | undefined;
-    const appSecret = feishuChannelCfg.appSecret as string | undefined;
-    const domain = feishuChannelCfg.domain as string | undefined;
-
-    // Do not set LARKSUITE_CLI_APP_ID/SECRET — they override --profile credentials.
-    const larkEnv = buildLarkCliEnv({ domain });
-    for (const [key, value] of Object.entries(larkEnv)) {
-      if (value) {
-        process.env[key] = value;
-      }
-    }
-
-    const larkBinDir = resolveLarkCliBinDir();
-    if (larkBinDir) {
-      applyPathPrepend(process.env as Record<string, string>, [larkBinDir]);
-      log.info(`lark-cli: added ${larkBinDir} to PATH`);
-    }
-
-    // Register all feishu accounts as lark-cli profiles (multi-bot support).
-    // The default (top-level) bot becomes profile "default", additional accounts
-    // become profiles keyed by their accountId.
-    const accounts = feishuChannelCfg.accounts as
-      | Record<string, { appId?: string; appSecret?: string; domain?: string }>
-      | undefined;
-    const profileAccounts = buildAccountCredentialsList({
-      defaultAppId: appId,
-      defaultAppSecret: appSecret,
-      defaultDomain: domain,
-      accounts,
-    });
-    if (profileAccounts.length > 0) {
-      const regResult = await registerLarkCliProfiles(profileAccounts);
-      if (regResult.registered.length > 0) {
-        log.info(`lark-cli: registered profiles: ${regResult.registered.join(", ")}`);
-      }
-      for (const fail of regResult.failed) {
-        log.warn(`lark-cli: failed to register profile "${fail.name}": ${fail.error}`);
-      }
-    }
-
-    // Auto-disable native feishu tools if user hasn't explicitly configured them.
-    // Guard: verify the binary actually runs before disabling native tools.
-    // Prevents "path resolves but binary crashes" edge case (platform mismatch, corruption).
-    const userToolsCfg = feishuChannelCfg.tools as Record<string, unknown> | undefined;
-    if (shouldDisableNativeTools(userToolsCfg)) {
-      const hc = await healthCheck();
-      if (!hc.ok) {
-        log.warn(
-          `lark-cli: binary found but health check failed (${hc.error}), keeping native feishu tools`,
-        );
-      } else {
-        if (!feishuChannelCfg.tools) {
-          feishuChannelCfg.tools = {};
-        }
-        const disabledTools = buildDisabledToolsConfig();
-        const toolsMap = feishuChannelCfg.tools as Record<string, unknown>;
-        for (const [key, value] of Object.entries(disabledTools)) {
-          toolsMap[key] = value;
-        }
-        // Also inject disabled tools into each account's config so
-        // resolveToolsConfig() doesn't re-enable them via DEFAULT_TOOLS_CONFIG.
-        const accountsMap = feishuChannelCfg.accounts as
-          | Record<string, Record<string, unknown>>
-          | undefined;
-        if (accountsMap) {
-          for (const [, acctCfg] of Object.entries(accountsMap)) {
-            if (!acctCfg.tools) {
-              acctCfg.tools = {};
-            }
-            const acctTools = acctCfg.tools as Record<string, unknown>;
-            for (const [key, value] of Object.entries(disabledTools)) {
-              acctTools[key] = value;
-            }
-          }
-          log.info(
-            `lark-cli: injected disabled tools into ${Object.keys(accountsMap).length} accounts`,
-          );
-        }
-        log.info(`lark-cli: native feishu tools auto-disabled (lark-cli v${hc.version} healthy)`);
-
-        // Auto-disable feishu skills
-        const disabledSkills = buildDisabledSkillEntries();
-        if (!cfgAtStart.skills) {
-          cfgAtStart.skills = {};
-        }
-        if (!cfgAtStart.skills.entries) {
-          cfgAtStart.skills.entries = {};
-        }
-        for (const [id, cfg] of Object.entries(disabledSkills)) {
-          if (!cfgAtStart.skills.entries[id]) {
-            cfgAtStart.skills.entries[id] = cfg;
-          }
-        }
-        log.info("lark-cli: feishu skills auto-disabled (lark-cli available)");
-
-        setRuntimeConfigSnapshot(cfgAtStart);
-      }
-    }
-  }
+  // (Channel-specific carve-out — see src/gateway/lark-cli-bootstrap.ts header.)
+  await bootstrapLarkCliIntegration(cfgAtStart, log);
 
   if (authBootstrap.persistedGeneratedToken || controlUiSeed.persistedAllowedOriginsSeed) {
     const startupSnapshot = await readConfigFileSnapshot();
@@ -1257,7 +1151,7 @@ export async function startGatewayServer(
           }
           const { entry, storePath } = loadSessionEntry(sessionKey);
           const messageSeq = entry?.sessionId
-            ? readSessionMessages(entry.sessionId, storePath, entry.sessionFile).length
+            ? countSessionMessages(entry.sessionId, storePath, entry.sessionFile)
             : undefined;
           const sessionRow = loadGatewaySessionRow(sessionKey);
           const sessionSnapshot = sessionRow
@@ -1726,6 +1620,7 @@ export async function startGatewayServer(
                   deliveredAt: Date.now(),
                   resolvedMode: candidate.resolvedMode,
                   promptVariant: candidate.promptVariant,
+                  predictedPAcT: candidate.predictedPAcT,
                 };
 
                 try {
