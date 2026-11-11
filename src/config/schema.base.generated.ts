@@ -5250,24 +5250,10 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         maximum: 9007199254740991,
                       },
                       memory: {
-                        anyOf: [
-                          {
-                            type: "string",
-                          },
-                          {
-                            type: "number",
-                          },
-                        ],
+                        type: ["string", "number"],
                       },
                       memorySwap: {
-                        anyOf: [
-                          {
-                            type: "string",
-                          },
-                          {
-                            type: "number",
-                          },
-                        ],
+                        type: ["string", "number"],
                       },
                       cpus: {
                         type: "number",
@@ -6478,24 +6464,10 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           maximum: 9007199254740991,
                         },
                         memory: {
-                          anyOf: [
-                            {
-                              type: "string",
-                            },
-                            {
-                              type: "number",
-                            },
-                          ],
+                          type: ["string", "number"],
                         },
                         memorySwap: {
-                          anyOf: [
-                            {
-                              type: "string",
-                            },
-                            {
-                              type: "number",
-                            },
-                          ],
+                          type: ["string", "number"],
                         },
                         cpus: {
                           type: "number",
@@ -7009,14 +6981,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           additionalProperties: {
                             type: "array",
                             items: {
-                              anyOf: [
-                                {
-                                  type: "string",
-                                },
-                                {
-                                  type: "number",
-                                },
-                              ],
+                              type: ["string", "number"],
                             },
                           },
                         },
@@ -7917,17 +7882,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                           type: "string",
                         },
                         additionalProperties: {
-                          anyOf: [
-                            {
-                              type: "string",
-                            },
-                            {
-                              type: "number",
-                            },
-                            {
-                              type: "boolean",
-                            },
-                          ],
+                          type: ["string", "number", "boolean"],
                         },
                       },
                     },
@@ -9222,17 +9177,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                       },
                       additionalProperties: {
-                        anyOf: [
-                          {
-                            type: "string",
-                          },
-                          {
-                            type: "number",
-                          },
-                          {
-                            type: "boolean",
-                          },
-                        ],
+                        type: ["string", "number", "boolean"],
                       },
                     },
                   },
@@ -10507,17 +10452,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                               type: "string",
                             },
                             additionalProperties: {
-                              anyOf: [
-                                {
-                                  type: "string",
-                                },
-                                {
-                                  type: "number",
-                                },
-                                {
-                                  type: "boolean",
-                                },
-                              ],
+                              type: ["string", "number", "boolean"],
                             },
                           },
                         },
@@ -11822,17 +11757,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                       },
                       additionalProperties: {
-                        anyOf: [
-                          {
-                            type: "string",
-                          },
-                          {
-                            type: "number",
-                          },
-                          {
-                            type: "boolean",
-                          },
-                        ],
+                        type: ["string", "number", "boolean"],
                       },
                     },
                   },
@@ -13157,17 +13082,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                               type: "string",
                             },
                             additionalProperties: {
-                              anyOf: [
-                                {
-                                  type: "string",
-                                },
-                                {
-                                  type: "number",
-                                },
-                                {
-                                  type: "boolean",
-                                },
-                              ],
+                              type: ["string", "number", "boolean"],
                             },
                           },
                         },
@@ -14469,17 +14384,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         type: "string",
                       },
                       additionalProperties: {
-                        anyOf: [
-                          {
-                            type: "string",
-                          },
-                          {
-                            type: "number",
-                          },
-                          {
-                            type: "boolean",
-                          },
-                        ],
+                        type: ["string", "number", "boolean"],
                       },
                     },
                   },
@@ -15753,17 +15658,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                               type: "string",
                             },
                             additionalProperties: {
-                              anyOf: [
-                                {
-                                  type: "string",
-                                },
-                                {
-                                  type: "number",
-                                },
-                                {
-                                  type: "boolean",
-                                },
-                              ],
+                              type: ["string", "number", "boolean"],
                             },
                           },
                         },
@@ -17251,14 +17146,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 additionalProperties: {
                   type: "array",
                   items: {
-                    anyOf: [
-                      {
-                        type: "string",
-                      },
-                      {
-                        type: "number",
-                      },
-                    ],
+                    type: ["string", "number"],
                   },
                 },
                 title: "Elevated Tool Allow Rules",
@@ -18869,14 +18757,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
           ownerAllowFrom: {
             type: "array",
             items: {
-              anyOf: [
-                {
-                  type: "string",
-                },
-                {
-                  type: "number",
-                },
-              ],
+              type: ["string", "number"],
             },
             title: "Command Owners",
             description:
@@ -18904,14 +18785,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             additionalProperties: {
               type: "array",
               items: {
-                anyOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "number",
-                  },
-                ],
+                type: ["string", "number"],
               },
             },
             title: "Command Elevated Access Rules",
@@ -19000,14 +18874,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         "Optional account selector for multi-account channel setups when approvals must route through a specific account context. Use this only when the target channel has multiple configured identities.",
                     },
                     threadId: {
-                      anyOf: [
-                        {
-                          type: "string",
-                        },
-                        {
-                          type: "number",
-                        },
-                      ],
+                      type: ["string", "number"],
                       title: "Approval Target Thread ID",
                       description:
                         "Optional thread/topic target for channels that support threaded delivery of forwarded approvals. Use this to keep approval traffic contained in operational threads instead of main channels.",
@@ -19098,14 +18965,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         "Optional account selector for multi-account channel setups when plugin approvals must route through a specific account context.",
                     },
                     threadId: {
-                      anyOf: [
-                        {
-                          type: "string",
-                        },
-                        {
-                          type: "number",
-                        },
-                      ],
+                      type: ["string", "number"],
                       title: "Plugin Approval Target Thread ID",
                       description:
                         "Optional thread/topic target for channels that support threaded delivery of forwarded plugin approvals.",
@@ -19641,14 +19501,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   'Determines whether maintenance policies are only reported ("warn") or actively applied ("enforce"). Keep "warn" during rollout and switch to "enforce" after validating safe thresholds.',
               },
               pruneAfter: {
-                anyOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "number",
-                  },
-                ],
+                type: ["string", "number"],
                 title: "Session Prune After",
                 description:
                   "Removes entries older than this duration (for example `30d` or `12h`) during maintenance passes. Use this as the primary age-retention control and align it with data retention policy.",
@@ -19670,14 +19523,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   "Caps total session entry count retained in the store to prevent unbounded growth over time. Use lower limits for constrained environments, or higher limits when longer history is required.",
               },
               rotateBytes: {
-                anyOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "number",
-                  },
-                ],
+                type: ["string", "number"],
                 title: "Session Rotate Size",
                 description:
                   "Rotates the session store when file size exceeds a threshold such as `10mb` or `1gb`. Use this to bound single-file growth and keep backup/restore operations manageable.",
@@ -19700,27 +19546,13 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   "Retention for reset transcript archives (`*.reset.<timestamp>`). Accepts a duration (for example `30d`), or `false` to disable cleanup. Defaults to pruneAfter so reset artifacts do not grow forever.",
               },
               maxDiskBytes: {
-                anyOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "number",
-                  },
-                ],
+                type: ["string", "number"],
                 title: "Session Max Disk Budget",
                 description:
                   "Optional per-agent sessions-directory disk budget (for example `500mb`). Use this to cap session storage per agent; when exceeded, warn mode reports pressure and enforce mode performs oldest-first cleanup.",
               },
               highWaterBytes: {
-                anyOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "number",
-                  },
-                ],
+                type: ["string", "number"],
                 title: "Session Disk High-water Target",
                 description:
                   "Target size after disk-budget cleanup (high-water mark). Defaults to 80% of maxDiskBytes; set explicitly for tighter reclaim behavior on constrained disks.",
@@ -19913,14 +19745,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             type: "object",
             properties: {
               maxBytes: {
-                anyOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "number",
-                  },
-                ],
+                type: ["string", "number"],
                 title: "Cron Run Log Max Bytes",
                 description:
                   "Maximum bytes per cron run-log file before pruning rewrites to the last keepLines entries (for example `2mb`, default `2000000`).",
@@ -22385,17 +22210,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "string",
                   },
                   additionalProperties: {
-                    anyOf: [
-                      {
-                        type: "string",
-                      },
-                      {
-                        type: "number",
-                      },
-                      {
-                        type: "boolean",
-                      },
-                    ],
+                    type: ["string", "number", "boolean"],
                   },
                 },
                 cwd: {
@@ -22414,17 +22229,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     type: "string",
                   },
                   additionalProperties: {
-                    anyOf: [
-                      {
-                        type: "string",
-                      },
-                      {
-                        type: "number",
-                      },
-                      {
-                        type: "boolean",
-                      },
-                    ],
+                    type: ["string", "number", "boolean"],
                   },
                 },
               },
@@ -28938,6 +28743,6 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced", "url-secret"],
     },
   },
-  version: "2026.11.02",
+  version: "2026.11.12",
   generatedAt: "2026-03-22T21:17:33.302Z",
 };
