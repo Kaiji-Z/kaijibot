@@ -79,6 +79,33 @@ export function jaccardSimilarity(setA: Set<string>, setB: Set<string>): number 
 }
 
 /**
+ * Levenshtein edit distance (rolling-array, O(min-length) extra space).
+ * Single canonical implementation — previously duplicated in
+ * cognitive/persona/curator.ts and cognitive/evolution/skill-lifecycle.ts.
+ */
+export function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) {
+    return n;
+  }
+  if (n === 0) {
+    return m;
+  }
+  const dp: number[] = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = temp;
+    }
+  }
+  return dp[n];
+}
+
+/**
  * Compute text similarity between two content strings using Jaccard on tokens.
  */
 export function textSimilarity(contentA: string, contentB: string): number {

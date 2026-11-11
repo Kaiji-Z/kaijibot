@@ -15,7 +15,15 @@ export type InsightCategory = "durable" | "ephemeral";
 export type TypedInsight = {
   text: string;
   category: InsightCategory;
+  /** Current (decay-adjusted) confidence shown to consumers. */
   confidence: number;
+  /**
+   * Undecayed confidence anchor. Decay is recomputed idempotently from this
+   * base (mirrors Fragment.initialStrength) so per-turn pruning never
+   * compounds decay. Absent on legacy records; first prune backfills it from
+   * the stored confidence.
+   */
+  baseConfidence?: number;
   source: "explicit" | "inferred" | "observed";
   firstObserved: number;
   lastReinforced: number;
@@ -52,7 +60,14 @@ export type ConfidenceValue<T = string> = {
 
 // Per-domain user engagement
 export type DomainNode = {
+  /** Current (decay-adjusted) depth shown to consumers. */
   depth: number;
+  /**
+   * Undecayed depth anchor. Decay is recomputed idempotently from this base
+   * so per-turn merges never compound decay. Absent on legacy records; first
+   * merge backfills it from the stored depth.
+   */
+  baseDepth?: number;
   recurrence: number;
   lastMentioned: number;
   keyInsights: string[];
@@ -244,6 +259,8 @@ export type InsightRecord = {
   deliveryMessageId?: string;
   /** Resolved insight mode at generation time — used to reconstruct pendingInsightDelivery. */
   resolvedMode?: InsightMode;
+  /** Scheduler's predicted pAct at delivery time — consumed by feedback calibration. */
+  predictedPAcT?: number;
   promptVariant?: {
     fewShotSet: number;
     frameIndex: number;

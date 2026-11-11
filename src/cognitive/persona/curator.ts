@@ -1,3 +1,4 @@
+import { levenshteinDistance } from "../../infra/text-similarity.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { resetNoResponseStreak } from "../feedback/collector.js";
 import { decayAllBandits, decayBandit } from "../feedback/preference-learner.js";
@@ -124,24 +125,6 @@ function textSimilar(a: string, b: string): boolean {
   return distance / maxLen < 0.3;
 }
 
-function levenshteinDistance(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[] = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const prev = dp[0];
-    dp[0] = i;
-    for (let j = 1; j <= n; j++) {
-      if (a[i - 1] === b[j - 1]) {
-        dp[j] = prev;
-      } else {
-        dp[j] = 1 + Math.min(prev, dp[j], dp[j - 1]);
-      }
-    }
-  }
-  return dp[n];
-}
-
 export function mergeTypedInsights(
   existing: TypedInsight[],
   incoming: TypedInsight[],
@@ -155,9 +138,17 @@ export function mergeTypedInsights(
         const totalEvidence = ex.evidenceCount + 1;
         const existingWeight = ex.evidenceCount / totalEvidence;
         const incomingWeight = 1 / totalEvidence;
+        // Reinforce the undecayed base so evidence weighting is not distorted
+        // by however much the stored confidence already decayed.
+        const existingBase = ex.baseConfidence ?? ex.confidence;
+        const mergedBase = Math.min(
+          1,
+          existingBase * existingWeight + inc.confidence * incomingWeight,
+        );
         result[i] = {
           ...ex,
-          confidence: Math.min(1, ex.confidence * existingWeight + inc.confidence * incomingWeight),
+          confidence: mergedBase,
+          baseConfidence: mergedBase,
           evidenceCount: totalEvidence,
           lastReinforced: inc.lastReinforced,
           source: inc.source === "explicit" ? "explicit" : ex.source,
@@ -228,15 +219,22 @@ export function mergeExtraction(
   const decayMultiplier = getDecayMultiplier(persona.lifecycle);
   for (const [name, node] of Object.entries(newDomains)) {
     if (!extractionDomainNames.has(name)) {
+      // Decay idempotently from the undecayed base anchor — recomputing from
+      // the already-decayed depth every turn would compound the decay.
+      const base = node.baseDepth ?? node.depth;
       const ageMs = now - node.lastMentioned;
       const decayFactor = Math.exp(
         (-Math.LN2 * ageMs) / (DOMAIN_DEPTH_HALF_LIFE_MS / decayMultiplier),
       );
-      const decayedDepth = node.depth * decayFactor;
+      const decayedDepth = base * decayFactor;
       if (decayedDepth < 0.5) {
         delete newDomains[name];
       } else {
-        newDomains[name] = { ...node, depth: Math.round(decayedDepth * 10) / 10 };
+        newDomains[name] = {
+          ...node,
+          depth: Math.round(decayedDepth * 10) / 10,
+          baseDepth: base,
+        };
       }
     }
   }
@@ -246,10 +244,12 @@ export function mergeExtraction(
 
     if (domain.negated) {
       if (existing) {
-        const reducedDepth = Math.max(0.5, existing.depth * 0.7);
+        const existingBase = existing.baseDepth ?? existing.depth;
+        const reducedBase = Math.max(0.5, existingBase * 0.7);
         newDomains[domain.name] = {
           ...existing,
-          depth: reducedDepth,
+          depth: Math.max(0.5, existing.depth * 0.7),
+          baseDepth: reducedBase,
           negationSignals: (existing.negationSignals ?? 0) + 1,
           lastNegatedAt: now,
         };
@@ -282,6 +282,7 @@ export function mergeExtraction(
       newDomains[domain.name] = {
         ...existing,
         depth: Math.max(existing.depth, domain.depth),
+        baseDepth: Math.max(existing.baseDepth ?? existing.depth, domain.depth),
         recurrence: existing.recurrence + 1,
         lastMentioned: now,
         keyInsights: [
@@ -302,6 +303,7 @@ export function mergeExtraction(
     } else {
       const freshNode: DomainNode = {
         depth: domain.depth,
+        baseDepth: domain.depth,
         recurrence: 1,
         lastMentioned: now,
         keyInsights: [...domain.insights.filter(isPlausibleKeyInsight), ...backwardCompatTexts],
@@ -707,10 +709,13 @@ export function prunePersona(persona: PersonaTree, nowMs?: number): PersonaTree 
     });
     const decayedTypedInsights = (domain.insights ?? [])
       .map((ti) => {
+        // Recompute idempotently from the undecayed base — multiplying the
+        // stored (already decayed) confidence every turn compounds the decay.
+        const base = ti.baseConfidence ?? ti.confidence;
         const ageMs = now - ti.lastReinforced;
         const halfLifeMs = ti.halfLifeDays * 24 * 60 * 60 * 1000;
         const decayFactor = Math.exp((-Math.LN2 * ageMs) / halfLifeMs);
-        return { ...ti, confidence: ti.confidence * decayFactor };
+        return { ...ti, baseConfidence: base, confidence: base * decayFactor };
       })
       .filter((ti) => ti.confidence >= 0.1);
     const updatedDomain: DomainNode = { ...domain, keyInsights: cleanedInsights };

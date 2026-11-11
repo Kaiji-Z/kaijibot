@@ -4,6 +4,30 @@ import { createDefaultPersona } from "./store.js";
 import type { ExtractionResult } from "./types.js";
 
 describe("mergeExtraction", () => {
+  it("unmentioned-domain depth decay is idempotent — repeated merges never compound", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      未提及领域: {
+        depth: 6,
+        recurrence: 4,
+        lastMentioned: now - 10 * 24 * 60 * 60 * 1000, // 10d silent, 30d half-life
+        keyInsights: [],
+        activeQuestions: [],
+        negationSignals: 0,
+      },
+    };
+    const empty: ExtractionResult = { attributes: [], domains: [], recentFocus: [] };
+    const once = mergeExtraction(persona, empty, now);
+    const depth1 = once.domains["未提及领域"]?.depth;
+    expect(depth1).toBeDefined();
+    expect(depth1!).toBeLessThan(6); // single decay applied
+    const twice = mergeExtraction(once, empty, now);
+    const depth2 = twice.domains["未提及领域"]?.depth;
+    // Same timestamp → recomputed from the undecayed base → identical.
+    expect(depth2).toBe(depth1);
+  });
+
   // NEW (goal 洞察投放人化重构): the user-message path must clear the social
   // ledger — an answered friend resumes instantly; the gate's ledger veto is
   // escaped exactly here. This is the production wiring of
@@ -92,6 +116,41 @@ describe("mergeExtraction", () => {
 });
 
 describe("prunePersona", () => {
+  it("typed-insight decay is idempotent — repeated prunes at the same time never compound", () => {
+    const now = Date.now();
+    const persona = createDefaultPersona();
+    persona.domains = {
+      稳定领域: {
+        depth: 5,
+        recurrence: 10,
+        lastMentioned: now,
+        keyInsights: [],
+        insights: [
+          {
+            text: "长期偏好 Rust",
+            category: "durable",
+            confidence: 0.9,
+            source: "explicit",
+            firstObserved: now,
+            lastReinforced: now - 10 * 24 * 60 * 60 * 1000, // 10d old, 30d half-life
+            evidenceCount: 3,
+            halfLifeDays: 30,
+          },
+        ],
+        activeQuestions: [],
+        negationSignals: 0,
+      },
+    };
+    const first = prunePersona(persona, now);
+    const firstConfidence = first.domains["稳定领域"]?.insights?.[0]?.confidence;
+    expect(firstConfidence).toBeDefined();
+    expect(firstConfidence).toBeLessThan(0.9); // decay applied once
+    const second = prunePersona(first, now);
+    const secondConfidence = second.domains["稳定领域"]?.insights?.[0]?.confidence;
+    // Same timestamp → recomputed from base → identical, not further decayed.
+    expect(secondConfidence).toBeCloseTo(firstConfidence!, 10);
+  });
+
   it("removes low-confidence traits after many observations", () => {
     const persona = createDefaultPersona();
     persona.identity.coreTraits = {
