@@ -14,8 +14,12 @@ import {
 import { resolvePreferredKaijiBotTmpDir } from "../tmp-kaijibot-dir.js";
 import { runMessageAction } from "./message-action-runner.js";
 
+// 1x1 RGBA PNG. The previously used 1x1 grayscale fixture is a malformed PNG
+// that sharp 0.34's libvips tolerated but sharp 0.35 rejects with
+// "vipspng: libpng read error" — this test feeds it through the real sharp
+// optimization pipeline, so the fixture must be a well-formed PNG.
 const onePixelPng = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5m8gAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64",
 );
 
