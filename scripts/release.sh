@@ -43,6 +43,11 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
 echo "[1/3] Version bumped to ${VERSION}"
 
+# 1b. Regenerate the config schema — it embeds the package version, so CI's
+# config:schema:check goes stale on every bump unless regenerated here.
+pnpm config:schema:gen
+git add src/config/schema.base.generated.ts
+
 # 2. Build — sanity gate so we never tag a commit that cannot build
 rm -rf dist
 pnpm build
