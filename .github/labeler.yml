@@ -1,0 +1,41 @@
+# Path-based labels applied by actions/labeler (see .github/workflows/pr-guard.yml)
+# Labels must exist in the repo (created once via gh label create).
+
+cognitive:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/cognitive/**
+          - src/agents/tools/*evolution*
+          - src/agents/tools/*correction*
+
+gateway:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/gateway/**
+
+extensions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - extensions/**
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ui/**
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - "*.md"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+
+deps:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pnpm-lock.yaml
+          - "**/package.json"

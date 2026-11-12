@@ -1,0 +1,97 @@
+name: PR Guard
+
+# Lightweight PR hygiene that runs for every pull request (including forks):
+# - title must follow Conventional Commits (`type: summary`)
+# - labels are applied automatically from the changed paths
+# - first-time contributors get a welcome comment pointing at the conventions
+#
+# Fork-PR security model: this workflow needs no secrets, so GitHub runs it
+# automatically for fork PRs. First-time contributors' workflows may need a
+# one-click maintainer approval ("This workflow was awaiting approval") —
+# that is GitHub's spam protection, not our gate.
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: Title format
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Validate PR title (Conventional Commits)
+        env:
+          # Pass through env — never interpolate the title into the shell body.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          title="$PR_TITLE"
+          # Dependabot titles already follow their own convention.
+          if [[ "$title" == "chore(deps)"* || "$title" == "build(deps)"* ]]; then
+            echo "dependabot PR — skipping format check"
+            exit 0
+          fi
+          pattern='^(feat|fix|docs|chore|deps|test|refactor|ci|build|perf|style)(\([a-z0-9/-]+\))?: .+'
+          if [[ "$title" =~ $pattern ]]; then
+            echo "OK: title format accepted"
+          else
+            echo "::error::PR title must follow Conventional Commits: 'type: summary' (types: feat|fix|docs|chore|deps|test|refactor|ci|build|perf|style). Example: 'fix(cognitive): break insight import cycle'"
+            exit 1
+          fi
+
+  label:
+    name: Auto-label by paths
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+
+  welcome:
+    name: First-time contributor welcome
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check author history and comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            if (pr.author_association !== 'FIRST_TIME_CONTRIBUTOR' && pr.author_association !== 'NONE') {
+              core.info(`author_association=${pr.author_association} — skipping welcome`);
+              return;
+            }
+            const existing = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            if (existing.data.some((c) => c.body?.includes('<!-- kaijibot-welcome -->'))) {
+              core.info('welcome already posted');
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '<!-- kaijibot-welcome -->',
+                `欢迎，@${pr.user.login}！这是你在 kaijibot 的第一个 PR 🎉`,
+                '',
+                'CI 会自动跑起来（Install / Check / Test 三个 job）。看两个约定就够了：',
+                '- 标题用 Conventional Commits：`type: summary`，例如 `fix(cognitive): break insight import cycle`',
+                '- `pnpm check` + 相关测试本地先过一遍（`*.live.test.ts` 是本地-only，CI 不跑）',
+                '',
+                'Welcome aboard! The conventions live in `.github/PULL_REQUEST_TEMPLATE.md` and `AGENTS.md`.',
+              ].join('\n'),
+            });
