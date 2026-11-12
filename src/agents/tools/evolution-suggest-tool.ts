@@ -148,7 +148,7 @@ export function createEvolutionSuggestTool(deps: {
               const { createStandaloneGenerateText } =
                 await import("../../cognitive/evolution/standalone-generate.js");
               generateTextForDedup = await createStandaloneGenerateText(deps.config, {
-                maxTokens: 200,
+                maxTokens: 4000,
                 timeout: 30_000,
               });
             }
@@ -197,7 +197,7 @@ export function createEvolutionSuggestTool(deps: {
               const { createStandaloneGenerateText: createJudge } =
                 await import("../../cognitive/evolution/standalone-generate.js");
               judgeGenText = await createJudge(deps.config!, {
-                maxTokens: 200,
+                maxTokens: 4000,
                 timeout: 30_000,
                 modelRef: gateModelRef,
               });
@@ -296,7 +296,7 @@ export function createEvolutionSuggestTool(deps: {
               const { createStandaloneGenerateText: createJudge } =
                 await import("../../cognitive/evolution/standalone-generate.js");
               reviewGenerateText = await createJudge(deps.config, {
-                maxTokens: 200,
+                maxTokens: 4000,
                 timeout: 30_000,
                 modelRef: reviewModelRef,
               });
