@@ -124,6 +124,19 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   const prefixContext = createReplyPrefixContext({ cfg, agentId });
 
   let typingState: TypingIndicatorState | null = null;
+  /** Remove the typing reaction. Shared by typing.stop and the progress-card handoff. */
+  const removeTypingReaction = async () => {
+    if (!typingState) {
+      return;
+    }
+    await removeTypingIndicator({
+      cfg,
+      state: typingState,
+      accountId,
+      runtime: params.runtime,
+    });
+    typingState = null;
+  };
   const { typingCallbacks } = createChannelReplyPipeline({
     cfg,
     agentId,
@@ -133,6 +146,12 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       start: async () => {
         // Check if typing indicator is enabled (default: true)
         if (!(account.config.typingIndicator ?? true)) {
+          return;
+        }
+        // Once the progress card is live it supersedes the reaction indicator.
+        // Keep the reaction off while the card is active; if the card goes away
+        // (aborted/unavailable), typing starts again on the next tool event.
+        if (progressActive && streaming?.isActive()) {
           return;
         }
         if (!replyToMessageId) {
@@ -160,18 +179,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           runtime: params.runtime,
         });
       },
-      stop: async () => {
-        if (!typingState) {
-          return;
-        }
-        await removeTypingIndicator({
-          cfg,
-          state: typingState,
-          accountId,
-          runtime: params.runtime,
-        });
-        typingState = null;
-      },
+      stop: removeTypingReaction,
       onStartError: (err) =>
         logTypingFailure({
           log: (message) => params.runtime.log?.(message),
@@ -384,7 +392,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     }, PROGRESS_TICK_INTERVAL_MS);
   };
 
-  const handleProgressItem = (item: ProgressItemEvent) => {
+  const handleProgressItem = async (item: ProgressItemEvent) => {
     if (!progressTracker || guard.shouldSkip("progressItem")) {
       return;
     }
@@ -395,6 +403,8 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       progressActive = true;
       startStreaming();
       startProgressTicker();
+      // Hand off: the live progress card supersedes the typing reaction.
+      await removeTypingReaction();
     }
     if (progressActive && progressTracker.shouldRender(now)) {
       progressTracker.markRendered(now);
@@ -610,9 +620,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       onModelSelected: prefixContext.onModelSelected,
       disableBlockStreaming: true,
       onItemEvent: progressEnabled
-        ? (item: ProgressItemEvent) => {
-            handleProgressItem(item);
-          }
+        ? (item: ProgressItemEvent) => handleProgressItem(item)
         : undefined,
       onPartialReply: streamingEnabled
         ? (payload: ReplyPayload) => {

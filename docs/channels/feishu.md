@@ -558,6 +558,7 @@ Notes:
 
 - Requires streaming cards (`streaming: true`, non-thread context, `renderMode` ≠ `raw`); otherwise the flag has no effect.
 - Set `progressIndicator: false` to disable (e.g., to reduce API calls on rate-limited apps).
+- Typing-reaction handoff: while the progress card is live, the typing reaction is removed and not re-added (the card supersedes it). If the card becomes unavailable (aborted), the reaction returns automatically on the next tool event.
 
 ### ACP sessions
 

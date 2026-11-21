@@ -21,7 +21,9 @@ const sendMediaFeishuMock = vi.hoisted(() => vi.fn());
 const createFeishuClientMock = vi.hoisted(() => vi.fn());
 const resolveReceiveIdTypeMock = vi.hoisted(() => vi.fn());
 const createReplyDispatcherWithTypingMock = vi.hoisted(() => vi.fn());
-const addTypingIndicatorMock = vi.hoisted(() => vi.fn(async () => ({ messageId: "om_msg" })));
+const addTypingIndicatorMock = vi.hoisted(() =>
+  vi.fn(async () => ({ messageId: "om_msg", reactionId: "re_1" })),
+);
 const removeTypingIndicatorMock = vi.hoisted(() => vi.fn(async () => {}));
 const streamingInstances = vi.hoisted((): StreamingSessionStub[] => []);
 
@@ -1046,6 +1048,60 @@ describe("createFeishuReplyDispatcher progress panel", () => {
     result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:4", title: "Step four" }));
     await drain();
     expect(streamingInstances[0].render).toHaveBeenCalledTimes(1);
+    void result;
+  });
+
+  it("hands the typing reaction off to the progress card at engage", async () => {
+    vi.useFakeTimers();
+    mockAccount({ progressIndicatorDelaySeconds: 5 });
+    const result = createFeishuReplyDispatcher({
+      cfg: {} as never,
+      agentId: "agent",
+      runtime: { log: vi.fn(), error: vi.fn() } as never,
+      chatId: "oc_chat",
+      replyToMessageId: "om_parent",
+    });
+    const options = createReplyDispatcherWithTypingMock.mock.calls.at(-1)?.[0];
+
+    // Pre-engage window: the reaction is the only indicator.
+    await options.onReplyStart?.();
+    expect(addTypingIndicatorMock).toHaveBeenCalledTimes(1);
+    expect(removeTypingIndicatorMock).not.toHaveBeenCalled();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    vi.advanceTimersByTime(6_000);
+    await result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" }));
+    await drain();
+
+    expect(streamingInstances).toHaveLength(1);
+    // Engage removed the existing reaction.
+    expect(removeTypingIndicatorMock).toHaveBeenCalledTimes(1);
+
+    // Later typing restart attempts are suppressed while the card is live.
+    await options.onReplyStart?.();
+    expect(addTypingIndicatorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the typing reaction when the card never engages", async () => {
+    vi.useFakeTimers();
+    mockAccount({ progressIndicatorDelaySeconds: 5 });
+    const result = createFeishuReplyDispatcher({
+      cfg: {} as never,
+      agentId: "agent",
+      runtime: { log: vi.fn(), error: vi.fn() } as never,
+      chatId: "oc_chat",
+      replyToMessageId: "om_parent",
+    });
+    const options = createReplyDispatcherWithTypingMock.mock.calls.at(-1)?.[0];
+
+    await options.onReplyStart?.();
+    expect(addTypingIndicatorMock).toHaveBeenCalledTimes(1);
+
+    // No item events: progress never engages, the reaction stays untouched.
+    vi.advanceTimersByTime(60_000);
+    await options.onIdle?.();
+    expect(removeTypingIndicatorMock).toHaveBeenCalledTimes(1); // typing stop at run end only
+    expect(streamingInstances).toHaveLength(0);
     void result;
   });
 });
