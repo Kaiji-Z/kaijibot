@@ -86,19 +86,26 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           TARBALL=$(ls kaijibot-*.tgz | head -1)
-          # GitHub's --generate-notes only lists merged PRs, which silently drops
-          # release.sh's direct-to-main commits. Build notes from the git log
-          # range between the previous tag and this one instead.
-          PREV_TAG=$(git describe --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)
-          {
-            echo "## What's Changed"
-            echo ""
-            if [ -n "$PREV_TAG" ]; then
-              git log --no-merges --format='- %s (%h)' "${PREV_TAG}..${TAG}" | grep -v '^- chore(release)' || true
+          NOTES_FILE="release-notes.md"
+          # Prefer hand-written bilingual notes (EN commit log + ZH summary)
+          # committed at docs/release-notes/v<version>.md.
+          if [ -f "docs/release-notes/${TAG}.md" ]; then
+            NOTES_FILE="docs/release-notes/${TAG}.md"
+          else
+            # Fallback: GitHub's --generate-notes only lists merged PRs, which
+            # silently drops release.sh's direct-to-main commits. Build notes
+            # from the git log range between the previous tag and this one.
+            PREV_TAG=$(git describe --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)
+            {
+              echo "## What's Changed"
               echo ""
-              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${TAG}"
-            else
-              git log --no-merges -1 --format='- %s (%h)' "${TAG}"
-            fi
-          } > release-notes.md
-          gh release create "$TAG" "$TARBALL" --title "$TAG" --notes-file release-notes.md || gh release upload "$TAG" "$TARBALL" --clobber
+              if [ -n "$PREV_TAG" ]; then
+                git log --no-merges --format='- %s (%h)' "${PREV_TAG}..${TAG}" | grep -v '^- chore(release)' || true
+                echo ""
+                echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${TAG}"
+              else
+                git log --no-merges -1 --format='- %s (%h)' "${TAG}"
+              fi
+            } > "$NOTES_FILE"
+          fi
+          gh release create "$TAG" "$TARBALL" --title "$TAG" --notes-file "$NOTES_FILE" || gh release upload "$TAG" "$TARBALL" --clobber
