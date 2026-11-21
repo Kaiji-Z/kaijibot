@@ -30454,6 +30454,26 @@
       "hasChildren": false
     },
     {
+      "path": "channels.feishu.accounts.*.progressIndicator",
+      "kind": "channel",
+      "type": "boolean",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
+      "path": "channels.feishu.accounts.*.progressIndicatorDelaySeconds",
+      "kind": "channel",
+      "type": "integer",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
       "path": "channels.feishu.accounts.*.reactionNotifications",
       "kind": "channel",
       "type": "string",
@@ -31501,6 +31521,27 @@
       "path": "channels.feishu.mediaMaxMb",
       "kind": "channel",
       "type": "number",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
+      "path": "channels.feishu.progressIndicator",
+      "kind": "channel",
+      "type": "boolean",
+      "required": true,
+      "defaultValue": true,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
+      "path": "channels.feishu.progressIndicatorDelaySeconds",
+      "kind": "channel",
+      "type": "integer",
       "required": false,
       "deprecated": false,
       "sensitive": false,
