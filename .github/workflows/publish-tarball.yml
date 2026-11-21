@@ -54,6 +54,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history + tags: release notes are generated from the git log
+          # range between the previous tag and this one.
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -82,4 +86,19 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           TARBALL=$(ls kaijibot-*.tgz | head -1)
-          gh release create "$TAG" "$TARBALL" --title "$TAG" --generate-notes || gh release upload "$TAG" "$TARBALL" --clobber
+          # GitHub's --generate-notes only lists merged PRs, which silently drops
+          # release.sh's direct-to-main commits. Build notes from the git log
+          # range between the previous tag and this one instead.
+          PREV_TAG=$(git describe --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)
+          {
+            echo "## What's Changed"
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              git log --no-merges --format='- %s (%h)' "${PREV_TAG}..${TAG}" | grep -v '^- chore(release)' || true
+              echo ""
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${TAG}"
+            else
+              git log --no-merges -1 --format='- %s (%h)' "${TAG}"
+            fi
+          } > release-notes.md
+          gh release create "$TAG" "$TARBALL" --title "$TAG" --notes-file release-notes.md || gh release upload "$TAG" "$TARBALL" --clobber
