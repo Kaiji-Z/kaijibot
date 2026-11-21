@@ -219,6 +219,30 @@ describe("FeishuConfigSchema optimization flags", () => {
     expect(result.accounts?.main?.typingIndicator).toBe(false);
     expect(result.accounts?.main?.resolveSenderNames).toBe(false);
   });
+
+  it("defaults top-level progressIndicator to true", () => {
+    const result = FeishuConfigSchema.parse({});
+    expect(result.progressIndicator).toBe(true);
+    expect(result.progressIndicatorDelaySeconds).toBeUndefined();
+  });
+
+  it("accepts account-level progress flags", () => {
+    const result = FeishuConfigSchema.parse({
+      accounts: {
+        main: {
+          progressIndicator: false,
+          progressIndicatorDelaySeconds: 30,
+        },
+      },
+    });
+    expect(result.accounts?.main?.progressIndicator).toBe(false);
+    expect(result.accounts?.main?.progressIndicatorDelaySeconds).toBe(30);
+  });
+
+  it("rejects out-of-range progressIndicatorDelaySeconds", () => {
+    expect(() => FeishuConfigSchema.parse({ progressIndicatorDelaySeconds: 1 })).toThrow();
+    expect(() => FeishuConfigSchema.parse({ progressIndicatorDelaySeconds: 301 })).toThrow();
+  });
 });
 
 describe("FeishuConfigSchema actions", () => {

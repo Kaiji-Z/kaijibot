@@ -34,6 +34,9 @@ export type StreamingCardOptions = {
   header?: CardHeaderConfig;
   /** Optional grey note footer text. */
   note?: string;
+  /** Optional initial content for the content element. Replaces the default
+   *  "⏳ Thinking..." placeholder (e.g., a progress panel). */
+  initialContent?: string;
 };
 
 /** Optional header for streaming cards (title bar with color template) */
@@ -177,6 +180,9 @@ export class FeishuStreamingSession {
   private phase: CardPhase = CARD_PHASES.idle;
   private readonly flushController: FlushController;
   private pendingText: string | null = null;
+  /** When true, pendingText is a full-snapshot replacement (progress panel /
+   *  footer composition) and must not be merged with currentText. */
+  private pendingIsReplace = false;
   private log?: (msg: string) => void;
 
   constructor(client: Client, creds: Credentials, log?: (msg: string) => void) {
@@ -198,8 +204,9 @@ export class FeishuStreamingSession {
     this.phase = transitionPhase(this.phase, CARD_PHASES.creating);
 
     const apiBase = resolveApiBase(this.creds.domain);
+    const initialContent = options?.initialContent ?? "⏳ Thinking...";
     const elements: Record<string, unknown>[] = [
-      { tag: "markdown", content: "⏳ Thinking...", element_id: "content" },
+      { tag: "markdown", content: initialContent, element_id: "content" },
     ];
     if (options?.note) {
       elements.push({ tag: "hr" });
@@ -299,7 +306,8 @@ export class FeishuStreamingSession {
         cardId,
         messageId: sendRes.data.message_id,
         sequence: 1,
-        currentText: "",
+        // Track the initial content so panel→text transitions compare correctly.
+        currentText: options?.initialContent ?? "",
         hasNote: !!options?.note,
       };
       this.phase = transitionPhase(this.phase, CARD_PHASES.streaming);
@@ -344,7 +352,10 @@ export class FeishuStreamingSession {
     if (!this.state || isTerminalPhase(this.phase) || this.pendingText === null) {
       return;
     }
-    const mergedText = mergeStreamingText(this.state.currentText, this.pendingText);
+    const mergedText = this.pendingIsReplace
+      ? this.pendingText
+      : mergeStreamingText(this.state.currentText, this.pendingText);
+    this.pendingIsReplace = false;
     if (!mergedText || mergedText === this.state.currentText) {
       this.pendingText = null;
       return;
@@ -364,6 +375,20 @@ export class FeishuStreamingSession {
     }
 
     this.pendingText = mergedInput;
+    await this.flushController.throttledUpdate(THROTTLE_CONSTANTS.CARDKIT_MS);
+  }
+
+  /** Replace the card content with a full snapshot (progress panels, footers,
+   *  or composed text+footer content). Bypasses delta merging entirely. */
+  async render(text: string): Promise<void> {
+    if (!this.state || isTerminalPhase(this.phase)) {
+      return;
+    }
+    if (!text || (this.pendingText === null && text === this.state.currentText)) {
+      return;
+    }
+    this.pendingText = text;
+    this.pendingIsReplace = true;
     await this.flushController.throttledUpdate(THROTTLE_CONSTANTS.CARDKIT_MS);
   }
 
@@ -396,7 +421,10 @@ export class FeishuStreamingSession {
       .catch((e) => this.log?.(`Note update failed: ${String(e)}`));
   }
 
-  async close(finalText?: string, options?: { note?: string }): Promise<void> {
+  async close(
+    finalText?: string,
+    options?: { note?: string; replaceFinal?: boolean },
+  ): Promise<void> {
     if (!this.state || isTerminalPhase(this.phase)) {
       return;
     }
@@ -405,8 +433,14 @@ export class FeishuStreamingSession {
     await this.flushController.waitForFlush();
     this.flushController.complete();
 
-    const pendingMerged = mergeStreamingText(this.state.currentText, this.pendingText ?? undefined);
-    const text = finalText ? mergeStreamingText(pendingMerged, finalText) : pendingMerged;
+    const pendingMerged = this.pendingIsReplace
+      ? (this.pendingText ?? this.state.currentText)
+      : mergeStreamingText(this.state.currentText, this.pendingText ?? undefined);
+    const text = finalText
+      ? options?.replaceFinal
+        ? finalText
+        : mergeStreamingText(pendingMerged, finalText)
+      : pendingMerged;
     const apiBase = resolveApiBase(this.creds.domain);
 
     // Only send final update if content differs from what's already displayed
@@ -448,6 +482,7 @@ export class FeishuStreamingSession {
     const finalState = this.state;
     this.state = null;
     this.pendingText = null;
+    this.pendingIsReplace = false;
 
     this.log?.(`Closed streaming: cardId=${finalState.cardId}`);
   }
@@ -463,6 +498,7 @@ export class FeishuStreamingSession {
     this.flushController.complete();
     this.state = null;
     this.pendingText = null;
+    this.pendingIsReplace = false;
   }
 
   isActive(): boolean {

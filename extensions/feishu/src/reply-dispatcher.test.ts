@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type StreamingSessionStub = {
   active: boolean;
   start: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
+  render: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   isActive: ReturnType<typeof vi.fn>;
   abort: ReturnType<typeof vi.fn>;
@@ -81,6 +82,7 @@ vi.mock("./streaming-card.js", () => {
         this._messageId = "om_card_msg";
       });
       update = vi.fn(async () => {});
+      render = vi.fn(async () => {});
       close = vi.fn(async () => {
         this.active = false;
         this._phase = "completed";
@@ -802,5 +804,248 @@ describe("createFeishuReplyDispatcher streaming behavior", () => {
     const sentText = sendStructuredCardFeishuMock.mock.calls[0][0].text as string;
     const codeBlockCount = (sentText.match(/```/g) ?? []).length;
     expect(codeBlockCount).toBeGreaterThan(0);
+  });
+});
+
+describe("createFeishuReplyDispatcher progress panel", () => {
+  function mockAccount(config: Record<string, unknown> = {}) {
+    resolveFeishuAccountMock.mockReturnValue({
+      accountId: "main",
+      appId: "app_id",
+      appSecret: "app_secret",
+      domain: "feishu",
+      config: {
+        renderMode: "auto",
+        streaming: true,
+        ...config,
+      },
+    });
+  }
+
+  async function drain(times = 10) {
+    for (let i = 0; i < times; i += 1) {
+      await Promise.resolve();
+    }
+  }
+
+  function itemEvent(overrides: Record<string, string | undefined> = {}) {
+    return {
+      itemId: "tool:1",
+      kind: "tool",
+      title: "Search repo",
+      name: "search",
+      phase: "start",
+      status: "running",
+      ...overrides,
+    };
+  }
+
+  function createProgressHarness(config: Record<string, unknown> = {}) {
+    mockAccount(config);
+    const result = createFeishuReplyDispatcher({
+      cfg: {} as never,
+      agentId: "agent",
+      runtime: { log: vi.fn(), error: vi.fn() } as never,
+      chatId: "oc_chat",
+    });
+    const options = createReplyDispatcherWithTypingMock.mock.calls.at(-1)?.[0];
+    return { result, options };
+  }
+
+  // The sibling "streaming behavior" describe owns the shared beforeEach;
+  // this suite needs its own cleanup so streaming instances don't leak across tests.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamingInstances.length = 0;
+    sendMediaFeishuMock.mockResolvedValue(undefined);
+    sendStructuredCardFeishuMock.mockResolvedValue(undefined);
+    resolveReceiveIdTypeMock.mockReturnValue("chat_id");
+    createFeishuClientMock.mockReturnValue({});
+    createReplyDispatcherWithTypingMock.mockImplementation((opts) => ({
+      dispatcher: {},
+      replyOptions: {},
+      markDispatchIdle: vi.fn(),
+      _opts: opts,
+    }));
+    getFeishuRuntimeMock.mockReturnValue({
+      channel: {
+        text: {
+          resolveTextChunkLimit: vi.fn(() => 4000),
+          resolveChunkMode: vi.fn(() => "line"),
+          resolveMarkdownTableMode: vi.fn(() => "preserve"),
+          convertMarkdownTables: vi.fn((text: string) => text),
+          chunkTextWithMode: vi.fn((text: string) => [text]),
+        },
+        reply: {
+          createReplyDispatcherWithTyping: createReplyDispatcherWithTypingMock,
+          resolveHumanDelayConfig: vi.fn(() => undefined),
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("omits onItemEvent when progressIndicator is disabled", () => {
+    const { result } = createProgressHarness({ progressIndicator: false });
+    expect(result.replyOptions.onItemEvent).toBeUndefined();
+  });
+
+  it("wires onItemEvent when progress is enabled by default", () => {
+    const { result } = createProgressHarness();
+    expect(typeof result.replyOptions.onItemEvent).toBe("function");
+  });
+
+  it("does not create a streaming card before the delay threshold", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    await drain();
+    expect(streamingInstances).toHaveLength(0);
+
+    vi.advanceTimersByTime(4_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" }));
+    await drain();
+    expect(streamingInstances).toHaveLength(0);
+  });
+
+  it("starts the card with a progress panel after the threshold", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    await drain();
+    vi.advanceTimersByTime(6_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2", title: "Write summary" }));
+    await drain();
+
+    expect(streamingInstances).toHaveLength(1);
+    expect(streamingInstances[0].start).toHaveBeenCalledWith(
+      "oc_chat",
+      "chat_id",
+      expect.objectContaining({
+        initialContent: expect.stringContaining("Working"),
+      }),
+    );
+    const rendered = streamingInstances[0].render.mock.calls.map((call) => String(call[0]));
+    expect(rendered.at(-1)).toContain("Write summary");
+  });
+
+  it("never engages without item events even past the threshold", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+    vi.advanceTimersByTime(60_000);
+    await options.onIdle?.();
+    expect(streamingInstances).toHaveLength(0);
+    void result;
+  });
+
+  it("renders streamed text with a running-step footer once text starts", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent({ title: "Run tests" }));
+    vi.advanceTimersByTime(6_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" }));
+    await drain();
+
+    result.replyOptions.onPartialReply?.({ text: "The answer begins" });
+    await drain();
+
+    const rendered = streamingInstances[0].render.mock.calls.map((call) => String(call[0]));
+    expect(rendered.at(-1)).toContain("The answer begins");
+    expect(rendered.at(-1)).toContain("🔧");
+    expect(streamingInstances[0].update).not.toHaveBeenCalled();
+  });
+
+  it("closes a silent progress card with the Done fallback", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    vi.advanceTimersByTime(6_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" }));
+    await drain();
+    expect(streamingInstances).toHaveLength(1);
+
+    await options.onIdle?.();
+    expect(streamingInstances[0].close).toHaveBeenCalledWith(
+      "✅ Done",
+      expect.objectContaining({ replaceFinal: true }),
+    );
+  });
+
+  it("replaces the panel with the final reply text", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    vi.advanceTimersByTime(6_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" }));
+    await drain();
+
+    await options.deliver({ text: "```ts\nconst x = 1;\n```" }, { kind: "final" });
+
+    const closeCall = streamingInstances[0].close.mock.calls.at(-1);
+    expect(String(closeCall?.[0])).toContain("const x = 1");
+    expect(closeCall?.[1]).toMatchObject({ replaceFinal: true });
+  });
+
+  it("keeps the elapsed time ticking on the slow ticker", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    vi.advanceTimersByTime(6_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" }));
+    await drain();
+
+    streamingInstances[0].render.mockClear();
+    vi.advanceTimersByTime(31_000);
+    await drain();
+    expect(streamingInstances[0].render).toHaveBeenCalled();
+
+    // Ticker stops after close.
+    await options.onIdle?.();
+    streamingInstances[0].render.mockClear();
+    vi.advanceTimersByTime(90_000);
+    await drain();
+    expect(streamingInstances[0].render).not.toHaveBeenCalled();
+    void result;
+  });
+
+  it("throttles item-event renders to the minimum interval", async () => {
+    vi.useFakeTimers();
+    const { result, options } = createProgressHarness({ progressIndicatorDelaySeconds: 5 });
+    await options.onReplyStart?.();
+
+    result.replyOptions.onItemEvent?.(itemEvent());
+    vi.advanceTimersByTime(6_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2", title: "Step two" }));
+    await drain();
+    streamingInstances[0].render.mockClear();
+
+    // Second event 100ms later: below the 2s minimum interval → throttled.
+    vi.advanceTimersByTime(100);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:3", title: "Step three" }));
+    await drain();
+    expect(streamingInstances[0].render).not.toHaveBeenCalled();
+
+    // After the interval elapses, the next event renders again.
+    vi.advanceTimersByTime(2_000);
+    result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:4", title: "Step four" }));
+    await drain();
+    expect(streamingInstances[0].render).toHaveBeenCalledTimes(1);
+    void result;
   });
 });

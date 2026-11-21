@@ -184,6 +184,10 @@ const FeishuSharedConfigShape = {
   replyInThread: ReplyInThreadSchema,
   reactionNotifications: ReactionNotificationModeSchema,
   typingIndicator: z.boolean().optional(),
+  /** Long-task progress panel on the streaming card (default: true). */
+  progressIndicator: z.boolean().optional(),
+  /** Seconds before the progress panel engages (default: 15, min 5, max 300). */
+  progressIndicatorDelaySeconds: z.number().int().min(5).max(300).optional(),
   resolveSenderNames: z.boolean().optional(),
 };
 
@@ -235,6 +239,7 @@ export const FeishuConfigSchema = z
     dynamicAgentCreation: DynamicAgentCreationSchema,
     // Optimization flags
     typingIndicator: z.boolean().optional().default(true),
+    progressIndicator: z.boolean().optional().default(true),
     resolveSenderNames: z.boolean().optional().default(true),
     // Multi-account configuration
     accounts: z.record(z.string(), FeishuAccountConfigSchema.optional()).optional(),

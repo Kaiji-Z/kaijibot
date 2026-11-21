@@ -1,12 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CARD_PHASES } from "./card-types.js";
 import { THROTTLE_CONSTANTS } from "./card-types.js";
 import {
+  FeishuStreamingSession,
   mergeStreamingText,
   resolveStreamingCardSendMode,
   isTerminalPhase,
   transitionPhase,
 } from "./streaming-card.js";
+
+const fetchMock = vi.hoisted(() => vi.fn());
+vi.mock("kaijibot/plugin-sdk/ssrf-runtime", () => ({
+  fetchWithSsrFGuard: fetchMock,
+}));
 
 describe("mergeStreamingText", () => {
   it("prefers the latest full text when it already includes prior text", () => {
@@ -105,5 +111,154 @@ describe("CardPhase state machine (re-exported from streaming-card)", () => {
     expect(THROTTLE_CONSTANTS.LONG_GAP_THRESHOLD_MS).toBe(2000);
     expect(THROTTLE_CONSTANTS.BATCH_AFTER_GAP_MS).toBe(300);
     expect(THROTTLE_CONSTANTS.REASONING_STATUS_MS).toBe(1500);
+  });
+});
+
+type FetchRequest = { url: string; init?: { method?: string; body?: string } };
+
+describe("FeishuStreamingSession progress content (initialContent / render / close)", () => {
+  const creds = { appId: "app", appSecret: "secret", domain: "feishu" as const };
+
+  function installFetchMock() {
+    fetchMock.mockImplementation(async (req: FetchRequest) => {
+      if (req.url.includes("/auth/v3/")) {
+        return {
+          response: {
+            ok: true,
+            json: async () => ({ code: 0, tenant_access_token: "tok", expire: 7200 }),
+          },
+          release: async () => {},
+        };
+      }
+      if (req.url.endsWith("/cardkit/v1/cards") && req.init?.method === "POST") {
+        return {
+          response: { ok: true, json: async () => ({ code: 0, data: { card_id: "card_1" } }) },
+          release: async () => {},
+        };
+      }
+      return {
+        response: { ok: true, json: async () => ({ code: 0 }) },
+        release: async () => {},
+      };
+    });
+  }
+
+  function createClient() {
+    return {
+      im: {
+        message: {
+          reply: vi.fn(async () => ({ code: 0, data: { message_id: "om_card" } })),
+          create: vi.fn(async () => ({ code: 0, data: { message_id: "om_card" } })),
+        },
+      },
+    };
+  }
+
+  function requestBody(req: FetchRequest): Record<string, unknown> {
+    return JSON.parse(req.init?.body ?? "{}") as Record<string, unknown>;
+  }
+
+  function createdCardContent(): string {
+    const call = fetchMock.mock.calls.find(([req]) =>
+      (req as FetchRequest).url.endsWith("/cardkit/v1/cards"),
+    );
+    if (!call) {
+      throw new Error("card create call not found");
+    }
+    const body = requestBody(call[0] as FetchRequest);
+    const cardJson = JSON.parse(String(body.data)) as {
+      body: { elements: Array<{ content?: string; element_id?: string }> };
+    };
+    const content = cardJson.body.elements.find((el) => el.element_id === "content");
+    return content?.content ?? "";
+  }
+
+  function contentPuts(): string[] {
+    return fetchMock.mock.calls
+      .map(([req]) => req as FetchRequest)
+      .filter((req) => req.url.includes("/elements/content/content"))
+      .map((req) => String(requestBody(req).content));
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installFetchMock();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("start uses initialContent for the content element", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", { initialContent: "⏳ **Working** · 5s" });
+    expect(createdCardContent()).toBe("⏳ **Working** · 5s");
+  });
+
+  it("start falls back to the Thinking placeholder without initialContent", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", {});
+    expect(createdCardContent()).toBe("⏳ Thinking...");
+  });
+
+  it("render replaces content without merging", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", { initialContent: "panel v1" });
+
+    await session.render("panel v2 — different text");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+
+    expect(contentPuts()).toEqual(["panel v2 — different text"]);
+  });
+
+  it("render skips no-op updates with identical content", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", { initialContent: "panel v1" });
+
+    await session.render("panel v1");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+
+    expect(contentPuts()).toEqual([]);
+  });
+
+  it("render after update overrides a pending merge with the full snapshot", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", {});
+
+    await session.update("hello wor");
+    await session.render("⏳ **Working** · 10s");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+
+    expect(contentPuts()).toEqual(["⏳ **Working** · 10s"]);
+  });
+
+  it("close with replaceFinal uses the final text verbatim (no merge with panel)", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", { initialContent: "⏳ panel" });
+    await session.render("⏳ panel v2");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+
+    await session.close("final answer", { replaceFinal: true });
+
+    expect(contentPuts()).toEqual(["⏳ panel v2", "final answer"]);
+  });
+
+  it("close without replaceFinal preserves merge behavior", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", {});
+    await session.update("hello");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+
+    await session.close("hello world");
+
+    expect(contentPuts()).toEqual(["hello", "hello world"]);
+  });
+
+  it("render is a no-op before the card starts", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.render("panel");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -663,6 +663,39 @@ describe("dispatchReplyFromConfig", () => {
     expect(dispatcher.sendFinalReply).toHaveBeenCalledTimes(1);
   });
 
+  it("passes channel replyOptions progress callbacks through to the reply resolver", async () => {
+    setNoAbort();
+    const cfg = emptyConfig;
+    const dispatcher = createDispatcher();
+    const ctx = buildTestCtx({
+      Provider: "slack",
+      Surface: undefined,
+      OriginatingChannel: "slack",
+      OriginatingTo: "channel:C123",
+    });
+
+    const onItemEvent: NonNullable<GetReplyOptions["onItemEvent"]> = async () => {};
+    const onToolStart: NonNullable<GetReplyOptions["onToolStart"]> = async () => {};
+    const onCommandOutput: NonNullable<GetReplyOptions["onCommandOutput"]> = async () => {};
+
+    let received: GetReplyOptions | undefined;
+    const replyResolver = async (_ctx: MsgContext, opts?: GetReplyOptions) => {
+      received = opts;
+      return { text: "hi" } satisfies ReplyPayload;
+    };
+    await dispatchReplyFromConfig({
+      ctx,
+      cfg,
+      dispatcher,
+      replyResolver,
+      replyOptions: { onItemEvent, onToolStart, onCommandOutput },
+    });
+
+    expect(received?.onItemEvent).toBe(onItemEvent);
+    expect(received?.onToolStart).toBe(onToolStart);
+    expect(received?.onCommandOutput).toBe(onCommandOutput);
+  });
+
   it("routes when OriginatingChannel differs from Provider", async () => {
     setNoAbort();
     mocks.routeReply.mockClear();

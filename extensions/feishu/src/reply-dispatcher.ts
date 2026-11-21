@@ -13,6 +13,13 @@ import type { MentionTarget } from "./mention.js";
 import { buildMentionedCardContent } from "./mention.js";
 import { UnavailableGuard } from "./message-unavailable.js";
 import {
+  createProgressTracker,
+  DEFAULT_PROGRESS_DELAY_SECONDS,
+  PROGRESS_TICK_INTERVAL_MS,
+  type ProgressItemEvent,
+  type ProgressTracker,
+} from "./progress-tracker.js";
+import {
   createReplyPrefixContext,
   type ClawdbotConfig,
   type OutboundIdentity,
@@ -192,6 +199,18 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   const streamingEnabled =
     !threadReplyMode && account.config?.streaming !== false && renderMode !== "raw";
   const reasoningPreviewEnabled = streamingEnabled && params.allowReasoningPreview === true;
+  // Long-task progress panel: engages on the streaming card once the run is
+  // older than the threshold and at least one work item has been observed.
+  // Quick replies never reach the threshold, so they show no progress UI.
+  const progressEnabled = streamingEnabled && (account.config.progressIndicator ?? true);
+  const progressTracker: ProgressTracker | null = progressEnabled
+    ? createProgressTracker({
+        thresholdMs:
+          (account.config.progressIndicatorDelaySeconds ?? DEFAULT_PROGRESS_DELAY_SECONDS) * 1000,
+      })
+    : null;
+  let progressActive = false;
+  let progressTicker: ReturnType<typeof setInterval> | null = null;
 
   let streaming: FeishuStreamingSession | null = null;
   let streamText = "";
@@ -211,6 +230,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       }
       streaming = null;
       streamingStartPromise = null;
+      stopProgressTicker();
     },
   });
 
@@ -238,7 +258,18 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     return parts.join("");
   };
 
-  const flushStreamingCardUpdate = (combined: string) => {
+  /** Compose the full card content while progress is engaged: the step panel
+   *  before any text exists, streamed text with a running-step footer after. */
+  const composeProgressContent = (now: number): string => {
+    const base = buildCombinedStreamText(reasoningText, streamText);
+    if (!base) {
+      return progressTracker?.renderPanel(now) ?? "";
+    }
+    const footer = progressTracker?.renderFooter(now) ?? "";
+    return footer ? `${base}\n\n${footer}` : base;
+  };
+
+  const flushStreamingCardUpdate = () => {
     partialUpdateQueue = partialUpdateQueue.then(async () => {
       if (guard.shouldSkip("flushUpdate")) {
         return;
@@ -246,8 +277,14 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       if (streamingStartPromise) {
         await streamingStartPromise;
       }
-      if (streaming?.isActive()) {
-        await streaming.update(combined);
+      if (!streaming?.isActive()) {
+        return;
+      }
+      if (progressActive) {
+        // Progress content is a composed full snapshot; never merge with deltas.
+        await streaming.render(composeProgressContent(Date.now()));
+      } else {
+        await streaming.update(buildCombinedStreamText(reasoningText, streamText));
       }
     });
   };
@@ -271,7 +308,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     const mode = options?.mode ?? "snapshot";
     streamText =
       mode === "delta" ? `${streamText}${nextText}` : mergeStreamingText(streamText, nextText);
-    flushStreamingCardUpdate(buildCombinedStreamText(reasoningText, streamText));
+    flushStreamingCardUpdate();
   };
 
   const queueReasoningUpdate = (nextThinking: string) => {
@@ -279,7 +316,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       return;
     }
     reasoningText = nextThinking;
-    flushStreamingCardUpdate(buildCombinedStreamText(reasoningText, streamText));
+    flushStreamingCardUpdate();
   };
 
   const startStreaming = () => {
@@ -310,6 +347,12 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           rootId,
           header: cardHeader,
           note: cardNote,
+          // When progress engaged before any text, show the panel immediately
+          // instead of the "Thinking..." placeholder.
+          initialContent:
+            progressActive && !streamText && !reasoningText
+              ? progressTracker?.renderPanel(Date.now())
+              : undefined,
         });
       } catch (error) {
         params.runtime.error?.(`feishu: streaming start failed: ${String(error)}`);
@@ -319,7 +362,47 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     })();
   };
 
-  const closeStreaming = async () => {
+  const stopProgressTicker = () => {
+    if (progressTicker) {
+      clearInterval(progressTicker);
+      progressTicker = null;
+    }
+  };
+
+  const startProgressTicker = () => {
+    if (progressTicker) {
+      return;
+    }
+    // Slow lane: keep the elapsed time ticking during long single-tool runs
+    // (the case where the typing-reaction TTL of 2 min runs out).
+    progressTicker = setInterval(() => {
+      if (!streaming?.isActive()) {
+        stopProgressTicker();
+        return;
+      }
+      flushStreamingCardUpdate();
+    }, PROGRESS_TICK_INTERVAL_MS);
+  };
+
+  const handleProgressItem = (item: ProgressItemEvent) => {
+    if (!progressTracker || guard.shouldSkip("progressItem")) {
+      return;
+    }
+    const now = Date.now();
+    progressTracker.recordItem(item, now);
+    if (!progressTracker.isEngaged() && progressTracker.shouldEngage(now)) {
+      progressTracker.markEngaged();
+      progressActive = true;
+      startStreaming();
+      startProgressTicker();
+    }
+    if (progressActive && progressTracker.shouldRender(now)) {
+      progressTracker.markRendered(now);
+      flushStreamingCardUpdate();
+    }
+  };
+
+  const closeStreaming = async (emptyTextFallback?: string) => {
     if (guard.shouldSkip("closeStreaming")) {
       return;
     }
@@ -329,13 +412,20 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     await partialUpdateQueue;
     if (streaming?.isActive()) {
       let text = buildCombinedStreamText(reasoningText, streamText);
+      // Progress card with no streamed text (silent reply / media-only):
+      // replace the stale "running" panel with a terminal line instead of
+      // leaving it frozen.
+      if (!text && progressActive) {
+        text = emptyTextFallback ?? "✅ Done";
+      }
       text = sanitizeTextForCard(text);
       if (mentionTargets?.length) {
         text = buildMentionedCardContent(mentionTargets, text);
       }
       const finalNote = resolveCardNote(agentId, identity, prefixContext.prefixContext);
-      await streaming.close(text, { note: finalNote });
+      await streaming.close(text, { note: finalNote, replaceFinal: progressActive || undefined });
     }
+    stopProgressTicker();
     streaming = null;
     streamingStartPromise = null;
     streamText = "";
@@ -391,6 +481,8 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       humanDelay: core.channel.reply.resolveHumanDelayConfig(cfg, agentId),
       onReplyStart: async () => {
         deliveredFinalTexts.clear();
+        // Anchor the progress threshold clock at run start.
+        progressTracker?.setAnchor(Date.now());
         if (streamingEnabled && renderMode === "card") {
           startStreaming();
         }
@@ -499,11 +591,11 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
           `feishu[${account.accountId}] ${info.kind} reply failed: ${String(error)}`,
         );
         guard.terminate("onError", error);
-        await closeStreaming();
+        await closeStreaming("⚠️ Failed");
         typingCallbacks?.onIdle?.();
       },
       onIdle: async () => {
-        await closeStreaming();
+        await closeStreaming("✅ Done");
         typingCallbacks?.onIdle?.();
       },
       onCleanup: () => {
@@ -517,6 +609,11 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       ...replyOptions,
       onModelSelected: prefixContext.onModelSelected,
       disableBlockStreaming: true,
+      onItemEvent: progressEnabled
+        ? (item: ProgressItemEvent) => {
+            handleProgressItem(item);
+          }
+        : undefined,
       onPartialReply: streamingEnabled
         ? (payload: ReplyPayload) => {
             if (!payload.text) {

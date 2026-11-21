@@ -226,7 +226,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
             },
             {
               type: "string",
-              format: "uri",
+              format: "starts_with",
               pattern: "^https:\\/\\/.*",
             },
           ],
@@ -280,14 +280,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
           default: ["*"],
           type: "array",
           items: {
-            anyOf: [
-              {
-                type: "string",
-              },
-              {
-                type: "number",
-              },
-            ],
+            type: ["string", "number"],
           },
         },
         groupPolicy: {
@@ -303,27 +296,13 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
         groupAllowFrom: {
           type: "array",
           items: {
-            anyOf: [
-              {
-                type: "string",
-              },
-              {
-                type: "number",
-              },
-            ],
+            type: ["string", "number"],
           },
         },
         groupSenderAllowFrom: {
           type: "array",
           items: {
-            anyOf: [
-              {
-                type: "string",
-              },
-              {
-                type: "number",
-              },
-            ],
+            type: ["string", "number"],
           },
         },
         requireMention: {
@@ -370,14 +349,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
               allowFrom: {
                 type: "array",
                 items: {
-                  anyOf: [
-                    {
-                      type: "string",
-                    },
-                    {
-                      type: "number",
-                    },
-                  ],
+                  type: ["string", "number"],
                 },
               },
               systemPrompt: {
@@ -540,6 +512,15 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
         typingIndicator: {
           default: true,
           type: "boolean",
+        },
+        progressIndicator: {
+          default: true,
+          type: "boolean",
+        },
+        progressIndicatorDelaySeconds: {
+          type: "integer",
+          minimum: 5,
+          maximum: 300,
         },
         resolveSenderNames: {
           default: true,
@@ -796,7 +777,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
                   },
                   {
                     type: "string",
-                    format: "uri",
+                    format: "starts_with",
                     pattern: "^https:\\/\\/.*",
                   },
                 ],
@@ -846,14 +827,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
               allowFrom: {
                 type: "array",
                 items: {
-                  anyOf: [
-                    {
-                      type: "string",
-                    },
-                    {
-                      type: "number",
-                    },
-                  ],
+                  type: ["string", "number"],
                 },
               },
               groupPolicy: {
@@ -868,27 +842,13 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
               groupAllowFrom: {
                 type: "array",
                 items: {
-                  anyOf: [
-                    {
-                      type: "string",
-                    },
-                    {
-                      type: "number",
-                    },
-                  ],
+                  type: ["string", "number"],
                 },
               },
               groupSenderAllowFrom: {
                 type: "array",
                 items: {
-                  anyOf: [
-                    {
-                      type: "string",
-                    },
-                    {
-                      type: "number",
-                    },
-                  ],
+                  type: ["string", "number"],
                 },
               },
               requireMention: {
@@ -935,14 +895,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
                     allowFrom: {
                       type: "array",
                       items: {
-                        anyOf: [
-                          {
-                            type: "string",
-                          },
-                          {
-                            type: "number",
-                          },
-                        ],
+                        type: ["string", "number"],
                       },
                     },
                     systemPrompt: {
@@ -1104,6 +1057,14 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
               typingIndicator: {
                 type: "boolean",
               },
+              progressIndicator: {
+                type: "boolean",
+              },
+              progressIndicatorDelaySeconds: {
+                type: "integer",
+                minimum: 5,
+                maximum: 300,
+              },
               resolveSenderNames: {
                 type: "boolean",
               },
@@ -1129,6 +1090,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
         "groupPolicy",
         "reactionNotifications",
         "typingIndicator",
+        "progressIndicator",
         "resolveSenderNames",
       ],
       additionalProperties: false,

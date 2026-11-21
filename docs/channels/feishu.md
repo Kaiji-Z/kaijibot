@@ -537,6 +537,28 @@ Feishu supports streaming replies via interactive cards. When enabled, the bot u
 
 Set `streaming: false` to wait for the full reply before sending.
 
+### Long-task progress panel
+
+For long-running turns (multi-tool tasks, slow builds), the streaming card can show a progress panel: a step list with per-step status and elapsed time while tools execute, and a one-line running-step footer once reply text starts streaming. The final reply replaces the panel. This keeps the user aware during long tasks, including single tool calls that outlive the 2-minute typing-reaction TTL.
+
+The panel engages only after the run is at least `progressIndicatorDelaySeconds` old AND at least one tool/command item has started — quick Q&A replies never show it. A slow ticker refreshes the elapsed time every 30 s so the card stays visibly alive during quiet stretches.
+
+```json5
+{
+  channels: {
+    feishu: {
+      progressIndicator: true, // enable progress panel (default true)
+      progressIndicatorDelaySeconds: 15, // engage threshold (default 15, range 5–300)
+    },
+  },
+}
+```
+
+Notes:
+
+- Requires streaming cards (`streaming: true`, non-thread context, `renderMode` ≠ `raw`); otherwise the flag has no effect.
+- Set `progressIndicator: false` to disable (e.g., to reduce API calls on rate-limited apps).
+
 ### ACP sessions
 
 Feishu supports ACP for:
@@ -694,6 +716,8 @@ Key options:
 | `channels.feishu.mediaMaxMb`                      | Media size limit                        | `30`             |
 | `channels.feishu.streaming`                       | Enable streaming card output            | `true`           |
 | `channels.feishu.blockStreaming`                  | Enable block streaming                  | `true`           |
+| `channels.feishu.progressIndicator`               | Enable long-task progress panel         | `true`           |
+| `channels.feishu.progressIndicatorDelaySeconds`   | Progress panel engage threshold (secs)  | `15`             |
 
 ---
 
