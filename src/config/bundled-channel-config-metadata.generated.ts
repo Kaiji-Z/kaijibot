@@ -226,8 +226,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
             },
             {
               type: "string",
-              format: "starts_with",
-              pattern: "^https:\\/\\/.*",
+              pattern: "^https:\\/\\/",
             },
           ],
         },
@@ -777,8 +776,7 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
                   },
                   {
                     type: "string",
-                    format: "starts_with",
-                    pattern: "^https:\\/\\/.*",
+                    pattern: "^https:\\/\\/",
                   },
                 ],
               },
