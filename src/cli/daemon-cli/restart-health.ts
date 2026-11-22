@@ -14,13 +14,18 @@ import {
 } from "../../shared/string-coerce.js";
 import { sleep } from "../../utils.js";
 
-export const DEFAULT_RESTART_HEALTH_TIMEOUT_MS = 60_000;
+// Must stay ≥ 2× the Windows stopped-free grace below: the early-exit floor is
+// clamped to attempts/2, so a shorter timeout silently cuts the 90s Windows
+// grace in half and declares slow-booting gateways (60-90s cold start) dead
+// mid-boot. Healthy gateways are detected by the poll loop, so a longer cap
+// only delays the verdict when the gateway is genuinely down.
+export const DEFAULT_RESTART_HEALTH_TIMEOUT_MS = 180_000;
 export const DEFAULT_RESTART_HEALTH_DELAY_MS = 500;
 export const DEFAULT_RESTART_HEALTH_ATTEMPTS = Math.ceil(
   DEFAULT_RESTART_HEALTH_TIMEOUT_MS / DEFAULT_RESTART_HEALTH_DELAY_MS,
 );
 const STOPPED_FREE_EARLY_EXIT_GRACE_MS = 10_000;
-const WINDOWS_STOPPED_FREE_EARLY_EXIT_GRACE_MS = 90_000;
+export const WINDOWS_STOPPED_FREE_EARLY_EXIT_GRACE_MS = 90_000;
 
 export type GatewayRestartWaitOutcome = "healthy" | "stale-pids" | "stopped-free" | "timeout";
 

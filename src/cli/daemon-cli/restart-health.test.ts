@@ -333,3 +333,22 @@ describe("inspectGatewayRestart", () => {
     expect(sleep).toHaveBeenCalledTimes(4);
   });
 });
+
+describe("restart health timeout invariants", () => {
+  it("default timeout preserves the Windows stopped-free grace window", async () => {
+    const mod = await import("./restart-health.js");
+    const attempts = Math.ceil(
+      mod.DEFAULT_RESTART_HEALTH_TIMEOUT_MS / mod.DEFAULT_RESTART_HEALTH_DELAY_MS,
+    );
+    const graceAttempts = Math.ceil(
+      mod.WINDOWS_STOPPED_FREE_EARLY_EXIT_GRACE_MS / mod.DEFAULT_RESTART_HEALTH_DELAY_MS,
+    );
+    // Mirrors minAttemptForEarlyExit in waitForGatewayHealthyRestart: the
+    // attempts/2 clamp must not cut the Windows 90s grace short (a cold-booting
+    // gateway takes 60-90s to bind and would be declared dead mid-boot).
+    const minAttempt = Math.min(graceAttempts, Math.floor(attempts / 2));
+    expect(minAttempt * mod.DEFAULT_RESTART_HEALTH_DELAY_MS).toBeGreaterThanOrEqual(
+      mod.WINDOWS_STOPPED_FREE_EARLY_EXIT_GRACE_MS,
+    );
+  });
+});
