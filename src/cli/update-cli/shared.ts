@@ -60,6 +60,28 @@ const MAX_LOG_CHARS = 8000;
 export const DEFAULT_PACKAGE_NAME = "kaijibot";
 const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME]);
 
+/** Lines of output kept per stream when formatting a failed command's output. */
+const COMMAND_FAILURE_TAIL_LINES = 10;
+
+export function formatCommandFailure(stdout: string, stderr: string): string {
+  // Show BOTH streams, labeled: preferring stderr alone has masked real CLI
+  // failures whose error text landed on stdout while trailing warning noise
+  // (e.g., Ajv "unknown format" lines) monopolized the message tail.
+  const sections: string[] = [];
+  const stderrTail = stderr.trim().split("\n").slice(-COMMAND_FAILURE_TAIL_LINES).join("\n");
+  const stdoutTail = stdout.trim().split("\n").slice(-COMMAND_FAILURE_TAIL_LINES).join("\n");
+  if (stderrTail) {
+    sections.push(`[stderr]\n${stderrTail}`);
+  }
+  if (stdoutTail) {
+    sections.push(`[stdout]\n${stdoutTail}`);
+  }
+  if (sections.length === 0) {
+    return "command returned a non-zero exit code";
+  }
+  return sections.join("\n");
+}
+
 export function normalizeTag(value?: string | null): string | null {
   return normalizePackageTagInput(value, ["kaijibot", DEFAULT_PACKAGE_NAME]);
 }

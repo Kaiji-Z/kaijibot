@@ -61,6 +61,7 @@ import {
   DEFAULT_PACKAGE_NAME,
   createGlobalCommandRunner,
   ensureGitCheckout,
+  formatCommandFailure,
   normalizeTag,
   parseTimeoutMsOrExit,
   readPackageName,
@@ -101,14 +102,6 @@ function resolveGatewayInstallEntrypointCandidates(root?: string): string[] {
     path.join(root, "dist", "index.js"),
     path.join(root, "dist", "index.mjs"),
   ];
-}
-
-function formatCommandFailure(stdout: string, stderr: string): string {
-  const detail = (stderr || stdout).trim();
-  if (!detail) {
-    return "command returned a non-zero exit code";
-  }
-  return detail.split("\n").slice(-3).join("\n");
 }
 
 function tryResolveInvocationCwd(): string | undefined {

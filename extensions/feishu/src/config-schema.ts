@@ -17,7 +17,13 @@ const GroupPolicySchema = z.union([
 ]);
 const FeishuDomainSchema = z.union([
   z.enum(["feishu", "lark"]),
-  z.string().url().startsWith("https://"),
+  // Regex rather than .startsWith(): the JSON-schema converter maps
+  // .startsWith() to `format: "starts_with"`, which Ajv does not know and
+  // warns about on every gateway boot. A regex maps to a native `pattern`.
+  z
+    .string()
+    .url()
+    .regex(/^https:\/\//),
 ]);
 const FeishuConnectionModeSchema = z.enum(["websocket", "webhook"]);
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createGlobalCommandRunner } from "./shared.js";
+import { createGlobalCommandRunner, formatCommandFailure } from "./shared.js";
 
 const runCommandWithTimeout = vi.hoisted(() => vi.fn());
 
@@ -47,5 +47,30 @@ describe("createGlobalCommandRunner", () => {
       stderr: "err",
       code: 17,
     });
+  });
+});
+
+describe("formatCommandFailure", () => {
+  it("returns a placeholder when both streams are empty", () => {
+    expect(formatCommandFailure("", "")).toBe("command returned a non-zero exit code");
+  });
+
+  it("keeps BOTH streams labeled instead of dropping stdout when stderr is non-empty", () => {
+    const detail = formatCommandFailure("Error: service install failed", "unknown format ignored");
+    expect(detail).toContain("[stderr]");
+    expect(detail).toContain("unknown format ignored");
+    expect(detail).toContain("[stdout]");
+    expect(detail).toContain("Error: service install failed");
+  });
+
+  it("truncates each stream to the tail lines", () => {
+    const stdoutLines = Array.from({ length: 15 }, (_, i) => `out-${i}`).join("\n");
+    const detail = formatCommandFailure(stdoutLines, "");
+    expect(detail).toContain("out-14");
+    expect(detail).not.toContain("out-0\n");
+  });
+
+  it("normalizes whitespace-only streams as empty", () => {
+    expect(formatCommandFailure("   ", "\n")).toBe("command returned a non-zero exit code");
   });
 });
