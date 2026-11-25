@@ -79,6 +79,23 @@ function resolveGlm5ForwardCompatModel(
   } as ProviderRuntimeModel);
 }
 
+// glm-5.3 models always think. The API rejects `thinking: { type: "disabled" }`
+// (HTTP 400, code 1210) and takes `reasoning_effort` low, high or max instead.
+// pi-ai asks for disabled thinking whenever a call passes no reasoning option,
+// so background single-turn calls on these models came back empty. The map
+// names the effort to send in place of "off"; whoever can send it reads it here.
+function isAlwaysThinkingModel(model: { id: string }): boolean {
+  const modelId = normalizeLowercaseStringOrEmpty(model.id).trim();
+  return modelId === "glm-5.3" || modelId.startsWith("glm-5.3-");
+}
+
+function declareAlwaysThinkingModel(model: ProviderRuntimeModel): ProviderRuntimeModel {
+  if (!isAlwaysThinkingModel(model) || model.thinkingLevelMap?.off !== undefined) {
+    return model;
+  }
+  return { ...model, thinkingLevelMap: { ...model.thinkingLevelMap, off: "low" } };
+}
+
 function resolveZaiDefaultModel(modelIdOverride?: string): string {
   return modelIdOverride ? `zai/${modelIdOverride}` : ZAI_DEFAULT_MODEL_REF;
 }
@@ -140,6 +157,13 @@ function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
     }
 
     if (isDisabledThinkingLevel(ctx.thinkingLevel)) {
+      const offEffort = model.thinkingLevelMap?.off;
+      if (typeof offEffort === "string") {
+        // The model always thinks and rejects "disabled": run it at its lowest effort.
+        delete payload.thinking;
+        payload.reasoning_effort = offEffort;
+        return;
+      }
       payload.thinking = { type: "disabled" };
       return;
     }
@@ -356,6 +380,7 @@ export default definePluginEntry({
           endpoint: "cn",
         }),
       ],
+      normalizeResolvedModel: ({ model }) => declareAlwaysThinkingModel(model),
       resolveDynamicModel: (ctx) => resolveGlm5ForwardCompatModel(ctx),
       ...buildProviderReplayFamilyHooks({
         family: "openai-compatible",

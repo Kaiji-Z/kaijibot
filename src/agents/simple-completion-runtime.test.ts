@@ -1,3 +1,4 @@
+import { completeSimple, type Api, type Model } from "@earendil-works/pi-ai";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
@@ -22,9 +23,11 @@ vi.mock("./github-copilot-token.js", () => ({
 }));
 
 let prepareSimpleCompletionModel: typeof import("./simple-completion-runtime.js").prepareSimpleCompletionModel;
+let forBackgroundCompletion: typeof import("./simple-completion-runtime.js").forBackgroundCompletion;
 
 beforeAll(async () => {
-  ({ prepareSimpleCompletionModel } = await import("./simple-completion-runtime.js"));
+  ({ prepareSimpleCompletionModel, forBackgroundCompletion } =
+    await import("./simple-completion-runtime.js"));
 });
 
 beforeEach(() => {
@@ -336,6 +339,106 @@ describe("prepareSimpleCompletionModel", () => {
       expect.objectContaining({
         model: expect.objectContaining({
           headers: expect.objectContaining({ Authorization: null }),
+        }),
+      }),
+    );
+  });
+});
+
+describe("forBackgroundCompletion", () => {
+  function makeZaiModel(
+    overrides: Partial<Model<"openai-completions">> = {},
+  ): Model<"openai-completions"> {
+    return {
+      id: "glm-5.3-flash",
+      name: "GLM-5.3-Flash",
+      api: "openai-completions",
+      provider: "zai",
+      baseUrl: "https://api.z.ai/api/coding/paas/v4",
+      reasoning: true,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 128000,
+      maxTokens: 131100,
+      ...overrides,
+    };
+  }
+
+  // What pi-ai puts on the wire for a background call, which passes no reasoning
+  // option. The request is aborted before it leaves, so nothing reaches the network.
+  async function captureRequestPayload(model: Model<Api>): Promise<Record<string, unknown>> {
+    let payload: Record<string, unknown> | undefined;
+    await completeSimple(
+      model,
+      { messages: [{ role: "user", content: "hello", timestamp: 0 }] },
+      {
+        apiKey: "test-key",
+        maxTokens: 2000,
+        signal: AbortSignal.abort(),
+        onPayload: (next) => {
+          payload = next as Record<string, unknown>;
+        },
+      },
+    ).catch(() => undefined);
+    if (!payload) {
+      throw new Error("no request payload captured");
+    }
+    return payload;
+  }
+
+  it("asks for the effort an always-thinking model names instead of disabling thinking", async () => {
+    const alwaysThinking = makeZaiModel({ thinkingLevelMap: { off: "low" } });
+
+    // As resolved, the request asks to disable thinking, which the glm-5.3 API rejects.
+    expect(await captureRequestPayload(alwaysThinking)).toEqual(
+      expect.objectContaining({ thinking: { type: "disabled" } }),
+    );
+
+    const prepared = forBackgroundCompletion(alwaysThinking);
+    const payload = await captureRequestPayload(prepared);
+    expect(payload.reasoning_effort).toBe("low");
+    expect(payload).not.toHaveProperty("thinking");
+    expect(alwaysThinking.compat).toBeUndefined();
+  });
+
+  it("leaves a model that can turn thinking off as resolved", () => {
+    const canDisable = makeZaiModel();
+    expect(forBackgroundCompletion(canDisable)).toBe(canDisable);
+
+    const offIsNull = makeZaiModel({ thinkingLevelMap: { off: null } });
+    expect(forBackgroundCompletion(offIsNull)).toBe(offIsNull);
+  });
+
+  it("leaves an always-thinking model on another thinking format as resolved", () => {
+    const openrouter = makeZaiModel({
+      provider: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      thinkingLevelMap: { off: "none" },
+    });
+    expect(forBackgroundCompletion(openrouter)).toBe(openrouter);
+  });
+
+  it("prepares the model of a background call on the always-thinking model with the effort", async () => {
+    hoisted.resolveModelMock.mockReturnValueOnce({
+      model: makeZaiModel({ thinkingLevelMap: { off: "low" } }),
+      authStorage: { setRuntimeApiKey: hoisted.setRuntimeApiKeyMock },
+      modelRegistry: {},
+    });
+
+    const result = await prepareSimpleCompletionModel({
+      cfg: undefined,
+      provider: "zai",
+      modelId: "glm-5.3-flash",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        model: expect.objectContaining({
+          id: "glm-5.3-flash",
+          compat: expect.objectContaining({
+            thinkingFormat: "openai",
+            supportsReasoningEffort: true,
+          }),
         }),
       }),
     );

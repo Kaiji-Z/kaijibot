@@ -401,4 +401,52 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
       } as never),
     ).toEqual(explicit);
   });
+
+  it("declares that GLM-5.3 models always think and names the effort for off", async () => {
+    const provider = await registerSingleProviderPlugin(plugin);
+
+    for (const modelId of ["glm-5.3", "glm-5.3-flash", "glm-5.3-flashx"]) {
+      const resolved = provider.normalizeResolvedModel?.({
+        model: { ...createGlm47Template(), id: modelId },
+      } as never) as Record<string, unknown> | undefined;
+      expect(resolved?.thinkingLevelMap).toEqual({ off: "low" });
+    }
+
+    const canDisableThinking = createGlm47Template();
+    expect(provider.normalizeResolvedModel?.({ model: canDisableThinking } as never)).toBe(
+      canDisableThinking,
+    );
+  });
+
+  it("runs an always-thinking model at its lowest effort when thinking is off", async () => {
+    const provider = await registerSingleProviderPlugin(plugin);
+    let capturedPayload: Record<string, unknown> | undefined;
+    const baseStreamFn: StreamFn = (model, _context, options) => {
+      const payload: Record<string, unknown> = { thinking: { type: "disabled" } };
+      options?.onPayload?.(payload as never, model as never);
+      capturedPayload = payload;
+      return {} as ReturnType<StreamFn>;
+    };
+
+    const wrapped = provider.wrapStreamFn?.({
+      provider: "zai",
+      modelId: "glm-5.3-flash",
+      extraParams: {},
+      thinkingLevel: "off",
+      streamFn: baseStreamFn,
+    } as never);
+
+    void wrapped?.(
+      {
+        ...createGlm47Template(),
+        id: "glm-5.3-flash",
+        thinkingLevelMap: { off: "low" },
+      } as Model<"openai-completions">,
+      { messages: [] } as Context,
+      {},
+    );
+
+    expect(capturedPayload).not.toHaveProperty("thinking");
+    expect(capturedPayload?.reasoning_effort).toBe("low");
+  });
 });

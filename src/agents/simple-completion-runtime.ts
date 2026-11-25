@@ -1,4 +1,9 @@
-import { complete, type Api, type Model } from "@earendil-works/pi-ai";
+import {
+  complete,
+  type Api,
+  type Model,
+  type OpenAICompletionsCompat,
+} from "@earendil-works/pi-ai";
 import type { KaijiBotConfig } from "../config/config.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { resolveAgentDir, resolveAgentEffectiveModelPrimary } from "./agent-scope.js";
@@ -14,6 +19,7 @@ import {
   resolveDefaultModelForAgent,
   resolveModelRefFromString,
 } from "./model-selection.js";
+import { detectOpenAICompletionsCompat } from "./openai-completions-compat.js";
 import { resolveModel } from "./pi-embedded-runner/model.js";
 
 type SimpleCompletionAuthStorage = {
@@ -126,6 +132,32 @@ function hasMissingApiKeyAllowance(params: {
   return Boolean(params.allowMissingApiKeyModes?.includes(params.mode));
 }
 
+/**
+ * The model background single-turn calls run on.
+ *
+ * These calls pass no reasoning option, which pi-ai turns into
+ * `thinking: { type: "disabled" }` for a zai-format model. A model that cannot
+ * turn thinking off names the effort to send instead in `thinkingLevelMap.off`,
+ * but a zai-format request carries no effort, so the prepared model asks for it
+ * OpenAI-style. The agent loop keeps the model as resolved.
+ */
+export function forBackgroundCompletion(model: Model<Api>): Model<Api> {
+  if (typeof model.thinkingLevelMap?.off !== "string" || model.api !== "openai-completions") {
+    return model;
+  }
+  // Model["compat"] is a union across APIs; the model is a completions one here.
+  const compat = model.compat as OpenAICompletionsCompat | undefined;
+  const thinkingFormat =
+    compat?.thinkingFormat ?? detectOpenAICompletionsCompat(model).defaults.thinkingFormat;
+  if (thinkingFormat !== "zai") {
+    return model;
+  }
+  return {
+    ...model,
+    compat: { ...compat, thinkingFormat: "openai", supportsReasoningEffort: true },
+  };
+}
+
 export async function prepareSimpleCompletionModel(params: {
   cfg: KaijiBotConfig | undefined;
   provider: string;
@@ -194,7 +226,7 @@ export async function prepareSimpleCompletionModel(params: {
   };
 
   return {
-    model: applyLocalNoAuthHeaderOverride(resolvedModel, resolvedAuth),
+    model: applyLocalNoAuthHeaderOverride(forBackgroundCompletion(resolvedModel), resolvedAuth),
     auth: resolvedAuth,
   };
 }
