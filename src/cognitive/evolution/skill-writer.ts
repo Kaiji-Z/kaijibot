@@ -21,7 +21,13 @@ export class SkillPersistenceWriter {
   }
 
   async writeSkill(draft: SkillDraft): Promise<string> {
-    if (draft.name.includes("..") || draft.name.startsWith("/") || draft.name.includes("\\")) {
+    // An empty name would resolve to the skills root itself.
+    if (
+      !draft.name.trim() ||
+      draft.name.includes("..") ||
+      draft.name.startsWith("/") ||
+      draft.name.includes("\\")
+    ) {
       throw new Error(`Invalid skill name: ${draft.name}`);
     }
 

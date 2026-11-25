@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   DEFAULT_COGNITIVE_LOCALE,
   L,
@@ -20,13 +21,26 @@ export function sanitizeSkillName(name: string): string {
   return toKebabCase(name).replace(/^-+|-+$/g, "");
 }
 
+const FALLBACK_NAME_BASE = "skill";
+const NAME_DIGEST_LENGTH = 6;
+
+/** Short stable digest for text that contributes no ASCII letters or digits (a
+ *  Chinese domain name, for example), so names built from it stay distinct
+ *  across domains and reproducible across runs. */
+function nameDigest(text: string): string {
+  return createHash("sha1")
+    .update(text.trim().toLowerCase())
+    .digest("hex")
+    .slice(0, NAME_DIGEST_LENGTH);
+}
+
 function generateName(candidate: EvolutionCandidate): string {
   const domain = sanitizeSkillName(candidate.domain);
-  if (candidate.toolCalls.length === 0) {
-    return `${domain}-workflow`;
-  }
-  const primaryTool = sanitizeSkillName(candidate.toolCalls[0]);
-  return `${domain}-${primaryTool}`;
+  // A domain without ASCII characters sanitizes to ""; names like "-workflow"
+  // would then collide across domains or land SKILL.md in the skills root.
+  const base = domain || `${FALLBACK_NAME_BASE}-${nameDigest(candidate.domain)}`;
+  const primaryTool = sanitizeSkillName(candidate.toolCalls[0] ?? "");
+  return primaryTool ? `${base}-${primaryTool}` : `${base}-workflow`;
 }
 
 const MAX_DESCRIPTION_LENGTH = 200;

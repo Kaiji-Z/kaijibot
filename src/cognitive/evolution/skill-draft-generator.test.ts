@@ -66,6 +66,32 @@ describe("generateSkillDraft", () => {
     expect(draft.name).toBe("feishu-wiki-workflow");
   });
 
+  it("never names a skill after an empty or dash-led slug when the domain is not ASCII", () => {
+    // An empty name would put SKILL.md at the skills root; a dash-led one makes
+    // every such domain collapse onto the same directory.
+    const withTool = generateSkillDraft(
+      makeCandidate({ domain: "知识库管理", toolCalls: ["wiki.listNodes"] }),
+    );
+    const withoutTool = generateSkillDraft(makeCandidate({ domain: "知识库管理", toolCalls: [] }));
+    const withCjkTool = generateSkillDraft(
+      makeCandidate({ domain: "知识库管理", toolCalls: ["知识库列表"] }),
+    );
+
+    expect(withTool.name).toMatch(/^skill-[0-9a-f]{6}-wiki-listnodes$/);
+    expect(withoutTool.name).toMatch(/^skill-[0-9a-f]{6}-workflow$/);
+    expect(withCjkTool.name).toMatch(/^skill-[0-9a-f]{6}-workflow$/);
+  });
+
+  it("keeps names distinct and reproducible for domains that share no ASCII characters", () => {
+    const first = generateSkillDraft(makeCandidate({ domain: "知识库管理", toolCalls: [] }));
+    const second = generateSkillDraft(makeCandidate({ domain: "文档协作", toolCalls: [] }));
+
+    expect(first.name).not.toBe(second.name);
+    expect(generateSkillDraft(makeCandidate({ domain: "知识库管理", toolCalls: [] })).name).toBe(
+      first.name,
+    );
+  });
+
   it("truncates description to 200 characters", () => {
     const longSummary = "A".repeat(250);
     const candidate = makeCandidate({ taskSummary: longSummary });

@@ -119,7 +119,10 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
     return generateSkillDraft(candidate);
   }
 
-  const name = sanitizeSkillName(nameMatch[1].trim());
+  // A name that sanitizes to nothing (the model wrote a Chinese name, for
+  // example) must not reach the writer: it would place SKILL.md in the skills
+  // root. The generated body is kept; only the name falls back.
+  const name = sanitizeSkillName(nameMatch[1].trim()) || generateSkillDraft(candidate).name;
   const rawDesc = descMatch[1].trim();
   let description: string;
   if (rawDesc === ">" || rawDesc === "|") {

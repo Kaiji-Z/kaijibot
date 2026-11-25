@@ -146,6 +146,15 @@ describe("validateAndRepair", () => {
     expect(result.triggerPhrases).toEqual(["do stuff"]);
   });
 
+  it("replaces a name that sanitizes to nothing instead of shipping an empty one", () => {
+    // An empty name would make the writer place SKILL.md at the skills root.
+    const skillMd = VALID_SKILL_MD.replace("name: feishu-wiki-archive", "name: 知识库归档");
+    const result = validateAndRepair(skillMd, makeCandidate());
+
+    expect(result.name).toBe(generateSkillDraft(makeCandidate()).name);
+    expect(result.bodyMarkdown).toContain("## Workflow");
+  });
+
   it("extracts triggers only until next heading", () => {
     const skillMd = `---
 name: multi-section

@@ -76,6 +76,13 @@ describe("SkillPersistenceWriter", () => {
     await expect(writer.writeSkill(draft)).rejects.toThrow("Invalid skill name");
   });
 
+  it("rejects an empty name instead of writing SKILL.md into the skills root", async () => {
+    const draft = makeDraft({ name: "" });
+
+    await expect(writer.writeSkill(draft)).rejects.toThrow("Invalid skill name");
+    expect(existsSync(join(tempDir, "skills", "agent", "SKILL.md"))).toBe(false);
+  });
+
   it("written SKILL.md contains valid frontmatter with name and description", async () => {
     const draft = makeDraft({
       name: "my-cool-skill",
