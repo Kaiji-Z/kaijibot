@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { createTypingCallbacks } from "kaijibot/plugin-sdk/channel-runtime";
+import { createTypingCallbacks } from "kaijibot/plugin-sdk/channel-reply-pipeline";
 import {
   resolveSenderCommandAuthorizationWithRuntime,
   resolveDirectDmAuthorizationOutcome,
