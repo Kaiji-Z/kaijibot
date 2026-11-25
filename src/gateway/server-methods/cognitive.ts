@@ -4,7 +4,7 @@ import {
   validateTasksGetParams,
   validateTasksListParams,
 } from "../protocol/index.js";
-import type { GatewayRequestHandlers } from "./types.js";
+import type { GatewayRequestHandlers, RespondFn } from "./types.js";
 import { assertValidParams } from "./validation.js";
 
 export async function loadCognitiveStatsSummary(configDir: string): Promise<{
@@ -102,6 +102,65 @@ export async function loadCognitiveStatsSummary(configDir: string): Promise<{
   };
 }
 
+type CognitiveStoreTarget = { agentId?: string; userId?: string };
+
+/**
+ * Pick the `agentId` / `userId` pair that names a cognitive store file. Both
+ * become path segments under the store directories, so a value carrying a
+ * separator or a traversal segment would let a read-scoped client list or
+ * quarantine files outside the config dir. Optional keys may be absent or
+ * `undefined`; every present value must be a single safe path segment.
+ */
+function parseCognitiveStoreTarget(
+  params: Record<string, unknown>,
+  required: ReadonlyArray<keyof CognitiveStoreTarget>,
+): CognitiveStoreTarget | { error: string } {
+  const target: CognitiveStoreTarget = {};
+  for (const key of ["agentId", "userId"] as const) {
+    const value = params[key];
+    if (value === undefined) {
+      if (required.includes(key)) {
+        return { error: `${key} is required` };
+      }
+      continue;
+    }
+    // Same rules as resolveMediaBufferPath: separators, NUL and the bare
+    // traversal segments are never part of a real id; dots inside an id (an
+    // email-like WeChat id, for example) stay allowed.
+    if (
+      typeof value !== "string" ||
+      value.length === 0 ||
+      value.includes("/") ||
+      value.includes("\\") ||
+      value.includes("\0") ||
+      value === "." ||
+      value === ".."
+    ) {
+      return { error: `${key} must be a single path segment` };
+    }
+    target[key] = value;
+  }
+  return target;
+}
+
+/** Parse the store target, or answer the request with INVALID_REQUEST and return null. */
+function requireCognitiveStoreTarget(
+  params: Record<string, unknown>,
+  required: ReadonlyArray<keyof CognitiveStoreTarget>,
+  respond: RespondFn,
+): CognitiveStoreTarget | null {
+  const target = parseCognitiveStoreTarget(params, required);
+  if ("error" in target) {
+    respond(
+      false,
+      undefined,
+      errorShape(ErrorCodes.INVALID_REQUEST, `invalid cognitive store target: ${target.error}`),
+    );
+    return null;
+  }
+  return target;
+}
+
 export const cognitiveHandlers: GatewayRequestHandlers = {
   "cognitive.status": async ({ respond }) => {
     try {
@@ -115,14 +174,17 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.persona.list": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, [], respond);
+    if (!target) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { PersonaStore } = await import("../../cognitive/persona/store.js");
 
       const store = new PersonaStore(configDir);
-      const targetAgentId = params.agentId as string | undefined;
-      const agentIds = targetAgentId ? [targetAgentId] : await store.listAgentIds();
+      const agentIds = target.agentId ? [target.agentId] : await store.listAgentIds();
 
       const agents: Array<{
         agentId: string;
@@ -169,15 +231,17 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.persona.detail": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, ["agentId", "userId"], respond);
+    if (!target?.agentId || !target.userId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { PersonaStore } = await import("../../cognitive/persona/store.js");
 
-      const agentId = params.agentId as string;
-      const userId = params.userId as string;
       const store = new PersonaStore(configDir);
-      const persona = await store.load(agentId, userId);
+      const persona = await store.load(target.agentId, target.userId);
 
       respond(true, persona ?? null);
     } catch (err) {
@@ -186,16 +250,18 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.insights.list": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, ["agentId", "userId"], respond);
+    if (!target?.agentId || !target.userId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { InsightStore } = await import("../../cognitive/insight/store.js");
 
-      const agentId = params.agentId as string;
-      const userId = params.userId as string;
       const limit = params.limit as number | undefined;
       const store = new InsightStore(configDir);
-      const insights = await store.listRecent(agentId, userId, limit);
+      const insights = await store.listRecent(target.agentId, target.userId, limit);
 
       respond(true, { insights });
     } catch (err) {
@@ -204,20 +270,22 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.insights.feedback": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, ["agentId", "userId"], respond);
+    if (!target?.agentId || !target.userId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { InsightStore } = await import("../../cognitive/insight/store.js");
 
-      const agentId = params.agentId as string;
-      const userId = params.userId as string;
       const id = params.id as string;
       const feedback = params.feedback as string;
       const userResponse = params.userResponse as string | undefined;
       const store = new InsightStore(configDir);
       await store.updateFeedback(
-        agentId,
-        userId,
+        target.agentId,
+        target.userId,
         id,
         feedback as "positive" | "negative" | "neutral" | "engaged",
         userResponse,
@@ -230,15 +298,17 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.evolution.list": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, ["agentId", "userId"], respond);
+    if (!target?.agentId || !target.userId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { EvolutionStore } = await import("../../cognitive/evolution/store.js");
 
-      const agentId = params.agentId as string;
-      const userId = params.userId as string;
       const store = new EvolutionStore(configDir);
-      const records = await store.list(agentId, userId);
+      const records = await store.list(target.agentId, target.userId);
 
       respond(true, { records });
     } catch (err) {
@@ -266,15 +336,17 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.corrections.list": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, ["agentId", "userId"], respond);
+    if (!target?.agentId || !target.userId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { CorrectionStore } = await import("../../cognitive/correction/store.js");
 
-      const agentId = params.agentId as string;
-      const userId = params.userId as string;
       const store = new CorrectionStore(configDir);
-      const corrections = await store.listActive(agentId, userId);
+      const corrections = await store.listActive(target.agentId, target.userId);
 
       respond(true, { corrections });
     } catch (err) {
@@ -283,14 +355,17 @@ export const cognitiveHandlers: GatewayRequestHandlers = {
   },
 
   "cognitive.corrections.users": async ({ respond, params }) => {
+    const target = requireCognitiveStoreTarget(params, ["agentId"], respond);
+    if (!target?.agentId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const configDir = resolveConfigDir();
       const { CorrectionStore } = await import("../../cognitive/correction/store.js");
 
-      const agentId = params.agentId as string;
       const store = new CorrectionStore(configDir);
-      const userIds = await store.listUserIds(agentId);
+      const userIds = await store.listUserIds(target.agentId);
 
       respond(true, { userIds });
     } catch (err) {
@@ -310,20 +385,23 @@ export const cognitiveTaskHandlers: GatewayRequestHandlers = {
     if (!assertValidParams(params, validateTasksListParams, "tasks.list", respond)) {
       return;
     }
-    const p = params;
+    const target = requireCognitiveStoreTarget(params, [], respond);
+    if (!target) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const { TaskStore } = await import("../../cognitive/tasks/store.js");
       const { isTerminalTaskStatus } = await import("../../cognitive/tasks/types.js");
       const store = new TaskStore(resolveConfigDir());
 
-      const agentIds = p.agentId ? [p.agentId] : await store.listAgentIds();
+      const agentIds = target.agentId ? [target.agentId] : await store.listAgentIds();
       const tasks: Array<Record<string, unknown>> = [];
       for (const agentId of agentIds) {
-        const userIds = p.userId ? [p.userId] : await store.listUserIds(agentId);
+        const userIds = target.userId ? [target.userId] : await store.listUserIds(agentId);
         for (const userId of userIds) {
           for (const task of await store.list(agentId, userId)) {
-            if (!p.includeFinished && isTerminalTaskStatus(task.status)) {
+            if (!params.includeFinished && isTerminalTaskStatus(task.status)) {
               continue;
             }
             tasks.push({
@@ -354,18 +432,24 @@ export const cognitiveTaskHandlers: GatewayRequestHandlers = {
     if (!assertValidParams(params, validateTasksGetParams, "tasks.get", respond)) {
       return;
     }
-    const p = params;
+    const target = requireCognitiveStoreTarget(params, ["userId"], respond);
+    if (!target?.userId) {
+      return;
+    }
     try {
       const { resolveConfigDir } = await import("../../utils.js");
       const { TaskStore } = await import("../../cognitive/tasks/store.js");
       const store = new TaskStore(resolveConfigDir());
 
-      const found = await store.findTaskAcrossAgents(p.userId, p.taskId);
+      const found = await store.findTaskAcrossAgents(target.userId, params.taskId);
       if (!found) {
         respond(
           false,
           undefined,
-          errorShape(ErrorCodes.INVALID_REQUEST, `task ${p.taskId} not found for user ${p.userId}`),
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            `task ${params.taskId} not found for user ${target.userId}`,
+          ),
         );
         return;
       }
