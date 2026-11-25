@@ -19,7 +19,7 @@ vi.mock("../media/store.js", async () => {
 });
 
 const PNG_1x1 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
 
 async function parseWithWarnings(message: string, attachments: ChatAttachment[]) {
   const logs: string[] = [];

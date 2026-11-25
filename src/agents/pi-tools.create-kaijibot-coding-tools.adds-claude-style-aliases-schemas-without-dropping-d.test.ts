@@ -10,7 +10,7 @@ import { createPiToolsSandboxContext } from "./test-helpers/pi-tools-sandbox-con
 
 const defaultTools = createKaijiBotCodingTools();
 const tinyPngBuffer = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2f7z8AAAAASUVORK5CYII=",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=",
   "base64",
 );
 

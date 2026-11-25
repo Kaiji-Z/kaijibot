@@ -247,7 +247,7 @@ describe("loadImageFromRef", () => {
       await fs.mkdir(sandboxRoot, { recursive: true });
       const imagePath = path.join(sandboxRoot, "photo.png");
       const pngB64 =
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
       await fs.writeFile(imagePath, Buffer.from(pngB64, "base64"));
 
       const image = await loadImageFromRef(
@@ -400,7 +400,7 @@ describe("detectAndLoadPromptImages", () => {
     await fs.mkdir(sandboxRoot, { recursive: true });
     await fs.mkdir(agentRoot, { recursive: true });
     const pngB64 =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
     await fs.writeFile(path.join(agentRoot, "secret.png"), Buffer.from(pngB64, "base64"));
     const sandbox = createUnsafeMountedSandbox({ sandboxRoot, agentRoot });
     const bridge = sandbox.fsBridge;

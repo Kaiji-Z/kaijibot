@@ -217,7 +217,7 @@ describeGeminiLive("pi embedded extra params (gemini live)", () => {
     const model = getModel("google", "gemini-2.5-pro") as unknown as Model<"google-generative-ai">;
 
     const oneByOneRedPngBase64 =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4zwAAAgIBAJBzWgkAAAAASUVORK5CYII=";
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4zwAAAgEBADK6K5IAAAAASUVORK5CYII=";
 
     const capturedPayload = buildGeminiPayloadThroughWrapper({
       model,

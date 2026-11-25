@@ -1528,7 +1528,7 @@ describe.skipIf(process.env.CI)(
             {
               mimeType: "image/png",
               content:
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYoYAAAAASUVORK5CYII=",
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=",
             },
             {
               mimeType: "image/jpeg",
@@ -1614,7 +1614,7 @@ describe.skipIf(process.env.CI)(
             {
               mimeType: "image/png",
               content:
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYoYAAAAASUVORK5CYII=",
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=",
             },
           ],
         },
@@ -1661,7 +1661,7 @@ describe.skipIf(process.env.CI)(
             {
               mimeType: "image/png",
               content:
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYoYAAAAASUVORK5CYII=",
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=",
             },
           ],
         },
@@ -1706,7 +1706,7 @@ describe.skipIf(process.env.CI)(
             {
               mimeType: "image/png",
               content:
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYoYAAAAASUVORK5CYII=",
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=",
             },
             {
               mimeType: "image/jpeg",

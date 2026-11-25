@@ -250,7 +250,7 @@ describe("writeCliImages", () => {
     await fs.writeFile(
       sourceImage,
       Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=",
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=",
         "base64",
       ),
     );
@@ -297,7 +297,7 @@ describe("writeCliImages", () => {
     await fs.writeFile(
       sourceImage,
       Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=",
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=",
         "base64",
       ),
     );
@@ -383,7 +383,7 @@ describe("writeCliImages", () => {
     await fs.writeFile(
       sourceImage,
       Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=",
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=",
         "base64",
       ),
     );

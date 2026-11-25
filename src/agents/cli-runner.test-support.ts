@@ -33,7 +33,7 @@ export const supervisorSpawnMock: UnknownMock = vi.fn();
 export const enqueueSystemEventMock: UnknownMock = vi.fn();
 export const requestHeartbeatNowMock: UnknownMock = vi.fn();
 export const SMALL_PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
 let cliRunnerModulePromise: Promise<typeof import("./cli-runner.js")> | undefined;
 
 const hoisted = vi.hoisted(

@@ -112,7 +112,7 @@ describe("tool image sanitizing", () => {
     const blocks = [
       {
         type: "image" as const,
-        data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2N4j8AAAAASUVORK5CYII=" onerror="alert(1)',
+        data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=" onerror="alert(1)',
         mimeType: "image/png",
       },
     ];

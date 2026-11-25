@@ -425,7 +425,7 @@ describe("gateway server chat", () => {
       testState.sessionConfig = undefined;
 
       const pngB64 =
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
 
       const reqId = "chat-img";
       ws.send(

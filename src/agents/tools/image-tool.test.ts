@@ -209,7 +209,7 @@ async function withTempAgentDir<T>(run: (agentDir: string) => Promise<T>): Promi
 }
 
 const ONE_PIXEL_PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
 const ONE_PIXEL_GIF_B64 = "R0lGODlhAQABAIABAP///wAAACwAAAAAAQABAAACAkQBADs=";
 const ONE_PIXEL_JPEG_B64 = "QUJDRA==";
 
@@ -1212,7 +1212,7 @@ describe("image tool implicit imageModel config", () => {
 describe("image tool data URL support", () => {
   it("decodes base64 image data URLs", () => {
     const pngB64 =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
     const out = __testing.decodeDataUrl(`data:image/png;base64,${pngB64}`);
     expect(out.kind).toBe("image");
     expect(out.mimeType).toBe("image/png");
@@ -1241,7 +1241,7 @@ describe("image tool data URL support", () => {
 
 describe("image tool MiniMax VLM routing", () => {
   const pngB64 =
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/woAAn8B9FD5fHAAAAAASUVORK5CYII=";
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/woAAu4B6ypuDzEAAAAASUVORK5CYII=";
   const priorFetch = global.fetch;
   registerImageToolEnvReset(priorFetch, [
     "MINIMAX_API_KEY",
