@@ -648,7 +648,6 @@ describe("plugin-sdk subpath exports", () => {
       "buildCommandTextFromArgs",
       "buildCommandsMessage",
       "buildCommandsMessagePaginated",
-      "buildCommandsPaginationKeyboard",
       "buildHelpMessage",
       "buildModelsProviderData",
       "hasControlCommand",

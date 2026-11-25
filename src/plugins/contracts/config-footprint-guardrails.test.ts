@@ -93,25 +93,20 @@ describe("config footprint guardrails", () => {
     ).toEqual([]);
   });
 
-  it("keeps bundled channel private-network config canonical in generated metadata", () => {
-    const pluginIds = ["feishu"];
-
-    for (const pluginId of pluginIds) {
-      const metadata = GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA.find(
-        (entry) => entry.pluginId === pluginId,
-      );
-      if (!metadata) {
-        continue;
-      }
-      const paths = new Set(collectSchemaPaths(metadata?.schema));
-      expect(paths.has("allowPrivateNetwork"), `${pluginId} leaked flat allowPrivateNetwork`).toBe(
-        false,
-      );
-      expect(
-        paths.has("network.dangerouslyAllowPrivateNetwork"),
-        `${pluginId} missing canonical network.dangerouslyAllowPrivateNetwork`,
-      ).toBe(true);
+  it("keeps phantom private-network schema paths out of generated channel metadata", () => {
+    // The 2026-08-02 metadata regeneration dropped phantom upstream channel schemas; KaijiBot
+    // channels declare no network section of their own (the canonical field lives only in the
+    // shared setup types, guarded by "keeps shared setup input canonical-first" below), so the
+    // generated per-channel metadata must not grow either spelling back.
+    const feishu = GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA.find(
+      (entry) => entry.pluginId === "feishu",
+    );
+    if (!feishu) {
+      return;
     }
+    const paths = new Set(collectSchemaPaths(feishu.schema));
+    expect(paths.has("allowPrivateNetwork"), "feishu leaked flat allowPrivateNetwork").toBe(false);
+    expect(paths.has("network.dangerouslyAllowPrivateNetwork")).toBe(false);
   });
 
   it("keeps shared setup input canonical-first", () => {
