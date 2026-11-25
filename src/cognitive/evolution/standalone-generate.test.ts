@@ -1,12 +1,14 @@
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import {
   createStandaloneGenerateTextBatchWithDeps,
+  createStandaloneGenerateTextWithDeps,
   runBatchGenerate,
   type BackgroundGenerateDeps,
   type BatchHttpDeps,
+  type StandaloneGenerateDeps,
 } from "./standalone-generate.js";
 
 function makeModel(overrides: Partial<Model<Api>> = {}): Model<Api> {
@@ -286,5 +288,65 @@ describe("createStandaloneGenerateTextBatchWithDeps (config gate)", () => {
     const out = await fn("prompt");
     expect(out).toBe("batch result");
     expect(run).toHaveBeenCalledOnce();
+  });
+});
+
+describe("createStandaloneGenerateTextWithDeps", () => {
+  function assistantMessage(params: {
+    stopReason: AssistantMessage["stopReason"];
+    text?: string;
+    errorMessage?: string;
+  }): AssistantMessage {
+    return {
+      role: "assistant",
+      content: params.text ? [{ type: "text", text: params.text }] : [],
+      api: "openai-completions",
+      provider: "zai",
+      model: "glm-5.1",
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: params.stopReason,
+      ...(params.errorMessage ? { errorMessage: params.errorMessage } : {}),
+      timestamp: 0,
+    } as AssistantMessage;
+  }
+
+  async function generateText(result: AssistantMessage): Promise<string> {
+    const deps: StandaloneGenerateDeps = {
+      complete: vi.fn(async () => result) as unknown as StandaloneGenerateDeps["complete"],
+      prepareModel: vi.fn(async () => ({ model: makeModel(), auth: makeAuth() })),
+    };
+    const generate = await createStandaloneGenerateTextWithDeps(deps, {})({} as KaijiBotConfig);
+    return await generate("prompt");
+  }
+
+  it("returns the assistant text of a completed call", async () => {
+    const out = await generateText(
+      assistantMessage({ stopReason: "stop", text: "  hello world " }),
+    );
+    expect(out).toBe("hello world");
+  });
+
+  it("rejects with the provider error instead of answering an empty string", async () => {
+    await expect(
+      generateText(
+        assistantMessage({
+          stopReason: "error",
+          errorMessage: "HTTP 400: thinking cannot be disabled",
+        }),
+      ),
+    ).rejects.toThrow("thinking cannot be disabled");
+  });
+
+  it("rejects a call that was aborted before it finished", async () => {
+    await expect(
+      generateText(assistantMessage({ stopReason: "aborted", text: "partial" })),
+    ).rejects.toThrow("aborted");
   });
 });

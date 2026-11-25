@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { completeSimple, type Api, type Model, type TextContent } from "@earendil-works/pi-ai";
+import {
+  completeSimple,
+  type Api,
+  type AssistantMessage,
+  type Model,
+  type TextContent,
+} from "@earendil-works/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
@@ -25,6 +31,19 @@ export type BatchGenerateOptions = StandaloneGenerateOptions & {
 
 function isTextBlock(block: { type: string }): block is TextContent {
   return block.type === "text";
+}
+
+function textOfResult(result: AssistantMessage): string {
+  // A failed call is not an empty answer. Callers read "" as model output, so a
+  // transport error used to be recorded as an unparseable response.
+  if (result.stopReason === "error" || result.stopReason === "aborted") {
+    throw new Error(result.errorMessage || `LLM call ${result.stopReason}`);
+  }
+  return result.content
+    .filter(isTextBlock)
+    .map((b) => b.text)
+    .join("")
+    .trim();
 }
 
 function isBackgroundBatchEnabled(cfg: KaijiBotConfig): boolean {
@@ -68,11 +87,7 @@ export async function createStandaloneGenerateText(
         signal: AbortSignal.timeout(timeout),
       },
     );
-    return result.content
-      .filter(isTextBlock)
-      .map((b) => b.text)
-      .join("")
-      .trim();
+    return textOfResult(result);
   };
 }
 
@@ -107,11 +122,7 @@ export function createStandaloneGenerateTextWithDeps(
           signal: AbortSignal.timeout(timeout),
         },
       );
-      return result.content
-        .filter(isTextBlock)
-        .map((b) => b.text)
-        .join("")
-        .trim();
+      return textOfResult(result);
     };
   };
 }
