@@ -48,6 +48,29 @@ describe("listSessionFilesForAgent", () => {
       included.toSorted(),
     );
   });
+
+  it("returns only transcripts modified within the lookback window", async () => {
+    const sessionsDir = path.join(tmpDir, "agents", "main", "sessions");
+    await fs.mkdir(sessionsDir, { recursive: true });
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const ageInDays: Record<string, number> = { fresh: 0.5, recent: 6, old: 8, ancient: 400 };
+    for (const [name, ageDays] of Object.entries(ageInDays)) {
+      const filePath = path.join(sessionsDir, `${name}.jsonl`);
+      await fs.writeFile(filePath, "");
+      const modifiedAt = new Date(now - ageDays * dayMs);
+      await fs.utimes(filePath, modifiedAt, modifiedAt);
+    }
+    const listed = async (lookbackDays?: number) =>
+      (await listSessionFilesForAgent("main", { lookbackDays })).map((filePath) =>
+        path.basename(filePath),
+      );
+
+    expect((await listed(7)).toSorted()).toEqual(["fresh.jsonl", "recent.jsonl"]);
+    const every = ["ancient.jsonl", "fresh.jsonl", "old.jsonl", "recent.jsonl"];
+    expect((await listed(0)).toSorted()).toEqual(every);
+    expect((await listed(undefined)).toSorted()).toEqual(every);
+  });
 });
 
 describe("buildSessionEntry", () => {

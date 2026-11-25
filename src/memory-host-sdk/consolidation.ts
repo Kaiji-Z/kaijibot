@@ -154,6 +154,26 @@ export function resolveConsolidationConfig(params: {
   };
 }
 
+/** The plugin whose config section declares the consolidation settings. */
+export const MEMORY_CORE_PLUGIN_ID = "memory-core";
+
+/**
+ * The memory-core plugin config section of a gateway config. The consolidation knobs are
+ * declared there (`plugins.entries.memory-core.config.consolidation.*`); the core `memory`
+ * config has no consolidation block.
+ */
+export function resolveMemoryCorePluginConfig(cfg: KaijiBotConfig): Record<string, unknown> {
+  return asNullableRecord(cfg.plugins?.entries?.[MEMORY_CORE_PLUGIN_ID]?.config) ?? {};
+}
+
+/** Consolidation settings for a gateway config: the memory-core plugin section over the defaults. */
+export function resolveConsolidationConfigForConfig(cfg: KaijiBotConfig): ConsolidationConfig {
+  return resolveConsolidationConfig({
+    pluginConfig: resolveMemoryCorePluginConfig(cfg),
+    cfg,
+  });
+}
+
 export function resolveConsolidationWorkspaces(cfg: KaijiBotConfig): ConsolidationWorkspace[] {
   const configured = Array.isArray(cfg.agents?.list) ? cfg.agents.list : [];
   const agentIds: string[] = [];

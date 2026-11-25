@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { KaijiBotConfig } from "../config/types.kaijibot.js";
 import {
+  MEMORY_CORE_PLUGIN_ID,
   resolveConsolidationConfig,
+  resolveConsolidationConfigForConfig,
   resolveConsolidationWorkspaces,
   DEFAULT_MEMORY_CONSOLIDATION_ENABLED,
   DEFAULT_MEMORY_CONSOLIDATION_CRON,
@@ -167,6 +169,62 @@ describe("resolveConsolidationConfig", () => {
     expect(config.wiki.enabled).toBe(true);
     expect(config.wiki.minConfidence).toBe(0.9);
     expect(config.wiki.maxPagesPerRun).toBe(50);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveConsolidationConfigForConfig
+// ---------------------------------------------------------------------------
+
+describe("resolveConsolidationConfigForConfig", () => {
+  it("reads the consolidation settings from the memory-core plugin config", () => {
+    const config = resolveConsolidationConfigForConfig({
+      plugins: {
+        entries: {
+          [MEMORY_CORE_PLUGIN_ID]: {
+            config: {
+              consolidation: {
+                enabled: false,
+                cron: "30 4 * * *",
+                concurrency: 4,
+                batchSize: 8000,
+                lookbackDays: 3,
+              },
+            },
+          },
+        },
+      },
+    } as unknown as KaijiBotConfig);
+    expect(config).toMatchObject({
+      enabled: false,
+      cron: "30 4 * * *",
+      concurrency: 4,
+      batchSize: 8000,
+      lookbackDays: 3,
+    });
+  });
+
+  it("falls back to the defaults without a memory-core plugin entry", () => {
+    const config = resolveConsolidationConfigForConfig({
+      plugins: { entries: { other: { config: { consolidation: { cron: "bogus" } } } } },
+    } as unknown as KaijiBotConfig);
+    expect(config.enabled).toBe(DEFAULT_MEMORY_CONSOLIDATION_ENABLED);
+    expect(config.cron).toBe(DEFAULT_MEMORY_CONSOLIDATION_CRON);
+    expect(config.lookbackDays).toBe(DEFAULT_MEMORY_CONSOLIDATION_LOOKBACK_DAYS);
+  });
+
+  it("keeps the user timezone as the fallback timezone", () => {
+    const config = resolveConsolidationConfigForConfig({
+      agents: { defaults: { userTimezone: "America/New_York" } },
+    } as unknown as KaijiBotConfig);
+    expect(config.timezone).toBe("America/New_York");
+  });
+
+  it("ignores a consolidation block placed under memory, where no schema declares it", () => {
+    const config = resolveConsolidationConfigForConfig({
+      memory: { consolidation: { enabled: false } },
+    } as unknown as KaijiBotConfig);
+    expect(config.enabled).toBe(DEFAULT_MEMORY_CONSOLIDATION_ENABLED);
   });
 });
 

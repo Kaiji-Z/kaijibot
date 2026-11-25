@@ -1875,12 +1875,9 @@ export async function startGatewayServer(
     if (!minimalTestGateway && cfgAtStart.cognitive?.enabled !== false) {
       void (async () => {
         try {
-          const { resolveConsolidationConfig } =
+          const { resolveConsolidationConfigForConfig } =
             await import("../memory-host-sdk/consolidation.js");
-          const consolidationConfig = resolveConsolidationConfig({
-            pluginConfig: {},
-            cfg: cfgAtStart,
-          });
+          const consolidationConfig = resolveConsolidationConfigForConfig(cfgAtStart);
           if (!consolidationConfig.enabled) {
             return;
           }
@@ -1918,9 +1915,8 @@ export async function startGatewayServer(
           const generateFn = await createBackgroundGenerateText(cfgAtStart);
 
           const deps: ConsolidationDeps = {
-            listSessionFiles: async (_agentId: string, _lookbackDays: number) => {
-              return listSessionFilesForAgent(_agentId);
-            },
+            listSessionFiles: (agentId: string, lookbackDays: number) =>
+              listSessionFilesForAgent(agentId, { lookbackDays }),
             readSessionFile: async (filePath: string) => {
               const fs = await import("node:fs/promises");
               const { preprocessSessionTranscript } =

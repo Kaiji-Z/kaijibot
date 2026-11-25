@@ -21,15 +21,42 @@ export type SessionFileEntry = {
   messageTimestampsMs: number[];
 };
 
-export async function listSessionFilesForAgent(agentId: string): Promise<string[]> {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * List the session transcript files of an agent.
+ *
+ * With `lookbackDays` only transcripts modified within that many days are returned; 0 or an
+ * omitted value means no limit. A transcript whose modification time cannot be read is kept,
+ * so a transient stat failure never drops it from a scan.
+ */
+export async function listSessionFilesForAgent(
+  agentId: string,
+  options?: { lookbackDays?: number },
+): Promise<string[]> {
   const dir = resolveSessionTranscriptsDirForAgent(agentId);
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    return entries
+    const files = entries
       .filter((entry) => entry.isFile())
       .map((entry) => entry.name)
       .filter((name) => isUsageCountedSessionTranscriptFileName(name))
       .map((name) => path.join(dir, name));
+    const lookbackDays = options?.lookbackDays ?? 0;
+    if (lookbackDays <= 0) {
+      return files;
+    }
+    const cutoffMs = Date.now() - lookbackDays * DAY_MS;
+    const modifiedWithinWindow = await Promise.all(
+      files.map(async (filePath) => {
+        try {
+          return (await fs.stat(filePath)).mtimeMs >= cutoffMs;
+        } catch {
+          return true;
+        }
+      }),
+    );
+    return files.filter((_filePath, index) => modifiedWithinWindow[index]);
   } catch {
     return [];
   }
