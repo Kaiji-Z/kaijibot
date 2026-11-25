@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import type { PersonaTree } from "../types.js";
+import { mergeExtraction } from "./curator.js";
 import type { LlmExtractorDeps } from "./llm-extractor.js";
 import { extractFromMessageLLM } from "./llm-extractor.js";
+import { safeParsePersona } from "./persona-schema.js";
+import { createDefaultPersona } from "./store.js";
 
 type CompleteArgs = Parameters<LlmExtractorDeps["complete"]>;
 
@@ -239,11 +242,62 @@ describe("extractFromMessageLLM", () => {
   });
 
   it("clamps confidence to 0-1 range", async () => {
-    JSON.stringify({
+    const json = JSON.stringify({
       attributes: [{ field: "f", value: "v", confidence: 5, source: "explicit", evidence: "e" }],
       domains: [],
       recentFocus: [],
     });
+
+    const result = await extractFromMessageLLM(
+      "hello",
+      "hi",
+      undefined,
+      stubConfig,
+      makeSuccessDeps(json),
+    );
+
+    expect(result.attributes[0]!.confidence).toBe(1);
+  });
+
+  it("falls back to finite defaults when the LLM returns non-numeric numbers", async () => {
+    // NaN passes straight through the clamps. Once persisted it becomes null, the persona
+    // fails schema validation on the next load, and the user's persona is reset to defaults.
+    const json = JSON.stringify({
+      attributes: [
+        {
+          field: "identity.coreTraits.role",
+          value: "developer",
+          confidence: "high",
+          source: "explicit",
+          evidence: "e",
+        },
+      ],
+      domains: [
+        {
+          name: "testing",
+          depth: "expert",
+          typedInsights: [{ text: "prefers table-driven tests", confidence: {} }],
+          questions: [],
+        },
+      ],
+      recentFocus: [],
+    });
+
+    const result = await extractFromMessageLLM(
+      "hello",
+      "hi",
+      undefined,
+      stubConfig,
+      makeSuccessDeps(json),
+    );
+
+    expect(result.attributes[0]!.confidence).toBe(0.5);
+    expect(result.domains[0]!.depth).toBe(1);
+    expect(result.domains[0]!.typedInsights?.[0]?.confidence).toBe(0.5);
+    // The merged persona must survive persistence: JSON round-tripping turns any NaN into null,
+    // exactly as the store's write would, and the schema must still accept the result.
+    const persona = mergeExtraction(createDefaultPersona(), result);
+    expect(safeParsePersona(JSON.parse(JSON.stringify(persona)))).not.toBeNull();
   });
 
   it("clamps domain depth to 1-5 range", async () => {

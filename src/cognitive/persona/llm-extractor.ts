@@ -228,7 +228,7 @@ function parseLLMExtraction(text: string): ExtractionResult {
         ? parsed.attributes.map((a: Record<string, unknown>) => ({
             field: String(a.field ?? ""),
             value: String(a.value ?? ""),
-            confidence: clamp01(Number(a.confidence ?? 0.5)),
+            confidence: clamp01(toFiniteNumber(a.confidence, 0.5)),
             source: validSource(a.source),
             evidence: String(a.evidence ?? ""),
           }))
@@ -236,7 +236,7 @@ function parseLLMExtraction(text: string): ExtractionResult {
       domains: Array.isArray(parsed.domains)
         ? parsed.domains.map((d: Record<string, unknown>) => ({
             name: String(d.name ?? ""),
-            depth: clampDepth(Number(d.depth ?? 1)),
+            depth: clampDepth(toFiniteNumber(d.depth, 1)),
             insights: Array.isArray(d.insights) ? d.insights.map(String) : [],
             typedInsights: Array.isArray(d.typedInsights)
               ? d.typedInsights
@@ -247,7 +247,7 @@ function parseLLMExtraction(text: string): ExtractionResult {
                   .map((ti: Record<string, unknown>) => ({
                     text: String(ti.text),
                     category: validInsightCategory(ti.category),
-                    confidence: clamp01(Number(ti.confidence ?? 0.5)),
+                    confidence: clamp01(toFiniteNumber(ti.confidence, 0.5)),
                     source: validSource(ti.source),
                   }))
               : undefined,
@@ -363,6 +363,14 @@ function tryFixTruncatedJSON(jsonStr: string): string | null {
   } catch {
     return null;
   }
+}
+
+// The clamps below pass NaN through untouched, and a persisted NaN becomes null — which the
+// persona schema rejects, quarantining the whole file and resetting the user's persona. One
+// malformed LLM field ("expert", {}, …) must therefore fall back, not poison the record.
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function clamp01(n: number): number {
