@@ -141,10 +141,15 @@ function evaluateQuality(
   const scores: Record<string, number> = {};
   const domainNames = Object.keys(persona.domains);
   const allKeyInsights = Object.values(persona.domains).flatMap((d) => d.keyInsights);
+  // The model writes "PRISM 门控" where the persona has "PRISM门控": the space
+  // between Chinese and Latin text is typesetting, so both sides are compared
+  // without whitespace.
+  const compactContent = content.replace(/\s+/g, "");
+  const quotes = (text: string): boolean => compactContent.includes(text.replace(/\s+/g, ""));
 
   // Relevance: mentions user's domains or recent focus
-  const mentionedDomain = domainNames.some((d) => content.includes(d));
-  const mentionedFocus = persona.recentFocus.some((f) => content.includes(f));
+  const mentionedDomain = domainNames.some(quotes);
+  const mentionedFocus = persona.recentFocus.some(quotes);
   scores.relevance = mentionedDomain || mentionedFocus ? 8 : 3;
   if (!mentionedDomain && !mentionedFocus) {
     issues.push("未提及用户领域或近期关注");
@@ -158,7 +163,7 @@ function evaluateQuality(
   }
 
   // Specific: concrete details or keyInsights referenced
-  const usesKeyInsight = allKeyInsights.some((k) => content.includes(k));
+  const usesKeyInsight = allKeyInsights.some(quotes);
   scores.specific = usesKeyInsight ? 9 : content.length > 30 ? 5 : 2;
   if (!usesKeyInsight) {
     issues.push("未引用用户的具体 keyInsight");
