@@ -347,7 +347,7 @@ Correction (system prompt injection):
 - `extensions/memory-core/src/consolidation-route.ts` — `routeToStores`: routes to PersonaStore/FragmentStore/CorrectionStore + high-confidence items (≥0.7, behavioral_pattern ≥0.8) to MEMORY.md inline sections + daily file append
 - `extensions/memory-core/src/consolidation-types.ts` — `ExtractedItem`, `RouteItem`, `FileWithUserId`, `ConsolidationCheckpoint`, `ConsolidationResult`
 - Category → inline section mapping: `domain_knowledge`/`stated_preference`/`behavioral_pattern` → ⚡ Core Memory; `goal_or_aspiration` → 🔥 Active Context
-- Gateway bootstrap: `src/gateway/server.impl.ts` (~line 1491), uses `croner` Cron for scheduling
+- Gateway bootstrap: `src/gateway/server.impl.ts` (~line 1882), uses `croner` Cron for scheduling
 - All LLM/store deps injected as callbacks (no direct core imports from extensions)
 
 ### Memory Organization
@@ -502,7 +502,7 @@ Established by `VERIFICATION.md` diagnosis pipeline. This section is the live au
 | ------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | §2.1 Runs without the UI       | ✅ PASS | `kaijibot gateway --port 18789` (registered in `src/cli/gateway-cli/register.ts`, guarded at `src/cli/program/config-guard.ts:79`); `POST /v1/chat/completions` (`src/gateway/openai-http.ts:431`); gateway RPC `chat` (`src/gateway/server-methods/chat.ts`); 29 `*.e2e.test.ts` headless files |
 | §2.2 Intermediate state logged | ✅ PASS | Session JSONL transcripts (`src/gateway/session-transcript-files.fs.ts:70` `resolveSessionTranscriptCandidates`); evolution audit log (`src/cognitive/evolution/audit-log.ts:20` `AuditLog`); `getRecentSessionContent` (`src/hooks/bundled/session-memory/transcript.ts:250`)                   |
-| §2.3 Programmatic interface    | ✅ PASS | `GET /api/status` (`src/gateway/status-http.ts:58`); gateway RPC `sessions.list` (`src/gateway/server-methods/sessions.ts:555`), `chat.history` (`src/gateway/server.impl.ts:2338`); backend/frontend split (no MCP-web-sim)                                                                     |
+| §2.3 Programmatic interface    | ✅ PASS | `GET /api/status` (`src/gateway/status-http.ts:58`); gateway RPC `sessions.list` (`src/gateway/server-methods/sessions.ts:555`), `chat.history` (`src/gateway/server-methods/chat.ts:1312`); backend/frontend split (no MCP-web-sim)                                                             |
 
 Architecture is sound. Gaps are in the verification _layers_, not the runtime.
 
@@ -570,6 +570,6 @@ node scripts/regression-flag-diff.mjs src/cognitive/insight
 #   assert(r.passed);
 ```
 
-The supervisor reuses the ZAI/GLM main model (operator decision, §8.4, reconfirmed 2026.8.22) but in an isolated context — this satisfies §3.2 rule 1 (clean context) while rule 3 (different model) stays relaxed until a second key is available (lever exists: `evolution.qualityGateModel`, `src/config/types.cognitive.ts:70`).
+The supervisor reuses the ZAI/GLM main model (operator decision, §8.4, reconfirmed 2026.8.22) but in an isolated context — this satisfies §3.2 rule 1 (clean context) while rule 3 (different model) stays relaxed until a second key is available (lever exists: `evolution.qualityGateModel`, `src/config/types.cognitive.ts:85`).
 
 **Remaining backlog:** P2 optional dataset eval harness only. P0 supervisor live wiring + P1 live gate resolution (local-only by operator decision — no secrets in CI) + P1 flag-diff matrix all landed 2026.8.22.

@@ -293,8 +293,8 @@ package-root seam instead of promoting it into `kaijibot/plugin-sdk/*`.
 
 Some generated `kaijibot/plugin-sdk/<bundled-id>` helper seams still exist for
 bundled-plugin maintenance and compatibility, for example
-`plugin-sdk/feishu-setup` or `plugin-sdk/zalo-setup`. Treat those as reserved
-surfaces, not as the default pattern for new third-party plugins.
+`plugin-sdk/feishu-setup` or `plugin-sdk/feishu-conversation`. Treat those as
+reserved surfaces, not as the default pattern for new third-party plugins.
 
 ## Pre-submission checklist
 

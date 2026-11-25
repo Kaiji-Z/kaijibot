@@ -6,11 +6,34 @@ import { pluginSdkEntrypoints } from "../../plugin-sdk/entrypoints.js";
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const REPO_ROOT = resolve(ROOT_DIR, "..");
+const PUBLIC_CONTRACT_DOCS_DIR = "docs/plugins";
 const PUBLIC_CONTRACT_REFERENCE_FILES = [
-  "docs/plugins/architecture.md",
   "src/plugins/contracts/plugin-sdk-subpaths.test.ts",
 ] as const;
-const PLUGIN_SDK_SUBPATH_PATTERN = /kaijibot\/plugin-sdk\/([a-z0-9][a-z0-9-]*)\b/g;
+// Docs may name a seam KaijiBot never exported, but only as a "do not use this" example.
+const NEGATIVE_EXAMPLE_SUBPATHS = new Set([
+  "discord",
+  "signal",
+  "slack",
+  "telegram-core",
+  "whatsapp",
+]);
+// Matches `kaijibot/plugin-sdk/<name>` and the shorter `plugin-sdk/<name>` form the doc tables
+// use. The lookbehind keeps filesystem paths such as `src/plugin-sdk/<file>.ts` from matching;
+// before it covered the short form, docs went on naming ~40 subpaths that no export provides.
+const PLUGIN_SDK_SUBPATH_PATTERN =
+  /(?<![a-z0-9_./-])(?:kaijibot\/)?plugin-sdk\/([a-z0-9][a-z0-9-]*)\b/g;
+
+function collectPublicContractReferenceFiles(): string[] {
+  const docs = readdirSync(resolve(REPO_ROOT, PUBLIC_CONTRACT_DOCS_DIR), {
+    recursive: true,
+    encoding: "utf8",
+  })
+    .filter((entry) => entry.endsWith(".md"))
+    .map((entry) => `${PUBLIC_CONTRACT_DOCS_DIR}/${entry.replaceAll("\\", "/")}`)
+    .toSorted();
+  return [...docs, ...PUBLIC_CONTRACT_REFERENCE_FILES];
+}
 
 function collectPluginSdkPackageExports(): string[] {
   const packageJson = JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf8")) as {
@@ -33,49 +56,17 @@ function collectPluginSdkPackageExports(): string[] {
 
 function collectPluginSdkSubpathReferences() {
   const references: Array<{ file: string; subpath: string }> = [];
-  for (const file of PUBLIC_CONTRACT_REFERENCE_FILES) {
+  for (const file of collectPublicContractReferenceFiles()) {
     const source = readFileSync(resolve(REPO_ROOT, file), "utf8");
     for (const match of source.matchAll(PLUGIN_SDK_SUBPATH_PATTERN)) {
       const subpath = match[1];
-      if (!subpath) {
+      if (!subpath || NEGATIVE_EXAMPLE_SUBPATHS.has(subpath)) {
         continue;
       }
       references.push({ file, subpath });
     }
   }
   return references;
-}
-
-function readRootPackageJson(): {
-  dependencies?: Record<string, string>;
-  optionalDependencies?: Record<string, string>;
-} {
-  return JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf8")) as {
-    dependencies?: Record<string, string>;
-    optionalDependencies?: Record<string, string>;
-  };
-}
-
-function readAmazonBedrockPackageJson(): {
-  dependencies?: Record<string, string>;
-  optionalDependencies?: Record<string, string>;
-} {
-  return JSON.parse(
-    readFileSync(resolve(REPO_ROOT, "extensions/amazon-bedrock/package.json"), "utf8"),
-  ) as {
-    dependencies?: Record<string, string>;
-    optionalDependencies?: Record<string, string>;
-  };
-}
-
-function collectRuntimeDependencySpecs(packageJson: {
-  dependencies?: Record<string, string>;
-  optionalDependencies?: Record<string, string>;
-}): Map<string, string> {
-  return new Map([
-    ...Object.entries(packageJson.dependencies ?? {}),
-    ...Object.entries(packageJson.optionalDependencies ?? {}),
-  ]);
 }
 
 function collectExtensionFiles(dir: string): string[] {
@@ -158,16 +149,6 @@ describe("plugin-sdk package contract guardrails", () => {
     }
 
     expect(failures).toEqual([]);
-  });
-
-  it("mirrors Bedrock runtime deps needed by the bundled host graph", () => {
-    const rootRuntimeDeps = collectRuntimeDependencySpecs(readRootPackageJson());
-    const bedrockPackageJson = readAmazonBedrockPackageJson();
-    const bedrockRuntimeDeps = collectRuntimeDependencySpecs(bedrockPackageJson);
-
-    for (const dep of []) {
-      expect(rootRuntimeDeps.get(dep)).toBe(bedrockRuntimeDeps.get(dep));
-    }
   });
 
   it("keeps extension sources on public sdk or local package seams", () => {

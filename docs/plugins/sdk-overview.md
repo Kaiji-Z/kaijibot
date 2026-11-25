@@ -44,11 +44,17 @@ should either use those plugin-local barrels or add a narrow generic SDK
 contract when the need is truly cross-channel.
 
 The generated export map still contains a small set of bundled-plugin helper
-seams such as `plugin-sdk/feishu`, `plugin-sdk/feishu-setup`,
-`plugin-sdk/zalo`, `plugin-sdk/zalo-setup`, and `plugin-sdk/matrix*`. Those
-subpaths exist for bundled-plugin maintenance and compatibility only; they are
-intentionally omitted from the common table below and are not the recommended
-import path for new third-party plugins.
+seams such as `plugin-sdk/feishu`, `plugin-sdk/feishu-setup`, and
+`plugin-sdk/feishu-conversation`. Those subpaths exist for bundled-plugin
+maintenance and compatibility only; they are intentionally omitted from the
+common table below and are not the recommended import path for new third-party
+plugins.
+
+KaijiBot bundles only the Feishu and WeChat channels. The channel-brand helper
+seams that upstream OpenClaw exports for its other channels (Matrix, LINE, IRC,
+Telegram, Discord, Slack, Signal, WhatsApp, Google Chat, MS Teams, Mattermost,
+BlueBubbles, Nextcloud Talk, Nostr, Tlon, Twitch, Zalo) are not exported here,
+so importing any of them fails at resolution.
 
 ## Subpath reference
 
@@ -87,7 +93,6 @@ explicitly promotes one as public.
     | `plugin-sdk/channel-reply-pipeline` | `createChannelReplyPipeline` |
     | `plugin-sdk/channel-config-helpers` | `createHybridChannelConfigAdapter` |
     | `plugin-sdk/channel-config-schema` | Channel config schema types |
-    | `plugin-sdk/telegram-command-config` | Telegram custom-command normalization/validation helpers with bundled-contract fallback |
     | `plugin-sdk/channel-policy` | `resolveChannelGroupRequireMention` |
     | `plugin-sdk/channel-lifecycle` | `createAccountStatusSink` |
     | `plugin-sdk/inbound-envelope` | Shared inbound route + envelope builder helpers |
@@ -186,7 +191,6 @@ explicitly promotes one as public.
     | `plugin-sdk/cli-runtime` | CLI formatting, wait, and version helpers |
     | `plugin-sdk/gateway-runtime` | Gateway client and channel-status patch helpers |
     | `plugin-sdk/config-runtime` | Config load/write helpers |
-    | `plugin-sdk/telegram-command-config` | Telegram command-name/description normalization and duplicate/conflict checks, even when the bundled Telegram contract surface is unavailable |
     | `plugin-sdk/approval-runtime` | Exec/plugin approval helpers, approval-capability builders, auth/profile helpers, native routing/runtime helpers |
     | `plugin-sdk/reply-runtime` | Shared inbound/reply runtime helpers, chunking, dispatch, heartbeat, reply planner |
     | `plugin-sdk/reply-dispatch-runtime` | Narrow reply dispatch/finalize helpers |
@@ -287,11 +291,11 @@ explicitly promotes one as public.
     | Family | Current subpaths | Intended use |
     | --- | --- | --- |
     | Browser | `plugin-sdk/browser-cdp`, `plugin-sdk/browser-config-runtime`, `plugin-sdk/browser-config-support`, `plugin-sdk/browser-control-auth`, `plugin-sdk/browser-node-runtime`, `plugin-sdk/browser-profiles`, `plugin-sdk/browser-security-runtime`, `plugin-sdk/browser-setup-tools`, `plugin-sdk/browser-support` | Bundled browser plugin support helpers (`browser-support` remains the compatibility barrel) |
-    | Matrix | `plugin-sdk/matrix`, `plugin-sdk/matrix-helper`, `plugin-sdk/matrix-runtime-heavy`, `plugin-sdk/matrix-runtime-shared`, `plugin-sdk/matrix-runtime-surface`, `plugin-sdk/matrix-surface`, `plugin-sdk/matrix-thread-bindings` | Bundled Matrix helper/runtime surface |
-    | Line | `plugin-sdk/line`, `plugin-sdk/line-core`, `plugin-sdk/line-runtime`, `plugin-sdk/line-surface` | Bundled LINE helper/runtime surface |
-    | IRC | `plugin-sdk/irc`, `plugin-sdk/irc-surface` | Bundled IRC helper surface |
-    | Channel-specific helpers | `plugin-sdk/googlechat`, `plugin-sdk/zalouser`, `plugin-sdk/bluebubbles`, `plugin-sdk/bluebubbles-policy`, `plugin-sdk/mattermost`, `plugin-sdk/mattermost-policy`, `plugin-sdk/feishu-conversation`, `plugin-sdk/msteams`, `plugin-sdk/nextcloud-talk`, `plugin-sdk/nostr`, `plugin-sdk/tlon`, `plugin-sdk/twitch` | Bundled channel compatibility/helper seams |
-    | Auth/plugin-specific helpers | `plugin-sdk/github-copilot-login`, `plugin-sdk/github-copilot-token`, `plugin-sdk/diagnostics-otel`, `plugin-sdk/diffs`, `plugin-sdk/llm-task`, `plugin-sdk/thread-ownership`, `plugin-sdk/voice-call` | Bundled feature/plugin helper seams; `plugin-sdk/github-copilot-token` currently exports `DEFAULT_COPILOT_API_BASE_URL`, `deriveCopilotApiBaseUrlFromToken`, and `resolveCopilotApiToken` |
+    | Feishu | `plugin-sdk/feishu`, `plugin-sdk/feishu-conversation`, `plugin-sdk/feishu-setup` | Bundled Feishu channel helper seams: shared reply/config helpers, conversation-id parsing, thread bindings, setup adapter and wizard |
+    | Plugin-specific helpers | `plugin-sdk/github-copilot-token`, `plugin-sdk/diffs`, `plugin-sdk/llm-task` | Bundled feature/plugin helper seams; `plugin-sdk/github-copilot-token` currently exports `DEFAULT_COPILOT_API_BASE_URL`, `deriveCopilotApiBaseUrlFromToken`, and `resolveCopilotApiToken` |
+
+    Upstream OpenClaw's other bundled-helper families (the Matrix, LINE, IRC, and Telegram seams, the remaining channel-brand seams, and the github-copilot-login, diagnostics-otel, thread-ownership, and voice-call seams) have no export in KaijiBot; see the note under "Import convention".
+
   </Accordion>
 </AccordionGroup>
 

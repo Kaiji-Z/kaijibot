@@ -14,7 +14,8 @@ assembly, and contract enforcement.
   - `src/plugins/types.ts`
   - `src/plugins/runtime/types.ts`
   - `src/plugins/contracts/registry.ts`
-  - `src/plugins/public-artifacts.ts`
+  - `src/plugins/provider-public-artifacts.ts`
+  - `src/plugins/web-provider-public-artifacts.ts`
 
 ## Boundary Rules
 

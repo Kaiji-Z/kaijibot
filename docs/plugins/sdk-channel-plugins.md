@@ -162,11 +162,8 @@ surfaces:
   and adapter registration
 - `kaijibot/plugin-sdk/agent-media-payload` only when a legacy agent/media
   payload field layout is still required
-- `kaijibot/plugin-sdk/telegram-command-config` for Telegram custom-command
-  normalization, duplicate/conflict validation, and a fallback-stable command
-  config contract
 
-Auth-only channels can usually stop at the default path: core handles approvals and the plugin just exposes outbound/auth capabilities. Native approval channels such as Matrix, Slack, Telegram, and custom chat transports should use the shared native helpers instead of rolling their own approval lifecycle.
+Auth-only channels can usually stop at the default path: core handles approvals and the plugin just exposes outbound/auth capabilities. Native approval channels and custom chat transports should use the shared native helpers instead of rolling their own approval lifecycle.
 
 ## Inbound mention policy
 

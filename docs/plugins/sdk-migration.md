@@ -200,7 +200,6 @@ Current bundled provider examples:
   | `plugin-sdk/channel-reply-pipeline` | Reply prefix + typing wiring | `createChannelReplyPipeline` |
   | `plugin-sdk/channel-config-helpers` | Config adapter factories | `createHybridChannelConfigAdapter` |
   | `plugin-sdk/channel-config-schema` | Config schema builders | Channel config schema types |
-  | `plugin-sdk/telegram-command-config` | Telegram command config helpers | Command-name normalization, description trimming, duplicate/conflict validation |
   | `plugin-sdk/channel-policy` | Group/DM policy resolution | `resolveChannelGroupRequireMention` |
   | `plugin-sdk/channel-lifecycle` | Account status tracking | `createAccountStatusSink` |
   | `plugin-sdk/inbound-envelope` | Inbound envelope helpers | Shared route + envelope builder helpers |
@@ -222,7 +221,6 @@ Current bundled provider examples:
   | `plugin-sdk/cli-runtime` | CLI runtime helpers | Command formatting, waits, version helpers |
   | `plugin-sdk/gateway-runtime` | Gateway helpers | Gateway client and channel-status patch helpers |
   | `plugin-sdk/config-runtime` | Config helpers | Config load/write helpers |
-  | `plugin-sdk/telegram-command-config` | Telegram command helpers | Fallback-stable Telegram command validation helpers when the bundled Telegram contract surface is unavailable |
   | `plugin-sdk/approval-runtime` | Approval prompt helpers | Exec/plugin approval payload, approval capability/profile helpers, native approval routing/runtime helpers |
   | `plugin-sdk/approval-auth-runtime` | Approval auth helpers | Approver resolution, same-chat action auth |
   | `plugin-sdk/approval-client-runtime` | Approval client helpers | Native exec approval profile/filter helpers |
@@ -243,7 +241,6 @@ Current bundled provider examples:
   | `plugin-sdk/host-runtime` | Host normalization helpers | `normalizeHostname`, `normalizeScpRemoteHost` |
   | `plugin-sdk/retry-runtime` | Retry helpers | `RetryConfig`, `retryAsync`, policy runners |
   | `plugin-sdk/allow-from` | Allowlist formatting | `formatAllowFromLowercase` |
-  | `plugin-sdk/allowlist-resolution` | Allowlist input mapping | `mapAllowlistResolutionInputs` |
   | `plugin-sdk/command-auth` | Command gating and command-surface helpers | `resolveControlCommandGate`, sender-authorization helpers, command registry helpers |
   | `plugin-sdk/command-status` | Command status/help renderers | `buildCommandsMessage`, `buildCommandsMessagePaginated`, `buildHelpMessage` |
   | `plugin-sdk/secret-input` | Secret input parsing | Secret input helpers |
@@ -344,26 +341,25 @@ surface. The full list of 200+ entrypoints lives in
 `scripts/lib/plugin-sdk-entrypoints.json`.
 
 That list still includes some bundled-plugin helper seams such as
-`plugin-sdk/feishu`, `plugin-sdk/feishu-setup`, `plugin-sdk/zalo`,
-`plugin-sdk/zalo-setup`, and `plugin-sdk/matrix*`. Those remain exported for
-bundled-plugin maintenance and compatibility, but they are intentionally
-omitted from the common migration table and are not the recommended target for
-new plugin code.
+`plugin-sdk/feishu`, `plugin-sdk/feishu-setup`, and
+`plugin-sdk/feishu-conversation`. Those remain exported for bundled-plugin
+maintenance and compatibility, but they are intentionally omitted from the
+common migration table and are not the recommended target for new plugin code.
 
 The same rule applies to other bundled-helper families such as:
 
 - browser support helpers: `plugin-sdk/browser-cdp`, `plugin-sdk/browser-config-runtime`, `plugin-sdk/browser-config-support`, `plugin-sdk/browser-control-auth`, `plugin-sdk/browser-node-runtime`, `plugin-sdk/browser-profiles`, `plugin-sdk/browser-security-runtime`, `plugin-sdk/browser-setup-tools`, `plugin-sdk/browser-support`
-- Matrix: `plugin-sdk/matrix*`
-- LINE: `plugin-sdk/line*`
-- IRC: `plugin-sdk/irc*`
-- bundled helper/plugin surfaces like `plugin-sdk/googlechat`,
-  `plugin-sdk/zalouser`, `plugin-sdk/bluebubbles*`,
-  `plugin-sdk/mattermost*`, `plugin-sdk/msteams`,
-  `plugin-sdk/nextcloud-talk`, `plugin-sdk/nostr`, `plugin-sdk/tlon`,
-  `plugin-sdk/twitch`,
-  `plugin-sdk/github-copilot-login`, `plugin-sdk/github-copilot-token`,
-  `plugin-sdk/diagnostics-otel`, `plugin-sdk/diffs`, `plugin-sdk/llm-task`,
-  `plugin-sdk/thread-ownership`, and `plugin-sdk/voice-call`
+- bundled helper/plugin surfaces like `plugin-sdk/github-copilot-token`,
+  `plugin-sdk/diffs`, and `plugin-sdk/llm-task`
+
+KaijiBot bundles only the Feishu and WeChat channels. When porting a plugin
+from upstream OpenClaw, replace its channel-brand helper imports (the Matrix,
+LINE, IRC, Telegram, Google Chat, Zalo, BlueBubbles, Mattermost, MS Teams,
+Nextcloud Talk, Nostr, Tlon, and Twitch seams): KaijiBot exports none of them.
+The upstream-only feature seams github-copilot-login, diagnostics-otel,
+thread-ownership, and voice-call are not exported either. Compose the generic
+SDK subpaths listed above inside the plugin's own `api.ts` or `runtime-api.ts`
+barrel instead.
 
 `plugin-sdk/github-copilot-token` currently exposes the narrow token-helper
 surface `DEFAULT_COPILOT_API_BASE_URL`,
