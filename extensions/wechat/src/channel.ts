@@ -201,6 +201,12 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
           default: true,
           description: "Send structured tool-call progress messages.",
         },
+        allowFrom: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Extra Weixin user ids allowed to message the bot directly, next to the owner recorded at QR login.",
+        },
       },
     },
   },
@@ -597,6 +603,7 @@ export const weixinPlugin: ChannelPlugin<ResolvedWeixinAccount> = {
         cdnBaseUrl: account.cdnBaseUrl,
         token: account.token,
         accountId: account.accountId,
+        allowFrom: account.allowFrom,
         config: ctx.cfg,
         runtime: ctx.runtime,
         channelRuntime: ctx.channelRuntime as unknown as PluginRuntime["channel"],

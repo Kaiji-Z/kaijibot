@@ -1,23 +1,18 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { createTypingCallbacks } from "kaijibot/plugin-sdk/channel-reply-pipeline";
-import {
-  resolveSenderCommandAuthorizationWithRuntime,
-  resolveDirectDmAuthorizationOutcome,
-} from "kaijibot/plugin-sdk/command-auth";
 import type { PluginRuntime } from "kaijibot/plugin-sdk/core";
 import { resolvePreferredKaijiBotTmpDir } from "kaijibot/plugin-sdk/infra-runtime";
 import { sendTyping } from "../api/api.js";
 import type { WeixinMessage } from "../api/types.js";
 import { MessageItemType, TypingStatus } from "../api/types.js";
-import { loadWeixinAccount } from "../auth/accounts.js";
-import { readFrameworkAllowFromList } from "../auth/pairing.js";
 import { downloadRemoteImageToTemp } from "../cdn/upload.js";
 import { resolveReplyProgressMessagesEnabled } from "../config/reply-progress.js";
 import { downloadMediaFromItem } from "../media/media-download.js";
 import { logger } from "../util/logger.js";
 import { redactBody, redactToken } from "../util/redact.js";
 import { isDebugMode } from "./debug-mode.js";
+import { resolveWeixinDmAccess } from "./dm-authorization.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
 import {
   setContextToken,
@@ -47,6 +42,8 @@ export type ProcessMessageDeps = {
   cdnBaseUrl: string;
   token?: string;
   typingTicket?: string;
+  /** Extra direct-message senders from channels.wechat.allowFrom. */
+  allowFrom?: string[];
   log: (msg: string) => void;
   errLog: (m: string) => void;
 };
@@ -159,38 +156,20 @@ export async function processOneMessage(
 
   const senderId = full.from_user_id ?? "";
 
-  const { senderAllowedForCommands, commandAuthorized } =
-    await resolveSenderCommandAuthorizationWithRuntime({
-      cfg: deps.config,
-      rawBody,
-      isGroup: false,
-      dmPolicy: "pairing",
-      configuredAllowFrom: [],
-      configuredGroupAllowFrom: [],
-      senderId,
-      isSenderAllowed: (id: string, list: string[]) => list.length === 0 || list.includes(id),
-      /** Pairing: framework credentials `*-allowFrom.json`, with account `userId` fallback for legacy installs. */
-      readAllowFromStore: async () => {
-        const fromStore = readFrameworkAllowFromList(deps.accountId);
-        if (fromStore.length > 0) {
-          return fromStore;
-        }
-        const uid = loadWeixinAccount(deps.accountId)?.userId?.trim();
-        return uid ? [uid] : [];
-      },
-      runtime: deps.channelRuntime.commands,
-    });
-
-  const directDmOutcome = resolveDirectDmAuthorizationOutcome({
-    isGroup: false,
-    dmPolicy: "pairing",
-    senderAllowedForCommands,
+  const dmAccess = await resolveWeixinDmAccess({
+    cfg: deps.config,
+    rawBody,
+    senderId,
+    configuredAllowFrom: deps.allowFrom ?? [],
+    accountId: deps.accountId,
+    runtime: deps.channelRuntime.commands,
   });
 
-  if (directDmOutcome === "disabled" || directDmOutcome === "unauthorized") {
-    logger.info(`authorization: dropping message from=${senderId} outcome=${directDmOutcome}`);
+  if (dmAccess.outcome !== "allowed") {
+    logger.info(`authorization: dropping message from=${senderId} outcome=${dmAccess.outcome}`);
     return;
   }
+  const { commandAuthorized } = dmAccess;
 
   // Slash commands run AFTER the DM authorization gate so unauthorized senders
   // cannot mutate account-wide state (e.g. /toggle-debug) or trigger replies.
@@ -217,14 +196,11 @@ export async function processOneMessage(
 
   ctx.CommandAuthorized = commandAuthorized;
   logger.debug(
-    `authorization: senderId=${senderId} commandAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
+    `authorization: senderId=${senderId} commandAuthorized=${String(commandAuthorized)}`,
   );
 
   if (debug) {
-    debugTrace.push(
-      "── 鉴权 & 路由 ──",
-      `│ auth: cmdAuthorized=${String(commandAuthorized)} senderAllowed=${String(senderAllowedForCommands)}`,
-    );
+    debugTrace.push("── 鉴权 & 路由 ──", `│ auth: cmdAuthorized=${String(commandAuthorized)}`);
   }
 
   const route = deps.channelRuntime.routing.resolveAgentRoute({

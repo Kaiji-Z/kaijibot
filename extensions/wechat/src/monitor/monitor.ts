@@ -20,7 +20,10 @@ export type MonitorWeixinOpts = {
   cdnBaseUrl: string;
   token?: string;
   accountId: string;
-  /** When non-empty, only messages whose from_user_id is in this list are processed. */
+  /**
+   * Extra senders allowed in direct messages (channels.wechat.allowFrom). Forwarded to the DM
+   * gate in processOneMessage; the owner recorded at QR login does not need to be listed.
+   */
   allowFrom?: string[];
   config: import("kaijibot/plugin-sdk/core").KaijiBotConfig;
   runtime?: { log?: (msg: string) => void; error?: (msg: string) => void };
@@ -45,6 +48,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
     cdnBaseUrl,
     token,
     accountId,
+    allowFrom,
     config,
     channelRuntime,
     abortSignal,
@@ -164,13 +168,14 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
         setStatus?.({ accountId, lastEventAt: now, lastInboundAt: now });
 
         // allowFrom filtering is delegated to processOneMessage via the framework
-        // authorization pipeline (resolveSenderCommandAuthorizationWithRuntime).
+        // authorization pipeline (resolveWeixinDmAccess -> resolveSenderCommandAuthorizationWithRuntime).
 
         const fromUserId = full.from_user_id ?? "";
         const cachedConfig = await configManager.getForUser(fromUserId, full.context_token);
 
         await processOneMessage(full, {
           accountId,
+          allowFrom,
           config,
           channelRuntime,
           baseUrl,

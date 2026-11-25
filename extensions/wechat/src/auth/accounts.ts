@@ -375,6 +375,8 @@ export type ResolvedWeixinAccount = {
   /** true when a token has been obtained via QR login. */
   configured: boolean;
   name?: string;
+  /** Extra direct-message senders from channels.wechat.allowFrom. The DM gate adds the login owner. */
+  allowFrom: string[];
 };
 
 type WeixinAccountConfig = {
@@ -383,6 +385,7 @@ type WeixinAccountConfig = {
   cdnBaseUrl?: string;
   /** Optional SKRouteTag source; read from kaijibot.json when `accountId` is passed to `loadConfigRouteTag`. */
   routeTag?: number | string;
+  allowFrom?: unknown;
 };
 
 type WeixinSectionConfig = WeixinAccountConfig & {
@@ -394,6 +397,16 @@ type WeixinSectionConfig = WeixinAccountConfig & {
 /** List accountIds from the index file (written at QR login). */
 export function listWeixinAccountIds(_cfg: KaijiBotConfig): string[] {
   return listIndexedWeixinAccountIds();
+}
+
+/** `channels.wechat.allowFrom`: trimmed string ids; other entries and non-arrays yield an empty list. */
+export function normalizeWeixinAllowFrom(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((id): id is string => typeof id === "string" && id.trim() !== "")
+    .map((id) => id.trim());
 }
 
 /** Resolve a weixin account by ID, merging config and stored credentials. */
@@ -421,5 +434,6 @@ export function resolveWeixinAccount(
     enabled: accountCfg.enabled !== false,
     configured: Boolean(token),
     name: accountCfg.name?.trim() || undefined,
+    allowFrom: normalizeWeixinAllowFrom(accountCfg.allowFrom),
   };
 }

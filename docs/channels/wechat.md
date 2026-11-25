@@ -45,6 +45,22 @@ kaijibot config set channels.wechat.enabled true
 kaijibot config set channels.wechat.api.baseUrl "https://your-ilink-bot-server"
 ```
 
+### 谁可以私聊机器人
+
+扫码登录的微信用户即机器人主人。要额外放行其他用户私聊，在 `kaijibot.json` 里配置 `channels.wechat.allowFrom`：
+
+```json
+{
+  "channels": {
+    "wechat": {
+      "allowFrom": ["wxid_xxx@im.wechat"]
+    }
+  }
+}
+```
+
+多账号时可以用 `channels.wechat.accounts.<accountId>.allowFrom` 给单个账号设置名单（覆盖频道级名单）。
+
 ## 故障排除
 
 | 问题           | 解决方案                                                                                    |
