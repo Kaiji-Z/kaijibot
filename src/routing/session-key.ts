@@ -142,7 +142,10 @@ export function resolveEffectiveDmScope(cfg: DmScopeConfig | undefined): DmScope
     }
     if (value && typeof value === "object") {
       const chan = value as Record<string, unknown>;
-      if (chan.appId || chan.token || chan.botToken) {
+      // appId/token/botToken cover channels configured with app credentials. WeChat keeps its
+      // token in the credentials store; channelConfigUpdatedAt is written on every successful
+      // WeChat login and is the only trace of the channel here.
+      if (chan.appId || chan.token || chan.botToken || chan.channelConfigUpdatedAt) {
         return "per-peer";
       }
     }

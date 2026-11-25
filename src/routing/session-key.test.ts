@@ -199,13 +199,23 @@ describe("resolveEffectiveDmScope", () => {
     expect(resolveEffectiveDmScope(cfg)).toBe("per-channel-peer");
   });
 
-  it("promotes when wechat channel configured", async () => {
+  it("promotes when the wechat channel has been logged in", async () => {
     const { resolveEffectiveDmScope } = await import("./session-key.js");
+    // WeChat keeps its token in the credentials store. channelConfigUpdatedAt is written on
+    // every successful login and is the only trace of the channel in kaijibot.json.
     const cfg = {
       session: {},
-      channels: { wechat: { appId: "wx_xxx", token: "tok" } },
+      channels: {
+        wechat: { enabled: true, channelConfigUpdatedAt: "2026-11-01T00:00:00.000Z" },
+      },
     } as never;
     expect(resolveEffectiveDmScope(cfg)).toBe("per-peer");
+  });
+
+  it("stays on main when the wechat section exists but was never logged in", async () => {
+    const { resolveEffectiveDmScope } = await import("./session-key.js");
+    const cfg = { session: {}, channels: { wechat: { enabled: true } } } as never;
+    expect(resolveEffectiveDmScope(cfg)).toBe("main");
   });
 
   it("returns main for undefined config", async () => {
