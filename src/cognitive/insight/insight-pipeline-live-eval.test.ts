@@ -1,15 +1,19 @@
 /**
  * Live pipeline evaluation — full search→identify→resolve with real LLM + web search.
  *
+ * Reads the real persona under the config directory and writes nothing there:
+ * the fragments it seeds go to a throwaway store.
+ *
  * Run: KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY TAVILY_API_KEY=$TAVILY_API_KEY \
  *     pnpm test src/cognitive/insight/insight-pipeline-live-eval.test.ts
  */
 
 import { randomUUID } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect } from "vitest";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { resolveConfigDir } from "../../utils.js";
 import { ProactiveScheduler, type InsightGeneratorFn } from "../scheduler/proactive-scheduler.js";
@@ -74,6 +78,11 @@ const TEST_AUTH = { apiKey: ZAI_API_KEY ?? "", source: "zai", mode: "api-key" as
 
 // ─── Helpers: real LLM deps ───
 
+// Both calls are sent the way production sends them (createDefaultInsightDeps →
+// pi-ai `complete`): with no reasoning option the model layer turns thinking off
+// for zai models (pi-ai sends `thinking: { type: "disabled" }` and
+// `max_completion_tokens`). Left on, the reasoning counts against the token cap
+// and the JSON is cut off.
 function makeRealLlmDeps(): LlmInsightDeps {
   return {
     complete: async (_model, context, options) => {
@@ -98,7 +107,8 @@ function makeRealLlmDeps(): LlmInsightDeps {
           model: MODEL,
           messages,
           temperature: 0.85,
-          max_tokens: options?.maxTokens ?? 2000,
+          max_completion_tokens: options?.maxTokens ?? 2000,
+          thinking: { type: "disabled" },
         }),
       });
       const data = (await res.json()) as {
@@ -158,7 +168,8 @@ function makeRealLlmDeps(): LlmInsightDeps {
             model: MODEL,
             messages,
             temperature: 0.7,
-            max_tokens: options?.maxTokens ?? 1000,
+            max_completion_tokens: options?.maxTokens ?? 1000,
+            thinking: { type: "disabled" },
           }),
         });
         const data = (await res.json()) as {
@@ -178,17 +189,24 @@ function makeRealLlmDeps(): LlmInsightDeps {
 
 // ─── Helpers: load real persona ───
 
+// The pipeline works from the persona's domains, so take the richest persona in
+// the directory. No file-name prefix is required: the operator's persona is not
+// named with a channel id, and an arbitrary `ou_` file can hold no domains.
 function loadRealPersona(): PersonaTree {
   const configDir = resolveConfigDir();
-  const personaDir = path.join(configDir, "cognitive", "persona", "main");
-  const files = fs
-    .readdirSync(personaDir)
-    .filter((f) => f.startsWith("ou_") && f.endsWith(".json"));
-  if (files.length === 0) {
-    throw new Error("No user persona found in " + personaDir);
+  const personaDir = join(configDir, "cognitive", "persona", "main");
+  const personas = readdirSync(personaDir)
+    .filter((file) => file.endsWith(".json"))
+    .toSorted()
+    .map((file) => {
+      const persona = JSON.parse(readFileSync(join(personaDir, file), "utf8")) as PersonaTree;
+      return { persona, domainCount: Object.keys(persona.domains).length };
+    });
+  const richest = personas.toSorted((a, b) => b.domainCount - a.domainCount)[0];
+  if (!richest || richest.domainCount === 0) {
+    throw new Error(`No persona with domains found in ${personaDir}`);
   }
-  const personaPath = path.join(personaDir, files[0]!);
-  return JSON.parse(fs.readFileSync(personaPath, "utf8")) as PersonaTree;
+  return richest.persona;
 }
 
 // ─── Helpers: seed fragments for pattern mode ───
@@ -304,7 +322,14 @@ function makeSchedulerConfig(): SchedulerConfig {
 
 function makeMinimalConfig(): KaijiBotConfig {
   return {
-    cognitive: { insight: { sources: { webSearchProvider: "zai" } } },
+    cognitive: {
+      insight: {
+        // Surprise mode resolves its inference model from the config before it
+        // asks the deps to prepare it; the deps below accept any ref.
+        inferenceModel: `zai/${MODEL}`,
+        sources: { webSearchProvider: "zai" },
+      },
+    },
   } as KaijiBotConfig;
 }
 
@@ -415,6 +440,19 @@ function evaluateResults(results: RoundResult[], persona: PersonaTree): void {
 describe.skipIf(!isLive || !ZAI_API_KEY)(
   "live pipeline evaluation — unified pipeline, real persona + real LLM + web search",
   () => {
+    // The fragments are seeded into a throwaway store. The real one feeds the
+    // running gateway, and synthetic fragments left in it would surface in real
+    // pattern-mode insights for days.
+    let fragmentDir: string;
+
+    beforeEach(() => {
+      fragmentDir = mkdtempSync(join(tmpdir(), "kaijibot-pipeline-eval-"));
+    });
+
+    afterEach(() => {
+      rmSync(fragmentDir, { recursive: true, force: true });
+    });
+
     it(
       `runs ${ROUNDS} rounds of search→identify→resolve and evaluates`,
       async () => {
@@ -426,8 +464,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY)(
 
         // 2. Seed fragments for pattern mode
         const userId = persona.identity?.userId ?? "test-user";
-        const configDir = resolveConfigDir();
-        const fragmentStore = new FragmentStore(configDir);
+        const fragmentStore = new FragmentStore(fragmentDir);
         await seedFragments(userId, fragmentStore);
         console.log(`  Seeded fragments for userId=${userId}`);
 
