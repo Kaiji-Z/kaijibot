@@ -19,6 +19,17 @@ export function runExtensionOxlint(params) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), params.tempDirPrefix));
   const tempConfigPath = path.join(tempDir, "oxlint.json");
 
+  // process.exit() does not run finally blocks, so every exit path goes through
+  // finish()/cleanup() to release the lock and remove the temp config directory.
+  const cleanup = () => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    releaseLock();
+  };
+  const finish = (status) => {
+    cleanup();
+    process.exit(status);
+  };
+
   try {
     prepareExtensionPackageBoundaryArtifacts(repoRoot);
 
@@ -28,7 +39,8 @@ export function runExtensionOxlint(params) {
 
     if (extensionFiles.length === 0) {
       console.error(params.emptyMessage);
-      process.exit(1);
+      finish(1);
+      return;
     }
 
     writeTempOxlintConfig(repoRoot, tempConfigPath);
@@ -45,10 +57,10 @@ export function runExtensionOxlint(params) {
       throw result.error;
     }
 
-    process.exit(result.status ?? 1);
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    releaseLock();
+    finish(result.status ?? 1);
+  } catch (error) {
+    cleanup();
+    throw error;
   }
 }
 
@@ -60,6 +72,7 @@ function prepareExtensionPackageBoundaryArtifacts(repoRoot) {
     lockName: "extension-package-boundary-artifacts",
   });
 
+  let status;
   try {
     const result = spawnSync(
       process.execPath,
@@ -75,11 +88,14 @@ function prepareExtensionPackageBoundaryArtifacts(repoRoot) {
       throw result.error;
     }
 
-    if ((result.status ?? 1) !== 0) {
-      process.exit(result.status ?? 1);
-    }
+    status = result.status ?? 1;
   } finally {
+    // Release before exiting: process.exit() inside the try would skip this block.
     releaseLock();
+  }
+
+  if (status !== 0) {
+    process.exit(status);
   }
 }
 
