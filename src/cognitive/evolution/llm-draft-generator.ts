@@ -125,7 +125,8 @@ function validateAndRepair(raw: string, candidate: EvolutionCandidate): SkillDra
   const name = sanitizeSkillName(nameMatch[1].trim()) || generateSkillDraft(candidate).name;
   const rawDesc = descMatch[1].trim();
   let description: string;
-  if (rawDesc === ">" || rawDesc === "|") {
+  // A block scalar header: ">" or "|" with an optional chomping indicator (">-", "|+").
+  if (/^[>|][+-]?$/.test(rawDesc)) {
     const afterMarker = frontmatter.slice(descMatch.index! + descMatch[0].length);
     const lines = afterMarker.split("\n");
     const folded: string[] = [];

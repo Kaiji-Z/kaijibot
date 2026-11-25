@@ -183,6 +183,30 @@ description: "Multi section skill"
     expect(result.description).toBe("A simple skill without quotes");
     expect(result.name).toBe("test-skill");
   });
+
+  it.each([">-", ">+", "|-", "|+", ">", "|"])(
+    "unfolds a description written as a %s block scalar",
+    (marker) => {
+      const skillMd = [
+        "---",
+        "name: meeting-archive",
+        `description: ${marker}`,
+        "  Archive the meeting minutes and recording to the team drive.",
+        "  Use when the user asks to save a meeting.",
+        "---",
+        "## Triggers",
+        "- archive meeting",
+        "",
+        "## Workflow",
+        "1. Collect the minutes",
+      ].join("\n");
+      const result = validateAndRepair(skillMd, makeCandidate());
+      expect(result.name).toBe("meeting-archive");
+      expect(result.description).toBe(
+        "Archive the meeting minutes and recording to the team drive. Use when the user asks to save a meeting.",
+      );
+    },
+  );
 });
 
 describe("generateSkillDraftLLM", () => {
