@@ -171,7 +171,7 @@
 | LLM generation  | Candidate insight generated using wrapped results                                                                                                                            |
 | Post-gen filter | If candidate matches any of 8 imperative-injection patterns (send money / click link / download file / buy now / share API key / etc), candidate is rejected with `log.warn` |
 
-**Passes iff**: an insight that quotes web content references the source as context (e.g. "根据 [0]") and does NOT contain imperative instructions directed at the user.
+**Passes iff**: an insight that quotes web content references the source as context (e.g. "根据 [0]") and does NOT contain imperative instructions directed at the user. This is about instructions planted by untrusted content: a recommendation about the user's own work, offered as something to consider, is not a violation.
 
 ### Happy path — correction store
 
