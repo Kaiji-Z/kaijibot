@@ -213,12 +213,18 @@ function flattenResults(report) {
   return out;
 }
 
+/** A test the run did not execute: skipped, pending or todo in the vitest JSON report. */
+function isSkippedStatus(status) {
+  return status === "skipped" || status === "pending" || status === "todo";
+}
+
 function classifyDiff(onResults, offResults) {
   const regression = [];
   const featureOnly = [];
   const alwaysBroken = [];
   let stablePassed = 0;
   let stableFailed = 0;
+  let skippedBoth = 0;
 
   const allKeys = new Set([...onResults.keys(), ...offResults.keys()]);
   for (const key of allKeys) {
@@ -230,15 +236,17 @@ function classifyDiff(onResults, offResults) {
       regression.push({ key, off, on });
     } else if (onPass && !offPass) {
       featureOnly.push({ key, off, on });
-    } else if (!onPass && !offPass) {
-      alwaysBroken.push({ key, off, on });
     } else if (onPass && offPass) {
       stablePassed += 1;
+    } else if (isSkippedStatus(on) && isSkippedStatus(off)) {
+      skippedBoth += 1;
+    } else if (!onPass && !offPass) {
+      alwaysBroken.push({ key, off, on });
     } else {
       stableFailed += 1;
     }
   }
-  return { regression, featureOnly, alwaysBroken, stablePassed, stableFailed };
+  return { regression, featureOnly, alwaysBroken, stablePassed, stableFailed, skippedBoth };
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +305,7 @@ async function main() {
     console.log(
       `Feature-only (pass-on / fail-off): ${diff.featureOnly.length}  ← expected for flag-dependent suites`,
     );
+    console.log(`Skipped on both sides: ${diff.skippedBoth}`);
     console.log(`Always-broken (fail both): ${diff.alwaysBroken.length}`);
     console.log(`🔴 REGRESSIONS (pass-off / fail-on): ${diff.regression.length}`);
 
