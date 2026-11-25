@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 // --- Mocks -------------------------------------------------------------
 
@@ -28,7 +28,20 @@ vi.mock("qrcode-terminal", () => ({
   default: { generate: qrGenerateMock },
 }));
 
-import { registerFeishuAppViaQr, QR_AUTH_TIMEOUT_MS, type QrAuthResult } from "./qr-authorize.js";
+// The extensions lane runs non-isolated locally. When another test file in the same
+// worker has already loaded ./qr-authorize.js (through setup-surface.js), the cached
+// copy keeps the real SDK binding and the mock above never applies: these tests would
+// then start real device-code logins and block until someone scans the QR code.
+// Resetting the module graph and importing afresh evaluates it against the mock.
+let registerFeishuAppViaQr: typeof import("./qr-authorize.js").registerFeishuAppViaQr;
+let QR_AUTH_TIMEOUT_MS: number;
+
+beforeAll(async () => {
+  vi.resetModules();
+  ({ registerFeishuAppViaQr, QR_AUTH_TIMEOUT_MS } = await import("./qr-authorize.js"));
+});
+
+type QrAuthResult = Awaited<ReturnType<typeof registerFeishuAppViaQr>>;
 
 // --- Helpers ------------------------------------------------------------
 
