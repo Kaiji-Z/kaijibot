@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
+import { mergeExtraction } from "../persona/curator.js";
+import { createDefaultPersona } from "../persona/store.js";
 import type { RapportMetrics } from "../types.js";
+import { extractImplicitSignals, processImplicitFeedback } from "./collector.js";
 import {
   updateTrustFromFeedback,
+  updateTrustFromImplicit,
   getInteractionPhase,
   getPhaseBehaviorAdvice,
 } from "./trust-calculator.js";
@@ -59,6 +63,40 @@ describe("updateTrustFromFeedback", () => {
       timestamp: Date.now(),
     });
     expect(result.trustScore).toBeLessThanOrEqual(1.0);
+  });
+});
+
+describe("updateTrustFromImplicit", () => {
+  it("does not count a turn's signals as extra exchanges", () => {
+    // mergeExtraction has already counted this turn (10 → 11).
+    const rapport = makeRapport({
+      trustScore: 0.5,
+      totalExchanges: 11,
+      avgResponseLength: 100,
+      selfDisclosureLevel: 0.3,
+    });
+    const message = "为什么会这样？请详细说明一下";
+    const signals = extractImplicitSignals(message, undefined, "AI", ["AI"]);
+
+    const result = updateTrustFromImplicit(rapport, signals);
+
+    expect(signals.length).toBeGreaterThan(1);
+    expect(result.totalExchanges).toBe(11);
+    // The message is one new length sample across the 11 exchanges.
+    expect(result.avgResponseLength).toBeCloseTo((100 * 10 + message.length) / 11, 10);
+  });
+
+  it("counts one exchange per conversation turn through the write pipeline", () => {
+    let persona = createDefaultPersona();
+    const emptyExtraction = { attributes: [], domains: [], recentFocus: [] };
+
+    for (const message of ["帮我看看这个问题", "为什么会这样？", "好，继续"]) {
+      const merged = mergeExtraction(persona, emptyExtraction);
+      const signals = extractImplicitSignals(message, undefined, "调试", merged.recentFocus);
+      persona = processImplicitFeedback(merged, signals);
+    }
+
+    expect(persona.rapport.totalExchanges).toBe(3);
   });
 });
 

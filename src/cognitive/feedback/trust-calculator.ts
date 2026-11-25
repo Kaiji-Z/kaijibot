@@ -32,15 +32,22 @@ export function updateTrustFromFeedback(
 }
 
 /**
- * Update trust based on implicit feedback signals.
+ * Update trust based on the implicit feedback signals of one conversation turn.
+ *
+ * `rapport` must already count that turn: `mergeExtraction` increments
+ * `totalExchanges` before this runs in the write pipeline. The signals only
+ * move trust, disclosure and the running length average — counting each one as
+ * an exchange inflated the total several times over (a turn yields up to four
+ * signals).
  */
 export function updateTrustFromImplicit(
   rapport: RapportMetrics,
   signals: ImplicitFeedbackSignal[],
 ): RapportMetrics {
   let trustDelta = 0;
-  let totalResponseLength = rapport.avgResponseLength * rapport.totalExchanges;
   let disclosureDelta = 0;
+  /** Length of the turn's user message; one sample, whatever the signal count. */
+  let turnResponseLength: number | undefined;
 
   for (const signal of signals) {
     switch (signal.type) {
@@ -51,7 +58,7 @@ export function updateTrustFromImplicit(
         } else if (signal.value < 20) {
           trustDelta -= 0.01;
         }
-        totalResponseLength += signal.value;
+        turnResponseLength ??= signal.value;
         break;
       case "response_latency":
         // Quick response = engaged, very slow = disinterested
@@ -75,14 +82,18 @@ export function updateTrustFromImplicit(
     }
   }
 
-  const newTotalExchanges = rapport.totalExchanges + signals.length;
+  // Fold this turn's message into the average over the exchanges counted so far
+  // (at least the current one, so a first sample stands on its own).
+  const samples = Math.max(1, rapport.totalExchanges);
   const newAvgResponseLength =
-    newTotalExchanges > 0 ? totalResponseLength / newTotalExchanges : rapport.avgResponseLength;
+    turnResponseLength === undefined
+      ? rapport.avgResponseLength
+      : (rapport.avgResponseLength * (samples - 1) + turnResponseLength) / samples;
 
   return {
     ...rapport,
     trustScore: clampTrust(rapport.trustScore + trustDelta),
-    totalExchanges: newTotalExchanges,
+    totalExchanges: rapport.totalExchanges,
     avgResponseLength: newAvgResponseLength,
     selfDisclosureLevel: Math.min(1, rapport.selfDisclosureLevel + disclosureDelta),
   };
