@@ -2,6 +2,45 @@ import type { SchedulerEvent } from "../types.js";
 
 const PERSONA_CHANGE_DEBOUNCE_MS = 5 * 60 * 1000;
 
+/** Payload of a `persona_change` event: whose domains moved, and how. */
+export type PersonaChangePayload = {
+  /** The user whose persona changed. The event concerns them alone: its new
+   *  domains become insight targets, so it must not reach other users. */
+  userId: string;
+  newDomains: string[];
+  domainCount: number;
+};
+
+/**
+ * Hand one scheduler event to the known (agent, user) entries.
+ *
+ * Most events are broadcasts. A persona change is not: its payload names the
+ * domains one user just picked up and those become insight targets, so sending
+ * it to everybody would aim that user's new topics at people who never
+ * mentioned them. Such an event reaches only the user it concerns, and is
+ * dropped when the payload does not name one.
+ */
+export async function dispatchSchedulerEvent(
+  event: SchedulerEvent,
+  entries: ReadonlyArray<{ agentId: string; userId: string }>,
+  processEntry: (entry: { agentId: string; userId: string }) => Promise<void>,
+): Promise<void> {
+  let targetUserId: string | null = null;
+  if (event.type === "persona_change") {
+    const payload = event.payload as Partial<PersonaChangePayload> | undefined;
+    targetUserId = typeof payload?.userId === "string" && payload.userId ? payload.userId : null;
+    if (!targetUserId) {
+      return;
+    }
+  }
+  for (const entry of entries) {
+    if (targetUserId !== null && entry.userId !== targetUserId) {
+      continue;
+    }
+    await processEntry(entry);
+  }
+}
+
 /**
  * Event source triggered by significant changes to the user's persona.
  * Fires when the persona's domain structure changes significantly
@@ -50,7 +89,11 @@ export class PersonaChangeSource {
     const event: SchedulerEvent = {
       type: "persona_change",
       timestamp: now,
-      payload: { newDomains: trulyNew, domainCount: currentDomains.length },
+      payload: {
+        userId,
+        newDomains: trulyNew,
+        domainCount: currentDomains.length,
+      } satisfies PersonaChangePayload,
     };
     for (const listener of this.listeners) {
       listener(event);

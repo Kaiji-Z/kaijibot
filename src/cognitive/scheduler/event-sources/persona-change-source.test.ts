@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { PersonaChangeSource } from "./persona-change-source.js";
+import type { SchedulerEvent } from "../types.js";
+import { PersonaChangeSource, dispatchSchedulerEvent } from "./persona-change-source.js";
 
 describe("PersonaChangeSource", () => {
   it("first call establishes baseline without firing", () => {
@@ -70,16 +71,64 @@ describe("PersonaChangeSource", () => {
     expect(events.length).toBe(1);
   });
 
-  it("payload includes only truly new domains", () => {
+  it("payload names the user and includes only truly new domains", () => {
     const source = new PersonaChangeSource();
     const events: Array<{ payload?: unknown }> = [];
     source.onEvent((e) => events.push(e));
     source.checkPersonaUpdate("user1", ["AI", "ML"]);
     source.checkPersonaUpdate("user1", ["AI", "ML", "Rust", "Go"]);
-    const payload = events[0]!.payload as { newDomains?: string[]; domainCount?: number };
+    const payload = events[0]!.payload as {
+      userId?: string;
+      newDomains?: string[];
+      domainCount?: number;
+    };
     expect(payload).toEqual({
+      userId: "user1",
       newDomains: ["Rust", "Go"],
       domainCount: 4,
     });
+  });
+});
+
+describe("dispatchSchedulerEvent", () => {
+  const entries = [
+    { agentId: "main", userId: "alice" },
+    { agentId: "main", userId: "bob" },
+    { agentId: "second", userId: "alice" },
+  ];
+
+  async function collect(event: SchedulerEvent) {
+    const processed: string[] = [];
+    await dispatchSchedulerEvent(event, entries, async (entry) => {
+      processed.push(`${entry.agentId}/${entry.userId}`);
+    });
+    return processed;
+  }
+
+  it("routes a persona change to the user it concerns only", async () => {
+    const source = new PersonaChangeSource();
+    const events: SchedulerEvent[] = [];
+    source.onEvent((e) => events.push(e));
+    source.checkPersonaUpdate("bob", ["AI"]);
+    source.checkPersonaUpdate("bob", ["AI", "ML", "Rust"]);
+
+    // The event's new domains become insight targets: alice never mentioned them.
+    expect(await collect(events[0]!)).toEqual(["main/bob"]);
+  });
+
+  it("broadcasts events that are not persona changes to every entry", async () => {
+    const event: SchedulerEvent = { type: "info_scan", timestamp: Date.now() };
+
+    expect(await collect(event)).toEqual(["main/alice", "main/bob", "second/alice"]);
+  });
+
+  it("drops a persona change that names no user", async () => {
+    const event: SchedulerEvent = {
+      type: "persona_change",
+      timestamp: Date.now(),
+      payload: { newDomains: ["ML", "Rust"], domainCount: 3 },
+    };
+
+    expect(await collect(event)).toEqual([]);
   });
 });
