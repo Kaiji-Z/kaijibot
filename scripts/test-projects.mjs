@@ -3,6 +3,7 @@ import { acquireLocalHeavyCheckLockSync } from "./lib/local-heavy-check-runtime.
 import { spawnPnpmRunner } from "./pnpm-runner.mjs";
 import { resolveVitestCliEntry, resolveVitestNodeArgs } from "./run-vitest.mjs";
 import {
+  FULL_SUITE_CONFIG_WEIGHT,
   buildFullSuiteVitestRunPlans,
   createVitestRunSpecs,
   parseTestProjectsArgs,
@@ -24,44 +25,6 @@ const releaseLock = acquireLocalHeavyCheckLockSync({
 });
 let lockReleased = false;
 
-const FULL_SUITE_CONFIG_WEIGHT = new Map([
-  ["vitest/vitest.gateway.config.ts", 180],
-  ["vitest/vitest.commands.config.ts", 175],
-  ["vitest/vitest.agents.config.ts", 170],
-  ["vitest/vitest.extensions.config.ts", 168],
-  ["vitest/vitest.tasks.config.ts", 165],
-  ["vitest/vitest.unit-fast.config.ts", 160],
-  ["vitest/vitest.auto-reply-reply.config.ts", 155],
-  ["vitest/vitest.infra.config.ts", 145],
-  ["vitest/vitest.secrets.config.ts", 140],
-  ["vitest/vitest.cron.config.ts", 135],
-  ["vitest/vitest.wizard.config.ts", 130],
-  ["vitest/vitest.unit-src.config.ts", 125],
-  ["vitest/vitest.extension-channels.config.ts", 100],
-  ["vitest/vitest.extension-providers.config.ts", 96],
-  ["vitest/vitest.auto-reply-core.config.ts", 90],
-  ["vitest/vitest.runtime-config.config.ts", 88],
-  ["vitest/vitest.cli.config.ts", 86],
-  ["vitest/vitest.channels.config.ts", 84],
-  ["vitest/vitest.plugins.config.ts", 82],
-  ["vitest/vitest.bundled.config.ts", 80],
-  ["vitest/vitest.commands-light.config.ts", 48],
-  ["vitest/vitest.plugin-sdk.config.ts", 46],
-  ["vitest/vitest.auto-reply-top-level.config.ts", 45],
-  ["vitest/vitest.ui.config.ts", 40],
-  ["vitest/vitest.plugin-sdk-light.config.ts", 38],
-  ["vitest/vitest.daemon.config.ts", 36],
-  ["vitest/vitest.boundary.config.ts", 34],
-  ["vitest/vitest.tooling.config.ts", 32],
-  ["vitest/vitest.unit-security.config.ts", 30],
-  ["vitest/vitest.unit-support.config.ts", 28],
-  ["vitest/vitest.contracts.config.ts", 26],
-  ["vitest/vitest.extension-feishu.config.ts", 18],
-  ["vitest/vitest.extension-messaging.config.ts", 14],
-  ["vitest/vitest.extension-acpx.config.ts", 10],
-  ["vitest/vitest.extension-diffs.config.ts", 8],
-  ["vitest/vitest.extension-memory.config.ts", 6],
-]);
 const releaseLockOnce = () => {
   if (lockReleased) {
     return;

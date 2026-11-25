@@ -4,21 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { isChannelSurfaceTestFile } from "../vitest/vitest.channel-paths.mjs";
 import {
-  isCommandsLightTarget,
-  resolveCommandsLightIncludePattern,
-} from "../vitest/vitest.commands-light-paths.mjs";
-import { isAcpxExtensionRoot } from "../vitest/vitest.extension-acpx-paths.mjs";
-import { isDiffsExtensionRoot } from "../vitest/vitest.extension-diffs-paths.mjs";
-import { isFeishuExtensionRoot } from "../vitest/vitest.extension-feishu-paths.mjs";
-import { isMemoryExtensionRoot } from "../vitest/vitest.extension-memory-paths.mjs";
-import { isMessagingExtensionRoot } from "../vitest/vitest.extension-messaging-paths.mjs";
-import { isProviderExtensionRoot } from "../vitest/vitest.extension-provider-paths.mjs";
-import {
   isPluginSdkLightTarget,
   resolvePluginSdkLightIncludePattern,
 } from "../vitest/vitest.plugin-sdk-paths.mjs";
 import { fullSuiteVitestShards } from "../vitest/vitest.test-shards.mjs";
-import { resolveUnitFastTestIncludePattern } from "../vitest/vitest.unit-fast-paths.mjs";
 import {
   isBoundaryTestFile,
   isBundledPluginDependentUnitTestFile,
@@ -33,21 +22,12 @@ const BOUNDARY_VITEST_CONFIG = "vitest/vitest.boundary.config.ts";
 const BUNDLED_VITEST_CONFIG = "vitest/vitest.bundled.config.ts";
 const CHANNEL_VITEST_CONFIG = "vitest/vitest.channels.config.ts";
 const CLI_VITEST_CONFIG = "vitest/vitest.cli.config.ts";
-const COMMANDS_LIGHT_VITEST_CONFIG = "vitest/vitest.commands-light.config.ts";
 const COMMANDS_VITEST_CONFIG = "vitest/vitest.commands.config.ts";
 const CONTRACTS_VITEST_CONFIG = "vitest/vitest.contracts.config.ts";
 const CRON_VITEST_CONFIG = "vitest/vitest.cron.config.ts";
 const DAEMON_VITEST_CONFIG = "vitest/vitest.daemon.config.ts";
 const E2E_VITEST_CONFIG = "vitest/vitest.e2e.config.ts";
-const EXTENSION_ACPX_VITEST_CONFIG = "vitest/vitest.extension-acpx.config.ts";
-const EXTENSION_CHANNELS_VITEST_CONFIG = "vitest/vitest.extension-channels.config.ts";
-const EXTENSION_DIFFS_VITEST_CONFIG = "vitest/vitest.extension-diffs.config.ts";
-const EXTENSION_FEISHU_VITEST_CONFIG = "vitest/vitest.extension-feishu.config.ts";
-const EXTENSION_MEMORY_VITEST_CONFIG = "vitest/vitest.extension-memory.config.ts";
-const EXTENSION_MESSAGING_VITEST_CONFIG = "vitest/vitest.extension-messaging.config.ts";
-const EXTENSION_PROVIDERS_VITEST_CONFIG = "vitest/vitest.extension-providers.config.ts";
 const EXTENSIONS_VITEST_CONFIG = "vitest/vitest.extensions.config.ts";
-const FULL_EXTENSIONS_VITEST_CONFIG = "vitest/vitest.full-extensions.config.ts";
 const GATEWAY_VITEST_CONFIG = "vitest/vitest.gateway.config.ts";
 const HOOKS_VITEST_CONFIG = "vitest/vitest.hooks.config.ts";
 const INFRA_VITEST_CONFIG = "vitest/vitest.infra.config.ts";
@@ -57,7 +37,6 @@ const LOGGING_VITEST_CONFIG = "vitest/vitest.logging.config.ts";
 const PLUGIN_SDK_LIGHT_VITEST_CONFIG = "vitest/vitest.plugin-sdk-light.config.ts";
 const PLUGIN_SDK_VITEST_CONFIG = "vitest/vitest.plugin-sdk.config.ts";
 const PLUGINS_VITEST_CONFIG = "vitest/vitest.plugins.config.ts";
-const UNIT_FAST_VITEST_CONFIG = "vitest/vitest.unit-fast.config.ts";
 const PROCESS_VITEST_CONFIG = "vitest/vitest.process.config.ts";
 const RUNTIME_CONFIG_VITEST_CONFIG = "vitest/vitest.runtime-config.config.ts";
 const SECRETS_VITEST_CONFIG = "vitest/vitest.secrets.config.ts";
@@ -79,19 +58,11 @@ const VITEST_CONFIG_BY_KIND = {
   channel: CHANNEL_VITEST_CONFIG,
   cli: CLI_VITEST_CONFIG,
   command: COMMANDS_VITEST_CONFIG,
-  commandLight: COMMANDS_LIGHT_VITEST_CONFIG,
   contracts: CONTRACTS_VITEST_CONFIG,
   cron: CRON_VITEST_CONFIG,
   daemon: DAEMON_VITEST_CONFIG,
   e2e: E2E_VITEST_CONFIG,
   extension: EXTENSIONS_VITEST_CONFIG,
-  extensionAcpx: EXTENSION_ACPX_VITEST_CONFIG,
-  extensionChannel: EXTENSION_CHANNELS_VITEST_CONFIG,
-  extensionDiffs: EXTENSION_DIFFS_VITEST_CONFIG,
-  extensionFeishu: EXTENSION_FEISHU_VITEST_CONFIG,
-  extensionMemory: EXTENSION_MEMORY_VITEST_CONFIG,
-  extensionMessaging: EXTENSION_MESSAGING_VITEST_CONFIG,
-  extensionProvider: EXTENSION_PROVIDERS_VITEST_CONFIG,
   gateway: GATEWAY_VITEST_CONFIG,
   hooks: HOOKS_VITEST_CONFIG,
   infra: INFRA_VITEST_CONFIG,
@@ -102,7 +73,6 @@ const VITEST_CONFIG_BY_KIND = {
   pluginSdk: PLUGIN_SDK_VITEST_CONFIG,
   pluginSdkLight: PLUGIN_SDK_LIGHT_VITEST_CONFIG,
   process: PROCESS_VITEST_CONFIG,
-  unitFast: UNIT_FAST_VITEST_CONFIG,
   runtimeConfig: RUNTIME_CONFIG_VITEST_CONFIG,
   secrets: SECRETS_VITEST_CONFIG,
   sharedCore: SHARED_CORE_VITEST_CONFIG,
@@ -113,6 +83,26 @@ const VITEST_CONFIG_BY_KIND = {
   utils: UTILS_VITEST_CONFIG,
   wizard: WIZARD_VITEST_CONFIG,
 };
+
+// Every lane config a targeted `pnpm test <target>` can resolve to, sorted.
+export function listRoutedVitestConfigs() {
+  return [...new Set([DEFAULT_VITEST_CONFIG, ...Object.values(VITEST_CONFIG_BY_KIND)])].toSorted();
+}
+
+// Longest shards first when the full suite runs its shards in parallel
+// (KAIJIBOT_TEST_PROJECTS_PARALLEL). Keys are full-suite shard configs; a shard
+// without an entry weighs 0.
+export const FULL_SUITE_CONFIG_WEIGHT = new Map([
+  ["vitest/vitest.gateway.config.ts", 180],
+  ["vitest/vitest.commands.config.ts", 175],
+  ["vitest/vitest.extensions.config.ts", 168],
+  ["vitest/vitest.infra.config.ts", 145],
+  ["vitest/vitest.runtime-config.config.ts", 88],
+  ["vitest/vitest.plugins.config.ts", 82],
+  ["vitest/vitest.bundled.config.ts", 80],
+  ["vitest/vitest.plugin-sdk.config.ts", 46],
+  ["vitest/vitest.boundary.config.ts", 34],
+]);
 const BROAD_CHANGED_RERUN_PATTERNS = [
   /^package\.json$/u,
   /^pnpm-lock\.yaml$/u,
@@ -267,9 +257,6 @@ export function resolveChangedTargetArgs(
 
 function classifyTarget(arg, cwd) {
   const relative = toRoutingPath(toRepoRelativeTarget(arg, cwd), cwd);
-  if (resolveUnitFastTestIncludePattern(relative)) {
-    return "unitFast";
-  }
   if (relative.endsWith(".e2e.test.ts")) {
     return "e2e";
   }
@@ -280,27 +267,9 @@ function classifyTarget(arg, cwd) {
   ) {
     return "e2e";
   }
+  // Every bundled extension shares one lane: this fork has no per-extension configs.
   if (relative.startsWith("extensions/")) {
-    const extensionRoot = relative.split("/").slice(0, 2).join("/");
-    if (isChannelSurfaceTestFile(relative)) {
-      return "extensionChannel";
-    }
-    if (isAcpxExtensionRoot(extensionRoot)) {
-      return "extensionAcpx";
-    }
-    if (isDiffsExtensionRoot(extensionRoot)) {
-      return "extensionDiffs";
-    }
-    if (isFeishuExtensionRoot(extensionRoot)) {
-      return "extensionFeishu";
-    }
-    if (isMemoryExtensionRoot(extensionRoot)) {
-      return "extensionMemory";
-    }
-    if (isMessagingExtensionRoot(extensionRoot)) {
-      return "extensionMessaging";
-    }
-    return isProviderExtensionRoot(extensionRoot) ? "extensionProvider" : "extension";
+    return "extension";
   }
   if (isChannelSurfaceTestFile(relative)) {
     return "channel";
@@ -380,7 +349,7 @@ function classifyTarget(arg, cwd) {
     return "cli";
   }
   if (relative.startsWith("src/commands/")) {
-    return isCommandsLightTarget(relative) ? "commandLight" : "command";
+    return "command";
   }
   if (relative.startsWith("src/auto-reply/")) {
     return "autoReply";
@@ -405,16 +374,8 @@ function classifyTarget(arg, cwd) {
 
 function resolveLightLaneIncludePatterns(kind, targetArg, cwd) {
   const relative = toRepoRelativeTarget(targetArg, cwd);
-  if (kind === "unitFast") {
-    const includePattern = resolveUnitFastTestIncludePattern(relative);
-    return includePattern ? [includePattern] : null;
-  }
   if (kind === "pluginSdkLight") {
     const includePattern = resolvePluginSdkLightIncludePattern(relative);
-    return includePattern ? [includePattern] : null;
-  }
-  if (kind === "commandLight") {
-    const includePattern = resolveCommandsLightIncludePattern(relative);
     return includePattern ? [includePattern] : null;
   }
   return null;
@@ -492,7 +453,6 @@ export function buildVitestRunPlans(
 
   const nonTargetArgs = activeForwardedArgs.filter((arg) => !activeTargetArgs.includes(arg));
   const orderedKinds = [
-    "unitFast",
     "default",
     "boundary",
     "tooling",
@@ -516,7 +476,6 @@ export function buildVitestRunPlans(
     "mediaUnderstanding",
     "acp",
     "cli",
-    "commandLight",
     "command",
     "autoReply",
     "agent",
@@ -525,13 +484,6 @@ export function buildVitestRunPlans(
     "utils",
     "wizard",
     "e2e",
-    "extensionAcpx",
-    "extensionDiffs",
-    "extensionFeishu",
-    "extensionMemory",
-    "extensionMessaging",
-    "extensionChannel",
-    "extensionProvider",
     "channel",
     "extension",
   ];
@@ -563,6 +515,11 @@ export function buildVitestRunPlans(
   return plans;
 }
 
+// The configs an untargeted `pnpm test` runs: one vitest config per shard.
+export function listFullSuiteShardConfigs() {
+  return fullSuiteVitestShards.map((shard) => shard.config);
+}
+
 export function buildFullSuiteVitestRunPlans(args, cwd = process.cwd()) {
   const { forwardedArgs, watchMode } = parseTestProjectsArgs(args, cwd);
   if (watchMode) {
@@ -581,14 +538,7 @@ export function buildFullSuiteVitestRunPlans(args, cwd = process.cwd()) {
     (Number.isFinite(parallelShardCount) && parallelShardCount > 1) ||
     shouldUseLocalFullSuiteParallelByDefault(process.env);
   return fullSuiteVitestShards.flatMap((shard) => {
-    if (
-      process.env.KAIJIBOT_TEST_SKIP_FULL_EXTENSIONS_SHARD === "1" &&
-      shard.config === FULL_EXTENSIONS_VITEST_CONFIG
-    ) {
-      return [];
-    }
-    const expandShard = expandToProjectConfigs || shard.config === FULL_EXTENSIONS_VITEST_CONFIG;
-    const configs = expandShard ? shard.projects : [shard.config];
+    const configs = expandToProjectConfigs ? shard.projects : [shard.config];
     return configs.map((config) => ({
       config,
       forwardedArgs,

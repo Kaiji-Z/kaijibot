@@ -1,42 +1,64 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const { buildVitestArgs, buildVitestRunPlans, createVitestRunSpecs, parseTestProjectsArgs } =
-  (await import("../../scripts/test-projects.test-support.mjs")) as unknown as {
-    buildVitestArgs: (args: string[], cwd?: string) => string[];
-    buildVitestRunPlans: (
-      args: string[],
-      cwd?: string,
-    ) => Array<{
-      config: string;
-      forwardedArgs: string[];
-      includePatterns: string[] | null;
-      watchMode: boolean;
-    }>;
-    createVitestRunSpecs: (
-      args: string[],
-      params?: {
-        baseEnv?: NodeJS.ProcessEnv;
-        cwd?: string;
-        tempDir?: string;
-      },
-    ) => Array<{
-      config: string;
-      env: NodeJS.ProcessEnv;
-      includeFilePath: string | null;
-      includePatterns: string[] | null;
-      pnpmArgs: string[];
-      watchMode: boolean;
-    }>;
-    parseTestProjectsArgs: (
-      args: string[],
-      cwd?: string,
-    ) => {
-      forwardedArgs: string[];
-      targetArgs: string[];
-      watchMode: boolean;
-    };
+type RunPlan = {
+  config: string;
+  forwardedArgs: string[];
+  includePatterns: string[] | null;
+  watchMode: boolean;
+};
+
+const {
+  FULL_SUITE_CONFIG_WEIGHT,
+  buildVitestArgs,
+  buildVitestRunPlans,
+  createVitestRunSpecs,
+  listFullSuiteShardConfigs,
+  listRoutedVitestConfigs,
+  parseTestProjectsArgs,
+} = (await import("../../scripts/test-projects.test-support.mjs")) as unknown as {
+  FULL_SUITE_CONFIG_WEIGHT: Map<string, number>;
+  buildVitestArgs: (args: string[], cwd?: string) => string[];
+  buildVitestRunPlans: (args: string[], cwd?: string) => RunPlan[];
+  createVitestRunSpecs: (
+    args: string[],
+    params?: {
+      baseEnv?: NodeJS.ProcessEnv;
+      cwd?: string;
+      tempDir?: string;
+    },
+  ) => Array<{
+    config: string;
+    env: NodeJS.ProcessEnv;
+    includeFilePath: string | null;
+    includePatterns: string[] | null;
+    pnpmArgs: string[];
+    watchMode: boolean;
+  }>;
+  listFullSuiteShardConfigs: () => string[];
+  listRoutedVitestConfigs: () => string[];
+  parseTestProjectsArgs: (
+    args: string[],
+    cwd?: string,
+  ) => {
+    forwardedArgs: string[];
+    targetArgs: string[];
+    watchMode: boolean;
   };
+};
+
+const repoRoot = new URL("../../", import.meta.url);
+const extensionIds = readdirSync(new URL("extensions/", repoRoot), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .toSorted();
+
+const extensionsLanePlan = (target: string): RunPlan => ({
+  config: "vitest/vitest.extensions.config.ts",
+  forwardedArgs: [],
+  includePatterns: [target],
+  watchMode: false,
+});
 
 const VITEST_NODE_PREFIX = [
   "exec",
@@ -95,7 +117,7 @@ describe("test-projects args", () => {
     ]);
   });
 
-  it("routes top-level repo tests to the contracts config", () => {
+  it("routes top-level repo tests to the tooling config", () => {
     expect(buildVitestRunPlans(["test/appcast.test.ts"])).toEqual([
       {
         config: "vitest/vitest.tooling.config.ts",
@@ -130,7 +152,7 @@ describe("test-projects args", () => {
     ]);
   });
 
-  it("routes config baseline integration tests to the contracts config", () => {
+  it("routes config baseline integration tests to the tooling config", () => {
     expect(buildVitestRunPlans(["src/config/doc-baseline.integration.test.ts"])).toEqual([
       {
         config: "vitest/vitest.tooling.config.ts",
@@ -196,10 +218,10 @@ describe("test-projects args", () => {
     ]);
   });
 
-  it("routes unit-fast light targets to the cache-friendly unit-fast config", () => {
+  it("routes plugin-sdk light targets to the plugin-sdk-light config", () => {
     expect(buildVitestRunPlans(["src/plugin-sdk/provider-entry.test.ts"])).toEqual([
       {
-        config: "vitest/vitest.unit-fast.config.ts",
+        config: "vitest/vitest.plugin-sdk-light.config.ts",
         forwardedArgs: [],
         includePatterns: ["src/plugin-sdk/provider-entry.test.ts"],
         watchMode: false,
@@ -229,10 +251,10 @@ describe("test-projects args", () => {
     ]);
   });
 
-  it("routes unit-fast shared-core targets to the unit-fast config", () => {
+  it("routes shared-core targets to the shared-core config", () => {
     expect(buildVitestRunPlans(["src/shared/text-chunking.test.ts"])).toEqual([
       {
-        config: "vitest/vitest.unit-fast.config.ts",
+        config: "vitest/vitest.shared-core.config.ts",
         forwardedArgs: [],
         includePatterns: ["src/shared/text-chunking.test.ts"],
         watchMode: false,
@@ -472,7 +494,7 @@ describe("test-projects args", () => {
       buildVitestRunPlans(["extensions/memory-core/src/memory/test-runtime-mocks.ts"]),
     ).toEqual([
       {
-        config: "vitest/vitest.extension-memory.config.ts",
+        config: "vitest/vitest.extensions.config.ts",
         forwardedArgs: [],
         includePatterns: ["extensions/memory-core/src/memory/**/*.test.ts"],
         watchMode: false,
@@ -480,136 +502,21 @@ describe("test-projects args", () => {
     ]);
   });
 
-  it("routes msteams extension tests to the msteams config", () => {
-    expect(buildVitestRunPlans(["extensions/msteams/src/config.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-msteams.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/msteams/src/config.test.ts"],
-        watchMode: false,
-      },
-    ]);
+  it("routes the tests of every bundled extension to the shared extensions config", () => {
+    expect(extensionIds).toContain("feishu");
+    expect(extensionIds).toContain("wechat");
+    for (const extensionId of extensionIds) {
+      const target = `extensions/${extensionId}/src/example.test.ts`;
+      expect(buildVitestRunPlans([target]), extensionId).toEqual([extensionsLanePlan(target)]);
+    }
   });
 
-  it("routes telegram extension tests to the telegram config", () => {
-    expect(buildVitestRunPlans(["extensions/telegram/src/fetch.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-telegram.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/telegram/src/fetch.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes whatsapp extension tests to the whatsapp config", () => {
-    expect(buildVitestRunPlans(["extensions/whatsapp/src/send.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-whatsapp.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/whatsapp/src/send.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes voice-call extension tests to the voice-call config", () => {
-    expect(buildVitestRunPlans(["extensions/voice-call/src/runtime.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-voice-call.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/voice-call/src/runtime.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes mattermost extension tests to the mattermost config", () => {
-    expect(buildVitestRunPlans(["extensions/mattermost/src/channel.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-mattermost.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/mattermost/src/channel.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes zalo extension tests to the zalo config", () => {
-    expect(buildVitestRunPlans(["extensions/zalo/src/channel.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-zalo.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/zalo/src/channel.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes matrix extension tests to the matrix config", () => {
-    expect(buildVitestRunPlans(["extensions/matrix/src/channel.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-matrix.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/matrix/src/channel.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes bluebubbles extension tests to the bluebubbles config", () => {
-    expect(buildVitestRunPlans(["extensions/bluebubbles/src/monitor.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-bluebubbles.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/bluebubbles/src/monitor.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes feishu extension tests to the feishu config", () => {
-    expect(buildVitestRunPlans(["extensions/feishu/src/channel.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-feishu.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/feishu/src/channel.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes irc extension tests to the irc config", () => {
-    expect(buildVitestRunPlans(["extensions/irc/src/channel.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-irc.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/irc/src/channel.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes acpx extension tests to the acpx config", () => {
-    expect(buildVitestRunPlans(["extensions/acpx/src/runtime.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-acpx.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/acpx/src/runtime.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes diffs extension tests to the diffs config", () => {
-    expect(buildVitestRunPlans(["extensions/diffs/src/render.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-diffs.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/diffs/src/render.test.ts"],
-        watchMode: false,
-      },
-    ]);
+  it("does not give a channel-shaped extension a lane of its own", () => {
+    // Upstream routed messaging extensions to a per-channel config. This fork has
+    // one extensions lane, so a channel-like name must not select a config that
+    // does not exist.
+    const target = "extensions/discord/src/monitor/message-handler.preflight.test.ts";
+    expect(buildVitestRunPlans([target])).toEqual([extensionsLanePlan(target)]);
   });
 
   it("routes ui targets to the ui config", () => {
@@ -656,71 +563,15 @@ describe("test-projects args", () => {
     ]);
   });
 
-  it("routes direct channel extension file targets to the channels config", () => {
-    expect(
-      buildVitestRunPlans(["extensions/discord/src/monitor/message-handler.preflight.test.ts"]),
-    ).toEqual([
-      {
-        config: "vitest/vitest.extension-channels.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/discord/src/monitor/message-handler.preflight.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
   it("routes browser extension targets to the extensions config", () => {
     expect(buildVitestRunPlans(["extensions/browser/index.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extensions.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/browser/index.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes line extension targets to the extension channel config", () => {
-    expect(buildVitestRunPlans(["extensions/line/src/send.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-channels.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/line/src/send.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes matrix extension file targets to the matrix config", () => {
-    expect(buildVitestRunPlans(["extensions/matrix/src/channel.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-matrix.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/matrix/src/channel.test.ts"],
-        watchMode: false,
-      },
-    ]);
-  });
-
-  it("routes direct provider extension file targets to the extension providers config", () => {
-    expect(buildVitestRunPlans(["extensions/openai/openai-codex-provider.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extension-providers.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/openai/openai-codex-provider.test.ts"],
-        watchMode: false,
-      },
+      extensionsLanePlan("extensions/browser/index.test.ts"),
     ]);
   });
 
   it("keeps non-provider extension file targets on the shared extensions config", () => {
     expect(buildVitestRunPlans(["extensions/firecrawl/index.test.ts"])).toEqual([
-      {
-        config: "vitest/vitest.extensions.config.ts",
-        forwardedArgs: [],
-        includePatterns: ["extensions/firecrawl/index.test.ts"],
-        watchMode: false,
-      },
+      extensionsLanePlan("extensions/firecrawl/index.test.ts"),
     ]);
   });
 
@@ -740,7 +591,7 @@ describe("test-projects args", () => {
         watchMode: false,
       },
       {
-        config: "vitest/vitest.extension-channels.config.ts",
+        config: "vitest/vitest.extensions.config.ts",
         forwardedArgs: ["-t", "mention"],
         includePatterns: ["extensions/discord/src/monitor/message-handler.preflight.test.ts"],
         watchMode: false,
@@ -757,7 +608,7 @@ describe("test-projects args", () => {
       ...VITEST_NODE_PREFIX,
       "run",
       "--config",
-      "vitest/vitest.extension-channels.config.ts",
+      "vitest/vitest.extensions.config.ts",
     ]);
     expect(spec?.includePatterns).toEqual([
       "extensions/discord/src/monitor/message-handler.preflight.test.ts",
@@ -778,7 +629,6 @@ describe("test-projects args", () => {
 });
 
 describe("test-projects lane integrity", () => {
-  const repoRoot = new URL("../../", import.meta.url);
   const laneConfigFor = (target: string) => buildVitestRunPlans([target])[0]?.config;
 
   // One real file per routed family. Every plan must point at a config that exists on
@@ -834,4 +684,27 @@ describe("test-projects lane integrity", () => {
       expect(laneConfigFor(`${dir}/`)).toBe(viaFile);
     },
   );
+
+  // Vitest aborts before collecting a single test when --config points at a file
+  // that does not exist, so nothing that picks a lane may name a missing config.
+  // Upstream's per-extension and light lanes were removed in this fork; these
+  // checks keep their names from coming back through a stale table.
+  it("names only lane configs that exist on disk", () => {
+    const configs = listRoutedVitestConfigs();
+    expect(configs.length).toBeGreaterThan(20);
+    for (const config of configs) {
+      expect(existsSync(new URL(config, repoRoot)), config).toBe(true);
+    }
+  });
+
+  it("runs a full suite made only of shard configs that exist on disk", () => {
+    const shardConfigs = new Set(listFullSuiteShardConfigs());
+    expect(shardConfigs.size).toBeGreaterThan(0);
+    for (const config of shardConfigs) {
+      expect(existsSync(new URL(config, repoRoot)), config).toBe(true);
+    }
+    for (const [config] of FULL_SUITE_CONFIG_WEIGHT) {
+      expect(shardConfigs.has(config), config).toBe(true);
+    }
+  });
 });

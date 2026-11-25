@@ -47,3 +47,12 @@ export function createVitestRunSpecs(
 export function writeVitestIncludeFile(filePath: string, includePatterns: string[]): void;
 
 export function buildVitestArgs(args: string[], cwd?: string): string[];
+
+/** Every lane config a targeted `pnpm test <target>` can resolve to, sorted. */
+export function listRoutedVitestConfigs(): string[];
+
+/** The configs an untargeted `pnpm test` runs, in shard order. */
+export function listFullSuiteShardConfigs(): string[];
+
+/** Longest shards first for a parallel full-suite run; keys are shard configs. */
+export const FULL_SUITE_CONFIG_WEIGHT: Map<string, number>;
