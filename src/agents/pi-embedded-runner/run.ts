@@ -1623,6 +1623,7 @@ export async function runEmbeddedPiAgent(
                     senderId: params.senderId,
                     started,
                     configDir: resolveConfigDir(),
+                    config: params.config,
                   });
                 } catch (err) {
                   log.debug(`evolution hard trigger skipped: ${String(err)}`);

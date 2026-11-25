@@ -1,3 +1,4 @@
+import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   DEFAULT_COGNITIVE_LOCALE,
@@ -18,6 +19,8 @@ export type HardTriggerParams = {
   configDir?: string;
   /** Locale for the generated signal text. Defaults to zh (legacy behavior). */
   locale?: CognitiveLocale;
+  /** Live config. The signal is skipped while the cognitive layer or evolution is off. */
+  config?: KaijiBotConfig;
 };
 
 const SIGNAL_HEADER = L("[Evolution Signal]", "[Evolution Signal]");
@@ -52,6 +55,17 @@ export async function evaluateHardTrigger(params: HardTriggerParams): Promise<vo
 
   if (params.trigger !== "user" && params.trigger !== "manual" && params.trigger !== undefined) {
     log.debug("skipped: trigger mismatch", { trigger: params.trigger });
+    return;
+  }
+
+  // Same switch as the evolution tools and the lifecycle cron. While it is off
+  // the agent has no evolution tools, so the signal would only buy an extra
+  // heartbeat turn that cannot act on it.
+  if (
+    params.config?.cognitive?.enabled === false ||
+    params.config?.cognitive?.evolution?.enabled === false
+  ) {
+    log.debug("skipped: evolution disabled");
     return;
   }
 

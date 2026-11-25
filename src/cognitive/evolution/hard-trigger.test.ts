@@ -78,6 +78,28 @@ describe("evaluateHardTrigger", () => {
     expect(mockEnqueue).not.toHaveBeenCalled();
   });
 
+  it("skips when the cognitive layer or evolution is disabled", async () => {
+    const { evaluateHardTrigger } = await import("./hard-trigger.js");
+    const params = {
+      toolMetas: [{ toolName: "a" }, { toolName: "b" }, { toolName: "c" }],
+      sessionKey: "agent:main:feishu:direct:ou_test",
+      trigger: "user",
+      senderId: "ou_test",
+      started: Date.now(),
+    };
+
+    // The evolution tools are not registered while the feature is off, so the
+    // signal would only buy an extra heartbeat turn that cannot act on it.
+    await evaluateHardTrigger({ ...params, config: { cognitive: { enabled: false } } });
+    await evaluateHardTrigger({
+      ...params,
+      config: { cognitive: { evolution: { enabled: false } } },
+    });
+
+    expect(mockEnqueue).not.toHaveBeenCalled();
+    expect(mockHeartbeat).not.toHaveBeenCalled();
+  });
+
   it("signal text includes stats but not tool sequence", async () => {
     const { evaluateHardTrigger } = await import("./hard-trigger.js");
 
