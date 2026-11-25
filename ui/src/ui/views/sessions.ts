@@ -5,6 +5,7 @@ import { icons } from "../icons.ts";
 import { pathForTab } from "../navigation.ts";
 import { formatSessionTokens } from "../presenter.ts";
 import { normalizeLowercaseStringOrEmpty, normalizeOptionalString } from "../string-coerce.ts";
+import { isBinaryThinkingProvider } from "../thinking.ts";
 import type {
   GatewaySessionRow,
   SessionCompactionCheckpoint,
@@ -79,23 +80,11 @@ const FAST_LEVELS = [
 const REASONING_LEVELS = ["", "off", "on", "stream"] as const;
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
-function normalizeProviderId(provider?: string | null): string {
-  if (!provider) {
-    return "";
-  }
-  const normalized = normalizeLowercaseStringOrEmpty(provider);
-  if (normalized === "z.ai" || normalized === "z-ai") {
-    return "zai";
-  }
-  return normalized;
-}
-
-function isBinaryThinkingProvider(provider?: string | null): boolean {
-  return normalizeProviderId(provider) === "zai";
-}
-
-function resolveThinkLevelOptions(provider?: string | null): readonly string[] {
-  return isBinaryThinkingProvider(provider) ? BINARY_THINK_LEVELS : THINK_LEVELS;
+function resolveThinkLevelOptions(
+  provider?: string | null,
+  model?: string | null,
+): readonly string[] {
+  return isBinaryThinkingProvider(provider, model) ? BINARY_THINK_LEVELS : THINK_LEVELS;
 }
 
 function withCurrentOption(options: readonly string[], current: string): string[] {
@@ -453,9 +442,12 @@ export function renderSessions(props: SessionsProps) {
 function renderRows(row: GatewaySessionRow, props: SessionsProps) {
   const updated = row.updatedAt ? formatRelativeTimestamp(row.updatedAt) : t("common.na");
   const rawThinking = row.thinkingLevel ?? "";
-  const isBinaryThinking = isBinaryThinkingProvider(row.modelProvider);
+  const isBinaryThinking = isBinaryThinkingProvider(row.modelProvider, row.model);
   const thinking = resolveThinkLevelDisplay(rawThinking, isBinaryThinking);
-  const thinkLevels = withCurrentOption(resolveThinkLevelOptions(row.modelProvider), thinking);
+  const thinkLevels = withCurrentOption(
+    resolveThinkLevelOptions(row.modelProvider, row.model),
+    thinking,
+  );
   const fastMode = row.fastMode === true ? "on" : row.fastMode === false ? "off" : "";
   const fastLevels = withCurrentLabeledOption(FAST_LEVELS, fastMode);
   const verbose = row.verboseLevel ?? "";

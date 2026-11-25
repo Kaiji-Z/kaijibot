@@ -8,8 +8,10 @@ export type ThinkingCatalogEntry = {
 
 const BASE_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "adaptive"] as const;
 const BINARY_THINKING_LEVELS = ["off", "on"] as const;
+const GLM53_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 const ANTHROPIC_CLAUDE_46_MODEL_RE = /^claude-(?:opus|sonnet)-4(?:\.|-)6(?:$|[-.])/i;
 const AMAZON_BEDROCK_CLAUDE_46_MODEL_RE = /claude-(?:opus|sonnet)-4(?:\.|-)6(?:$|[-.])/i;
+const ZAI_GLM53_MODEL_RE = /^glm-5\.3(?:$|-)/i;
 
 export function normalizeThinkingProviderId(provider?: string | null): string {
   if (!provider) {
@@ -25,8 +27,17 @@ export function normalizeThinkingProviderId(provider?: string | null): string {
   return normalized;
 }
 
-export function isBinaryThinkingProvider(provider?: string | null): boolean {
-  return normalizeThinkingProviderId(provider) === "zai";
+// GLM-5.3 models always think, and Z.AI takes a thinking level as a reasoning effort. They
+// offer every level up to xhigh where the other Z.AI models only switch thinking on or off.
+export function isZaiGlm53Model(provider?: string | null, model?: string | null): boolean {
+  return (
+    normalizeThinkingProviderId(provider) === "zai" &&
+    ZAI_GLM53_MODEL_RE.test(normalizeLowercaseStringOrEmpty(model).trim())
+  );
+}
+
+export function isBinaryThinkingProvider(provider?: string | null, model?: string | null): boolean {
+  return normalizeThinkingProviderId(provider) === "zai" && !isZaiGlm53Model(provider, model);
 }
 
 export function normalizeThinkLevel(raw?: string | null): string | undefined {
@@ -67,12 +78,18 @@ export function normalizeThinkLevel(raw?: string | null): string | undefined {
   return undefined;
 }
 
-export function listThinkingLevelLabels(provider?: string | null): readonly string[] {
-  return isBinaryThinkingProvider(provider) ? BINARY_THINKING_LEVELS : BASE_THINKING_LEVELS;
+export function listThinkingLevelLabels(
+  provider?: string | null,
+  model?: string | null,
+): readonly string[] {
+  if (isZaiGlm53Model(provider, model)) {
+    return GLM53_THINKING_LEVELS;
+  }
+  return isBinaryThinkingProvider(provider, model) ? BINARY_THINKING_LEVELS : BASE_THINKING_LEVELS;
 }
 
-export function formatThinkingLevels(provider?: string | null): string {
-  return listThinkingLevelLabels(provider).join(", ");
+export function formatThinkingLevels(provider?: string | null, model?: string | null): string {
+  return listThinkingLevelLabels(provider, model).join(", ");
 }
 
 export function resolveThinkingDefaultForModel(params: {
@@ -87,6 +104,10 @@ export function resolveThinkingDefaultForModel(params: {
   }
   if (normalizedProvider === "amazon-bedrock" && AMAZON_BEDROCK_CLAUDE_46_MODEL_RE.test(modelId)) {
     return "adaptive";
+  }
+  // Z.AI picks the effort for this level, which is how the model runs unless the user chooses.
+  if (isZaiGlm53Model(normalizedProvider, modelId)) {
+    return "high";
   }
   const candidate = params.catalog?.find(
     (entry) => entry.provider === params.provider && entry.id === params.model,

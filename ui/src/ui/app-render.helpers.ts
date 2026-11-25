@@ -296,7 +296,7 @@ function buildThinkingOptions(
     });
   };
 
-  for (const label of listThinkingLevelLabels(provider)) {
+  for (const label of listThinkingLevelLabels(provider, model)) {
     const normalized = normalizeThinkLevel(label) ?? normalizeLowercaseStringOrEmpty(label);
     addOption(normalized);
   }

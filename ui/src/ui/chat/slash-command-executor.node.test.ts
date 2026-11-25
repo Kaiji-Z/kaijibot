@@ -526,6 +526,31 @@ describe("executeSlashCommand directives", () => {
     expect(request).toHaveBeenNthCalledWith(2, "models.list", {});
   });
 
+  it("offers the levels of an always-thinking Z.AI model for bare /think", async () => {
+    const request = vi.fn(async (method: string, _payload?: unknown) => {
+      if (method === "sessions.list") {
+        return {
+          sessions: [row("agent:main:main", { modelProvider: "zai", model: "glm-5.3-flash" })],
+        };
+      }
+      if (method === "models.list") {
+        return { models: [{ id: "glm-5.3-flash", provider: "zai", reasoning: true }] };
+      }
+      throw new Error(`unexpected method: ${method}`);
+    });
+
+    const result = await executeSlashCommand(
+      { request } as unknown as GatewayBrowserClient,
+      "agent:main:main",
+      "think",
+      "",
+    );
+
+    expect(result.content).toBe(
+      "Current thinking level: high.\nOptions: off, minimal, low, medium, high, xhigh.",
+    );
+  });
+
   it("accepts minimal and xhigh thinking levels", async () => {
     const request = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: true });
 
