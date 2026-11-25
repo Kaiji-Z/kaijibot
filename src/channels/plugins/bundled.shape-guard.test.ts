@@ -54,13 +54,27 @@ describe("bundled channel entry shape guards", () => {
     }
   });
 
-  it("feishu extension is present and has valid shape", () => {
-    const feishuRoot = bundledPluginRoots.find((dir) => dir.includes("feishu"));
-    expect(feishuRoot, "feishu extension directory must exist").toBeTruthy();
+  // The first-class channels. Their shape is the package manifest: every entry file declared
+  // under `kaijibot.extensions` must exist. (No `manifest.ts` was ever part of this layout.)
+  it.each(["feishu", "wechat"] as const)(
+    "%s extension is present and declares existing entries",
+    (channelId) => {
+      const pluginRoot = bundledPluginRoots.find((dir) => path.basename(dir) === channelId);
+      expect(pluginRoot, `${channelId} extension directory must exist`).toBeTruthy();
 
-    const manifestPath = path.join(feishuRoot!, "manifest.ts");
-    expect(fs.existsSync(manifestPath), "feishu manifest.ts must exist").toBe(true);
-  });
+      const packageJson = JSON.parse(
+        fs.readFileSync(path.join(pluginRoot!, "package.json"), "utf8"),
+      ) as { kaijibot?: { extensions?: string[] } };
+      const entries = packageJson.kaijibot?.extensions ?? [];
+      expect(entries.length, `${channelId} must declare an extension entry`).toBeGreaterThan(0);
+      for (const entry of entries) {
+        expect(
+          fs.existsSync(path.join(pluginRoot!, entry)),
+          `${channelId} entry ${entry} must exist`,
+        ).toBe(true);
+      }
+    },
+  );
 
   it("treats missing bundled discovery results as empty", async () => {
     vi.doMock("../../plugins/bundled-channel-runtime.js", async (importOriginal) => {
