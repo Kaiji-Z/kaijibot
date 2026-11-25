@@ -150,9 +150,9 @@ export type LlmInsightDeps = {
 export type LlmInsightOptions = {
   /** Override the model used for insight generation. */
   modelRef?: string;
-  /** Timeout in milliseconds for the LLM call (default 8 000). */
+  /** Timeout in milliseconds for the LLM calls (default 90 000 for generation, shorter for critique and verification). */
   timeout?: number;
-  /** Max tokens for the LLM response (default 500). */
+  /** Max tokens for the LLM response (default 2000 for generation, 4096 for critique and verification). */
   maxTokens?: number;
   /** Maximum number of candidates to return (default 3). */
   maxCandidates?: number;
