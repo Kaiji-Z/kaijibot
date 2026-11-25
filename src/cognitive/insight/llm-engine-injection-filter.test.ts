@@ -129,10 +129,14 @@ describe("recommendations in the insight prompts", () => {
     },
   );
 
-  it("the pattern prompt asks for an observation and carries no recommendation rule", () => {
-    // The pattern prompt carried a rule about suggestions once. The insights then came
-    // back as advice, which the quality supervisor rejects in this mode.
+  it("the pattern prompt asks for an observation of the user's own thinking, in a friend's tone", () => {
+    // Both lines restate what the quality supervisor is told to expect of this mode. Without
+    // them the observations came back as assessments of the user's system and failed in seven
+    // of twenty live rounds; with them, in three. The prompt carried a rule about suggestions
+    // once; the insights then came back as advice, which the supervisor rejects in this mode.
     const prompt = buildPatternInsightPrompt(makePersona(), makeInput(), []).prompt;
+    expect(prompt).toContain("the user's own thinking, taken from the fragments above");
+    expect(prompt).toContain("the way a friend mentions something in passing");
     expect(prompt).not.toContain("不要写成对用户下的命令");
   });
 

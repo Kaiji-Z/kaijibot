@@ -1366,6 +1366,8 @@ Constraints:
 - Do NOT mention "patterns", "blind spots", "cognitive biases", or use meta-analytical language.
 - Content must reference AT LEAST ONE specific fragment from the OBSERVED THINKING PATTERNS section above
 - Content must be a specific, honest observation — not vague encouragement or generic advice
+- The subject is the user's own thinking, taken from the fragments above; what you know about their system is background, not the topic
+- Say it the way a friend mentions something in passing: tentative, in natural conversational Chinese — not a technical assessment, a productivity tip, or a command
 
 Respond with ONLY a JSON array (no markdown, no code fences):
 重要提示：在 "content" 字段中，请用 \\" 转义内部引号，或使用中文弯引号（""）。不要在字符串值中使用未转义的 ASCII 引号。
