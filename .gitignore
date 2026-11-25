@@ -64,9 +64,6 @@ tmp/
 .opencode/
 .codegraph/
 
-# Build temp directories
-kaijibot-path-alias-*/
-
 # Agent credentials and memory (NEVER COMMIT)
 /memory/
 .agent/*.json

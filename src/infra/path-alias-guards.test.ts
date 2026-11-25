@@ -1,15 +1,40 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { withTempDir } from "../test-helpers/temp-dir.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createSuiteTempRootTracker } from "../test-helpers/temp-dir.js";
 import { assertNoPathAliasEscape } from "./path-alias-guards.js";
 
+// The root must sit on a real (non-symlinked) path, so it is created under the repo rather
+// than os.tmpdir(). withTempDir() never removes the mkdtemp prefix root it caches, which
+// left an empty kaijibot-path-alias-* directory in the repo root on every run; the suite
+// tracker removes the root in afterAll instead.
+const aliasRootTracker = createSuiteTempRootTracker({
+  prefix: "kaijibot-path-alias-",
+  parentDir: process.cwd(),
+});
+
 async function withAliasRoot(cb: (root: string) => Promise<void>): Promise<void> {
-  await withTempDir(
-    { prefix: "kaijibot-path-alias-", parentDir: process.cwd(), subdir: "root" },
-    cb,
-  );
+  const base = await aliasRootTracker.make("case");
+  const root = path.join(base, "root");
+  await fs.mkdir(root, { recursive: true });
+  try {
+    await cb(root);
+  } finally {
+    await fs.rm(base, { recursive: true, force: true, maxRetries: 20, retryDelay: 25 });
+  }
 }
+
+let suiteRoot = "";
+
+beforeAll(async () => {
+  suiteRoot = await aliasRootTracker.setup();
+});
+
+afterAll(async () => {
+  await aliasRootTracker.cleanup();
+  // Fail-closed: the root lives in the repo working tree, so a leftover would dirty it.
+  await expect(fs.stat(suiteRoot)).rejects.toMatchObject({ code: "ENOENT" });
+});
 
 describe("assertNoPathAliasEscape", () => {
   it.runIf(process.platform !== "win32").each([
