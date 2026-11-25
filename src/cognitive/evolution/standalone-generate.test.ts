@@ -54,6 +54,13 @@ function resultsJsonl(customId: string, content: string): string {
   });
 }
 
+// The request the synchronous path builds, as the batch path receives it.
+const buildRequest = async (prompt: string): Promise<Record<string, unknown>> => ({
+  model: "glm-5.1",
+  messages: [{ role: "user", content: prompt }],
+  max_completion_tokens: 10,
+});
+
 describe("runBatchGenerate", () => {
   it("submits, polls until completed, fetches results, and returns assistant text", async () => {
     const model = makeModel();
@@ -65,7 +72,7 @@ describe("runBatchGenerate", () => {
       const method = init?.method ?? "GET";
       calls.push({ url: String(url), method });
       const u = String(url);
-      if (u.endsWith("/batch") && method === "POST") {
+      if (u.endsWith("/batches") && method === "POST") {
         const parsed = JSON.parse(String(init?.body));
         outputCustomId = parsed.input[0].custom_id;
         return makeResponse({ id: batchId, status: "validating" });
@@ -87,20 +94,154 @@ describe("runBatchGenerate", () => {
       model,
       auth,
       prompt: "hi",
-      maxTokens: 100,
       requestTimeoutMs: 1000,
       pollIntervalMs: 1,
       batchTimeoutMs: 5000,
-      deps: { fetchFn: fetchFn as unknown as typeof fetch },
+      deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
     });
 
     expect(text).toBe("Hello batch world");
-    const postSubmit = calls.filter((c) => c.method === "POST" && c.url.endsWith("/batch"));
+    const postSubmit = calls.filter((c) => c.method === "POST" && c.url.endsWith("/batches"));
     expect(postSubmit.length).toBe(1);
     expect(calls.some((c) => c.method === "GET" && c.url.includes(`/batches/${batchId}`))).toBe(
       true,
     );
     expect(calls.some((c) => c.url.includes("/files/file_out/content"))).toBe(true);
+  });
+
+  it.each([
+    ["https://open.bigmodel.cn/api/paas/v4", "/api/paas/v4/chat/completions"],
+    ["https://api.openai.com/v1", "/v1/chat/completions"],
+    ["https://api.openai.com/v1/", "/v1/chat/completions"],
+  ])(
+    "submits to %s the request the synchronous path builds, addressed as %s",
+    async (baseUrl, requestUrl) => {
+      let outputCustomId = "";
+      let submitted: { endpoint?: string; url?: string; body?: unknown } | undefined;
+      const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+        const u = String(url);
+        if (u.endsWith("/batches") && init?.method === "POST") {
+          const parsed = JSON.parse(String(init?.body));
+          outputCustomId = parsed.input[0].custom_id;
+          submitted = {
+            endpoint: parsed.endpoint,
+            url: parsed.input[0].url,
+            body: parsed.input[0].body,
+          };
+          return makeResponse({ id: "b1", status: "completed", output_file_id: "f1" });
+        }
+        if (u.includes("/files/f1/content")) {
+          return makeResponse(resultsJsonl(outputCustomId, "ok"));
+        }
+        return makeResponse({});
+      });
+
+      const out = await runBatchGenerate({
+        model: makeModel({ baseUrl }),
+        auth: makeAuth(),
+        prompt: "x",
+        requestTimeoutMs: 1000,
+        pollIntervalMs: 1,
+        batchTimeoutMs: 5000,
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
+      });
+
+      expect(out).toBe("ok");
+      expect(submitted).toEqual({
+        endpoint: requestUrl,
+        url: requestUrl,
+        body: {
+          model: "glm-5.1",
+          messages: [{ role: "user", content: "x" }],
+          max_completion_tokens: 10,
+        },
+      });
+    },
+  );
+
+  it("creates the batch where the API lists them", async () => {
+    const calls: string[] = [];
+    let outputCustomId = "";
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      const method = init?.method ?? "GET";
+      calls.push(`${method} ${new URL(u).pathname}`);
+      if (method === "POST") {
+        outputCustomId = JSON.parse(String(init?.body)).input[0].custom_id;
+        return makeResponse({ id: "b1", status: "completed", output_file_id: "f1" });
+      }
+      if (u.includes("/files/f1/content")) {
+        return makeResponse(resultsJsonl(outputCustomId, "ok"));
+      }
+      return makeResponse({});
+    });
+
+    const out = await runBatchGenerate({
+      model: makeModel({ baseUrl: "https://api.openai.com/v1" }),
+      auth: makeAuth(),
+      prompt: "x",
+      requestTimeoutMs: 1000,
+      pollIntervalMs: 1,
+      batchTimeoutMs: 5000,
+      deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
+    });
+
+    expect(out).toBe("ok");
+    expect(calls).toEqual(["POST /v1/batches", "GET /v1/files/f1/content"]);
+  });
+
+  it("refuses a model that is not served over chat completions", async () => {
+    const fetchFn = vi.fn();
+
+    await expect(
+      runBatchGenerate({
+        model: makeModel({ api: "anthropic-messages" as Api }),
+        auth: makeAuth(),
+        prompt: "x",
+        requestTimeoutMs: 1000,
+        pollIntervalMs: 1,
+        batchTimeoutMs: 5000,
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
+      }),
+    ).rejects.toThrow(/chat completions requests only, not anthropic-messages/);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("reports the upstream error of a failed request", async () => {
+    let customId = "";
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.endsWith("/batches") && init?.method === "POST") {
+        customId = JSON.parse(String(init?.body)).input[0].custom_id;
+        return makeResponse({ id: "b400", status: "completed", output_file_id: "f400" });
+      }
+      if (u.includes("/files/f400/content")) {
+        return makeResponse(
+          JSON.stringify({
+            id: "batch_req_1",
+            custom_id: customId,
+            response: {
+              status_code: 400,
+              body: { error: { code: "1210", message: "thinking cannot be disabled" } },
+            },
+            error: null,
+          }),
+        );
+      }
+      return makeResponse({});
+    });
+
+    await expect(
+      runBatchGenerate({
+        model: makeModel(),
+        auth: makeAuth(),
+        prompt: "x",
+        requestTimeoutMs: 1000,
+        pollIntervalMs: 1,
+        batchTimeoutMs: 5000,
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
+      }),
+    ).rejects.toThrow(/failed upstream \(400\).*thinking cannot be disabled/);
   });
 
   it("sends Authorization Bearer header with the api key", async () => {
@@ -112,7 +253,7 @@ describe("runBatchGenerate", () => {
       const u = String(url);
       const method = init?.method ?? "GET";
       submittedHeaders = new Headers(init?.headers as HeadersInit);
-      if (u.endsWith("/batch") && method === "POST") {
+      if (u.endsWith("/batches") && method === "POST") {
         const parsed = JSON.parse(String(init?.body));
         outputCustomId = parsed.input[0].custom_id;
         return makeResponse({
@@ -131,11 +272,10 @@ describe("runBatchGenerate", () => {
       model,
       auth,
       prompt: "x",
-      maxTokens: 10,
       requestTimeoutMs: 1000,
       pollIntervalMs: 1,
       batchTimeoutMs: 5000,
-      deps: { fetchFn: fetchFn as unknown as typeof fetch },
+      deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
     });
 
     expect(out).toBe("ok");
@@ -145,7 +285,7 @@ describe("runBatchGenerate", () => {
   it("throws when submit returns a non-ok response", async () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
-      if (u.endsWith("/batch") && init?.method === "POST") {
+      if (u.endsWith("/batches") && init?.method === "POST") {
         return makeResponse("invalid endpoint", { status: 400 });
       }
       return makeResponse({});
@@ -156,11 +296,10 @@ describe("runBatchGenerate", () => {
         model: makeModel(),
         auth: makeAuth(),
         prompt: "x",
-        maxTokens: 10,
         requestTimeoutMs: 1000,
         pollIntervalMs: 1,
         batchTimeoutMs: 5000,
-        deps: { fetchFn: fetchFn as unknown as typeof fetch },
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
       }),
     ).rejects.toThrow(/Batch submit failed \(400\)/);
   });
@@ -169,7 +308,7 @@ describe("runBatchGenerate", () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
       const method = init?.method ?? "GET";
-      if (u.endsWith("/batch") && method === "POST") {
+      if (u.endsWith("/batches") && method === "POST") {
         return makeResponse({ id: "bfail", status: "in_progress" });
       }
       if (u.includes("/batches/bfail")) {
@@ -187,11 +326,10 @@ describe("runBatchGenerate", () => {
         model: makeModel(),
         auth: makeAuth(),
         prompt: "x",
-        maxTokens: 10,
         requestTimeoutMs: 1000,
         pollIntervalMs: 1,
         batchTimeoutMs: 5000,
-        deps: { fetchFn: fetchFn as unknown as typeof fetch },
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
       }),
     ).rejects.toThrow(/failed: rate limited/);
   });
@@ -200,7 +338,7 @@ describe("runBatchGenerate", () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
       const method = init?.method ?? "GET";
-      if (u.endsWith("/batch") && method === "POST") {
+      if (u.endsWith("/batches") && method === "POST") {
         return makeResponse({ id: "bstuck", status: "in_progress" });
       }
       // Always still in_progress
@@ -212,11 +350,10 @@ describe("runBatchGenerate", () => {
         model: makeModel(),
         auth: makeAuth(),
         prompt: "x",
-        maxTokens: 10,
         requestTimeoutMs: 1000,
         pollIntervalMs: 1,
         batchTimeoutMs: 5,
-        deps: { fetchFn: fetchFn as unknown as typeof fetch },
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
       }),
     ).rejects.toThrow(/timed out/);
   });
@@ -225,7 +362,7 @@ describe("runBatchGenerate", () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
       const method = init?.method ?? "GET";
-      if (u.endsWith("/batch") && method === "POST") {
+      if (u.endsWith("/batches") && method === "POST") {
         const parsed = JSON.parse(String(init?.body));
         return makeResponse({
           id: "bmiss",
@@ -245,11 +382,10 @@ describe("runBatchGenerate", () => {
         model: makeModel(),
         auth: makeAuth(),
         prompt: "x",
-        maxTokens: 10,
         requestTimeoutMs: 1000,
         pollIntervalMs: 1,
         batchTimeoutMs: 5000,
-        deps: { fetchFn: fetchFn as unknown as typeof fetch },
+        deps: { fetchFn: fetchFn as unknown as typeof fetch, buildRequest },
       }),
     ).rejects.toThrow(/missing entry for custom_id/);
   });
@@ -281,7 +417,7 @@ describe("createStandaloneGenerateTextBatchWithDeps (config gate)", () => {
   it("builds a function that delegates to the injected batch runner", async () => {
     const run = vi.fn(async () => "batch result");
     const factory = createStandaloneGenerateTextBatchWithDeps(
-      makeBatchDeps({ run, http: { fetchFn: vi.fn() as unknown as typeof fetch } }),
+      makeBatchDeps({ run, http: { fetchFn: vi.fn() as unknown as typeof fetch, buildRequest } }),
       {},
     );
     const fn = await factory({} as KaijiBotConfig);

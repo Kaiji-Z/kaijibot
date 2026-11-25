@@ -1,5 +1,6 @@
 import {
   complete,
+  completeSimple,
   type Api,
   type Model,
   type OpenAICompletionsCompat,
@@ -156,6 +157,44 @@ export function forBackgroundCompletion(model: Model<Api>): Model<Api> {
     ...model,
     compat: { ...compat, thinkingFormat: "openai", supportsReasoningEffort: true },
   };
+}
+
+/**
+ * The request `complete` sends for a background call, without the streaming fields.
+ *
+ * pi-ai assembles that request inside its transport from the prepared model: which
+ * field carries the token cap, whether thinking is switched off, and which effort
+ * replaces it. The batch API takes the same request in a file, so the body is read
+ * from the transport instead of being assembled a second time here. The transport
+ * hands the body to `onPayload` before it opens the request, and the aborted signal
+ * keeps the request from leaving. The key only has to be non-empty.
+ */
+export async function backgroundRequestBody(params: {
+  model: Model<Api>;
+  prompt: string;
+  maxTokens: number;
+  apiKey: string;
+}): Promise<Record<string, unknown>> {
+  let captured: Record<string, unknown> | undefined;
+  await completeSimple(
+    params.model,
+    { messages: [{ role: "user", content: params.prompt, timestamp: Date.now() }] },
+    {
+      apiKey: params.apiKey,
+      maxTokens: params.maxTokens,
+      signal: AbortSignal.abort(),
+      onPayload: (payload) => {
+        captured = payload as Record<string, unknown>;
+      },
+    },
+  );
+  if (!captured) {
+    throw new Error(`The ${params.model.provider} transport built no request for the batch call`);
+  }
+  const body = { ...captured };
+  delete body.stream;
+  delete body.stream_options;
+  return body;
 }
 
 export async function prepareSimpleCompletionModel(params: {

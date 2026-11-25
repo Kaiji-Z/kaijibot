@@ -24,9 +24,10 @@ vi.mock("./github-copilot-token.js", () => ({
 
 let prepareSimpleCompletionModel: typeof import("./simple-completion-runtime.js").prepareSimpleCompletionModel;
 let forBackgroundCompletion: typeof import("./simple-completion-runtime.js").forBackgroundCompletion;
+let backgroundRequestBody: typeof import("./simple-completion-runtime.js").backgroundRequestBody;
 
 beforeAll(async () => {
-  ({ prepareSimpleCompletionModel, forBackgroundCompletion } =
+  ({ prepareSimpleCompletionModel, forBackgroundCompletion, backgroundRequestBody } =
     await import("./simple-completion-runtime.js"));
 });
 
@@ -345,47 +346,57 @@ describe("prepareSimpleCompletionModel", () => {
   });
 });
 
-describe("forBackgroundCompletion", () => {
-  function makeZaiModel(
-    overrides: Partial<Model<"openai-completions">> = {},
-  ): Model<"openai-completions"> {
-    return {
-      id: "glm-5.3-flash",
-      name: "GLM-5.3-Flash",
-      api: "openai-completions",
-      provider: "zai",
-      baseUrl: "https://api.z.ai/api/coding/paas/v4",
-      reasoning: true,
-      input: ["text"],
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 128000,
-      maxTokens: 131100,
-      ...overrides,
-    };
-  }
+function makeZaiModel(
+  overrides: Partial<Model<"openai-completions">> = {},
+): Model<"openai-completions"> {
+  return {
+    id: "glm-5.3-flash",
+    name: "GLM-5.3-Flash",
+    api: "openai-completions",
+    provider: "zai",
+    baseUrl: "https://api.z.ai/api/coding/paas/v4",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128000,
+    maxTokens: 131100,
+    ...overrides,
+  };
+}
 
-  // What pi-ai puts on the wire for a background call, which passes no reasoning
-  // option. The request is aborted before it leaves, so nothing reaches the network.
-  async function captureRequestPayload(model: Model<Api>): Promise<Record<string, unknown>> {
-    let payload: Record<string, unknown> | undefined;
-    await completeSimple(
-      model,
-      { messages: [{ role: "user", content: "hello", timestamp: 0 }] },
-      {
-        apiKey: "test-key",
-        maxTokens: 2000,
-        signal: AbortSignal.abort(),
-        onPayload: (next) => {
-          payload = next as Record<string, unknown>;
-        },
+// What pi-ai puts on the wire for a background call, which passes no reasoning
+// option. The request is aborted before it leaves, so nothing reaches the network.
+async function captureRequestPayload(
+  model: Model<Api>,
+  maxTokens = 2000,
+): Promise<Record<string, unknown>> {
+  let payload: Record<string, unknown> | undefined;
+  await completeSimple(
+    model,
+    { messages: [{ role: "user", content: "hello", timestamp: 0 }] },
+    {
+      apiKey: "test-key",
+      maxTokens,
+      signal: AbortSignal.abort(),
+      onPayload: (next) => {
+        payload = next as Record<string, unknown>;
       },
-    ).catch(() => undefined);
-    if (!payload) {
-      throw new Error("no request payload captured");
-    }
-    return payload;
+    },
+  ).catch(() => undefined);
+  if (!payload) {
+    throw new Error("no request payload captured");
   }
+  return payload;
+}
 
+function withoutStreaming(payload: Record<string, unknown>): Record<string, unknown> {
+  const body = { ...payload };
+  delete body.stream;
+  delete body.stream_options;
+  return body;
+}
+
+describe("forBackgroundCompletion", () => {
   it("asks for the effort an always-thinking model names instead of disabling thinking", async () => {
     const alwaysThinking = makeZaiModel({ thinkingLevelMap: { off: "low" } });
 
@@ -442,5 +453,75 @@ describe("forBackgroundCompletion", () => {
         }),
       }),
     );
+  });
+});
+
+describe("backgroundRequestBody", () => {
+  const preparedAlwaysThinking = () =>
+    forBackgroundCompletion(makeZaiModel({ thinkingLevelMap: { off: "low" } }));
+
+  const models = [
+    {
+      name: "an always-thinking model, which runs at the effort named for off",
+      model: preparedAlwaysThinking,
+    },
+    { name: "a model that turns thinking off", model: () => makeZaiModel() },
+    { name: "a model that does not reason", model: () => makeZaiModel({ reasoning: false }) },
+  ] as const;
+
+  it.each(models)("is the request the synchronous path sends for $name", async ({ model }) => {
+    const synchronous = await captureRequestPayload(model(), 4000);
+    expect(synchronous.stream).toBe(true);
+
+    const body = await backgroundRequestBody({
+      model: model(),
+      prompt: "hello",
+      maxTokens: 4000,
+      apiKey: "test-key",
+    });
+
+    expect(body).toEqual(withoutStreaming(synchronous));
+  });
+
+  it("carries the token cap and the effort, and no streaming", async () => {
+    const body = await backgroundRequestBody({
+      model: preparedAlwaysThinking(),
+      prompt: "hello",
+      maxTokens: 4000,
+      apiKey: "test-key",
+    });
+
+    expect(body).toEqual({
+      model: "glm-5.3-flash",
+      messages: [{ role: "user", content: "hello" }],
+      max_completion_tokens: 4000,
+      reasoning_effort: "low",
+    });
+  });
+
+  it("reads the body without sending the request", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("unreachable", { status: 500 }));
+    try {
+      const body = await backgroundRequestBody({
+        model: makeZaiModel(),
+        prompt: "hello",
+        maxTokens: 2000,
+        apiKey: "test-key",
+      });
+      expect(body.model).toBe("glm-5.3-flash");
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      // Control: with a live signal the same transport does go through this fetch.
+      await completeSimple(
+        makeZaiModel(),
+        { messages: [{ role: "user", content: "hello", timestamp: 0 }] },
+        { apiKey: "test-key", maxTokens: 2000 },
+      ).catch(() => undefined);
+      expect(fetchSpy).toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

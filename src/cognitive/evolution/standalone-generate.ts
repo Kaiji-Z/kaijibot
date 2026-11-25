@@ -8,7 +8,10 @@ import {
 } from "@earendil-works/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
-import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";
+import {
+  backgroundRequestBody,
+  prepareSimpleCompletionModel,
+} from "../../agents/simple-completion-runtime.js";
 import type { KaijiBotConfig } from "../../config/types.kaijibot.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
@@ -128,16 +131,26 @@ export function createStandaloneGenerateTextWithDeps(
 }
 
 // ---------------------------------------------------------------------------
-// Batch API variant (OpenAI-compatible /v1/batch). Opt-in via
+// Batch API variant (the OpenAI-compatible batch API). Opt-in via
 // agents.defaults.backgroundBatch. Each call submits a single-request batch,
-// polls until terminal, and returns the assistant text.
+// polls until terminal, and returns the assistant text. The request in the
+// batch file is the one the synchronous path sends.
 // ---------------------------------------------------------------------------
 
 const TERMINAL_BATCH_STATUSES = new Set(["completed", "failed", "expired", "cancelled"]);
 
 export type BatchHttpDeps = {
   fetchFn: typeof fetch;
+  /** The request the synchronous path sends for the prompt, without the streaming fields. */
+  buildRequest: (prompt: string) => Promise<Record<string, unknown>>;
 };
+
+// A line of the batch file addresses its request the way the synchronous path does:
+// on the API host, under the path the model's base URL names.
+function batchRequestUrl(model: Model<Api>): string {
+  const path = new URL(model.baseUrl).pathname.replace(/\/+$/, "");
+  return `${path}/chat/completions`;
+}
 
 /**
  * Build the auth+headers for a prepared model/auth pair, suitable for the
@@ -191,37 +204,36 @@ export async function runBatchGenerate(params: {
   model: Model<Api>;
   auth: ResolvedProviderAuth;
   prompt: string;
-  maxTokens: number;
   requestTimeoutMs: number;
   pollIntervalMs: number;
   batchTimeoutMs: number;
   deps: BatchHttpDeps;
 }): Promise<string> {
-  const { model, auth, prompt, maxTokens, requestTimeoutMs, pollIntervalMs, batchTimeoutMs, deps } =
-    params;
+  const { model, auth, prompt, requestTimeoutMs, pollIntervalMs, batchTimeoutMs, deps } = params;
+  if (model.api !== "openai-completions") {
+    throw new Error(`The batch API takes chat completions requests only, not ${model.api}`);
+  }
 
   const base = model.baseUrl.replace(/\/+$/, "");
   const headers = buildBatchHeaders(model, auth);
   const customId = `req-${randomUUID()}`;
+  const requestUrl = batchRequestUrl(model);
 
   const submitBody = {
     input: [
       {
         custom_id: customId,
         method: "post",
-        url: "/v1/chat/completions",
-        body: {
-          model: model.id,
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: maxTokens,
-        },
+        url: requestUrl,
+        body: await deps.buildRequest(prompt),
       },
     ],
-    endpoint: "/v1/chat/completions",
+    endpoint: requestUrl,
     completion_window: "24h",
   };
 
-  const submitRes = await deps.fetchFn(`${base}/batch`, {
+  // The batch API creates a batch at /batches, the same path it lists and polls them under.
+  const submitRes = await deps.fetchFn(`${base}/batches`, {
     method: "POST",
     headers,
     body: JSON.stringify(submitBody),
@@ -318,7 +330,10 @@ export async function runBatchGenerate(params: {
       throw new Error(`Batch request error for ${customId}: ${msg}`);
     }
     if (entry.response?.status_code && entry.response.status_code >= 400) {
-      throw new Error(`Batch request ${customId} failed upstream (${entry.response.status_code})`);
+      const detail = JSON.stringify(entry.response.body ?? {}).slice(0, 500);
+      throw new Error(
+        `Batch request ${customId} failed upstream (${entry.response.status_code}): ${detail}`,
+      );
     }
     return extractBatchText(entry.response?.body);
   }
@@ -347,14 +362,22 @@ export async function createStandaloneGenerateTextBatch(
   const requestTimeoutMs = options?.timeout ?? 60_000;
   const pollIntervalMs = options?.pollIntervalMs ?? 30_000;
   const batchTimeoutMs = options?.batchTimeoutMs ?? 24 * 60 * 60 * 1000;
-  const deps: BatchHttpDeps = { fetchFn: globalThis.fetch };
+  const deps: BatchHttpDeps = {
+    fetchFn: globalThis.fetch,
+    buildRequest: (prompt) =>
+      backgroundRequestBody({
+        model,
+        prompt,
+        maxTokens,
+        apiKey: auth.apiKey || "unused",
+      }),
+  };
 
   return async (prompt: string): Promise<string> => {
     return runBatchGenerate({
       model,
       auth,
       prompt,
-      maxTokens,
       requestTimeoutMs,
       pollIntervalMs,
       batchTimeoutMs,
@@ -375,7 +398,6 @@ export function createStandaloneGenerateTextBatchWithDeps(
   deps: BackgroundGenerateDeps,
   options?: BatchGenerateOptions,
 ): (cfg: KaijiBotConfig) => Promise<StandaloneGenerateTextFn> {
-  const maxTokens = options?.maxTokens ?? 4000;
   const requestTimeoutMs = options?.timeout ?? 60_000;
   const pollIntervalMs = options?.pollIntervalMs ?? 30_000;
   const batchTimeoutMs = options?.batchTimeoutMs ?? 24 * 60 * 60 * 1000;
@@ -392,7 +414,6 @@ export function createStandaloneGenerateTextBatchWithDeps(
         model,
         auth,
         prompt,
-        maxTokens,
         requestTimeoutMs,
         pollIntervalMs,
         batchTimeoutMs,
