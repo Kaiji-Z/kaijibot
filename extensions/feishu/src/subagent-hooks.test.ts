@@ -49,7 +49,12 @@ describe.skipIf(process.env.CI)("feishu subagent hook handlers", () => {
       {},
     );
 
-    expect(result).toEqual({ status: "ok", threadBindingReady: true });
+    // The binding also names where the child's replies go.
+    expect(result).toEqual({
+      status: "ok",
+      threadBindingReady: true,
+      deliveryOrigin: { accountId: "work", channel: "feishu", to: "user:ou_sender_1" },
+    });
 
     const deliveryTargetHandler = getRequiredHookHandler(handlers, "subagent_delivery_target");
     expect(
@@ -136,7 +141,16 @@ describe.skipIf(process.env.CI)("feishu subagent hook handlers", () => {
       {},
     );
 
-    expect(result).toEqual({ status: "ok", threadBindingReady: true });
+    expect(result).toEqual({
+      status: "ok",
+      threadBindingReady: true,
+      deliveryOrigin: {
+        accountId: "work",
+        channel: "feishu",
+        threadId: "om_topic_root",
+        to: "chat:oc_group_chat",
+      },
+    });
     expect(
       deliveryHandler(
         {
@@ -199,7 +213,16 @@ describe.skipIf(process.env.CI)("feishu subagent hook handlers", () => {
       },
     );
 
-    expect(reboundResult).toEqual({ status: "ok", threadBindingReady: true });
+    expect(reboundResult).toEqual({
+      status: "ok",
+      threadBindingReady: true,
+      deliveryOrigin: {
+        accountId: "work",
+        channel: "feishu",
+        threadId: "om_topic_root",
+        to: "chat:oc_group_chat",
+      },
+    });
     expect(manager.listBySessionKey("agent:main:subagent:sender-child")).toMatchObject([
       {
         conversationId: "oc_group_chat:topic:om_topic_root:sender:ou_sender_1",
