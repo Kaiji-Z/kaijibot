@@ -2,7 +2,10 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mergeExtraction, prunePersona } from "./curator.js";
 import { PersonaStore, createDefaultPersona } from "./store.js";
+
+const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
 
 describe("PersonaStore", () => {
   let tempDir: string;
@@ -68,6 +71,95 @@ describe("PersonaStore", () => {
     expect(domain!.keyInsights).toEqual(["偏好 Rust 实现"]);
     expect(domain!.activeQuestions).toEqual(["如何优化推理延迟?"]);
     expect(domain!.phase).toBe("stable");
+  });
+
+  it("preserves the undecayed decay anchors across a save/load round trip", async () => {
+    // prunePersona recomputes depth and confidence from these anchors so that decay stays
+    // idempotent across turns. The schema strips unknown keys, so an anchor that is not
+    // declared silently falls back to the already-decayed value on the next load.
+    const lastMentioned = Date.now() - TEN_DAYS_MS;
+    const persona = createDefaultPersona();
+    persona.domains["分布式系统"] = {
+      depth: 1.6,
+      baseDepth: 2.4,
+      recurrence: 3,
+      lastMentioned,
+      keyInsights: ["偏好 CAP 定理分析"],
+      insights: [
+        {
+          text: "偏好 CAP 定理分析",
+          category: "durable",
+          confidence: 0.3,
+          baseConfidence: 0.9,
+          source: "explicit",
+          firstObserved: lastMentioned,
+          lastReinforced: lastMentioned,
+          evidenceCount: 2,
+          halfLifeDays: 30,
+        },
+      ],
+      activeQuestions: [],
+      negationSignals: 0,
+    };
+
+    await store.save("main", "user-anchors", persona);
+    const loaded = await store.load("main", "user-anchors");
+
+    expect(loaded?.domains["分布式系统"]?.baseDepth).toBe(2.4);
+    expect(loaded?.domains["分布式系统"]?.insights?.[0]?.baseConfidence).toBe(0.9);
+  });
+
+  it("does not compound decay when a persisted persona is pruned on repeated turns", async () => {
+    // Mirrors the per-turn pipeline: load from disk, merge the extraction, prune, save. The
+    // in-memory idempotence test in curator.test.ts chains calls without a store round trip, so
+    // it cannot see the anchors being stripped by the schema on load.
+    const now = Date.now();
+    const lastMentioned = now - TEN_DAYS_MS;
+    const persona = createDefaultPersona();
+    persona.domains["分布式系统"] = {
+      depth: 2.4,
+      baseDepth: 2.4,
+      recurrence: 3,
+      lastMentioned,
+      keyInsights: ["偏好 CAP 定理分析"],
+      insights: [
+        {
+          text: "偏好 CAP 定理分析",
+          category: "durable",
+          confidence: 0.9,
+          baseConfidence: 0.9,
+          source: "explicit",
+          firstObserved: lastMentioned,
+          lastReinforced: lastMentioned,
+          evidenceCount: 2,
+          halfLifeDays: 30,
+        },
+      ],
+      activeQuestions: [],
+      negationSignals: 0,
+    };
+    await store.save("main", "user-idempotent", persona);
+
+    const emptyExtraction = { attributes: [], domains: [], recentFocus: [] };
+    const depths: number[] = [];
+    const confidences: number[] = [];
+    for (let turn = 0; turn < 5; turn++) {
+      const pruned = await store.update("main", "user-idempotent", (current) =>
+        prunePersona(mergeExtraction(current, emptyExtraction, now), now),
+      );
+      const domain = pruned.domains["分布式系统"];
+      depths.push(domain?.depth ?? -1);
+      confidences.push(domain?.insights?.[0]?.confidence ?? -1);
+    }
+
+    // 10 idle days decay the domain once (a "new" lifecycle applies a 1.5x multiplier, so
+    // 2.4 -> 1.7), and the same value must come out on every turn — never a second decay.
+    expect(depths[0]).toBe(1.7);
+    expect(depths.every((depth) => depth === depths[0])).toBe(true);
+    // Insights decay by their own half-life only: 0.5^(10/30) = 0.7937, applied once per turn.
+    for (const confidence of confidences) {
+      expect(confidence).toBeCloseTo(0.9 * 0.7937, 4);
+    }
   });
 
   it("loadOrCreate returns valid persona from well-formed JSON", async () => {

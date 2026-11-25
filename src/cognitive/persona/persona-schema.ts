@@ -8,6 +8,10 @@ const typedInsightSchema = z.object({
   text: z.string(),
   category: insightCategorySchema,
   confidence: z.number(),
+  // Undecayed anchor: prunePersona recomputes confidence from it so that decay stays
+  // idempotent. The schema strips unknown keys, so leaving it undeclared made every turn
+  // re-decay the already-decayed confidence.
+  baseConfidence: z.number().optional(),
   source: z.enum(["explicit", "inferred", "observed"]),
   firstObserved: z.number(),
   lastReinforced: z.number(),
@@ -34,6 +38,8 @@ const communicationStyleSchema = z.object({
 
 const domainNodeSchema = z.object({
   depth: z.number(),
+  // Undecayed anchor for mergeExtraction's depth decay; see baseConfidence above.
+  baseDepth: z.number().optional(),
   recurrence: z.number(),
   lastMentioned: z.number(),
   keyInsights: z.array(z.string()),
