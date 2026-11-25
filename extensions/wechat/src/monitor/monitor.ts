@@ -8,6 +8,7 @@ import { getSyncBufFilePath, loadGetUpdatesBuf, saveGetUpdatesBuf } from "../sto
 import { logger } from "../util/logger.js";
 import type { Logger } from "../util/logger.js";
 import { redactBody } from "../util/redact.js";
+import { abortableSleep } from "./abortable-sleep.js";
 
 const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -121,7 +122,7 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
             `getUpdates: token for ${accountId} is stale, pausing all requests for ${Math.ceil(pauseMs / 60_000)} min`,
           );
           consecutiveFailures = 0;
-          await sleep(pauseMs, abortSignal);
+          await abortableSleep(pauseMs, abortSignal);
           continue;
         }
 
@@ -140,9 +141,9 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
             `getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`,
           );
           consecutiveFailures = 0;
-          await sleep(BACKOFF_DELAY_MS, abortSignal);
+          await abortableSleep(BACKOFF_DELAY_MS, abortSignal);
         } else {
-          await sleep(RETRY_DELAY_MS, abortSignal);
+          await abortableSleep(RETRY_DELAY_MS, abortSignal);
         }
         continue;
       }
@@ -206,25 +207,11 @@ export async function monitorWeixinProvider(opts: MonitorWeixinOpts): Promise<vo
         );
         aLog.error(`getUpdates: ${MAX_CONSECUTIVE_FAILURES} consecutive failures, backing off 30s`);
         consecutiveFailures = 0;
-        await sleep(30_000, abortSignal);
+        await abortableSleep(30_000, abortSignal);
       } else {
-        await sleep(2000, abortSignal);
+        await abortableSleep(2000, abortSignal);
       }
     }
   }
   aLog.info(`Monitor ended`);
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(t);
-        reject(new Error("aborted"));
-      },
-      { once: true },
-    );
-  });
 }
