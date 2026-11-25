@@ -1240,28 +1240,34 @@ export class ProactiveScheduler {
     };
 
     const tick = async (): Promise<void> => {
-      const users = await listUsers();
-      log.info("timer tick", { userCount: users.length, baseInterval });
-      for (const { agentId, userId } of users) {
-        try {
-          const result = await this.processEvent(
-            userId,
-            {
-              type: "timer",
-              timestamp: Date.now(),
-            },
-            agentId,
-          );
-          log.info("processEvent done", {
-            userId,
-            result: result ? "insight generated" : "no insight",
-          });
-        } catch (err) {
-          log.warn("tick failed", { userId, error: String(err) });
+      try {
+        const users = await listUsers();
+        log.info("timer tick", { userCount: users.length, baseInterval });
+        for (const { agentId, userId } of users) {
+          try {
+            const result = await this.processEvent(
+              userId,
+              {
+                type: "timer",
+                timestamp: Date.now(),
+              },
+              agentId,
+            );
+            log.info("processEvent done", {
+              userId,
+              result: result ? "insight generated" : "no insight",
+            });
+          } catch (err) {
+            log.warn("tick failed", { userId, error: String(err) });
+          }
         }
+      } catch (err) {
+        log.warn("timer tick failed", { error: String(err) });
+      } finally {
+        // Nobody awaits the tick: rescheduling from here keeps the timer chain
+        // alive through a failed listing instead of ending it for good.
+        scheduleNext();
       }
-
-      scheduleNext();
     };
 
     scheduleNext();

@@ -812,6 +812,38 @@ describeDet("ProactiveScheduler", () => {
     expect(processedUsers).toEqual([]);
   });
 
+  it("start keeps ticking after listing the users fails once", async () => {
+    const processedUsers: string[] = [];
+    let listCalls = 0;
+    let firstProcessed: () => void;
+    const firstProcessedPromise = new Promise<void>((resolve) => {
+      firstProcessed = resolve;
+    });
+    const scheduler = new ProactiveScheduler(config, {
+      loadPersona: async (_agentId, userId) => {
+        processedUsers.push(userId);
+        firstProcessed!();
+        return personaWithDomains();
+      },
+      onInsightReady: async () => {},
+      savePersona: async () => {},
+    });
+
+    scheduler.start(async () => {
+      listCalls += 1;
+      // One failed listing must not silence proactive insights for good.
+      if (listCalls === 1) {
+        throw new Error("store unavailable");
+      }
+      return [{ agentId: "main", userId: "user-a" }];
+    }, 10);
+
+    await Promise.race([firstProcessedPromise, new Promise((resolve) => setTimeout(resolve, 500))]);
+    scheduler.stop();
+    expect(listCalls).toBeGreaterThanOrEqual(2);
+    expect(processedUsers).toEqual(["user-a"]);
+  });
+
   it("generates cross-domain insight on persona_change event", async () => {
     const persona = personaWithDomains();
     const capturedCandidates: InsightCandidate[] = [];
