@@ -12,7 +12,7 @@ import { downloadMediaFromItem } from "../media/media-download.js";
 import { logger } from "../util/logger.js";
 import { redactBody, redactToken } from "../util/redact.js";
 import { isDebugMode } from "./debug-mode.js";
-import { resolveWeixinDmAccess } from "./dm-authorization.js";
+import { createWeixinDmRefusalLog, resolveWeixinDmAccess } from "./dm-authorization.js";
 import { sendWeixinErrorNotice } from "./error-notice.js";
 import {
   setContextToken,
@@ -32,6 +32,8 @@ const MEDIA_OUTBOUND_TEMP_DIR = path.join(
   resolvePreferredKaijiBotTmpDir(),
   "weixin/media/outbound-temp",
 );
+
+const logRefusedDm = createWeixinDmRefusalLog();
 
 /** Dependencies for processOneMessage, injected by the monitor loop. */
 export type ProcessMessageDeps = {
@@ -166,7 +168,7 @@ export async function processOneMessage(
   });
 
   if (dmAccess.outcome !== "allowed") {
-    logger.info(`authorization: dropping message from=${senderId} outcome=${dmAccess.outcome}`);
+    logRefusedDm(deps.accountId, senderId, dmAccess.reason);
     return;
   }
   const { commandAuthorized } = dmAccess;

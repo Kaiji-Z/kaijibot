@@ -1,7 +1,12 @@
 import type { CommandAuthorizationRuntime } from "kaijibot/plugin-sdk/command-auth";
 import type { KaijiBotConfig } from "kaijibot/plugin-sdk/core";
-import { describe, expect, it } from "vitest";
-import { resolveWeixinDmAccess, type WeixinDmAccessSources } from "./dm-authorization.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createWeixinDmRefusalLog,
+  formatWeixinNoTrustedSenderHint,
+  resolveWeixinDmAccess,
+  type WeixinDmAccessSources,
+} from "./dm-authorization.js";
 
 const ACCOUNT = "acct-main";
 const OWNER = "owner@im.wechat";
@@ -35,6 +40,28 @@ function decide(params: {
 }
 
 describe("resolveWeixinDmAccess", () => {
+  it("refuses everyone while no trusted sender is on record", async () => {
+    for (const senderId of [OWNER, "stranger@im.wechat", ""]) {
+      const access = await decide({ senderId });
+      expect(access, `sender "${senderId}"`).toEqual({
+        outcome: "unauthorized",
+        reason: "no-trusted-sender",
+      });
+    }
+  });
+
+  it("keeps refusing everyone when the pairing store cannot be read", async () => {
+    const access = await decide({
+      senderId: OWNER,
+      sources: sources({
+        readStoreAllowFrom: () => {
+          throw new Error("corrupt store");
+        },
+      }),
+    });
+    expect(access).toEqual({ outcome: "unauthorized", reason: "no-trusted-sender" });
+  });
+
   it("allows the owner recorded at login", async () => {
     const access = await decide({
       senderId: OWNER,
@@ -48,7 +75,7 @@ describe("resolveWeixinDmAccess", () => {
       senderId: "stranger@im.wechat",
       sources: sources({ loadOwnerUserId: () => OWNER }),
     });
-    expect(access.outcome).toBe("unauthorized");
+    expect(access).toEqual({ outcome: "unauthorized", reason: "sender-not-trusted" });
   });
 
   it("adds the configured allowFrom senders next to the owner", async () => {
@@ -65,6 +92,19 @@ describe("resolveWeixinDmAccess", () => {
     });
     expect(friend.outcome).toBe("allowed");
     expect(stranger.outcome).toBe("unauthorized");
+  });
+
+  it("trusts a configured sender when no owner is on record", async () => {
+    const friend = await decide({
+      senderId: "friend@im.wechat",
+      configuredAllowFrom: ["friend@im.wechat"],
+    });
+    const stranger = await decide({
+      senderId: "stranger@im.wechat",
+      configuredAllowFrom: ["friend@im.wechat"],
+    });
+    expect(friend.outcome).toBe("allowed");
+    expect(stranger).toEqual({ outcome: "unauthorized", reason: "sender-not-trusted" });
   });
 
   it("honors the framework pairing store", async () => {
@@ -118,5 +158,37 @@ describe("resolveWeixinDmAccess", () => {
       runtime,
     });
     expect(owner).toEqual({ outcome: "allowed", commandAuthorized: true });
+  });
+});
+
+describe("formatWeixinNoTrustedSenderHint", () => {
+  it("names both ways back in", () => {
+    const hint = formatWeixinNoTrustedSenderHint(ACCOUNT);
+    expect(hint).toContain(`account=${ACCOUNT}`);
+    expect(hint).toContain("kaijibot channels login --channel wechat");
+    expect(hint).toContain("channels.wechat.allowFrom");
+  });
+});
+
+describe("createWeixinDmRefusalLog", () => {
+  it("explains a missing owner once per account", () => {
+    const log = { info: vi.fn(), warn: vi.fn() };
+    const refusalLog = createWeixinDmRefusalLog(log);
+    refusalLog(ACCOUNT, OWNER, "no-trusted-sender");
+    refusalLog(ACCOUNT, "stranger@im.wechat", "no-trusted-sender");
+    refusalLog("acct-other", OWNER, "no-trusted-sender");
+    expect(log.warn).toHaveBeenCalledTimes(2);
+    expect(String(log.warn.mock.calls[0]?.[0])).toContain(formatWeixinNoTrustedSenderHint(ACCOUNT));
+    expect(log.info).not.toHaveBeenCalled();
+  });
+
+  it("reports every refusal of an untrusted sender", () => {
+    const log = { info: vi.fn(), warn: vi.fn() };
+    const refusalLog = createWeixinDmRefusalLog(log);
+    refusalLog(ACCOUNT, "stranger@im.wechat", "sender-not-trusted");
+    refusalLog(ACCOUNT, "other@im.wechat", "sender-not-trusted");
+    expect(log.warn).not.toHaveBeenCalled();
+    expect(log.info).toHaveBeenCalledTimes(2);
+    expect(String(log.info.mock.calls[0]?.[0])).toContain("from=stranger@im.wechat");
   });
 });

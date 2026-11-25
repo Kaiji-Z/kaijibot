@@ -61,14 +61,17 @@ kaijibot config set channels.wechat.api.baseUrl "https://your-ilink-bot-server"
 
 多账号时可以用 `channels.wechat.accounts.<accountId>.allowFrom` 给单个账号设置名单（覆盖频道级名单）。
 
+如果某个账号查不到主人（例如登录时服务端没有返回用户 ID），该账号的私聊会一律被拒绝，直到你重新扫码登录或在 `allowFrom` 里列出允许的用户；gateway 日志里会有一条这样的提示。
+
 ## 故障排除
 
-| 问题           | 解决方案                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------- |
-| 扫码后无响应   | 检查 `kaijibot channels login --channel wechat` 是否报错；查看 gateway 日志的 `[wechat]` 行 |
-| 群消息不响应   | 群聊默认需要 @机器人，配置 `channels.wechat.replyOnGroupMentionOnly: false` 可改变行为      |
-| 语音消息听不懂 | 确保 `silk-wasm` 已安装（`pnpm install` 后自动）                                            |
-| 图片发不出去   | iLink Bot CDN 偶有限速，等几分钟重试                                                        |
+| 问题             | 解决方案                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 扫码后无响应     | 检查 `kaijibot channels login --channel wechat` 是否报错；查看 gateway 日志的 `[wechat]` 行                                                    |
+| 私聊完全没有回复 | 日志里有 `authorization: dropping messages` 提示时，说明该账号查不到主人：重新扫码登录，或在 `channels.wechat.allowFrom` 里列出你的微信用户 ID |
+| 群消息不响应     | 群聊默认需要 @机器人，配置 `channels.wechat.replyOnGroupMentionOnly: false` 可改变行为                                                         |
+| 语音消息听不懂   | 确保 `silk-wasm` 已安装（`pnpm install` 后自动）                                                                                               |
+| 图片发不出去     | iLink Bot CDN 偶有限速，等几分钟重试                                                                                                           |
 
 ## 与飞书的差异
 
