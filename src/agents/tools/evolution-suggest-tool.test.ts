@@ -1,5 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getCliLocale, initCliI18n } from "../../cli/i18n/translate.js";
 import { createEvolutionSuggestTool } from "./evolution-suggest-tool.js";
+
+// suggestionText follows the CLI locale: English unless the process locale is
+// Chinese. Tests pin the locale they assert on and restore this one afterwards,
+// so the outcome does not depend on LANG.
+const ambientLocale = getCliLocale();
+
+const baseParams = {
+  taskSummary: "test",
+  toolCalls: ["tool_a"],
+  uniqueToolCount: 1,
+  reasoningTurns: 2,
+  durationMs: 1000,
+  domain: "test",
+};
 
 const mockGenerate = vi.fn().mockResolvedValue({
   name: "test-skill",
@@ -52,6 +67,7 @@ vi.mock("../../utils.js", async (importOriginal) => {
 describe("createEvolutionSuggestTool", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    initCliI18n({ locale: ambientLocale });
     mockWriteSkill.mockResolvedValue("/home/test/.kaijibot/skills/agent/test-skill/SKILL.md");
     mockListSkillNames.mockResolvedValue([]);
     mockReadSkillMeta.mockResolvedValue(null);
@@ -105,6 +121,7 @@ describe("createEvolutionSuggestTool", () => {
     });
 
     it("generates, saves, and returns saved status", async () => {
+      initCliI18n({ locale: "zh-CN" });
       mockGenerate.mockResolvedValueOnce({
         name: "feishu-wiki-archive",
         description: "Archive wiki pages",
@@ -159,6 +176,7 @@ describe("createEvolutionSuggestTool", () => {
     });
 
     it("suggestionText includes skill name and description", async () => {
+      initCliI18n({ locale: "zh-CN" });
       mockGenerate.mockResolvedValueOnce({
         name: "multi-tool-skill",
         description: "Multi-tool skill",
@@ -271,21 +289,40 @@ describe("createEvolutionSuggestTool", () => {
     });
 
     it("returns no_session when both deliveryTo and sessionKey yield no userId", async () => {
+      // A group session without a :sender: segment names a chat, not a person.
       const tool = createEvolutionSuggestTool({
-        sessionKey: "agent:main:main",
+        sessionKey: "agent:main:feishu:group:oc_xyz",
       })!;
 
-      const result = await tool.execute("call-10", {
-        taskSummary: "test",
-        toolCalls: ["a"],
-        uniqueToolCount: 1,
-        reasoningTurns: 1,
-        durationMs: 100,
-        domain: "t",
-      });
+      const result = await tool.execute("call-10", baseParams);
 
       const text = (result.content as Array<{ text: string }>)[0].text;
       expect(text).toContain("No user session");
+      expect(mockGenerate).not.toHaveBeenCalled();
+      expect(mockWriteSkill).not.toHaveBeenCalled();
+    });
+
+    it("saves for the operator's main session", async () => {
+      // "main" is the operator, a first-class user, not a missing identity.
+      const tool = createEvolutionSuggestTool({ sessionKey: "agent:main:main" })!;
+
+      const result = await tool.execute("call-10b", baseParams);
+
+      const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+      expect(payload.status).toBe("saved");
+      expect(mockWriteSkill).toHaveBeenCalledTimes(1);
+    });
+
+    it("suggestionText follows the CLI locale", async () => {
+      initCliI18n({ locale: "en" });
+      const tool = createEvolutionSuggestTool({ sessionKey: "agent:main:user-4b" })!;
+
+      const result = await tool.execute("call-5b", baseParams);
+
+      const payload = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+      expect(payload.status).toBe("saved");
+      expect(payload.suggestionText).toContain("self-evolved and created a skill 'test-skill'");
+      expect(payload.suggestionText).not.toContain("自主进化");
     });
 
     it("strips feishu: prefix from deliveryTo", async () => {
@@ -307,6 +344,7 @@ describe("createEvolutionSuggestTool", () => {
     });
 
     it("returns duplicate when dedup finds existing", async () => {
+      initCliI18n({ locale: "zh-CN" });
       mockGenerate.mockResolvedValueOnce({
         name: "dupe",
         description: "dupe",
