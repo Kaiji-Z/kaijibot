@@ -1119,6 +1119,7 @@ Time format in system prompt. Default: `auto` (OS preference).
 Your configured aliases always win over defaults.
 
 Z.AI GLM-4.x models automatically enable thinking mode unless you set `--thinking off` or define `agents.defaults.models["zai/<model>"].params.thinking` yourself.
+Z.AI GLM-5.3 models always think; the thinking level chooses the reasoning effort (`off`/`minimal`/`low` → `low`, `medium` → `high`, `xhigh` → `max`), and their default level `high` leaves the effort to Z.AI.
 Z.AI models enable `tool_stream` by default for tool call streaming. Set `agents.defaults.models["zai/<model>"].params.tool_stream` to `false` to disable it.
 Anthropic Claude 4.6 models default to `adaptive` thinking when no explicit thinking level is set.
 

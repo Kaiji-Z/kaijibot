@@ -84,16 +84,42 @@ function resolveGlm5ForwardCompatModel(
 // pi-ai asks for disabled thinking whenever a call passes no reasoning option,
 // so background single-turn calls on these models came back empty. The map
 // names the effort to send in place of "off"; whoever can send it reads it here.
+// It also names the effort of every other level that asks for a specific one. The
+// request the agent loop builds for a zai model carries no effort, so each level
+// used to run at the provider's default. "high" and "adaptive" are left out on
+// purpose: a request at those levels goes out as built, and the provider keeps
+// picking the effort.
+const GLM53_EFFORT_BY_LEVEL = {
+  off: "low",
+  minimal: "low",
+  low: "low",
+  medium: "high",
+  xhigh: "max",
+} as const;
+
+type Glm53EffortLevel = keyof typeof GLM53_EFFORT_BY_LEVEL;
+
 function isAlwaysThinkingModel(model: { id: string }): boolean {
   const modelId = normalizeLowercaseStringOrEmpty(model.id).trim();
   return modelId === "glm-5.3" || modelId.startsWith("glm-5.3-");
+}
+
+function isGlm53EffortLevel(
+  thinkingLevel: ProviderWrapStreamFnContext["thinkingLevel"],
+): thinkingLevel is Glm53EffortLevel {
+  return (
+    thinkingLevel === "minimal" ||
+    thinkingLevel === "low" ||
+    thinkingLevel === "medium" ||
+    thinkingLevel === "xhigh"
+  );
 }
 
 function declareAlwaysThinkingModel(model: ProviderRuntimeModel): ProviderRuntimeModel {
   if (!isAlwaysThinkingModel(model) || model.thinkingLevelMap?.off !== undefined) {
     return model;
   }
-  return { ...model, thinkingLevelMap: { ...model.thinkingLevelMap, off: "low" } };
+  return { ...model, thinkingLevelMap: { ...model.thinkingLevelMap, ...GLM53_EFFORT_BY_LEVEL } };
 }
 
 function resolveZaiDefaultModel(modelIdOverride?: string): string {
@@ -146,8 +172,14 @@ function resolveZaiDefaultToolStreamExtraParams(
 function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
   let streamFn = createToolStreamWrapper(ctx.streamFn, ctx.extraParams?.tool_stream !== false);
   const preserveThinking = shouldPreserveZaiThinking(ctx.extraParams);
+  const thinkingLevel = ctx.thinkingLevel;
 
-  if (!isDisabledThinkingLevel(ctx.thinkingLevel) && !preserveThinking) {
+  // "high", "adaptive" and an unset level are sent exactly as built.
+  if (
+    !isDisabledThinkingLevel(thinkingLevel) &&
+    !isGlm53EffortLevel(thinkingLevel) &&
+    !preserveThinking
+  ) {
     return streamFn;
   }
 
@@ -156,7 +188,7 @@ function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
       return;
     }
 
-    if (isDisabledThinkingLevel(ctx.thinkingLevel)) {
+    if (isDisabledThinkingLevel(thinkingLevel)) {
       const offEffort = model.thinkingLevelMap?.off;
       if (typeof offEffort === "string") {
         // The model always thinks and rejects "disabled": run it at its lowest effort.
@@ -166,6 +198,12 @@ function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
       }
       payload.thinking = { type: "disabled" };
       return;
+    }
+
+    if (isGlm53EffortLevel(thinkingLevel) && isAlwaysThinkingModel(model)) {
+      // The model always thinks: the level names how hard.
+      delete payload.thinking;
+      payload.reasoning_effort = GLM53_EFFORT_BY_LEVEL[thinkingLevel];
     }
 
     if (preserveThinking) {
@@ -387,6 +425,12 @@ export default definePluginEntry({
       }),
       prepareExtraParams: (ctx) => resolveZaiDefaultToolStreamExtraParams(ctx.extraParams),
       wrapStreamFn: (ctx) => wrapZaiStreamFn(ctx),
+      // An always-thinking model runs at the provider's default effort unless the
+      // user picks a level, so that effort is what the default level names.
+      resolveDefaultThinkingLevel: ({ modelId }) =>
+        isAlwaysThinkingModel({ id: modelId }) ? "high" : undefined,
+      supportsXHighThinking: ({ modelId }) =>
+        isAlwaysThinkingModel({ id: modelId }) ? true : undefined,
       isModernModelRef: ({ modelId }) => {
         const lower = normalizeLowercaseStringOrEmpty(modelId);
         return (

@@ -71,5 +71,12 @@ KaijiBot currently seeds the bundled `zai` provider with:
   matches the current GLM-5 family shape.
 - `tool_stream` is enabled by default for Z.AI tool-call streaming. Set
   `agents.defaults.models["zai/<model>"].params.tool_stream` to `false` to disable it.
+- GLM-5.3 models (`glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx`) always think. The thinking
+  level chooses how hard: `off`, `minimal` and `low` send Z.AI's lowest `reasoning_effort`,
+  `medium` sends its `high` effort, and `xhigh` sends `max`. Their default level is `high`,
+  which sends no effort, so the model runs at Z.AI's default effort until you pick a level
+  (`/think:<level>`, `agents.defaults.thinkingDefault`, or
+  `agents.defaults.models["zai/<model>"].params.thinking`). Background single-turn calls run
+  at the lowest effort on these models.
 - See [/providers/glm](/providers/glm) for the model family overview.
 - Z.AI uses Bearer auth with your API key.

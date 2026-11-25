@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Context, Model } from "@earendil-works/pi-ai";
+import type { ProviderWrapStreamFnContext } from "kaijibot/plugin-sdk/plugin-entry";
 import { registerSingleProviderPlugin } from "kaijibot/plugin-sdk/plugin-test-runtime";
 import { buildOpenAICompletionsParams } from "kaijibot/plugin-sdk/provider-transport-runtime";
 import { describe, expect, it } from "vitest";
@@ -402,20 +403,143 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
     ).toEqual(explicit);
   });
 
-  it("declares that GLM-5.3 models always think and names the effort for off", async () => {
+  it("declares the effort of every level but high for GLM-5.3 models", async () => {
     const provider = await registerSingleProviderPlugin(plugin);
 
     for (const modelId of ["glm-5.3", "glm-5.3-flash", "glm-5.3-flashx"]) {
       const resolved = provider.normalizeResolvedModel?.({
         model: { ...createGlm47Template(), id: modelId },
       } as never) as Record<string, unknown> | undefined;
-      expect(resolved?.thinkingLevelMap).toEqual({ off: "low" });
+      expect(resolved?.thinkingLevelMap).toEqual({
+        off: "low",
+        minimal: "low",
+        low: "low",
+        medium: "high",
+        xhigh: "max",
+      });
     }
 
     const canDisableThinking = createGlm47Template();
     expect(provider.normalizeResolvedModel?.({ model: canDisableThinking } as never)).toBe(
       canDisableThinking,
     );
+  });
+
+  it("defaults a GLM-5.3 model to the level that leaves the effort to the provider", async () => {
+    const provider = await registerSingleProviderPlugin(plugin);
+    const context = (modelId: string) => ({ provider: "zai", modelId, reasoning: true }) as never;
+
+    expect(provider.resolveDefaultThinkingLevel?.(context("glm-5.3-flash"))).toBe("high");
+    expect(provider.resolveDefaultThinkingLevel?.(context("glm-5.1"))).toBeUndefined();
+
+    expect(provider.supportsXHighThinking?.(context("glm-5.3"))).toBe(true);
+    expect(provider.supportsXHighThinking?.(context("glm-5.3-flashx"))).toBe(true);
+    expect(provider.supportsXHighThinking?.(context("glm-5.1"))).toBeUndefined();
+  });
+
+  // The request the agent loop builds for a zai model, with the provider wrapper applied.
+  async function captureRequest(params: {
+    model: Model<"openai-completions">;
+    thinkingLevel?: ProviderWrapStreamFnContext["thinkingLevel"];
+    extraParams?: Record<string, unknown>;
+  }): Promise<Record<string, unknown>> {
+    const provider = await registerSingleProviderPlugin(plugin);
+    let payload: Record<string, unknown> | undefined;
+    const baseStreamFn: StreamFn = (model, context, options) => {
+      const built = buildOpenAICompletionsParams(model as never, context, {
+        reasoning: params.thinkingLevel,
+      } as never);
+      options?.onPayload?.(built as never, model as never);
+      payload = built as Record<string, unknown>;
+      return {} as ReturnType<StreamFn>;
+    };
+
+    const wrapped = provider.wrapStreamFn?.({
+      provider: "zai",
+      modelId: params.model.id,
+      extraParams: params.extraParams ?? {},
+      thinkingLevel: params.thinkingLevel,
+      streamFn: baseStreamFn,
+    } as never);
+
+    await wrapped?.(
+      params.model,
+      { messages: [{ role: "user", content: "hi", timestamp: 1 }] } as Context,
+      {},
+    );
+    if (!payload) {
+      throw new Error("no request captured");
+    }
+    return payload;
+  }
+
+  function alwaysThinkingModel(): Model<"openai-completions"> {
+    return {
+      ...createGlm47Template(),
+      id: "glm-5.3-flash",
+      thinkingLevelMap: {
+        off: "low",
+        minimal: "low",
+        low: "low",
+        medium: "high",
+        xhigh: "max",
+      },
+    } as Model<"openai-completions">;
+  }
+
+  it.each([
+    ["minimal", "low"],
+    ["low", "low"],
+    ["medium", "high"],
+    ["xhigh", "max"],
+  ] as const)(
+    "runs an always-thinking model at the effort of the %s level",
+    async (thinkingLevel, effort) => {
+      const payload = await captureRequest({
+        model: alwaysThinkingModel(),
+        thinkingLevel,
+      });
+
+      expect(payload.reasoning_effort).toBe(effort);
+      expect(payload).not.toHaveProperty("thinking");
+    },
+  );
+
+  it.each([undefined, "high", "adaptive"] as const)(
+    "sends a request at the %s level exactly as the transport built it",
+    async (thinkingLevel) => {
+      const asBuilt = await captureRequest({ model: alwaysThinkingModel() });
+      const payload = await captureRequest({
+        model: alwaysThinkingModel(),
+        thinkingLevel,
+      });
+
+      expect(payload).toEqual(asBuilt);
+      expect(payload).not.toHaveProperty("reasoning_effort");
+      expect(payload).not.toHaveProperty("thinking");
+    },
+  );
+
+  it("keeps preserved thinking on and adds the effort of the level", async () => {
+    const payload = await captureRequest({
+      model: alwaysThinkingModel(),
+      thinkingLevel: "low",
+      extraParams: { preserveThinking: true },
+    });
+
+    expect(payload.thinking).toEqual({ type: "enabled", clear_thinking: false });
+    expect(payload.reasoning_effort).toBe("low");
+  });
+
+  it("leaves a model that can turn thinking off as built at a level only GLM-5.3 names", async () => {
+    const model = {
+      ...createGlm47Template(),
+      thinkingLevelMap: { minimal: "low" },
+    } as Model<"openai-completions">;
+
+    const payload = await captureRequest({ model, thinkingLevel: "minimal" });
+
+    expect(payload).not.toHaveProperty("reasoning_effort");
   });
 
   it("runs an always-thinking model at its lowest effort when thinking is off", async () => {
