@@ -2484,18 +2484,20 @@ describe("initSessionState dmScope delivery migration", () => {
 });
 
 describe("initSessionState internal channel routing preservation", () => {
+  // An external route counts as established only for a channel this build can deliver
+  // to, so these cases use the bundled feishu channel.
   it("keeps persisted external lastChannel when OriginatingChannel is internal webchat", async () => {
     const storePath = await createStorePath("preserve-external-channel-");
-    const sessionKey = "agent:main:telegram:group:12345";
+    const sessionKey = "agent:main:feishu:group:oc_chat12345";
     await writeSessionStoreFast(storePath, {
       [sessionKey]: {
         sessionId: "sess-1",
         updatedAt: Date.now(),
-        lastChannel: "telegram",
-        lastTo: "group:12345",
+        lastChannel: "feishu",
+        lastTo: "oc_chat12345",
         deliveryContext: {
-          channel: "telegram",
-          to: "group:12345",
+          channel: "feishu",
+          to: "oc_chat12345",
         },
       },
     });
@@ -2512,27 +2514,27 @@ describe("initSessionState internal channel routing preservation", () => {
       commandAuthorized: true,
     });
 
-    expect(result.sessionEntry.lastChannel).toBe("telegram");
-    expect(result.sessionEntry.lastTo).toBe("group:12345");
-    expect(result.sessionEntry.deliveryContext?.channel).toBe("telegram");
-    expect(result.sessionEntry.deliveryContext?.to).toBe("group:12345");
+    expect(result.sessionEntry.lastChannel).toBe("feishu");
+    expect(result.sessionEntry.lastTo).toBe("oc_chat12345");
+    expect(result.sessionEntry.deliveryContext?.channel).toBe("feishu");
+    expect(result.sessionEntry.deliveryContext?.to).toBe("oc_chat12345");
   });
 
   it("preserves persisted external route when webchat views a channel-peer session (fixes #47745)", async () => {
     // Regression: dashboard/webchat access must not overwrite an established
-    // external delivery route (e.g. Telegram/iMessage) on a channel-scoped session.
+    // external delivery route (e.g. a Feishu DM) on a channel-scoped session.
     // Subagent completions should still be delivered to the original channel.
     const storePath = await createStorePath("webchat-direct-route-preserve-");
-    const sessionKey = "agent:main:imessage:direct:+1555";
+    const sessionKey = "agent:main:feishu:direct:ou_peer1555";
     await writeSessionStoreFast(storePath, {
       [sessionKey]: {
         sessionId: "sess-webchat-direct",
         updatedAt: Date.now(),
-        lastChannel: "imessage",
-        lastTo: "+1555",
+        lastChannel: "feishu",
+        lastTo: "ou_peer1555",
         deliveryContext: {
-          channel: "imessage",
-          to: "+1555",
+          channel: "feishu",
+          to: "ou_peer1555",
         },
       },
     });
@@ -2553,10 +2555,10 @@ describe("initSessionState internal channel routing preservation", () => {
     });
 
     // External route must be preserved — webchat is admin/monitoring only
-    expect(result.sessionEntry.lastChannel).toBe("imessage");
-    expect(result.sessionEntry.lastTo).toBe("+1555");
-    expect(result.sessionEntry.deliveryContext?.channel).toBe("imessage");
-    expect(result.sessionEntry.deliveryContext?.to).toBe("+1555");
+    expect(result.sessionEntry.lastChannel).toBe("feishu");
+    expect(result.sessionEntry.lastTo).toBe("ou_peer1555");
+    expect(result.sessionEntry.deliveryContext?.channel).toBe("feishu");
+    expect(result.sessionEntry.deliveryContext?.to).toBe("ou_peer1555");
   });
 
   it("lets direct webchat turns own routing for sessions with no prior external route", async () => {
@@ -2594,16 +2596,16 @@ describe("initSessionState internal channel routing preservation", () => {
 
   it("keeps persisted external route when OriginatingChannel is non-deliverable", async () => {
     const storePath = await createStorePath("preserve-nondeliverable-route-");
-    const sessionKey = "agent:main:discord:channel:24680";
+    const sessionKey = "agent:main:feishu:group:oc_chat24680";
     await writeSessionStoreFast(storePath, {
       [sessionKey]: {
         sessionId: "sess-2",
         updatedAt: Date.now(),
-        lastChannel: "discord",
-        lastTo: "channel:24680",
+        lastChannel: "feishu",
+        lastTo: "oc_chat24680",
         deliveryContext: {
-          channel: "discord",
-          to: "channel:24680",
+          channel: "feishu",
+          to: "oc_chat24680",
         },
       },
     });
@@ -2620,15 +2622,15 @@ describe("initSessionState internal channel routing preservation", () => {
       commandAuthorized: true,
     });
 
-    expect(result.sessionEntry.lastChannel).toBe("discord");
-    expect(result.sessionEntry.lastTo).toBe("channel:24680");
-    expect(result.sessionEntry.deliveryContext?.channel).toBe("discord");
-    expect(result.sessionEntry.deliveryContext?.to).toBe("channel:24680");
+    expect(result.sessionEntry.lastChannel).toBe("feishu");
+    expect(result.sessionEntry.lastTo).toBe("oc_chat24680");
+    expect(result.sessionEntry.deliveryContext?.channel).toBe("feishu");
+    expect(result.sessionEntry.deliveryContext?.to).toBe("oc_chat24680");
   });
 
   it("uses session key channel hint when first turn is internal webchat", async () => {
     const storePath = await createStorePath("session-key-channel-hint-");
-    const sessionKey = "agent:main:telegram:group:98765";
+    const sessionKey = "agent:main:feishu:group:oc_chat98765";
     const cfg = { session: { store: storePath } } as KaijiBotConfig;
 
     const result = await initSessionState({
@@ -2641,8 +2643,8 @@ describe("initSessionState internal channel routing preservation", () => {
       commandAuthorized: true,
     });
 
-    expect(result.sessionEntry.lastChannel).toBe("telegram");
-    expect(result.sessionEntry.deliveryContext?.channel).toBe("telegram");
+    expect(result.sessionEntry.lastChannel).toBe("feishu");
+    expect(result.sessionEntry.deliveryContext?.channel).toBe("feishu");
   });
 
   it("keeps internal route when there is no persisted external fallback", async () => {
