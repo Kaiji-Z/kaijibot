@@ -251,7 +251,10 @@ function evaluateInsight(content: string, persona: PersonaTree): QualityReport {
   const allKeyInsights = Object.values(persona.domains).flatMap((d) => d.keyInsights);
   const bannedHits = GENERIC_INSIGHT_PATTERNS.filter((p) => p.test(content));
 
-  const hasKeyInsight = allKeyInsights.some((k) => content.includes(k));
+  // "PRISM 门控" quotes the key insight "PRISM门控": the space between Chinese and
+  // Latin text is typesetting, not content.
+  const compactContent = content.replace(/\s+/g, "");
+  const hasKeyInsight = allKeyInsights.some((k) => compactContent.includes(k.replace(/\s+/g, "")));
   const isNatural = bannedHits.length === 0;
   const isSpecific = content.length > 20 && !/泛泛|方向|值得|关注/.test(content);
   const hasFirstPerson = /我|I /.test(content);
