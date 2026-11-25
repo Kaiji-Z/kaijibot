@@ -283,7 +283,11 @@ export async function runPreparedReply(
     const { PersonaStore } = await import("../../cognitive/persona/store.js");
     const { resolveConfigDir } = await import("../../utils.js");
     const cognitiveCfg = cfg.cognitive;
-    const userId = sessionCtx.SenderId;
+    // Same key as every persona and correction write path: resolveCognitiveUserId lowercases
+    // the id, and the stores match it exactly. Reading with the raw SenderId split WeChat ids
+    // that contain uppercase letters across two persona files and injected neither.
+    const { resolveCognitiveUserId } = await import("../../cognitive/identity.js");
+    const userId = resolveCognitiveUserId(undefined, sessionCtx.SenderId) ?? undefined;
     if (userId) {
       const store = new PersonaStore(resolveConfigDir());
       cognitivePersona = await store.load(agentId, userId);
