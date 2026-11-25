@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { OPERATOR_USER_ID, resolveOperatorSenderId, resolveCognitiveUserId } from "./identity.js";
+import {
+  OPERATOR_USER_ID,
+  resolveCognitiveUserId,
+  resolveOperatorSenderId,
+  stripCognitiveThreadScope,
+} from "./identity.js";
 
 describe("resolveOperatorSenderId", () => {
   it("maps Control UI client id to operator", () => {
@@ -110,5 +115,53 @@ describe("resolveCognitiveUserId", () => {
 
   it("returns null for subagent session key", () => {
     expect(resolveCognitiveUserId("agent:main:subagent:task-123")).toBeNull();
+  });
+
+  it("resolves the person, not the topic, from a DM topic session key", () => {
+    expect(resolveCognitiveUserId("agent:main:feishu:direct:ou_alice:topic:omt_topic1")).toBe(
+      "ou_alice",
+    );
+  });
+
+  it("resolves the person from a DM session key with a thread suffix", () => {
+    expect(resolveCognitiveUserId("agent:main:feishu:direct:ou_alice:thread:omt_topic1")).toBe(
+      "ou_alice",
+    );
+  });
+
+  it("prefers the :sender: segment over a thread scope that follows it", () => {
+    expect(
+      resolveCognitiveUserId(
+        "agent:main:feishu:direct:ou_alice:sender:ou_bob777:thread:omt_topic1",
+      ),
+    ).toBe("ou_bob777");
+  });
+
+  it("resolves the sender from a group topic session", () => {
+    expect(
+      resolveCognitiveUserId("agent:main:feishu:group:oc_xyz:topic:omt_topic1:sender:ou_bob777"),
+    ).toBe("ou_bob777");
+  });
+
+  it("returns null for a group topic session without a sender", () => {
+    expect(resolveCognitiveUserId("agent:main:feishu:group:oc_xyz:topic:omt_topic1")).toBeNull();
+  });
+});
+
+describe("stripCognitiveThreadScope", () => {
+  it("drops a topic or thread scope and everything after it", () => {
+    expect(stripCognitiveThreadScope("agent:main:feishu:direct:ou_alice:topic:omt_topic1")).toBe(
+      "agent:main:feishu:direct:ou_alice",
+    );
+    expect(
+      stripCognitiveThreadScope("agent:main:feishu:group:oc_xyz:topic:omt_topic1:sender:ou_bob777"),
+    ).toBe("agent:main:feishu:group:oc_xyz");
+  });
+
+  it("returns a key without a thread scope unchanged", () => {
+    expect(stripCognitiveThreadScope("agent:main:feishu:group:oc_xyz:sender:ou_bob777")).toBe(
+      "agent:main:feishu:group:oc_xyz:sender:ou_bob777",
+    );
+    expect(stripCognitiveThreadScope("agent:topic:main")).toBe("agent:topic:main");
   });
 });

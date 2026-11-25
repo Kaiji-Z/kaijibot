@@ -51,6 +51,24 @@ export function resolveOperatorSenderId(senderId?: string | null): string | unde
   return undefined;
 }
 
+/** Position of a scope marker in a session key, skipping the `agent:<agentId>` prefix. */
+function findScopeSegment(segments: string[], marker: "sender" | "topic" | "thread"): number {
+  return segments.indexOf(marker, 2);
+}
+
+/**
+ * A session key without its topic or thread scope. A topic or thread session is keyed by the
+ * thread id; this reduces it to the key of the conversation the thread belongs to.
+ */
+export function stripCognitiveThreadScope(sessionKey: string): string {
+  const segments = sessionKey.split(":");
+  const scopeStart = Math.max(
+    findScopeSegment(segments, "topic"),
+    findScopeSegment(segments, "thread"),
+  );
+  return scopeStart >= 0 ? segments.slice(0, scopeStart).join(":") : sessionKey;
+}
+
 /**
  * Unified cognitive userId resolver. ALL cognitive subsystems should use this.
  *
@@ -60,9 +78,12 @@ export function resolveOperatorSenderId(senderId?: string | null): string | unde
  * Resolution priority:
  *  1. senderId (conversation-time path) — mapped via resolveOperatorSenderId,
  *     otherwise passed through as-is.
- *  2. sessionKey tail (background path) — "main" → operator, any other non-empty
- *     tail → returned as-is. System sessions (cron, heartbeat, subagent) and
- *     group sessions without :sender: → null (tail is not a user ID).
+ *  2. sessionKey (background path), most specific first:
+ *     - a `:sender:<id>` segment names the person inside a group or topic session;
+ *     - otherwise the key without its `:topic:` / `:thread:` scope: "main" → operator,
+ *       any other non-empty tail → returned as-is.
+ *     System sessions (cron, heartbeat, subagent) and group sessions without :sender:
+ *     → null (nothing in the key is a user ID).
  */
 export function resolveCognitiveUserId(
   sessionKey?: string,
@@ -85,11 +106,17 @@ export function resolveCognitiveUserId(
   ) {
     return null;
   }
-  const tail = sessionKey.split(":").pop();
-  if (!tail) {
+  const segments = sessionKey.split(":");
+  const senderIndex = findScopeSegment(segments, "sender");
+  const sender = senderIndex >= 0 ? segments[senderIndex + 1] : undefined;
+  if (sender) {
+    return resolveOperatorSenderId(sender) ?? sender.toLowerCase();
+  }
+  if (sessionKey.includes(":group:")) {
     return null;
   }
-  if (sessionKey.includes(":group:") && !sessionKey.includes(":sender:")) {
+  const tail = stripCognitiveThreadScope(sessionKey).split(":").pop();
+  if (!tail) {
     return null;
   }
   const normalized = tail.toLowerCase();
