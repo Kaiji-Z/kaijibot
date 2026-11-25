@@ -37,8 +37,20 @@ describe("resolveCorrectionUserId", () => {
     expect(resolveCorrectionUserId("agent:ou_def456:other")).toBe("other");
   });
 
-  it("prefers deliveryTo over sessionKey", () => {
-    expect(resolveCorrectionUserId("agent:main:feishu:direct:ou_first", "user:ou_second")).toBe(
+  it("prefers the user named by the session key over a group or thread delivery target", () => {
+    expect(
+      resolveCorrectionUserId("agent:main:feishu:group:oc_chat:sender:ou_first", "oc_chat"),
+    ).toBe("ou_first");
+    expect(
+      resolveCorrectionUserId("agent:main:feishu:direct:ou_first:topic:omt_thread", "omt_thread"),
+    ).toBe("ou_first");
+  });
+
+  it("falls back to the delivery target when the session key names no user", () => {
+    // dmScope "main": every direct message shares agent:<id>:main, so only the delivery target
+    // tells who is writing.
+    expect(resolveCorrectionUserId("agent:main:main", "user:ou_second")).toBe("ou_second");
+    expect(resolveCorrectionUserId("agent:main:feishu:group:oc_chat", "user:ou_second")).toBe(
       "ou_second",
     );
   });

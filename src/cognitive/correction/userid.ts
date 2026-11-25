@@ -1,20 +1,29 @@
+import { OPERATOR_USER_ID, resolveCognitiveUserId, resolveOperatorSenderId } from "../identity.js";
+
+function resolveUserIdFromDeliveryTarget(deliveryTo?: string): string | undefined {
+  if (!deliveryTo) {
+    return undefined;
+  }
+  const stripped = deliveryTo.replace(/^(user:|feishu:|webchat:|wechat:)/, "");
+  if (!stripped || stripped === "main") {
+    return undefined;
+  }
+  return resolveOperatorSenderId(stripped) ?? stripped;
+}
+
 /**
  * Correction-pipeline userId resolution.
  *
- * Delegates to {@link resolveCognitiveUserId} for sessionKey-based resolution.
- * The deliveryTo parameter is kept for backward compatibility with agent tools
- * that pass the reply delivery target — it is stripped of channel prefixes and
- * used as a userId hint before falling back to sessionKey resolution.
+ * The user named by the session key (DM peer or `:sender:` segment) wins: the delivery target
+ * of a group or topic reply is the chat or thread id, not the person. A key that names no
+ * user yields to the delivery target — under dmScope "main" every direct message shares
+ * `agent:<id>:main`, so the target is the only thing that tells who is writing.
  */
-
-import { resolveCognitiveUserId, resolveOperatorSenderId } from "../identity.js";
-
 export function resolveCorrectionUserId(sessionKey?: string, deliveryTo?: string): string | null {
-  if (deliveryTo) {
-    const stripped = deliveryTo.replace(/^(user:|feishu:|webchat:|wechat:)/, "");
-    if (stripped && stripped !== "main") {
-      return resolveOperatorSenderId(stripped) ?? stripped;
-    }
+  const fromDeliveryTarget = resolveUserIdFromDeliveryTarget(deliveryTo);
+  const fromSessionKey = resolveCognitiveUserId(sessionKey);
+  if (fromSessionKey && fromSessionKey !== OPERATOR_USER_ID) {
+    return fromSessionKey;
   }
-  return resolveCognitiveUserId(sessionKey);
+  return fromDeliveryTarget ?? fromSessionKey;
 }
