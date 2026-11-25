@@ -42,6 +42,10 @@ docs/internal/
 .artifacts/
 docs/.generated/plugin-sdk-api-baseline.json
 docs/.generated/plugin-sdk-api-baseline.jsonl
+# config-baseline.json and config-baseline.core.json ARE tracked, but stay listed here on purpose:
+# oxfmt honors .gitignore and these generated baselines use the generator's JSON layout, not
+# oxfmt's. Un-ignoring them makes `pnpm format:check` fail and `pnpm format` rewrite generated
+# artifacts.
 docs/.generated/config-baseline.json
 docs/.generated/config-baseline.core.json
 docs/.generated/config-baseline.channel.json
@@ -75,4 +79,4 @@ skills-lock.json
 *.omo
 kaijibot@*
 /node
-state/
+/state/
