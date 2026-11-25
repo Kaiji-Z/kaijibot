@@ -452,14 +452,16 @@ export async function runPreparedReply(
       : { ...sessionCtx, ThreadStarterBody: undefined },
     envelopeOptions,
   );
-  const baseBodyForPrompt = isBareSessionReset
-    ? baseBodyFinal
-    : [inboundUserContext, cognitiveTurnContext, baseBodyFinal].filter(Boolean).join("\n\n");
-  const baseBodyTrimmed = baseBodyForPrompt.trim();
   const hasMediaAttachment = Boolean(
     sessionCtx.MediaPath || (sessionCtx.MediaPaths && sessionCtx.MediaPaths.length > 0),
   );
-  if (!baseBodyTrimmed && !hasMediaAttachment) {
+  // The user side of the prompt is the inbound envelope plus what the user wrote. The
+  // cognitive turn context is a prefix on every turn and is left out of the three decisions
+  // below: counted as user text it made each empty message look like a prompt, hid the
+  // media-only placeholder and shadowed the first-token think hint.
+  const hasInboundContext = Boolean(inboundUserContext.trim());
+  const hasUserSideContent = hasInboundContext || Boolean(baseBodyFinal.trim());
+  if (!hasUserSideContent && !hasMediaAttachment) {
     await typing.onReplyStart();
     logVerbose("Inbound body empty after normalization; skipping agent run");
     typing.cleanup();
@@ -469,11 +471,30 @@ export async function runPreparedReply(
   }
   // When the user sends media without text, provide a minimal body so the agent
   // run proceeds and the image/document is injected by the embedded runner.
-  const effectiveBaseBody = baseBodyTrimmed
-    ? baseBodyForPrompt
-    : "[User sent media without caption]";
-  let prefixedBodyBase = await applySessionHints({
-    baseBody: effectiveBaseBody,
+  const userBody = hasUserSideContent ? baseBodyFinal : "[User sent media without caption]";
+  // Extract first-token think hint from the user body BEFORE prepending system events.
+  // If done after, the System: prefix becomes parts[0] and silently shadows any
+  // low|medium|high shorthand the user typed. The inbound envelope and the abort note
+  // sit in front of the body for the same reason: with either present the user's first
+  // token is not parts[0].
+  let strippedUserBody = userBody;
+  if (!resolvedThinkLevel && !abortedLastRun && !hasInboundContext && userBody) {
+    const parts = userBody.split(/\s+/);
+    const maybeLevel = normalizeThinkLevel(parts[0]);
+    if (maybeLevel && (maybeLevel !== "xhigh" || supportsXHighThinking(provider, model))) {
+      resolvedThinkLevel = maybeLevel;
+      strippedUserBody = parts.slice(1).join(" ").trim();
+    }
+  }
+  const withContextPrefix = (body: string): string =>
+    isBareSessionReset
+      ? baseBodyFinal
+      : [inboundUserContext, cognitiveTurnContext, body].filter(Boolean).join("\n\n");
+  // The queued (steer-mode) body keeps the original text: the inferred level is not
+  // consumed there, so the token must stay. Only the body sent now is stripped.
+  const effectiveBaseBody = withContextPrefix(userBody);
+  const prefixedBodyBase = await applySessionHints({
+    baseBody: withContextPrefix(strippedUserBody),
     abortedLastRun,
     sessionEntry,
     sessionStore,
@@ -483,17 +504,6 @@ export async function runPreparedReply(
   });
   const isGroupSession = sessionEntry?.chatType === "group" || sessionEntry?.chatType === "channel";
   const isMainSession = !isGroupSession && sessionKey === normalizeMainKey(sessionCfg?.mainKey);
-  // Extract first-token think hint from the user body BEFORE prepending system events.
-  // If done after, the System: prefix becomes parts[0] and silently shadows any
-  // low|medium|high shorthand the user typed.
-  if (!resolvedThinkLevel && prefixedBodyBase) {
-    const parts = prefixedBodyBase.split(/\s+/);
-    const maybeLevel = normalizeThinkLevel(parts[0]);
-    if (maybeLevel && (maybeLevel !== "xhigh" || supportsXHighThinking(provider, model))) {
-      resolvedThinkLevel = maybeLevel;
-      prefixedBodyBase = parts.slice(1).join(" ").trim();
-    }
-  }
   const prefixedBodyCore = prefixedBodyBase;
   const threadStarterBody = normalizeOptionalString(ctx.ThreadStarterBody);
   const threadHistoryBody = normalizeOptionalString(ctx.ThreadHistoryBody);
