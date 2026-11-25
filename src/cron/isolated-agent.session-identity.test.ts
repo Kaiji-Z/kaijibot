@@ -58,19 +58,27 @@ describe("runCronIsolatedAgentTurn session identity", () => {
       const opsWorkspace = path.join(home, "ops-workspace");
       mockEmbeddedOk();
 
-      const cfg = makeCfg(
+      const storePath = path.join(
         home,
-        path.join(home, ".kaijibot", "agents", "{agentId}", "sessions", "sessions.json"),
-        {
-          agents: {
-            defaults: { workspace: path.join(home, "default-workspace") },
-            list: [
-              { id: "main", default: true },
-              { id: "ops", workspace: opsWorkspace },
-            ],
-          },
-        },
+        ".kaijibot",
+        "agents",
+        "{agentId}",
+        "sessions",
+        "sessions.json",
       );
+      // makeCfg merges shallowly; layer the agent list over its defaults so the default model
+      // survives (model resolution throws instead of falling back when none is configured).
+      const baseAgents = makeCfg(home, storePath).agents;
+      const cfg = makeCfg(home, storePath, {
+        agents: {
+          ...baseAgents,
+          defaults: { ...baseAgents?.defaults, workspace: path.join(home, "default-workspace") },
+          list: [
+            { id: "main", default: true },
+            { id: "ops", workspace: opsWorkspace },
+          ],
+        },
+      });
 
       const res = await runCronIsolatedAgentTurn({
         cfg,

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { KaijiBotConfig } from "../config/config.js";
 import { onAgentEvent, resetAgentEventsForTest } from "../infra/agent-events.js";
 import {
   makeBootstrapWarn as realMakeBootstrapWarn,
@@ -684,8 +685,13 @@ describe("runCliAgent spawn path", () => {
       const { contextFiles } = await realResolveBootstrapContextForRun({
         workspaceDir,
       });
+      const config: KaijiBotConfig = {
+        // Resolving the default model throws instead of falling back when none is configured.
+        agents: { defaults: { model: "anthropic/claude-opus-4-6" } },
+      };
       const allArgs = buildSystemPrompt({
         workspaceDir,
+        config,
         modelDisplay: "claude-cli/sonnet",
         contextFiles,
         tools: [],
