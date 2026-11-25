@@ -403,8 +403,18 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       progressActive = true;
       startStreaming();
       startProgressTicker();
-      // Hand off: the live progress card supersedes the typing reaction.
-      await removeTypingReaction();
+      // Hand off: the live progress card supersedes the typing reaction. Best
+      // effort: the core fires this item callback without awaiting it, so a
+      // rate-limit error would otherwise end up as an unhandled rejection. The
+      // reaction state is kept so the regular typing stop retries the removal.
+      await removeTypingReaction().catch((error) =>
+        logTypingFailure({
+          log: (message) => params.runtime.log?.(message),
+          channel: "feishu",
+          action: "stop",
+          error,
+        }),
+      );
     }
     if (progressActive && progressTracker.shouldRender(now)) {
       progressTracker.markRendered(now);
@@ -412,14 +422,22 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     }
   };
 
-  const closeStreaming = async (emptyTextFallback?: string) => {
+  /** Finalize the streaming card. Resolves to the error that stopped the final
+   *  content write, or null once the card reached its final state. It never
+   *  rejects: the core dispatcher invokes onIdle/onError without awaiting them,
+   *  so a rejection from here would be unhandled and terminate the gateway. */
+  const closeStreaming = async (
+    emptyTextFallback?: string,
+    options?: { reportFailure?: boolean },
+  ): Promise<unknown> => {
     if (guard.shouldSkip("closeStreaming")) {
-      return;
+      return null;
     }
     if (streamingStartPromise) {
       await streamingStartPromise;
     }
     await partialUpdateQueue;
+    let closeError: unknown = null;
     if (streaming?.isActive()) {
       let text = buildCombinedStreamText(reasoningText, streamText);
       // Progress card with no streamed text (silent reply / media-only):
@@ -433,7 +451,16 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         text = buildMentionedCardContent(mentionTargets, text);
       }
       const finalNote = resolveCardNote(agentId, identity, prefixContext.prefixContext);
-      await streaming.close(text, { note: finalNote, replaceFinal: progressActive || undefined });
+      try {
+        await streaming.close(text, { note: finalNote, replaceFinal: progressActive || undefined });
+      } catch (error) {
+        closeError = error;
+        if (options?.reportFailure !== false) {
+          params.runtime.error?.(
+            `feishu[${account.accountId}] streaming card close failed: ${String(error)}`,
+          );
+        }
+      }
     }
     stopProgressTicker();
     streaming = null;
@@ -441,6 +468,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     streamText = "";
     lastPartial = "";
     reasoningText = "";
+    return closeError;
   };
 
   const sendChunkedTextReply = async (params: {
@@ -541,7 +569,13 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
             }
             if (info?.kind === "final") {
               streamText = mergeStreamingText(streamText, text);
-              await closeStreaming();
+              const closeError = await closeStreaming(undefined, { reportFailure: false });
+              if (closeError !== null) {
+                // The card never received the final text. Reject so the core
+                // dispatcher counts the reply as failed and this text is not
+                // recorded as delivered.
+                throw new Error(`streaming card final update failed: ${String(closeError)}`);
+              }
               deliveredFinalTexts.add(text);
             }
             // Send media even when streaming handled the text

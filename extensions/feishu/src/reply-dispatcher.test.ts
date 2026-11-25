@@ -774,6 +774,61 @@ describe("createFeishuReplyDispatcher streaming behavior", () => {
     }
   });
 
+  /** Make the next streaming session's close() reject, as the real session does when
+   *  its final content write fails. Restores the instance registry afterwards. */
+  async function withFailingStreamingClose(run: () => Promise<void>) {
+    const origPush = streamingInstances.push.bind(streamingInstances);
+    let failNext = true;
+    streamingInstances.push = (...args: StreamingSessionStub[]) => {
+      if (failNext) {
+        args[0].close = vi.fn().mockRejectedValueOnce(new Error("Card PUT failed with HTTP 500"));
+        failNext = false;
+      }
+      return origPush(...args);
+    };
+    try {
+      await run();
+    } finally {
+      streamingInstances.push = origPush;
+    }
+  }
+
+  it("never rejects from onIdle when the streaming card cannot be closed", async () => {
+    await withFailingStreamingClose(async () => {
+      const errorMock = vi.fn();
+      const { options } = createDispatcherHarness({
+        runtime: { log: vi.fn(), error: errorMock } as never,
+      });
+      await options.deliver({ text: "```md\npartial answer\n```" }, { kind: "block" });
+
+      // The core dispatcher invokes onIdle/onError without awaiting them, so a
+      // rejection here would be unhandled and terminate the gateway.
+      await expect(options.onIdle()).resolves.toBeUndefined();
+      expect(errorMock).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "streaming card close failed: Error: Card PUT failed with HTTP 500",
+        ),
+      );
+    });
+  });
+
+  it("rejects the final deliver when the streaming card cannot be closed", async () => {
+    await withFailingStreamingClose(async () => {
+      const { options } = createDispatcherHarness({ runtime: createRuntimeLogger() });
+      const finalPayload = { text: "```ts\nconst x = 1\n```" };
+
+      await expect(options.deliver(finalPayload, { kind: "final" })).rejects.toThrow(
+        "streaming card final update failed: Error: Card PUT failed with HTTP 500",
+      );
+
+      // The text never reached the card, so a repeated final payload must not be
+      // skipped as an already-delivered duplicate.
+      await options.deliver(finalPayload, { kind: "final" });
+      expect(streamingInstances).toHaveLength(2);
+      expect(streamingInstances[1].close).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("exposes abort and getPhase on streaming session instances", async () => {
     const { options } = createDispatcherHarness({
       runtime: createRuntimeLogger(),
@@ -1080,6 +1135,38 @@ describe("createFeishuReplyDispatcher progress panel", () => {
     // Later typing restart attempts are suppressed while the card is live.
     await options.onReplyStart?.();
     expect(addTypingIndicatorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs a rate-limited typing removal at engage instead of throwing", async () => {
+    vi.useFakeTimers();
+    mockAccount({ progressIndicatorDelaySeconds: 5 });
+    const logMock = vi.fn();
+    const result = createFeishuReplyDispatcher({
+      cfg: {} as never,
+      agentId: "agent",
+      runtime: { log: logMock, error: vi.fn() } as never,
+      chatId: "oc_chat",
+      replyToMessageId: "om_parent",
+    });
+    const options = createReplyDispatcherWithTypingMock.mock.calls.at(-1)?.[0];
+    await options.onReplyStart?.();
+
+    const backoff = Object.assign(new Error("Feishu API backoff: code 99991400"), {
+      code: 99991400,
+    });
+    removeTypingIndicatorMock.mockRejectedValueOnce(backoff);
+    result.replyOptions.onItemEvent?.(itemEvent());
+    vi.advanceTimersByTime(6_000);
+
+    // The core fires onItemEvent without awaiting it: a rejection here would be
+    // unhandled and terminate the gateway mid-reply.
+    await expect(
+      result.replyOptions.onItemEvent?.(itemEvent({ itemId: "tool:2" })),
+    ).resolves.toBeUndefined();
+    expect(streamingInstances).toHaveLength(1);
+    expect(logMock).toHaveBeenCalledWith(
+      "feishu typing action=stop failed: Error: Feishu API backoff: code 99991400",
+    );
   });
 
   it("keeps the typing reaction when the card never engages", async () => {
