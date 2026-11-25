@@ -395,6 +395,7 @@ export class ProactiveScheduler {
               recentInsightDomains,
               fragmentClusters: clusters,
               fragments,
+              feedbackProfile: persona.feedbackProfile,
             },
             {
               verificationLevel: "basic",

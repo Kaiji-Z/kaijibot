@@ -3666,6 +3666,71 @@ describeDet("insight hallucination gates", () => {
     expect(result!.resolvedMode).toBe("pattern");
   });
 
+  // ── pattern mode must hand the feedback profile to the engine ──
+
+  it("resolve() passes the feedback profile to the generator in pattern mode", async () => {
+    const persona = gatePersona();
+    persona.identity = { ...persona.identity, userId: "user1" };
+    const captured: import("../insight/types.js").InsightEngineInput[] = [];
+
+    const scheduler = new ProactiveScheduler(
+      config,
+      {
+        loadPersona: async () => persona,
+        onInsightReady: async () => {},
+        savePersona: async () => {},
+      },
+      {
+        // Without the profile the prompt variants are drawn at random instead of by the
+        // Thompson-Sampling bandits, so pattern prompts never learn from feedback.
+        insightGenerator: async (_persona, input) => {
+          captured.push(input);
+          return [
+            {
+              id: "pattern-feedback-profile",
+              content: "A behavioral pattern observation",
+              rationale: "test",
+              targetDomains: [],
+              sourceDomains: [],
+              relevanceScore: 0.8,
+              surpriseScore: 0.5,
+              compositeScore: 0.65,
+              sources: [],
+              verificationStatus: "partial",
+            },
+          ];
+        },
+        fragmentStore: {
+          load: async () => [],
+          findClusters: async () => [
+            {
+              id: "c1",
+              fragmentIds: ["f1"],
+              domains: ["test"],
+              structuralPattern: "test",
+              averageStrength: 0.5,
+              createdAt: Date.now(),
+            },
+          ],
+        } satisfies Partial<import("../insight/fragment-store.js").FragmentStore> as never,
+      },
+    );
+
+    await scheduler.resolve("main", persona, {
+      type: "exploration",
+      targetDomains: [],
+      sourceDomains: [],
+      pNeed: 0.8,
+      pAccept: 0.7,
+      pAct: 0.56,
+      modeCandidates: ["pattern"],
+    });
+
+    expect(captured).toHaveLength(1);
+    expect(captured[0]!.mode).toBe("pattern");
+    expect(captured[0]!.feedbackProfile).toBe(persona.feedbackProfile);
+  });
+
   // ── T1.2: resolve() propagates resolvedMode for knowledge mode ──
 
   it("resolve() sets resolvedMode on knowledge candidates", async () => {
