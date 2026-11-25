@@ -180,6 +180,41 @@ describe("FeishuStreamingSession progress content (initialContent / render / clo
       .map((req) => String(requestBody(req).content));
   }
 
+  /** Override the response for requests whose URL contains `pathSuffix`.
+   *  Returns a function that restores the previous fetch mock. */
+  function overrideResponse(
+    pathSuffix: string,
+    response: { ok: boolean; status: number; body: unknown },
+  ): () => void {
+    const upstream = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation(async (req: FetchRequest) => {
+      if (req.url.includes(pathSuffix)) {
+        return {
+          response: {
+            ok: response.ok,
+            status: response.status,
+            json: async () => response.body,
+          },
+          release: async () => {},
+        };
+      }
+      return upstream?.(req);
+    });
+    return () => {
+      if (upstream) {
+        fetchMock.mockImplementation(upstream);
+      }
+    };
+  }
+
+  function failWith(pathSuffix: string, status: number): () => void {
+    return overrideResponse(pathSuffix, {
+      ok: false,
+      status,
+      body: { code: status, msg: "internal error" },
+    });
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     installFetchMock();
@@ -260,5 +295,78 @@ describe("FeishuStreamingSession progress content (initialContent / render / clo
     await session.render("panel");
     await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a token failure during a timer-driven flush instead of rejecting", async () => {
+    const log = vi.fn();
+    // The token cache is module-level and keyed by appId: a dedicated app starts cold.
+    const session = new FeishuStreamingSession(
+      createClient() as never,
+      { ...creds, appId: "app-short-lived" },
+      log,
+    );
+    // A one-second token lifetime makes getToken refetch instead of using its cache.
+    overrideResponse("/auth/v3/", {
+      ok: true,
+      status: 200,
+      body: { code: 0, tenant_access_token: "tok", expire: 1 },
+    });
+    await session.start("oc_1", "chat_id", {});
+    failWith("/auth/v3/", 500);
+
+    await session.update("hello world");
+    // The deferred flush runs from a timer callback that nobody awaits: a rejection
+    // here reaches the process as an unhandled rejection and terminates the gateway.
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("Update failed: Error: Token request failed with HTTP 500"),
+    );
+    expect(contentPuts()).toEqual([]);
+    expect(session.isActive()).toBe(true);
+  });
+
+  it("close rejects when the final content update fails", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", { initialContent: "⏳ panel" });
+    failWith("/elements/content/content", 500);
+
+    await expect(session.close("final answer", { replaceFinal: true })).rejects.toThrow(
+      "failed with HTTP 500",
+    );
+    // The session is still released: a repeated close must not resend anything.
+    await expect(session.close("final answer", { replaceFinal: true })).resolves.toBeUndefined();
+    expect(contentPuts()).toHaveLength(1);
+    expect(session.isActive()).toBe(false);
+  });
+
+  it("treats an HTTP 200 envelope with a non-zero code as a failed update", async () => {
+    const session = new FeishuStreamingSession(createClient() as never, creds);
+    await session.start("oc_1", "chat_id", { initialContent: "⏳ panel" });
+    overrideResponse("/elements/content/content", {
+      ok: true,
+      status: 200,
+      body: { code: 99991663, msg: "sequence invalid" },
+    });
+
+    await expect(session.close("final answer", { replaceFinal: true })).rejects.toThrow(
+      "failed with code 99991663",
+    );
+  });
+
+  it("close retries content whose last streamed update failed", async () => {
+    const log = vi.fn();
+    const session = new FeishuStreamingSession(createClient() as never, creds, log);
+    await session.start("oc_1", "chat_id", {});
+    const restore = failWith("/elements/content/content", 502);
+
+    await session.update("hello world");
+    await vi.advanceTimersByTimeAsync(THROTTLE_CONSTANTS.CARDKIT_MS + 50);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Update failed"));
+
+    // The card never received that text, so the final write must not skip it as a duplicate.
+    restore();
+    await session.close("hello world");
+    expect(contentPuts()).toEqual(["hello world", "hello world"]);
   });
 });
