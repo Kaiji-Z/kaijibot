@@ -2204,6 +2204,11 @@ export async function refineInsightWithLLM(
       targetDomains: candidate.targetDomains,
       sources: candidate.sources,
       promptVariant: candidate.promptVariant,
+      // Carry the original brief and search context: a later refine round is seeded from
+      // these, and the indices must keep matching the sources carried over above.
+      generationPrompt: candidate.generationPrompt ?? originalPrompt,
+      searchQueryUsed: candidate.searchQueryUsed,
+      citedSourceIndices: candidate.citedSourceIndices ?? refined.citedSourceIndices,
     };
   } catch (err) {
     log.warn("refineInsightWithLLM: failed", { error: String(err) });

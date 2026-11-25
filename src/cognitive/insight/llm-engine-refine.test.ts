@@ -488,6 +488,29 @@ describe("refineInsightWithLLM", () => {
     expect(result!.promptVariant).toEqual({ fewShotSet: 2, frameIndex: 1 });
   });
 
+  it("preserves the original generation prompt and search context", async () => {
+    // The scheduler feeds bestCandidate.generationPrompt into the next refine round. Dropping it
+    // makes a second round refine against an empty brief.
+    const candidate = makeCandidate({
+      generationPrompt: "the full generation brief",
+      searchQueryUsed: "rust wasm interop",
+      citedSourceIndices: [0],
+    });
+    const result = await refineInsightWithLLM(
+      candidate.generationPrompt ?? "",
+      candidate,
+      critique,
+      makePersona(),
+      makeConfig(),
+      successDeps(validRefineJSON()),
+    );
+    expect(result).not.toBeNull();
+    expect(result!.generationPrompt).toBe("the full generation brief");
+    expect(result!.searchQueryUsed).toBe("rust wasm interop");
+    // Sources are carried over from the original, so their indices must be too.
+    expect(result!.citedSourceIndices).toEqual([0]);
+  });
+
   it("returns null on LLM error", async () => {
     const result = await refineInsightWithLLM(
       "prompt",
