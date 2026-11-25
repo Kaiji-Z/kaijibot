@@ -28,21 +28,23 @@ export const DIVERSE_FEW_SHOT_SETS = [
     ],
   },
   {
+    // The action is still direct and specific, but phrased as something to consider:
+    // the model copies these forms, and a command to the user fails acceptance.
     name: "直接行动 (Direct action)",
     examples: [
       {
         context: "User's insight pipeline has long refine loops that over-polish output.",
         chinese:
-          "把 refine 循环的最大重试次数从 2 降到 1。你的 critique 步骤已经足够严格，第二轮 refine 几乎总是在过度修饰第一轮的输出，反而损失了原始表达的力度。",
+          "refine 循环的最大重试次数可以考虑从 2 降到 1：你的 critique 步骤已经足够严格，第二轮 refine 几乎总是在过度修饰第一轮的输出，反而损失了原始表达的力度。",
         english:
-          "Drop the refine loop max retries from 2 to 1. Your critique step is already strict enough — the second refine round almost always over-polishes the first round's output, losing the raw expressive force.",
+          "You could drop the refine loop max retries from 2 to 1: your critique step is already strict enough — the second refine round almost always over-polishes the first round's output, losing the raw expressive force.",
       },
       {
         context: "User's persona has many domains with low depth consuming prompt space.",
         chinese:
-          "给深度低于 1.0 的领域加个自动衰减标签。你有 17 个领域但只有 5 个深度超过 2.0，低深度领域在占 prompt 空间却不产生高质量洞察。",
+          "深度低于 1.0 的领域不妨加个自动衰减标签：你有 17 个领域但只有 5 个深度超过 2.0，低深度领域在占 prompt 空间却不产生高质量洞察。",
         english:
-          "Add an auto-decay tag for domains with depth below 1.0. You have 17 domains but only 5 above depth 2.0 — the shallow ones consume prompt space without producing high-quality insights.",
+          "It may be worth adding an auto-decay tag for domains with depth below 1.0: you have 17 domains but only 5 above depth 2.0 — the shallow ones consume prompt space without producing high-quality insights.",
       },
     ],
   },

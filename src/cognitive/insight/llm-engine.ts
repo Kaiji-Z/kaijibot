@@ -873,6 +873,7 @@ Constraints:
 - Questions, lists, and varied structures are ALLOWED when they serve the insight
 - Forbidden phrases: "值得关注", "挺有意思", "不得不说", "你有没有想过", "最近在关注", "有趣的是", "值得注意的是"
 - Start with a concrete fact, counter-intuitive observation, or specific case — never with "关于", "在...领域", "结合你", "作为"
+- Offer a recommendation as something the user could consider, never as a command issued to them
 - ${bannedSection}
 ${webResults.length > 0 ? `- You MAY naturally reference the source (e.g., "according to [0]", "看到[2]提到")` : ""}
 
@@ -1050,8 +1051,8 @@ const PROMPT_FRAMES: readonly PromptFrameFn[] = [
     }
     return pickLocalized(
       L(
-        `给${topic}方向一个具体的、可以直接执行的下一步建议。`,
-        `Give a specific, directly actionable next-step suggestion for the ${topic} direction.`,
+        `给${topic}方向一个具体的下一步建议。`,
+        `Give a specific next-step suggestion for the ${topic} direction.`,
       ),
       locale,
     );
@@ -1091,10 +1092,7 @@ const STRUCTURE_SEEDS: readonly LocalizableString[] = [
     "这次先说结论或判断，再说原因，不要反过来。",
     "This time state the conclusion or judgment first, then the reasoning — not the reverse.",
   ),
-  L(
-    "这次直接给一个可执行的建议，不要做分析。",
-    "This time give a directly actionable suggestion, no analysis.",
-  ),
+  L("这次直接给一个具体的建议，不要做分析。", "This time give a specific suggestion, no analysis."),
   L(
     "这次说一个具体的案例或例子，不要抽象概括。",
     "This time state a concrete case or example, no abstract generalization.",
@@ -1108,11 +1106,16 @@ const STRUCTURE_SEEDS: readonly LocalizableString[] = [
     "这次指出一个常见的误区或错误做法，然后给出正确的方式。",
     "This time point out a common misconception or wrong practice, then give the correct approach.",
   ),
-  L(
-    "这次说一个具体的、可以直接执行的方法或方案。",
-    "This time state a specific, directly actionable method or plan.",
-  ),
+  L("这次说一个具体的方法或方案。", "This time state a specific method or plan."),
 ];
+
+// The acceptance criteria (docs/ACCEPTANCE.md §7) forbid instructions directed at the
+// user. A recommendation about the user's own work is still wanted, so the prompts that
+// ask for one ask for it as something to consider, and the examples show that form. The
+// pattern prompt is not among them: it asks for an observation, and with this rule in it
+// the insights came back as advice.
+const PROPOSAL_NOT_COMMAND_RULE_ZH =
+  "建议要说成可供考虑的选项或可能的结果，不要写成对用户下的命令（如“把…改成…”“务必”“立即…”）";
 
 function getTimeTag(lastMentioned: number): string {
   const hoursAgo = (Date.now() - lastMentioned) / (60 * 60 * 1000);
@@ -1599,11 +1602,12 @@ ${structureSeed}
   · "你有没有想过"、"最近在关注"
   · "有趣的是"、"值得注意的是"
 ${bannedSection ? `  · ${bannedSection}` : ""}
+- ${PROPOSAL_NOT_COMMAND_RULE_ZH}
 ${webResults.length > 0 ? "- 可以自然引用来源（如「根据[0]」、「看到[2]提到」）" : ""}
 
  好的洞察（满足至少一条）：
  - 跨域连接：把用户不同兴趣领域的具体知识关联起来
- - 实用建议：给一个明确的、可直接执行的行动方向
+ - 实用建议：指出一个明确的下一步（说成可供考虑的选项，不是命令）
  - 反常识观点：挑战一个可能的错误认知，用事实反驳
 
 Respond with ONLY a JSON array (no markdown, no code fences):
