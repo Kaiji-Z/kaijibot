@@ -68,7 +68,7 @@ function createAudioCtxWithProvider(mediaPath: string, extra?: Partial<MsgContex
     Body: "<media:audio>",
     MediaPath: mediaPath,
     MediaType: "audio/ogg",
-    Provider: "whatsapp",
+    Provider: "feishu",
     From: "+10000000001",
     AccountId: "acc1",
     ...extra,
@@ -223,7 +223,7 @@ describe("applyMediaUnderstanding – echo transcript", () => {
     runExecMock.mockReset();
     runCommandWithTimeoutMock.mockReset();
     mockDeliverOutboundPayloads.mockClear();
-    mockDeliverOutboundPayloads.mockResolvedValue([{ channel: "whatsapp", messageId: "echo-1" }]);
+    mockDeliverOutboundPayloads.mockResolvedValue([{ channel: "feishu", messageId: "echo-1" }]);
     clearMediaUnderstandingBinaryCacheForTests?.();
   });
 
@@ -266,7 +266,7 @@ describe("applyMediaUnderstanding – echo transcript", () => {
     await applyMediaUnderstanding({ ctx, cfg, providers });
 
     const callArgs = expectSingleEchoDeliveryCall();
-    expect(callArgs.channel).toBe("whatsapp");
+    expect(callArgs.channel).toBe("feishu");
     expect(callArgs.to).toBe("+10000000001");
     expect(callArgs.accountId).toBe("acc1");
     expect(callArgs.payloads).toHaveLength(1);
@@ -283,7 +283,7 @@ describe("applyMediaUnderstanding – echo transcript", () => {
       Body: "<media:image>",
       MediaPath: imgPath,
       MediaType: "image/jpeg",
-      Provider: "whatsapp",
+      Provider: "feishu",
       From: "+10000000001",
     };
 

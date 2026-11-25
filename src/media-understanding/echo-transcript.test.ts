@@ -12,7 +12,7 @@ import { DEFAULT_ECHO_TRANSCRIPT_FORMAT, sendTranscriptEcho } from "./echo-trans
 
 function createCtx(overrides?: Partial<MsgContext>): MsgContext {
   return {
-    Provider: "whatsapp",
+    Provider: "feishu",
     From: "+10000000001",
     AccountId: "acc1",
     ...overrides,
@@ -22,7 +22,7 @@ function createCtx(overrides?: Partial<MsgContext>): MsgContext {
 describe("sendTranscriptEcho", () => {
   beforeEach(() => {
     mockDeliverOutboundPayloads.mockReset();
-    mockDeliverOutboundPayloads.mockResolvedValue([{ channel: "whatsapp", messageId: "echo-1" }]);
+    mockDeliverOutboundPayloads.mockResolvedValue([{ channel: "feishu", messageId: "echo-1" }]);
   });
 
   it("sends the default formatted transcript to the resolved origin", async () => {
@@ -35,7 +35,7 @@ describe("sendTranscriptEcho", () => {
     expect(mockDeliverOutboundPayloads).toHaveBeenCalledOnce();
     expect(mockDeliverOutboundPayloads).toHaveBeenCalledWith({
       cfg: {},
-      channel: "whatsapp",
+      channel: "feishu",
       to: "+10000000001",
       accountId: "acc1",
       threadId: undefined,
