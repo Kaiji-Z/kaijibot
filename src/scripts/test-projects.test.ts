@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const { buildVitestArgs, buildVitestRunPlans, createVitestRunSpecs, parseTestProjectsArgs } =
@@ -774,4 +775,63 @@ describe("test-projects args", () => {
       ]),
     ).toThrow("watch mode with mixed test suites is not supported");
   });
+});
+
+describe("test-projects lane integrity", () => {
+  const repoRoot = new URL("../../", import.meta.url);
+  const laneConfigFor = (target: string) => buildVitestRunPlans([target])[0]?.config;
+
+  // One real file per routed family. Every plan must point at a config that exists on
+  // disk: vitest aborts before collecting a single test when --config is missing.
+  it.each([
+    ["default", "src/cognitive/cognitive-locale.test.ts"],
+    ["acp", "src/acp/approval-classifier.test.ts"],
+    ["agents", "src/agents/acp-binding-architecture.guardrail.test.ts"],
+    ["autoReply", "src/auto-reply/chunk.test.ts"],
+    ["boundary", "src/infra/home-dir.test.ts"],
+    ["bundled", "src/plugins/loader.test.ts"],
+    ["channel", "src/channels/account-snapshot-fields.test.ts"],
+    ["cli", "src/cli/acp-cli.option-collisions.test.ts"],
+    ["command", "src/commands/agent-via-gateway.test.ts"],
+    ["contracts", "src/plugins/contracts/auth-choice.contract.test.ts"],
+    ["cron", "src/cron/cron-protocol-conformance.test.ts"],
+    ["daemon", "src/daemon/cmd-argv.test.ts"],
+    ["gateway", "src/gateway/agent-prompt.test.ts"],
+    ["hooks", "src/hooks/fire-and-forget.test.ts"],
+    ["infra", "src/infra/abort-pattern.test.ts"],
+    ["logging", "src/logging/config.test.ts"],
+    ["media", "src/media/audio.test.ts"],
+    ["mediaUnderstanding", "src/media-understanding/apply.echo-transcript.test.ts"],
+    ["plugin", "src/plugins/bundle-claude-inspect.test.ts"],
+    ["pluginSdk", "src/plugin-sdk/acp-runtime.test.ts"],
+    ["pluginSdkLight", "src/plugin-sdk/lazy-value.test.ts"],
+    ["process", "src/process/command-queue.test.ts"],
+    ["runtimeConfig", "src/config/agent-dirs.test.ts"],
+    ["secrets", "src/secrets/apply.test.ts"],
+    ["sharedCore", "src/shared/assistant-identity-values.test.ts"],
+    ["tasks", "src/tasks/task-executor-boundary.test.ts"],
+    ["tooling", "src/scripts/canvas-a2ui-copy.test.ts"],
+    ["tui", "src/tui/commands.test.ts"],
+    ["ui", "ui/src/ui/app-chat.test.ts"],
+    ["utils", "src/utils/cjk-chars.test.ts"],
+    ["wizard", "src/wizard/clack-prompter.test.ts"],
+  ])("routes $kind targets to a lane config that exists on disk", (_kind, target) => {
+    const config = laneConfigFor(target);
+    if (!config) {
+      throw new Error(`no vitest plan was produced for ${target}`);
+    }
+    expect(existsSync(new URL(config, repoRoot))).toBe(true);
+  });
+
+  it.each(["src/tasks", "src/cron", "src/gateway", "src/commands", "src/secrets", "ui"])(
+    "routes the directory %s to the same lane as a test file inside it",
+    (dir) => {
+      const viaFile = laneConfigFor(`${dir}/example.test.ts`);
+      if (!viaFile) {
+        throw new Error(`no vitest plan was produced for ${dir}/example.test.ts`);
+      }
+      expect(laneConfigFor(dir)).toBe(viaFile);
+      expect(laneConfigFor(`${dir}/`)).toBe(viaFile);
+    },
+  );
 });

@@ -227,11 +227,11 @@ describe("test scripts", () => {
       "node scripts/run-vitest.mjs run --config vitest/vitest.unit.config.ts",
     );
     expect(pkg.scripts?.["test:unit"]).toBe(
-      "pnpm test:unit:fast && node scripts/run-vitest.mjs run --config vitest/vitest.unit.config.ts",
+      "node scripts/run-vitest.mjs run --config vitest/vitest.unit.config.ts",
     );
-    expect(pkg.scripts?.["test:unit:fast"]).toBe(
-      "node scripts/run-vitest.mjs run --config vitest/vitest.unit-fast.config.ts",
-    );
+    // This fork has no unit-fast lane (vitest.unit-fast-paths.mjs is a stub), so
+    // no script may point at a unit-fast config that does not exist.
+    expect(pkg.scripts?.["test:unit:fast"]).toBeUndefined();
     expect(pkg.scripts?.["test:unit:fast:audit"]).toBe("node scripts/test-unit-fast-audit.mjs");
     expect(pkg.scripts?.["test"]).toBe("node scripts/test-projects.mjs");
     expect(pkg.scripts?.["test:gateway"]).toBe(

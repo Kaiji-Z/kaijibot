@@ -147,6 +147,20 @@ function isFileLikeTarget(arg) {
   return /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(arg);
 }
 
+function toRoutingPath(relative, cwd) {
+  // Lane routing matches "<dir>/" prefixes and path.resolve() drops a trailing
+  // slash, so treat an existing directory target as "<dir>/". `pnpm test src/gateway`
+  // and `pnpm test src/gateway/` then land on the same scoped lane.
+  if (isGlobTarget(relative) || isFileLikeTarget(relative) || relative.endsWith("/")) {
+    return relative;
+  }
+  try {
+    return fs.statSync(path.resolve(cwd, relative)).isDirectory() ? `${relative}/` : relative;
+  } catch {
+    return relative;
+  }
+}
+
 function isLikelyFileTarget(arg) {
   return /(?:^|\/)[^/]+\.[A-Za-z0-9]+$/u.test(arg);
 }
@@ -252,7 +266,7 @@ export function resolveChangedTargetArgs(
 }
 
 function classifyTarget(arg, cwd) {
-  const relative = toRepoRelativeTarget(arg, cwd);
+  const relative = toRoutingPath(toRepoRelativeTarget(arg, cwd), cwd);
   if (resolveUnitFastTestIncludePattern(relative)) {
     return "unitFast";
   }
