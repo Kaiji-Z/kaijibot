@@ -54,7 +54,7 @@ Before developing any feature or changing any code, read and follow `VERIFICATIO
 - Run CLI in dev: `pnpm kaijibot ...` or `pnpm dev`
 - **Deploy gateway (build + restart)**: `pnpm gw:deploy` — builds latest code, stops old gateway, starts new gateway in tmux session `gw`. Use this after any code change that needs to take effect in the running gateway.
 - Live tests (real keys): `KAIJIBOT_LIVE_TEST=1 pnpm test:live` (KaijiBot-only) or `LIVE=1 pnpm test:live`
-- Pre-commit hooks: `prek install`. The hook runs `pnpm check`. Use `FAST_COMMIT=1` to skip format+check in the hook.
+- Pre-commit hooks (optional): `prek install`. `.pre-commit-config.yaml` runs hygiene checks, detect-secrets, shellcheck, ruff, `pnpm audit --prod`, oxlint and oxfmt on staged files; it does not run `pnpm check`.
 - Prefer Bun for script execution: `bun <file.ts>` / `bunx <tool>`.
 
 ## Docker

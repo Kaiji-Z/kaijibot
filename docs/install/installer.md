@@ -184,7 +184,7 @@ Same source-build steps as above. Useful commands for contributors:
 | `pnpm format:fix`   | Auto-format (oxfmt)                |
 | `pnpm kaijibot ...` | Run CLI in dev                     |
 
-Pre-commit hooks: `prek install`. Skip with `FAST_COMMIT=1`.
+Pre-commit hooks (optional): `prek install`.
 
 ---
 
