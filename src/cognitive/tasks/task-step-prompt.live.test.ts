@@ -28,6 +28,10 @@ const MODEL = "glm-5.3-flash";
 
 type ToolCall = { name: string; arguments: string };
 
+// Sent the way the agent loop sends a turn: thinking on, and a cap on the answer
+// only. glm-5.3-flash always thinks; with `max_tokens` the reasoning sits inside
+// the cap, so a turn that thinks at length ends in the middle of a tool call's
+// arguments.
 async function chatWithTools(params: {
   system: string;
   user: string;
@@ -38,7 +42,9 @@ async function chatWithTools(params: {
   timeoutMs?: number;
 }): Promise<ToolCall[]> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), params.timeoutMs ?? 90_000);
+  // Reasoning is not capped, and on this model a turn occasionally thinks for
+  // two minutes or more (9 samples: median 20 s, longest 154 s).
+  const timer = setTimeout(() => controller.abort(), params.timeoutMs ?? 240_000);
   try {
     const res = await fetch(ZAI_URL, {
       method: "POST",
@@ -53,7 +59,8 @@ async function chatWithTools(params: {
         tools: params.tools,
         tool_choice: "auto",
         temperature: 0.2,
-        max_tokens: 1500,
+        max_completion_tokens: 1500,
+        thinking: { type: "enabled" },
       }),
     });
     const data = (await res.json()) as {
@@ -102,7 +109,7 @@ const describeLive = isLive && ZAI_API_KEY ? describe : describe.skip;
 describeLive("task step prompt contract (live, real LLM)", () => {
   it(
     "a real model closes the step handshake with task_step_report",
-    { timeout: 120_000 },
+    { timeout: 300_000 },
     async () => {
       const task = makeTask({
         goal: "把“坚持早睡早起”的三个好处整理成一句话清单，作为最终结果",
@@ -147,7 +154,7 @@ describeLive("task step prompt contract (live, real LLM)", () => {
 
   it(
     "a real model handles a delegatable goal — split with linkage, or inline completion",
-    { timeout: 120_000 },
+    { timeout: 300_000 },
     async () => {
       const task = makeTask({
         id: "task-live-0002",

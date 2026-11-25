@@ -161,10 +161,9 @@ async function tavilySearch(query: string): Promise<WebSearchResult[]> {
   }));
 }
 
-/**
- * Call ZAI coding plan API. Handles reasoning models that return `reasoning_content`
- * separately from `content` — if `content` is empty, falls back to `reasoning_content`.
- */
+// Sent the way production sends these calls: interest inference and insight
+// generation pass no reasoning option, which turns thinking off for zai models.
+// Left on, the reasoning counts against the token cap and the answer is cut off.
 async function callLLM(prompt: string): Promise<string> {
   const res = await fetch(ZAI_URL, {
     method: "POST",
@@ -173,25 +172,18 @@ async function callLLM(prompt: string): Promise<string> {
       model: MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.85,
-      max_tokens: 3000,
+      max_completion_tokens: 3000,
+      thinking: { type: "disabled" },
     }),
   });
   const data = (await res.json()) as {
     error?: { message: string };
-    choices?: Array<{
-      finish_reason?: string;
-      message: { content: string; reasoning_content?: string };
-    }>;
+    choices?: Array<{ message: { content: string } }>;
   };
   if (data.error) {
     throw new Error(data.error.message);
   }
-  const choice = data.choices?.[0];
-  if (!choice) {
-    return "";
-  }
-  // Prefer final content; fall back to reasoning_content for reasoning models
-  return choice.message.content || choice.message.reasoning_content || "";
+  return data.choices?.[0]?.message?.content ?? "";
 }
 
 // ---------------------------------------------------------------------------
@@ -360,9 +352,7 @@ describe.skipIf(!isLive || !ZAI_API_KEY || !TAVILY_API_KEY)("live surprise insig
 
     const r1 = await inferSearchStrategy(persona, input, config, inferenceDeps);
     if (!r1.ok) {
-      console.log(
-        `  Round 1 inference failed: ${r1.error} (reasoning model timeout is expected on slow connections)`,
-      );
+      console.log(`  Round 1 inference failed: ${r1.error}`);
     }
     expect(r1.ok).toBe(true);
     if (!r1.ok) {

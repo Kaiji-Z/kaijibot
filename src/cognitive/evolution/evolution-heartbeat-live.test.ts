@@ -85,6 +85,9 @@ const TOOL_RESULT = JSON.stringify({
   recentSuggestions: [],
 });
 
+// Sent the way the agent loop sends a turn: thinking on, and a cap on the answer
+// only. With `max_tokens` the reasoning sits inside the cap, so a turn that
+// thinks at length ends before it emits the tool call.
 async function callLLMMessages(
   messages: ChatMessage[],
   tools?: unknown[],
@@ -100,7 +103,8 @@ async function callLLMMessages(
       messages,
       tools: tools ?? [EVOLUTION_TOOL],
       temperature: 0.3,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
+      thinking: { type: "enabled" },
     }),
   });
   const data = (await res.json()) as {

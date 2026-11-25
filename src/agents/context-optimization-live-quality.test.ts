@@ -20,6 +20,9 @@ const ZAI_API_KEY = process.env.ZAI_API_KEY;
 const ZAI_URL = "https://api.z.ai/api/coding/paas/v4/chat/completions";
 const MODEL = "glm-5.2";
 
+// Sent the way the agent loop sends a turn: thinking on, and a cap on the answer
+// only. With `max_tokens` the reasoning sits inside the cap, so a turn that
+// thinks at length ends before it writes the reply.
 async function callLLM(systemPrompt: string, userMessage: string): Promise<string> {
   const res = await fetch(ZAI_URL, {
     method: "POST",
@@ -31,7 +34,8 @@ async function callLLM(systemPrompt: string, userMessage: string): Promise<strin
         { role: "user", content: userMessage },
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_completion_tokens: 500,
+      thinking: { type: "enabled" },
     }),
   });
   const data = (await res.json()) as {
