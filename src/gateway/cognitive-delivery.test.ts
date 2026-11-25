@@ -60,6 +60,32 @@ describe("findSessionKeyForUserId", () => {
     expect(result).toBe("agent:main:simple-user");
   });
 
+  it("finds the user's topic session when no key ends with the user id", () => {
+    const topicKey = "agent:main:feishu:direct:ou_abc123:topic:omt_topic1";
+    const storePath = writeSessionStore({
+      [topicKey]: { lastChannel: "feishu", lastTo: "omt_topic1" },
+    });
+    const result = findSessionKeyForUserId(makeCfg(storePath), "ou_abc123");
+    expect(result).toBe(topicKey);
+  });
+
+  it("does not match the topic session of another user", () => {
+    const storePath = writeSessionStore({
+      "agent:main:feishu:direct:ou_other:topic:omt_topic1": { lastChannel: "feishu" },
+    });
+    const result = findSessionKeyForUserId(makeCfg(storePath), "ou_abc123");
+    expect(result).toBeUndefined();
+  });
+
+  it("prefers a key that ends with the user id over the user's topic session", () => {
+    const storePath = writeSessionStore({
+      "agent:main:feishu:direct:ou_abc123:topic:omt_topic1": { lastChannel: "feishu" },
+      "agent:main:feishu:direct:ou_abc123": { lastChannel: "feishu" },
+    });
+    const result = findSessionKeyForUserId(makeCfg(storePath), "ou_abc123");
+    expect(result).toBe("agent:main:feishu:direct:ou_abc123");
+  });
+
   it("returns undefined when no matching session exists", () => {
     const storePath = writeSessionStore({
       "agent:main:feishu:direct:ou_other": { lastChannel: "feishu" },

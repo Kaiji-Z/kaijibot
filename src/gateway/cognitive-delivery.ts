@@ -1,4 +1,4 @@
-import { OPERATOR_USER_ID } from "../cognitive/identity.js";
+import { OPERATOR_USER_ID, stripCognitiveThreadScope } from "../cognitive/identity.js";
 import type { KaijiBotConfig } from "../config/config.js";
 import { resolveStorePath } from "../config/sessions/paths.js";
 import { loadSessionStore } from "../config/sessions/store-load.js";
@@ -34,6 +34,17 @@ export function findSessionKeyForUserId(
       continue;
     }
     if (key.toLowerCase().endsWith(`:${lowerUserId}`)) {
+      return key;
+    }
+  }
+
+  // A topic or thread session is keyed by the thread id. It still belongs to the person the
+  // surrounding conversation names, so match on that part when no key ends with the id.
+  for (const key of Object.keys(store)) {
+    if (isSubagentSessionKey(key) || isCronSessionKey(key)) {
+      continue;
+    }
+    if (stripCognitiveThreadScope(key).toLowerCase().endsWith(`:${lowerUserId}`)) {
       return key;
     }
   }
