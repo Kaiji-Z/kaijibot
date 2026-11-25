@@ -10,10 +10,11 @@
  * terminal report (both valid; splitting propensity is model-dependent).
  *
  * Run (local only, real API cost):
- *   KAIJIBOT_LIVE_TEST=1 pnpm test src/cognitive/tasks/task-step-prompt.live.test.ts
+ *   pnpm test:live src/cognitive/tasks/task-step-prompt.live.test.ts
  * Requires ZAI_API_KEY (loaded from ~/.kaijibot/.env in dev environments).
- * Live-named test files are excluded from normal `pnpm test`; this config is
- * reached only through the dedicated live entrypoint.
+ * Live-named test files are excluded from every normal lane: `pnpm test <this
+ * file>` matches nothing and exits 0 without running a test. The dedicated live
+ * entrypoint is the only way this file runs.
  */
 import { describe, expect, it } from "vitest";
 import { createTaskTool, createTaskStepReportTool } from "../../agents/tools/task-tool.js";

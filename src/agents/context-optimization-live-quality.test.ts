@@ -1,7 +1,7 @@
 /**
  * Live verification — real LLM behavior under optimized context engineering.
  *
- * Run: KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY pnpm test src/agents/context-optimization.live.test.ts
+ * Run: KAIJIBOT_LIVE_TEST=1 ZAI_API_KEY=$ZAI_API_KEY pnpm test src/agents/context-optimization-live-quality.test.ts
  *
  * Validates 4 optimization pillars against real LLM (not just code structure):
  *   1. W2.2 — Lost in the Middle: corrections at tail are followed
