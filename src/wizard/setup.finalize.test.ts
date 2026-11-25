@@ -116,7 +116,7 @@ vi.mock("../daemon/service.js", () => ({
           progressMessage: `${serviceNoun} service restarted.`,
         },
   ),
-  resolveGatewayService: vi.fn(() => ({
+  tryResolveGatewayService: vi.fn(() => ({
     isLoaded: gatewayServiceIsLoaded,
     restart: gatewayServiceRestart,
     uninstall: gatewayServiceUninstall,
@@ -269,12 +269,16 @@ describe("finalizeSetupWizard", () => {
     const previous = process.env.KAIJIBOT_GATEWAY_PASSWORD;
     process.env.KAIJIBOT_GATEWAY_PASSWORD = "resolved-gateway-password"; // pragma: allowlist secret
     resolveSetupSecretInputString.mockResolvedValueOnce("resolved-gateway-password");
-    const select = vi.fn(async (params: { message: string }) => {
-      if (params.message === "How do you want to hatch your bot?") {
-        return "tui";
-      }
-      return "later";
-    });
+    const select = vi.fn(
+      async (params: { message: string; options?: Array<{ value: unknown }> }) => {
+        // The hatch prompt is the only select offering "tui"; matching by option value keeps this
+        // independent of the prompt copy, which is localized and has changed before.
+        if (params.options?.some((option) => option.value === "tui")) {
+          return "tui";
+        }
+        return "later";
+      },
+    );
     const prompter = buildWizardPrompter({
       select: select as never,
       confirm: vi.fn(async () => false),
