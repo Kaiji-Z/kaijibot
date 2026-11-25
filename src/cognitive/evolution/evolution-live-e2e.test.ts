@@ -55,6 +55,11 @@ const ZAI_API_KEY = process.env.ZAI_API_KEY;
 const ZAI_URL = "https://api.z.ai/api/coding/paas/v4/chat/completions";
 const MODEL = "glm-5-turbo";
 
+// Sent the way production sends these calls (createStandaloneGenerateText: 4000
+// tokens, no reasoning option). With no reasoning option the model layer turns
+// thinking off for zai models (pi-ai sends `thinking: { type: "disabled" }` and
+// `max_completion_tokens`). Left on, the reasoning counts against the token cap
+// and the draft is cut off.
 async function callLLM(prompt: string): Promise<string> {
   const res = await fetch(ZAI_URL, {
     method: "POST",
@@ -63,7 +68,8 @@ async function callLLM(prompt: string): Promise<string> {
       model: MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 3000,
+      max_completion_tokens: 4000,
+      thinking: { type: "disabled" },
     }),
   });
   const data = (await res.json()) as {

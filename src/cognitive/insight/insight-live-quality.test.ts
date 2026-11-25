@@ -183,6 +183,10 @@ async function tavilySearch(query: string): Promise<WebSearchResult[]> {
   }));
 }
 
+// Sent the way production sends these calls. With no reasoning option the model
+// layer turns thinking off for zai models (pi-ai sends `thinking: { type: "disabled" }`
+// and `max_completion_tokens`). Left on, the reasoning counts against the token
+// cap and the answer is cut off after a few characters.
 async function callLLM(prompt: string): Promise<string> {
   const res = await fetch(ZAI_URL, {
     method: "POST",
@@ -191,7 +195,8 @@ async function callLLM(prompt: string): Promise<string> {
       model: MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.85,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
+      thinking: { type: "disabled" },
     }),
   });
   const data = (await res.json()) as {
