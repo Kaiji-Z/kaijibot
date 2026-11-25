@@ -64,6 +64,7 @@
   "security-runtime",
   "gateway-runtime",
   "generate-text",
+  "github-copilot-token",
   "cli-runtime",
   "cli-backend",
   "hook-runtime",
