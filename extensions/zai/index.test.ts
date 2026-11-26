@@ -418,12 +418,28 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         medium: "high",
         xhigh: "max",
       });
+      // Without this pi-ai's zai serialization drops `reasoning_effort` from the
+      // request and the effort map never reaches the API.
+      const compat = resolved?.compat as Record<string, unknown> | undefined;
+      expect(compat?.supportsReasoningEffort).toBe(true);
     }
 
     const canDisableThinking = createGlm47Template();
     expect(provider.normalizeResolvedModel?.({ model: canDisableThinking } as never)).toBe(
       canDisableThinking,
     );
+  });
+
+  it("keeps an already-declared GLM-5.3 model untouched", async () => {
+    const provider = await registerSingleProviderPlugin(plugin);
+    const declared = {
+      ...createGlm47Template(),
+      id: "glm-5.3-flash",
+      thinkingLevelMap: { off: "low", minimal: "low", low: "low", medium: "high", xhigh: "max" },
+      compat: { supportsReasoningEffort: true },
+    } as Record<string, unknown>;
+
+    expect(provider.normalizeResolvedModel?.({ model: declared } as never)).toBe(declared);
   });
 
   it("defaults a GLM-5.3 model to the level that leaves the effort to the provider", async () => {

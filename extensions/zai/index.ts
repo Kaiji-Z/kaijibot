@@ -116,10 +116,23 @@ function isGlm53EffortLevel(
 }
 
 function declareAlwaysThinkingModel(model: ProviderRuntimeModel): ProviderRuntimeModel {
-  if (!isAlwaysThinkingModel(model) || model.thinkingLevelMap?.off !== undefined) {
+  // The plugin-sdk compat union doesn't carry supportsReasoningEffort on every
+  // member, but the zai models this function touches are all openai-completions.
+  const compat = model.compat as { supportsReasoningEffort?: boolean } | undefined;
+  if (
+    !isAlwaysThinkingModel(model) ||
+    (model.thinkingLevelMap?.off !== undefined && compat?.supportsReasoningEffort === true)
+  ) {
     return model;
   }
-  return { ...model, thinkingLevelMap: { ...model.thinkingLevelMap, ...GLM53_EFFORT_BY_LEVEL } };
+  return {
+    ...model,
+    thinkingLevelMap: { ...model.thinkingLevelMap, ...GLM53_EFFORT_BY_LEVEL },
+    // pi-ai's zai serialization attaches `reasoning_effort` only when the model
+    // declares support for it, so the effort map above is dead weight without
+    // this override.
+    compat: { ...model.compat, supportsReasoningEffort: true },
+  };
 }
 
 function resolveZaiDefaultModel(modelIdOverride?: string): string {
@@ -192,6 +205,9 @@ function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
       const offEffort = model.thinkingLevelMap?.off;
       if (typeof offEffort === "string") {
         // The model always thinks and rejects "disabled": run it at its lowest effort.
+        // Best-effort only — pi 1.6's provider-request hook chain may rebuild the
+        // payload after this hook, so the session-level level resolution
+        // (resolveSessionThinkingLevel) is the primary defense.
         delete payload.thinking;
         payload.reasoning_effort = offEffort;
         return;
