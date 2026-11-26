@@ -79,7 +79,8 @@ export function resolveEmbeddedAgentStreamFn(params: {
     // message, so strip the cache boundary marker there instead of on a
     // context-level systemPrompt field.
     const normalizeContext = (context: Parameters<StreamFn>[1]) => {
-      const systemMessage = getInitialSystemMessage(context.messages);
+      const messages = context.messages ?? [];
+      const systemMessage = getInitialSystemMessage(messages);
       if (!systemMessage || typeof systemMessage.content !== "string") {
         return context;
       }
@@ -87,8 +88,8 @@ export function resolveEmbeddedAgentStreamFn(params: {
       if (stripped === systemMessage.content) {
         return context;
       }
-      const messages = [{ ...systemMessage, content: stripped }, ...context.messages.slice(1)];
-      return { messages } as Parameters<StreamFn>[1];
+      const nextMessages = [{ ...systemMessage, content: stripped }, ...messages.slice(1)];
+      return { messages: nextMessages } as Parameters<StreamFn>[1];
     };
     // Provider-owned transports bypass pi-coding-agent's default auth lookup,
     // so keep injecting the resolved runtime apiKey for streamSimple-compatible

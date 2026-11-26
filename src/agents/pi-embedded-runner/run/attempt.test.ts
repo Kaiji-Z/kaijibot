@@ -289,12 +289,18 @@ describe("resolveEmbeddedAgentStreamFn", () => {
       streamFn(
         { provider: "demo-provider", id: "demo-model" } as never,
         {
-          systemPrompt: `Stable prefix${SYSTEM_PROMPT_CACHE_BOUNDARY}Dynamic suffix`,
+          messages: [
+            {
+              role: "system",
+              content: `Stable prefix${SYSTEM_PROMPT_CACHE_BOUNDARY}Dynamic suffix`,
+              timestamp: 0,
+            },
+          ],
         } as never,
         {},
       ),
     ).resolves.toMatchObject({
-      systemPrompt: "Stable prefix\nDynamic suffix",
+      messages: [{ content: "Stable prefix\nDynamic suffix" }],
     });
     expect(providerStreamFn).toHaveBeenCalledTimes(1);
   });

@@ -99,13 +99,20 @@ export function applySystemPromptOverrideToSession(
   override: string | ((defaultPrompt?: string) => string),
 ) {
   const prompt = typeof override === "function" ? override() : override.trim();
-  // pi-agent-core 1.6 types state.systemPrompt as readonly; the field stays
-  // mutable at runtime and the loop rebuilds the leading system message from it.
-  (session.agent.state as unknown as { systemPrompt: string }).systemPrompt = prompt;
-  const mutableSession = session as unknown as {
-    _baseSystemPrompt?: string;
-    _rebuildSystemPrompt?: (toolNames: string[]) => string;
+  // pi 1.6 derives the system prompt at read time from build options held on
+  // the agent (getter-only, no writable field). `forceSystemPrompt` replaces
+  // the fully-built prompt wholesale, which matches the override semantics.
+  // The run-scoped options win while a prompt turn is active, so patch both.
+  const mutableAgent = session.agent as unknown as {
+    _baseSystemPromptOptions?: { forceSystemPrompt?: string } | undefined;
+    _runSystemPromptOptions?: { forceSystemPrompt?: string } | undefined;
   };
-  mutableSession._baseSystemPrompt = prompt;
-  mutableSession._rebuildSystemPrompt = () => prompt;
+  for (const options of [
+    mutableAgent._runSystemPromptOptions,
+    mutableAgent._baseSystemPromptOptions,
+  ]) {
+    if (options) {
+      options.forceSystemPrompt = prompt;
+    }
+  }
 }
