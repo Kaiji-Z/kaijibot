@@ -116,23 +116,10 @@ function isGlm53EffortLevel(
 }
 
 function declareAlwaysThinkingModel(model: ProviderRuntimeModel): ProviderRuntimeModel {
-  // The plugin-sdk compat union doesn't carry supportsReasoningEffort on every
-  // member, but the zai models this function touches are all openai-completions.
-  const compat = model.compat as { supportsReasoningEffort?: boolean } | undefined;
-  if (
-    !isAlwaysThinkingModel(model) ||
-    (model.thinkingLevelMap?.off !== undefined && compat?.supportsReasoningEffort === true)
-  ) {
+  if (!isAlwaysThinkingModel(model) || model.thinkingLevelMap?.off !== undefined) {
     return model;
   }
-  return {
-    ...model,
-    thinkingLevelMap: { ...model.thinkingLevelMap, ...GLM53_EFFORT_BY_LEVEL },
-    // pi-ai's zai serialization attaches `reasoning_effort` only when the model
-    // declares support for it, so the effort map above is dead weight without
-    // this override.
-    compat: { ...model.compat, supportsReasoningEffort: true },
-  };
+  return { ...model, thinkingLevelMap: { ...model.thinkingLevelMap, ...GLM53_EFFORT_BY_LEVEL } };
 }
 
 function resolveZaiDefaultModel(modelIdOverride?: string): string {
@@ -151,6 +138,19 @@ function isDisabledThinkingLevel(thinkingLevel: ProviderWrapStreamFnContext["thi
   return thinkingLevel === "off";
 }
 
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as PromiseLike<unknown>).then === "function"
+  );
+}
+
+// pi-ai sends the object that the downstream `onPayload` chain settles on, so a
+// provider-specific correction has to be the last write to it. Written first, it
+// is lost whenever a later hook rebuilds the payload or sets the same field
+// again: a request at the "off" level went out with `thinking: disabled` put
+// back on top of the effort this wrapper had just set, and the API rejected it.
 function createZaiPayloadPatchStreamWrapper(
   baseStreamFn: StreamFn | undefined,
   patchFn: (params: { payload: Record<string, unknown>; model: Parameters<StreamFn>[0] }) => void,
@@ -162,11 +162,18 @@ function createZaiPayloadPatchStreamWrapper(
     const originalOnPayload = options?.onPayload;
     return baseStreamFn(model, context, {
       ...options,
-      onPayload: (payload) => {
-        if (payload && typeof payload === "object") {
-          patchFn({ payload: payload as Record<string, unknown>, model });
-        }
-        return originalOnPayload?.(payload, model);
+      onPayload: (payload, requestModel) => {
+        const targetModel = requestModel ?? model;
+        const settle = (settled: unknown): unknown => {
+          // pi-ai sends the settled object, or the one it built when nothing was returned.
+          const finalPayload = settled ?? payload;
+          if (finalPayload && typeof finalPayload === "object") {
+            patchFn({ payload: finalPayload as Record<string, unknown>, model: targetModel });
+          }
+          return finalPayload;
+        };
+        const settled = originalOnPayload?.(payload, targetModel);
+        return isPromiseLike(settled) ? Promise.resolve(settled).then(settle) : settle(settled);
       },
     });
   };
@@ -202,12 +209,13 @@ function wrapZaiStreamFn(ctx: ProviderWrapStreamFnContext) {
     }
 
     if (isDisabledThinkingLevel(thinkingLevel)) {
-      const offEffort = model.thinkingLevelMap?.off;
+      // An always-thinking model declares its "off" effort on the model. Read the
+      // level's own value when that declaration is missing from the request model.
+      const offEffort =
+        model.thinkingLevelMap?.off ??
+        (isAlwaysThinkingModel(model) ? GLM53_EFFORT_BY_LEVEL.off : undefined);
       if (typeof offEffort === "string") {
         // The model always thinks and rejects "disabled": run it at its lowest effort.
-        // Best-effort only — pi 1.6's provider-request hook chain may rebuild the
-        // payload after this hook, so the session-level level resolution
-        // (resolveSessionThinkingLevel) is the primary defense.
         delete payload.thinking;
         payload.reasoning_effort = offEffort;
         return;

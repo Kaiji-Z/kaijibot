@@ -154,7 +154,7 @@ import {
   normalizeProviderToolSchemas,
 } from "../tool-schema-runtime.js";
 import { splitSdkTools, resolveSessionToolsParam } from "../tool-split.js";
-import { resolveSessionThinkingLevel } from "../utils.js";
+import { mapThinkingLevel } from "../utils.js";
 import { flushPendingToolResultsAfterIdle } from "../wait-for-idle-before-flush.js";
 import {
   assembleAttemptContextEngine,
@@ -936,7 +936,7 @@ export async function runEmbeddedAttempt(
         cwd: resolvedWorkspace,
         agentDir,
         model: params.model,
-        thinkingLevel: resolveSessionThinkingLevel(params.thinkLevel, params.model),
+        thinkingLevel: mapThinkingLevel(params.thinkLevel),
         tools: resolveSessionToolsParam(builtInTools),
         customTools: allCustomTools,
         sessionManager,
