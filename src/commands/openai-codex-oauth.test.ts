@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { loginOpenAICodexOAuth } from "../plugins/provider-openai-codex-oauth.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter } from "../wizard/prompts.js";
-import { loginOpenAICodexOAuth } from "../plugins/provider-openai-codex-oauth.js";
 
 const UNAVAILABLE_MESSAGE =
   "OpenAI Codex OAuth login is unavailable: pi-ai 1.6 removed the public loginOpenAICodex API. Authenticate by pasting credentials from an existing Codex CLI login instead.";
