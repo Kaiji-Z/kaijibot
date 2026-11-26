@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Context, Message, StopReason } from "@earendil-works/pi-ai";
+import type { Context, JsonObject, Message, StopReason } from "@earendil-works/pi-ai";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import {
   encodeAssistantTextSignature,
@@ -530,9 +530,9 @@ export function buildAssistantMessageFromResponse(
         name: toolName,
         arguments: (() => {
           try {
-            return JSON.parse(item.arguments) as Record<string, unknown>;
+            return JSON.parse(item.arguments) as JsonObject;
           } catch {
-            return {} as Record<string, unknown>;
+            return {} as JsonObject;
           }
         })(),
       });

@@ -8,7 +8,7 @@ import type { SpeechProviderPlugin } from "../../../src/plugins/types.js";
 import { withEnv } from "../../../src/test-utils/env.js";
 import * as tts from "../../../src/tts/tts.js";
 
-let completeSimple: typeof import("@earendil-works/pi-ai").completeSimple;
+let completeSimple: typeof import("@earendil-works/pi-ai/compat").completeSimple;
 let getApiKeyForModelMock: typeof import("../../../src/agents/model-auth.js").getApiKeyForModel;
 let requireApiKeyMock: typeof import("../../../src/agents/model-auth.js").requireApiKey;
 let resolveModelAsyncMock: typeof import("../../../src/agents/pi-embedded-runner/model.js").resolveModelAsync;
@@ -368,7 +368,7 @@ function buildTestElevenLabsSpeechProvider(): SpeechProviderPlugin {
 }
 
 beforeEach(async () => {
-  ({ completeSimple } = await import("@earendil-works/pi-ai"));
+  ({ completeSimple } = await import("@earendil-works/pi-ai/compat"));
   ({ getApiKeyForModel: getApiKeyForModelMock, requireApiKey: requireApiKeyMock } =
     await import("../../../src/agents/model-auth.js"));
   ({ resolveModelAsync: resolveModelAsyncMock } =

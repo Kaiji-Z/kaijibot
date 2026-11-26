@@ -1,6 +1,6 @@
 export {
-  AuthStorage,
   addEnvBackedPiCredentials,
+  createPiModelRegistry,
   discoverAuthStorage,
   discoverModels,
   ModelRegistry,

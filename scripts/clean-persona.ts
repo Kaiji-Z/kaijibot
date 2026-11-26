@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { completeSimple, type Api, type Model, type TextContent } from "@earendil-works/pi-ai";
+import { type Api, type Model, type TextContent } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { prepareSimpleCompletionModel } from "../src/agents/simple-completion-runtime.js";
 
 const PERSONA_PATH = process.argv[2];

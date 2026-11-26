@@ -34,7 +34,7 @@ vi.mock("@earendil-works/pi-ai", () => ({
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getEnvApiKey } from "@earendil-works/pi-ai";
+import { getEnvApiKey } from "@earendil-works/pi-ai/compat";
 import { resolveEnvApiKey } from "./model-auth-env.js";
 import type { ModelCatalogEntry } from "./model-catalog.js";
 import {

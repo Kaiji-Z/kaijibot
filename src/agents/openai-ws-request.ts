@@ -1,4 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import { getInitialSystemMessage } from "@earendil-works/pi-ai";
 import { readStringValue } from "../shared/string-coerce.js";
 import type {
   FunctionToolDefinition,
@@ -105,14 +106,15 @@ export function buildOpenAIWebSocketResponseCreatePayload(params: {
     transport: "websocket",
   }).capabilities.supportsResponsesStoreField;
 
+  const rawSystemContent = getInitialSystemMessage(params.context.messages)?.content;
+  const systemContent = typeof rawSystemContent === "string" ? rawSystemContent : undefined;
+
   return {
     type: "response.create",
     model: params.model.id,
     ...(supportsResponsesStoreField ? { store: false } : {}),
     input: params.turnInput.inputItems,
-    instructions: params.context.systemPrompt
-      ? stripSystemPromptCacheBoundary(params.context.systemPrompt)
-      : undefined,
+    instructions: systemContent ? stripSystemPromptCacheBoundary(systemContent) : undefined,
     tools: params.tools.length > 0 ? params.tools : undefined,
     ...(params.turnInput.previousResponseId
       ? { previous_response_id: params.turnInput.previousResponseId }

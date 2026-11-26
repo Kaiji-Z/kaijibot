@@ -1,4 +1,4 @@
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { describe, expect, it, vi } from "vitest";
 import {
   describeEmbeddedAgentStreamStrategy,

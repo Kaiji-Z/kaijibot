@@ -27,12 +27,16 @@ export function sanitizeTransportPayloadText(text: string): string {
 }
 
 export function mergeTransportHeaders(
-  ...headerSources: Array<Record<string, string> | undefined>
+  ...headerSources: Array<Record<string, string | null | undefined> | undefined>
 ): Record<string, string> | undefined {
   const merged: Record<string, string> = {};
   for (const headers of headerSources) {
     if (headers) {
-      Object.assign(merged, headers);
+      for (const [key, value] of Object.entries(headers)) {
+        if (typeof value === "string") {
+          merged[key] = value;
+        }
+      }
     }
   }
   return Object.keys(merged).length > 0 ? merged : undefined;

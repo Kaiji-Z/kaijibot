@@ -28,7 +28,8 @@ export type {
   UsageDisplayLevel,
   VerboseLevel,
 } from "./thinking.shared.js";
-import { getModel, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
+import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
+import { getModel } from "@earendil-works/pi-ai/compat";
 import {
   resolveProviderBinaryThinking,
   resolveProviderDefaultThinkingLevel,
@@ -97,7 +98,11 @@ export function getSupportedThinkingLevelsForModel(
   try {
     const piModel = getModel(providerKey as never, modelKey as never);
     if (piModel) {
-      return getSupportedThinkingLevels(piModel);
+      // pi-ai 1.6 has both "max" and "xhigh"; our level set keeps only "xhigh".
+      return getSupportedThinkingLevels(piModel).filter(
+        (level): level is "off" | "minimal" | "low" | "medium" | "high" | "xhigh" =>
+          level !== "max",
+      );
     }
   } catch {
     // Model not in pi-ai registry — use default

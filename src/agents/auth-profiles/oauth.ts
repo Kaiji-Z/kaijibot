@@ -1,9 +1,4 @@
-import {
-  getOAuthApiKey,
-  getOAuthProviders,
-  type OAuthCredentials,
-  type OAuthProvider,
-} from "@earendil-works/pi-ai/oauth";
+import type { OAuthCredentials } from "@earendil-works/pi-ai/oauth";
 import { loadConfig, type KaijiBotConfig } from "../../config/config.js";
 import { coerceSecretRef } from "../../config/types.secrets.js";
 import { formatErrorMessage } from "../../infra/errors.js";
@@ -33,33 +28,11 @@ import {
 } from "./store.js";
 import type { AuthProfileStore, OAuthCredential } from "./types.js";
 
-function listOAuthProviderIds(): string[] {
-  if (typeof getOAuthProviders !== "function") {
-    return [];
-  }
-  const providers = getOAuthProviders();
-  if (!Array.isArray(providers)) {
-    return [];
-  }
-  return providers
-    .map((provider) =>
-      provider &&
-      typeof provider === "object" &&
-      "id" in provider &&
-      typeof provider.id === "string"
-        ? provider.id
-        : undefined,
-    )
-    .filter((providerId): providerId is string => typeof providerId === "string");
-}
-
-const OAUTH_PROVIDER_IDS = new Set<string>(listOAuthProviderIds());
-
-const isOAuthProvider = (provider: string): provider is OAuthProvider =>
-  OAUTH_PROVIDER_IDS.has(provider);
-
-const resolveOAuthProvider = (provider: string): OAuthProvider | null =>
-  isOAuthProvider(provider) ? provider : null;
+/**
+ * pi-ai 1.6 removed its public OAuth provider registry (getOAuthProviders and
+ * friends). Only providers with a dedicated refresh flow here (chutes) stay
+ * functional; pi-registry OAuth providers resolve through their own paths.
+ */
 
 /** Bearer-token auth modes that are interchangeable (oauth tokens and raw tokens). */
 const BEARER_AUTH_MODES = new Set(["oauth", "token"]);
@@ -306,7 +279,6 @@ async function refreshOAuthTokenWithLock(params: {
       };
     }
 
-    const oauthCreds: Record<string, OAuthCredentials> = { [cred.provider]: cred };
     const result =
       String(cred.provider) === "chutes"
         ? await (async () => {
@@ -315,16 +287,7 @@ async function refreshOAuthTokenWithLock(params: {
             });
             return { apiKey: newCredentials.access, newCredentials };
           })()
-        : await (async () => {
-            const oauthProvider = resolveOAuthProvider(cred.provider);
-            if (!oauthProvider) {
-              return null;
-            }
-            if (typeof getOAuthApiKey !== "function") {
-              return null;
-            }
-            return await getOAuthApiKey(oauthProvider, oauthCreds);
-          })();
+        : null;
     if (!result) {
       return null;
     }

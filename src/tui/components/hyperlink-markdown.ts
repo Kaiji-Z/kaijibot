@@ -23,7 +23,7 @@ export class HyperlinkMarkdown implements Component {
   }
 
   render(width: number): string[] {
-    return addOsc8Hyperlinks(this.inner.render(width), this.urls);
+    return addOsc8Hyperlinks([...this.inner.render(width)], this.urls);
   }
 
   setText(text: string): void {

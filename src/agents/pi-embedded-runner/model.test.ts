@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { discoverModels } from "../pi-model-discovery.js";
+import { createSyncModelRegistryFallback, discoverModels } from "../pi-model-discovery.js";
 import { createProviderRuntimeTestMock } from "./model.provider-runtime.test-support.js";
 
 vi.mock("../model-suppression.js", () => ({
@@ -20,6 +20,11 @@ vi.mock("../model-suppression.js", () => ({
 vi.mock("../pi-model-discovery.js", () => ({
   discoverAuthStorage: vi.fn(() => ({ mocked: true })),
   discoverModels: vi.fn(() => ({ find: vi.fn(() => null) })),
+  createSyncModelRegistryFallback: vi.fn(() => ({
+    find: vi.fn(() => null),
+    getAll: vi.fn(() => []),
+    getAvailable: vi.fn(() => []),
+  })),
 }));
 
 import type { OpenRouterModelCapabilities } from "./openrouter-model-capabilities.js";
@@ -82,7 +87,10 @@ function resolveModelForTest(
   const resolvedAgentDir = agentDir ?? "/tmp/agent";
   return resolveModel(provider, modelId, agentDir, cfg, {
     authStorage: { mocked: true } as never,
-    modelRegistry: discoverModels({ mocked: true } as never, resolvedAgentDir),
+    modelRegistry: createSyncModelRegistryFallback(
+      `${resolvedAgentDir}/models.json`,
+      resolvedAgentDir,
+    ),
     runtimeHooks: createRuntimeHooks(),
   });
 }
@@ -97,7 +105,10 @@ function resolveModelAsyncForTest(
   const resolvedAgentDir = agentDir ?? "/tmp/agent";
   return resolveModelAsync(provider, modelId, agentDir, cfg, {
     authStorage: { mocked: true } as never,
-    modelRegistry: discoverModels({ mocked: true } as never, resolvedAgentDir),
+    modelRegistry: createSyncModelRegistryFallback(
+      `${resolvedAgentDir}/models.json`,
+      resolvedAgentDir,
+    ),
     ...options,
     runtimeHooks: createRuntimeHooks(),
   });
@@ -918,7 +929,7 @@ describe("resolveModel", () => {
     });
   });
 
-  it("passes configured workspaceDir to runtime preference hooks", () => {
+  it("passes configured workspaceDir to runtime preference hooks", async () => {
     mockDiscoveredModel(discoverModels, {
       provider: "openai-codex",
       modelId: "gpt-5.4",
@@ -960,7 +971,7 @@ describe("resolveModel", () => {
 
     const result = resolveModel("openai-codex", "gpt-5.4", "/tmp/agent-state", cfg, {
       authStorage: { mocked: true } as never,
-      modelRegistry: discoverModels({ mocked: true } as never, "/tmp/agent-state"),
+      modelRegistry: await discoverModels({ mocked: true } as never, "/tmp/agent-state"),
       runtimeHooks,
     });
 
@@ -1269,7 +1280,7 @@ describe("resolveModel", () => {
     });
   });
 
-  it("normalizes stale native xai completions transport after plugin model normalization", () => {
+  it("normalizes stale native xai completions transport after plugin model normalization", async () => {
     mockDiscoveredModel(discoverModels, {
       provider: "xai",
       modelId: "grok-4.20-beta-latest-reasoning",
@@ -1284,7 +1295,7 @@ describe("resolveModel", () => {
 
     const result = resolveModel("xai", "grok-4.20-beta-latest-reasoning", "/tmp/agent", undefined, {
       authStorage: { mocked: true } as never,
-      modelRegistry: discoverModels({ mocked: true } as never, "/tmp/agent"),
+      modelRegistry: await discoverModels({ mocked: true } as never, "/tmp/agent"),
       runtimeHooks: {
         applyProviderResolvedModelCompatWithPlugins: () => undefined,
         buildProviderUnknownModelHintWithPlugin: () => undefined,

@@ -1,4 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import { buildOpenAICodexProviderPlugin } from "./openai-codex-provider.js";
@@ -40,7 +41,7 @@ function runWrappedPayloadCase(params: {
   } as never);
 
   const context: Context = { messages: [] };
-  void streamFn?.(params.model, context, {});
+  void streamFn?.(params.model, context as unknown as TranscriptContext, {});
 
   return {
     payload,

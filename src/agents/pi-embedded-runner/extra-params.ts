@@ -1,6 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { SimpleStreamOptions } from "@earendil-works/pi-ai";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import type { SettingsManager } from "@earendil-works/pi-coding-agent";
 import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import type { KaijiBotConfig } from "../../config/config.js";
@@ -348,7 +348,7 @@ function createParallelToolCallsWrapper(
 }
 
 type ApplyExtraParamsContext = {
-  agent: { streamFn?: StreamFn };
+  agent: { streamFunction: StreamFn };
   cfg: KaijiBotConfig | undefined;
   provider: string;
   modelId: string;
@@ -363,7 +363,7 @@ type ApplyExtraParamsContext = {
 
 function applyPrePluginStreamWrappers(ctx: ApplyExtraParamsContext): void {
   const wrappedStreamFn = createStreamFnWithExtraParams(
-    ctx.agent.streamFn,
+    ctx.agent.streamFunction,
     ctx.effectiveExtraParams,
     ctx.provider,
     ctx.model,
@@ -371,7 +371,7 @@ function applyPrePluginStreamWrappers(ctx: ApplyExtraParamsContext): void {
 
   if (wrappedStreamFn) {
     log.debug(`applying extraParams to agent streamFn for ${ctx.provider}/${ctx.modelId}`);
-    ctx.agent.streamFn = wrappedStreamFn;
+    ctx.agent.streamFunction = wrappedStreamFn;
   }
 
   if (
@@ -384,26 +384,29 @@ function applyPrePluginStreamWrappers(ctx: ApplyExtraParamsContext): void {
     log.debug(
       `normalizing thinking=off to thinking=null for SiliconFlow compatibility (${ctx.provider}/${ctx.modelId})`,
     );
-    ctx.agent.streamFn = createSiliconFlowThinkingWrapper(ctx.agent.streamFn);
+    ctx.agent.streamFunction = createSiliconFlowThinkingWrapper(ctx.agent.streamFunction);
   }
 }
 
 function applyPostPluginStreamWrappers(
   ctx: ApplyExtraParamsContext & { providerWrapperHandled: boolean },
 ): void {
-  ctx.agent.streamFn = createOpenRouterSystemCacheWrapper(ctx.agent.streamFn);
-  ctx.agent.streamFn = createOpenAIStringContentWrapper(ctx.agent.streamFn);
+  ctx.agent.streamFunction = createOpenRouterSystemCacheWrapper(ctx.agent.streamFunction);
+  ctx.agent.streamFunction = createOpenAIStringContentWrapper(ctx.agent.streamFunction);
 
   if (!ctx.providerWrapperHandled) {
     // Guard Google-family payloads against invalid negative thinking budgets
     // emitted by upstream model-ID heuristics for Gemini 3.1 variants.
-    ctx.agent.streamFn = createGoogleThinkingPayloadWrapper(ctx.agent.streamFn, ctx.thinkingLevel);
+    ctx.agent.streamFunction = createGoogleThinkingPayloadWrapper(
+      ctx.agent.streamFunction,
+      ctx.thinkingLevel,
+    );
 
     // Work around upstream pi-ai hardcoding `store: false` for Responses API.
     // Force `store=true` for direct OpenAI Responses models and auto-enable
     // server-side compaction for compatible Responses payloads.
-    ctx.agent.streamFn = createOpenAIResponsesContextManagementWrapper(
-      ctx.agent.streamFn,
+    ctx.agent.streamFunction = createOpenAIResponsesContextManagementWrapper(
+      ctx.agent.streamFunction,
       ctx.effectiveExtraParams,
     );
   }
@@ -411,7 +414,7 @@ function applyPostPluginStreamWrappers(
   // MiniMax's Anthropic-compatible stream can leak reasoning_content into the
   // visible reply path because it does not emit native Anthropic thinking
   // blocks. Disable thinking unless an earlier wrapper already set it.
-  ctx.agent.streamFn = createMinimaxThinkingDisabledWrapper(ctx.agent.streamFn);
+  ctx.agent.streamFunction = createMinimaxThinkingDisabledWrapper(ctx.agent.streamFunction);
 
   const rawParallelToolCalls = resolveAliasedParamValue(
     [ctx.resolvedExtraParams, ctx.override],
@@ -422,7 +425,10 @@ function applyPostPluginStreamWrappers(
     return;
   }
   if (typeof rawParallelToolCalls === "boolean") {
-    ctx.agent.streamFn = createParallelToolCallsWrapper(ctx.agent.streamFn, rawParallelToolCalls);
+    ctx.agent.streamFunction = createParallelToolCallsWrapper(
+      ctx.agent.streamFunction,
+      rawParallelToolCalls,
+    );
     return;
   }
   if (rawParallelToolCalls === null) {
@@ -441,7 +447,7 @@ function applyPostPluginStreamWrappers(
  * @internal Exported for testing
  */
 export function applyExtraParamsToAgent(
-  agent: { streamFn?: StreamFn },
+  agent: { streamFunction: StreamFn },
   cfg: KaijiBotConfig | undefined,
   provider: string,
   modelId: string,
@@ -487,7 +493,7 @@ export function applyExtraParamsToAgent(
     override,
   };
 
-  const providerStreamBase = agent.streamFn;
+  const providerStreamBase = agent.streamFunction;
   const pluginWrappedStreamFn = providerRuntimeDeps.wrapProviderStreamFn({
     provider,
     config: cfg,
@@ -501,7 +507,7 @@ export function applyExtraParamsToAgent(
       streamFn: providerStreamBase,
     },
   });
-  agent.streamFn = pluginWrappedStreamFn ?? providerStreamBase;
+  agent.streamFunction = pluginWrappedStreamFn ?? providerStreamBase;
   // Apply caller/config extra params outside provider defaults so explicit values
   // like `openaiWsWarmup=false` can override provider-added defaults.
   applyPrePluginStreamWrappers(wrapperContext);

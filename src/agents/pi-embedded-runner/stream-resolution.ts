@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { getInitialSystemMessage } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { createAnthropicVertexStreamFnForModel } from "../anthropic-vertex-stream.js";
 import { createOpenAIWebSocketStreamFn } from "../openai-ws-stream.js";
 import { createBoundaryAwareStreamFnForModel } from "../provider-transport-stream.js";
@@ -9,13 +10,12 @@ import type { EmbeddedRunAttemptParams } from "./run/types.js";
 let embeddedAgentBaseStreamFnCache = new WeakMap<object, StreamFn | undefined>();
 
 export function resolveEmbeddedAgentBaseStreamFn(params: {
-  session: { agent: { streamFn?: StreamFn } };
-}): StreamFn | undefined {
-  const cached = embeddedAgentBaseStreamFnCache.get(params.session);
-  if (cached !== undefined || embeddedAgentBaseStreamFnCache.has(params.session)) {
-    return cached;
+  session: { agent: { streamFunction: StreamFn } };
+}): StreamFn {
+  if (embeddedAgentBaseStreamFnCache.has(params.session)) {
+    return embeddedAgentBaseStreamFnCache.get(params.session) as StreamFn;
   }
-  const baseStreamFn = params.session.agent.streamFn;
+  const baseStreamFn = params.session.agent.streamFunction;
   embeddedAgentBaseStreamFnCache.set(params.session, baseStreamFn);
   return baseStreamFn;
 }
@@ -70,16 +70,26 @@ export function resolveEmbeddedAgentStreamFn(params: {
   model: EmbeddedRunAttemptParams["model"];
   resolvedApiKey?: string;
   authStorage?: { getApiKey(provider: string): Promise<string | undefined> };
+  /** True when currentStreamFn is the untouched session base (pi 1.6 base is no longer `streamSimple`). */
+  sessionDefault?: boolean;
 }): StreamFn {
   if (params.providerStreamFn) {
     const inner = params.providerStreamFn;
-    const normalizeContext = (context: Parameters<StreamFn>[1]) =>
-      context.systemPrompt
-        ? {
-            ...context,
-            systemPrompt: stripSystemPromptCacheBoundary(context.systemPrompt),
-          }
-        : context;
+    // pi-ai 1.6 carries the system prompt as the transcript's leading system
+    // message, so strip the cache boundary marker there instead of on a
+    // context-level systemPrompt field.
+    const normalizeContext = (context: Parameters<StreamFn>[1]) => {
+      const systemMessage = getInitialSystemMessage(context.messages);
+      if (!systemMessage || typeof systemMessage.content !== "string") {
+        return context;
+      }
+      const stripped = stripSystemPromptCacheBoundary(systemMessage.content);
+      if (stripped === systemMessage.content) {
+        return context;
+      }
+      const messages = [{ ...systemMessage, content: stripped }, ...context.messages.slice(1)];
+      return { messages } as Parameters<StreamFn>[1];
+    };
     // Provider-owned transports bypass pi-coding-agent's default auth lookup,
     // so keep injecting the resolved runtime apiKey for streamSimple-compatible
     // transports that still read credentials from options.apiKey.
@@ -113,7 +123,7 @@ export function resolveEmbeddedAgentStreamFn(params: {
     return createAnthropicVertexStreamFnForModel(params.model);
   }
 
-  if (params.currentStreamFn === undefined || params.currentStreamFn === streamSimple) {
+  if (params.sessionDefault || params.currentStreamFn === undefined) {
     const boundaryAwareStreamFn = createBoundaryAwareStreamFnForModel(params.model);
     if (boundaryAwareStreamFn) {
       return boundaryAwareStreamFn;

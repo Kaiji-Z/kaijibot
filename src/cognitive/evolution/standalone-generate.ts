@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import {
-  completeSimple,
   type Api,
   type AssistantMessage,
   type Model,
   type TextContent,
 } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import {

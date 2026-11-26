@@ -107,7 +107,7 @@ export class ChatLog extends Container {
   }
 
   override render(width: number): string[] {
-    const allLines = super.render(width);
+    const allLines = [...super.render(width)];
     const totalLines = allLines.length;
 
     if (!this.tuiRef) {

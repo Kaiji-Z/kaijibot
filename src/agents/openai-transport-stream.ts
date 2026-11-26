@@ -1,15 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import {
   calculateCost,
   createAssistantMessageEventStream,
-  getEnvApiKey,
+  getInitialSystemMessage,
   parseStreamingJson,
   type Api,
   type Context,
   type Model,
 } from "@earendil-works/pi-ai";
-import { convertMessages } from "@earendil-works/pi-ai/openai-completions";
+import { convertMessages } from "@earendil-works/pi-ai/api/openai-completions";
+import { getEnvApiKey } from "@earendil-works/pi-ai/compat";
 import OpenAI, { AzureOpenAI } from "openai";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions.js";
 import type {
@@ -573,7 +575,7 @@ function mapResponsesStopReason(status: string | undefined): string {
 function buildOpenAIClientHeaders(
   model: Model<Api>,
   context: Context,
-  optionHeaders?: Record<string, string>,
+  optionHeaders?: Record<string, string | null | undefined>,
   turnHeaders?: Record<string, string>,
 ): Record<string, string> {
   const headers = { ...model.headers };
@@ -622,7 +624,7 @@ function createOpenAIResponsesClient(
   model: Model<Api>,
   context: Context,
   apiKey: string,
-  optionHeaders?: Record<string, string>,
+  optionHeaders?: Record<string, string | null | undefined>,
   turnHeaders?: Record<string, string>,
 ) {
   return new OpenAI({
@@ -889,7 +891,7 @@ function createAzureOpenAIClient(
   model: Model<Api>,
   context: Context,
   apiKey: string,
-  optionHeaders?: Record<string, string>,
+  optionHeaders?: Record<string, string | null | undefined>,
   turnHeaders?: Record<string, string>,
 ) {
   return new AzureOpenAI({
@@ -927,7 +929,7 @@ function createOpenAICompletionsClient(
   model: Model<Api>,
   context: Context,
   apiKey: string,
-  optionHeaders?: Record<string, string>,
+  optionHeaders?: Record<string, string | null | undefined>,
 ) {
   return new OpenAI({
     apiKey,
@@ -1271,20 +1273,29 @@ export function buildOpenAICompletionsParams(
   options: OpenAICompletionsOptions | undefined,
 ) {
   const compat = getCompat(model);
-  const completionsContext = context.systemPrompt
-    ? {
-        ...context,
-        systemPrompt: stripSystemPromptCacheBoundary(context.systemPrompt),
-      }
-    : context;
-  const messages = convertMessages(model as never, completionsContext, compat as never);
+  const systemMessage = getInitialSystemMessage(context.messages);
+  const boundaryStrippedContext =
+    systemMessage && typeof systemMessage.content === "string"
+      ? {
+          ...context,
+          messages: [
+            { ...systemMessage, content: stripSystemPromptCacheBoundary(systemMessage.content) },
+            ...context.messages.slice(1),
+          ],
+        }
+      : context;
+  const messages = convertMessages(
+    model as never,
+    boundaryStrippedContext as Parameters<typeof convertMessages>[1],
+    compat as never,
+  );
   const params: Record<string, unknown> = {
     model: model.id,
     messages: compat.requiresStringContent
       ? flattenCompletionMessagesToStringContent(messages)
       : messages,
     stream: true,
-  };
+  } as unknown as TranscriptContext;
   if (compat.supportsUsageInStreaming) {
     params.stream_options = { include_usage: true };
   }

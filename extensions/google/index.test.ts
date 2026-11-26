@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { Context, Model } from "@earendil-works/pi-ai";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
 import type {
   ProviderReplaySessionEntry,
   ProviderSanitizeReplayHistoryContext,
@@ -172,7 +173,7 @@ describe("google provider plugin hooks", () => {
           provider: providerId,
           id: "gemini-3.1-pro-preview",
         } as Model<"google-generative-ai">,
-        { messages: [] } as Context,
+        { messages: [] } as unknown as TranscriptContext,
         {},
       );
 

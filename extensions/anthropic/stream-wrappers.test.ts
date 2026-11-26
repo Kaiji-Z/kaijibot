@@ -11,8 +11,10 @@ import {
 const CONTEXT_1M_BETA = "context-1m-2025-08-07";
 const OAUTH_BETA = "oauth-2025-04-20";
 
-function runWrapper(apiKey: string | undefined): Record<string, string> | undefined {
-  const captured: { headers?: Record<string, string> } = {};
+function runWrapper(
+  apiKey: string | undefined,
+): Record<string, string | null | undefined> | undefined {
+  const captured: { headers?: Record<string, string | null | undefined> } = {};
   const base: StreamFn = (_model, _context, options) => {
     captured.headers = options?.headers;
     return {} as never;
@@ -49,7 +51,10 @@ describe("anthropic stream wrappers", () => {
   });
 
   it("skips service_tier for OAuth token in composed stream chain", () => {
-    const captured: { headers?: Record<string, string>; payload?: Record<string, unknown> } = {};
+    const captured: {
+      headers?: Record<string, string | null | undefined>;
+      payload?: Record<string, unknown>;
+    } = {};
     const base: StreamFn = (model, _context, options) => {
       captured.headers = options?.headers;
       const payload = {} as Record<string, unknown>;
@@ -76,7 +81,10 @@ describe("anthropic stream wrappers", () => {
   });
 
   it("composes the anthropic provider stream chain from extra params", () => {
-    const captured: { headers?: Record<string, string>; payload?: Record<string, unknown> } = {};
+    const captured: {
+      headers?: Record<string, string | null | undefined>;
+      payload?: Record<string, unknown>;
+    } = {};
     const base: StreamFn = (model, _context, options) => {
       captured.headers = options?.headers;
       const payload = {} as Record<string, unknown>;

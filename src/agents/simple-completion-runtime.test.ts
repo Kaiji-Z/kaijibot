@@ -1,4 +1,5 @@
-import { completeSimple, type Api, type Model } from "@earendil-works/pi-ai";
+import { type Api, type Model } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({

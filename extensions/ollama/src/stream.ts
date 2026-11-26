@@ -9,7 +9,12 @@ import type {
   Tool,
   Usage,
 } from "@earendil-works/pi-ai";
-import { createAssistantMessageEventStream, streamSimple } from "@earendil-works/pi-ai";
+import {
+  createAssistantMessageEventStream,
+  getCurrentTools,
+  getInitialSystemMessage,
+} from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { formatErrorMessage } from "kaijibot/plugin-sdk/error-runtime";
 import type {
   KaijiBotConfig,
@@ -533,7 +538,7 @@ export function buildAssistantMessage(
         type: "toolCall",
         id: `ollama_call_${randomUUID()}`,
         name: toolCall.function.name,
-        arguments: toolCall.function.arguments,
+        arguments: toolCall.function.arguments as ToolCall["arguments"],
       });
     }
   }
@@ -612,11 +617,10 @@ export function createOllamaStreamFn(
 
     const run = async () => {
       try {
-        const ollamaMessages = convertToOllamaMessages(
-          context.messages ?? [],
-          context.systemPrompt,
-        );
-        const ollamaTools = extractOllamaTools(context.tools);
+        const rawSystemContent = getInitialSystemMessage(context.messages)?.content;
+        const systemContent = typeof rawSystemContent === "string" ? rawSystemContent : undefined;
+        const ollamaMessages = convertToOllamaMessages(context.messages ?? [], systemContent);
+        const ollamaTools = extractOllamaTools(getCurrentTools(context.messages));
 
         const ollamaOptions: Record<string, unknown> = { num_ctx: model.contextWindow ?? 65536 };
         if (typeof options?.temperature === "number") {

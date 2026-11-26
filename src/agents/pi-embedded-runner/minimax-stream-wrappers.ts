@@ -1,5 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 
 const MINIMAX_FAST_MODEL_IDS = new Map<string, string>([
   ["MiniMax-M2.7", "MiniMax-M2.7-highspeed"],

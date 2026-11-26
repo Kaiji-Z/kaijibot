@@ -1,5 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import { isProxyReasoningUnsupportedModelHint } from "../../plugin-sdk/provider-model-shared.js";
 import { normalizeOptionalLowercaseString, readStringValue } from "../../shared/string-coerce.js";

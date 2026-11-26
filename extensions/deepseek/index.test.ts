@@ -1,3 +1,4 @@
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import {
@@ -348,7 +349,7 @@ describe.skipIf(process.env.CI)("deepseek provider plugin", () => {
       createDeepSeekV4ThinkingWrapper(baseStreamFn as never, "high"),
       "high",
     );
-    await wrapThinkingHigh(model, context, {});
+    await wrapThinkingHigh(model, context as unknown as TranscriptContext, {});
 
     expect(readThinking(capture.payload)?.type).toBe("enabled");
     expect(capture.payload?.reasoning_effort).toBe("high");
@@ -379,7 +380,7 @@ describe.skipIf(process.env.CI)("deepseek provider plugin", () => {
       createDeepSeekV4ThinkingWrapper(baseStreamFn as never, "high"),
       "high",
     );
-    await wrapThinkingHigh(model, context, {});
+    await wrapThinkingHigh(model, context as unknown as TranscriptContext, {});
 
     const assistantMessage = readPayloadMessage(capture, 1);
     expect(assistantMessage?.role).toBe("assistant");
@@ -412,7 +413,7 @@ describe.skipIf(process.env.CI)("deepseek provider plugin", () => {
       createDeepSeekV4ThinkingWrapper(baseStreamFn as never, "high"),
       "high",
     );
-    await wrapThinkingHigh(model, context, {});
+    await wrapThinkingHigh(model, context as unknown as TranscriptContext, {});
 
     const assistantMessage = readPayloadMessage(capture, 1);
     expect(assistantMessage?.role).toBe("assistant");
@@ -430,7 +431,7 @@ describe.skipIf(process.env.CI)("deepseek provider plugin", () => {
       createDeepSeekV4ThinkingWrapper(baseStreamFn as never, "none" as never),
       "none",
     );
-    await wrapThinkingNone(model, context, {});
+    await wrapThinkingNone(model, context as unknown as TranscriptContext, {});
 
     expect(readThinking(capture.payload)?.type).toBe("disabled");
     expect(capture.payload).not.toHaveProperty("reasoning_effort");

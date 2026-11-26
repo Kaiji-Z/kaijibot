@@ -1,18 +1,19 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { captureEnv } from "../../test-utils/env.js";
 import { createKilocodeWrapper, isProxyReasoningUnsupported } from "./proxy-stream-wrappers.js";
 
 type ExtraParamsCapture<TPayload extends Record<string, unknown>> = {
-  headers?: Record<string, string>;
+  headers?: Record<string, string | null | undefined>;
   payload: TPayload;
 };
 
 function applyAndCapture(params: {
   provider: string;
   modelId: string;
-  callerHeaders?: Record<string, string>;
+  callerHeaders?: Record<string, string | null | undefined>;
 }) {
   const captured: ExtraParamsCapture<Record<string, unknown>> = { payload: {} };
   const baseStreamFn: StreamFn = (model, _context, options) => {
@@ -32,7 +33,7 @@ function applyAndCapture(params: {
       provider: params.provider,
       id: params.modelId,
     } as Model<"openai-completions">,
-    context,
+    context as unknown as TranscriptContext,
     {
       headers: params.callerHeaders,
     } as SimpleStreamOptions,
@@ -65,7 +66,7 @@ function applyAndCaptureReasoning(params: {
       provider: "kilocode",
       id: params.modelId,
     } as Model<"openai-completions">,
-    context,
+    context as unknown as TranscriptContext,
     {} as SimpleStreamOptions,
   );
 

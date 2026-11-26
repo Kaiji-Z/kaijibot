@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { Context, Model } from "@earendil-works/pi-ai";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import { registerSingleProviderPlugin } from "../../test/helpers/plugins/plugin-registration.js";
 import plugin from "./index.js";
@@ -51,7 +52,7 @@ describe("kilocode provider plugin", () => {
         provider: "kilocode",
         id: "openai/gpt-5.4",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 
@@ -72,7 +73,7 @@ describe("kilocode provider plugin", () => {
         provider: "kilocode",
         id: "kilo/auto",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 

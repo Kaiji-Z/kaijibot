@@ -1,10 +1,5 @@
-import {
-  complete,
-  completeSimple,
-  type Api,
-  type Model,
-  type OpenAICompletionsCompat,
-} from "@earendil-works/pi-ai";
+import { type Api, type Model, type OpenAICompletionsCompat } from "@earendil-works/pi-ai";
+import { complete, completeSimple } from "@earendil-works/pi-ai/compat";
 import type { KaijiBotConfig } from "../config/config.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { resolveAgentDir, resolveAgentEffectiveModelPrimary } from "./agent-scope.js";

@@ -2,7 +2,6 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { Command } from "commander";
 import type {
   ApiKeyCredential,
@@ -369,7 +368,11 @@ export type ProviderResolveDynamicModelContext = {
   workspaceDir?: string;
   provider: string;
   modelId: string;
-  modelRegistry: ModelRegistry;
+  modelRegistry: {
+    getAll(): Model<Api>[];
+    getAvailable(): Model<Api>[];
+    find(provider: string, modelId: string): Model<Api> | undefined;
+  };
   providerConfig?: ProviderRuntimeProviderConfig;
 };
 

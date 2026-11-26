@@ -1,5 +1,6 @@
 import { rmSync } from "node:fs";
-import { completeSimple, type TextContent } from "@earendil-works/pi-ai";
+import { type TextContent } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { getApiKeyForModel, requireApiKey } from "../agents/model-auth.js";
 import {
   buildModelAliasIndex,

@@ -1,4 +1,5 @@
-import { complete, type Api, type Model } from "@earendil-works/pi-ai";
+import { type Api, type Model } from "@earendil-works/pi-ai";
+import { complete } from "@earendil-works/pi-ai/compat";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import type { KaijiBotConfig } from "../../config/config.js";

@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { Api, Context, Model } from "@earendil-works/pi-ai";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
+import type { Api, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import {
   createXaiFastModeWrapper,
@@ -34,7 +35,7 @@ function captureWrappedModelId(params: {
       provider: "xai",
       id: params.modelId,
     } as Model<Extract<Api, "openai-completions" | "openai-responses">>,
-    { messages: [] } as Context,
+    { messages: [] } as unknown as TranscriptContext,
     {},
   );
 
@@ -63,7 +64,7 @@ function runXaiToolPayloadWrapper(params: {
         (api === "openai-completions" ? "grok-4-1-fast-reasoning" : "grok-4-fast"),
       ...(params.input ? { input: params.input } : {}),
     } as Model<XaiStreamApi>,
-    { messages: [] } as Context,
+    { messages: [] } as unknown as TranscriptContext,
     {},
   );
 }
@@ -130,7 +131,7 @@ describe("xai stream wrappers", () => {
         provider: "xai",
         id: "grok-4",
       } as Model<"openai-responses">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 

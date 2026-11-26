@@ -1,5 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { isAnthropicBedrockModel } from "./anthropic-family-cache-semantics.js";
 
 export function createBedrockNoCacheWrapper(baseStreamFn: StreamFn | undefined): StreamFn {

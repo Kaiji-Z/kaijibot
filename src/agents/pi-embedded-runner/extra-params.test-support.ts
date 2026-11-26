@@ -1,11 +1,12 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { ThinkLevel } from "../../auto-reply/thinking.shared.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { applyExtraParamsToAgent } from "./extra-params.js";
 
 export type ExtraParamsCapture<TPayload extends Record<string, unknown>> = {
-  headers?: Record<string, string>;
+  headers?: Record<string, string | null | undefined>;
   options?: SimpleStreamOptions;
   payload: TPayload;
 };
@@ -50,7 +51,7 @@ export function runExtraParamsCase<
     options?.onPayload?.(params.payload, model);
     return createMockStream();
   };
-  const agent = { streamFn: baseStreamFn };
+  const agent = { streamFunction: baseStreamFn };
 
   applyExtraParamsToAgent(
     agent,
@@ -62,7 +63,7 @@ export function runExtraParamsCase<
   );
 
   const context: Context = { messages: [] };
-  void agent.streamFn?.(params.model, context, {
+  void agent.streamFunction?.(params.model, context as unknown as TranscriptContext, {
     ...params.options,
     headers: params.callerHeaders ?? params.options?.headers,
   });

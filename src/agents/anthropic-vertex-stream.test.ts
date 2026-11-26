@@ -1,3 +1,4 @@
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Model } from "@earendil-works/pi-ai";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SYSTEM_PROMPT_CACHE_BOUNDARY } from "./system-prompt-cache-boundary.js";
@@ -77,7 +78,11 @@ describe("createAnthropicVertexStreamFn", () => {
   it("omits projectId when ADC credentials are used without an explicit project", () => {
     const streamFn = createAnthropicVertexStreamFn(undefined, "global");
 
-    void streamFn(makeModel({ id: "claude-sonnet-4-6", maxTokens: 128000 }), { messages: [] }, {});
+    void streamFn(
+      makeModel({ id: "claude-sonnet-4-6", maxTokens: 128000 }),
+      { messages: [] } as unknown as TranscriptContext,
+      {},
+    );
 
     expect(hoisted.anthropicVertexCtorMock).toHaveBeenCalledWith({
       region: "global",
@@ -91,7 +96,11 @@ describe("createAnthropicVertexStreamFn", () => {
       "https://proxy.example.test/vertex/v1",
     );
 
-    void streamFn(makeModel({ id: "claude-sonnet-4-6", maxTokens: 128000 }), { messages: [] }, {});
+    void streamFn(
+      makeModel({ id: "claude-sonnet-4-6", maxTokens: 128000 }),
+      { messages: [] } as unknown as TranscriptContext,
+      {},
+    );
 
     expect(hoisted.anthropicVertexCtorMock).toHaveBeenCalledWith({
       projectId: "vertex-project",
@@ -104,7 +113,7 @@ describe("createAnthropicVertexStreamFn", () => {
     const streamFn = createAnthropicVertexStreamFn("vertex-project", "us-east5");
     const model = makeModel({ id: "claude-opus-4-6", maxTokens: 128000 });
 
-    void streamFn(model, { messages: [] }, {});
+    void streamFn(model, { messages: [] } as unknown as TranscriptContext, {});
 
     expect(hoisted.streamAnthropicMock).toHaveBeenCalledWith(
       model,
@@ -119,7 +128,7 @@ describe("createAnthropicVertexStreamFn", () => {
     const streamFn = createAnthropicVertexStreamFn("vertex-project", "us-east5");
     const model = makeModel({ id: "claude-sonnet-4-6", maxTokens: 128000 });
 
-    void streamFn(model, { messages: [] }, { maxTokens: 999999 });
+    void streamFn(model, { messages: [] } as unknown as TranscriptContext, { maxTokens: 999999 });
 
     expect(hoisted.streamAnthropicMock).toHaveBeenCalledWith(
       model,
@@ -134,7 +143,7 @@ describe("createAnthropicVertexStreamFn", () => {
     const streamFn = createAnthropicVertexStreamFn("vertex-project", "us-east5");
     const model = makeModel({ id: "claude-opus-4-6", maxTokens: 64000 });
 
-    void streamFn(model, { messages: [] }, { reasoning: "xhigh" });
+    void streamFn(model, { messages: [] } as unknown as TranscriptContext, { reasoning: "xhigh" });
 
     expect(hoisted.streamAnthropicMock).toHaveBeenCalledWith(
       model,
@@ -306,7 +315,9 @@ describe("createAnthropicVertexStreamFn", () => {
     const streamFn = createAnthropicVertexStreamFn("vertex-project", "us-east5");
     const model = makeModel({ id: "claude-sonnet-4-6" });
 
-    void streamFn(model, { messages: [] }, { maxTokens: Number.NaN });
+    void streamFn(model, { messages: [] } as unknown as TranscriptContext, {
+      maxTokens: Number.NaN,
+    });
 
     expect(hoisted.streamAnthropicMock).toHaveBeenCalledWith(
       model,
@@ -329,7 +340,11 @@ describe("createAnthropicVertexStreamFnForModel", () => {
       { GOOGLE_CLOUD_PROJECT_ID: "vertex-project" } as NodeJS.ProcessEnv,
     );
 
-    void streamFn(makeModel({ id: "claude-sonnet-4-6", maxTokens: 64000 }), { messages: [] }, {});
+    void streamFn(
+      makeModel({ id: "claude-sonnet-4-6", maxTokens: 64000 }),
+      { messages: [] } as unknown as TranscriptContext,
+      {},
+    );
 
     expect(hoisted.anthropicVertexCtorMock).toHaveBeenCalledWith({
       projectId: "vertex-project",
@@ -344,7 +359,11 @@ describe("createAnthropicVertexStreamFnForModel", () => {
       { GOOGLE_CLOUD_PROJECT_ID: "vertex-project" } as NodeJS.ProcessEnv,
     );
 
-    void streamFn(makeModel({ id: "claude-sonnet-4-6", maxTokens: 64000 }), { messages: [] }, {});
+    void streamFn(
+      makeModel({ id: "claude-sonnet-4-6", maxTokens: 64000 }),
+      { messages: [] } as unknown as TranscriptContext,
+      {},
+    );
 
     expect(hoisted.anthropicVertexCtorMock).toHaveBeenCalledWith({
       projectId: "vertex-project",
@@ -359,7 +378,11 @@ describe("createAnthropicVertexStreamFnForModel", () => {
       { GOOGLE_CLOUD_PROJECT_ID: "vertex-project" } as NodeJS.ProcessEnv,
     );
 
-    void streamFn(makeModel({ id: "claude-sonnet-4-6", maxTokens: 64000 }), { messages: [] }, {});
+    void streamFn(
+      makeModel({ id: "claude-sonnet-4-6", maxTokens: 64000 }),
+      { messages: [] } as unknown as TranscriptContext,
+      {},
+    );
 
     expect(hoisted.anthropicVertexCtorMock).toHaveBeenCalledWith({
       projectId: "vertex-project",

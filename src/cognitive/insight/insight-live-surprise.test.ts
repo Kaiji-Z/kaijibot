@@ -7,12 +7,8 @@
  *     pnpm test src/cognitive/insight/insight-live-surprise.test.ts
  */
 
-import {
-  complete as piComplete,
-  type Api,
-  type AssistantMessage,
-  type Model,
-} from "@earendil-works/pi-ai";
+import { type Api, type AssistantMessage, type Model } from "@earendil-works/pi-ai";
+import { complete as piComplete } from "@earendil-works/pi-ai/compat";
 import { describe, it, expect } from "vitest";
 import type { PersonaTree } from "../types.js";
 import { inferSearchStrategy } from "./interest-inference.js";

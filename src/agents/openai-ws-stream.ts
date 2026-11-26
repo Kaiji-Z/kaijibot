@@ -7,6 +7,8 @@ import type {
   StopReason,
 } from "@earendil-works/pi-ai";
 import * as piAi from "@earendil-works/pi-ai";
+import { getCurrentTools, getInitialSystemMessage } from "@earendil-works/pi-ai";
+import { streamSimple as compatStreamSimple } from "@earendil-works/pi-ai/compat";
 /**
  * OpenAI WebSocket StreamFn Integration
  *
@@ -96,13 +98,18 @@ function resolveOpenAIWebSocketStrictToolSetting(
   });
 }
 
+function resolveWsInstructions(context: Parameters<StreamFn>[1]): string | undefined {
+  const content = getInitialSystemMessage(context.messages)?.content;
+  return typeof content === "string" ? stripSystemPromptCacheBoundary(content) : undefined;
+}
+
 /** Module-level registry: sessionId → WsSession */
 const wsRegistry = new Map<string, WsSession>();
 
 type OpenAIWsStreamDeps = {
   createManager: (options?: OpenAIWebSocketManagerOptions) => OpenAIWebSocketManager;
   createHttpFallbackStreamFn: (model: ProviderRuntimeModel) => StreamFn | undefined;
-  streamSimple: typeof piAi.streamSimple;
+  streamSimple: typeof compatStreamSimple;
 };
 
 type AssistantMessageWithPhase = AssistantMessage & { phase?: OpenAIResponsesAssistantPhase };
@@ -110,7 +117,7 @@ type AssistantMessageWithPhase = AssistantMessage & { phase?: OpenAIResponsesAss
 const defaultOpenAIWsStreamDeps: OpenAIWsStreamDeps = {
   createManager: (options) => new OpenAIWebSocketManager(options),
   createHttpFallbackStreamFn: (model) => createBoundaryAwareStreamFnForModel(model),
-  streamSimple: (...args) => piAi.streamSimple(...args),
+  streamSimple: compatStreamSimple,
 };
 
 let openAIWsStreamDeps: OpenAIWsStreamDeps = defaultOpenAIWsStreamDeps;
@@ -750,12 +757,10 @@ export function createOpenAIWebSocketStreamFn(
             await runWarmUp({
               manager: session.manager,
               modelId: model.id,
-              tools: convertTools(context.tools, {
+              tools: convertTools(getCurrentTools(context.messages), {
                 strict: resolveOpenAIWebSocketStrictToolSetting(model),
               }),
-              instructions: context.systemPrompt
-                ? stripSystemPromptCacheBoundary(context.systemPrompt)
-                : undefined,
+              instructions: resolveWsInstructions(context),
               metadata: resolveProviderTransportTurnState(model, {
                 sessionId,
                 turnId,
@@ -847,7 +852,7 @@ export function createOpenAIWebSocketStreamFn(
           context,
           options: options as WsOptions | undefined,
           turnInput,
-          tools: convertTools(context.tools, {
+          tools: convertTools(getCurrentTools(context.messages), {
             strict: resolveOpenAIWebSocketStrictToolSetting(model),
           }),
           metadata: turnState?.metadata,

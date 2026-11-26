@@ -222,7 +222,7 @@ function createCompactionDiagId(): string {
 }
 
 function prepareCompactionSessionAgent(params: {
-  session: { agent: { streamFn?: unknown } };
+  session: { agent: { streamFunction: import("@earendil-works/pi-agent-core").StreamFn } };
   providerStreamFn: unknown;
   shouldUseWebSocketTransport: boolean;
   wsApiKey?: string;
@@ -230,7 +230,7 @@ function prepareCompactionSessionAgent(params: {
   signal: AbortSignal;
   effectiveModel: ProviderRuntimeModel;
   resolvedApiKey?: string;
-  authStorage: unknown;
+  authStorage?: unknown;
   config?: KaijiBotConfig;
   provider: string;
   modelId: string;
@@ -239,7 +239,8 @@ function prepareCompactionSessionAgent(params: {
   effectiveWorkspace: string;
   agentDir: string;
 }) {
-  params.session.agent.streamFn = resolveEmbeddedAgentStreamFn({
+  params.session.agent.streamFunction = resolveEmbeddedAgentStreamFn({
+    sessionDefault: true,
     currentStreamFn: resolveEmbeddedAgentBaseStreamFn({ session: params.session as never }),
     providerStreamFn: params.providerStreamFn as never,
     shouldUseWebSocketTransport: params.shouldUseWebSocketTransport,
@@ -399,12 +400,12 @@ export async function compactEmbeddedPiSessionDirect(
   };
   const agentDir = params.agentDir ?? resolveKaijiBotAgentDir();
   await ensureKaijiBotModelsJson(params.config, agentDir);
-  const { model, error, authStorage, modelRegistry } = await resolveModelAsync(
-    provider,
-    modelId,
-    agentDir,
-    params.config,
-  );
+  const {
+    model,
+    error,
+    authStorage,
+    modelRegistry: _modelRegistry,
+  } = await resolveModelAsync(provider, modelId, agentDir, params.config);
   if (!model) {
     const reason = error ?? `Unknown model: ${provider}/${modelId}`;
     return fail(reason);
@@ -861,7 +862,6 @@ export async function compactEmbeddedPiSessionDirect(
         ? await resolveEmbeddedAgentApiKey({
             provider,
             resolvedApiKey: hasRuntimeAuthExchange ? undefined : apiKeyInfo?.apiKey,
-            authStorage,
           })
         : undefined;
       if (shouldUseWebSocketTransport && !wsApiKey) {
@@ -878,8 +878,6 @@ export async function compactEmbeddedPiSessionDirect(
           const createdSession = await createAgentSession({
             cwd: effectiveWorkspace,
             agentDir,
-            authStorage,
-            modelRegistry,
             model: effectiveModel,
             thinkingLevel: mapThinkingLevel(thinkLevel),
             tools: resolveSessionToolsParam(builtInTools),
@@ -901,7 +899,6 @@ export async function compactEmbeddedPiSessionDirect(
             signal: runAbortController.signal,
             effectiveModel,
             resolvedApiKey: hasRuntimeAuthExchange ? undefined : apiKeyInfo?.apiKey,
-            authStorage,
             config: params.config,
             provider,
             modelId,

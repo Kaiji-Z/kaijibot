@@ -11,7 +11,11 @@ import {
 } from "./store.js";
 import type { AuthProfileStore, OAuthCredential } from "./types.js";
 let resolveApiKeyForProfile: typeof import("./oauth.js").resolveApiKeyForProfile;
-type GetOAuthApiKey = typeof import("@earendil-works/pi-ai/oauth").getOAuthApiKey;
+type OAuthProfileCredentials = Record<string, { refresh?: string } & Record<string, unknown>>;
+type GetOAuthApiKey = (
+  provider: string,
+  creds: OAuthProfileCredentials,
+) => Promise<{ apiKey: string; newCredentials?: Record<string, unknown> }>;
 
 const { getOAuthApiKeyMock } = vi.hoisted(() => ({
   getOAuthApiKeyMock: vi.fn<GetOAuthApiKey>(async () => {

@@ -1,4 +1,5 @@
-import { type Context, complete } from "@earendil-works/pi-ai";
+import { type Context } from "@earendil-works/pi-ai";
+import { complete } from "@earendil-works/pi-ai/compat";
 import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { extractPdfContent, type PdfExtractedContent } from "../../media/pdf-extract.js";
@@ -129,7 +130,7 @@ async function runPdfPrompt(params: {
 
   await ensureKaijiBotModelsJson(effectiveCfg, params.agentDir);
   const authStorage = discoverAuthStorage(params.agentDir);
-  const modelRegistry = discoverModels(authStorage, params.agentDir);
+  const modelRegistry = await discoverModels(authStorage, params.agentDir);
 
   let extractionCache: PdfExtractedContent[] | null = null;
   const getExtractions = async (): Promise<PdfExtractedContent[]> => {

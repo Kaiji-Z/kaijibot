@@ -1,5 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import type { ProviderWrapStreamFnContext } from "kaijibot/plugin-sdk/plugin-entry";
 
 const TOOL_CALLS_SECTION_BEGIN = "<|tool_calls_section_begin|>";

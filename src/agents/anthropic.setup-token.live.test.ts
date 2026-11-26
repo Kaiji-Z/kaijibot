@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { type Api, completeSimple, type Model } from "@earendil-works/pi-ai";
+import { type Api, type Model } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { describe, expect, it } from "vitest";
 import {
   ANTHROPIC_SETUP_TOKEN_PREFIX,
@@ -188,7 +189,7 @@ describeLive("live anthropic setup-token", () => {
         await ensureKaijiBotModelsJson(cfg, tokenSource.agentDir);
 
         const authStorage = discoverAuthStorage(tokenSource.agentDir);
-        const modelRegistry = discoverModels(authStorage, tokenSource.agentDir);
+        const modelRegistry = await discoverModels(authStorage, tokenSource.agentDir);
         const all = Array.isArray(modelRegistry) ? modelRegistry : modelRegistry.getAll();
         const candidates = all.filter(
           (model) => normalizeProviderId(model.provider) === "anthropic",

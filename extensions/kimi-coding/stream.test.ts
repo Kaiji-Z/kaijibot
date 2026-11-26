@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { Context, Model } from "@earendil-works/pi-ai";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import { createKimiToolCallMarkupWrapper, wrapKimiProviderStream } from "./stream.js";
 
@@ -58,7 +59,7 @@ describe("kimi tool-call markup wrapper", () => {
     const wrapped = createKimiToolCallMarkupWrapper(baseStreamFn);
     const stream = wrapped(
       { api: "anthropic-messages", provider: "kimi", id: "k2p5" } as Model<"anthropic-messages">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     ) as FakeStream;
 
@@ -130,7 +131,7 @@ describe("kimi tool-call markup wrapper", () => {
     const wrapped = createKimiToolCallMarkupWrapper(baseStreamFn);
     const stream = wrapped(
       { api: "anthropic-messages", provider: "kimi", id: "k2p5" } as Model<"anthropic-messages">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     ) as FakeStream;
 
@@ -152,7 +153,7 @@ describe("kimi tool-call markup wrapper", () => {
     const wrapped = createKimiToolCallMarkupWrapper(baseStreamFn);
     const stream = (await wrapped(
       { api: "anthropic-messages", provider: "kimi", id: "k2p5" } as Model<"anthropic-messages">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     )) as FakeStream;
 
@@ -185,7 +186,7 @@ describe("kimi tool-call markup wrapper", () => {
     const wrapped = createKimiToolCallMarkupWrapper(baseStreamFn);
     const stream = wrapped(
       { api: "anthropic-messages", provider: "kimi", id: "k2p5" } as Model<"anthropic-messages">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     ) as FakeStream;
 
@@ -226,7 +227,7 @@ describe("kimi tool-call markup wrapper", () => {
     } as never);
     const stream = wrapped(
       { api: "anthropic-messages", provider: "kimi", id: "k2p5" } as Model<"anthropic-messages">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     ) as FakeStream;
 

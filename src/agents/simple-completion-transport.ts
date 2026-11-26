@@ -1,4 +1,5 @@
-import { getApiProvider, type Api, type Model } from "@earendil-works/pi-ai";
+import { type Api, type Model } from "@earendil-works/pi-ai";
+import { getApiProvider } from "@earendil-works/pi-ai/compat";
 import type { KaijiBotConfig } from "../config/config.js";
 import { createAnthropicVertexStreamFnForModel } from "./anthropic-vertex-stream.js";
 import { ensureCustomApiRegistered } from "./custom-api-registry.js";

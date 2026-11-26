@@ -99,7 +99,9 @@ export function applySystemPromptOverrideToSession(
   override: string | ((defaultPrompt?: string) => string),
 ) {
   const prompt = typeof override === "function" ? override() : override.trim();
-  session.agent.state.systemPrompt = prompt;
+  // pi-agent-core 1.6 types state.systemPrompt as readonly; the field stays
+  // mutable at runtime and the loop rebuilds the leading system message from it.
+  (session.agent.state as unknown as { systemPrompt: string }).systemPrompt = prompt;
   const mutableSession = session as unknown as {
     _baseSystemPrompt?: string;
     _rebuildSystemPrompt?: (toolNames: string[]) => string;

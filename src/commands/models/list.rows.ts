@@ -1,7 +1,7 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
-import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { AuthProfileStore } from "../../agents/auth-profiles.js";
 import { shouldSuppressBuiltInModel } from "../../agents/model-suppression.js";
+import type { PiModelRegistryLike } from "../../agents/pi-model-discovery.js";
 import { normalizeProviderId } from "../../agents/provider-id.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { loadModelRegistry, toModelRow } from "./list.registry.js";
@@ -109,7 +109,7 @@ export function appendDiscoveredRows(params: {
 
 export async function appendCatalogSupplementRows(params: {
   rows: ModelRow[];
-  modelRegistry: ModelRegistry;
+  modelRegistry: PiModelRegistryLike;
   context: RowBuilderContext;
   seenKeys: Set<string>;
 }): Promise<void> {
@@ -159,7 +159,7 @@ export async function appendCatalogSupplementRows(params: {
 export function appendConfiguredRows(params: {
   rows: ModelRow[];
   entries: ConfiguredEntry[];
-  modelRegistry: ModelRegistry;
+  modelRegistry: PiModelRegistryLike;
   context: RowBuilderContext;
 }) {
   for (const entry of params.entries) {

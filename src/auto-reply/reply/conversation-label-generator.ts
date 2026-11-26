@@ -1,4 +1,5 @@
-import { completeSimple, type TextContent } from "@earendil-works/pi-ai";
+import { type TextContent } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { getApiKeyForModel, requireApiKey } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { resolveModelAsync } from "../../agents/pi-embedded-runner/model.js";

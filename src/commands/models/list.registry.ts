@@ -1,7 +1,7 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
-import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { AuthProfileStore } from "../../agents/auth-profiles.js";
 import { shouldSuppressBuiltInModel } from "../../agents/model-suppression.js";
+import type { PiModelRegistryLike } from "../../agents/pi-model-discovery.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import {
   formatErrorWithStack,
@@ -81,7 +81,7 @@ function validateAvailableModels(availableModels: unknown): Model<Api>[] {
   return availableModels as Model<Api>[];
 }
 
-function loadAvailableModels(registry: ModelRegistry, cfg: KaijiBotConfig): Model<Api>[] {
+function loadAvailableModels(registry: PiModelRegistryLike, cfg: KaijiBotConfig): Model<Api>[] {
   let availableModels: unknown;
   try {
     availableModels = registry.getAvailable();
@@ -109,7 +109,7 @@ export async function loadModelRegistry(
 ) {
   const agentDir = resolveKaijiBotAgentDir();
   const authStorage = discoverAuthStorage(agentDir);
-  const registry = discoverModels(authStorage, agentDir);
+  const registry = await discoverModels(authStorage, agentDir);
   const models = registry.getAll().filter(
     (model) =>
       !shouldSuppressBuiltInModel({

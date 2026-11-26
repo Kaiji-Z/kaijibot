@@ -1,5 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import type { ProviderWrapStreamFnContext } from "kaijibot/plugin-sdk/plugin-entry";
 import {
   applyAnthropicPayloadPolicyToParams,
@@ -42,10 +42,17 @@ function parseHeaderList(value: unknown): string[] {
 }
 
 function mergeAnthropicBetaHeader(
-  headers: Record<string, string> | undefined,
+  headers: Record<string, string | null | undefined> | undefined,
   betas: string[],
 ): Record<string, string> {
-  const merged = { ...headers };
+  const merged: Record<string, string> = {};
+  if (headers) {
+    for (const [key, value] of Object.entries(headers)) {
+      if (typeof value === "string") {
+        merged[key] = value;
+      }
+    }
+  }
   const existingKey = Object.keys(merged).find(
     (key) => normalizeLowercaseStringOrEmpty(key) === "anthropic-beta",
   );

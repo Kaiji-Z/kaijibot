@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { getInitialSystemMessage } from "@earendil-works/pi-ai";
 import { parseGeminiAuth } from "../../infra/gemini-auth.js";
 import { normalizeGoogleApiBaseUrl } from "../../infra/google-api-base-url.js";
 import { normalizeOptionalString } from "../../shared/string-coerce.js";
@@ -165,12 +166,13 @@ function parseExpireTimeMs(expireTime: string | undefined): number | null {
 }
 
 function buildManagedContextWithoutSystemPrompt(context: Parameters<StreamFn>[1]) {
-  if (!context.systemPrompt) {
+  const systemMessage = getInitialSystemMessage(context.messages);
+  if (!systemMessage) {
     return context;
   }
   return {
     ...context,
-    systemPrompt: undefined,
+    messages: context.messages.filter((message) => message !== systemMessage),
   };
 }
 

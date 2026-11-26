@@ -1,5 +1,5 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { complete } from "@earendil-works/pi-ai";
+import { complete } from "@earendil-works/pi-ai/compat";
 import { isMinimaxVlmModel, minimaxUnderstandImage } from "../agents/minimax-vlm.js";
 import {
   getApiKeyForModel,
@@ -47,7 +47,7 @@ async function resolveImageRuntime(params: {
   await ensureKaijiBotModelsJson(params.cfg, params.agentDir);
   const { discoverAuthStorage, discoverModels } = await loadPiModelDiscoveryRuntime();
   const authStorage = discoverAuthStorage(params.agentDir);
-  const modelRegistry = discoverModels(authStorage, params.agentDir);
+  const modelRegistry = await discoverModels(authStorage, params.agentDir);
   const resolvedRef = normalizeModelRef(params.provider, params.model);
   const model = modelRegistry.find(resolvedRef.provider, resolvedRef.model) as Model<Api> | null;
   if (!model) {

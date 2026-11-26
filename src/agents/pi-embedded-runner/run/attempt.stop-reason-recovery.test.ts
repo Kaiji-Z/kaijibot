@@ -1,5 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { createAssistantMessageEventStream, type Context, type Model } from "@earendil-works/pi-ai";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
+import { createAssistantMessageEventStream, type Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import { wrapStreamFnHandleSensitiveStopReason } from "./attempt.stop-reason-recovery.js";
 
@@ -43,7 +44,7 @@ describe("wrapStreamFnHandleSensitiveStopReason", () => {
 
     const wrapped = wrapStreamFnHandleSensitiveStopReason(baseStreamFn);
     const stream = await Promise.resolve(
-      wrapped(anthropicModel, { messages: [] } as Context, undefined),
+      wrapped(anthropicModel, { messages: [] } as unknown as TranscriptContext, undefined),
     );
     const result = await stream.result();
 
@@ -60,7 +61,7 @@ describe("wrapStreamFnHandleSensitiveStopReason", () => {
 
     const wrapped = wrapStreamFnHandleSensitiveStopReason(baseStreamFn);
     const stream = await Promise.resolve(
-      wrapped(anthropicModel, { messages: [] } as Context, undefined),
+      wrapped(anthropicModel, { messages: [] } as unknown as TranscriptContext, undefined),
     );
     const result = await stream.result();
 

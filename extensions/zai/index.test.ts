@@ -1,4 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
+import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model } from "@earendil-works/pi-ai";
 import type { ProviderWrapStreamFnContext } from "kaijibot/plugin-sdk/plugin-entry";
 import { registerSingleProviderPlugin } from "kaijibot/plugin-sdk/plugin-test-runtime";
@@ -197,7 +198,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 
@@ -216,7 +217,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 
@@ -247,7 +248,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 
@@ -279,7 +280,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 
@@ -300,7 +301,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 
@@ -370,7 +371,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
       streamFn: baseStreamFn,
     } as never);
 
-    void wrapped?.(model, context, {});
+    void wrapped?.(model, context as unknown as TranscriptContext, {});
 
     expect(capturedPayload?.thinking).toEqual({ type: "enabled", clear_thinking: false });
     const assistantMessage = (capturedPayload?.messages as Array<Record<string, unknown>>)[1];
@@ -464,7 +465,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
 
     await wrapped?.(
       params.model,
-      { messages: [{ role: "user", content: "hi", timestamp: 1 }] } as Context,
+      { messages: [{ role: "user", content: "hi", timestamp: 1 }] } as unknown as TranscriptContext,
       {},
     );
     if (!payload) {
@@ -566,7 +567,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         id: "glm-5.3-flash",
         thinkingLevelMap: { off: "low" },
       } as Model<"openai-completions">,
-      { messages: [] } as Context,
+      { messages: [] } as unknown as TranscriptContext,
       {},
     );
 

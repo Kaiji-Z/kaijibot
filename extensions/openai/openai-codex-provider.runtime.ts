@@ -1,19 +1,27 @@
-import {
-  getOAuthApiKey as getOAuthApiKeyFromPi,
-  refreshOpenAICodexToken as refreshOpenAICodexTokenFromPi,
-} from "@earendil-works/pi-ai/oauth";
 import { ensureGlobalUndiciEnvProxyDispatcher } from "kaijibot/plugin-sdk/runtime-env";
 
+/**
+ * pi-ai 1.6 removed the public codex OAuth helpers. The wrappers keep their
+ * shapes for the provider runtime and fail with a clear, actionable error.
+ */
+const unavailable = (): never => {
+  throw new Error(
+    "OpenAI Codex OAuth token refresh is unavailable: pi-ai 1.6 removed the public OAuth API. Re-authenticate via the Codex CLI and re-import credentials.",
+  );
+};
+
 export async function getOAuthApiKey(
-  ...args: Parameters<typeof getOAuthApiKeyFromPi>
-): Promise<Awaited<ReturnType<typeof getOAuthApiKeyFromPi>>> {
+  provider: string,
+  creds: Record<string, unknown>,
+): Promise<string | undefined> {
   ensureGlobalUndiciEnvProxyDispatcher();
-  return await getOAuthApiKeyFromPi(...args);
+  void provider;
+  void creds;
+  return unavailable();
 }
 
-export async function refreshOpenAICodexToken(
-  ...args: Parameters<typeof refreshOpenAICodexTokenFromPi>
-): Promise<Awaited<ReturnType<typeof refreshOpenAICodexTokenFromPi>>> {
+export async function refreshOpenAICodexToken(refreshToken: string): Promise<never> {
   ensureGlobalUndiciEnvProxyDispatcher();
-  return await refreshOpenAICodexTokenFromPi(...args);
+  void refreshToken;
+  return unavailable();
 }
