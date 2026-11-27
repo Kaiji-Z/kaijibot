@@ -12,9 +12,12 @@ import * as pdfNativeProviders from "./pdf-native-providers.js";
 
 const completeMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@earendil-works/pi-ai", async () => {
-  const actual =
-    await vi.importActual<typeof import("@earendil-works/pi-ai")>("@earendil-works/pi-ai");
+// pdf-tool.ts imports complete from the compat entry (pi-ai 1.6 moved it off the
+// root export), so the mock has to target that specifier.
+vi.mock("@earendil-works/pi-ai/compat", async () => {
+  const actual = await vi.importActual<typeof import("@earendil-works/pi-ai/compat")>(
+    "@earendil-works/pi-ai/compat",
+  );
   return {
     ...actual,
     complete: completeMock,
