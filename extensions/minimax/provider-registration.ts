@@ -128,6 +128,7 @@ function createOAuthHandler(region: MiniMaxRegion) {
         access: result.access,
         refresh: result.refresh,
         expires: result.expires,
+        credentialExtra: { tokenEndpoint: result.tokenEndpoint },
         configPatch: {
           models: {
             providers: {
@@ -287,6 +288,10 @@ export function registerMinimaxProviders(api: KaijiBotPluginApi) {
         run: createOAuthHandler("cn"),
       },
     ],
+    refreshOAuth: async (cred) => {
+      const { refreshMiniMaxPortalOAuthCredential } = await import("./oauth.runtime.js");
+      return await refreshMiniMaxPortalOAuthCredential(cred);
+    },
     ...HYBRID_ANTHROPIC_OPENAI_REPLAY_HOOKS,
     ...MINIMAX_FAST_MODE_STREAM_HOOKS,
     resolveReasoningOutputMode: () => resolveMinimaxReasoningOutputMode(),
