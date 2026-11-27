@@ -172,6 +172,59 @@ describe("describeImageWithModel", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("runs the generic completion on the model prepared for a background request", async () => {
+    discoverModelsMock.mockReturnValue({
+      find: vi.fn(() => ({
+        // glm-5.3 cannot turn thinking off: the registry fills "off" with null and
+        // names low, high and max. It takes an effort instead of a disabled switch.
+        id: "glm-5.3-flash",
+        api: "openai-completions",
+        provider: "zai",
+        input: ["text", "image"],
+        baseUrl: "https://api.z.ai/api/coding/paas/v4",
+        reasoning: true,
+        compat: { thinkingFormat: "zai", supportsReasoningEffort: true },
+        thinkingLevelMap: {
+          off: null,
+          minimal: null,
+          low: "low",
+          medium: null,
+          high: "high",
+          xhigh: null,
+          max: "max",
+        },
+      })),
+    });
+    completeMock.mockResolvedValue({
+      role: "assistant",
+      api: "openai-completions",
+      provider: "zai",
+      model: "glm-5.3-flash",
+      stopReason: "stop",
+      timestamp: Date.now(),
+      content: [{ type: "text", text: "zai ok" }],
+    });
+
+    const result = await describeImageWithModel({
+      cfg: {},
+      agentDir: "/tmp/kaijibot-agent",
+      provider: "zai",
+      model: "glm-5.3-flash",
+      buffer: Buffer.from("png-bytes"),
+      fileName: "image.png",
+      mime: "image/png",
+      prompt: "Describe the image.",
+      timeoutMs: 1000,
+    });
+
+    expect(result).toEqual({ text: "zai ok", model: "glm-5.3-flash" });
+    expect(completeMock.mock.calls[0]?.[0]).toMatchObject({
+      provider: "zai",
+      id: "glm-5.3-flash",
+      compat: { thinkingFormat: "openai", supportsReasoningEffort: true },
+    });
+  });
+
   it("passes image prompt as system instructions for codex image requests", async () => {
     discoverModelsMock.mockReturnValue({
       find: vi.fn(() => ({

@@ -9,6 +9,7 @@ import {
   normalizeOptionalString,
 } from "../../shared/string-coerce.js";
 import { resolveUserPath } from "../../utils.js";
+import { forBackgroundCompletion } from "../simple-completion-runtime.js";
 import { type ImageModelConfig } from "./image-tool.helpers.js";
 import {
   applyImageModelConfigDefaults,
@@ -189,6 +190,8 @@ async function runPdfPrompt(params: {
       }
 
       const extractions = await getExtractions();
+      // The extraction fallback passes no reasoning option, like any background call.
+      const completionModel = forBackgroundCompletion(model);
       const hasImages = extractions.some((e) => e.images.length > 0);
       if (hasImages && !model.input?.includes("image")) {
         const hasText = extractions.some((e) => e.text.trim().length > 0);
@@ -202,7 +205,7 @@ async function runPdfPrompt(params: {
           images: [],
         }));
         const context = buildPdfExtractionContext(params.prompt, textOnlyExtractions);
-        const message = await complete(model, context, {
+        const message = await complete(completionModel, context, {
           apiKey,
           maxTokens: resolvePdfToolMaxTokens(model.maxTokens),
         });
@@ -211,7 +214,7 @@ async function runPdfPrompt(params: {
       }
 
       const context = buildPdfExtractionContext(params.prompt, extractions);
-      const message = await complete(model, context, {
+      const message = await complete(completionModel, context, {
         apiKey,
         maxTokens: resolvePdfToolMaxTokens(model.maxTokens),
       });

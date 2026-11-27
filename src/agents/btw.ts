@@ -23,6 +23,7 @@ import { resolveModelWithRegistry } from "./pi-embedded-runner/model.js";
 import { getActiveEmbeddedRunSnapshot } from "./pi-embedded-runner/runs.js";
 import { discoverAuthStorage, discoverModels } from "./pi-model-discovery.js";
 import { stripToolResultDetails } from "./session-transcript-repair.js";
+import { forBackgroundCompletion } from "./simple-completion-runtime.js";
 
 type SessionManagerLike = {
   getLeafEntry?: () => {
@@ -284,7 +285,7 @@ export async function runBtwSideQuestion(
   };
 
   const stream = streamSimple(
-    model,
+    forBackgroundCompletion(model),
     {
       systemPrompt: buildBtwSystemPrompt(),
       messages: [

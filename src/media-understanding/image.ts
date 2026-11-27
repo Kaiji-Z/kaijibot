@@ -8,6 +8,7 @@ import {
 } from "../agents/model-auth.js";
 import { normalizeModelRef } from "../agents/model-selection.js";
 import { ensureKaijiBotModelsJson } from "../agents/models-config.js";
+import { forBackgroundCompletion } from "../agents/simple-completion-runtime.js";
 import { coerceImageAssistantText } from "../agents/tools/image-tool.helpers.js";
 import type {
   ImageDescriptionRequest,
@@ -193,7 +194,8 @@ export async function describeImagesWithModel(
     params.timeoutMs > 0
       ? setTimeout(() => controller.abort(), params.timeoutMs)
       : undefined;
-  const message = await complete(model, context, {
+  // The description passes no reasoning option, like any background call.
+  const message = await complete(forBackgroundCompletion(model), context, {
     apiKey,
     maxTokens: resolveImageToolMaxTokens(model.maxTokens, params.maxTokens ?? 512),
     signal: controller.signal,

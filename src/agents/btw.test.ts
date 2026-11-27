@@ -1,3 +1,4 @@
+import type { Api, Context, Model } from "@earendil-works/pi-ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionEntry } from "../config/sessions.js";
 
@@ -182,6 +183,33 @@ function clearBuiltSessionMessages() {
   buildSessionContextMock.mockReturnValue({ messages: [] });
 }
 
+// glm-5.3 cannot turn thinking off: the registry fills "off" with null and names
+// low, high and max. It takes an effort instead of a disabled-thinking switch.
+function alwaysThinkingZaiModel(): Model<Api> {
+  return {
+    id: "glm-5.3-flash",
+    name: "GLM-5.3-Flash",
+    api: "openai-completions",
+    provider: "zai",
+    baseUrl: "https://api.z.ai/api/coding/paas/v4",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128000,
+    maxTokens: 131100,
+    compat: { thinkingFormat: "zai", supportsReasoningEffort: true },
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: null,
+      high: "high",
+      xhigh: null,
+      max: "max",
+    },
+  };
+}
+
 describe("runBtwSideQuestion", () => {
   beforeEach(() => {
     streamSimpleMock.mockReset();
@@ -320,6 +348,36 @@ describe("runBtwSideQuestion", () => {
       expect.anything(),
       expect.not.objectContaining({ reasoning: expect.anything() }),
     );
+  });
+
+  it("sends an effort instead of a disabled-thinking switch on an always-thinking model", async () => {
+    const actual = await vi.importActual<typeof import("@earendil-works/pi-ai/compat")>(
+      "@earendil-works/pi-ai/compat",
+    );
+    type StreamOptions = Parameters<typeof actual.streamSimple>[2];
+    let payload: Record<string, unknown> | undefined;
+    // Run the real transport on whatever model the side question is given.
+    streamSimpleMock.mockImplementation(
+      (model: Model<Api>, context: Context, options: StreamOptions) =>
+        actual.streamSimple(model, context, {
+          ...options,
+          // The request is aborted before it leaves, so nothing reaches the network.
+          signal: AbortSignal.abort(),
+          onPayload: (next) => {
+            payload = next as Record<string, unknown>;
+          },
+        }),
+    );
+    resolveModelWithRegistryMock.mockReturnValue(alwaysThinkingZaiModel());
+
+    // The aborted request fails the side question; the request body is what matters here.
+    await expect(runSideQuestion()).rejects.toThrow();
+    if (!payload) {
+      throw new Error("no request payload captured");
+    }
+
+    expect(payload).toMatchObject({ model: "glm-5.3-flash", reasoning_effort: "low" });
+    expect(payload).not.toHaveProperty("thinking");
   });
 
   it("fails when the current branch has no messages", async () => {

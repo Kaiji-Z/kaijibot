@@ -1,4 +1,5 @@
 import type { Model } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 
@@ -157,5 +158,72 @@ describe("prepareModelForSimpleCompletion", () => {
       ...model,
       api: "kaijibot-openai-responses-transport",
     });
+  });
+
+  // glm-5.3 cannot turn thinking off: the registry fills "off" with null and names
+  // low, high and max. It takes an effort instead of a disabled-thinking switch.
+  const alwaysThinkingZaiModel = (): Model<"openai-completions"> => ({
+    id: "glm-5.3-flash",
+    name: "GLM-5.3-Flash",
+    api: "openai-completions",
+    provider: "zai",
+    baseUrl: "https://api.z.ai/api/coding/paas/v4",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128000,
+    maxTokens: 131100,
+    compat: { thinkingFormat: "zai", supportsReasoningEffort: true, maxTokensField: "max_tokens" },
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: null,
+      high: "high",
+      xhigh: null,
+      max: "max",
+    },
+  });
+
+  it("prepares an always-thinking model for the background request", () => {
+    const model = alwaysThinkingZaiModel();
+    resolveProviderStreamFn.mockReturnValueOnce(undefined);
+
+    const result = prepareModelForSimpleCompletion({ model });
+
+    expect(result).toEqual({
+      ...model,
+      thinkingLevelMap: { ...model.thinkingLevelMap, off: "low" },
+      compat: {
+        thinkingFormat: "openai",
+        supportsReasoningEffort: true,
+        maxTokensField: "max_completion_tokens",
+      },
+    });
+  });
+
+  it("sends an effort instead of a disabled-thinking switch for an always-thinking model", async () => {
+    let payload: Record<string, unknown> | undefined;
+
+    const prepared = prepareModelForSimpleCompletion({ model: alwaysThinkingZaiModel() });
+    await completeSimple(
+      prepared,
+      { messages: [{ role: "user", content: "hello", timestamp: 0 }] },
+      {
+        apiKey: "test-key",
+        maxTokens: 100,
+        // The request is aborted before it leaves, so nothing reaches the network.
+        signal: AbortSignal.abort(),
+        onPayload: (next) => {
+          payload = next as Record<string, unknown>;
+        },
+      },
+    ).catch(() => undefined);
+    if (!payload) {
+      throw new Error("no request payload captured");
+    }
+
+    expect(payload).toMatchObject({ model: "glm-5.3-flash", reasoning_effort: "low" });
+    expect(payload).not.toHaveProperty("thinking");
   });
 });
