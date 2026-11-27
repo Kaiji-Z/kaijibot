@@ -10,6 +10,7 @@ import {
   saveAuthProfileStore,
 } from "./auth-profiles/store.js";
 import type { AuthProfileStore } from "./auth-profiles/types.js";
+import { markAuthProfileUsed } from "./auth-profiles/usage.js";
 
 vi.mock("./auth-profiles/external-auth.js", () => ({
   overlayExternalAuthProfiles: <T>(store: T) => store,
@@ -180,6 +181,119 @@ describe("saveAuthProfileStore", () => {
       expect(authState.lastGood?.anthropic).toBe("anthropic:default");
       expect(authState.usageStats?.["anthropic:default"]?.lastUsed).toBe(123);
     } finally {
+      await fs.rm(agentDir, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves auth-profiles.json untouched when only usage state changed", async () => {
+    const agentDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-auth-save-usage-"));
+    try {
+      const store: AuthProfileStore = {
+        version: 1,
+        profiles: {
+          "anthropic:default": {
+            type: "api_key",
+            provider: "anthropic",
+            key: "sk-anthropic-plain",
+          },
+        },
+      };
+      saveAuthProfileStore(store, agentDir);
+      const authPath = resolveAuthStorePath(agentDir);
+      const firstWrite = await fs.readFile(authPath, "utf8");
+      const stale = new Date("2026-01-01T00:00:00Z");
+      await fs.utimes(authPath, stale, stale);
+
+      const lastUsed = 1_767_225_600_000;
+      saveAuthProfileStore(
+        { ...store, usageStats: { "anthropic:default": { lastUsed } } },
+        agentDir,
+      );
+
+      expect(Math.trunc((await fs.stat(authPath)).mtimeMs)).toBe(stale.getTime());
+      expect(await fs.readFile(authPath, "utf8")).toBe(firstWrite);
+      const authState = JSON.parse(await fs.readFile(resolveAuthStatePath(agentDir), "utf8")) as {
+        usageStats?: Record<string, { lastUsed?: number }>;
+      };
+      expect(authState.usageStats?.["anthropic:default"]?.lastUsed).toBe(lastUsed);
+    } finally {
+      clearRuntimeAuthProfileStoreSnapshots();
+      await fs.rm(agentDir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not move auth-profiles.json's mtime when a turn records profile usage", async () => {
+    const agentDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-auth-save-mark-used-"));
+    try {
+      const store: AuthProfileStore = {
+        version: 1,
+        profiles: {
+          "anthropic:default": {
+            type: "api_key",
+            provider: "anthropic",
+            key: "sk-anthropic-plain",
+          },
+        },
+      };
+      saveAuthProfileStore(store, agentDir);
+      const authPath = resolveAuthStorePath(agentDir);
+      const firstWrite = await fs.readFile(authPath, "utf8");
+      const stale = new Date("2026-01-01T00:00:00Z");
+      await fs.utimes(authPath, stale, stale);
+      const before = Date.now();
+
+      await markAuthProfileUsed({ store, profileId: "anthropic:default", agentDir });
+
+      expect(Math.trunc((await fs.stat(authPath)).mtimeMs)).toBe(stale.getTime());
+      expect(await fs.readFile(authPath, "utf8")).toBe(firstWrite);
+      const authState = JSON.parse(await fs.readFile(resolveAuthStatePath(agentDir), "utf8")) as {
+        usageStats?: Record<string, { lastUsed?: number }>;
+      };
+      expect(authState.usageStats?.["anthropic:default"]?.lastUsed).toBeGreaterThanOrEqual(before);
+    } finally {
+      clearRuntimeAuthProfileStoreSnapshots();
+      await fs.rm(agentDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rewrites auth-profiles.json when a credential changes", async () => {
+    const agentDir = await fs.mkdtemp(path.join(os.tmpdir(), "kaijibot-auth-save-rotate-"));
+    try {
+      const store: AuthProfileStore = {
+        version: 1,
+        profiles: {
+          "anthropic:default": {
+            type: "api_key",
+            provider: "anthropic",
+            key: "sk-anthropic-plain",
+          },
+        },
+      };
+      saveAuthProfileStore(store, agentDir);
+      const authPath = resolveAuthStorePath(agentDir);
+      const stale = new Date("2026-01-01T00:00:00Z");
+      await fs.utimes(authPath, stale, stale);
+
+      saveAuthProfileStore(
+        {
+          ...store,
+          profiles: {
+            "anthropic:default": {
+              type: "api_key",
+              provider: "anthropic",
+              key: "sk-anthropic-rotated",
+            },
+          },
+        },
+        agentDir,
+      );
+
+      expect((await fs.stat(authPath)).mtimeMs).toBeGreaterThan(stale.getTime());
+      expect(JSON.parse(await fs.readFile(authPath, "utf8"))).toMatchObject({
+        profiles: { "anthropic:default": { key: "sk-anthropic-rotated" } },
+      });
+    } finally {
+      clearRuntimeAuthProfileStoreSnapshots();
       await fs.rm(agentDir, { recursive: true, force: true });
     }
   });

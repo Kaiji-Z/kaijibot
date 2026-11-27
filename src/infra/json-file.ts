@@ -105,10 +105,20 @@ export function loadJsonFile<T = unknown>(pathname: string): T | undefined {
   }
 }
 
-export function saveJsonFile(pathname: string, data: unknown) {
-  const { targetPath, followsSymlink } = resolveJsonWriteTarget(pathname);
+function serializeJsonFilePayload(data: unknown): string {
+  return `${JSON.stringify(data, null, 2)}\n`;
+}
+
+function readJsonFilePayload(pathname: string): string | undefined {
+  try {
+    return fs.readFileSync(pathname, "utf8");
+  } catch {
+    return undefined;
+  }
+}
+
+function replaceJsonFilePayload(targetPath: string, followsSymlink: boolean, payload: string) {
   const tmpPath = `${targetPath}.${randomUUID()}.tmp`;
-  const payload = `${JSON.stringify(data, null, 2)}\n`;
 
   if (!followsSymlink) {
     fs.mkdirSync(path.dirname(targetPath), { recursive: true, mode: JSON_DIR_MODE });
@@ -126,4 +136,26 @@ export function saveJsonFile(pathname: string, data: unknown) {
       // best-effort cleanup when rename does not happen
     }
   }
+}
+
+export function saveJsonFile(pathname: string, data: unknown) {
+  const { targetPath, followsSymlink } = resolveJsonWriteTarget(pathname);
+  replaceJsonFilePayload(targetPath, followsSymlink, serializeJsonFilePayload(data));
+}
+
+/**
+ * `saveJsonFile` for files whose readers key on the mtime. A payload that is
+ * byte-identical to what is already on disk leaves the file as it is and
+ * returns `false`, so a save that changes nothing does not read as a change.
+ * Anything else is written exactly as `saveJsonFile` writes it and returns `true`.
+ */
+export function saveJsonFileIfChanged(pathname: string, data: unknown): boolean {
+  const { targetPath, followsSymlink } = resolveJsonWriteTarget(pathname);
+  const payload = serializeJsonFilePayload(data);
+  if (readJsonFilePayload(targetPath) === payload) {
+    trySetSecureMode(targetPath);
+    return false;
+  }
+  replaceJsonFilePayload(targetPath, followsSymlink, payload);
+  return true;
 }

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { withTempDir } from "../test-helpers/temp-dir.js";
-import { loadJsonFile, saveJsonFile } from "./json-file.js";
+import { loadJsonFile, saveJsonFile, saveJsonFileIfChanged } from "./json-file.js";
 
 const SAVED_PAYLOAD = { enabled: true, count: 2 };
 const PREVIOUS_JSON = '{"enabled":false}\n';
@@ -88,6 +88,45 @@ describe("json-file helpers", () => {
       expect(loadJsonFile(pathname)).toEqual(SAVED_PAYLOAD);
     });
   });
+
+  it("saveJsonFileIfChanged leaves a byte-identical file untouched and returns false", async () => {
+    await withJsonPath(({ pathname }) => {
+      saveJsonFile(pathname, SAVED_PAYLOAD);
+      const stale = new Date("2026-01-01T00:00:00Z");
+      fs.utimesSync(pathname, stale, stale);
+      const inode = fs.statSync(pathname).ino;
+      const renameSpy = vi.spyOn(fs, "renameSync");
+
+      expect(saveJsonFileIfChanged(pathname, SAVED_PAYLOAD)).toBe(false);
+
+      expect(Math.trunc(fs.statSync(pathname).mtimeMs)).toBe(stale.getTime());
+      expect(fs.statSync(pathname).ino).toBe(inode);
+      expect(renameSpy).not.toHaveBeenCalled();
+      expect(loadJsonFile(pathname)).toEqual(SAVED_PAYLOAD);
+    });
+  });
+
+  it.each([
+    {
+      name: "missing files",
+      setup: () => {},
+    },
+    {
+      name: "existing JSON files",
+      setup: writeExistingJson,
+    },
+  ])(
+    "saveJsonFileIfChanged writes the latest payload for $name and returns true",
+    async ({ setup }) => {
+      await withJsonPath(({ pathname }) => {
+        setup(pathname);
+
+        expect(saveJsonFileIfChanged(pathname, SAVED_PAYLOAD)).toBe(true);
+
+        expect(loadJsonFile(pathname)).toEqual(SAVED_PAYLOAD);
+      });
+    },
+  );
 
   it("writes through a sibling temp file before replacing the destination", async () => {
     await withJsonPath(({ pathname }) => {

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { withFileLock } from "../../infra/file-lock.js";
-import { saveJsonFile } from "../../infra/json-file.js";
+import { saveJsonFile, saveJsonFileIfChanged } from "../../infra/json-file.js";
 import {
   AUTH_STORE_LOCK_OPTIONS,
   AUTH_STORE_VERSION,
@@ -428,7 +428,11 @@ export function saveAuthProfileStore(
       agentDir,
     });
   });
-  saveJsonFile(authPath, payload);
+  // auth-profiles.json's mtime is part of the models.json fingerprint
+  // (buildModelsJsonFingerprint), and usage bookkeeping saves this store after
+  // every agent turn. Rewriting identical credentials moved that mtime, so the
+  // fingerprint changed on every turn and provider discovery ran again each time.
+  saveJsonFileIfChanged(authPath, payload);
   savePersistedAuthProfileState(store, agentDir);
   const runtimeStore = cloneAuthProfileStore(store);
   if (shouldSyncExternalCliCredentials(options)) {
