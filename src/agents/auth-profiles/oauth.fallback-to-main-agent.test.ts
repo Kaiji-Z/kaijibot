@@ -5,21 +5,16 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 import { resetFileLockStateForTest } from "../../infra/file-lock.js";
 import { captureEnv } from "../../test-utils/env.js";
 import type { AuthProfileStore } from "./types.js";
-const { getOAuthApiKeyMock } = vi.hoisted(() => ({
-  getOAuthApiKeyMock: vi.fn(async () => {
+// The shared pi-ai refreshers that run behind the provider plugin hook.
+const { providerFlowRefreshMock } = vi.hoisted(() => ({
+  providerFlowRefreshMock: vi.fn(async () => {
     throw new Error("invalid_grant");
   }),
 }));
 
-vi.mock("@earendil-works/pi-ai/oauth", async () => {
-  const actual = await vi.importActual<typeof import("@earendil-works/pi-ai/oauth")>(
-    "@earendil-works/pi-ai/oauth",
-  );
-  return {
-    ...actual,
-    getOAuthApiKey: getOAuthApiKeyMock,
-  };
-});
+vi.mock("./oauth-provider-flow.js", () => ({
+  refreshOAuthCredentialWithProviderFlow: providerFlowRefreshMock,
+}));
 
 vi.mock("../cli-credentials.js", () => ({
   readCodexCliCredentialsCached: () => null,
@@ -39,7 +34,7 @@ vi.mock("../../plugins/provider-runtime.js", () => ({
 }));
 
 afterAll(() => {
-  vi.doUnmock("@earendil-works/pi-ai/oauth");
+  vi.doUnmock("./oauth-provider-flow.js");
   vi.doUnmock("../cli-credentials.js");
   vi.doUnmock("../../plugins/provider-runtime.runtime.js");
   vi.doUnmock("../../plugins/provider-runtime.js");
@@ -67,8 +62,8 @@ describe("resolveApiKeyForProfile fallback to main agent", () => {
 
   beforeEach(async () => {
     resetFileLockStateForTest();
-    getOAuthApiKeyMock.mockReset();
-    getOAuthApiKeyMock.mockImplementation(async () => {
+    providerFlowRefreshMock.mockReset();
+    providerFlowRefreshMock.mockImplementation(async () => {
       throw new Error("invalid_grant");
     });
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "oauth-fallback-test-"));

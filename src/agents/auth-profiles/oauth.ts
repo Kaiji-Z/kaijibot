@@ -18,6 +18,7 @@ import {
   areOAuthCredentialsEquivalent,
   readManagedExternalCliCredential,
 } from "./external-cli-sync.js";
+import { refreshOAuthCredentialWithProviderFlow } from "./oauth-provider-flow.js";
 import { ensureAuthStoreFile, resolveAuthStorePath } from "./paths.js";
 import { assertNoOAuthSecretRefPolicyViolations } from "./policy.js";
 import { suggestOAuthProfileIdForLegacyDefault } from "./repair.js";
@@ -29,9 +30,10 @@ import {
 import type { AuthProfileStore, OAuthCredential } from "./types.js";
 
 /**
- * pi-ai 1.6 removed its public OAuth provider registry (getOAuthProviders and
- * friends). Only providers with a dedicated refresh flow here (chutes) stay
- * functional; pi-registry OAuth providers resolve through their own paths.
+ * An expired OAuth profile is refreshed by, in order: the provider plugin's own
+ * `refreshOAuth`, the chutes flow, and the flow pi-ai declares for the provider
+ * (oauth-provider-flow.ts). pi-ai 1.6 dropped its global OAuth registry, so that
+ * last step reads the flow off the provider definition.
  */
 
 /** Bearer-token auth modes that are interchangeable (oauth tokens and raw tokens). */
@@ -287,7 +289,12 @@ async function refreshOAuthTokenWithLock(params: {
             });
             return { apiKey: newCredentials.access, newCredentials };
           })()
-        : null;
+        : await (async () => {
+            const newCredentials = await refreshOAuthCredentialWithProviderFlow(cred);
+            return newCredentials
+              ? { apiKey: await buildOAuthApiKey(cred.provider, newCredentials), newCredentials }
+              : null;
+          })();
     if (!result) {
       return null;
     }

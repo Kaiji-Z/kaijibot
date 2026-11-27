@@ -13,6 +13,8 @@ export type OAuthCredentials = {
   enterpriseUrl?: string;
   projectId?: string;
   accountId?: string;
+  /** Token endpoint that issued the credential, for providers whose refresh must return to it. */
+  tokenEndpoint?: string;
 };
 
 export type ApiKeyCredential = {

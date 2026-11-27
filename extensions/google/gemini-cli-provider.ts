@@ -9,6 +9,7 @@ import { buildProviderStreamFamilyHooks } from "kaijibot/plugin-sdk/provider-str
 import { buildProviderToolCompatFamilyHooks } from "kaijibot/plugin-sdk/provider-tools";
 import { fetchGeminiUsage } from "kaijibot/plugin-sdk/provider-usage";
 import { formatGoogleOauthApiKey, parseGoogleUsageToken } from "./oauth-token-shared.js";
+import { refreshGeminiCliOAuthCredential } from "./oauth.refresh.js";
 import { isModernGoogleModel, resolveGoogleGeminiForwardCompatModel } from "./provider-models.js";
 
 const PROVIDER_ID = "google-gemini-cli";
@@ -119,6 +120,7 @@ export function registerGoogleGeminiCliProvider(api: KaijiBotPluginApi) {
     ...GOOGLE_GEMINI_CLI_PROVIDER_HOOKS,
     isModernModelRef: ({ modelId }) => isModernGoogleModel(modelId),
     formatApiKey: (cred) => formatGoogleOauthApiKey(cred),
+    refreshOAuth: (cred) => refreshGeminiCliOAuthCredential(cred),
     resolveUsageAuth: async (ctx) => {
       const auth = await ctx.resolveOAuthToken();
       if (!auth) {
