@@ -1,12 +1,12 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
   calculateCost,
+  getEnvApiKey,
   type Context,
   type Model,
   type SimpleStreamOptions,
   type ThinkingLevel,
 } from "@earendil-works/pi-ai";
-import { getEnvApiKey } from "@earendil-works/pi-ai/compat";
 import { parseGeminiAuth } from "../infra/gemini-auth.js";
 import { normalizeGoogleApiBaseUrl } from "../infra/google-api-base-url.js";
 import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
@@ -145,12 +145,18 @@ function mapToolChoice(
   if (!choice) {
     return undefined;
   }
-  // pi-ai 1.6 narrowed toolChoice to "auto" | "none"; the forced-function
-  // variants collapse to never, so everything except "none" maps to AUTO.
-  if (choice === "none") {
-    return { mode: "NONE" };
+  if (typeof choice === "object" && choice.type === "function") {
+    return { mode: "ANY", allowedFunctionNames: [choice.function.name] };
   }
-  return { mode: "AUTO" };
+  switch (choice) {
+    case "none":
+      return { mode: "NONE" };
+    case "any":
+    case "required":
+      return { mode: "ANY" };
+    default:
+      return { mode: "AUTO" };
+  }
 }
 
 function mapStopReasonString(reason: string): "stop" | "length" | "error" {
@@ -188,7 +194,6 @@ function resolveThinkingLevel(level: ThinkingLevel, modelId: string): GoogleThin
         return "LOW";
       case "medium":
       case "high":
-      case "max":
       case "xhigh":
         return "HIGH";
     }
@@ -201,7 +206,6 @@ function resolveThinkingLevel(level: ThinkingLevel, modelId: string): GoogleThin
     case "medium":
       return "MEDIUM";
     case "high":
-    case "max":
     case "xhigh":
       return "HIGH";
   }
@@ -222,7 +226,7 @@ function getGoogleThinkingBudget(
   effort: ThinkingLevel,
   customBudgets?: GoogleTransportOptions["thinkingBudgets"],
 ): number | undefined {
-  const normalizedEffort = effort === "xhigh" || effort === "max" ? "high" : effort;
+  const normalizedEffort = effort === "xhigh" ? "high" : effort;
   if (customBudgets?.[normalizedEffort] !== undefined) {
     return customBudgets[normalizedEffort];
   }
@@ -470,7 +474,7 @@ export function buildGoogleGenerativeAiParams(
 function buildGoogleHeaders(
   model: GoogleTransportModel,
   apiKey: string | undefined,
-  optionHeaders: Record<string, string | null | undefined> | undefined,
+  optionHeaders: Record<string, string> | undefined,
 ): Record<string, string> {
   const authHeaders = apiKey ? parseGeminiAuth(apiKey).headers : undefined;
   return (

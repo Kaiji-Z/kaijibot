@@ -7,12 +7,9 @@ const resolveDefaultModelForAgent = vi.hoisted(() => vi.fn());
 const resolveModelAsync = vi.hoisted(() => vi.fn());
 const prepareModelForSimpleCompletion = vi.hoisted(() => vi.fn());
 
-// conversation-label-generator.ts imports completeSimple from the compat entry
-// (pi-ai 1.6 moved it off the root export), so the mock has to target that specifier.
-vi.mock("@earendil-works/pi-ai/compat", async () => {
-  const original = await vi.importActual<typeof import("@earendil-works/pi-ai/compat")>(
-    "@earendil-works/pi-ai/compat",
-  );
+vi.mock("@earendil-works/pi-ai", async () => {
+  const original =
+    await vi.importActual<typeof import("@earendil-works/pi-ai")>("@earendil-works/pi-ai");
   return {
     ...original,
     completeSimple,

@@ -78,20 +78,10 @@ function appendBranchEntry(params: {
       entry.fromHook,
     );
   }
-  if (entry.type === "label") {
-    return sessionManager.appendLabelChange(
-      remapEntryId(entry.targetId, rewrittenEntryIds) ?? entry.targetId,
-      entry.label,
-    );
-  }
-  if (entry.type === "context_edit") {
-    return sessionManager.appendContextEdit(
-      remapEntryId(entry.targetId, rewrittenEntryIds) ?? entry.targetId,
-      entry.replacement,
-    );
-  }
-  // Usage and future entry types carry nothing that must be re-appended.
-  return "";
+  return sessionManager.appendLabelChange(
+    remapEntryId(entry.targetId, rewrittenEntryIds) ?? entry.targetId,
+    entry.label,
+  );
 }
 
 /**

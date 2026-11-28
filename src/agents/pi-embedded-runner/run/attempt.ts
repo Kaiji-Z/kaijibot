@@ -935,6 +935,8 @@ export async function runEmbeddedAttempt(
       ({ session } = await createAgentSession({
         cwd: resolvedWorkspace,
         agentDir,
+        authStorage: params.authStorage,
+        modelRegistry: params.modelRegistry,
         model: params.model,
         thinkingLevel: mapThinkingLevel(params.thinkLevel),
         tools: resolveSessionToolsParam(builtInTools),
@@ -1019,8 +1021,7 @@ export async function runEmbeddedAttempt(
         wsApiKey,
         model: params.model,
       });
-      activeSession.agent.streamFunction = resolveEmbeddedAgentStreamFn({
-        sessionDefault: true,
+      activeSession.agent.streamFn = resolveEmbeddedAgentStreamFn({
         currentStreamFn: defaultSessionStreamFn,
         providerStreamFn,
         shouldUseWebSocketTransport,
@@ -1029,6 +1030,7 @@ export async function runEmbeddedAttempt(
         signal: runAbortController.signal,
         model: params.model,
         resolvedApiKey: params.resolvedApiKey,
+        authStorage: params.authStorage,
       });
 
       const { effectiveExtraParams } = applyExtraParamsToAgent(
@@ -1078,9 +1080,7 @@ export async function runEmbeddedAttempt(
           system: systemPromptText,
           note: "after session create",
         });
-        activeSession.agent.streamFunction = cacheTrace.wrapStreamFn(
-          activeSession.agent.streamFunction,
-        );
+        activeSession.agent.streamFn = cacheTrace.wrapStreamFn(activeSession.agent.streamFn);
       }
 
       // Anthropic Claude endpoints can reject replayed `thinking` blocks
@@ -1088,8 +1088,8 @@ export async function runEmbeddedAttempt(
       // call, including tool continuations. Wrap the stream function so every
       // outbound request sees sanitized messages.
       if (transcriptPolicy.dropThinkingBlocks) {
-        const inner = activeSession.agent.streamFunction;
-        activeSession.agent.streamFunction = (model, context, options) => {
+        const inner = activeSession.agent.streamFn;
+        activeSession.agent.streamFn = (model, context, options) => {
           const ctx = context as unknown as { messages?: unknown };
           const messages = ctx?.messages;
           if (!Array.isArray(messages)) {
@@ -1113,9 +1113,9 @@ export async function runEmbeddedAttempt(
       // tool result cycles bypass that path. Wrap streamFn so every outbound request
       // sees sanitized tool call IDs.
       if (transcriptPolicy.sanitizeToolCallIds && transcriptPolicy.toolCallIdMode) {
-        const inner = activeSession.agent.streamFunction;
+        const inner = activeSession.agent.streamFn;
         const mode = transcriptPolicy.toolCallIdMode;
-        activeSession.agent.streamFunction = (model, context, options) => {
+        activeSession.agent.streamFn = (model, context, options) => {
           const ctx = context as unknown as { messages?: unknown };
           const messages = ctx?.messages;
           if (!Array.isArray(messages)) {
@@ -1144,8 +1144,8 @@ export async function runEmbeddedAttempt(
         params.model.api === "azure-openai-responses" ||
         params.model.api === "openai-codex-responses"
       ) {
-        const inner = activeSession.agent.streamFunction;
-        activeSession.agent.streamFunction = (model, context, options) => {
+        const inner = activeSession.agent.streamFn;
+        activeSession.agent.streamFn = (model, context, options) => {
           const ctx = context as unknown as { messages?: unknown };
           const messages = ctx?.messages;
           if (!Array.isArray(messages)) {
@@ -1163,8 +1163,8 @@ export async function runEmbeddedAttempt(
         };
       }
 
-      const innerStreamFn = activeSession.agent.streamFunction;
-      activeSession.agent.streamFunction = (model, context, options) => {
+      const innerStreamFn = activeSession.agent.streamFn;
+      activeSession.agent.streamFn = (model, context, options) => {
         const signal = runAbortController.signal as AbortSignal & { reason?: unknown };
         if (yieldDetected && signal.aborted && signal.reason === "sessions_yield") {
           return createYieldAbortedResponse(model) as unknown as Awaited<
@@ -1177,13 +1177,13 @@ export async function runEmbeddedAttempt(
       // Some models emit tool names with surrounding whitespace (e.g. " read ").
       // pi-agent-core dispatches tool calls with exact string matching, so normalize
       // names on the live response stream before tool execution.
-      activeSession.agent.streamFunction = wrapStreamFnSanitizeMalformedToolCalls(
-        activeSession.agent.streamFunction,
+      activeSession.agent.streamFn = wrapStreamFnSanitizeMalformedToolCalls(
+        activeSession.agent.streamFn,
         allowedToolNames,
         transcriptPolicy,
       );
-      activeSession.agent.streamFunction = wrapStreamFnTrimToolCallNames(
-        activeSession.agent.streamFunction,
+      activeSession.agent.streamFn = wrapStreamFnTrimToolCallNames(
+        activeSession.agent.streamFn,
         allowedToolNames,
       );
 
@@ -1191,27 +1191,27 @@ export async function runEmbeddedAttempt(
         params.model.api === "anthropic-messages" &&
         shouldRepairMalformedAnthropicToolCallArguments(params.provider)
       ) {
-        activeSession.agent.streamFunction = wrapStreamFnRepairMalformedToolCallArguments(
-          activeSession.agent.streamFunction,
+        activeSession.agent.streamFn = wrapStreamFnRepairMalformedToolCallArguments(
+          activeSession.agent.streamFn,
         );
       }
 
       if (resolveToolCallArgumentsEncoding(params.model) === "html-entities") {
-        activeSession.agent.streamFunction = wrapStreamFnDecodeXaiToolCallArguments(
-          activeSession.agent.streamFunction,
+        activeSession.agent.streamFn = wrapStreamFnDecodeXaiToolCallArguments(
+          activeSession.agent.streamFn,
         );
       }
 
       if (anthropicPayloadLogger) {
-        activeSession.agent.streamFunction = anthropicPayloadLogger.wrapStreamFn(
-          activeSession.agent.streamFunction,
+        activeSession.agent.streamFn = anthropicPayloadLogger.wrapStreamFn(
+          activeSession.agent.streamFn,
         );
       }
       // Anthropic-compatible providers can add new stop reasons before pi-ai maps them.
       // Recover the known "sensitive" stop reason here so a model refusal does not
       // bubble out as an uncaught runner error and stall channel polling.
-      activeSession.agent.streamFunction = wrapStreamFnHandleSensitiveStopReason(
-        activeSession.agent.streamFunction,
+      activeSession.agent.streamFn = wrapStreamFnHandleSensitiveStopReason(
+        activeSession.agent.streamFn,
       );
 
       let idleTimeoutTrigger: ((error: Error) => void) | undefined;
@@ -1222,8 +1222,8 @@ export async function runEmbeddedAttempt(
         trigger: params.trigger,
       });
       if (idleTimeoutMs > 0) {
-        activeSession.agent.streamFunction = streamWithIdleTimeout(
-          activeSession.agent.streamFunction,
+        activeSession.agent.streamFn = streamWithIdleTimeout(
+          activeSession.agent.streamFn,
           idleTimeoutMs,
           (error) => idleTimeoutTrigger?.(error),
         );
@@ -1676,11 +1676,11 @@ export async function runEmbeddedAttempt(
           provider: params.provider,
           sessionManager,
           signal: runAbortController.signal,
-          streamFn: activeSession.agent.streamFunction,
+          streamFn: activeSession.agent.streamFn,
           systemPrompt: systemPromptText,
         });
         if (googlePromptCacheStreamFn) {
-          activeSession.agent.streamFunction = googlePromptCacheStreamFn;
+          activeSession.agent.streamFn = googlePromptCacheStreamFn;
         }
 
         log.debug(`embedded run prompt start: runId=${params.runId} sessionId=${params.sessionId}`);

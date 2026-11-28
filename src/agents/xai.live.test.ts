@@ -1,4 +1,4 @@
-import { completeSimple, getModel, streamSimple } from "@earendil-works/pi-ai/compat";
+import { completeSimple, getModel, streamSimple } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import {
@@ -69,7 +69,7 @@ describeLive("xai live", () => {
   it("applies xAI tool wrappers on live tool calls", async () => {
     const model = resolveLiveXaiModel();
     expect(model).toBeDefined();
-    const agent = { streamFunction: streamSimple };
+    const agent = { streamFn: streamSimple };
     applyExtraParamsToAgent(agent, undefined, "xai", model.id);
 
     const noopTool = {
@@ -89,7 +89,7 @@ describeLive("xai live", () => {
 
     for (const prompt of prompts) {
       capturedPayload = undefined;
-      const stream = agent.streamFunction(
+      const stream = agent.streamFn(
         model,
         {
           messages: createSingleUserPromptMessage(prompt),
@@ -99,7 +99,7 @@ describeLive("xai live", () => {
           apiKey: XAI_KEY,
           maxTokens: 128,
           reasoning: "medium",
-          onPayload: (payload: unknown) => {
+          onPayload: (payload) => {
             capturedPayload = payload as Record<string, unknown>;
           },
         },

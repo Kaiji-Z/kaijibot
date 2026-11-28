@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
   calculateCost,
-  getCurrentTools,
+  getEnvApiKey,
   parseStreamingJson,
   type AnthropicOptions,
   type Context,
@@ -10,7 +10,6 @@ import {
   type SimpleStreamOptions,
   type ThinkingLevel,
 } from "@earendil-works/pi-ai";
-import { getEnvApiKey } from "@earendil-works/pi-ai/compat";
 import { IsObject } from "typebox";
 import { normalizeLowercaseStringOrEmpty } from "../shared/string-coerce.js";
 import {
@@ -127,7 +126,7 @@ function mapThinkingLevelToEffort(
 }
 
 function clampReasoningLevel(level: ThinkingLevel): "minimal" | "low" | "medium" | "high" {
-  return level === "xhigh" || level === "max" ? "high" : level;
+  return level === "xhigh" ? "high" : level;
 }
 
 function adjustMaxTokensForThinking(params: {
@@ -715,7 +714,7 @@ export function createAnthropicMessagesTransportStreamFn(): StreamFn {
                 name:
                   typeof contentBlock.name === "string"
                     ? isOAuthToken
-                      ? fromClaudeCodeName(contentBlock.name, getCurrentTools(context.messages))
+                      ? fromClaudeCodeName(contentBlock.name, context.tools)
                       : contentBlock.name
                     : "",
                 arguments:

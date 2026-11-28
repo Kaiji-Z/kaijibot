@@ -1,4 +1,4 @@
-import { streamSimple } from "@earendil-works/pi-ai/compat";
+import { streamSimple } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import type { KaijiBotConfig } from "../../../config/config.js";
 import { appendBootstrapPromptWarning } from "../../bootstrap-budget.js";
@@ -237,12 +237,12 @@ describe("resolveEmbeddedAgentStreamFn", () => {
     const wrapperStreamFn = vi.fn();
     const session = {
       agent: {
-        streamFunction: baseStreamFn,
+        streamFn: baseStreamFn,
       },
     };
 
     expect(resolveEmbeddedAgentBaseStreamFn({ session })).toBe(baseStreamFn);
-    session.agent.streamFunction = wrapperStreamFn;
+    session.agent.streamFn = wrapperStreamFn;
     expect(resolveEmbeddedAgentBaseStreamFn({ session })).toBe(baseStreamFn);
   });
 
@@ -289,18 +289,12 @@ describe("resolveEmbeddedAgentStreamFn", () => {
       streamFn(
         { provider: "demo-provider", id: "demo-model" } as never,
         {
-          messages: [
-            {
-              role: "system",
-              content: `Stable prefix${SYSTEM_PROMPT_CACHE_BOUNDARY}Dynamic suffix`,
-              timestamp: 0,
-            },
-          ],
+          systemPrompt: `Stable prefix${SYSTEM_PROMPT_CACHE_BOUNDARY}Dynamic suffix`,
         } as never,
         {},
       ),
     ).resolves.toMatchObject({
-      messages: [{ content: "Stable prefix\nDynamic suffix" }],
+      systemPrompt: "Stable prefix\nDynamic suffix",
     });
     expect(providerStreamFn).toHaveBeenCalledTimes(1);
   });

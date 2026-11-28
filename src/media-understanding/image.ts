@@ -1,5 +1,5 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { complete } from "@earendil-works/pi-ai/compat";
+import { complete } from "@earendil-works/pi-ai";
 import { isMinimaxVlmModel, minimaxUnderstandImage } from "../agents/minimax-vlm.js";
 import {
   getApiKeyForModel,
@@ -8,7 +8,6 @@ import {
 } from "../agents/model-auth.js";
 import { normalizeModelRef } from "../agents/model-selection.js";
 import { ensureKaijiBotModelsJson } from "../agents/models-config.js";
-import { forBackgroundCompletion } from "../agents/simple-completion-runtime.js";
 import { coerceImageAssistantText } from "../agents/tools/image-tool.helpers.js";
 import type {
   ImageDescriptionRequest,
@@ -48,7 +47,7 @@ async function resolveImageRuntime(params: {
   await ensureKaijiBotModelsJson(params.cfg, params.agentDir);
   const { discoverAuthStorage, discoverModels } = await loadPiModelDiscoveryRuntime();
   const authStorage = discoverAuthStorage(params.agentDir);
-  const modelRegistry = await discoverModels(authStorage, params.agentDir);
+  const modelRegistry = discoverModels(authStorage, params.agentDir);
   const resolvedRef = normalizeModelRef(params.provider, params.model);
   const model = modelRegistry.find(resolvedRef.provider, resolvedRef.model) as Model<Api> | null;
   if (!model) {
@@ -194,8 +193,7 @@ export async function describeImagesWithModel(
     params.timeoutMs > 0
       ? setTimeout(() => controller.abort(), params.timeoutMs)
       : undefined;
-  // The description passes no reasoning option, like any background call.
-  const message = await complete(forBackgroundCompletion(model), context, {
+  const message = await complete(model, context, {
     apiKey,
     maxTokens: resolveImageToolMaxTokens(model.maxTokens, params.maxTokens ?? 512),
     signal: controller.signal,

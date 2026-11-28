@@ -1,5 +1,5 @@
+import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { parseModelRef } from "../../agents/model-selection.js";
-import type { PiModelRegistryLike } from "../../agents/pi-model-discovery.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { normalizeLowercaseStringOrEmpty } from "../../shared/string-coerce.js";
 import { resolveConfiguredEntries } from "./list.configured.js";
@@ -41,7 +41,7 @@ export async function modelsListCommand(
     return parsed?.provider ?? normalizeLowercaseStringOrEmpty(raw);
   })();
 
-  let modelRegistry: PiModelRegistryLike | undefined;
+  let modelRegistry: ModelRegistry | undefined;
   let discoveredKeys = new Set<string>();
   let availableKeys: Set<string> | undefined;
   let availabilityErrorMessage: string | undefined;

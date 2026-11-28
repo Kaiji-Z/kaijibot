@@ -1,12 +1,15 @@
-import type { OAuthCredentials } from "@earendil-works/pi-ai/oauth";
+import { loginOpenAICodex, type OAuthCredentials } from "@earendil-works/pi-ai/oauth";
+import { ensureGlobalUndiciEnvProxyDispatcher } from "../infra/net/undici-global-dispatcher.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter } from "../wizard/prompts.js";
+import { createVpsAwareOAuthHandlers } from "./provider-oauth-flow.js";
+import {
+  formatOpenAIOAuthTlsPreflightFix,
+  runOpenAIOAuthTlsPreflight,
+} from "./provider-openai-codex-oauth-tls.js";
 
-/**
- * pi-ai 1.6 removed the public `loginOpenAICodex` API, so the interactive Codex
- * OAuth device flow is unavailable in this build. The function keeps its shape
- * so the provider onboarding wiring stays intact and fails with a clear error.
- */
+const manualInputPromptMessage = "Paste the authorization code (or full redirect URL):";
+
 export async function loginOpenAICodexOAuth(params: {
   prompter: WizardPrompter;
   runtime: RuntimeEnv;
@@ -14,8 +17,67 @@ export async function loginOpenAICodexOAuth(params: {
   openUrl: (url: string) => Promise<void>;
   localBrowserMessage?: string;
 }): Promise<OAuthCredentials | null> {
-  void params;
-  throw new Error(
-    "OpenAI Codex OAuth login is unavailable: pi-ai 1.6 removed the public loginOpenAICodex API. Authenticate by pasting credentials from an existing Codex CLI login instead.",
+  const { prompter, runtime, isRemote, openUrl, localBrowserMessage } = params;
+
+  // Ensure env-based proxy dispatcher is active before any outbound fetch calls,
+  // including the TLS preflight check.
+  ensureGlobalUndiciEnvProxyDispatcher();
+
+  const preflight = await runOpenAIOAuthTlsPreflight();
+  if (!preflight.ok && preflight.kind === "tls-cert") {
+    const hint = formatOpenAIOAuthTlsPreflightFix(preflight);
+    runtime.error(hint);
+    await prompter.note(hint, "OAuth prerequisites");
+    throw new Error(preflight.message);
+  }
+
+  await prompter.note(
+    isRemote
+      ? [
+          "You are running in a remote/VPS environment.",
+          "A URL will be shown for you to open in your LOCAL browser.",
+          "After signing in, paste the redirect URL back here.",
+        ].join("\n")
+      : [
+          "Browser will open for OpenAI authentication.",
+          "If the callback doesn't auto-complete, paste the redirect URL.",
+          "OpenAI OAuth uses localhost:1455 for the callback.",
+        ].join("\n"),
+    "OpenAI Codex OAuth",
   );
+
+  const spin = prompter.progress("Starting OAuth flow…");
+  try {
+    const { onAuth: baseOnAuth, onPrompt } = createVpsAwareOAuthHandlers({
+      isRemote,
+      prompter,
+      runtime,
+      spin,
+      openUrl,
+      localBrowserMessage: localBrowserMessage ?? "Complete sign-in in browser…",
+      manualPromptMessage: manualInputPromptMessage,
+    });
+
+    const creds = await loginOpenAICodex({
+      onAuth: baseOnAuth,
+      onPrompt,
+      onManualCodeInput: isRemote
+        ? async () =>
+            await onPrompt({
+              message: manualInputPromptMessage,
+            })
+        : undefined,
+      onProgress: (msg: string) => spin.update(msg),
+    });
+    spin.stop("OpenAI OAuth complete");
+    return creds ?? null;
+  } catch (err) {
+    spin.stop("OpenAI OAuth failed");
+    runtime.error(String(err));
+    await prompter.note(
+      "Trouble with OAuth? See https://gitee.com/kaiji1126/kaijibot/blob/main/docs/help/faq.md",
+      "OAuth help",
+    );
+    throw err;
+  }
 }

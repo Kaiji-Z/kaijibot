@@ -147,10 +147,10 @@ type ResolveProviderRequestPolicyConfigParams = {
   defaultBaseUrl?: string;
   capability?: ProviderRequestCapability;
   transport?: ProviderRequestTransport;
-  discoveredHeaders?: Record<string, string | null | undefined>;
-  providerHeaders?: Record<string, string | null | undefined>;
-  modelHeaders?: Record<string, string | null | undefined>;
-  callerHeaders?: Record<string, string | null | undefined>;
+  discoveredHeaders?: Record<string, string>;
+  providerHeaders?: Record<string, string>;
+  modelHeaders?: Record<string, string>;
+  callerHeaders?: Record<string, string>;
   precedence?: ProviderRequestHeaderPrecedence;
   authHeader?: boolean;
   compat?: {
@@ -592,21 +592,11 @@ export function resolveProviderRequestPolicyConfig(
     authHeader: params.authHeader,
     request: params.request,
   });
-  const pickStringHeaders = (
-    headers?: Record<string, string | null | undefined>,
-  ): Record<string, string> | undefined =>
-    headers
-      ? Object.fromEntries(
-          Object.entries(headers).filter(
-            (entry): entry is [string, string] => typeof entry[1] === "string",
-          ),
-        )
-      : undefined;
   const extraHeaders = applyResolvedAuthHeader(
     mergeProviderRequestHeaders(
-      pickStringHeaders(params.discoveredHeaders),
-      pickStringHeaders(params.providerHeaders),
-      pickStringHeaders(params.modelHeaders),
+      params.discoveredHeaders,
+      params.providerHeaders,
+      params.modelHeaders,
       params.request?.headers,
     ),
     auth,
@@ -617,9 +607,7 @@ export function resolveProviderRequestPolicyConfig(
   const unprotectedCallerHeaders = params.callerHeaders
     ? Object.fromEntries(
         Object.entries(params.callerHeaders).filter(
-          (entry): entry is [string, string] =>
-            typeof entry[1] === "string" &&
-            !protectedAttributionKeys.has(normalizeLowercaseStringOrEmpty(entry[0])),
+          ([key]) => !protectedAttributionKeys.has(normalizeLowercaseStringOrEmpty(key)),
         ),
       )
     : undefined;

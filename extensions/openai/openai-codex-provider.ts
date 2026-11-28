@@ -177,7 +177,7 @@ async function refreshOpenAICodexOAuthCredential(cred: OAuthCredential) {
     const refreshed = await refreshOpenAICodexToken(cred.refresh);
     return {
       ...cred,
-      ...(refreshed as Record<string, unknown>),
+      ...refreshed,
       type: "oauth" as const,
       provider: PROVIDER_ID,
       email: cred.email,

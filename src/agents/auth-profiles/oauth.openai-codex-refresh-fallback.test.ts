@@ -11,11 +11,10 @@ import {
 } from "./store.js";
 import type { AuthProfileStore, OAuthCredential } from "./types.js";
 let resolveApiKeyForProfile: typeof import("./oauth.js").resolveApiKeyForProfile;
-type ProviderFlowRefresh = (credential: OAuthCredential) => Promise<OAuthCredential | null>;
+type GetOAuthApiKey = typeof import("@earendil-works/pi-ai/oauth").getOAuthApiKey;
 
-// The shared pi-ai refreshers that run behind the provider plugin hook.
-const { providerFlowRefreshMock } = vi.hoisted(() => ({
-  providerFlowRefreshMock: vi.fn<ProviderFlowRefresh>(async () => {
+const { getOAuthApiKeyMock } = vi.hoisted(() => ({
+  getOAuthApiKeyMock: vi.fn<GetOAuthApiKey>(async () => {
     throw new Error("Failed to extract accountId from token");
   }),
 }));
@@ -47,9 +46,19 @@ vi.mock("../cli-credentials.js", () => ({
   resetCliCredentialCachesForTest: () => undefined,
 }));
 
-vi.mock("./oauth-provider-flow.js", () => ({
-  refreshOAuthCredentialWithProviderFlow: providerFlowRefreshMock,
-}));
+vi.mock("@earendil-works/pi-ai/oauth", async () => {
+  const actual = await vi.importActual<typeof import("@earendil-works/pi-ai/oauth")>(
+    "@earendil-works/pi-ai/oauth",
+  );
+  return {
+    ...actual,
+    getOAuthApiKey: getOAuthApiKeyMock,
+    getOAuthProviders: () => [
+      { id: "openai-codex", envApiKey: "OPENAI_API_KEY", oauthTokenEnv: "OPENAI_OAUTH_TOKEN" }, // pragma: allowlist secret
+      { id: "anthropic", envApiKey: "ANTHROPIC_API_KEY", oauthTokenEnv: "ANTHROPIC_OAUTH_TOKEN" }, // pragma: allowlist secret
+    ],
+  };
+});
 
 vi.mock("../../plugins/provider-runtime.runtime.js", () => ({
   refreshProviderOAuthCredentialWithPlugin: refreshProviderOAuthCredentialWithPluginMock,
@@ -62,7 +71,7 @@ vi.mock("../../plugins/provider-runtime.js", () => ({
 }));
 
 afterAll(() => {
-  vi.doUnmock("./oauth-provider-flow.js");
+  vi.doUnmock("@earendil-works/pi-ai/oauth");
   vi.doUnmock("../cli-credentials.js");
   vi.doUnmock("../../plugins/provider-runtime.runtime.js");
   vi.doUnmock("../../plugins/provider-runtime.js");
@@ -108,8 +117,8 @@ describe("resolveApiKeyForProfile openai-codex refresh fallback", () => {
 
   beforeEach(async () => {
     resetFileLockStateForTest();
-    providerFlowRefreshMock.mockReset();
-    providerFlowRefreshMock.mockImplementation(async () => {
+    getOAuthApiKeyMock.mockReset();
+    getOAuthApiKeyMock.mockImplementation(async () => {
       throw new Error("Failed to extract accountId from token");
     });
     readCodexCliCredentialsCachedMock.mockReset();
@@ -330,7 +339,7 @@ describe("resolveApiKeyForProfile openai-codex refresh fallback", () => {
       }),
       agentDir,
     );
-    providerFlowRefreshMock.mockImplementationOnce(async () => {
+    getOAuthApiKeyMock.mockImplementationOnce(async () => {
       saveAuthProfileStore(
         {
           version: 1,
@@ -363,7 +372,7 @@ describe("resolveApiKeyForProfile openai-codex refresh fallback", () => {
       email: undefined,
     });
 
-    expect(providerFlowRefreshMock).toHaveBeenCalledTimes(1);
+    expect(getOAuthApiKeyMock).toHaveBeenCalledTimes(1);
   });
 
   it("retries Codex refresh once after refresh_token_reused updates only the stored refresh token", async () => {
@@ -375,9 +384,9 @@ describe("resolveApiKeyForProfile openai-codex refresh fallback", () => {
       }),
       agentDir,
     );
-    providerFlowRefreshMock
-      .mockImplementationOnce(async (credential) => {
-        expect(credential.refresh).toBe("refresh-token");
+    getOAuthApiKeyMock
+      .mockImplementationOnce(async (_provider, creds) => {
+        expect(creds["openai-codex"]?.refresh).toBe("refresh-token");
         saveAuthProfileStore(
           {
             version: 1,
@@ -397,14 +406,15 @@ describe("resolveApiKeyForProfile openai-codex refresh fallback", () => {
           '401 {"error":{"message":"Your refresh token has already been used to generate a new access token.","code":"refresh_token_reused"}}',
         );
       })
-      .mockImplementationOnce(async (credential) => {
-        expect(credential.refresh).toBe("rotated-refresh-token");
+      .mockImplementationOnce(async (_provider, creds) => {
+        expect(creds["openai-codex"]?.refresh).toBe("rotated-refresh-token");
         return {
-          type: "oauth",
-          provider: "openai-codex",
-          access: "retried-access-token",
-          refresh: "retried-refresh-token",
-          expires: Date.now() + 60_000,
+          apiKey: "retried-access-token",
+          newCredentials: {
+            access: "retried-access-token",
+            refresh: "retried-refresh-token",
+            expires: Date.now() + 60_000,
+          },
         };
       });
 
@@ -420,7 +430,7 @@ describe("resolveApiKeyForProfile openai-codex refresh fallback", () => {
       email: undefined,
     });
 
-    expect(providerFlowRefreshMock).toHaveBeenCalledTimes(2);
+    expect(getOAuthApiKeyMock).toHaveBeenCalledTimes(2);
     const persisted = await readPersistedStore(agentDir);
     expect(persisted.profiles[profileId]).toMatchObject({
       access: "retried-access-token",

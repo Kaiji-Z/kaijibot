@@ -1,7 +1,9 @@
-import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Tool } from "@earendil-works/pi-ai";
-import { convertMessages, convertTools } from "@earendil-works/pi-ai/api/google-shared";
 import { describe, expect, it } from "vitest";
+import {
+  convertMessages,
+  convertTools,
+} from "../../node_modules/@earendil-works/pi-ai/dist/providers/google-shared.js";
 import {
   asRecord,
   expectConvertedRoles,
@@ -154,7 +156,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model, context as unknown as TranscriptContext);
+    const contents = convertMessages(model, context);
     expect(contents).toHaveLength(2);
     expect(contents[0].role).toBe("user");
     expect(contents[1].role).toBe("user");
@@ -176,7 +178,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model, context as unknown as TranscriptContext);
+    const contents = convertMessages(model, context);
     expect(contents).toHaveLength(1);
     expect(contents[0].role).toBe("model");
     expect(contents[0].parts?.[0]).toMatchObject({
@@ -199,7 +201,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model, context as unknown as TranscriptContext);
+    const contents = convertMessages(model, context);
     const parts = contents?.[0]?.parts ?? [];
     expect(parts).toHaveLength(1);
     expect(parts[0]).toMatchObject({
@@ -237,7 +239,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model, context as unknown as TranscriptContext);
+    const contents = convertMessages(model, context);
     expectConvertedRoles(contents, ["user", "model", "model"]);
     expect(contents[1].parts).toHaveLength(1);
     expect(contents[2].parts).toHaveLength(1);
@@ -274,7 +276,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model, context as unknown as TranscriptContext);
+    const contents = convertMessages(model, context);
     expect(contents).toHaveLength(4);
     expect(contents[0].role).toBe("user");
     expect(contents[1].role).toBe("model");
@@ -308,7 +310,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model, context as unknown as TranscriptContext);
+    const contents = convertMessages(model, context);
     expectConvertedRoles(contents, ["user", "model", "model"]);
     const toolCallPart = contents[2].parts?.find(
       (part) => typeof part === "object" && part !== null && "functionCall" in part,
@@ -345,7 +347,7 @@ describe.skipIf(process.env.CI)("google-shared convertMessages", () => {
       ],
     } as unknown as Context;
 
-    const contents = convertMessages(model as never, context as unknown as TranscriptContext);
+    const contents = convertMessages(model as never, context);
     const parts = contents.flatMap((content) => content.parts ?? []);
     const toolCallPart = parts.find(
       (part) => typeof part === "object" && part !== null && "functionCall" in part,

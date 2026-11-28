@@ -1,7 +1,6 @@
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk";
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { type AnthropicOptions, type Model } from "@earendil-works/pi-ai";
-import { streamAnthropic } from "@earendil-works/pi-ai/compat";
+import { streamAnthropic, type AnthropicOptions, type Model } from "@earendil-works/pi-ai";
 // [fork-removed] anthropic-vertex.js removed — inlined env-based helpers
 function resolveAnthropicVertexProjectId(env: NodeJS.ProcessEnv = process.env): string | undefined {
   return env.ANTHROPIC_VERTEX_PROJECT_ID || env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_CLOUD_PROJECT_ID;

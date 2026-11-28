@@ -1,4 +1,9 @@
-import type { OAuthCredentials } from "@earendil-works/pi-ai/oauth";
+import {
+  getOAuthApiKey,
+  getOAuthProviders,
+  type OAuthCredentials,
+  type OAuthProvider,
+} from "@earendil-works/pi-ai/oauth";
 import { loadConfig, type KaijiBotConfig } from "../../config/config.js";
 import { coerceSecretRef } from "../../config/types.secrets.js";
 import { formatErrorMessage } from "../../infra/errors.js";
@@ -18,7 +23,6 @@ import {
   areOAuthCredentialsEquivalent,
   readManagedExternalCliCredential,
 } from "./external-cli-sync.js";
-import { refreshOAuthCredentialWithProviderFlow } from "./oauth-provider-flow.js";
 import { ensureAuthStoreFile, resolveAuthStorePath } from "./paths.js";
 import { assertNoOAuthSecretRefPolicyViolations } from "./policy.js";
 import { suggestOAuthProfileIdForLegacyDefault } from "./repair.js";
@@ -29,12 +33,33 @@ import {
 } from "./store.js";
 import type { AuthProfileStore, OAuthCredential } from "./types.js";
 
-/**
- * An expired OAuth profile is refreshed by, in order: the provider plugin's own
- * `refreshOAuth`, the chutes flow, and the flow pi-ai declares for the provider
- * (oauth-provider-flow.ts). pi-ai 1.6 dropped its global OAuth registry, so that
- * last step reads the flow off the provider definition.
- */
+function listOAuthProviderIds(): string[] {
+  if (typeof getOAuthProviders !== "function") {
+    return [];
+  }
+  const providers = getOAuthProviders();
+  if (!Array.isArray(providers)) {
+    return [];
+  }
+  return providers
+    .map((provider) =>
+      provider &&
+      typeof provider === "object" &&
+      "id" in provider &&
+      typeof provider.id === "string"
+        ? provider.id
+        : undefined,
+    )
+    .filter((providerId): providerId is string => typeof providerId === "string");
+}
+
+const OAUTH_PROVIDER_IDS = new Set<string>(listOAuthProviderIds());
+
+const isOAuthProvider = (provider: string): provider is OAuthProvider =>
+  OAUTH_PROVIDER_IDS.has(provider);
+
+const resolveOAuthProvider = (provider: string): OAuthProvider | null =>
+  isOAuthProvider(provider) ? provider : null;
 
 /** Bearer-token auth modes that are interchangeable (oauth tokens and raw tokens). */
 const BEARER_AUTH_MODES = new Set(["oauth", "token"]);
@@ -281,6 +306,7 @@ async function refreshOAuthTokenWithLock(params: {
       };
     }
 
+    const oauthCreds: Record<string, OAuthCredentials> = { [cred.provider]: cred };
     const result =
       String(cred.provider) === "chutes"
         ? await (async () => {
@@ -290,10 +316,14 @@ async function refreshOAuthTokenWithLock(params: {
             return { apiKey: newCredentials.access, newCredentials };
           })()
         : await (async () => {
-            const newCredentials = await refreshOAuthCredentialWithProviderFlow(cred);
-            return newCredentials
-              ? { apiKey: await buildOAuthApiKey(cred.provider, newCredentials), newCredentials }
-              : null;
+            const oauthProvider = resolveOAuthProvider(cred.provider);
+            if (!oauthProvider) {
+              return null;
+            }
+            if (typeof getOAuthApiKey !== "function") {
+              return null;
+            }
+            return await getOAuthApiKey(oauthProvider, oauthCreds);
           })();
     if (!result) {
       return null;

@@ -1,6 +1,6 @@
 {
   "name": "kaijibot",
-  "version": "2026.11.28",
+  "version": "2026.11.26",
   "description": "Proactive cognitive AI assistant with Feishu/WeChat integration — learns user interests, pushes cross-domain insights, evolves skills, self-corrects. 40+ LLM providers, runs on cloud/desktop/Android.",
   "keywords": [
     "ai",
@@ -1177,10 +1177,10 @@
     "@aws-sdk/client-bedrock-runtime": "3.1024.0",
     "@aws-sdk/credential-provider-node": "3.972.29",
     "@clack/prompts": "^1.2.0",
-    "@earendil-works/pi-agent-core": "1.6.1",
-    "@earendil-works/pi-ai": "1.6.1",
-    "@earendil-works/pi-coding-agent": "1.6.1",
-    "@earendil-works/pi-tui": "1.6.1",
+    "@earendil-works/pi-agent-core": "0.79.4",
+    "@earendil-works/pi-ai": "0.79.4",
+    "@earendil-works/pi-coding-agent": "0.79.4",
+    "@earendil-works/pi-tui": "0.79.4",
     "@homebridge/ciao": "^1.3.6",
     "@lancedb/lancedb": "^0.27.2",
     "@larksuiteoapi/node-sdk": "^1.64.0",
@@ -1268,7 +1268,7 @@
   "packageManager": "pnpm@10.32.1",
   "pnpm": {
     "overrides": {
-      "@anthropic-ai/sdk": "0.129.0",
+      "@anthropic-ai/sdk": "0.91.1",
       "hono": "4.13.18",
       "@hono/node-server": "2.1.7",
       "axios": "1.20.0",

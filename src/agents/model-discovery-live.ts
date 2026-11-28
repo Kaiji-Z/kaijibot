@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getEnvApiKey } from "@earendil-works/pi-ai/compat";
+import { getEnvApiKey } from "@earendil-works/pi-ai";
 import { readJsonFile, writeJsonAtomic } from "../infra/json-files.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveEnvApiKey } from "./model-auth-env.js";

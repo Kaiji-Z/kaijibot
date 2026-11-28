@@ -1,12 +1,16 @@
-import type { TranscriptContext } from "@earendil-works/pi-ai";
-import { type AssistantMessage, type Model } from "@earendil-works/pi-ai";
-import { completeSimple, streamSimple } from "@earendil-works/pi-ai/compat";
+import {
+  completeSimple,
+  streamSimple,
+  Type,
+  type AssistantMessage,
+  type Context,
+  type Model,
+} from "@earendil-works/pi-ai";
 import {
   createSingleUserPromptMessage,
   extractNonEmptyAssistantText,
   isLiveTestEnabled,
 } from "kaijibot/plugin-sdk/test-env";
-import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import { buildDeepSeekProvider } from "./provider-catalog.js";
 import { createDeepSeekV4ThinkingWrapper } from "./stream.js";
@@ -97,7 +101,7 @@ describeLive("deepseek plugin live", () => {
 
   it("accepts V4 thinking replay after a prior provider tool call", async () => {
     const toolCallId = "call_deepseek_live_replay_1";
-    const context = {
+    const context: Context = {
       messages: [
         {
           role: "user",
@@ -142,10 +146,10 @@ describeLive("deepseek plugin live", () => {
       throw new Error("expected DeepSeek V4 thinking stream wrapper");
     }
 
-    const stream = streamFn(resolveDeepSeekV4LiveModel(), context as unknown as TranscriptContext, {
+    const stream = streamFn(resolveDeepSeekV4LiveModel(), context, {
       apiKey: DEEPSEEK_KEY,
       maxTokens: 64,
-      onPayload: (payload: unknown) => {
+      onPayload: (payload) => {
         capturedPayload = payload as Record<string, unknown>;
       },
     });
@@ -172,7 +176,7 @@ describeLive("deepseek plugin live", () => {
   }, 60_000);
 
   it("accepts V4 thinking replay after a prior plain assistant message", async () => {
-    const context = {
+    const context: Context = {
       messages: [
         {
           role: "user",
@@ -202,10 +206,10 @@ describeLive("deepseek plugin live", () => {
       throw new Error("expected DeepSeek V4 thinking stream wrapper");
     }
 
-    const stream = streamFn(resolveDeepSeekV4LiveModel(), context as unknown as TranscriptContext, {
+    const stream = streamFn(resolveDeepSeekV4LiveModel(), context, {
       apiKey: DEEPSEEK_KEY,
       maxTokens: 64,
-      onPayload: (payload: unknown) => {
+      onPayload: (payload) => {
         capturedPayload = payload as Record<string, unknown>;
       },
     });

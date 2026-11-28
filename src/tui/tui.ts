@@ -3,10 +3,10 @@ import {
   Container,
   Key,
   Loader,
+  matchesKey,
   ProcessTerminal,
   Text,
-  TuiMainScreen,
-  matchesKey,
+  TUI,
 } from "@earendil-works/pi-tui";
 import { resolveAgentIdByWorkspacePath, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { loadConfig, type KaijiBotConfig } from "../config/config.js";
@@ -420,9 +420,9 @@ export async function runTui(opts: TuiOptions) {
     password: opts.password,
   });
 
-  const tui = new TuiMainScreen(new ProcessTerminal());
+  const tui = new TUI(new ProcessTerminal());
   const dedupeBackspace = createBackspaceDeduper();
-  tui.addInputListener((data: string) => {
+  tui.addInputListener((data) => {
     const next = dedupeBackspace(data);
     if (next.length === 0) {
       return { consume: true };
@@ -862,7 +862,7 @@ export async function runTui(opts: TuiOptions) {
     void loadHistory();
   };
 
-  tui.addInputListener((data: string) => {
+  tui.addInputListener((data) => {
     if (!chatLog.hasVisibleBtw()) {
       return undefined;
     }
@@ -878,7 +878,7 @@ export async function runTui(opts: TuiOptions) {
   });
 
   const SGR_MOUSE_WHEEL = new RegExp(`^${"\x1b"}\\[<(64|65);\\d+;\\d+[Mm]$`);
-  tui.addInputListener((data: string) => {
+  tui.addInputListener((data) => {
     const match = data.match(SGR_MOUSE_WHEEL);
     if (!match) {
       return undefined;

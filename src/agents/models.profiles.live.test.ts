@@ -1,5 +1,4 @@
-import { type Api, type Model } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
+import { type Api, completeSimple, type Model } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../config/config.js";
@@ -414,7 +413,7 @@ describeLive("live models (profile keys)", () => {
       const authStorage = discoverAuthStorage(agentDir);
       logProgress("[live-models] loading model registry");
       const models = await withLiveStageTimeout(
-        Promise.resolve().then(async () => (await discoverModels(authStorage, agentDir)).getAll()),
+        Promise.resolve().then(() => discoverModels(authStorage, agentDir).getAll()),
         "[live-models] load model registry",
       );
 

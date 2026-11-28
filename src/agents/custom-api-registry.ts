@@ -1,6 +1,10 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { type Api, type StreamOptions } from "@earendil-works/pi-ai";
-import { getApiProvider, registerApiProvider } from "@earendil-works/pi-ai/compat";
+import {
+  getApiProvider,
+  registerApiProvider,
+  type Api,
+  type StreamOptions,
+} from "@earendil-works/pi-ai";
 
 const CUSTOM_API_SOURCE_PREFIX = "kaijibot-custom-api:";
 

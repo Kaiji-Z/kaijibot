@@ -1,5 +1,4 @@
-import { type Api, type Model, type TextContent } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
+import { completeSimple, type Api, type Model, type TextContent } from "@earendil-works/pi-ai";
 import type { ResolvedProviderAuth } from "../../agents/model-auth.js";
 import { resolveDefaultModelForAgent } from "../../agents/model-selection.js";
 import { prepareSimpleCompletionModel } from "../../agents/simple-completion-runtime.js";

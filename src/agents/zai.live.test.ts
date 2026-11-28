@@ -1,4 +1,4 @@
-import { completeSimple, getModel } from "@earendil-works/pi-ai/compat";
+import { completeSimple, getModel } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import {
   createSingleUserPromptMessage,

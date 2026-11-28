@@ -1,17 +1,17 @@
-import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import {
-  resetApiProviders,
+  clearApiProviders,
+  createAssistantMessageEventStream,
   getApiProvider,
   registerBuiltInApiProviders,
   unregisterApiProviders,
-} from "@earendil-works/pi-ai/compat";
+} from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ensureCustomApiRegistered, getCustomApiRegistrySourceId } from "./custom-api-registry.js";
 
 describe("ensureCustomApiRegistered", () => {
   afterEach(() => {
     unregisterApiProviders(getCustomApiRegistrySourceId("test-custom-api"));
-    resetApiProviders();
+    clearApiProviders();
     registerBuiltInApiProviders();
   });
 

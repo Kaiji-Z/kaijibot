@@ -7,21 +7,25 @@ import {
   createSystemPromptOverride,
 } from "./system-prompt.js";
 
-type PromptOptions = { forceSystemPrompt?: string };
-
-type MockAgent = {
-  _baseSystemPromptOptions?: PromptOptions;
-  _runSystemPromptOptions?: PromptOptions;
+type MutableSession = {
+  _baseSystemPrompt?: string;
+  _rebuildSystemPrompt?: (toolNames: string[]) => string;
 };
 
-type MockSession = {
-  agent: MockAgent;
-};
-
-function createMockSession(): { session: MockSession } {
-  const session: MockSession = {
-    agent: { _baseSystemPromptOptions: {}, _runSystemPromptOptions: {} },
+type MockSession = MutableSession & {
+  agent: {
+    state: {
+      systemPrompt?: string;
+    };
   };
+};
+
+function createMockSession(): {
+  session: MockSession;
+} {
+  const session = {
+    agent: { state: {} },
+  } as MockSession;
   return { session };
 }
 
@@ -36,32 +40,30 @@ function applyAndGetMutableSession(
 }
 
 describe("applySystemPromptOverrideToSession", () => {
-  it("forces the string override on both base and run prompt options", () => {
+  it("applies a string override to the session system prompt", () => {
     const prompt = "You are a helpful assistant with custom context.";
     const { mutable } = applyAndGetMutableSession(prompt);
 
-    expect(mutable.agent._baseSystemPromptOptions?.forceSystemPrompt).toBe(prompt);
-    expect(mutable.agent._runSystemPromptOptions?.forceSystemPrompt).toBe(prompt);
+    expect(mutable.agent.state.systemPrompt).toBe(prompt);
+    expect(mutable._baseSystemPrompt).toBe(prompt);
   });
 
   it("trims whitespace from string overrides", () => {
     const { mutable } = applyAndGetMutableSession("  padded prompt  ");
 
-    expect(mutable.agent._baseSystemPromptOptions?.forceSystemPrompt).toBe("padded prompt");
+    expect(mutable.agent.state.systemPrompt).toBe("padded prompt");
   });
 
   it("applies a function override to the session system prompt", () => {
     const override = createSystemPromptOverride("function-based prompt");
     const { mutable } = applyAndGetMutableSession(override);
 
-    expect(mutable.agent._baseSystemPromptOptions?.forceSystemPrompt).toBe("function-based prompt");
+    expect(mutable.agent.state.systemPrompt).toBe("function-based prompt");
   });
 
-  it("tolerates sessions without prompt options (nothing to patch)", () => {
-    const session: MockSession = { agent: {} };
-    expect(() =>
-      applySystemPromptOverrideToSession(session as unknown as AgentSession, "noop prompt"),
-    ).not.toThrow();
+  it("sets _rebuildSystemPrompt that returns the override", () => {
+    const { mutable } = applyAndGetMutableSession("rebuild test");
+    expect(mutable._rebuildSystemPrompt?.(["tool1"])).toBe("rebuild test");
   });
 });
 

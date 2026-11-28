@@ -1,5 +1,5 @@
-import path from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import type { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { KaijiBotConfig } from "../../config/config.js";
 import {
   applyProviderResolvedModelCompatWithPlugins,
@@ -22,12 +22,7 @@ import {
   buildSuppressedBuiltInModelError,
   shouldSuppressBuiltInModel,
 } from "../model-suppression.js";
-import type { PiAuthStorage, PiModelRegistry } from "../pi-model-discovery.js";
-import {
-  createSyncModelRegistryFallback,
-  discoverAuthStorage,
-  discoverModels,
-} from "../pi-model-discovery.js";
+import { discoverAuthStorage, discoverModels } from "../pi-model-discovery.js";
 import {
   attachModelProviderRequestTransport,
   resolveProviderRequestConfig,
@@ -348,7 +343,7 @@ function applyConfiguredProviderOverrides(params: {
 function resolveExplicitModelWithRegistry(params: {
   provider: string;
   modelId: string;
-  modelRegistry: PiModelRegistry;
+  modelRegistry: ModelRegistry;
   cfg?: KaijiBotConfig;
   agentDir?: string;
   runtimeHooks?: ProviderRuntimeHooks;
@@ -429,7 +424,7 @@ function resolveExplicitModelWithRegistry(params: {
 function resolvePluginDynamicModelWithRegistry(params: {
   provider: string;
   modelId: string;
-  modelRegistry: PiModelRegistry;
+  modelRegistry: ModelRegistry;
   cfg?: KaijiBotConfig;
   agentDir?: string;
   workspaceDir?: string;
@@ -585,7 +580,7 @@ function preferProviderRuntimeResolvedModel(params: {
 export function resolveModelWithRegistry(params: {
   provider: string;
   modelId: string;
-  modelRegistry: PiModelRegistry;
+  modelRegistry: ModelRegistry;
   cfg?: KaijiBotConfig;
   agentDir?: string;
   runtimeHooks?: ProviderRuntimeHooks;
@@ -641,16 +636,16 @@ export function resolveModel(
   agentDir?: string,
   cfg?: KaijiBotConfig,
   options?: {
-    authStorage?: PiAuthStorage;
-    modelRegistry?: PiModelRegistry;
+    authStorage?: AuthStorage;
+    modelRegistry?: ModelRegistry;
     runtimeHooks?: ProviderRuntimeHooks;
     skipProviderRuntimeHooks?: boolean;
   },
 ): {
   model?: Model<Api>;
   error?: string;
-  authStorage: PiAuthStorage;
-  modelRegistry: PiModelRegistry;
+  authStorage: AuthStorage;
+  modelRegistry: ModelRegistry;
 } {
   const normalizedRef = {
     provider,
@@ -658,9 +653,7 @@ export function resolveModel(
   };
   const resolvedAgentDir = agentDir ?? resolveKaijiBotAgentDir();
   const authStorage = options?.authStorage ?? discoverAuthStorage(resolvedAgentDir);
-  const modelRegistry =
-    options?.modelRegistry ??
-    createSyncModelRegistryFallback(path.join(resolvedAgentDir, "models.json"), resolvedAgentDir);
+  const modelRegistry = options?.modelRegistry ?? discoverModels(authStorage, resolvedAgentDir);
   const runtimeHooks = resolveRuntimeHooks(options);
   const model = resolveModelWithRegistry({
     provider: normalizedRef.provider,
@@ -693,8 +686,8 @@ export async function resolveModelAsync(
   agentDir?: string,
   cfg?: KaijiBotConfig,
   options?: {
-    authStorage?: PiAuthStorage;
-    modelRegistry?: PiModelRegistry;
+    authStorage?: AuthStorage;
+    modelRegistry?: ModelRegistry;
     retryTransientProviderRuntimeMiss?: boolean;
     runtimeHooks?: ProviderRuntimeHooks;
     skipProviderRuntimeHooks?: boolean;
@@ -702,8 +695,8 @@ export async function resolveModelAsync(
 ): Promise<{
   model?: Model<Api>;
   error?: string;
-  authStorage: PiAuthStorage;
-  modelRegistry: PiModelRegistry;
+  authStorage: AuthStorage;
+  modelRegistry: ModelRegistry;
 }> {
   const normalizedRef = {
     provider,
@@ -711,8 +704,7 @@ export async function resolveModelAsync(
   };
   const resolvedAgentDir = agentDir ?? resolveKaijiBotAgentDir();
   const authStorage = options?.authStorage ?? discoverAuthStorage(resolvedAgentDir);
-  const modelRegistry =
-    options?.modelRegistry ?? (await discoverModels(authStorage, resolvedAgentDir));
+  const modelRegistry = options?.modelRegistry ?? discoverModels(authStorage, resolvedAgentDir);
   const runtimeHooks = resolveRuntimeHooks(options);
   const explicitModel = resolveExplicitModelWithRegistry({
     provider: normalizedRef.provider,

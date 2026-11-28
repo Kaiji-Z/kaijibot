@@ -1,6 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { TranscriptContext } from "@earendil-works/pi-ai";
-import type { Model } from "@earendil-works/pi-ai";
+import type { Context, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import {
   registerProviderPlugin,
@@ -109,7 +108,7 @@ describe("minimax provider hooks", () => {
         provider: "minimax",
         id: "MiniMax-M2.7",
       } as Model<"anthropic-messages">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
@@ -131,7 +130,7 @@ describe("minimax provider hooks", () => {
         provider: "minimax-portal",
         id: "MiniMax-M2.7",
       } as Model<"anthropic-messages">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 

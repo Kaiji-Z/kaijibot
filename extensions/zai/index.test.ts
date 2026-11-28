@@ -1,5 +1,4 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model } from "@earendil-works/pi-ai";
 import type { ProviderWrapStreamFnContext } from "kaijibot/plugin-sdk/plugin-entry";
 import { registerSingleProviderPlugin } from "kaijibot/plugin-sdk/plugin-test-runtime";
@@ -198,7 +197,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
@@ -217,7 +216,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
@@ -248,7 +247,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
@@ -280,7 +279,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
@@ -301,7 +300,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         provider: "zai",
         id: "glm-5.1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
@@ -371,7 +370,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
       streamFn: baseStreamFn,
     } as never);
 
-    void wrapped?.(model, context as unknown as TranscriptContext, {});
+    void wrapped?.(model, context, {});
 
     expect(capturedPayload?.thinking).toEqual({ type: "enabled", clear_thinking: false });
     const assistantMessage = (capturedPayload?.messages as Array<Record<string, unknown>>)[1];
@@ -465,7 +464,7 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
 
     await wrapped?.(
       params.model,
-      { messages: [{ role: "user", content: "hi", timestamp: 1 }] } as unknown as TranscriptContext,
+      { messages: [{ role: "user", content: "hi", timestamp: 1 }] } as Context,
       {},
     );
     if (!payload) {
@@ -567,97 +566,11 @@ describe.skipIf(process.env.CI)("zai provider plugin", () => {
         id: "glm-5.3-flash",
         thinkingLevelMap: { off: "low" },
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 
     expect(capturedPayload).not.toHaveProperty("thinking");
     expect(capturedPayload?.reasoning_effort).toBe("low");
-  });
-
-  // pi-ai sends the object that the downstream `onPayload` chain settles on.
-  // `downstream` stands in for the request hooks that run after the provider wrapper.
-  async function captureSentRequest(params: {
-    model: Model<"openai-completions">;
-    thinkingLevel?: ProviderWrapStreamFnContext["thinkingLevel"];
-    downstream?: (payload: Record<string, unknown>) => unknown;
-  }): Promise<Record<string, unknown>> {
-    const provider = await registerSingleProviderPlugin(plugin);
-    let settled: unknown = undefined;
-    const baseStreamFn: StreamFn = (model, context, options) => {
-      const built = buildOpenAICompletionsParams(model as never, context, {
-        reasoning: params.thinkingLevel,
-      } as never);
-      settled = options?.onPayload?.(built as never, model as never);
-      return {} as ReturnType<StreamFn>;
-    };
-
-    const wrapped = provider.wrapStreamFn?.({
-      provider: "zai",
-      modelId: params.model.id,
-      extraParams: {},
-      thinkingLevel: params.thinkingLevel,
-      streamFn: baseStreamFn,
-    } as never);
-
-    await wrapped?.(
-      params.model,
-      { messages: [{ role: "user", content: "hi", timestamp: 1 }] } as unknown as TranscriptContext,
-      { onPayload: params.downstream } as never,
-    );
-    const sent = await Promise.resolve(settled);
-    if (!sent || typeof sent !== "object") {
-      throw new Error("no request sent");
-    }
-    return sent as Record<string, unknown>;
-  }
-
-  it("wins over a downstream hook that rebuilds the payload with thinking disabled", async () => {
-    const payload = await captureSentRequest({
-      model: alwaysThinkingModel(),
-      thinkingLevel: "off",
-      downstream: (built) => ({ ...built, thinking: { type: "disabled" } }),
-    });
-
-    expect(payload).not.toHaveProperty("thinking");
-    expect(payload.reasoning_effort).toBe("low");
-  });
-
-  it("wins over a downstream hook that restores thinking asynchronously", async () => {
-    const payload = await captureSentRequest({
-      model: alwaysThinkingModel(),
-      thinkingLevel: "off",
-      downstream: (built) => Promise.resolve({ ...built, thinking: { type: "disabled" } }),
-    });
-
-    expect(payload).not.toHaveProperty("thinking");
-    expect(payload.reasoning_effort).toBe("low");
-  });
-
-  it("keeps the effort of the level when a downstream hook restores thinking", async () => {
-    const payload = await captureSentRequest({
-      model: alwaysThinkingModel(),
-      thinkingLevel: "medium",
-      downstream: (built) => ({ ...built, thinking: { type: "enabled" } }),
-    });
-
-    expect(payload).not.toHaveProperty("thinking");
-    expect(payload.reasoning_effort).toBe("high");
-  });
-
-  it("runs an always-thinking model at its lowest effort when thinking is off and it declares none", async () => {
-    const model = { ...createGlm47Template(), id: "glm-5.3-flash" } as Model<"openai-completions">;
-    const payload = await captureSentRequest({ model, thinkingLevel: "off" });
-
-    expect(payload).not.toHaveProperty("thinking");
-    expect(payload.reasoning_effort).toBe("low");
-  });
-
-  it("still asks a model that can turn thinking off to do so when thinking is off", async () => {
-    const model = createGlm47Template() as Model<"openai-completions">;
-    const payload = await captureRequest({ model, thinkingLevel: "off" });
-
-    expect(payload.thinking).toEqual({ type: "disabled" });
-    expect(payload).not.toHaveProperty("reasoning_effort");
   });
 });

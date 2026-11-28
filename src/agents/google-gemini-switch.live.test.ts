@@ -1,4 +1,4 @@
-import { completeSimple, getModel } from "@earendil-works/pi-ai/compat";
+import { completeSimple, getModel } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import { isLiveTestEnabled } from "./live-test-helpers.js";
@@ -15,7 +15,7 @@ describeLive("gemini live switch", () => {
   for (const modelId of googleModels) {
     it(`handles unsigned tool calls from Antigravity when switching to ${modelId}`, async () => {
       const now = Date.now();
-      const model = getModel("google", modelId as unknown as Parameters<typeof getModel>[1]);
+      const model = getModel("google", modelId);
 
       const res = await completeSimple(
         model,

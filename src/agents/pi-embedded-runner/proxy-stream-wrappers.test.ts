@@ -1,5 +1,4 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
@@ -10,7 +9,7 @@ import {
 
 describe("proxy stream wrappers", () => {
   it("adds OpenRouter attribution headers to stream options", () => {
-    const calls: Array<{ headers?: Record<string, string | null | undefined> }> = [];
+    const calls: Array<{ headers?: Record<string, string> }> = [];
     const baseStreamFn: StreamFn = (_model, _context, options) => {
       calls.push({
         headers: options?.headers,
@@ -26,7 +25,7 @@ describe("proxy stream wrappers", () => {
     } as Model<"openai-completions">;
     const context: Context = { messages: [] };
 
-    void wrapped(model, context as unknown as TranscriptContext, { headers: { "X-Custom": "1" } });
+    void wrapped(model, context, { headers: { "X-Custom": "1" } });
 
     expect(calls).toEqual([
       {
@@ -56,7 +55,7 @@ describe("proxy stream wrappers", () => {
         provider: "openrouter",
         id: "anthropic/claude-sonnet-4.6",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] },
       {},
     );
 
@@ -82,7 +81,7 @@ describe("proxy stream wrappers", () => {
         id: "anthropic/claude-sonnet-4.6",
         baseUrl: "https://proxy.example.com/v1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] },
       {},
     );
 
@@ -106,7 +105,7 @@ describe("proxy stream wrappers", () => {
         id: "anthropic/claude-sonnet-4.6",
         baseUrl: "https://openrouter.ai/api/v1",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] },
       {},
     );
 

@@ -1,5 +1,10 @@
-import { type Api, type Model, type OpenAICompletionsCompat } from "@earendil-works/pi-ai";
-import { complete, completeSimple } from "@earendil-works/pi-ai/compat";
+import {
+  complete,
+  completeSimple,
+  type Api,
+  type Model,
+  type OpenAICompletionsCompat,
+} from "@earendil-works/pi-ai";
 import type { KaijiBotConfig } from "../config/config.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { resolveAgentDir, resolveAgentEffectiveModelPrimary } from "./agent-scope.js";
@@ -129,42 +134,16 @@ function hasMissingApiKeyAllowance(params: {
 }
 
 /**
- * The effort a background call runs at in place of "off": the level's own value
- * when the model names one, else the lowest level it does name. The registry
- * fills the levels a model does not support with null, so an "off" that is
- * present but names no effort says the model cannot turn thinking off.
- */
-function resolveBackgroundEffort(
-  thinkingLevelMap: Model<Api>["thinkingLevelMap"],
-): string | undefined {
-  if (typeof thinkingLevelMap?.off === "string") {
-    return thinkingLevelMap.off;
-  }
-  if (thinkingLevelMap?.off !== null) {
-    return undefined;
-  }
-  for (const level of ["minimal", "low"] as const) {
-    const effort = thinkingLevelMap[level];
-    if (typeof effort === "string") {
-      return effort;
-    }
-  }
-  return undefined;
-}
-
-/**
  * The model background single-turn calls run on.
  *
  * These calls pass no reasoning option, which pi-ai turns into
  * `thinking: { type: "disabled" }` for a zai-format model. A model that cannot
- * turn thinking off names the effort to send instead, but a zai-format request
- * carries no effort, so the prepared model asks for it OpenAI-style. The token
- * cap becomes `max_completion_tokens`, which leaves the reasoning out of the
- * count where `max_tokens` includes it. The agent loop keeps the model as
- * resolved.
+ * turn thinking off names the effort to send instead in `thinkingLevelMap.off`,
+ * but a zai-format request carries no effort, so the prepared model asks for it
+ * OpenAI-style. The agent loop keeps the model as resolved.
  */
 export function forBackgroundCompletion(model: Model<Api>): Model<Api> {
-  if (model.api !== "openai-completions") {
+  if (typeof model.thinkingLevelMap?.off !== "string" || model.api !== "openai-completions") {
     return model;
   }
   // Model["compat"] is a union across APIs; the model is a completions one here.
@@ -174,20 +153,9 @@ export function forBackgroundCompletion(model: Model<Api>): Model<Api> {
   if (thinkingFormat !== "zai") {
     return model;
   }
-  const effort = resolveBackgroundEffort(model.thinkingLevelMap);
-  if (!effort) {
-    return model;
-  }
   return {
     ...model,
-    // The transport reads the "off" entry for a call that passes no reasoning option.
-    thinkingLevelMap: { ...model.thinkingLevelMap, off: effort },
-    compat: {
-      ...compat,
-      thinkingFormat: "openai",
-      supportsReasoningEffort: true,
-      maxTokensField: "max_completion_tokens",
-    },
+    compat: { ...compat, thinkingFormat: "openai", supportsReasoningEffort: true },
   };
 }
 

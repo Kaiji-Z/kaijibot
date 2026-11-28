@@ -47,15 +47,13 @@ type PiRegistryClassLike = {
 
 let modelCatalogPromise: Promise<ModelCatalogEntry[]> | null = null;
 let hasLoggedModelCatalogError = false;
-const defaultImportPiSdk = (() =>
-  import("./pi-model-discovery-runtime.js")) as unknown as () => Promise<PiSdkModule>;
-let importPiSdk: () => Promise<PiSdkModule> = defaultImportPiSdk;
+const defaultImportPiSdk = () => import("./pi-model-discovery-runtime.js");
+let importPiSdk = defaultImportPiSdk;
 let modelSuppressionPromise: Promise<typeof import("./model-suppression.runtime.js")> | undefined;
 
 type LiveDiscoveryModule = typeof import("./model-discovery-live.js");
-const defaultImportLiveDiscovery = (() =>
-  import("./model-discovery-live.runtime.js")) as unknown as () => Promise<LiveDiscoveryModule>;
-let importLiveDiscovery: () => Promise<LiveDiscoveryModule> = defaultImportLiveDiscovery;
+const defaultImportLiveDiscovery = () => import("./model-discovery-live.runtime.js");
+let importLiveDiscovery = defaultImportLiveDiscovery;
 
 function shouldLogModelCatalogTiming(): boolean {
   return process.env.KAIJIBOT_DEBUG_INGRESS_TIMING === "1";
@@ -92,18 +90,16 @@ export function __setLiveDiscoveryForTest(loader?: () => Promise<LiveDiscoveryMo
   importLiveDiscovery = loader ?? defaultImportLiveDiscovery;
 }
 
-async function instantiatePiModelRegistry(
+function instantiatePiModelRegistry(
   piSdk: PiSdkModule,
-  agentDir: string,
+  authStorage: unknown,
   modelsFile: string,
-): Promise<PiRegistryInstance> {
-  if (typeof piSdk.createPiModelRegistry === "function") {
-    // pi-ai 1.6: ModelRegistry needs a ModelRuntime built from the agent dir.
-    const registry = await piSdk.createPiModelRegistry(agentDir, modelsFile);
-    return registry as unknown as PiRegistryInstance;
-  }
+): PiRegistryInstance {
   const Registry = piSdk.ModelRegistry as unknown as PiRegistryClassLike;
-  return new Registry({}, modelsFile);
+  if (typeof Registry.create === "function") {
+    return Registry.create(authStorage, modelsFile);
+  }
+  return new Registry(authStorage, modelsFile);
 }
 
 export async function loadModelCatalog(params?: {
@@ -152,9 +148,9 @@ export async function loadModelCatalog(params?: {
       const { join } = await import("node:path");
       const authStorage = piSdk.discoverAuthStorage(agentDir);
       logStage("auth-storage-ready");
-      const registry = await instantiatePiModelRegistry(
+      const registry = instantiatePiModelRegistry(
         piSdk,
-        agentDir,
+        authStorage,
         join(agentDir, "models.json"),
       );
       logStage("registry-ready");

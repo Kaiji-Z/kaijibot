@@ -1,6 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { TranscriptContext } from "@earendil-works/pi-ai";
-import type { Model } from "@earendil-works/pi-ai";
+import type { Context, Model } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import { registerSingleProviderPlugin } from "../../test/helpers/plugins/plugin-registration.js";
 import plugin from "./index.js";
@@ -50,7 +49,7 @@ describe("moonshot provider plugin", () => {
         provider: "moonshot",
         id: "kimi-k2.5",
       } as Model<"openai-completions">,
-      { messages: [] } as unknown as TranscriptContext,
+      { messages: [] } as Context,
       {},
     );
 

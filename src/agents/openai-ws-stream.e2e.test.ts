@@ -13,10 +13,12 @@
  *
  * Skipped in CI — no API key available and we avoid billable external calls.
  */
+
 import type {
   AssistantMessage,
   AssistantMessageEvent,
   AssistantMessageEventStream,
+  Context,
 } from "@earendil-works/pi-ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isLiveTestEnabled } from "./live-test-helpers.js";
@@ -48,28 +50,16 @@ const model = {
 type StreamFnParams = Parameters<ReturnType<StreamFactory>>;
 function makeContext(userMessage: string): StreamFnParams[1] {
   return {
-    messages: [
-      {
-        role: "system",
-        content: "You are a helpful assistant. Reply in one sentence.",
-        timestamp: 0,
-      },
-      { role: "user" as const, content: userMessage },
-    ],
+    systemPrompt: "You are a helpful assistant. Reply in one sentence.",
+    messages: [{ role: "user" as const, content: userMessage }],
     tools: [],
   } as unknown as StreamFnParams[1];
 }
 
 function makeToolContext(userMessage: string): StreamFnParams[1] {
   return {
-    messages: [
-      {
-        role: "system",
-        content: "You are a precise assistant. Follow tool instructions exactly.",
-        timestamp: 0,
-      },
-      { role: "user" as const, content: userMessage },
-    ],
+    systemPrompt: "You are a precise assistant. Follow tool instructions exactly.",
+    messages: [{ role: "user" as const, content: userMessage }],
     tools: [
       {
         name: "noop",
@@ -81,7 +71,7 @@ function makeToolContext(userMessage: string): StreamFnParams[1] {
         },
       },
     ],
-  } as unknown as StreamFnParams[1];
+  } as unknown as Context;
 }
 
 function makeToolResultMessage(

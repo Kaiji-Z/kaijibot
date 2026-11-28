@@ -1,6 +1,5 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
-import { streamSimple } from "@earendil-works/pi-ai/compat";
+import { createAssistantMessageEventStream, streamSimple } from "@earendil-works/pi-ai";
 import { formatErrorMessage } from "../../../infra/errors.js";
 import { buildStreamErrorAssistantMessage } from "../../stream-message-shared.js";
 

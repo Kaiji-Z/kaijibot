@@ -12,12 +12,9 @@ import * as pdfNativeProviders from "./pdf-native-providers.js";
 
 const completeMock = vi.hoisted(() => vi.fn());
 
-// pdf-tool.ts imports complete from the compat entry (pi-ai 1.6 moved it off the
-// root export), so the mock has to target that specifier.
-vi.mock("@earendil-works/pi-ai/compat", async () => {
-  const actual = await vi.importActual<typeof import("@earendil-works/pi-ai/compat")>(
-    "@earendil-works/pi-ai/compat",
-  );
+vi.mock("@earendil-works/pi-ai", async () => {
+  const actual =
+    await vi.importActual<typeof import("@earendil-works/pi-ai")>("@earendil-works/pi-ai");
   return {
     ...actual,
     complete: completeMock,
@@ -46,24 +43,6 @@ async function withTempAgentDir<T>(run: (agentDir: string) => Promise<T>): Promi
 
 const ANTHROPIC_PDF_MODEL = "anthropic/claude-opus-4-6";
 const OPENAI_PDF_MODEL = "openai/gpt-5.4-mini";
-// glm-5.3 cannot turn thinking off: the registry fills "off" with null and names
-// low, high and max. It takes an effort instead of a disabled-thinking switch.
-const ALWAYS_THINKING_ZAI_MODEL = {
-  id: "glm-5.3-flash",
-  api: "openai-completions",
-  baseUrl: "https://api.z.ai/api/coding/paas/v4",
-  reasoning: true,
-  compat: { thinkingFormat: "zai", supportsReasoningEffort: true },
-  thinkingLevelMap: {
-    off: null,
-    minimal: null,
-    low: "low",
-    medium: null,
-    high: "high",
-    xhigh: null,
-    max: "max",
-  },
-};
 const FAKE_PDF_MEDIA = {
   kind: "document",
   buffer: Buffer.from("%PDF-1.4 fake"),
@@ -121,7 +100,6 @@ async function stubPdfToolInfra(
     provider?: string;
     input?: string[];
     modelFound?: boolean;
-    model?: Record<string, unknown>;
   },
 ) {
   const loadSpy = vi.spyOn(webMedia, "loadWebMediaRaw").mockResolvedValue(FAKE_PDF_MEDIA as never);
@@ -137,7 +115,6 @@ async function stubPdfToolInfra(
             provider: params?.provider ?? "anthropic",
             maxTokens: 8192,
             input: params?.input ?? ["text", "document"],
-            ...params?.model,
           }) as never;
   vi.spyOn(modelDiscovery, "discoverModels").mockReturnValue({ find } as never);
 
@@ -302,42 +279,6 @@ describe("createPdfTool", () => {
       expect(result).toMatchObject({
         content: [{ type: "text", text: "fallback summary" }],
         details: { native: false, model: OPENAI_PDF_MODEL },
-      });
-    });
-  });
-
-  it("runs the extraction fallback on the model prepared for a background request", async () => {
-    await withTempAgentDir(async (agentDir) => {
-      await stubPdfToolInfra(agentDir, {
-        provider: "zai",
-        input: ["text"],
-        model: ALWAYS_THINKING_ZAI_MODEL,
-      });
-      vi.spyOn(pdfExtractModule, "extractPdfContent").mockResolvedValue({
-        text: "Extracted content",
-        images: [],
-      });
-      completeMock.mockResolvedValue({
-        role: "assistant",
-        stopReason: "stop",
-        content: [{ type: "text", text: "fallback summary" }],
-      } as never);
-
-      const cfg = withPdfModel("zai/glm-5.3-flash");
-      const tool = requirePdfTool((await loadCreatePdfTool())({ config: cfg, agentDir }));
-      const result = await tool.execute("t1", {
-        prompt: "summarize",
-        pdf: "/tmp/doc.pdf",
-      });
-
-      expect(result).toMatchObject({
-        content: [{ type: "text", text: "fallback summary" }],
-        details: { native: false, model: "zai/glm-5.3-flash" },
-      });
-      expect(completeMock.mock.calls[0]?.[0]).toMatchObject({
-        provider: "zai",
-        id: "glm-5.3-flash",
-        compat: { thinkingFormat: "openai", supportsReasoningEffort: true },
       });
     });
   });

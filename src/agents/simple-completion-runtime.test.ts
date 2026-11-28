@@ -1,5 +1,4 @@
-import { type Api, type Model } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
+import { completeSimple, type Api, type Model } from "@earendil-works/pi-ai";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
@@ -428,41 +427,6 @@ describe("forBackgroundCompletion", () => {
       thinkingLevelMap: { off: "none" },
     });
     expect(forBackgroundCompletion(openrouter)).toBe(openrouter);
-  });
-
-  it("asks for the lowest level the model names when it cannot turn thinking off", async () => {
-    // The registry fills the levels a model does not support with null, and its
-    // compat caps the model with `max_tokens`.
-    const cannotTurnOff = makeZaiModel({
-      compat: {
-        thinkingFormat: "zai",
-        supportsReasoningEffort: true,
-        maxTokensField: "max_tokens",
-      },
-      thinkingLevelMap: {
-        off: null,
-        minimal: null,
-        low: "low",
-        medium: null,
-        high: "high",
-        xhigh: null,
-        max: "max",
-      },
-    });
-
-    // As resolved, the request asks to disable thinking, which the glm-5.3 API rejects.
-    expect(await captureRequestPayload(cannotTurnOff)).toEqual(
-      expect.objectContaining({ thinking: { type: "disabled" } }),
-    );
-
-    const prepared = forBackgroundCompletion(cannotTurnOff);
-    const payload = await captureRequestPayload(prepared);
-    expect(payload.reasoning_effort).toBe("low");
-    expect(payload).not.toHaveProperty("thinking");
-    // The registry's own compat caps these models with `max_tokens`.
-    expect(payload).toHaveProperty("max_completion_tokens", 2000);
-    expect(payload).not.toHaveProperty("max_tokens");
-    expect(cannotTurnOff.thinkingLevelMap?.off).toBeNull();
   });
 
   it("prepares the model of a background call on the always-thinking model with the effort", async () => {

@@ -1,5 +1,5 @@
 import type { Model } from "@earendil-works/pi-ai";
-import { getModel, streamSimple } from "@earendil-works/pi-ai/compat";
+import { getModel, streamSimple } from "@earendil-works/pi-ai";
 import { describe, expect, it } from "vitest";
 import type { KaijiBotConfig } from "../config/config.js";
 import { isLiveTestEnabled } from "./live-test-helpers.js";
@@ -35,11 +35,11 @@ describeLive("pi embedded extra params (live)", () => {
       },
     };
 
-    const agent = { streamFunction: streamSimple };
+    const agent = { streamFn: streamSimple };
 
     applyExtraParamsToAgent(agent, cfg, "openai", model.id);
 
-    const stream = agent.streamFunction(
+    const stream = agent.streamFn(
       model,
       {
         messages: [
@@ -182,9 +182,9 @@ describeGeminiLive("pi embedded extra params (gemini live)", () => {
       options?.onPayload?.(payload);
       return {} as ReturnType<typeof streamSimple>;
     };
-    const agent = { streamFunction: baseStreamFn as typeof streamSimple };
+    const agent = { streamFn: baseStreamFn as typeof streamSimple };
     applyExtraParamsToAgent(agent, undefined, "google", params.model.id, undefined, "high");
-    void agent.streamFunction(
+    void agent.streamFn(
       params.model,
       { messages: [] },
       {

@@ -1,5 +1,4 @@
-import { type Context } from "@earendil-works/pi-ai";
-import { complete } from "@earendil-works/pi-ai/compat";
+import { type Context, complete } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { extractPdfContent, type PdfExtractedContent } from "../../media/pdf-extract.js";
@@ -9,7 +8,6 @@ import {
   normalizeOptionalString,
 } from "../../shared/string-coerce.js";
 import { resolveUserPath } from "../../utils.js";
-import { forBackgroundCompletion } from "../simple-completion-runtime.js";
 import { type ImageModelConfig } from "./image-tool.helpers.js";
 import {
   applyImageModelConfigDefaults,
@@ -131,7 +129,7 @@ async function runPdfPrompt(params: {
 
   await ensureKaijiBotModelsJson(effectiveCfg, params.agentDir);
   const authStorage = discoverAuthStorage(params.agentDir);
-  const modelRegistry = await discoverModels(authStorage, params.agentDir);
+  const modelRegistry = discoverModels(authStorage, params.agentDir);
 
   let extractionCache: PdfExtractedContent[] | null = null;
   const getExtractions = async (): Promise<PdfExtractedContent[]> => {
@@ -190,8 +188,6 @@ async function runPdfPrompt(params: {
       }
 
       const extractions = await getExtractions();
-      // The extraction fallback passes no reasoning option, like any background call.
-      const completionModel = forBackgroundCompletion(model);
       const hasImages = extractions.some((e) => e.images.length > 0);
       if (hasImages && !model.input?.includes("image")) {
         const hasText = extractions.some((e) => e.text.trim().length > 0);
@@ -205,7 +201,7 @@ async function runPdfPrompt(params: {
           images: [],
         }));
         const context = buildPdfExtractionContext(params.prompt, textOnlyExtractions);
-        const message = await complete(completionModel, context, {
+        const message = await complete(model, context, {
           apiKey,
           maxTokens: resolvePdfToolMaxTokens(model.maxTokens),
         });
@@ -214,7 +210,7 @@ async function runPdfPrompt(params: {
       }
 
       const context = buildPdfExtractionContext(params.prompt, extractions);
-      const message = await complete(completionModel, context, {
+      const message = await complete(model, context, {
         apiKey,
         maxTokens: resolvePdfToolMaxTokens(model.maxTokens),
       });

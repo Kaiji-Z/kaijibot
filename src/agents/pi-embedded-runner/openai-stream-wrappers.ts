@@ -1,6 +1,6 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import type { SimpleStreamOptions } from "@earendil-works/pi-ai";
-import { streamSimple } from "@earendil-works/pi-ai/compat";
+import { streamSimple } from "@earendil-works/pi-ai";
 import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import type { KaijiBotConfig } from "../../config/config.js";
 import { normalizeOptionalLowercaseString, readStringValue } from "../../shared/string-coerce.js";

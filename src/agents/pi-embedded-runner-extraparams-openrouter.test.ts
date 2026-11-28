@@ -1,5 +1,4 @@
 import type { StreamFn } from "@earendil-works/pi-agent-core";
-import type { TranscriptContext } from "@earendil-works/pi-ai";
 import type { Context, Model } from "@earendil-works/pi-ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { __testing as extraParamsTesting } from "./pi-embedded-runner/extra-params.js";
@@ -62,7 +61,7 @@ describe("applyExtraParamsToAgent OpenRouter reasoning", () => {
       payloads.push(payload);
       return {} as ReturnType<StreamFn>;
     };
-    const agent = { streamFunction: baseStreamFn };
+    const agent = { streamFn: baseStreamFn };
 
     applyExtraParamsToAgent(
       agent,
@@ -79,7 +78,7 @@ describe("applyExtraParamsToAgent OpenRouter reasoning", () => {
       id: params.modelId,
     } as Model<"openai-completions">;
     const context: Context = { messages: [] };
-    void agent.streamFunction?.(model, context as unknown as TranscriptContext, {});
+    void agent.streamFn?.(model, context, {});
 
     expect(payloads).toHaveLength(1);
     return payloads[0] ?? {};

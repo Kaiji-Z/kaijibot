@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import * as PiCodingAgent from "@earendil-works/pi-coding-agent";
-import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import type {
+  AuthStorage as PiAuthStorage,
+  ModelRegistry as PiModelRegistry,
+} from "@earendil-works/pi-coding-agent";
 import { normalizeModelCompat } from "../plugins/provider-model-compat.js";
 import {
   applyProviderResolvedModelCompatWithPlugins,
@@ -18,78 +21,37 @@ import { resolveProviderEnvApiKeyCandidates } from "./model-auth-env-vars.js";
 import { resolveEnvApiKey } from "./model-auth-env.js";
 import { resolvePiCredentialMapFromStore, type PiCredentialMap } from "./pi-auth-credentials.js";
 
+const PiAuthStorageClass = PiCodingAgent.AuthStorage;
 const PiModelRegistryClass = PiCodingAgent.ModelRegistry;
 
-export { PiModelRegistryClass as ModelRegistry };
+export { PiAuthStorageClass as AuthStorage, PiModelRegistryClass as ModelRegistry };
 
-/**
- * pi-coding-agent 1.x no longer exports its AuthStorage class (it is an internal
- * CredentialStore detail now). Our runtime only ever used three methods on it, so
- * we carry our own structural type backed by an in-memory runtime-key store.
- */
-export type PiAuthStorage = {
-  getApiKey(provider: string): Promise<string | undefined>;
-  setRuntimeApiKey(provider: string, apiKey: string): void;
-  hasAuth(provider?: string): boolean;
-};
-
-export type PiModelRegistry = PiModelRegistryLike;
-
-/**
- * Structural registry surface used by synchronous model resolution. Both the
- * pi ModelRegistry instance and our sync models.json fallback satisfy it.
- */
-export type PiModelRegistryLike = {
-  getAll(): Model<Api>[];
-  getAvailable(): Model<Api>[];
-  find(provider: string, modelId: string): Model<Api> | undefined;
-};
-
-/**
- * Minimal synchronous registry over the agent's own models.json, for callers
- * that cannot await the async pi registry (ModelRuntime.create is async).
- * Covers the providers/models we write ourselves; catalog-side extras that
- * only pi's async registry provides are out of scope here.
- */
-export function createSyncModelRegistryFallback(
-  modelsJsonPath: string,
-  agentDir: string,
-): PiModelRegistryLike {
-  const models: Model<Api>[] = [];
-  try {
-    const parsed = JSON.parse(fs.readFileSync(modelsJsonPath, "utf8")) as unknown;
-    if (isRecord(parsed) && isRecord(parsed.providers)) {
-      for (const entry of Object.values(parsed.providers)) {
-        if (!isRecord(entry) || !Array.isArray(entry.models)) {
-          continue;
-        }
-        for (const model of entry.models) {
-          models.push(normalizeDiscoveredPiModel(model as Model<Api>, agentDir));
-        }
-      }
-    }
-  } catch {
-    // Missing or unreadable models.json resolves to an empty registry.
-  }
-  return {
-    getAll: () => [...models],
-    getAvailable: () => [...models],
-    find: (provider, modelId) =>
-      models.find((model) => model.provider === provider && model.id === modelId),
-  };
-}
-
-function createInMemoryPiAuthStorage(creds: PiCredentialMap): PiAuthStorage {
-  const runtimeKeys = new Map<string, string>();
-  for (const [provider, credential] of Object.entries(creds)) {
-    runtimeKeys.set(provider, credential.type === "api_key" ? credential.key : credential.access);
-  }
-  return {
-    getApiKey: (provider) => Promise.resolve(runtimeKeys.get(provider)),
-    setRuntimeApiKey: (provider, apiKey) => {
-      runtimeKeys.set(provider, apiKey);
+type InMemoryAuthStorageBackendLike = {
+  withLock<T>(
+    update: (current: string) => {
+      result: T;
+      next?: string;
     },
-    hasAuth: (provider) => (provider ? runtimeKeys.has(provider) : runtimeKeys.size > 0),
+  ): T;
+};
+
+function createInMemoryAuthStorageBackend(
+  initialData: PiCredentialMap,
+): InMemoryAuthStorageBackendLike {
+  let snapshot = JSON.stringify(initialData, null, 2);
+  return {
+    withLock<T>(
+      update: (current: string) => {
+        result: T;
+        next?: string;
+      },
+    ): T {
+      const { result, next } = update(snapshot);
+      if (typeof next === "string") {
+        snapshot = next;
+      }
+      return result;
+    },
   };
 }
 
@@ -139,30 +101,28 @@ export function normalizeDiscoveredPiModel<T>(value: T, agentDir: string): T {
   return normalizeModelCompat(transportNormalized as Model<Api>) as T;
 }
 
-type PiModelRegistryClassLike = { new (runtime: ModelRuntime): PiModelRegistry };
+type PiModelRegistryClassLike = {
+  create?: (authStorage: PiAuthStorage, modelsJsonPath: string) => PiModelRegistry;
+  new (authStorage: PiAuthStorage, modelsJsonPath: string): PiModelRegistry;
+};
 
-/**
- * pi-coding-agent 1.x builds its ModelRegistry on top of a ModelRuntime, whose
- * async factory reads the agent's auth.json and models.json. Discovery needs the
- * same files, so construct the runtime from the agentDir pair here.
- */
-async function instantiatePiModelRegistry(
-  agentDir: string,
+function instantiatePiModelRegistry(
+  authStorage: PiAuthStorage,
   modelsJsonPath: string,
-): Promise<PiModelRegistry> {
+): PiModelRegistry {
   const Registry = PiModelRegistryClass as unknown as PiModelRegistryClassLike;
-  const runtime = await PiCodingAgent.ModelRuntime.create({
-    authPath: path.join(agentDir, "auth.json"),
-    modelsPath: modelsJsonPath,
-  });
-  return new Registry(runtime);
+  if (typeof Registry.create === "function") {
+    return Registry.create(authStorage, modelsJsonPath);
+  }
+  return new Registry(authStorage, modelsJsonPath);
 }
 
-async function createKaijiBotModelRegistry(
-  agentDir: string,
+function createKaijiBotModelRegistry(
+  authStorage: PiAuthStorage,
   modelsJsonPath: string,
-): Promise<PiModelRegistry> {
-  const registry = await instantiatePiModelRegistry(agentDir, modelsJsonPath);
+  agentDir: string,
+): PiModelRegistry {
+  const registry = instantiatePiModelRegistry(authStorage, modelsJsonPath);
   const getAll = registry.getAll.bind(registry);
   const getAvailable = registry.getAvailable.bind(registry);
   const find = registry.find.bind(registry);
@@ -220,8 +180,49 @@ export function scrubLegacyStaticAuthJsonEntriesForDiscovery(pathname: string): 
   fs.chmodSync(pathname, 0o600);
 }
 
-function createAuthStorage(_path: string, creds: PiCredentialMap): PiAuthStorage {
-  return createInMemoryPiAuthStorage(creds);
+function createAuthStorage(AuthStorageLike: unknown, path: string, creds: PiCredentialMap) {
+  const withInMemory = AuthStorageLike as { inMemory?: (data?: unknown) => unknown };
+  if (typeof withInMemory.inMemory === "function") {
+    return withInMemory.inMemory(creds) as PiAuthStorage;
+  }
+
+  const withFromStorage = AuthStorageLike as {
+    fromStorage?: (storage: unknown) => unknown;
+  };
+  if (typeof withFromStorage.fromStorage === "function") {
+    const backendCtor = (
+      PiCodingAgent as { InMemoryAuthStorageBackend?: new () => InMemoryAuthStorageBackendLike }
+    ).InMemoryAuthStorageBackend;
+    const backend =
+      typeof backendCtor === "function"
+        ? new backendCtor()
+        : createInMemoryAuthStorageBackend(creds);
+    backend.withLock(() => ({
+      result: undefined,
+      next: JSON.stringify(creds, null, 2),
+    }));
+    return withFromStorage.fromStorage(backend) as PiAuthStorage;
+  }
+
+  const withFactory = AuthStorageLike as { create?: (path: string) => unknown };
+  const withRuntimeOverride = (
+    typeof withFactory.create === "function"
+      ? withFactory.create(path)
+      : new (AuthStorageLike as { new (path: string): unknown })(path)
+  ) as PiAuthStorage & {
+    setRuntimeApiKey?: (provider: string, apiKey: string) => void; // pragma: allowlist secret
+  };
+  const hasRuntimeApiKeyOverride = typeof withRuntimeOverride.setRuntimeApiKey === "function"; // pragma: allowlist secret
+  if (hasRuntimeApiKeyOverride) {
+    for (const [provider, credential] of Object.entries(creds)) {
+      if (credential.type === "api_key") {
+        withRuntimeOverride.setRuntimeApiKey(provider, credential.key);
+        continue;
+      }
+      withRuntimeOverride.setRuntimeApiKey(provider, credential.access);
+    }
+  }
+  return withRuntimeOverride;
 }
 
 export function addEnvBackedPiCredentials(
@@ -276,33 +277,13 @@ export function resolvePiCredentialsForDiscovery(agentDir: string): PiCredential
 }
 
 // Compatibility helpers for pi-coding-agent 0.50+ (discover* helpers removed).
-/**
- * pi-ai 1.6: ModelRegistry wraps a ModelRuntime that owns the auth/models
- * files. Build the live registry lazily from the agent dir.
- */
-export async function createPiModelRegistry(
-  agentDir: string,
-  modelsJsonPath: string,
-): Promise<PiModelRegistryLike> {
-  const pi = await import("@earendil-works/pi-coding-agent");
-  const runtime = await pi.ModelRuntime.create({
-    authPath: path.join(agentDir, "auth.json"),
-    modelsPath: modelsJsonPath,
-  });
-  return new pi.ModelRegistry(runtime);
-}
-
 export function discoverAuthStorage(agentDir: string): PiAuthStorage {
   const credentials = resolvePiCredentialsForDiscovery(agentDir);
   const authPath = path.join(agentDir, "auth.json");
   scrubLegacyStaticAuthJsonEntriesForDiscovery(authPath);
-  return createAuthStorage(authPath, credentials);
+  return createAuthStorage(PiAuthStorageClass, authPath, credentials);
 }
 
-export async function discoverModels(
-  authStorage: PiAuthStorage,
-  agentDir: string,
-): Promise<PiModelRegistry> {
-  void authStorage;
-  return createKaijiBotModelRegistry(agentDir, path.join(agentDir, "models.json"));
+export function discoverModels(authStorage: PiAuthStorage, agentDir: string): PiModelRegistry {
+  return createKaijiBotModelRegistry(authStorage, path.join(agentDir, "models.json"), agentDir);
 }

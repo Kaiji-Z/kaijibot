@@ -1,6 +1,4 @@
-import type { TranscriptContext } from "@earendil-works/pi-ai";
-import { type Model } from "@earendil-works/pi-ai";
-import { streamSimpleOpenAICompletions } from "@earendil-works/pi-ai/compat";
+import { streamSimpleOpenAICompletions, type Model } from "@earendil-works/pi-ai";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModelProviderConfig } from "../config/config.js";
 import { withFetchPreconnect } from "../test-utils/fetch-mock.js";
@@ -797,7 +795,7 @@ describe("applyLocalNoAuthHeaderOverride", () => {
             timestamp: Date.now(),
           },
         ],
-      } as unknown as TranscriptContext,
+      },
       {
         apiKey: CUSTOM_LOCAL_AUTH_MARKER,
       },

@@ -11,11 +11,7 @@ function applyAndExpectWrapped(params: {
   model?: Parameters<typeof applyExtraParamsToAgent>[8];
   provider: string;
 }) {
-  const agent = {
-    streamFunction: (() => {
-      throw new Error("unexpected stream call");
-    }) as StreamFn,
-  };
+  const agent: { streamFn?: StreamFn } = {};
 
   applyExtraParamsToAgent(
     agent,
@@ -29,7 +25,7 @@ function applyAndExpectWrapped(params: {
     params.model,
   );
 
-  expect(agent.streamFunction).toBeDefined();
+  expect(agent.streamFn).toBeDefined();
 }
 
 // Mock the logger to avoid noise in tests
@@ -113,11 +109,7 @@ describe("cacheRetention default behavior", () => {
   });
 
   it("returns undefined for non-Anthropic providers", () => {
-    const agent = {
-      streamFunction: (() => {
-        throw new Error("unexpected stream call");
-      }) as StreamFn,
-    };
+    const agent: { streamFn?: StreamFn } = {};
     const cfg = undefined;
     const provider = "openai";
     const modelId = "gpt-4";

@@ -1,10 +1,10 @@
 import {
+  streamSimple,
   type Api,
   type AssistantMessageEvent,
   type Message,
   type Model,
 } from "@earendil-works/pi-ai";
-import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { ReasoningLevel, ThinkLevel } from "../auto-reply/thinking.js";
 import type { GetReplyOptions, ReplyPayload } from "../auto-reply/types.js";
@@ -23,7 +23,6 @@ import { resolveModelWithRegistry } from "./pi-embedded-runner/model.js";
 import { getActiveEmbeddedRunSnapshot } from "./pi-embedded-runner/runs.js";
 import { discoverAuthStorage, discoverModels } from "./pi-model-discovery.js";
 import { stripToolResultDetails } from "./session-transcript-repair.js";
-import { forBackgroundCompletion } from "./simple-completion-runtime.js";
 
 type SessionManagerLike = {
   getLeafEntry?: () => {
@@ -134,7 +133,7 @@ async function resolveRuntimeModel(params: {
 }> {
   await ensureKaijiBotModelsJson(params.cfg, params.agentDir);
   const authStorage = discoverAuthStorage(params.agentDir);
-  const modelRegistry = await discoverModels(authStorage, params.agentDir);
+  const modelRegistry = discoverModels(authStorage, params.agentDir);
   const model = resolveModelWithRegistry({
     provider: params.provider,
     modelId: params.model,
@@ -285,7 +284,7 @@ export async function runBtwSideQuestion(
   };
 
   const stream = streamSimple(
-    forBackgroundCompletion(model),
+    model,
     {
       systemPrompt: buildBtwSystemPrompt(),
       messages: [

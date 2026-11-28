@@ -1,10 +1,5 @@
-import type {
-  AssistantMessage,
-  Model,
-  ToolResultMessage,
-  TranscriptContext,
-} from "@earendil-works/pi-ai";
-import { streamOpenAIResponses } from "@earendil-works/pi-ai/compat";
+import type { AssistantMessage, Model, ToolResultMessage } from "@earendil-works/pi-ai";
+import { streamOpenAIResponses } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 
@@ -96,9 +91,10 @@ async function runAbortedOpenAIResponsesStream(params: {
   const stream = streamOpenAIResponses(
     buildModel(),
     {
-      messages: [{ role: "system", content: "system", timestamp: 0 }, ...params.messages],
+      systemPrompt: "system",
+      messages: params.messages,
       ...(params.tools ? { tools: params.tools } : {}),
-    } as unknown as TranscriptContext,
+    },
     {
       apiKey: "test",
       signal: controller.signal,
